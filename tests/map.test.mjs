@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import {featureFilter} from '@maplibre/maplibre-gl-style-spec';
 import { SPEED_BANDS, UNKNOWN_COLOR, numericSpeed, speedColor, formatSpeed, readSettings } from '../styles/map-model.mjs';
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
 
@@ -36,16 +37,51 @@ test('world map has no European rail source or geographic bounds', () => {
   assert.equal(ids.length, new Set(ids).size);
   for (const layer of style.layers) if (layer.source) assert.ok(style.sources[layer.source], layer.id);
 });
-test('stations retain independent markers and priority labels across zoom transitions', () => {
-  for (const [key, min, max] of [['stationLow',4,7],['stationMed',7,8],['stations',8,undefined]]) {
-    const circle = style.layers.find(l => l.id === `station-${key}-dots`);
-    const text = style.layers.find(l => l.id === `station-${key}-names`);
-    assert.equal(circle.minzoom,min); assert.equal(circle.maxzoom,max);
-    assert.equal(text.minzoom,min); assert.equal(text.maxzoom,max);
-    assert.ok(text.layout['symbol-sort-key']);
-    assert.equal(text.layout['text-allow-overlap'],false);
-    assert.ok(style.layers.indexOf(text) > style.layers.findIndex(l => l.id === 'place_label_city'));
+test('regional stations have collision-aware markers and progressive size thresholds', () => {
+  const visible = (layer, zoom, properties) => zoom >= layer.minzoom && (layer.maxzoom === undefined || zoom < layer.maxzoom) && featureFilter(layer.filter).filter({zoom}, {type:1,properties});
+  const layers = style.layers.filter(l => l.id.startsWith('station-'));
+  const shown = (zoom, properties) => layers.some(layer => visible(layer, zoom, {state:'present',feature:'station', ...properties}));
+  assert.equal(shown(5.9, {station_size:'large'}),false);
+  assert.equal(shown(6, {station_size:'large'}),true);
+  assert.equal(shown(7.9, {station_size:'normal'}),false);
+  assert.equal(shown(8, {station_size:'normal'}),true);
+  assert.equal(shown(9.9, {station_size:'small'}),false);
+  assert.equal(shown(10, {station_size:'small'}),true);
+  assert.equal(shown(10, {station_size:'small',feature:'halt'}),false);
+  assert.equal(shown(11, {station_size:'small',feature:'halt'}),true);
+  assert.equal(shown(10, {station_size:'large',station:'subway'}),false);
+  assert.equal(shown(11, {station_size:'large',station:'subway'}),true);
+  assert.equal(shown(12.9, {feature:'tram_stop'}),false);
+  assert.equal(shown(13, {feature:'tram_stop'}),true);
+  for (const layer of layers) {
+    if (layer.type === 'circle') assert.ok(layer.minzoom >= 12, 'unconditional dots only at local scale');
+    else {
+      assert.equal(layer.layout['text-allow-overlap'],false);
+      assert.ok(style.layers.indexOf(layer) > style.layers.findIndex(l => l.id === 'place_label_city'));
+      if (layer.minzoom < 12) {
+        assert.equal(layer.layout['icon-image'],'station-dot');
+        assert.equal(layer.layout['icon-allow-overlap'],false);
+        assert.equal(layer.layout['icon-optional'],false);
+        assert.equal(layer.layout['text-optional'],false);
+        assert.equal(layer.maxzoom <= 12,true);
+      }
+    }
   }
+});
+test('regional overlay fills lifecycle gaps until vector data is available', () => {
+  const layer = style.layers.find(l => l.id === 'inactive-regional');
+  const included = (zoom, properties) => featureFilter(layer.filter).filter({zoom},{type:2,properties:{feature:'rail',usage:'main',service:'',...properties}});
+  assert.equal(layer.minzoom,7); assert.equal(layer.maxzoom,12);
+  for (const state of ['proposed','construction','disused','abandoned','razed']) assert.equal(included(7,{state}),true);
+  assert.equal(included(8,{state:'construction'}),false);
+  assert.equal(included(8,{state:'construction',usage:'industrial'}),true);
+  assert.equal(included(9,{state:'construction',usage:'industrial'}),false);
+  assert.equal(included(9,{state:'construction',feature:'light_rail',usage:'industrial'}),true);
+  assert.equal(included(10,{state:'disused'}),true);
+  assert.equal(included(11,{state:'disused'}),false);
+  assert.equal(included(11,{state:'disused',service:'siding'}),true);
+  assert.equal(included(11,{state:'abandoned'}),true);
+  assert.equal(included(11,{state:'razed'}),true);
 });
 test('only present lines receive operating speed colours', () => {
   const layer = style.layers.find(l => l.id === 'speed-tracks');

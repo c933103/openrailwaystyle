@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 import * as model from '../styles/map-model.mjs';
+import * as inactive from '../styles/inactive.mjs';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
 const appURL = new URL('../styles/app.mjs', import.meta.url);
@@ -22,6 +23,8 @@ async function start({ failWebGL = false } = {}) {
       maps.push(this);
     }
     addControl() {}
+    addImage(id, data, options) { this.image = {id,data,options}; }
+    off(name) { delete this.handlers[name]; }
     on(name, handler) { this.handlers[name] = handler; }
     getStyle() { return style; }
     setLayoutProperty(id, property, value) { this.visibility[id] = value; }
@@ -40,7 +43,10 @@ async function start({ failWebGL = false } = {}) {
     context,
     initializeImportMeta(meta) { meta.url = 'https://example.org/openrailwaystyle/app.mjs'; },
   });
-  await app.link(() => dependency);
+  const regional = new vm.SyntheticModule(Object.keys(inactive), function() {
+    for (const [key,value] of Object.entries(inactive)) this.setExport(key,value);
+  }, {context});
+  await app.link(specifier => specifier.includes('inactive.mjs') ? regional : dependency);
   await app.evaluate();
   return {dom,window,maps,errors};
 }
@@ -50,7 +56,10 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
   try {
     assert.equal(maps.length,1,'startup must reach the map constructor');
     assert.equal(errors.length,0);
-    assert.equal(maps[0].options.style,'https://example.org/openrailwaystyle/world.style.json');
+    assert.equal(maps[0].options.style,'https://example.org/openrailwaystyle/world.style.json?v=20260921-5');
+    maps[0].handlers.styleimagemissing({id:'station-dot'});
+    assert.equal(maps[0].image.id,'station-dot');
+    assert.equal(maps[0].image.data.data.length,32*32*4);
     maps[0].handlers.load();
     assert.equal(window.document.body.dataset.mapReady,'true');
     assert.equal(maps[0].visibility['speed-tracks'],'visible');
@@ -58,6 +67,10 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
     assert.equal(maps[0].visibility['speed-tracks'],'none');
     assert.equal(maps[0].visibility['infrastructure-tracks'],'visible');
     assert.equal(maps[0].visibility['station-stations-dots'],'visible');
+    const former = window.document.getElementById('inactive');
+    former.checked = false; former.dispatchEvent(new window.Event('change'));
+    assert.equal(maps[0].visibility['inactive-railways'],'none');
+    assert.equal(maps[0].visibility['inactive-regional'],'none');
   } finally {dom.window.close();}
 });
 test('real renderer initialization failures reach the visible error message', async () => {

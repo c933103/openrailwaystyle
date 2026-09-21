@@ -1,4 +1,5 @@
-import {SEARCH_API} from './map-model.mjs?v=20260921-4';
+import {SEARCH_API} from './map-model.mjs?v=20260921-5';
+import {INACTIVE_API, inactiveQuery, toGeoJSON} from './inactive.mjs?v=20260921-5';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;
@@ -40,6 +41,12 @@ button.addEventListener('click', async () => {
       const r = await get(url); const b = await r.arrayBuffer();
       if(!b.byteLength) throw new Error('Empty glyph response');
       return 'OK · bold label glyphs available';
+    });
+    await check('Regional former railways', async () => {
+      const r = await get(INACTIVE_API, {method:'POST',body:new URLSearchParams({data:inactiveQuery([51.45,-0.3,51.6,0.05])})});
+      const data = toGeoJSON(await r.json());
+      if (!data.features.length) throw new Error('No sample railway geometry');
+      return `OK · ${data.features.length} former or planned railway ways`;
     });
     await check('Station search', async () => {
       const json = await (await get(`${SEARCH_API}?q=London&limit=1`)).json();

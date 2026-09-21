@@ -1,9 +1,13 @@
-import { SPEED_BANDS, UNKNOWN_COLOR, SEARCH_API, REGION_VIEWS, MODES, readSettings, formatSpeed, numericSpeed, stationRank } from './map-model.mjs?v=20260921-4';
+import { SPEED_BANDS, UNKNOWN_COLOR, SEARCH_API, REGION_VIEWS, MODES, readSettings, formatSpeed, numericSpeed, stationRank } from './map-model.mjs?v=20260921-5';
+
+import { createInactiveOverlay } from './inactive.mjs?v=20260921-5';
 
 const $ = id => document.getElementById(id);
 const settings = readSettings(location.search);
 const status = $('map-status');
-let map, ready = false, currentFeature, searchController;
+let map, ready = false, currentFeature, searchController, inactiveOverlay;
+let inactiveStatus = '';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260921-5';
 const errors = new Set();
 const textNode = (tag, value, className) => {
   const el = document.createElement(tag); el.textContent = value;
@@ -51,10 +55,11 @@ function applySettings() {
     if (MODES.some(mode => layer.id.startsWith(`${mode}-`)) && layer.id !== 'speed-labels') visible = layer.id.startsWith(`${settings.mode}-`);
     if (layer.id.startsWith('station-')) visible = settings.stations;
     if (layer.id === 'speed-labels') visible = settings.mode === 'speed' && settings.labels;
-    if (layer.id === 'inactive-railways') visible = settings.inactive;
+    if (layer.id.startsWith('inactive-')) visible = settings.inactive;
     if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
   }
   renderLegend();
+  inactiveOverlay?.refresh();
 }
 function row(dl, label, value) {
   if (value === undefined || value === null || value === '') return;
@@ -77,8 +82,10 @@ function showDetails(feature) {
     if (p.station_size) panel.append(textNode('p', 'Size follows mapped route importance, not passenger numbers.', 'small'));
   } else {
     const speed = formatSpeed(p);
-    panel.append(textNode('p', speed.mapped, 'speed-value'));
-    row(dl, 'Speed label', speed.tagged);
+    if (!p.state || p.state === 'present') {
+      panel.append(textNode('p', speed.mapped, 'speed-value'));
+      row(dl, 'Speed label', speed.tagged);
+    }
     row(dl, 'Direction', p.preferred_direction);
     row(dl, 'Usage', p.usage);
     row(dl, 'Service', p.service);
@@ -89,11 +96,16 @@ function showDetails(feature) {
     row(dl, 'Gauge', p.gauges ? `${p.gauges} mm` : undefined);
     row(dl, 'Tunnel', p.tunnel === true ? 'Yes' : undefined);
     row(dl, 'Bridge', p.bridge === true ? 'Yes' : undefined);
-    panel.append(textNode('p', 'Colour uses the preferred-direction limit, or the larger directional limit if no preference is mapped. The source label above retains both directions. Bare numbers are km/h.', 'small'));
+    if (!p.state || p.state === 'present') panel.append(textNode('p', 'Colour uses the preferred-direction limit, or the larger directional limit if no preference is mapped. The source label above retains both directions. Bare numbers are km/h.', 'small'));
   }
   row(dl, 'Operator', Array.isArray(p.operator) ? p.operator.join(', ') : p.primary_operator || p.operator);
   panel.append(dl);
   if (!isStation && map.getZoom() < 7) panel.append(textNode('p', 'This is a generalized overview. Zoom in for individual tracks and full details.', 'small'));
+  if (p.osm_id) {
+    const link = textNode('a', 'View railway on OpenStreetMap ↗');
+    link.href = `https://www.openstreetmap.org/way/${encodeURIComponent(p.osm_id)}`;
+    link.target = '_blank'; link.rel = 'noopener'; panel.append(link);
+  }
   if (feature.geometry?.type === 'Point') {
     const [lng, lat] = feature.geometry.coordinates;
     const link = textNode('a', 'View location on OpenStreetMap ↗');
@@ -107,7 +119,7 @@ function updateStatus() {
     status.classList.add('error'); status.textContent = 'Some map data could not load. Check your connection or reload to retry.'; return;
   }
   status.classList.remove('error');
-  status.textContent = map.getZoom() < 4 ? 'Worldwide coverage · zoom in for stations' : 'Explore the rail network · click a line or station';
+  status.textContent = inactiveStatus || (map.getZoom() < 6 ? 'Worldwide coverage · zoom in for stations and former lines' : 'Explore the rail network · click a line or station');
   // Visible diagnostics make source availability inspectable without exposing
   // internal map objects or relying on a generic "loaded" flag.
   const features = map.queryRenderedFeatures();
@@ -124,9 +136,20 @@ async function initialize() {
   const protocol = new pmtiles.Protocol();
   maplibregl.addProtocol('pmtiles', protocol.tile);
   map = new maplibregl.Map({
-    container: 'map', style: new URL('world.style.json', import.meta.url).href,
+    container: 'map', style: new URL(`world.style.json?v=${encodeURIComponent(assetVersion)}`, import.meta.url).href,
     ...REGION_VIEWS.world, hash: true, minZoom: 1, maxZoom: 20,
     renderWorldCopies: true, attributionControl: { compact: true },
+  });
+  map.on('styleimagemissing', event => {
+    if (event.id !== 'station-dot') return;
+    const width = 32, data = new Uint8Array(width * width * 4);
+    for (let y = 0; y < width; y++) for (let x = 0; x < width; x++) {
+      const r = Math.hypot(x + 0.5 - width / 2, y + 0.5 - width / 2);
+      const offset = (y * width + x) * 4;
+      const color = r < 8.5 ? [255,254,247] : [18,62,82];
+      data.set([...color, Math.round(Math.max(0, Math.min(1, 12 - r)) * 255)], offset);
+    }
+    map.addImage('station-dot', {width,height:width,data}, {pixelRatio:2});
   });
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
   map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
@@ -137,19 +160,22 @@ async function initialize() {
   });
   map.on('sourcedata', e => { if (e.isSourceLoaded && e.sourceId) errors.delete(e.sourceId); });
   map.on('load', () => {
-    ready = true; applySettings(); updateStatus();
+    ready = true;
+    inactiveOverlay = createInactiveOverlay(map, () => settings.inactive, message => { inactiveStatus = message; updateStatus(); });
+    applySettings(); updateStatus();
     document.body.dataset.mapReady = 'true';
   });
   map.on('idle', updateStatus);
+  map.on('remove', () => inactiveOverlay?.destroy());
   map.on('click', event => {
     const p = event.point;
     const features = map.queryRenderedFeatures([[p.x - 7, p.y - 7], [p.x + 7, p.y + 7]])
-      .filter(f => f.layer.id.startsWith('station-') || f.layer.id === 'inactive-railways' || /^(speed|infrastructure|electrification)-(tracks|overview)$/.test(f.layer.id))
+      .filter(f => f.layer.id.startsWith('station-') || f.layer.id.startsWith('inactive-') || /^(speed|infrastructure|electrification)-(tracks|overview)$/.test(f.layer.id))
       .sort((a, b) => Number(!a.source.startsWith('station')) - Number(!b.source.startsWith('station')) || stationRank(a.properties) - stationRank(b.properties));
     if (features[0]) showDetails(features[0]);
   });
   map.on('mousemove', event => {
-    const hit = map.queryRenderedFeatures(event.point).some(f => f.layer.id.startsWith('station-') || f.source === 'railway');
+    const hit = map.queryRenderedFeatures(event.point).some(f => f.layer.id.startsWith('station-') || f.source === 'railway' || f.layer.id.startsWith('inactive-'));
     map.getCanvas().style.cursor = hit ? 'pointer' : '';
   });
 }
