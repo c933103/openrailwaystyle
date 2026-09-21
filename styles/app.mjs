@@ -119,7 +119,8 @@ function updateStatus() {
 }
 async function initialize() {
   if (!window.maplibregl || !window.pmtiles) throw new Error('Map libraries could not load. Check your connection and reload.');
-  if (!maplibregl.supported()) throw new Error('This browser cannot start the map renderer. Enable WebGL or try another browser.');
+  // MapLibre 5 has no top-level supported() export. The Map constructor checks
+  // WebGL itself; initialization errors are caught by the handler below.
   const protocol = new pmtiles.Protocol();
   maplibregl.addProtocol('pmtiles', protocol.tile);
   map = new maplibregl.Map({
