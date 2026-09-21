@@ -1,42 +1,54 @@
-# Simple workflow for deploying static content to GitHub Pages
-name: Deploy static content to Pages
-
+name: Validate and deploy world railway map
 on:
-  # Runs on pushes targeting the default branch
   push:
-    branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
+    branches: [main]
+  pull_request:
   workflow_dispatch:
-
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
-  group: "pages"
+  group: pages-${{ github.ref }}
   cancel-in-progress: false
-
 jobs:
-  # Single deploy job since we're just deploying
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install style validator
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Rebuild world style
+        run: npm run build
+      - name: Check committed style is reproducible
+        run: git diff --exit-code -- styles/world.style.json
+      - name: Validate speed semantics and MapLibre style
+        run: npm test
+      - name: Check JavaScript syntax
+        run: node --check styles/app.mjs
+      - name: Save reviewable site
+        uses: actions/upload-artifact@v4
+        with:
+          name: railway-world-site
+          path: styles
   deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: validate
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
         with:
-          path: 'styles'
+          path: styles
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

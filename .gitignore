@@ -1,3 +1,4 @@
 .env
 planetiler.jar
 data/
+node_modules/

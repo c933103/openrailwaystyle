@@ -1,29 +1,60 @@
 <!doctype html>
-<html>
-
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Open Railway Map Style</title>
-  <link href="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Explore railways worldwide, with prominent stations, maximum speeds and electrification. Built on OpenStreetMap and Open Railway Styles.">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="theme-color" content="#173e47">
+  <title>Open Railway Atlas · Worldwide rail map</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet">
+  <link href="app.css" rel="stylesheet">
 </head>
-
-<body style="margin: 0;">
-  <div id="map" style="width: 100%; height: 100vh;"></div>
-  <script type="module">
-    import maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/+esm"
-    import {Protocol} from "https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/+esm"
-
-    let protocol = new Protocol();
-    maplibregl.addProtocol("pmtiles", protocol.tile);
-
-    const map = new maplibregl.Map({
-      style: "default.style.json",
-      container: "map",
-      center: [7.1, 47.6],
-      zoom: 4,
-      attributionControl: {customAttribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'},
-    })
-  </script>
+<body>
+  <main id="map" aria-label="Interactive worldwide railway map"></main>
+  <aside class="panel" aria-label="Map controls">
+    <header><span class="brand-mark" aria-hidden="true">Ⅱ</span><div><h1>Open Railway Atlas</h1><p>The world, by rail.</p></div><button id="collapse" aria-label="Collapse map controls" aria-expanded="true">−</button></header>
+    <div id="controls">
+      <form id="search-form" role="search">
+        <label class="sr-only" for="search-input">Find a station or railway facility</label>
+        <div class="search-row"><input id="search-input" type="search" placeholder="Find a station…" minlength="2" maxlength="150" autocomplete="off" required><button type="submit" aria-label="Search stations">⌕</button></div>
+        <p id="search-status" class="small" role="status" hidden></p>
+        <ul id="search-results" aria-label="Station search results" hidden></ul>
+      </form>
+      <div class="section-heading">MAP VIEW</div>
+      <div class="mode-picker" role="group" aria-label="Railway colouring">
+        <button data-mode="speed" aria-pressed="true">Max speed</button>
+        <button data-mode="infrastructure" aria-pressed="false">Network</button>
+        <button data-mode="electrification" aria-pressed="false">Power</button>
+      </div>
+      <div id="legend" aria-live="polite"></div>
+      <details class="display-options"><summary>Display options</summary><div>
+        <label><input type="checkbox" id="stations" checked> Station markers and names</label>
+        <label><input type="checkbox" id="labels" checked> Speed labels along tracks</label>
+        <label><input type="checkbox" id="inactive" checked> Planned, construction and former railways</label>
+      </div></details>
+      <label class="section-heading" for="region">EXPLORE</label>
+      <select id="region"><option value="">Choose a region</option><option value="world">Whole world</option><option value="europe">Europe</option><option value="asia">Asia</option><option value="northAmerica">North America</option><option value="southAmerica">South America</option><option value="africa">Africa</option><option value="oceania">Oceania</option></select>
+      <p class="hint">Zoom in for stations and track detail.<br>Click a station or line to inspect it.</p>
+      <div class="toolbar"><button id="share">Copy map link</button><button id="about-open">About & data</button></div>
+      <p id="share-status" role="status" class="small" hidden></p>
+    </div>
+  </aside>
+  <div class="map-status" id="map-status" role="status">Loading the world’s railways…</div>
+  <section class="detail-panel" id="details" aria-label="Railway details" hidden><button class="close" id="details-close" aria-label="Close railway details">×</button><div id="detail-content"></div></section>
+  <dialog id="about"><button class="close" id="about-close" aria-label="Close about">×</button><h2>A world built around rail</h2>
+    <p>A station-first adaptation of <a href="https://github.com/c933103/openrailwaystyle">Open Railway Styles</a>, started at Hack4Rail. The background keeps roads and settlements subdued so railway infrastructure stands out.</p>
+    <h3>Reading the map</h3><p>Station symbols are larger and names appear earlier. Major stations receive priority according to the provider’s mapped route importance, which is not a passenger-volume ranking. Coverage and station ranking depend on OpenStreetMap completeness.</p>
+    <p>Speed colours use the provider’s numeric limit in km/h. Where directions differ, this is the preferred-direction limit, or the larger directional limit when no preferred direction is mapped. Track labels retain original units: bare numbers are km/h; mph is written explicitly. “A / B” means forward / backward; “A (B)” means preferred / opposite direction. A dash means missing data. These directions refer to the underlying OSM way.</p>
+    <p>Grey means no numeric speed is available. Dashed lines show proposed, construction or former infrastructure; they are not presented as operating lines. Recorded infrastructure limits are not train running speeds or a timetable.</p>
+    <h3>Sources</h3><p>Railway tiles and station search: <a href="https://openrailwaymap.app/">OpenRailwayMap</a>. Base map: <a href="https://tuiles.enliberte.fr/">En Liberté</a>. Map data: <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>. Renderer: <a href="https://maplibre.org/">MapLibre</a>.</p>
+    <p class="small">This public map uses community-hosted services. Data availability and updates follow those providers. No account or API key is required. Search terms are sent to OpenRailwayMap only when submitted.</p>
+    <p><a href="https://github.com/c933103/openrailwaystyle">Source code & report a problem ↗</a></p>
+  </dialog>
+  <noscript><div class="no-script">Enable JavaScript to use the interactive railway map.</div></noscript>
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js"></script>
+  <script type="module" src="app.mjs"></script>
 </body>
-
 </html>

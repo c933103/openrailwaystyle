@@ -1,0 +1,218 @@
+import { SPEED_BANDS, UNKNOWN_COLOR, ORM, REGION_VIEWS, MODES, readSettings, formatSpeed, numericSpeed, stationRank } from './map-model.mjs';
+
+const $ = id => document.getElementById(id);
+const settings = readSettings(location.search);
+const status = $('map-status');
+let map, ready = false, currentFeature, searchController;
+const errors = new Set();
+const textNode = (tag, value, className) => {
+  const el = document.createElement(tag); el.textContent = value;
+  if (className) el.className = className;
+  return el;
+};
+function renderLegend() {
+  const box = $('legend'); box.replaceChildren();
+  const legends = {
+    speed: { title: 'Mapped maximum speed · km/h', rows: SPEED_BANDS.map(b => [b.color, b.label]) },
+    infrastructure: { title: 'Railway infrastructure', rows: [['#a92b47','High-speed line'],['#b85c29','Railway'],['#a97d29','Branch line'],['#237b82','Metro / light rail'],['#9f5e96','Tram'],['#888278','Service tracks']] },
+    electrification: { title: 'Electrification · nominal voltage', rows: [['#d364a1','< 1 kV'],['#9d56b6','1–< 3 kV'],['#317cb9','3–< 15 kV'],['#42864a','15–< 25 kV'],['#c94831','≥ 25 kV'],['#525b62','Not electrified']] },
+  };
+  const legend = legends[settings.mode];
+  box.append(textNode('h2', legend.title));
+  const grid = textNode('div', '', 'legend-grid');
+  const rows = [...legend.rows];
+  if (settings.mode !== 'infrastructure') rows.push([UNKNOWN_COLOR, 'Unknown']);
+  if (settings.inactive) rows.push(['#81756a', 'Non-operating', 'dashed']);
+  for (const [color, label, extra] of rows) {
+    const row = textNode('div', '', 'legend-item');
+    const swatch = textNode('span', '', `swatch ${extra || ''}`); swatch.style.setProperty('--swatch', color);
+    row.append(swatch, textNode('span', label)); grid.append(row);
+  }
+  if (settings.stations) {
+    const station = textNode('div', '', 'legend-item'); station.append(textNode('span', '', 'station-swatch'), textNode('span', 'Station')); grid.append(station);
+  }
+  box.append(grid);
+  const note = settings.mode === 'speed'
+    ? 'Colours use km/h. Labels preserve mph and directional limits. Grey means no numeric limit is recorded.'
+    : settings.mode === 'electrification' ? 'Click a track for voltage and frequency. Grey means unknown.' : 'Stations stay visible in every view.';
+  box.append(textNode('p', note, 'legend-note'));
+}
+function saveSettings() {
+  const url = new URL(location.href);
+  url.searchParams.set('mode', settings.mode);
+  for (const key of ['stations', 'labels', 'inactive']) url.searchParams.set(key, settings[key] ? '1' : '0');
+  history.replaceState(null, '', url);
+}
+function applySettings() {
+  document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
+  for (const key of ['stations', 'labels', 'inactive']) $(key).checked = settings[key];
+  if (ready) for (const layer of map.getStyle().layers) {
+    let visible;
+    if (MODES.some(mode => layer.id.startsWith(`${mode}-`)) && layer.id !== 'speed-labels') visible = layer.id.startsWith(`${settings.mode}-`);
+    if (layer.id.startsWith('station-')) visible = settings.stations;
+    if (layer.id === 'speed-labels') visible = settings.mode === 'speed' && settings.labels;
+    if (layer.id === 'inactive-railways') visible = settings.inactive;
+    if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
+  }
+  renderLegend();
+}
+function row(dl, label, value) {
+  if (value === undefined || value === null || value === '') return;
+  dl.append(textNode('dt', label), textNode('dd', String(value)));
+}
+function showDetails(feature) {
+  currentFeature = feature;
+  const p = feature.properties;
+  const isStation = feature.source?.startsWith('station') || feature.kind === 'station';
+  const panel = $('detail-content'); panel.replaceChildren();
+  panel.append(textNode('div', isStation ? 'RAILWAY STATION' : 'RAILWAY INFRASTRUCTURE', 'eyebrow'));
+  panel.append(textNode('h2', p.name || p.localized_name || p.ref || (isStation ? 'Unnamed station' : 'Unnamed railway')));
+  const dl = document.createElement('dl');
+  row(dl, 'Type', p.feature || (isStation ? 'station' : undefined));
+  row(dl, 'Status', p.state || 'present');
+  row(dl, 'Reference', p.label || p.ref || p.railway_ref);
+  if (isStation) {
+    row(dl, 'Station type', p.station);
+    row(dl, 'Mapped size', p.station_size);
+    if (p.station_size) panel.append(textNode('p', 'Size follows mapped route importance, not passenger numbers.', 'small'));
+  } else {
+    const speed = formatSpeed(p);
+    panel.append(textNode('p', speed.mapped, 'speed-value'));
+    row(dl, 'Speed label', speed.tagged);
+    row(dl, 'Direction', p.preferred_direction);
+    row(dl, 'Usage', p.usage);
+    row(dl, 'Service', p.service);
+    row(dl, 'Track', p.track_ref);
+    row(dl, 'Voltage', typeof p.voltage === 'number' ? `${p.voltage.toLocaleString()} V` : undefined);
+    row(dl, 'Frequency', typeof p.frequency === 'number' ? p.frequency === 0 ? 'DC' : `${p.frequency} Hz AC` : undefined);
+    row(dl, 'Electrification', p.electrification_state);
+    row(dl, 'Gauge', p.gauges ? `${p.gauges} mm` : undefined);
+    row(dl, 'Tunnel', p.tunnel === true ? 'Yes' : undefined);
+    row(dl, 'Bridge', p.bridge === true ? 'Yes' : undefined);
+    panel.append(textNode('p', 'Colour uses the preferred-direction limit, or the larger directional limit if no preference is mapped. The source label above retains both directions. Bare numbers are km/h.', 'small'));
+  }
+  row(dl, 'Operator', Array.isArray(p.operator) ? p.operator.join(', ') : p.primary_operator || p.operator);
+  panel.append(dl);
+  if (!isStation && map.getZoom() < 7) panel.append(textNode('p', 'This is a generalized overview. Zoom in for individual tracks and full details.', 'small'));
+  if (feature.geometry?.type === 'Point') {
+    const [lng, lat] = feature.geometry.coordinates;
+    const link = textNode('a', 'View location on OpenStreetMap ↗');
+    link.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`;
+    link.target = '_blank'; link.rel = 'noopener'; panel.append(link);
+  }
+  $('details').hidden = false;
+}
+function updateStatus() {
+  if (errors.size) {
+    status.classList.add('error'); status.textContent = 'Some map data could not load. Check your connection or reload to retry.'; return;
+  }
+  status.classList.remove('error');
+  status.textContent = map.getZoom() < 4 ? 'Worldwide coverage · zoom in for stations' : 'Explore the rail network · click a line or station';
+  // Visible diagnostics make source availability inspectable without exposing
+  // internal map objects or relying on a generic "loaded" flag.
+  const features = map.queryRenderedFeatures();
+  const tracks = features.filter(f => ['railway','speed','network','electric'].includes(f.source));
+  const stations = features.filter(f => f.source.startsWith('station'));
+  status.dataset.renderedTracks = String(tracks.length);
+  status.dataset.renderedStations = String(stations.length);
+  status.dataset.numericSpeeds = String(tracks.filter(f => numericSpeed(f.properties.maxspeed) !== null).length);
+}
+async function initialize() {
+  if (!window.maplibregl || !window.pmtiles) throw new Error('Map libraries could not load. Check your connection and reload.');
+  if (!maplibregl.supported()) throw new Error('This browser cannot start the map renderer. Enable WebGL or try another browser.');
+  const protocol = new pmtiles.Protocol();
+  maplibregl.addProtocol('pmtiles', protocol.tile);
+  map = new maplibregl.Map({
+    container: 'map', style: new URL('world.style.json', import.meta.url).href,
+    ...REGION_VIEWS.world, hash: true, minZoom: 1, maxZoom: 20,
+    renderWorldCopies: true, attributionControl: { compact: true },
+  });
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+  map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
+  map.on('error', e => {
+    console.error('Map resource error', e.error);
+    errors.add(e.sourceId || 'resource');
+    status.classList.add('error'); status.textContent = 'Some map data could not load. Check your connection or reload to retry.';
+  });
+  map.on('sourcedata', e => { if (e.isSourceLoaded && e.sourceId) errors.delete(e.sourceId); });
+  map.on('load', () => {
+    ready = true; applySettings(); updateStatus();
+    document.body.dataset.mapReady = 'true';
+  });
+  map.on('idle', updateStatus);
+  map.on('click', event => {
+    const p = event.point;
+    const features = map.queryRenderedFeatures([[p.x - 7, p.y - 7], [p.x + 7, p.y + 7]])
+      .filter(f => f.layer.id.startsWith('station-') || f.layer.id === 'inactive-railways' || /^(speed|infrastructure|electrification)-(tracks|overview)$/.test(f.layer.id))
+      .sort((a, b) => Number(!a.source.startsWith('station')) - Number(!b.source.startsWith('station')) || stationRank(a.properties) - stationRank(b.properties));
+    if (features[0]) showDetails(features[0]);
+  });
+  map.on('mousemove', event => {
+    const hit = map.queryRenderedFeatures(event.point).some(f => f.layer.id.startsWith('station-') || f.source === 'railway');
+    map.getCanvas().style.cursor = hit ? 'pointer' : '';
+  });
+}
+
+document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
+  settings.mode = button.dataset.mode; applySettings(); saveSettings();
+}));
+for (const key of ['stations', 'labels', 'inactive']) $(key).addEventListener('change', () => {
+  settings[key] = $(key).checked; applySettings(); saveSettings();
+});
+$('region').addEventListener('change', e => {
+  const view = REGION_VIEWS[e.target.value];
+  if (view && ready) map.flyTo({ ...view, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1200 });
+});
+$('collapse').addEventListener('click', () => {
+  $('controls').hidden = !$('controls').hidden;
+  $('collapse').textContent = $('controls').hidden ? '+' : '−';
+  $('collapse').setAttribute('aria-expanded', String(!$('controls').hidden));
+  $('collapse').setAttribute('aria-label', `${$('controls').hidden ? 'Expand' : 'Collapse'} map controls`);
+});
+$('details-close').addEventListener('click', () => { $('details').hidden = true; currentFeature = null; });
+$('about-open').addEventListener('click', () => $('about').showModal());
+$('about-close').addEventListener('click', () => $('about').close());
+$('share').addEventListener('click', async () => {
+  saveSettings(); $('share-status').hidden = false;
+  try { await navigator.clipboard.writeText(location.href); $('share-status').textContent = 'Map link copied, including position and display options.'; }
+  catch { $('share-status').replaceChildren(textNode('span', 'Copy this address: ')); const input = document.createElement('input'); input.value = location.href; input.readOnly = true; input.setAttribute('aria-label', 'Shareable map address'); input.style.width = '100%'; $('share-status').append(input); input.select(); }
+});
+$('search-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const q = $('search-input').value.trim(); if (q.length < 2) return;
+  searchController?.abort(); searchController = new AbortController();
+  const controller = searchController;
+  const timeout = setTimeout(() => controller.abort('timeout'), 15000);
+  $('search-results').hidden = true;
+  $('search-status').hidden = false; $('search-status').textContent = 'Searching railway facilities…';
+  try {
+    const url = new URL(`${ORM}/api/facility`); url.searchParams.set('q', q); url.searchParams.set('limit', '8');
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) throw new Error(`Search returned ${response.status}`);
+    const items = await response.json(); if (!Array.isArray(items)) throw new Error('Unexpected search response');
+    if (controller !== searchController) return;
+    const results = $('search-results'); results.replaceChildren();
+    for (const item of items) {
+      if (!Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)) continue;
+      const li = document.createElement('li'); const button = document.createElement('button'); button.type = 'button';
+      button.append(textNode('span', item.name || item.localized_name || item.railway_ref || 'Unnamed facility'));
+      button.append(textNode('small', [item.station || item.feature || item.railway, item.railway_ref, Array.isArray(item.operator) ? item.operator.join(', ') : item.operator].filter(Boolean).join(' · ')));
+      button.addEventListener('click', () => {
+        if (!ready) { $('search-status').textContent = 'The map is still loading. Try this result again shortly.'; return; }
+        const coordinates = [item.longitude, item.latitude];
+        map.flyTo({ center: coordinates, zoom: 14, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1000 });
+        showDetails({ kind: 'station', properties: item, geometry: { type: 'Point', coordinates } });
+        results.hidden = true; $('search-status').hidden = true;
+        if (matchMedia('(max-width: 650px)').matches && !$('controls').hidden) $('collapse').click();
+      });
+      li.append(button); results.append(li);
+    }
+    results.hidden = !results.children.length;
+    $('search-status').textContent = results.children.length ? `${results.children.length} results` : 'No matching facility found. Try a local name or railway code.';
+  } catch (error) {
+    if (controller !== searchController) return;
+    $('search-status').textContent = 'Station search is unavailable. Try again, or browse using the region selector.';
+  } finally { clearTimeout(timeout); }
+});
+applySettings();
+initialize().catch(error => { console.error(error); status.classList.add('error'); status.textContent = error.message; });
