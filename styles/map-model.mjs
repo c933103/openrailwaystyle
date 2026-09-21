@@ -12,6 +12,9 @@ export const SPEED_BANDS = [
 ];
 export const UNKNOWN_COLOR = '#899197';
 export const ORM = 'https://openrailwaymap.app';
+// Public API explicitly supports cross-origin clients; the vector site's
+// same-origin /api/facility endpoint is not suitable for GitHub Pages.
+export const SEARCH_API = 'https://api.openrailwaymap.org/v2/facility';
 export const MODES = ['speed', 'infrastructure', 'electrification'];
 export const REGION_VIEWS = {
   world: { center: [15, 23], zoom: 1.8 },

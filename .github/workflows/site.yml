@@ -27,6 +27,9 @@ jobs:
         run: npm test
       - name: Check JavaScript syntax
         run: node --check styles/app.mjs
+      - name: Check public station search and CORS
+        continue-on-error: true
+        run: node scripts/check-search-api.mjs
       - name: Save reviewable site
         uses: actions/upload-artifact@v4
         with:

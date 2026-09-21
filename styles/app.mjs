@@ -1,4 +1,4 @@
-import { SPEED_BANDS, UNKNOWN_COLOR, ORM, REGION_VIEWS, MODES, readSettings, formatSpeed, numericSpeed, stationRank } from './map-model.mjs';
+import { SPEED_BANDS, UNKNOWN_COLOR, SEARCH_API, REGION_VIEWS, MODES, readSettings, formatSpeed, numericSpeed, stationRank } from './map-model.mjs?v=20260921-4';
 
 const $ = id => document.getElementById(id);
 const settings = readSettings(location.search);
@@ -68,9 +68,9 @@ function showDetails(feature) {
   panel.append(textNode('div', isStation ? 'RAILWAY STATION' : 'RAILWAY INFRASTRUCTURE', 'eyebrow'));
   panel.append(textNode('h2', p.name || p.localized_name || p.ref || (isStation ? 'Unnamed station' : 'Unnamed railway')));
   const dl = document.createElement('dl');
-  row(dl, 'Type', p.feature || (isStation ? 'station' : undefined));
+  row(dl, 'Type', p.feature || p.railway || (isStation ? 'station' : undefined));
   row(dl, 'Status', p.state || 'present');
-  row(dl, 'Reference', p.label || p.ref || p.railway_ref);
+  row(dl, 'Reference', p.label || p.ref || p.railway_ref || p['railway:ref']);
   if (isStation) {
     row(dl, 'Station type', p.station);
     row(dl, 'Mapped size', p.station_size);
@@ -187,7 +187,7 @@ $('search-form').addEventListener('submit', async e => {
   $('search-results').hidden = true;
   $('search-status').hidden = false; $('search-status').textContent = 'Searching railway facilities…';
   try {
-    const url = new URL(`${ORM}/api/facility`); url.searchParams.set('q', q); url.searchParams.set('limit', '8');
+    const url = new URL(SEARCH_API); url.searchParams.set('q', q); url.searchParams.set('limit', '8');
     const response = await fetch(url, { signal: controller.signal });
     if (!response.ok) throw new Error(`Search returned ${response.status}`);
     const items = await response.json(); if (!Array.isArray(items)) throw new Error('Unexpected search response');
@@ -197,7 +197,7 @@ $('search-form').addEventListener('submit', async e => {
       if (!Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)) continue;
       const li = document.createElement('li'); const button = document.createElement('button'); button.type = 'button';
       button.append(textNode('span', item.name || item.localized_name || item.railway_ref || 'Unnamed facility'));
-      button.append(textNode('small', [item.station || item.feature || item.railway, item.railway_ref, Array.isArray(item.operator) ? item.operator.join(', ') : item.operator].filter(Boolean).join(' · ')));
+      button.append(textNode('small', [item.station || item.feature || item.railway, item.railway_ref || item['railway:ref'], Array.isArray(item.operator) ? item.operator.join(', ') : item.operator].filter(Boolean).join(' · ')));
       button.addEventListener('click', () => {
         if (!ready) { $('search-status').textContent = 'The map is still loading. Try this result again shortly.'; return; }
         const coordinates = [item.longitude, item.latitude];

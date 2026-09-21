@@ -1,4 +1,4 @@
-import {ORM} from './map-model.mjs';
+import {SEARCH_API} from './map-model.mjs?v=20260921-4';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;
@@ -42,7 +42,7 @@ button.addEventListener('click', async () => {
       return 'OK · bold label glyphs available';
     });
     await check('Station search', async () => {
-      const json = await (await get(`${ORM}/api/facility?q=London&limit=1`)).json();
+      const json = await (await get(`${SEARCH_API}?q=London&limit=1`)).json();
       if(!Array.isArray(json)||!json.length) throw new Error('No station result');
       return `OK · ${json[0].name} · ${json[0].latitude}, ${json[0].longitude}`;
     });

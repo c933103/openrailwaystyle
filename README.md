@@ -37,7 +37,7 @@ The railway provider’s `maxspeed` field is normalized to km/h. Where direction
 
 The provider’s station size is based on OSM route importance, not passenger numbers. Major stations have larger markers and first choice of label placement; less complete route mapping can understate station importance. Stations appear from zoom 4 where present in the source. Additional facilities and detail appear as the data provider’s zoom thresholds allow. Worldwide coverage means global source coverage, not a guarantee that every railway, station or speed is mapped.
 
-Community-hosted external services can be unavailable or change schema. The application shows loading failures rather than replacing missing speeds with guessed values. Search requests are submitted only on demand and have cancellation and timeout handling. No personal location is requested automatically.
+Community-hosted external services can be unavailable or change schema. The application shows loading failures rather than replacing missing speeds with guessed values. Station search uses the cross-origin-enabled `https://api.openrailwaymap.org/v2/facility` endpoint; railway vectors continue to use `openrailwaymap.app`. Search requests are submitted only on demand and have cancellation and timeout handling. No personal location is requested automatically.
 
 ---
 
