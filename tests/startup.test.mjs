@@ -64,7 +64,7 @@ test('real renderer initialization failures reach the visible error message', as
   const {dom,window,errors} = await start({failWebGL:true});
   try {
     assert.equal(errors.length,1);
-    assert.match(window.document.getElementById('map-status').textContent,/Failed to initialize WebGL/);
+    assert.match(window.document.getElementById('map-status').textContent,/could not start WebGL/);
     assert.equal(window.document.body.dataset.mapReady,undefined);
   } finally {dom.window.close();}
 });

@@ -216,4 +216,10 @@ $('search-form').addEventListener('submit', async e => {
   } finally { clearTimeout(timeout); }
 });
 applySettings();
-initialize().catch(error => { console.error(error); status.classList.add('error'); status.textContent = error.message; });
+initialize().catch(error => {
+  console.error(error);
+  status.classList.add('error');
+  status.textContent = /WebGL|webglcontext/i.test(error.message)
+    ? 'This browser could not start WebGL. Enable graphics acceleration in your browser settings, then reload the map.'
+    : error.message;
+});
