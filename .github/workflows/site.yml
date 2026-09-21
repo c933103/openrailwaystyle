@@ -31,7 +31,6 @@ jobs:
         continue-on-error: true
         run: node scripts/check-search-api.mjs
       - name: Check regional former-line API and CORS
-        continue-on-error: true
         run: node scripts/check-inactive-api.mjs
       - name: Save reviewable site
         uses: actions/upload-artifact@v4

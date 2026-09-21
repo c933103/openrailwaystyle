@@ -76,7 +76,7 @@
       },
       "tolerance": 1,
       "buffer": 128,
-      "attribution": "<a href=\"https://overpass.private.coffee/\">Overpass by Private.coffee</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
+      "attribution": "<a href=\"https://maps.mail.ru/osm/tools/overpass/\">VK Maps Overpass</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
     }
   },
   "layers": [

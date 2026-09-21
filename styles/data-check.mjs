@@ -1,5 +1,5 @@
-import {SEARCH_API} from './map-model.mjs?v=20260921-5';
-import {INACTIVE_API, inactiveQuery, toGeoJSON} from './inactive.mjs?v=20260921-5';
+import {SEARCH_API} from './map-model.mjs?v=20260921-6';
+import {INACTIVE_API, inactiveQuery, toGeoJSON} from './inactive.mjs?v=20260921-6';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;

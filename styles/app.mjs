@@ -1,13 +1,13 @@
-import { SPEED_BANDS, UNKNOWN_COLOR, SEARCH_API, REGION_VIEWS, MODES, readSettings, formatSpeed, numericSpeed, stationRank } from './map-model.mjs?v=20260921-5';
+import { SPEED_BANDS, UNKNOWN_COLOR, SEARCH_API, REGION_VIEWS, MODES, readSettings, formatSpeed, numericSpeed, stationRank } from './map-model.mjs?v=20260921-6';
 
-import { createInactiveOverlay } from './inactive.mjs?v=20260921-5';
+import { createInactiveOverlay } from './inactive.mjs?v=20260921-6';
 
 const $ = id => document.getElementById(id);
 const settings = readSettings(location.search);
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, inactiveOverlay;
 let inactiveStatus = '';
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260921-5';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260921-6';
 const errors = new Set();
 const textNode = (tag, value, className) => {
   const el = document.createElement(tag); el.textContent = value;

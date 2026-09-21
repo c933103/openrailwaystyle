@@ -20,7 +20,7 @@ const style = {
     stationLow: vector('standard_railway_text_stations_low', 4, 6),
     stationMed: vector('standard_railway_text_stations_med', 7, 7),
     stations: vector('standard_railway_text_stations', 8, 16),
-    inactiveRegional: { type: 'geojson', data: {type:'FeatureCollection',features:[]}, tolerance: 1, buffer: 128, attribution: '<a href="https://overpass.private.coffee/">Overpass by Private.coffee</a> · <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>' },
+    inactiveRegional: { type: 'geojson', data: {type:'FeatureCollection',features:[]}, tolerance: 1, buffer: 128, attribution: '<a href="https://maps.mail.ru/osm/tools/overpass/">VK Maps Overpass</a> · <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>' },
   },
   layers: original.layers.filter(l => (!l.source || l.source === 'openmaptiles') && !l.id.startsWith('airport_')).map(l => structuredClone(l)),
 };

@@ -1,6 +1,6 @@
 // The public vector overview omits former lines. Query only the visible region,
 // with one request at a time, a debounce, a cooldown and a small session cache.
-export const INACTIVE_API = 'https://overpass.private.coffee/api/interpreter';
+export const INACTIVE_API = 'https://maps.mail.ru/osm/tools/overpass/api/interpreter';
 export const EMPTY = { type: 'FeatureCollection', features: [] };
 export const STATES = ['proposed', 'construction', 'disused', 'abandoned', 'razed', 'demolished', 'removed'];
 const TRACKS = ['rail', 'narrow_gauge', 'light_rail', 'subway', 'tram', 'monorail', 'funicular'];
