@@ -1,0 +1,70 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import vm from 'node:vm';
+import { JSDOM } from 'jsdom';
+import * as model from '../styles/map-model.mjs';
+
+const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
+const appURL = new URL('../styles/app.mjs', import.meta.url);
+const code = await readFile(appURL, 'utf8');
+const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
+
+async function start({ failWebGL = false } = {}) {
+  const dom = new JSDOM(html, {url:'https://example.org/openrailwaystyle/', runScripts:'outside-only'});
+  const window = dom.window;
+  const errors = [], maps = [];
+  window.console.error = error => errors.push(error);
+  class Map {
+    constructor(options) {
+      if (failWebGL) throw new Error('Failed to initialize WebGL');
+      this.options = options; this.handlers = {}; this.visibility = {};
+      maps.push(this);
+    }
+    addControl() {}
+    on(name, handler) { this.handlers[name] = handler; }
+    getStyle() { return style; }
+    setLayoutProperty(id, property, value) { this.visibility[id] = value; }
+    getZoom() { return 4; }
+    queryRenderedFeatures() { return []; }
+  }
+  // This is the MapLibre 5 public surface used by the app. In particular,
+  // supported() is absent: older Mapbox examples must not gate startup.
+  window.maplibregl = {Map, addProtocol(){}, NavigationControl:class {}, ScaleControl:class {}};
+  window.pmtiles = {Protocol:class { tile() {} }};
+  const context = dom.getInternalVMContext();
+  const dependency = new vm.SyntheticModule(Object.keys(model), function() {
+    for (const [key,value] of Object.entries(model)) this.setExport(key,value);
+  }, {context});
+  const app = new vm.SourceTextModule(code, {
+    context,
+    initializeImportMeta(meta) { meta.url = 'https://example.org/openrailwaystyle/app.mjs'; },
+  });
+  await app.link(() => dependency);
+  await app.evaluate();
+  return {dom,window,maps,errors};
+}
+
+test('app starts with the MapLibre 5 API and enables map controls', async () => {
+  const {dom,window,maps,errors} = await start();
+  try {
+    assert.equal(maps.length,1,'startup must reach the map constructor');
+    assert.equal(errors.length,0);
+    assert.equal(maps[0].options.style,'https://example.org/openrailwaystyle/world.style.json');
+    maps[0].handlers.load();
+    assert.equal(window.document.body.dataset.mapReady,'true');
+    assert.equal(maps[0].visibility['speed-tracks'],'visible');
+    window.document.querySelector('[data-mode="infrastructure"]').click();
+    assert.equal(maps[0].visibility['speed-tracks'],'none');
+    assert.equal(maps[0].visibility['infrastructure-tracks'],'visible');
+    assert.equal(maps[0].visibility['station-stations-dots'],'visible');
+  } finally {dom.window.close();}
+});
+test('real renderer initialization failures reach the visible error message', async () => {
+  const {dom,window,errors} = await start({failWebGL:true});
+  try {
+    assert.equal(errors.length,1);
+    assert.match(window.document.getElementById('map-status').textContent,/Failed to initialize WebGL/);
+    assert.equal(window.document.body.dataset.mapReady,undefined);
+  } finally {dom.window.close();}
+});

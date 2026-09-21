@@ -4,9 +4,10 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build-style.mjs",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --experimental-vm-modules --test tests/*.test.mjs"
   },
   "devDependencies": {
-    "@maplibre/maplibre-gl-style-spec": "23.1.0"
+    "@maplibre/maplibre-gl-style-spec": "23.1.0",
+    "jsdom": "26.1.0"
   }
 }
