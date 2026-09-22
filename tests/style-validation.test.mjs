@@ -26,6 +26,7 @@ test('translated label expressions retain native names when translation is absen
     assert.equal(compiled.result,'success');
     const value=p=>compiled.value.evaluate({zoom:9},{type:1,properties:p});
     assert.equal(value({name:'서울'}),'서울');
+    assert.equal(value({'name:nonlatin':'서울','name:latin':'Seoul'}),'서울');
     assert.equal(value({'name:en':'',name:'서울'}),'서울');
     assert.equal(value({'name:en':null,name:'서울'}),'서울');
   }

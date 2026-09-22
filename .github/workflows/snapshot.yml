@@ -2,6 +2,10 @@ name: Build worldwide railway lifecycle snapshot
 on:
   push:
     branches: [build/world-lifecycle]
+    paths:
+      - scripts/build-snapshot.mjs
+      - scripts/lifecycle.mjs
+      - scripts/pack-snapshot.py
   workflow_dispatch:
 permissions:
   contents: write
