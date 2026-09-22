@@ -17,3 +17,12 @@ test('lifecycle tags survive conversion without imaginary bridges or active trac
   assert.equal(result.features[0].properties.maxspeed,undefined);
   assert.throws(()=>toGeoJSON({remark:'runtime error: timeout',elements:[]}),/Incomplete/);
 });
+test('static lifecycle tiles decode with or without HTTP gzip removal', async () => {
+  const {decodeLifecycleTile} = await import('../styles/map-model.mjs');
+  const {gzipSync} = await import('node:zlib');
+  const expected = Uint8Array.from([26, 2, 120, 2]);
+  const compressed = Uint8Array.from(gzipSync(expected));
+  for (const data of [expected.buffer, compressed.buffer]) {
+    assert.deepEqual(new Uint8Array(await decodeLifecycleTile(data)), expected);
+  }
+});

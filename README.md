@@ -20,7 +20,9 @@ npm test
 git clone --depth 1 --branch rail-data https://github.com/c933103/openrailwaystyle /tmp/rail-data
 mkdir -p styles/data
 cp /tmp/rail-data/manifest.json styles/data/
-cat /tmp/rail-data/lifecycle.pmtiles.part-* > styles/data/lifecycle.pmtiles
+cat /tmp/rail-data/lifecycle.pmtiles.part-* > /tmp/lifecycle.pmtiles
+pip install pmtiles==3.8.1
+python scripts/unpack-snapshot.py /tmp/lifecycle.pmtiles
 cat /tmp/rail-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
 node scripts/serve.mjs
 ```
@@ -45,7 +47,7 @@ The provider’s station size is based on OSM route importance, not passenger nu
 
 The upstream railway tiles exclude planned/construction lines at zoom 7 and former infrastructure until still higher zooms. A **published worldwide lifecycle snapshot** fills that gap without sending viewer requests to Overpass. Mainline planned/construction routes appear from zoom 5; all lifecycle classes appear from zoom 7. The snapshot continues unchanged through zoom 11, and the ordinary detail tiles take over at zoom 12. Full way geometries cross viewport and extraction boundaries without clipping gaps.
 
-The maintenance build (`.github/workflows/snapshot.yml`) extracts disjoint world regions sequentially, subdivides dense regions when necessary, deduplicates OSM way IDs, retains name translations, and produces a PMTiles archive plus an ODbL GeoJSON database. It refuses to publish an incomplete extraction and checks the north–south extent of 남부내륙선. The manifest records each region’s OSM timestamp and feature count. The `rail-data` branch stores the published files; ordinary site builds copy them without rerunning extraction. The initial extraction is a one-off job with a download budget; it does not run on a schedule. For regular global refreshes, use planet/regional dumps or your own Overpass instance rather than repeatedly querying public servers.
+The maintenance build (`.github/workflows/snapshot.yml`) extracts disjoint world regions sequentially, subdivides dense regions when necessary, deduplicates OSM way IDs, retains name translations, and produces a PMTiles archive plus an ODbL GeoJSON database. It refuses to publish an incomplete extraction and checks the north–south extent of 남부내륙선. The manifest records each region’s OSM timestamp and feature count. The `rail-data` branch stores the published files; ordinary site builds unpack the archive into compressed static vector tiles without rerunning extraction. A compact tile index skips empty areas. This avoids GitHub Pages’ unreliable compressed archive range responses; the browser decodes whole tile files instead. The initial extraction is a one-off job with a download budget; it does not run on a schedule. For regular global refreshes, use planet/regional dumps or your own Overpass instance rather than repeatedly querying public servers.
 
 Station symbols use orange markers and bold names with halos, while retaining collision spacing. First-level regional boundaries use OSM admin levels 3/4 where supplied by the basemap; subdivision conventions and coverage differ by country. Land and seabed shading comes from [Mapzen Terrain Tiles hosted by AWS](https://registry.opendata.aws/terrain-tiles/), including NOAA ETOPO1 bathymetry. See `styles/terrain-credits.html` for source credits. This is shaded relief, not a contour or navigation map.
 

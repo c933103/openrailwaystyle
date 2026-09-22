@@ -1,11 +1,11 @@
-import { SPEED_BANDS, UNKNOWN_COLOR, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank } from './map-model.mjs?v=20260922-2';
+import { SPEED_BANDS, UNKNOWN_COLOR, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260922-3';
 
 
 const $ = id => document.getElementById(id);
 const settings = readSettings(location.search);
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260922-2';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260922-3';
 const errors = new Set();
 const textNode = (tag, value, className) => {
   const el = document.createElement(tag); el.textContent = value;
@@ -155,6 +155,20 @@ async function initialize() {
   // WebGL itself; initialization errors are caught by the handler below.
   const protocol = new pmtiles.Protocol();
   maplibregl.addProtocol('pmtiles', protocol.tile);
+  const lifecycleRoot = new URL('./data/lifecycle/', import.meta.url);
+  let tileIndex;
+  maplibregl.addProtocol('railtiles', async (params, controller) => {
+    const key = params.url.slice('railtiles://'.length);
+    if (!/^\d+\/\d+\/\d+$/.test(key)) throw new Error('Invalid lifecycle tile');
+    tileIndex ||= fetch(new URL('index.json', lifecycleRoot)).then(async response => {
+      if (!response.ok) throw new Error('The railway tile index could not load');
+      return new Set((await response.json()).tiles);
+    }).catch(error => { tileIndex = undefined; throw error; });
+    if (!(await tileIndex).has(key)) return {data: new ArrayBuffer(0)};
+    const response = await fetch(new URL(`${key}.pbf.gz`, lifecycleRoot), {signal: controller.signal});
+    if (!response.ok) throw new Error(`Railway tile returned ${response.status}`);
+    return {data: await decodeLifecycleTile(await response.arrayBuffer())};
+  });
   const styleURL = new URL(`world.style.json?v=${encodeURIComponent(assetVersion)}`, import.meta.url);
   const response = await fetch(styleURL);
   if (!response.ok) throw new Error('The map style could not load. Reload to try again.');

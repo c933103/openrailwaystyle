@@ -1,4 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20260922-2';
+import {SEARCH_API} from './map-model.mjs?v=20260922-3';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;
@@ -18,7 +18,7 @@ button.addEventListener('click', async () => {
   };
   try {
     const style = await (await get('./world.style.json')).json();
-    const vectorSources = Object.entries(style.sources).filter(([,s])=>s.type==='vector'&&!s.url.startsWith('pmtiles:'));
+    const vectorSources = Object.entries(style.sources).filter(([,s])=>s.type==='vector'&&s.url&&!s.url.startsWith('pmtiles:'));
     await Promise.all(vectorSources.map(([name,source]) => check(name, async () => {
       const json = await (await get(source.url)).json();
       if (!Array.isArray(json.tiles)||!json.tiles.length) throw new Error('TileJSON contains no tile URLs');
@@ -44,8 +44,9 @@ button.addEventListener('click', async () => {
     await check('Published worldwide lifecycle snapshot', async () => {
       const manifest=await (await get('./data/manifest.json')).json();
       if(manifest.coverage!=='world' || !manifest.regression?.ways) throw new Error('Incomplete snapshot');
-      const response=await get('./data/lifecycle.pmtiles',{headers:{Range:'bytes=0-126'}});
-      if(response.status!==206) {await response.body?.cancel();throw new Error('Archive range request failed');}
+      const index=await (await get('./data/lifecycle/index.json')).json();
+      if(!index.tiles.includes('7/109/50')) throw new Error('Korean regression tile missing');
+      await get('./data/lifecycle/7/109/50.pbf.gz');
       return `OK · ${manifest.features} ways · built ${manifest.built} · 남부내륙선 ${manifest.regression.ways} ways`;
     });
     await check('Station search', async () => {

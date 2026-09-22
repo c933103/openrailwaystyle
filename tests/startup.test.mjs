@@ -55,7 +55,7 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
   try {
     assert.equal(maps.length,1,'startup must reach the map constructor');
     assert.equal(errors.length,0);
-    assert.equal(maps[0].options.style.sources.inactiveRegional.url,'pmtiles://https://example.org/openrailwaystyle/data/lifecycle.pmtiles');
+    assert.deepEqual(maps[0].options.style.sources.inactiveRegional.tiles,['railtiles://{z}/{x}/{y}']);
     maps[0].handlers.styleimagemissing({id:'station-dot'});
     assert.equal(maps[0].image.id,'station-dot');
     assert.equal(maps[0].image.data.data.length,32*32*4);

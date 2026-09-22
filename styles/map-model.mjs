@@ -63,3 +63,10 @@ export function readSettings(search) {
 export function stationRank(properties) {
   return ({ large: 0, normal: 1, small: 2 })[properties.station_size] ?? 3;
 }
+
+// HTTP decoding may already have removed gzip; handle either representation.
+export async function decodeLifecycleTile(data) {
+  const bytes = new Uint8Array(data);
+  if (bytes[0] !== 0x1f || bytes[1] !== 0x8b) return data;
+  return new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+}

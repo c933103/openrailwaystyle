@@ -25,17 +25,23 @@ async function finishFrame(){
   });
   await page.waitForTimeout(1000); // Finish label fades before visual review.
 }
+async function moveTo(zoom,lng,lat){
+  await page.evaluate(async({zoom,lng,lat})=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    map.jumpTo({zoom,center:[lng,lat]});
+  },{zoom,lng,lat});
+}
 const errors=[],requests=[];
 page.on('pageerror', e=>errors.push(e.message));
 page.on('request',req=>requests.push(req.url()));
 page.on('console',msg=>{if(msg.type()==='error') console.log('Browser resource:',msg.text());});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260922-2&mapLanguage=en&stationLanguage=ko#7/34.229/129.245');
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260922-3&mapLanguage=en&stationLanguage=ko#7/34.229/129.245');
   await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:120000});
   await page.waitForFunction(()=>+document.querySelector('#map-status').dataset.renderedTracks>0,undefined,{timeout:120000});
   // Pan northwest at the SAME zoom before any visit to zoom 8.
-  await page.evaluate(()=>location.hash='#7/35.65/128.1');
+  await moveTo(7,128.1,35.65);
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return Math.abs(map.getCenter().lng-128.1)<0.01 && map.isSourceLoaded('inactiveRegional') && document.querySelector('#map-status').dataset.lifecycleNames?.includes('남부내륙');
@@ -62,7 +68,7 @@ try{
   await page.locator('#collapse').click();
   await page.selectOption('#stationLanguage','en');
   await page.selectOption('#lineLanguage','en');
-  await page.evaluate(()=>location.hash='#10/35.17/128.12');
+  await moveTo(10,128.12,35.17);
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return Math.abs(map.getZoom()-10)<0.01 && map.isSourceLoaded('railway') && map.queryRenderedFeatures().some(f=>f.layer.id.endsWith('-names') && !f.layer.id.startsWith('station-'));
@@ -87,10 +93,10 @@ try{
   console.log('Checking China regional map');
   await page.selectOption('#mapLanguage','zh-Hans');
   await page.selectOption('#stationLanguage','zh-Hans');
-  await page.evaluate(()=>location.hash='#7/30.5/116.4');
+  await moveTo(7,116.4,30.5);
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
-    return Math.abs(map.getCenter().lng-116.4)<0.01 && Math.abs(map.getZoom()-7)<0.01 && !map.isMoving() && ['stationMed','openmaptiles','railway','relief'].every(id=>map.isSourceLoaded(id)) && map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('station-'));
+    return Math.abs(map.getCenter().lng-116.4)<0.01 && Math.abs(map.getZoom()-7)<0.01 && !map.isMoving() && ['stationMed','openmaptiles','railway','relief'].every(id=>map.isSourceLoaded(id)) && map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-') && f.geometry.type==='Point' && f.geometry.coordinates[0]>110 && f.geometry.coordinates[0]<125).length>5;
   },undefined,{timeout:120000});
   await page.locator('#collapse').click();
   await finishFrame();

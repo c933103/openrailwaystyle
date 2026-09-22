@@ -70,7 +70,9 @@
     },
     "inactiveRegional": {
       "type": "vector",
-      "url": "pmtiles://data/lifecycle.pmtiles",
+      "tiles": [
+        "railtiles://{z}/{x}/{y}"
+      ],
       "minzoom": 5,
       "maxzoom": 10,
       "promoteId": "osm_id",

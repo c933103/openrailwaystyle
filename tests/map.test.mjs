@@ -72,7 +72,7 @@ test('regional stations have collision-aware markers and progressive size thresh
 test('every lifecycle is shown at zoom 7 without a live query or a zoom-8 handoff', () => {
   const layer=style.layers.find(l=>l.id==='inactive-regional');
   assert.equal(style.sources.inactiveRegional.type,'vector');
-  assert.match(style.sources.inactiveRegional.url,/lifecycle.pmtiles$/);
+  assert.deepEqual(style.sources.inactiveRegional.tiles,['railtiles://{z}/{x}/{y}']);
   assert.equal(layer.minzoom,5);assert.equal(layer.maxzoom,12);
   const filter=featureFilter(layer.filter);
   for(const zoom of [7,7.83,8,9,10,11.99]) for(const state of ['proposed','construction','disused','abandoned','razed']) {

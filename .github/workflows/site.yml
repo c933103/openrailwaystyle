@@ -48,7 +48,9 @@ jobs:
         run: |
           mkdir -p styles/data
           cp lifecycle-data/manifest.json styles/data/
-          cat lifecycle-data/lifecycle.pmtiles.part-* > styles/data/lifecycle.pmtiles
+          cat lifecycle-data/lifecycle.pmtiles.part-* > /tmp/lifecycle.pmtiles
+          pip install pmtiles==3.8.1
+          python scripts/unpack-snapshot.py /tmp/lifecycle.pmtiles
           cat lifecycle-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
       - name: Install test browser
         run: npx playwright install --with-deps chromium
@@ -90,33 +92,45 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-      - name: Verify deployed archive byte ranges
+      - name: Verify deployed vector tile bytes
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
           node --input-type=module <<'JS'
-          import {open} from 'node:fs/promises';
+          import {readFile} from 'node:fs/promises';
+          import {gunzipSync} from 'node:zlib';
           import assert from 'node:assert/strict';
-          const file=await open('styles/data/lifecycle.pmtiles');
-          const {size}=await file.stat();
-          const url=process.env.PAGE_URL.replace(/\/$/,'')+'/data/lifecycle.pmtiles';
-          // Compare decoded responses to the published bytes. Valid HTTP
-          // compression of a range is harmless; changed range offsets are not.
-          for(const encoding of ['identity','gzip, deflate, br, zstd, identity']) {
-            for(const [start,length] of [[0,127],[16384,1024],[1048576,4096],[size-256,256]]) {
-              const expected=Buffer.alloc(length);await file.read(expected,0,length,start);
+          const base=process.env.PAGE_URL.replace(/\/$/,'')+'/data/lifecycle/';
+          const index=JSON.parse(await readFile('styles/data/lifecycle/index.json'));
+          const decode=b=>b[0]===31 && b[1]===139 ? gunzipSync(b) : b;
+          for(const key of ['7/109/50',index.tiles[0],index.tiles.at(-1)]) {
+            const expected=decode(await readFile(`styles/data/lifecycle/${key}.pbf.gz`));
+            for(const encoding of ['identity','gzip, deflate, br, zstd, identity']) {
               for(let attempt=0;attempt<12;attempt++) {
                 try {
-                  const response=await fetch(url,{headers:{Range:`bytes=${start}-${start+length-1}`,'Accept-Encoding':encoding},signal:AbortSignal.timeout(20000)});
-                  assert.equal(response.status,206);
-                  assert.equal(response.headers.get('content-range'),`bytes ${start}-${start+length-1}/${size}`);
-                  const actual=Buffer.from(await response.arrayBuffer());
-                  assert.deepEqual(actual,expected,'Decoded archive range differs from published bytes');
-                  console.log('PASS: exact deployed bytes',encoding,start,length,'HTTP encoding',response.headers.get('content-encoding'));
+                  const response=await fetch(base+key+'.pbf.gz',{headers:{'Accept-Encoding':encoding},signal:AbortSignal.timeout(20000)});
+                  assert.equal(response.status,200);
+                  assert.deepEqual(decode(Buffer.from(await response.arrayBuffer())),expected);
+                  console.log('PASS: exact deployed vector tile',key,encoding);
                   break;
                 } catch(error) {if(attempt===11) throw error;await new Promise(resolve=>setTimeout(resolve,5000));}
               }
             }
           }
-          await file.close();
           JS
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Verify the published map in Chromium
+        env:
+          MAP_BASE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: node scripts/check-map-browser.mjs
+      - name: Save published map screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-map-review
+          path: browser-review
