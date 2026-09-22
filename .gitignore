@@ -2,3 +2,8 @@
 planetiler.jar
 data/
 node_modules/
+
+.snapshot-cache/
+snapshot/
+lifecycle-data/
+browser-review/

@@ -1,17 +1,18 @@
 name: Validate and deploy world railway map
 on:
   push:
-    branches: [main]
+    branches: [main, fix/atlas-relief]
   pull_request:
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
   group: pages-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,8 +31,37 @@ jobs:
       - name: Check public station search and CORS
         continue-on-error: true
         run: node scripts/check-search-api.mjs
-      - name: Validate regional coverage at reported zoom
-        run: node scripts/check-inactive-api.mjs
+      - name: Wait for initial snapshot build
+        run: |
+          for attempt in $(seq 1 40); do
+            if git ls-remote --exit-code --heads origin rail-data; then exit 0; fi
+            sleep 45
+          done
+          echo "No complete railway snapshot has been published."
+          exit 1
+      - name: Load published worldwide snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: rail-data
+          path: lifecycle-data
+      - name: Assemble site data
+        run: |
+          mkdir -p styles/data
+          cp lifecycle-data/manifest.json styles/data/
+          cat lifecycle-data/lifecycle.pmtiles.part-* > styles/data/lifecycle.pmtiles
+          cat lifecycle-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
+      - name: Install test browser
+        run: npx playwright install --with-deps chromium
+      - name: Verify actual WebGL rendering and zoom-7 panning
+        run: |
+          node scripts/serve.mjs &
+          node scripts/check-map-browser.mjs
+      - name: Save browser review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-review
+          path: browser-review
       - name: Save reviewable site
         uses: actions/upload-artifact@v4
         with:
@@ -49,7 +79,10 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: railway-world-site
+          path: styles
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -57,3 +90,25 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify deployed archive byte ranges
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          python - <<'PY'
+          import os,time,urllib.request
+          url=os.environ['PAGE_URL'].rstrip('/')+'/data/lifecycle.pmtiles'
+          for encoding in ['identity','gzip, deflate, br, zstd, identity']:
+              for attempt in range(12):
+                  try:
+                      request=urllib.request.Request(url,headers={'Range':'bytes=0-126','Accept-Encoding':encoding})
+                      with urllib.request.urlopen(request,timeout=20) as response:
+                          assert response.status==206, f'Range status {response.status}'
+                          assert not response.headers.get('Content-Encoding'), 'Archive range was compressed by host'
+                          data=response.read(128)
+                          assert len(data)==127 and data[:7]==b'PMTiles', 'Invalid archive header'
+                      print('PASS: deployed archive range',encoding)
+                      break
+                  except Exception:
+                      if attempt==11: raise
+                      time.sleep(5)
+          PY

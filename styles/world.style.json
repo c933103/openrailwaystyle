@@ -69,14 +69,22 @@
       "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
     },
     "inactiveRegional": {
-      "type": "geojson",
-      "data": {
-        "type": "FeatureCollection",
-        "features": []
-      },
-      "tolerance": 1,
-      "buffer": 128,
-      "attribution": "<a href=\"https://overpass-api.de/\">Overpass API (FOSSGIS)</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
+      "type": "vector",
+      "url": "pmtiles://data/lifecycle.pmtiles",
+      "minzoom": 5,
+      "maxzoom": 10,
+      "promoteId": "osm_id",
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
+    },
+    "relief": {
+      "type": "raster-dem",
+      "tiles": [
+        "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
+      ],
+      "tileSize": 256,
+      "encoding": "terrarium",
+      "maxzoom": 15,
+      "attribution": "<a href=\"terrain-credits.html\">Terrain: Mapzen / AWS and data contributors</a>"
     }
   },
   "layers": [
@@ -305,6 +313,19 @@
             ]
           ]
         }
+      }
+    },
+    {
+      "id": "terrain-relief",
+      "type": "hillshade",
+      "source": "relief",
+      "paint": {
+        "hillshade-exaggeration": 0.3,
+        "hillshade-shadow-color": "#667365",
+        "hillshade-highlight-color": "#ffffff",
+        "hillshade-accent-color": "#738978",
+        "hillshade-illumination-anchor": "map",
+        "hillshade-illumination-direction": 315
       }
     },
     {
@@ -928,7 +949,6 @@
       "filter": [
         "in",
         "admin_level",
-        4,
         6,
         8
       ],
@@ -936,23 +956,25 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "rgba(153, 153, 153, 0.6)",
-        "line-dasharray": [
-          2,
-          1
+        "line-color": "#96928c",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          5,
+          0.35,
+          10,
+          0.65
         ],
-        "line-opacity": {
-          "stops": [
-            [
-              4,
-              0
-            ],
-            [
-              5,
-              1
-            ]
-          ]
-        }
+        "line-opacity": 0.45,
+        "line-dasharray": [
+          3,
+          3
+        ]
       }
     },
     {
@@ -985,20 +1007,24 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 60%)",
-        "line-width": {
-          "base": 1.3,
-          "stops": [
-            [
-              3,
-              0.5
-            ],
-            [
-              22,
-              15
-            ]
-          ]
-        }
+        "line-color": "#6b6570",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          0.6,
+          4,
+          1.2,
+          7,
+          1.8,
+          12,
+          2.3
+        ]
       }
     },
     {
@@ -1026,20 +1052,24 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 60%)",
-        "line-width": {
-          "base": 1.3,
-          "stops": [
-            [
-              3,
-              0.5
-            ],
-            [
-              22,
-              15
-            ]
-          ]
-        }
+        "line-color": "#6b6570",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          0.6,
+          4,
+          1.2,
+          7,
+          1.8,
+          12,
+          2.3
+        ]
       }
     },
     {
@@ -1059,6 +1089,80 @@
         "line-color": "hsl(82, 46%, 72%)",
         "line-blur": 25,
         "line-width": 5
+      }
+    },
+    {
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "boundary",
+      "minzoom": 3,
+      "filter": [
+        "in",
+        "admin_level",
+        3,
+        4
+      ],
+      "layout": {
+        "line-join": "round"
+      },
+      "id": "regional-border-casing",
+      "paint": {
+        "line-color": "#fffef7",
+        "line-opacity": 0.8,
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          1.3,
+          7,
+          2.5,
+          12,
+          3.4
+        ]
+      }
+    },
+    {
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "boundary",
+      "minzoom": 3,
+      "filter": [
+        "in",
+        "admin_level",
+        3,
+        4
+      ],
+      "layout": {
+        "line-join": "round"
+      },
+      "id": "regional-borders",
+      "paint": {
+        "line-color": "#81747e",
+        "line-opacity": 0.9,
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          0.7,
+          7,
+          1.25,
+          12,
+          1.8
+        ],
+        "line-dasharray": [
+          5,
+          2
+        ]
       }
     },
     {
@@ -1842,7 +1946,7 @@
       "type": "line",
       "source": "railway",
       "source-layer": "railway_line_high",
-      "minzoom": 7,
+      "minzoom": 12,
       "filter": [
         "all",
         [
@@ -1890,8 +1994,10 @@
           [
             "zoom"
           ],
+          5,
+          1.2,
           7,
-          1.5,
+          1.7,
           12,
           2,
           16,
@@ -1910,257 +2016,62 @@
       "id": "inactive-regional",
       "type": "line",
       "source": "inactiveRegional",
-      "minzoom": 7,
+      "source-layer": "lifecycle",
+      "minzoom": 5,
       "maxzoom": 12,
       "filter": [
-        "!",
+        "any",
         [
-          "step",
+          ">=",
           [
             "zoom"
           ],
-          false,
-          8,
+          7
+        ],
+        [
+          "all",
           [
-            "all",
+            "match",
             [
-              "match",
-              [
-                "get",
-                "state"
-              ],
-              [
-                "proposed",
-                "construction"
-              ],
-              true,
-              false
+              "get",
+              "state"
             ],
             [
-              "==",
-              [
-                "get",
-                "feature"
-              ],
-              "rail"
+              "proposed",
+              "construction"
             ],
-            [
-              "match",
-              [
-                "get",
-                "usage"
-              ],
-              [
-                "main",
-                "branch"
-              ],
-              true,
-              false
-            ],
-            [
-              "==",
-              [
-                "get",
-                "service"
-              ],
-              ""
-            ]
+            true,
+            false
           ],
-          9,
           [
-            "all",
+            "==",
             [
-              "match",
-              [
-                "get",
-                "state"
-              ],
-              [
-                "proposed",
-                "construction"
-              ],
-              true,
-              false
+              "get",
+              "feature"
+            ],
+            "rail"
+          ],
+          [
+            "match",
+            [
+              "get",
+              "usage"
             ],
             [
-              "==",
-              [
-                "get",
-                "service"
-              ],
+              "main",
+              "branch",
               ""
             ],
-            [
-              "any",
-              [
-                "all",
-                [
-                  "==",
-                  [
-                    "get",
-                    "feature"
-                  ],
-                  "rail"
-                ],
-                [
-                  "match",
-                  [
-                    "get",
-                    "usage"
-                  ],
-                  [
-                    "main",
-                    "branch",
-                    "industrial"
-                  ],
-                  true,
-                  false
-                ]
-              ],
-              [
-                "all",
-                [
-                  "==",
-                  [
-                    "get",
-                    "feature"
-                  ],
-                  "light_rail"
-                ],
-                [
-                  "match",
-                  [
-                    "get",
-                    "usage"
-                  ],
-                  [
-                    "main",
-                    "branch"
-                  ],
-                  true,
-                  false
-                ]
-              ]
-            ]
+            true,
+            false
           ],
-          10,
           [
-            "all",
+            "==",
             [
-              "match",
-              [
-                "get",
-                "state"
-              ],
-              [
-                "proposed",
-                "construction"
-              ],
-              true,
-              false
+              "get",
+              "service"
             ],
-            [
-              "match",
-              [
-                "get",
-                "feature"
-              ],
-              [
-                "rail",
-                "narrow_gauge",
-                "light_rail",
-                "monorail",
-                "subway",
-                "tram"
-              ],
-              true,
-              false
-            ],
-            [
-              "==",
-              [
-                "get",
-                "service"
-              ],
-              ""
-            ]
-          ],
-          11,
-          [
-            "all",
-            [
-              "match",
-              [
-                "get",
-                "state"
-              ],
-              [
-                "proposed",
-                "construction",
-                "disused"
-              ],
-              true,
-              false
-            ],
-            [
-              "any",
-              [
-                "all",
-                [
-                  "match",
-                  [
-                    "get",
-                    "feature"
-                  ],
-                  [
-                    "rail",
-                    "narrow_gauge",
-                    "light_rail"
-                  ],
-                  true,
-                  false
-                ],
-                [
-                  "match",
-                  [
-                    "get",
-                    "service"
-                  ],
-                  [
-                    "",
-                    "spur",
-                    "yard"
-                  ],
-                  true,
-                  false
-                ]
-              ],
-              [
-                "all",
-                [
-                  "match",
-                  [
-                    "get",
-                    "feature"
-                  ],
-                  [
-                    "monorail",
-                    "subway",
-                    "tram"
-                  ],
-                  true,
-                  false
-                ],
-                [
-                  "==",
-                  [
-                    "get",
-                    "service"
-                  ],
-                  ""
-                ]
-              ]
-            ]
+            ""
           ]
         ]
       ],
@@ -2185,8 +2096,10 @@
           [
             "zoom"
           ],
+          5,
+          1.2,
           7,
-          1.5,
+          1.7,
           12,
           2,
           16,
@@ -2349,7 +2262,7 @@
         ]
       ],
       "paint": {
-        "circle-color": "#fffef7",
+        "circle-color": "#ffa323",
         "circle-stroke-color": "#123e52",
         "circle-stroke-width": 1.5,
         "circle-radius": [
@@ -2368,10 +2281,10 @@
               "station_size"
             ],
             "large",
-            4,
+            5,
             "normal",
-            3.2,
-            2.4
+            4,
+            3
           ],
           17,
           [
@@ -2381,10 +2294,10 @@
               "station_size"
             ],
             "large",
-            6,
+            7,
             "normal",
-            4.5,
-            3.5
+            5.5,
+            4
           ]
         ]
       }
@@ -2623,6 +2536,471 @@
       }
     },
     {
+      "id": "railway-names",
+      "type": "symbol",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 9,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 450,
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          14,
+          13
+        ],
+        "text-offset": [
+          0,
+          -0.85
+        ],
+        "text-padding": 8,
+        "text-max-angle": 35
+      },
+      "paint": {
+        "text-color": "#4a453f",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "inactive-names",
+      "type": "symbol",
+      "source": "inactiveRegional",
+      "source-layer": "lifecycle",
+      "minzoom": 9,
+      "maxzoom": 12,
+      "filter": [
+        "literal",
+        true
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 450,
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          14,
+          13
+        ],
+        "text-offset": [
+          0,
+          -0.85
+        ],
+        "text-padding": 8,
+        "text-max-angle": 35
+      },
+      "paint": {
+        "text-color": "#4a453f",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "inactive-detail-names",
+      "type": "symbol",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "!",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 450,
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          14,
+          13
+        ],
+        "text-offset": [
+          0,
+          -0.85
+        ],
+        "text-padding": 8,
+        "text-max-angle": 35
+      },
+      "paint": {
+        "text-color": "#4a453f",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      }
+    },
+    {
       "id": "station-stationLow-names",
       "type": "symbol",
       "source": "stationLow",
@@ -2638,7 +3016,7 @@
             [
               "zoom"
             ],
-            10
+            7
           ],
           [
             "==",
@@ -2647,37 +3025,125 @@
               "station_size"
             ],
             "large"
-          ],
-          [
-            "all",
-            [
-              ">=",
-              [
-                "zoom"
-              ],
-              8
-            ],
-            [
-              "==",
-              [
-                "get",
-                "station_size"
-              ],
-              "normal"
-            ]
           ]
         ]
       ],
       "layout": {
         "text-field": [
-          "coalesce",
+          "case",
           [
-            "get",
-            "name"
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "localized_name"
+              ],
+              ""
+            ],
+            ""
           ],
           [
-            "get",
-            "label"
+            "to-string",
+            [
+              "get",
+              "localized_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
           ],
           ""
         ],
@@ -2693,7 +3159,7 @@
             "zoom"
           ],
           6,
-          11,
+          14,
           10,
           [
             "match",
@@ -2702,13 +3168,13 @@
               "station_size"
             ],
             "large",
-            14,
+            16,
             "normal",
-            13,
-            12
+            15,
+            14
           ],
           18,
-          16
+          18
         ],
         "symbol-sort-key": [
           "match",
@@ -2728,7 +3194,7 @@
           "left",
           "right"
         ],
-        "text-radial-offset": 0.8,
+        "text-radial-offset": 0.7,
         "text-padding": [
           "step",
           [
@@ -2752,9 +3218,9 @@
             "zoom"
           ],
           6,
-          0.65,
+          0.95,
           11,
-          0.9
+          1.15
         ],
         "icon-padding": 12,
         "icon-allow-overlap": false,
@@ -2763,7 +3229,16 @@
         "text-optional": false
       },
       "paint": {
-        "text-color": "#123e52",
+        "text-color": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          "#123e52",
+          "#0865c0"
+        ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
       }
@@ -2784,7 +3259,7 @@
             [
               "zoom"
             ],
-            10
+            7
           ],
           [
             "==",
@@ -2793,37 +3268,125 @@
               "station_size"
             ],
             "large"
-          ],
-          [
-            "all",
-            [
-              ">=",
-              [
-                "zoom"
-              ],
-              8
-            ],
-            [
-              "==",
-              [
-                "get",
-                "station_size"
-              ],
-              "normal"
-            ]
           ]
         ]
       ],
       "layout": {
         "text-field": [
-          "coalesce",
+          "case",
           [
-            "get",
-            "name"
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "localized_name"
+              ],
+              ""
+            ],
+            ""
           ],
           [
-            "get",
-            "label"
+            "to-string",
+            [
+              "get",
+              "localized_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
           ],
           ""
         ],
@@ -2839,7 +3402,7 @@
             "zoom"
           ],
           6,
-          11,
+          14,
           10,
           [
             "match",
@@ -2848,13 +3411,13 @@
               "station_size"
             ],
             "large",
-            14,
+            16,
             "normal",
-            13,
-            12
+            15,
+            14
           ],
           18,
-          16
+          18
         ],
         "symbol-sort-key": [
           "match",
@@ -2874,7 +3437,7 @@
           "left",
           "right"
         ],
-        "text-radial-offset": 0.8,
+        "text-radial-offset": 0.7,
         "text-padding": [
           "step",
           [
@@ -2898,9 +3461,9 @@
             "zoom"
           ],
           6,
-          0.65,
+          0.95,
           11,
-          0.9
+          1.15
         ],
         "icon-padding": 12,
         "icon-allow-overlap": false,
@@ -2909,7 +3472,16 @@
         "text-optional": false
       },
       "paint": {
-        "text-color": "#123e52",
+        "text-color": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          "#123e52",
+          "#0865c0"
+        ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
       }
@@ -2932,7 +3504,7 @@
               [
                 "zoom"
               ],
-              10
+              7
             ],
             [
               "==",
@@ -2941,24 +3513,6 @@
                 "station_size"
               ],
               "large"
-            ],
-            [
-              "all",
-              [
-                ">=",
-                [
-                  "zoom"
-                ],
-                8
-              ],
-              [
-                "==",
-                [
-                  "get",
-                  "station_size"
-                ],
-                "normal"
-              ]
             ]
           ]
         ],
@@ -3054,14 +3608,120 @@
       ],
       "layout": {
         "text-field": [
-          "coalesce",
+          "case",
           [
-            "get",
-            "name"
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "localized_name"
+              ],
+              ""
+            ],
+            ""
           ],
           [
-            "get",
-            "label"
+            "to-string",
+            [
+              "get",
+              "localized_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
           ],
           ""
         ],
@@ -3077,7 +3737,7 @@
             "zoom"
           ],
           6,
-          11,
+          14,
           10,
           [
             "match",
@@ -3086,13 +3746,13 @@
               "station_size"
             ],
             "large",
-            14,
+            16,
             "normal",
-            13,
-            12
+            15,
+            14
           ],
           18,
-          16
+          18
         ],
         "symbol-sort-key": [
           "match",
@@ -3112,7 +3772,7 @@
           "left",
           "right"
         ],
-        "text-radial-offset": 0.8,
+        "text-radial-offset": 0.7,
         "text-padding": [
           "step",
           [
@@ -3136,9 +3796,9 @@
             "zoom"
           ],
           6,
-          0.65,
+          0.95,
           11,
-          0.9
+          1.15
         ],
         "icon-padding": 12,
         "icon-allow-overlap": false,
@@ -3147,7 +3807,16 @@
         "text-optional": false
       },
       "paint": {
-        "text-color": "#123e52",
+        "text-color": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          "#123e52",
+          "#0865c0"
+        ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
       }
@@ -3249,14 +3918,120 @@
       ],
       "layout": {
         "text-field": [
-          "coalesce",
+          "case",
           [
-            "get",
-            "name"
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "localized_name"
+              ],
+              ""
+            ],
+            ""
           ],
           [
-            "get",
-            "label"
+            "to-string",
+            [
+              "get",
+              "localized_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
           ],
           ""
         ],
@@ -3272,7 +4047,7 @@
             "zoom"
           ],
           6,
-          11,
+          14,
           10,
           [
             "match",
@@ -3281,13 +4056,13 @@
               "station_size"
             ],
             "large",
-            14,
+            16,
             "normal",
-            13,
-            12
+            15,
+            14
           ],
           18,
-          16
+          18
         ],
         "symbol-sort-key": [
           "match",
@@ -3307,7 +4082,7 @@
           "left",
           "right"
         ],
-        "text-radial-offset": 0.8,
+        "text-radial-offset": 0.7,
         "text-padding": [
           "step",
           [
@@ -3323,7 +4098,16 @@
         "text-allow-overlap": false
       },
       "paint": {
-        "text-color": "#123e52",
+        "text-color": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          "#123e52",
+          "#0865c0"
+        ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
       }

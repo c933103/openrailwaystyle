@@ -1,13 +1,11 @@
-import { SPEED_BANDS, UNKNOWN_COLOR, SEARCH_API, REGION_VIEWS, MODES, readSettings, formatSpeed, numericSpeed, stationRank } from './map-model.mjs?v=20260922-1';
+import { SPEED_BANDS, UNKNOWN_COLOR, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank } from './map-model.mjs?v=20260922-2';
 
-import { createInactiveOverlay } from './inactive.mjs?v=20260922-1';
 
 const $ = id => document.getElementById(id);
 const settings = readSettings(location.search);
 const status = $('map-status');
-let map, ready = false, currentFeature, searchController, inactiveOverlay;
-let inactiveStatus = '';
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260922-1';
+let map, ready = false, currentFeature, searchController;
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260922-2';
 const errors = new Set();
 const textNode = (tag, value, className) => {
   const el = document.createElement(tag); el.textContent = value;
@@ -44,22 +42,25 @@ function renderLegend() {
 function saveSettings() {
   const url = new URL(location.href);
   url.searchParams.set('mode', settings.mode);
-  for (const key of ['stations', 'labels', 'inactive']) url.searchParams.set(key, settings[key] ? '1' : '0');
+  for (const key of ['stations', 'labels', 'inactive', 'relief', 'names']) url.searchParams.set(key, settings[key] ? '1' : '0');
+  for (const key of ['mapLanguage','stationLanguage','lineLanguage']) url.searchParams.set(key, settings[key]);
   history.replaceState(null, '', url);
 }
 function applySettings() {
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
-  for (const key of ['stations', 'labels', 'inactive']) $(key).checked = settings[key];
+  for (const key of ['stations', 'labels', 'inactive', 'relief', 'names']) $(key).checked = settings[key];
   if (ready) for (const layer of map.getStyle().layers) {
     let visible;
     if (MODES.some(mode => layer.id.startsWith(`${mode}-`)) && layer.id !== 'speed-labels') visible = layer.id.startsWith(`${settings.mode}-`);
     if (layer.id.startsWith('station-')) visible = settings.stations;
     if (layer.id === 'speed-labels') visible = settings.mode === 'speed' && settings.labels;
     if (layer.id.startsWith('inactive-')) visible = settings.inactive;
+    if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive);
+    if (layer.id === 'terrain-relief') visible = settings.relief;
     if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
   }
   renderLegend();
-  inactiveOverlay?.refresh();
+
 }
 function row(dl, label, value) {
   if (value === undefined || value === null || value === '') return;
@@ -71,7 +72,7 @@ function showDetails(feature) {
   const isStation = feature.source?.startsWith('station') || feature.kind === 'station';
   const panel = $('detail-content'); panel.replaceChildren();
   panel.append(textNode('div', isStation ? 'RAILWAY STATION' : 'RAILWAY INFRASTRUCTURE', 'eyebrow'));
-  panel.append(textNode('h2', p.name || p.localized_name || p.ref || (isStation ? 'Unnamed station' : 'Unnamed railway')));
+  panel.append(textNode('h2', displayName(p, settings[isStation ? 'stationLanguage' : 'lineLanguage'], isStation) || (isStation ? 'Unnamed station' : 'Unnamed railway')));
   const dl = document.createElement('dl');
   row(dl, 'Type', p.feature || p.railway || (isStation ? 'station' : undefined));
   row(dl, 'Status', p.state || 'present');
@@ -119,7 +120,7 @@ function updateStatus() {
     status.classList.add('error'); status.textContent = 'Some map data could not load. Check your connection or reload to retry.'; return;
   }
   status.classList.remove('error');
-  status.textContent = inactiveStatus || (map.getZoom() < 6 ? 'Worldwide coverage · zoom in for stations and former lines' : 'Explore the rail network · click a line or station');
+  status.textContent = map.getZoom() < 6 ? 'Worldwide coverage · zoom in for stations and former lines' : 'Explore the rail network · click a line or station';
   // Visible diagnostics make source availability inspectable without exposing
   // internal map objects or relying on a generic "loaded" flag.
   const features = map.queryRenderedFeatures();
@@ -128,10 +129,25 @@ function updateStatus() {
   status.dataset.renderedTracks = String(tracks.length);
   status.dataset.renderedStations = String(stations.length);
   const regional = features.filter(f => f.source === 'inactiveRegional');
+  status.dataset.lifecycleNames = JSON.stringify([...new Set(regional.map(f=>f.properties.name).filter(Boolean))]);
+  status.dataset.renderedRailNames = String(features.filter(f=>f.layer.id.endsWith('-names') && !f.layer.id.startsWith('station-')).length);
   status.dataset.renderedPlanned = String(regional.filter(f => f.properties.state === 'proposed').length);
   status.dataset.renderedConstruction = String(regional.filter(f => f.properties.state === 'construction').length);
   status.dataset.renderedFormer = String(regional.filter(f => !['proposed','construction'].includes(f.properties.state)).length);
   status.dataset.numericSpeeds = String(tracks.filter(f => numericSpeed(f.properties.maxspeed) !== null).length);
+}
+function localizeStyle(style) {
+  for (const layer of style.layers) {
+    if (layer.type !== 'symbol' || layer.id === 'speed-labels') continue;
+    if (layer.source === 'openmaptiles') layer.layout['text-field'] = labelExpression(settings.mapLanguage);
+    else if (layer.id.startsWith('station-')) layer.layout['text-field'] = labelExpression(settings.stationLanguage, true);
+    else if (layer.id.endsWith('-names')) layer.layout['text-field'] = labelExpression(settings.lineLanguage);
+  }
+  for (const [id,path] of [['stationLow','standard_railway_text_stations_low'],['stationMed','standard_railway_text_stations_med'],['stations','standard_railway_text_stations']]) {
+    const url = new URL(`${ORM}/${path}`);
+    if(settings.stationLanguage !== 'local') url.searchParams.set('lang',settings.stationLanguage);
+    style.sources[id].url=url.href;
+  }
 }
 async function initialize() {
   if (!window.maplibregl || !window.pmtiles) throw new Error('Map libraries could not load. Check your connection and reload.');
@@ -139,9 +155,19 @@ async function initialize() {
   // WebGL itself; initialization errors are caught by the handler below.
   const protocol = new pmtiles.Protocol();
   maplibregl.addProtocol('pmtiles', protocol.tile);
+  const styleURL = new URL(`world.style.json?v=${encodeURIComponent(assetVersion)}`, import.meta.url);
+  const response = await fetch(styleURL);
+  if (!response.ok) throw new Error('The map style could not load. Reload to try again.');
+  const style = await response.json();
+  for (const source of Object.values(style.sources)) {
+    if (source.url?.startsWith('pmtiles://data/')) source.url = 'pmtiles://' + new URL(source.url.slice(10), styleURL).href;
+  }
+  // Apply language before constructing the map, avoiding an initial duplicate
+  // station-tile download in the wrong language.
+  localizeStyle(style);
   map = new maplibregl.Map({
-    container: 'map', style: new URL(`world.style.json?v=${encodeURIComponent(assetVersion)}`, import.meta.url).href,
-    ...REGION_VIEWS.world, hash: true, minZoom: 1, maxZoom: 20,
+    container: 'map', style,
+    center: [15,23], zoom: 1.8, hash: true, minZoom: 1, maxZoom: 20,
     renderWorldCopies: true, attributionControl: { compact: true },
   });
   map.on('styleimagemissing', event => {
@@ -150,7 +176,7 @@ async function initialize() {
     for (let y = 0; y < width; y++) for (let x = 0; x < width; x++) {
       const r = Math.hypot(x + 0.5 - width / 2, y + 0.5 - width / 2);
       const offset = (y * width + x) * 4;
-      const color = r < 8.5 ? [255,254,247] : [18,62,82];
+      const color = r < 8.5 ? [255,163,35] : [18,62,82];
       data.set([...color, Math.round(Math.max(0, Math.min(1, 12 - r)) * 255)], offset);
     }
     map.addImage('station-dot', {width,height:width,data}, {pixelRatio:2});
@@ -165,16 +191,10 @@ async function initialize() {
   map.on('sourcedata', e => { if (e.isSourceLoaded && e.sourceId) errors.delete(e.sourceId); });
   map.on('load', () => {
     ready = true;
-    inactiveOverlay = createInactiveOverlay(map, () => settings.inactive, (message, {retry = false} = {}) => {
-      inactiveStatus = message;
-      $('retry-inactive').hidden = !retry;
-      updateStatus();
-    });
     applySettings(); updateStatus();
     document.body.dataset.mapReady = 'true';
   });
   map.on('idle', updateStatus);
-  map.on('remove', () => inactiveOverlay?.destroy());
   map.on('click', event => {
     const p = event.point;
     const features = map.queryRenderedFeatures([[p.x - 7, p.y - 7], [p.x + 7, p.y + 7]])
@@ -191,16 +211,24 @@ async function initialize() {
 document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
   settings.mode = button.dataset.mode; applySettings(); saveSettings();
 }));
-for (const key of ['stations', 'labels', 'inactive']) $(key).addEventListener('change', () => {
+for (const key of ['stations', 'labels', 'inactive', 'relief', 'names']) $(key).addEventListener('change', () => {
   settings[key] = $(key).checked; applySettings(); saveSettings();
 });
-$('retry-inactive').addEventListener('click', () => {
-  $('retry-inactive').hidden = true; inactiveOverlay?.retry();
-});
-$('region').addEventListener('change', e => {
-  const view = REGION_VIEWS[e.target.value];
-  if (view && ready) map.flyTo({ ...view, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1200 });
-});
+for (const key of ['mapLanguage','stationLanguage','lineLanguage']) {
+  const select = $(key);
+  for (const [code,name] of LANGUAGES) { const option = textNode('option',name); option.value=code; select.append(option); }
+  select.value=settings[key];
+  select.addEventListener('change', () => {
+    settings[key]=select.value;
+    if (ready) {
+      const style=map.getStyle(); localizeStyle(style);
+      for(const layer of style.layers) if(layer.type==='symbol' && layer.layout?.['text-field']) map.setLayoutProperty(layer.id,'text-field',layer.layout['text-field']);
+      if(key==='stationLanguage') for(const source of ['stationLow','stationMed','stations']) map.getSource(source).setUrl(style.sources[source].url);
+      if(currentFeature) showDetails(currentFeature);
+    }
+    saveSettings();
+  });
+}
 $('collapse').addEventListener('click', () => {
   $('controls').hidden = !$('controls').hidden;
   $('collapse').textContent = $('controls').hidden ? '+' : '−';
@@ -249,7 +277,7 @@ $('search-form').addEventListener('submit', async e => {
     $('search-status').textContent = results.children.length ? `${results.children.length} results` : 'No matching facility found. Try a local name or railway code.';
   } catch (error) {
     if (controller !== searchController) return;
-    $('search-status').textContent = 'Station search is unavailable. Try again, or browse using the region selector.';
+    $('search-status').textContent = 'Station search is unavailable. Try again, or browse by panning and zooming.';
   } finally { clearTimeout(timeout); }
 });
 applySettings();
@@ -260,3 +288,7 @@ initialize().catch(error => {
     ? 'This browser could not start WebGL. Enable graphics acceleration in your browser settings, then reload the map.'
     : error.message;
 });
+
+// Named export lets integration tests inspect rendered features without
+// adding test controls or global variables to the map interface.
+export {map};

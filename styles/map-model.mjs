@@ -16,15 +16,20 @@ export const ORM = 'https://openrailwaymap.app';
 // same-origin /api/facility endpoint is not suitable for GitHub Pages.
 export const SEARCH_API = 'https://api.openrailwaymap.org/v2/facility';
 export const MODES = ['speed', 'infrastructure', 'electrification'];
-export const REGION_VIEWS = {
-  world: { center: [15, 23], zoom: 1.8 },
-  europe: { center: [12, 49], zoom: 4.4 },
-  asia: { center: [109, 29], zoom: 3.2 },
-  northAmerica: { center: [-99, 40], zoom: 3.5 },
-  southAmerica: { center: [-62, -22], zoom: 3.5 },
-  africa: { center: [20, 1], zoom: 3.1 },
-  oceania: { center: [139, -29], zoom: 3.4 },
-};
+export const LANGUAGES = [
+  ['local','Local names'], ['en','English'], ['ko','한국어'], ['ja','日本語'],
+  ['zh-Hant','繁體中文'], ['zh-Hans','简体中文'], ['de','Deutsch'], ['fr','Français'],
+  ['es','Español'], ['pt','Português'], ['it','Italiano'], ['nl','Nederlands'],
+];
+const language = value => LANGUAGES.some(([code]) => code === value) ? value : 'local';
+// Empty translations also fall back. Never substitute a blank for a name.
+export function labelExpression(lang, station = false) {
+  const keys = [...(lang !== 'local' ? [`name:${lang}`] : []), ...(station ? ['localized_name'] : []), 'name', 'name:nonlatin', 'name:latin', 'label', 'ref'];
+  return ['case', ...keys.flatMap(key => [['!=',['coalesce',['get',key],''],''],['to-string',['get',key]]]), ''];
+}
+export function displayName(p, lang, station = false) {
+  return [lang !== 'local' && p[`name:${lang}`], station && p.localized_name, p.name, p['name:nonlatin'], p['name:latin'], p.label, p.ref].find(Boolean) || '';
+}
 
 export function numericSpeed(value) {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -48,6 +53,11 @@ export function readSettings(search) {
     stations: params.get('stations') !== '0',
     labels: params.get('labels') !== '0',
     inactive: params.get('inactive') !== '0',
+    relief: params.get('relief') !== '0',
+    names: params.get('names') !== '0',
+    mapLanguage: language(params.get('mapLanguage')),
+    stationLanguage: language(params.get('stationLanguage')),
+    lineLanguage: language(params.get('lineLanguage')),
   };
 }
 export function stationRank(properties) {

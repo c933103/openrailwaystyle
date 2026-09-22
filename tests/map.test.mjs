@@ -27,7 +27,7 @@ test('source mph and directional speed labels are preserved', () => {
   assert.equal(formatSpeed({ speed_label: '- / 80' }).tagged, '- / 80 (km/h)');
 });
 test('shared URLs keep display settings and reject invalid map modes', () => {
-  assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',stations:false,labels:true,inactive:false });
+  assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',stations:false,labels:true,inactive:false,relief:true,names:true,mapLanguage:'local',stationLanguage:'local',lineLanguage:'local' });
   assert.equal(readSettings('?mode=invalid').mode, 'speed');
 });
 test('world map has no European rail source or geographic bounds', () => {
@@ -43,9 +43,10 @@ test('regional stations have collision-aware markers and progressive size thresh
   const shown = (zoom, properties) => layers.some(layer => visible(layer, zoom, {state:'present',feature:'station', ...properties}));
   assert.equal(shown(5.9, {station_size:'large'}),false);
   assert.equal(shown(6, {station_size:'large'}),true);
-  assert.equal(shown(7.9, {station_size:'normal'}),false);
-  assert.equal(shown(8, {station_size:'normal'}),true);
-  assert.equal(shown(9.9, {station_size:'small'}),false);
+  assert.equal(shown(6.9, {station_size:'normal'}),false);
+  assert.equal(shown(7, {station_size:'normal'}),true);
+  assert.equal(shown(7, {station_size:'small'}),true);
+  assert.equal(shown(9.9, {station_size:'small'}),true);
   assert.equal(shown(10, {station_size:'small'}),true);
   assert.equal(shown(10, {station_size:'small',feature:'halt'}),false);
   assert.equal(shown(11, {station_size:'small',feature:'halt'}),true);
@@ -68,20 +69,16 @@ test('regional stations have collision-aware markers and progressive size thresh
     }
   }
 });
-test('regional overlay fills lifecycle gaps until vector data is available', () => {
-  const layer = style.layers.find(l => l.id === 'inactive-regional');
-  const included = (zoom, properties) => featureFilter(layer.filter).filter({zoom},{type:2,properties:{feature:'rail',usage:'main',service:'',...properties}});
-  assert.equal(layer.minzoom,7); assert.equal(layer.maxzoom,12);
-  for (const state of ['proposed','construction','disused','abandoned','razed']) assert.equal(included(7,{state}),true);
-  assert.equal(included(8,{state:'construction'}),false);
-  assert.equal(included(8,{state:'construction',usage:'industrial'}),true);
-  assert.equal(included(9,{state:'construction',usage:'industrial'}),false);
-  assert.equal(included(9,{state:'construction',feature:'light_rail',usage:'industrial'}),true);
-  assert.equal(included(10,{state:'disused'}),true);
-  assert.equal(included(11,{state:'disused'}),false);
-  assert.equal(included(11,{state:'disused',service:'siding'}),true);
-  assert.equal(included(11,{state:'abandoned'}),true);
-  assert.equal(included(11,{state:'razed'}),true);
+test('every lifecycle is shown at zoom 7 without a live query or a zoom-8 handoff', () => {
+  const layer=style.layers.find(l=>l.id==='inactive-regional');
+  assert.equal(style.sources.inactiveRegional.type,'vector');
+  assert.match(style.sources.inactiveRegional.url,/lifecycle.pmtiles$/);
+  assert.equal(layer.minzoom,5);assert.equal(layer.maxzoom,12);
+  const filter=featureFilter(layer.filter);
+  for(const zoom of [7,7.83,8,9,10,11.99]) for(const state of ['proposed','construction','disused','abandoned','razed']) {
+    assert.equal(filter.filter({zoom},{type:2,properties:{state,feature:'rail',usage:'main',service:''}}),true);
+  }
+  assert.equal(style.layers.find(l=>l.id==='inactive-railways').minzoom,12);
 });
 test('only present lines receive operating speed colours', () => {
   const layer = style.layers.find(l => l.id === 'speed-tracks');
