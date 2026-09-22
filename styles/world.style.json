@@ -2141,19 +2141,16 @@
         "text-field": [
           "case",
           [
-            "all",
+            "!=",
             [
-              "has",
-              "name"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "name"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -2163,19 +2160,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "name:latin"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "name:latin"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -2185,19 +2179,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "label"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "label"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -2207,19 +2198,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "ref"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "ref"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -2276,19 +2264,16 @@
         "text-field": [
           "case",
           [
-            "all",
+            "!=",
             [
-              "has",
-              "name"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "name"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -2298,19 +2283,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "name:latin"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "name:latin"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -2320,19 +2302,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "label"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "label"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -2342,19 +2321,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "ref"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "ref"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -2432,19 +2408,16 @@
         "text-field": [
           "case",
           [
-            "all",
+            "!=",
             [
-              "has",
-              "name"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "name"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -2454,19 +2427,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "name:latin"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "name:latin"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -2476,19 +2446,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "label"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "label"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -2498,19 +2465,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "ref"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "ref"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3021,19 +2985,16 @@
         "text-field": [
           "case",
           [
-            "all",
+            "!=",
             [
-              "has",
-              "localized_name"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "localized_name"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3043,19 +3004,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "name"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "name"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3065,19 +3023,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "name:latin"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "name:latin"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3087,19 +3042,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "label"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "label"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3109,19 +3061,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "ref"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "ref"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3278,19 +3227,16 @@
         "text-field": [
           "case",
           [
-            "all",
+            "!=",
             [
-              "has",
-              "localized_name"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "localized_name"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3300,19 +3246,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "name"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "name"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3322,19 +3265,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "name:latin"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "name:latin"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3344,19 +3284,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "label"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "label"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3366,19 +3303,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "ref"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "ref"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3627,19 +3561,16 @@
         "text-field": [
           "case",
           [
-            "all",
+            "!=",
             [
-              "has",
-              "localized_name"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "localized_name"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3649,19 +3580,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "name"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "name"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3671,19 +3599,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "name:latin"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "name:latin"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3693,19 +3618,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "label"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "label"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3715,19 +3637,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "ref"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "ref"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3933,19 +3852,16 @@
         "text-field": [
           "case",
           [
-            "all",
+            "!=",
             [
-              "has",
-              "localized_name"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "localized_name"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3955,19 +3871,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "name"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "name"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3977,19 +3890,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "name:latin"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "name:latin"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -3999,19 +3909,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "label"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "label"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",
@@ -4021,19 +3928,16 @@
             ]
           ],
           [
-            "all",
+            "!=",
             [
-              "has",
-              "ref"
-            ],
-            [
-              "!=",
+              "coalesce",
               [
                 "get",
                 "ref"
               ],
               ""
-            ]
+            ],
+            ""
           ],
           [
             "to-string",

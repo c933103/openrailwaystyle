@@ -288,3 +288,7 @@ initialize().catch(error => {
     ? 'This browser could not start WebGL. Enable graphics acceleration in your browser settings, then reload the map.'
     : error.message;
 });
+
+// Named export lets integration tests inspect rendered features without
+// adding test controls or global variables to the map interface.
+export {map};

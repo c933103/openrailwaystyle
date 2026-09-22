@@ -25,7 +25,7 @@ const language = value => LANGUAGES.some(([code]) => code === value) ? value : '
 // Empty translations also fall back. Never substitute a blank for a name.
 export function labelExpression(lang, station = false) {
   const keys = [...(lang !== 'local' ? [`name:${lang}`] : []), ...(station ? ['localized_name'] : []), 'name', 'name:latin', 'label', 'ref'];
-  return ['case', ...keys.flatMap(key => [['all',['has',key],['!=',['get',key],'']],['to-string',['get',key]]]), ''];
+  return ['case', ...keys.flatMap(key => [['!=',['coalesce',['get',key],''],''],['to-string',['get',key]]]), ''];
 }
 export function displayName(p, lang, station = false) {
   return [lang !== 'local' && p[`name:${lang}`], station && p.localized_name, p.name, p['name:latin'], p.label, p.ref].find(Boolean) || '';

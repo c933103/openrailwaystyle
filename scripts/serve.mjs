@@ -1,5 +1,5 @@
 import http from 'node:http';
-import {stat,readFile} from 'node:fs/promises';
+import {stat} from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
 import {resolve,extname} from 'node:path';
 const root=resolve('styles');
