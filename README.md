@@ -7,7 +7,8 @@ The page is designed for `https://c933103.github.io/openrailwaystyle/`.
 - Spaced, collision-aware station symbols at regional zoom, with major stations first and smaller stops appearing progressively.
 - Maximum-speed colouring with eight bands, original directional speed labels and an explicit unknown category.
 - Network and electrification views; click a railway for recorded speed, voltage, frequency, gauge and operator.
-- Station search, region shortcuts, responsive controls and shareable URLs retaining position and display settings.
+- Station search, separate label-language selectors, responsive controls and shareable URLs retaining position and display settings.
+- Shaded land and seabed relief, prominent first-level regional boundaries, and railway names along tracks from zoom 9.
 - Separate dashed non-operating railways, so proposed, construction and former tracks are not shown as operating speed-coded lines.
 
 ## Run locally
@@ -16,10 +17,13 @@ The page is designed for `https://c933103.github.io/openrailwaystyle/`.
 npm install --ignore-scripts
 npm run build
 npm test
-python3 -m http.server 8000 --directory styles
+git clone --depth 1 --branch rail-data https://github.com/c933103/openrailwaystyle /tmp/rail-data
+mkdir -p styles/data
+cp /tmp/rail-data/{manifest.json,lifecycle.pmtiles,lifecycle.geojson.gz} styles/data/
+node scripts/serve.mjs
 ```
 
-Open `http://localhost:8000`. An internet connection and WebGL are required. The application itself is static, with no server, database, account, API key or paid hosting requirement.
+Open `http://localhost:4173`. An internet connection and WebGL are required. The application itself is static, with no server, database, account, API key or paid hosting requirement.
 
 ## GitHub Pages
 
@@ -37,12 +41,15 @@ The railway provider’s `maxspeed` field is normalized to km/h. Where direction
 
 The provider’s station size is based on OSM route importance, not passenger numbers. Major stations have larger markers and first choice of label placement; less complete route mapping can understate station importance. Major stations appear from zoom 6, normal stations from zoom 8, small stations from zoom 10, halts and urban stations from zoom 11, and tram stops from zoom 13. Before zoom 12 a marker and its name are placed together with collision detection. From zoom 12 individual markers remain visible when labels collide. Worldwide coverage means global source coverage, not a guarantee that every railway, station or speed is mapped.
 
-The upstream vector service excludes all non-operating lines at zoom 7, disused lines before zoom 11, and abandoned/razed lines before zoom 12. A separate GeoJSON layer fills those gaps from zoom 7 to 12 using [Overpass API, operated by FOSSGIS](https://overpass-api.de/). The supplementary layer draws lifecycle/feature classes omitted by the vector source at each zoom and hands off fully to the vector source at zoom 12.
+The upstream railway tiles exclude planned/construction lines at zoom 7 and former infrastructure until still higher zooms. A **published worldwide lifecycle snapshot** fills that gap without sending viewer requests to Overpass. Mainline planned/construction routes appear from zoom 5; all lifecycle classes appear from zoom 7. The snapshot continues unchanged through zoom 11, and the ordinary detail tiles take over at zoom 12. Full way geometries cross viewport and extraction boundaries without clipping gaps.
 
-Regional requests use explicit lifecycle keys instead of a regular expression over tag names. Planned/construction lines load and render first; former lines load separately so their failure cannot hide a successful planned-line result. Requests are serialized, debounced and spaced at least five seconds apart, with eight in-memory cache entries and an optional local browser cache (four entries, 24-hour expiry, up to 2 MB). Each failure has a 30-second cooldown, one automatic retry and a manual retry button. Failed queries report the reason and do not claim that the area contains no railway data. Panning during a request always schedules the latest view when that request finishes. Views wider than 18° or taller than 12° ask for another zoom step instead of silently truncating coverage. Geometry gaps from clipped Overpass output stay separate so the map does not invent connecting segments.
+The maintenance build (`.github/workflows/snapshot.yml`) extracts disjoint world regions sequentially, deduplicates OSM way IDs, retains name translations, and produces a PMTiles archive plus an ODbL GeoJSON database. It refuses to publish an incomplete extraction and checks the north–south extent of 남부내륙선. The manifest records each region’s OSM timestamp and feature count. The `rail-data` branch stores the published files; ordinary site builds copy them without rerunning extraction. The initial extraction is a one-off job with a download budget; it does not run on a schedule. For regular global refreshes, use planet/regional dumps or your own Overpass instance rather than repeatedly querying public servers.
 
-This is a small community map, not a bulk downloader. There is no offline prefetch or global Overpass extraction. Follow the [provider's shared-resource guidance](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html); a widely used deployment should serve its own regional extracts instead of increasing public API traffic. The deployment check now uses the reported Japan–Korea viewport at zoom 7.83, tests planned and former requests separately, and evaluates returned planned/construction features against the actual style filter. It cannot guarantee that a particular proposed project is mapped in OSM.
+Station symbols use orange markers and bold names with halos, while retaining collision spacing. First-level regional boundaries use OSM admin levels 3/4 where supplied by the basemap; subdivision conventions and coverage differ by country. Land and seabed shading comes from [Mapzen Terrain Tiles hosted by AWS](https://registry.opendata.aws/terrain-tiles/), including NOAA ETOPO1 bathymetry. See `styles/terrain-credits.html` for source credits. This is shaded relief, not a contour or navigation map.
 
+Map, station and railway-line languages are selected independently. Translations fall back to local names, including when a translated field is empty. Station source URLs request the chosen language. Snapshot line names preserve OSM `name:*` tags. The current operating-line provider exposes **only local names**, so changing line language cannot translate those features. Railway names appear along lines from zoom 9; speed labels remain a separate option and retain source units.
+
+The deployment gate runs a real Chromium/WebGL test: start at the reported Japan–Korea view at zoom 7, pan northwest without zooming to 8, assert 남부내륙선 is rendered, then check line names and controls. It also verifies that no Overpass request was made. Screenshots are uploaded with the workflow for review. These checks do not guarantee that every real-world railway is correctly mapped in OSM.
 
 Community-hosted external services can be unavailable or change schema. The application shows loading failures rather than replacing missing speeds with guessed values. Station search uses the cross-origin-enabled `https://api.openrailwaymap.org/v2/facility` endpoint; railway vectors continue to use `openrailwaymap.app`. Search requests are submitted only on demand and have cancellation and timeout handling. No personal location is requested automatically.
 

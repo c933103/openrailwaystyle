@@ -1,5 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20260922-1';
-import {INACTIVE_API, GROUPS, inactiveQuery, toGeoJSON} from './inactive.mjs?v=20260922-1';
+import {SEARCH_API} from './map-model.mjs?v=20260922-2';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;
@@ -42,16 +41,13 @@ button.addEventListener('click', async () => {
       if(!b.byteLength) throw new Error('Empty glyph response');
       return 'OK · bold label glyphs available';
     });
-    for (const group of GROUPS) {
-      await check(`Regional ${group.label} railways (reported Japan–Korea view)`, async () => {
-        const response = await fetch(INACTIVE_API, {method:'POST',body:new URLSearchParams({data:inactiveQuery([33.06115,126.29708,35.38088,132.19293], group.states)}),signal:AbortSignal.timeout(65000)});
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = toGeoJSON(await response.json());
-        if (!data.features.length) throw new Error('No sample railway geometry');
-        return `OK · ${data.features.length} railway ways`;
-      });
-      await new Promise(resolve=>setTimeout(resolve,5000));
-    }
+    await check('Published worldwide lifecycle snapshot', async () => {
+      const manifest=await (await get('./data/manifest.json')).json();
+      if(manifest.coverage!=='world' || !manifest.regression?.ways) throw new Error('Incomplete snapshot');
+      const response=await get('./data/lifecycle.pmtiles',{headers:{Range:'bytes=0-126'}});
+      if(response.status!==206) {await response.body?.cancel();throw new Error('Archive range request failed');}
+      return `OK · ${manifest.features} ways · built ${manifest.built} · 남부내륙선 ${manifest.regression.ways} ways`;
+    });
     await check('Station search', async () => {
       const json = await (await get(`${SEARCH_API}?q=London&limit=1`)).json();
       if(!Array.isArray(json)||!json.length) throw new Error('No station result');

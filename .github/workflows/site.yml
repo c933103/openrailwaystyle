@@ -1,7 +1,7 @@
 name: Validate and deploy world railway map
 on:
   push:
-    branches: [main]
+    branches: [main, fix/atlas-relief]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -30,8 +30,35 @@ jobs:
       - name: Check public station search and CORS
         continue-on-error: true
         run: node scripts/check-search-api.mjs
-      - name: Validate regional coverage at reported zoom
-        run: node scripts/check-inactive-api.mjs
+      - name: Wait for initial snapshot build
+        run: |
+          for attempt in $(seq 1 40); do
+            if git ls-remote --exit-code --heads origin rail-data; then exit 0; fi
+            sleep 45
+          done
+          echo "No complete railway snapshot has been published."
+          exit 1
+      - name: Load published worldwide snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: rail-data
+          path: lifecycle-data
+      - name: Assemble site data
+        run: |
+          mkdir -p styles/data
+          cp lifecycle-data/manifest.json lifecycle-data/lifecycle.pmtiles lifecycle-data/lifecycle.geojson.gz styles/data/
+      - name: Install test browser
+        run: npx playwright install --with-deps chromium
+      - name: Verify actual WebGL rendering and zoom-7 panning
+        run: |
+          node scripts/serve.mjs &
+          node scripts/check-map-browser.mjs
+      - name: Save browser review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-review
+          path: browser-review
       - name: Save reviewable site
         uses: actions/upload-artifact@v4
         with:
@@ -49,7 +76,10 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: railway-world-site
+          path: styles
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -1,5 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { ORM, SPEED_BANDS, UNKNOWN_COLOR } from '../styles/map-model.mjs';
+import { ORM, SPEED_BANDS, UNKNOWN_COLOR, labelExpression } from '../styles/map-model.mjs';
 
 // Keep the Hack4Rail base-map design and replace its Europe-only rail source.
 const original = JSON.parse(await readFile(new URL('../styles/default.style.json', import.meta.url)));
@@ -20,7 +20,8 @@ const style = {
     stationLow: vector('standard_railway_text_stations_low', 4, 6),
     stationMed: vector('standard_railway_text_stations_med', 7, 7),
     stations: vector('standard_railway_text_stations', 8, 16),
-    inactiveRegional: { type: 'geojson', data: {type:'FeatureCollection',features:[]}, tolerance: 1, buffer: 128, attribution: '<a href="https://overpass-api.de/">Overpass API (FOSSGIS)</a> · <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>' },
+    inactiveRegional: { type: 'vector', url: 'pmtiles://data/lifecycle.pmtiles', minzoom: 5, maxzoom: 10, promoteId: 'osm_id', attribution: '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>' },
+    relief: {type:'raster-dem', tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], tileSize:256, encoding:'terrarium', maxzoom:15, attribution:'<a href="terrain-credits.html">Terrain: Mapzen / AWS and data contributors</a>'},
   },
   layers: original.layers.filter(l => (!l.source || l.source === 'openmaptiles') && !l.id.startsWith('airport_')).map(l => structuredClone(l)),
 };
@@ -32,6 +33,18 @@ for (const l of style.layers) {
   if (l['source-layer'] === 'transportation') l.paint['line-opacity'] = 0.35;
   if (l.id === 'water') l.paint['fill-color'] = '#bfd8e0';
 }
+const boundary = style.layers.find(l => l.id === 'admin_sub');
+if (boundary) {
+  boundary.filter = ['in','admin_level',6,8];
+  boundary.paint = {'line-color':'#96928c','line-width':['interpolate',['linear'],['zoom'],5,0.35,10,0.65], 'line-opacity':0.45, 'line-dasharray':[3,3]};
+}
+const firstBoundary = {type:'line',source:'openmaptiles','source-layer':'boundary',minzoom:3,filter:['in','admin_level',3,4],layout:{'line-join':'round'}};
+style.layers.push({...firstBoundary,id:'regional-border-casing',paint:{'line-color':'#fffef7','line-opacity':0.8,'line-width':['interpolate',['linear'],['zoom'],3,1.3,7,2.5,12,3.4]}});
+style.layers.push({...firstBoundary,id:'regional-borders',paint:{'line-color':'#81747e','line-opacity':0.9,'line-width':['interpolate',['linear'],['zoom'],3,0.7,7,1.25,12,1.8],'line-dasharray':[5,2]}});
+// Place hillshade over land/water fills, below waterways, roads and borders.
+style.layers = [...style.layers.filter(l=>l.type==='background'||l.type==='fill'), ...style.layers.filter(l=>l.type!=='background'&&l.type!=='fill')];
+const reliefIndex = style.layers.findIndex(l => l.type === 'line');
+style.layers.splice(reliefIndex,0,{id:'terrain-relief',type:'hillshade',source:'relief',paint:{'hillshade-exaggeration':0.45,'hillshade-shadow-color':'#667365','hillshade-highlight-color':'#ffffff','hillshade-accent-color':'#738978','hillshade-illumination-anchor':'map','hillshade-illumination-direction':315}});
 const number = key => ['to-number', ['coalesce', ['get', key], -1], -1];
 const present = ['==', ['coalesce', ['get', 'state'], 'present'], 'present'];
 const notFerry = ['!=', ['get', 'feature'], 'ferry'];
@@ -68,22 +81,28 @@ for (const [mode, source, sourceLayer, color] of [
 }
 const inactivePaint = {
   'line-color': ['match', ['get', 'state'], 'construction', '#ad7619', 'proposed', '#896192', '#75675c'],
-  'line-width': ['interpolate', ['linear'], ['zoom'], 7, 1.5, 12, 2, 16, 2.8, 20, 4],
+  'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1.2, 7, 1.7, 12, 2, 16, 2.8, 20, 4],
   'line-dasharray': [3, 2], 'line-opacity': 0.9,
 };
 style.layers.push({
-  id: 'inactive-railways', type: 'line', source: 'railway', 'source-layer': 'railway_line_high', minzoom: 7,
+  id: 'inactive-railways', type: 'line', source: 'railway', 'source-layer': 'railway_line_high', minzoom: 12,
   filter: ['all', ['!', present], notFerry], paint: inactivePaint,
 });
-// Fill only the lifecycle gaps in the upstream tiles, avoiding double lines.
+// The complete snapshot supplies every lifecycle at regional scales. The
+// ordinary detail tiles take over together at z12, avoiding duplicate lines.
 style.layers.push({
-  id: 'inactive-regional', type: 'line', source: 'inactiveRegional', minzoom: 7, maxzoom: 12,
-  filter: ['!', ['step', ['zoom'], false,
-    8, ['all', ['match', ['get','state'], ['proposed','construction'], true, false], ['==', ['get','feature'], 'rail'], ['match', ['get','usage'], ['main','branch'], true, false], ['==', ['get','service'], '']],
-    9, ['all', ['match', ['get','state'], ['proposed','construction'], true, false], ['==', ['get','service'], ''], ['any', ['all', ['==', ['get','feature'], 'rail'], ['match', ['get','usage'], ['main','branch','industrial'], true, false]], ['all', ['==', ['get','feature'], 'light_rail'], ['match', ['get','usage'], ['main','branch'], true, false]]]],
-    10, ['all', ['match', ['get','state'], ['proposed','construction'], true, false], ['match', ['get','feature'], ['rail','narrow_gauge','light_rail','monorail','subway','tram'], true, false], ['==', ['get','service'], '']],
-    11, ['all', ['match', ['get','state'], ['proposed','construction','disused'], true, false], ['any', ['all', ['match', ['get','feature'], ['rail','narrow_gauge','light_rail'], true, false], ['match', ['get','service'], ['','spur','yard'], true, false]], ['all', ['match', ['get','feature'], ['monorail','subway','tram'], true, false], ['==', ['get','service'], '']]]]]],
-  paint: inactivePaint,
+  id:'inactive-regional', type:'line', source:'inactiveRegional', 'source-layer':'lifecycle', minzoom:5, maxzoom:12,
+  filter:['any', ['>=',['zoom'],7], ['all', ['match',['get','state'],['proposed','construction'],true,false], ['==',['get','feature'],'rail'], ['match',['get','usage'],['main','branch',''],true,false], ['==',['get','service'],'']]],
+  paint:inactivePaint,
+});
+for (const [id,source,sourceLayer,minzoom,maxzoom,filter] of [
+  ['railway-names','railway','railway_line_high',9,undefined,['all',present,notFerry]],
+  ['inactive-names','inactiveRegional','lifecycle',9,12,['literal',true]],
+  ['inactive-detail-names','railway','railway_line_high',12,undefined,['all',['!',present],notFerry]],
+]) style.layers.push({
+  id, type:'symbol', source, 'source-layer':sourceLayer, minzoom, ...(maxzoom ? {maxzoom} : {}), filter,
+  layout:{'symbol-placement':'line','symbol-spacing':450,'text-field':labelExpression('local'), 'text-font':['Noto Sans Bold'], 'text-size':['interpolate',['linear'],['zoom'],9,11,14,13], 'text-offset':[0,-0.85], 'text-padding':8, 'text-max-angle':35},
+  paint:{'text-color':'#4a453f','text-halo-color':'#fffef8','text-halo-width':2},
 });
 style.layers.push({
   id: 'speed-labels', type: 'symbol', source: 'railway', 'source-layer': 'railway_line_high', minzoom: 10,
@@ -101,13 +120,13 @@ const stationFeatures = ['all', present,
   ['any', ['>=', ['zoom'], 11], ['!', ['match', ['get','station'], ['subway','light_rail','monorail'], true, false]]],
 ];
 const stationText = {
-  'text-field': ['coalesce', ['get', 'name'], ['get', 'label'], ''], 'text-font': ['Noto Sans Bold'],
-  'text-size': ['interpolate', ['linear'], ['zoom'], 6, 11, 10, ['match', ['get', 'station_size'], 'large', 14, 'normal', 13, 12], 18, 16],
+  'text-field': labelExpression('local', true), 'text-font': ['Noto Sans Bold'],
+  'text-size': ['interpolate', ['linear'], ['zoom'], 6, 14, 10, ['match', ['get', 'station_size'], 'large', 16, 'normal', 15, 14], 18, 18],
   'symbol-sort-key': ['match', ['get', 'station_size'], 'large', 0, 'normal', 1, 2],
-  'text-variable-anchor': ['top', 'bottom', 'left', 'right'], 'text-radial-offset': 0.8,
+  'text-variable-anchor': ['top', 'bottom', 'left', 'right'], 'text-radial-offset': 0.7,
   'text-padding': ['step', ['zoom'], 14, 9, 9, 12, 4], 'text-max-width': 9, 'text-allow-overlap': false,
 };
-const stationInk = { 'text-color': '#123e52', 'text-halo-color': '#fffef8', 'text-halo-width': 2 };
+const stationInk = { 'text-color': ['match', ['get','station_size'], 'large', '#123e52', '#0865c0'], 'text-halo-color': '#fffef8', 'text-halo-width': 2 };
 for (const [source, layer, minzoom, maxzoom] of [
   ['stationLow', 'standard_railway_text_stations_low', 6, 7],
   ['stationMed', 'standard_railway_text_stations_med', 7, 8],
@@ -116,7 +135,7 @@ for (const [source, layer, minzoom, maxzoom] of [
   style.layers.push({
     id: `station-${source}-names`, type: 'symbol', source, 'source-layer': layer, minzoom, maxzoom,
     filter: source === 'stations' ? ['all', stationSelection, stationFeatures] : stationSelection,
-    layout: { ...stationText, 'icon-image': 'station-dot', 'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.65, 11, 0.9],
+    layout: { ...stationText, 'icon-image': 'station-dot', 'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.95, 11, 1.15],
       'icon-padding': 12, 'icon-allow-overlap': false, 'icon-ignore-placement': false, 'icon-optional': false, 'text-optional': false },
     paint: stationInk,
   });
@@ -124,8 +143,8 @@ for (const [source, layer, minzoom, maxzoom] of [
 style.layers.push({
   id: 'station-stations-dots', type: 'circle', source: 'stations', 'source-layer': 'standard_railway_text_stations', minzoom: 12,
   filter: stationFeatures,
-  paint: { 'circle-color': '#fffef7', 'circle-stroke-color': '#123e52', 'circle-stroke-width': 1.5,
-    'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, ['match', ['get', 'station_size'], 'large', 4, 'normal', 3.2, 2.4], 17, ['match', ['get', 'station_size'], 'large', 6, 'normal', 4.5, 3.5]] },
+  paint: { 'circle-color': '#ffa323', 'circle-stroke-color': '#123e52', 'circle-stroke-width': 1.5,
+    'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, ['match', ['get', 'station_size'], 'large', 5, 'normal', 4, 3], 17, ['match', ['get', 'station_size'], 'large', 7, 'normal', 5.5, 4]] },
 });
 style.layers.push({
   id: 'station-detail-names', type: 'symbol', source: 'stations', 'source-layer': 'standard_railway_text_stations', minzoom: 12,

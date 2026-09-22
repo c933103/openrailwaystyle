@@ -3,3 +3,7 @@
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 
 .map-status button{font-size:11px;padding:5px 8px;margin-left:8px}
+
+.language-picker {display:grid;grid-template-columns:85px 1fr;gap:8px;align-items:center;margin-top:10px;}
+.language-picker select {min-width:0;padding:9px 10px;}
+.station-swatch {background:#ffa323;border-color:#123e52;}

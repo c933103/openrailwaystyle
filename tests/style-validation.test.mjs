@@ -18,3 +18,16 @@ test('MapLibre evaluates unknown and mph-normalized speeds correctly', () => {
   assert.equal(evalColor({ maxspeed:160.9344 }), '#d98213');
   assert.equal(evalColor({ maxspeed:300 }), '#742da0');
 });
+
+test('translated label expressions retain native names when translation is absent or empty', async () => {
+  const {labelExpression}=await import('../styles/map-model.mjs');
+  for(const lang of ['local','en','ko','zh-Hant']) {
+    const compiled=createExpression(labelExpression(lang,true));
+    assert.equal(compiled.result,'success');
+    const value=p=>compiled.value.evaluate({zoom:9},{type:1,properties:p});
+    assert.equal(value({name:'서울'}),'서울');
+    assert.equal(value({'name:en':'',name:'서울'}),'서울');
+  }
+  const compiled=createExpression(labelExpression('en',true));
+  assert.equal(compiled.value.evaluate({zoom:9},{type:1,properties:{name:'서울',localized_name:'Seoul'}}),'Seoul');
+});
