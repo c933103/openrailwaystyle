@@ -43,8 +43,8 @@ test('regional stations have collision-aware markers and progressive size thresh
   const shown = (zoom, properties) => layers.some(layer => visible(layer, zoom, {state:'present',feature:'station', ...properties}));
   assert.equal(shown(5.9, {station_size:'large'}),false);
   assert.equal(shown(6, {station_size:'large'}),true);
-  assert.equal(shown(7.9, {station_size:'normal'}),false);
-  assert.equal(shown(8, {station_size:'normal'}),true);
+  assert.equal(shown(6.9, {station_size:'normal'}),false);
+  assert.equal(shown(7, {station_size:'normal'}),true);
   assert.equal(shown(9.9, {station_size:'small'}),false);
   assert.equal(shown(10, {station_size:'small'}),true);
   assert.equal(shown(10, {station_size:'small',feature:'halt'}),false);

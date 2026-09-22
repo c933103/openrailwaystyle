@@ -113,7 +113,7 @@ style.layers.push({
 // Keep distant views sparse. Marker and name form one collision-aware symbol
 // below zoom 12; individual circles appear only at local scale.
 const stationSelection = ['all',
-  ['any', ['>=', ['zoom'], 10], ['==', ['get','station_size'], 'large'], ['all', ['>=', ['zoom'], 8], ['==', ['get','station_size'], 'normal']]],
+  ['any', ['>=', ['zoom'], 10], ['==', ['get','station_size'], 'large'], ['all', ['>=', ['zoom'], 7], ['==', ['get','station_size'], 'normal']]],
 ];
 const stationFeatures = ['all', present,
   ['any', ['==', ['get','feature'], 'station'], ['all', ['>=', ['zoom'], 11], ['==', ['get','feature'], 'halt']], ['all', ['>=', ['zoom'], 13], ['==', ['get','feature'], 'tram_stop']]],

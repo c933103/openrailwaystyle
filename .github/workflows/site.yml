@@ -8,7 +8,7 @@ permissions:
   contents: read
 concurrency:
   group: pages-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
   validate:
     runs-on: ubuntu-latest
