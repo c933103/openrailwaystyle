@@ -5,17 +5,51 @@ const deadline=setTimeout(()=>{console.error('Browser validation exceeded ten mi
 const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1365,height:900},deviceScaleFactor:1});
 page.setDefaultTimeout(120000);
+// Retain completed WebGL frames for reliable headless screenshots.
+await page.addInitScript(()=>{
+  const getContext=HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext=function(kind,options){
+    return getContext.call(this,kind,/^webgl2?$/.test(kind)?{...options,preserveDrawingBuffer:true}:options);
+  };
+});
+async function finishFrame(){
+  await page.waitForFunction(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    return map.areTilesLoaded();
+  },undefined,{timeout:120000});
+  await page.evaluate(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    await new Promise(resolve=>{map.once('render',resolve);map.triggerRepaint();});
+    const canvas=map.getCanvas();
+    (canvas.getContext('webgl2')||canvas.getContext('webgl'))?.finish();
+  });
+  await page.waitForTimeout(1000); // Finish label fades before visual review.
+}
+async function moveTo(zoom,lng,lat){
+  await page.evaluate(async({zoom,lng,lat})=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    await new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>{map.off('idle',done);reject(new Error('Viewport did not settle after navigation'));},90000);
+      const done=()=>{clearTimeout(timer);resolve();};
+      // Register before moving: an idle map will not emit another idle event
+      // just because a listener was added after rendering finished.
+      map.once('idle',done);
+      map.jumpTo({zoom,center:[lng,lat]});
+      map.triggerRepaint();
+    });
+  },{zoom,lng,lat});
+}
 const errors=[],requests=[];
 page.on('pageerror', e=>errors.push(e.message));
 page.on('request',req=>requests.push(req.url()));
 page.on('console',msg=>{if(msg.type()==='error') console.log('Browser resource:',msg.text());});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto('http://127.0.0.1:4173/?mapLanguage=en&stationLanguage=ko#7/34.229/129.245');
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260922-2&mapLanguage=en&stationLanguage=ko#7/34.229/129.245');
   await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:120000});
   await page.waitForFunction(()=>+document.querySelector('#map-status').dataset.renderedTracks>0,undefined,{timeout:120000});
   // Pan northwest at the SAME zoom before any visit to zoom 8.
-  await page.evaluate(()=>location.hash='#7/35.65/128.1');
+  await moveTo(7,128.1,35.65);
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return Math.abs(map.getCenter().lng-128.1)<0.01 && map.isSourceLoaded('inactiveRegional') && document.querySelector('#map-status').dataset.lifecycleNames?.includes('남부내륙');
@@ -36,23 +70,28 @@ try{
   assert.equal(requests.some(url=>url.includes('overpass')),false,'Panning must not query Overpass');
   // Hide panel to assess railway/station/boundary prominence on the full map.
   await page.locator('#collapse').click();
+  await finishFrame();
   const shot=await page.screenshot({path:'browser-review/korea-z7.jpg',type:'jpeg',quality:45});
   console.log('REVIEW_IMAGE_START'+shot.toString('base64')+'REVIEW_IMAGE_END');
   await page.locator('#collapse').click();
   await page.selectOption('#stationLanguage','en');
   await page.selectOption('#lineLanguage','en');
-  await page.evaluate(()=>location.hash='#10/35.17/128.12');
+  await moveTo(10,128.12,35.17);
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return Math.abs(map.getZoom()-10)<0.01 && map.isSourceLoaded('railway') && map.queryRenderedFeatures().some(f=>f.layer.id.endsWith('-names') && !f.layer.id.startsWith('station-'));
   },undefined,{timeout:45000});
   console.log('PASS: railway names rendered at zoom 10');
+  await finishFrame();
   const detail=await page.screenshot({path:'browser-review/korea-z10.jpg',type:'jpeg',quality:55});
   console.log('DETAIL_IMAGE_START'+detail.toString('base64')+'DETAIL_IMAGE_END');
   console.log('Checking display controls');
   await page.locator('.display-options summary').click();
   await page.locator('#inactive').uncheck();
-  await page.waitForFunction(()=>+document.querySelector('#map-status').dataset.renderedConstruction===0,undefined,{timeout:30000});
+  await page.waitForFunction(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    return map.getLayoutProperty('inactive-regional','visibility')==='none' && !map.queryRenderedFeatures().some(f=>f.source==='inactiveRegional');
+  },undefined,{timeout:30000});
   await page.locator('#inactive').check();
   await page.locator('#relief').uncheck();
   await page.locator('#relief').check();
@@ -62,12 +101,13 @@ try{
   console.log('Checking China regional map');
   await page.selectOption('#mapLanguage','zh-Hans');
   await page.selectOption('#stationLanguage','zh-Hans');
-  await page.evaluate(()=>location.hash='#7/30.5/116.4');
+  await moveTo(7,116.4,30.5);
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return Math.abs(map.getCenter().lng-116.4)<0.01 && Math.abs(map.getZoom()-7)<0.01 && !map.isMoving() && ['stationMed','openmaptiles','railway','relief'].every(id=>map.isSourceLoaded(id)) && map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('station-'));
   },undefined,{timeout:120000});
   await page.locator('#collapse').click();
+  await finishFrame();
   const china=await page.screenshot({path:'browser-review/china-z7.jpg',type:'jpeg',quality:45});
   console.log('CHINA_IMAGE_START'+china.toString('base64')+'CHINA_IMAGE_END');
   assert.deepEqual(errors,[]);
