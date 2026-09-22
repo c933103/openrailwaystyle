@@ -19,7 +19,9 @@ npm run build
 npm test
 git clone --depth 1 --branch rail-data https://github.com/c933103/openrailwaystyle /tmp/rail-data
 mkdir -p styles/data
-cp /tmp/rail-data/{manifest.json,lifecycle.pmtiles,lifecycle.geojson.gz} styles/data/
+cp /tmp/rail-data/manifest.json styles/data/
+cat /tmp/rail-data/lifecycle.pmtiles.part-* > styles/data/lifecycle.pmtiles
+cat /tmp/rail-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
 node scripts/serve.mjs
 ```
 

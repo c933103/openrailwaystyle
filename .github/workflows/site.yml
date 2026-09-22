@@ -46,7 +46,9 @@ jobs:
       - name: Assemble site data
         run: |
           mkdir -p styles/data
-          cp lifecycle-data/manifest.json lifecycle-data/lifecycle.pmtiles lifecycle-data/lifecycle.geojson.gz styles/data/
+          cp lifecycle-data/manifest.json styles/data/
+          cat lifecycle-data/lifecycle.pmtiles.part-* > styles/data/lifecycle.pmtiles
+          cat lifecycle-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
       - name: Install test browser
         run: npx playwright install --with-deps chromium
       - name: Verify actual WebGL rendering and zoom-7 panning
