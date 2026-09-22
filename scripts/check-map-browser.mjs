@@ -12,7 +12,7 @@ page.on('console',msg=>{if(msg.type()==='error') console.log('Browser resource:'
 await mkdir('browser-review',{recursive:true});
 try{
   await page.goto('http://127.0.0.1:4173/?mapLanguage=en&stationLanguage=ko#7/34.229/129.245');
-  await page.waitForSelector('body[data-map-ready="true"]',{timeout:120000});
+  await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:120000});
   await page.waitForFunction(()=>+document.querySelector('#map-status').dataset.renderedTracks>0,undefined,{timeout:120000});
   // Pan northwest at the SAME zoom before any visit to zoom 8.
   await page.evaluate(()=>location.hash='#7/35.65/128.1');
@@ -42,6 +42,7 @@ try{
   await page.waitForFunction(()=>+document.querySelector('#map-status').dataset.renderedRailNames>0,undefined,{timeout:120000});
   console.log('PASS: railway names rendered at zoom 10');
   await page.screenshot({path:'browser-review/korea-z10.jpg',type:'jpeg',quality:65});
+  await page.locator('.display-options summary').click();
   await page.locator('#inactive').uncheck();
   await page.waitForFunction(()=>+document.querySelector('#map-status').dataset.renderedConstruction===0,undefined,{timeout:30000});
   await page.locator('#inactive').check();
@@ -62,4 +63,8 @@ try{
   console.log('CHINA_IMAGE_START'+china.toString('base64')+'CHINA_IMAGE_END');
   assert.deepEqual(errors,[]);
   console.log('PASS: languages, names, relief and lifecycle controls; no JavaScript exceptions');
+} catch(error) {
+  const failure=await page.screenshot({path:'browser-review/failure.jpg',type:'jpeg',quality:45});
+  console.log('FAIL_IMAGE_START'+failure.toString('base64')+'FAIL_IMAGE_END');
+  throw error;
 } finally {await browser.close();}
