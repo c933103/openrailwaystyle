@@ -11,7 +11,9 @@ const tracks = 'rail|narrow_gauge|light_rail|subway|tram|monorail|funicular';
 await mkdir('.snapshot-cache', {recursive:true});
 await mkdir('snapshot', {recursive:true});
 const features = new Map(), parts = [];
-let downloaded = 0;
+const budgetFile=`.snapshot-cache/budget-${process.env.GITHUB_RUN_ID || 'local'}.json`;
+let downloaded=0;
+try {downloaded=JSON.parse(await readFile(budgetFile,'utf8')).bytes;} catch {}
 // Disjoint world regions, serial requests with a quiet interval.
 // Full way geometry is retained across quadrant boundaries and deduplicated.
 const boxes = [
@@ -40,6 +42,7 @@ async function collect(box, depth=0) {
           const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:query}),headers:{'User-Agent':'OpenRailwayAtlas-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'},signal:AbortSignal.timeout(130000)});
           if(!response.ok) throw new Error(`HTTP ${response.status}`);
           const text=await response.text();downloaded+=Buffer.byteLength(text);
+          await writeFile(budgetFile,JSON.stringify({bytes:downloaded}));
           console.log('Downloaded bytes this run',downloaded);
           if(downloaded>500_000_000) throw new Error('One-off download budget exceeded');
           json=JSON.parse(text);
@@ -68,6 +71,14 @@ async function collect(box, depth=0) {
 }
 // Split the already-observed eastern-US bottleneck before querying it again.
 await writeFile('.snapshot-cache/0_-90_45_-45.json.split','Previous extraction timed out.');
+const region=process.env.SNAPSHOT_REGION;
+if(region!==undefined && region!=='assemble') {
+  const box=boxes[Number(region)];
+  if(!box) throw new Error('Invalid extraction region');
+  await collect(box);
+  console.log('REGION COMPLETE',region,JSON.stringify(parts));
+  process.exit(0);
+}
 for(const box of boxes) await collect(box);
 const area=parts.reduce((sum,{bbox:[s,w,n,e]})=>sum+(n-s)*(e-w),0);
 if(Math.abs(area-64800)>1e-6) throw new Error('Incomplete world coverage');

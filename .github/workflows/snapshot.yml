@@ -7,12 +7,14 @@ permissions:
   contents: write
 concurrency:
   group: lifecycle-snapshot
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   snapshot:
     runs-on: ubuntu-latest
     timeout-minutes: 100
     steps:
+      - name: Allow prior cancelled query and cache save to finish
+        run: sleep 100
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -24,7 +26,89 @@ jobs:
           path: .snapshot-cache
           key: lifecycle-initial-20260922
           restore-keys: lifecycle-initial-20260922-
-      - name: Build complete worldwide snapshot
+      - name: Collect world region 1 of 20
+        env:
+          SNAPSHOT_REGION: '0'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 2 of 20
+        env:
+          SNAPSHOT_REGION: '1'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 3 of 20
+        env:
+          SNAPSHOT_REGION: '2'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 4 of 20
+        env:
+          SNAPSHOT_REGION: '3'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 5 of 20
+        env:
+          SNAPSHOT_REGION: '4'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 6 of 20
+        env:
+          SNAPSHOT_REGION: '5'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 7 of 20
+        env:
+          SNAPSHOT_REGION: '6'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 8 of 20
+        env:
+          SNAPSHOT_REGION: '7'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 9 of 20
+        env:
+          SNAPSHOT_REGION: '8'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 10 of 20
+        env:
+          SNAPSHOT_REGION: '9'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 11 of 20
+        env:
+          SNAPSHOT_REGION: '10'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 12 of 20
+        env:
+          SNAPSHOT_REGION: '11'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 13 of 20
+        env:
+          SNAPSHOT_REGION: '12'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 14 of 20
+        env:
+          SNAPSHOT_REGION: '13'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 15 of 20
+        env:
+          SNAPSHOT_REGION: '14'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 16 of 20
+        env:
+          SNAPSHOT_REGION: '15'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 17 of 20
+        env:
+          SNAPSHOT_REGION: '16'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 18 of 20
+        env:
+          SNAPSHOT_REGION: '17'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 19 of 20
+        env:
+          SNAPSHOT_REGION: '18'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Collect world region 20 of 20
+        env:
+          SNAPSHOT_REGION: '19'
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - name: Assemble complete worldwide archive
+        env:
+          SNAPSHOT_REGION: assemble
         run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
       - uses: actions/cache/save@v4
         if: always()
