@@ -32,6 +32,10 @@ for (const l of style.layers) {
   if (l.id === 'landcover_sand') l.paint['fill-color'] = '#e7dfc7';
   if (l['source-layer'] === 'transportation') l.paint['line-opacity'] = 0.35;
   if (l.id === 'water') l.paint['fill-color'] = '#bfd8e0';
+  if (l.id.startsWith('admin_country')) {
+    l.paint['line-color']='#6b6570';
+    l.paint['line-width']=['interpolate',['linear'],['zoom'],0,0.6,4,1.2,7,1.8,12,2.3];
+  }
 }
 const boundary = style.layers.find(l => l.id === 'admin_sub');
 if (boundary) {

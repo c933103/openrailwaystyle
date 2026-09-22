@@ -129,7 +129,7 @@ function updateStatus() {
   status.dataset.renderedTracks = String(tracks.length);
   status.dataset.renderedStations = String(stations.length);
   const regional = features.filter(f => f.source === 'inactiveRegional');
-  status.dataset.lifecycleNames = JSON.stringify([...new Set(regional.map(f=>f.properties.name).filter(Boolean))].slice(0,200));
+  status.dataset.lifecycleNames = JSON.stringify([...new Set(regional.map(f=>f.properties.name).filter(Boolean))]);
   status.dataset.renderedRailNames = String(features.filter(f=>f.layer.id.endsWith('-names') && !f.layer.id.startsWith('station-')).length);
   status.dataset.renderedPlanned = String(regional.filter(f => f.properties.state === 'proposed').length);
   status.dataset.renderedConstruction = String(regional.filter(f => f.properties.state === 'construction').length);

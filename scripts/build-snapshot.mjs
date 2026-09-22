@@ -21,34 +21,56 @@ const boxes = [
 // Start East Asia first among remaining regions, so the reported line is
 // diagnosed early. Cached completed quadrants are reused without re-querying.
 boxes.sort((a,b)=>(b[0]===0 && b[1]===90 ? 1:0)-(a[0]===0 && a[1]===90 ? 1:0));
-for (const box of boxes) {
-  const key=box[0]===-90 ? `${box[0]}_${box[1]}` : box.join('_');
+async function collect(box, depth=0) {
+  const key=box[0]===-90 && box[2]===0 && box[3]-box[1]===90 ? `${box[0]}_${box[1]}` : box.join('_');
   const file = `.snapshot-cache/${key}.json`;
   let json;
   try {json = JSON.parse(await readFile(file,'utf8'));}
   catch {
-    const selectors = [`way[railway~"^(${STATES.join('|')})$"](${box});`, ...STATES.map(s => `way["${s}:railway"~"^(${tracks})$"](${box});`)];
-    const query = `[out:json][timeout:90][maxsize:134217728];(${selectors.join('')});out tags geom;`;
-    for (let attempt=0; attempt<3; attempt++) {
-      if (parts.length || attempt) await new Promise(r => setTimeout(r, attempt ? 90000 : 15000));
-      console.log('Fetching world quadrant', box, 'attempt', attempt+1);
-      try {
-        const response = await fetch(api, {method:'POST', body:new URLSearchParams({data:query}), headers:{'User-Agent':'OpenRailwayAtlas-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'}, signal:AbortSignal.timeout(130000)});
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const text = await response.text(); downloaded += Buffer.byteLength(text);
-        if (downloaded > 950_000_000) throw new Error('One-off download budget exceeded');
-        json = JSON.parse(text);
-        if (json.remark || !Array.isArray(json.elements)) throw new Error(json.remark || 'Incomplete response');
-        await writeFile(file, text);
-        break;
-      } catch (error) {console.warn(error.message); if (attempt===2 || downloaded>950_000_000) throw error;}
+    // Respect a saved split decision on later restarts.
+    let split=false;
+    try {await readFile(file+'.split');split=true;} catch {}
+    if(!split) {
+      const selectors = [`way[railway~"^(${STATES.join('|')})$"](${box});`, ...STATES.map(s => `way["${s}:railway"~"^(${tracks})$"](${box});`)];
+      const query = `[out:json][timeout:90][maxsize:134217728];(${selectors.join('')});out tags geom qt;`;
+      for(let attempt=0;attempt<3;attempt++) {
+        await new Promise(r=>setTimeout(r,attempt ? 60000 : 15000));
+        console.log('Fetching world region', box, 'attempt',attempt+1);
+        try {
+          const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:query}),headers:{'User-Agent':'OpenRailwayAtlas-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)'},signal:AbortSignal.timeout(130000)});
+          if(!response.ok) throw new Error(`HTTP ${response.status}`);
+          const text=await response.text();downloaded+=Buffer.byteLength(text);
+          console.log('Downloaded bytes this run',downloaded);
+          if(downloaded>500_000_000) throw new Error('One-off download budget exceeded');
+          json=JSON.parse(text);
+          if(json.remark || !Array.isArray(json.elements)) throw new Error(json.remark || 'Incomplete response');
+          await writeFile(file,text);break;
+        } catch(error) {
+          console.warn(error.message);json=undefined;
+          if(downloaded>500_000_000) throw error;
+          // A timeout in extraction/output calls for a smaller area immediately.
+          if(/timed out|memory|Timeout/.test(error.message) || attempt===2) {split=true;break;}
+        }
+      }
+    }
+    if(split) {
+      if(depth>=5) throw new Error(`Could not complete region ${box}`);
+      await writeFile(file+'.split','Oversized region; use complete child regions.');
+      const [s,w,n,e]=box,lat=(s+n)/2,lon=(w+e)/2;
+      for(const child of [[s,w,lat,lon],[s,lon,lat,e],[lat,w,n,lon],[lat,lon,n,e]]) await collect(child,depth+1);
+      return;
     }
   }
-  const data = toGeoJSON(json);
-  for (const f of data.features) features.set(f.id, f);
-  const part = {bbox:box, timestamp:json.osm3s?.timestamp_osm_base, features:data.features.length};
-  parts.push(part); console.log(JSON.stringify(part));
+  const data=toGeoJSON(json);
+  for(const f of data.features) features.set(f.id,f);
+  const part={bbox:box,timestamp:json.osm3s?.timestamp_osm_base,features:data.features.length};
+  parts.push(part);console.log(JSON.stringify(part));
 }
+// Split the already-observed eastern-US bottleneck before querying it again.
+await writeFile('.snapshot-cache/0_-90_45_-45.json.split','Previous extraction timed out.');
+for(const box of boxes) await collect(box);
+const area=parts.reduce((sum,{bbox:[s,w,n,e]})=>sum+(n-s)*(e-w),0);
+if(Math.abs(area-64800)>1e-6) throw new Error('Incomplete world coverage');
 const data = {type:'FeatureCollection', features:[...features.values()]};
 const nambu = data.features.filter(f => /남부내륙/.test(f.properties.name));
 if (!nambu.length) throw new Error('Regression: 남부내륙선 missing from worldwide snapshot');

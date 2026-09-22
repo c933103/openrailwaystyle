@@ -87,3 +87,25 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify deployed archive byte ranges
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          python - <<'PY'
+          import os,time,urllib.request
+          url=os.environ['PAGE_URL'].rstrip('/')+'/data/lifecycle.pmtiles'
+          for encoding in ['identity','gzip, deflate, br, zstd, identity']:
+              for attempt in range(12):
+                  try:
+                      request=urllib.request.Request(url,headers={'Range':'bytes=0-126','Accept-Encoding':encoding})
+                      with urllib.request.urlopen(request,timeout=20) as response:
+                          assert response.status==206, f'Range status {response.status}'
+                          assert not response.headers.get('Content-Encoding'), 'Archive range was compressed by host'
+                          data=response.read(128)
+                          assert len(data)==127 and data[:7]==b'PMTiles', 'Invalid archive header'
+                      print('PASS: deployed archive range',encoding)
+                      break
+                  except Exception:
+                      if attempt==11: raise
+                      time.sleep(5)
+          PY
