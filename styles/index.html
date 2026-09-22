@@ -9,7 +9,7 @@
   <title>Open Railway Atlas · Worldwide rail map</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css" rel="stylesheet">
+  <link href="app.css?v=20260922-1" rel="stylesheet">
 </head>
 <body>
   <main id="map" aria-label="Interactive worldwide railway map"></main>
@@ -41,20 +41,20 @@
       <p id="share-status" role="status" class="small" hidden></p>
     </div>
   </aside>
-  <div class="map-status" id="map-status" role="status">Loading the world’s railways…</div>
+  <div class="map-status"><span id="map-status" role="status">Loading the world’s railways…</span><button id="retry-inactive" hidden>Retry planned and former lines</button></div>
   <section class="detail-panel" id="details" aria-label="Railway details" hidden><button class="close" id="details-close" aria-label="Close railway details">×</button><div id="detail-content"></div></section>
   <dialog id="about"><button class="close" id="about-close" aria-label="Close about">×</button><h2>A world built around rail</h2>
     <p>A station-first adaptation of <a href="https://github.com/c933103/openrailwaystyle">Open Railway Styles</a>, started at Hack4Rail. The background keeps roads and settlements subdued so railway infrastructure stands out.</p>
     <h3>Reading the map</h3><p>Regional views show a spaced-out selection of major stations. Smaller stations appear as you zoom in; individual station markers appear at local scale. Major stations receive priority according to the provider’s mapped route importance, which is not a passenger-volume ranking. Coverage and station ranking depend on OpenStreetMap completeness.</p>
     <p>Speed colours use the provider’s numeric limit in km/h. Where directions differ, this is the preferred-direction limit, or the larger directional limit when no preferred direction is mapped. Track labels retain original units: bare numbers are km/h; mph is written explicitly. “A / B” means forward / backward; “A (B)” means preferred / opposite direction. A dash means missing data. These directions refer to the underlying OSM way.</p>
     <p>Grey means no numeric speed is available. Dashed lines show proposed, construction or former infrastructure from regional zoom; they are not presented as operating lines. Recorded infrastructure limits are not train running speeds or a timetable.</p>
-    <h3>Sources</h3><p>Railway tiles: <a href="https://openrailwaymap.app/">OpenRailwayMap vector</a>. Station search: <a href="https://www.openrailwaymap.org/">OpenRailwayMap public API</a>. Regional former and planned lines: <a href="https://maps.mail.ru/osm/tools/overpass/">VK Maps Overpass</a>. Base map: <a href="https://tuiles.enliberte.fr/">En Liberté</a>. Map data: <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>. Renderer: <a href="https://maplibre.org/">MapLibre</a>.</p>
+    <h3>Sources</h3><p>Railway tiles: <a href="https://openrailwaymap.app/">OpenRailwayMap vector</a>. Station search: <a href="https://www.openrailwaymap.org/">OpenRailwayMap public API</a>. Regional former and planned lines: <a href="https://overpass-api.de/">Overpass API (FOSSGIS)</a>. Base map: <a href="https://tuiles.enliberte.fr/">En Liberté</a>. Map data: <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>. Renderer: <a href="https://maplibre.org/">MapLibre</a>.</p>
     <p class="small">This public map uses community-hosted services. Data availability and updates follow those providers. No account or API key is required. Search terms are sent to OpenRailwayMap only when submitted. With former lines enabled, the visible region is sent to Overpass at regional zoom. Those lines may take a few seconds to load; availability depends on the provider.</p>
     <p><a href="https://github.com/c933103/openrailwaystyle">Source code & report a problem ↗</a></p>
   </dialog>
   <noscript><div class="no-script">Enable JavaScript to use the interactive railway map.</div></noscript>
   <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js"></script>
-  <script type="module" src="app.mjs?v=20260921-6"></script>
+  <script type="module" src="app.mjs?v=20260922-1"></script>
 </body>
 </html>

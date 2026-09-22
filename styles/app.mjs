@@ -1,13 +1,13 @@
-import { SPEED_BANDS, UNKNOWN_COLOR, SEARCH_API, REGION_VIEWS, MODES, readSettings, formatSpeed, numericSpeed, stationRank } from './map-model.mjs?v=20260921-6';
+import { SPEED_BANDS, UNKNOWN_COLOR, SEARCH_API, REGION_VIEWS, MODES, readSettings, formatSpeed, numericSpeed, stationRank } from './map-model.mjs?v=20260922-1';
 
-import { createInactiveOverlay } from './inactive.mjs?v=20260921-6';
+import { createInactiveOverlay } from './inactive.mjs?v=20260922-1';
 
 const $ = id => document.getElementById(id);
 const settings = readSettings(location.search);
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, inactiveOverlay;
 let inactiveStatus = '';
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260921-6';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260922-1';
 const errors = new Set();
 const textNode = (tag, value, className) => {
   const el = document.createElement(tag); el.textContent = value;
@@ -26,7 +26,7 @@ function renderLegend() {
   const grid = textNode('div', '', 'legend-grid');
   const rows = [...legend.rows];
   if (settings.mode !== 'infrastructure') rows.push([UNKNOWN_COLOR, 'Unknown']);
-  if (settings.inactive) rows.push(['#81756a', 'Non-operating', 'dashed']);
+  if (settings.inactive) rows.push(['#896192', 'Proposed', 'dashed'], ['#ad7619', 'Construction', 'dashed'], ['#75675c', 'Former lines', 'dashed']);
   for (const [color, label, extra] of rows) {
     const row = textNode('div', '', 'legend-item');
     const swatch = textNode('span', '', `swatch ${extra || ''}`); swatch.style.setProperty('--swatch', color);
@@ -127,6 +127,10 @@ function updateStatus() {
   const stations = features.filter(f => f.source.startsWith('station'));
   status.dataset.renderedTracks = String(tracks.length);
   status.dataset.renderedStations = String(stations.length);
+  const regional = features.filter(f => f.source === 'inactiveRegional');
+  status.dataset.renderedPlanned = String(regional.filter(f => f.properties.state === 'proposed').length);
+  status.dataset.renderedConstruction = String(regional.filter(f => f.properties.state === 'construction').length);
+  status.dataset.renderedFormer = String(regional.filter(f => !['proposed','construction'].includes(f.properties.state)).length);
   status.dataset.numericSpeeds = String(tracks.filter(f => numericSpeed(f.properties.maxspeed) !== null).length);
 }
 async function initialize() {
@@ -161,7 +165,11 @@ async function initialize() {
   map.on('sourcedata', e => { if (e.isSourceLoaded && e.sourceId) errors.delete(e.sourceId); });
   map.on('load', () => {
     ready = true;
-    inactiveOverlay = createInactiveOverlay(map, () => settings.inactive, message => { inactiveStatus = message; updateStatus(); });
+    inactiveOverlay = createInactiveOverlay(map, () => settings.inactive, (message, {retry = false} = {}) => {
+      inactiveStatus = message;
+      $('retry-inactive').hidden = !retry;
+      updateStatus();
+    });
     applySettings(); updateStatus();
     document.body.dataset.mapReady = 'true';
   });
@@ -185,6 +193,9 @@ document.querySelectorAll('[data-mode]').forEach(button => button.addEventListen
 }));
 for (const key of ['stations', 'labels', 'inactive']) $(key).addEventListener('change', () => {
   settings[key] = $(key).checked; applySettings(); saveSettings();
+});
+$('retry-inactive').addEventListener('click', () => {
+  $('retry-inactive').hidden = true; inactiveOverlay?.retry();
 });
 $('region').addEventListener('change', e => {
   const view = REGION_VIEWS[e.target.value];
