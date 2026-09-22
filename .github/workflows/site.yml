@@ -94,21 +94,29 @@ jobs:
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
-          python - <<'PY'
-          import os,time,urllib.request
-          url=os.environ['PAGE_URL'].rstrip('/')+'/data/lifecycle.pmtiles'
-          for encoding in ['identity','gzip, deflate, br, zstd, identity']:
-              for attempt in range(12):
-                  try:
-                      request=urllib.request.Request(url,headers={'Range':'bytes=0-126','Accept-Encoding':encoding})
-                      with urllib.request.urlopen(request,timeout=20) as response:
-                          assert response.status==206, f'Range status {response.status}'
-                          assert not response.headers.get('Content-Encoding'), 'Archive range was compressed by host'
-                          data=response.read(128)
-                          assert len(data)==127 and data[:7]==b'PMTiles', 'Invalid archive header'
-                      print('PASS: deployed archive range',encoding)
-                      break
-                  except Exception:
-                      if attempt==11: raise
-                      time.sleep(5)
-          PY
+          node --input-type=module <<'JS'
+          import {open} from 'node:fs/promises';
+          import assert from 'node:assert/strict';
+          const file=await open('styles/data/lifecycle.pmtiles');
+          const {size}=await file.stat();
+          const url=process.env.PAGE_URL.replace(/\/$/,'')+'/data/lifecycle.pmtiles';
+          // Compare decoded responses to the published bytes. Valid HTTP
+          // compression of a range is harmless; changed range offsets are not.
+          for(const encoding of ['identity','gzip, deflate, br, zstd, identity']) {
+            for(const [start,length] of [[0,127],[16384,1024],[1048576,4096],[size-256,256]]) {
+              const expected=Buffer.alloc(length);await file.read(expected,0,length,start);
+              for(let attempt=0;attempt<12;attempt++) {
+                try {
+                  const response=await fetch(url,{headers:{Range:`bytes=${start}-${start+length-1}`,'Accept-Encoding':encoding},signal:AbortSignal.timeout(20000)});
+                  assert.equal(response.status,206);
+                  assert.equal(response.headers.get('content-range'),`bytes ${start}-${start+length-1}/${size}`);
+                  const actual=Buffer.from(await response.arrayBuffer());
+                  assert.deepEqual(actual,expected,'Decoded archive range differs from published bytes');
+                  console.log('PASS: exact deployed bytes',encoding,start,length,'HTTP encoding',response.headers.get('content-encoding'));
+                  break;
+                } catch(error) {if(attempt===11) throw error;await new Promise(resolve=>setTimeout(resolve,5000));}
+              }
+            }
+          }
+          await file.close();
+          JS
