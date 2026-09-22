@@ -1,0 +1,49 @@
+name: Review map using completed East Asia data
+on:
+  push:
+    branches: [build/world-lifecycle]
+    paths: [.github/workflows/map-preview.yml, scripts/preview-snapshot.mjs]
+permissions:
+  contents: read
+concurrency:
+  group: map-preview
+  cancel-in-progress: true
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/atlas-relief
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: review-builder
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/cache/restore@v4
+        with:
+          path: .snapshot-cache
+          key: lifecycle-initial-20260922
+          restore-keys: lifecycle-initial-20260922-
+          fail-on-cache-miss: true
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: pip install pmtiles==3.8.1
+      - name: Build review fixture from saved data
+        run: |
+          node --max-old-space-size=6144 review-builder/scripts/preview-snapshot.mjs
+          python scripts/pack-snapshot.py
+          mkdir -p styles/data
+          cp snapshot/manifest.json snapshot/lifecycle.pmtiles snapshot/lifecycle.geojson.gz styles/data/
+      - run: npx playwright install --with-deps chromium
+      - name: Render and test the actual map
+        run: |
+          node scripts/serve.mjs &
+          node scripts/check-map-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-review-east-asia
+          path: browser-review
