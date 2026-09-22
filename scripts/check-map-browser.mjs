@@ -18,9 +18,9 @@ try{
   await page.evaluate(()=>location.hash='#7/35.65/128.1');
   await page.waitForFunction(()=>document.querySelector('#map-status').dataset.lifecycleNames?.includes('남부내륙'),undefined,{timeout:120000});
   console.log('PASS: 남부내륙선 rendered after pan at zoom 7, before visiting zoom 8');
+  console.log('Inspecting rendered line extent, stations and borders');
   const rendered = await page.evaluate(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
-    if(!map.loaded()) await new Promise(resolve=>map.once('idle',resolve));
     const features=map.queryRenderedFeatures();
     const nambu=features.filter(f=>f.source==='inactiveRegional' && /남부내륙/.test(f.properties.name));
     const coordinates=nambu.flatMap(f=>f.geometry.type==='LineString'?f.geometry.coordinates:f.geometry.coordinates.flat());
@@ -42,6 +42,7 @@ try{
   await page.waitForFunction(()=>+document.querySelector('#map-status').dataset.renderedRailNames>0,undefined,{timeout:120000});
   console.log('PASS: railway names rendered at zoom 10');
   await page.screenshot({path:'browser-review/korea-z10.jpg',type:'jpeg',quality:65});
+  console.log('Checking display controls');
   await page.locator('.display-options summary').click();
   await page.locator('#inactive').uncheck();
   await page.waitForFunction(()=>+document.querySelector('#map-status').dataset.renderedConstruction===0,undefined,{timeout:30000});
@@ -51,13 +52,14 @@ try{
   assert.equal(await page.locator('#region').count(),0);
   assert.ok(requests.some(url=>url.includes('terrarium')),'Relief source requested');
   assert.ok(requests.some(url=>url.includes('standard_railway_text_stations')&&url.includes('lang=en')),'Translated station tiles requested');
+  console.log('Checking China regional map');
   await page.selectOption('#mapLanguage','zh-Hans');
   await page.selectOption('#stationLanguage','zh-Hans');
   await page.evaluate(()=>location.hash='#7/30.5/116.4');
-  await page.evaluate(async()=>{
+  await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
-    if(!map.loaded()) await new Promise(resolve=>map.once('idle',resolve));
-  });
+    return !map.isMoving() && map.isSourceLoaded('stationMed') && map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('station-'));
+  },undefined,{timeout:120000});
   await page.locator('#collapse').click();
   const china=await page.screenshot({path:'browser-review/china-z7.jpg',type:'jpeg',quality:45});
   console.log('CHINA_IMAGE_START'+china.toString('base64')+'CHINA_IMAGE_END');
