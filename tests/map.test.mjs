@@ -45,7 +45,8 @@ test('regional stations have collision-aware markers and progressive size thresh
   assert.equal(shown(6, {station_size:'large'}),true);
   assert.equal(shown(6.9, {station_size:'normal'}),false);
   assert.equal(shown(7, {station_size:'normal'}),true);
-  assert.equal(shown(9.9, {station_size:'small'}),false);
+  assert.equal(shown(7, {station_size:'small'}),true);
+  assert.equal(shown(9.9, {station_size:'small'}),true);
   assert.equal(shown(10, {station_size:'small'}),true);
   assert.equal(shown(10, {station_size:'small',feature:'halt'}),false);
   assert.equal(shown(11, {station_size:'small',feature:'halt'}),true);

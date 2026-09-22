@@ -39,7 +39,10 @@ try{
   await page.selectOption('#stationLanguage','en');
   await page.selectOption('#lineLanguage','en');
   await page.evaluate(()=>location.hash='#10/35.17/128.12');
-  await page.waitForFunction(()=>+document.querySelector('#map-status').dataset.renderedRailNames>0,undefined,{timeout:120000});
+  await page.waitForFunction(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    return map.queryRenderedFeatures().some(f=>f.layer.id.endsWith('-names') && !f.layer.id.startsWith('station-'));
+  },undefined,{timeout:45000});
   console.log('PASS: railway names rendered at zoom 10');
   await page.screenshot({path:'browser-review/korea-z10.jpg',type:'jpeg',quality:65});
   console.log('Checking display controls');
@@ -66,6 +69,10 @@ try{
   assert.deepEqual(errors,[]);
   console.log('PASS: languages, names, relief and lifecycle controls; no JavaScript exceptions');
 } catch(error) {
+  console.log('Failure diagnostics',await page.evaluate(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    return {zoom:map.getZoom(),status:document.querySelector('#map-status').dataset, layers:map.getStyle().layers.filter(l=>l.id.endsWith('-names') && !l.id.startsWith('station-')), named:map.queryRenderedFeatures().filter(f=>['inactiveRegional','railway'].includes(f.source)&&f.properties.name).slice(0,12).map(f=>({layer:f.layer.id,name:f.properties.name}))};
+  }));
   const failure=await page.screenshot({path:'browser-review/failure.jpg',type:'jpeg',quality:45});
   console.log('FAIL_IMAGE_START'+failure.toString('base64')+'FAIL_IMAGE_END');
   throw error;

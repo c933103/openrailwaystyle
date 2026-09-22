@@ -48,7 +48,7 @@ style.layers.push({...firstBoundary,id:'regional-borders',paint:{'line-color':'#
 // Place hillshade over land/water fills, below waterways, roads and borders.
 style.layers = [...style.layers.filter(l=>l.type==='background'||l.type==='fill'), ...style.layers.filter(l=>l.type!=='background'&&l.type!=='fill')];
 const reliefIndex = style.layers.findIndex(l => l.type === 'line');
-style.layers.splice(reliefIndex,0,{id:'terrain-relief',type:'hillshade',source:'relief',paint:{'hillshade-exaggeration':0.45,'hillshade-shadow-color':'#667365','hillshade-highlight-color':'#ffffff','hillshade-accent-color':'#738978','hillshade-illumination-anchor':'map','hillshade-illumination-direction':315}});
+style.layers.splice(reliefIndex,0,{id:'terrain-relief',type:'hillshade',source:'relief',paint:{'hillshade-exaggeration':0.3,'hillshade-shadow-color':'#667365','hillshade-highlight-color':'#ffffff','hillshade-accent-color':'#738978','hillshade-illumination-anchor':'map','hillshade-illumination-direction':315}});
 const number = key => ['to-number', ['coalesce', ['get', key], -1], -1];
 const present = ['==', ['coalesce', ['get', 'state'], 'present'], 'present'];
 const notFerry = ['!=', ['get', 'feature'], 'ferry'];
@@ -117,7 +117,7 @@ style.layers.push({
 // Keep distant views sparse. Marker and name form one collision-aware symbol
 // below zoom 12; individual circles appear only at local scale.
 const stationSelection = ['all',
-  ['any', ['>=', ['zoom'], 10], ['==', ['get','station_size'], 'large'], ['all', ['>=', ['zoom'], 7], ['==', ['get','station_size'], 'normal']]],
+  ['any', ['>=', ['zoom'], 7], ['==', ['get','station_size'], 'large']],
 ];
 const stationFeatures = ['all', present,
   ['any', ['==', ['get','feature'], 'station'], ['all', ['>=', ['zoom'], 11], ['==', ['get','feature'], 'halt']], ['all', ['>=', ['zoom'], 13], ['==', ['get','feature'], 'tram_stop']]],
@@ -163,7 +163,8 @@ for (const l of places) {
   style.layers.push(l);
 }
 const stationNames = style.layers.filter(l => l.id.startsWith('station-') && l.type === 'symbol');
-style.layers = style.layers.filter(l => !stationNames.includes(l)).concat(stationNames);
+const railwayNames = style.layers.filter(l => l.type === 'symbol' && l.id.endsWith('-names') && !l.id.startsWith('station-'));
+style.layers = style.layers.filter(l => !stationNames.includes(l) && !railwayNames.includes(l)).concat(railwayNames, stationNames);
 for (const l of style.layers) {
   if (/^(infrastructure|electrification)-/.test(l.id)) l.layout.visibility = 'none';
 }
