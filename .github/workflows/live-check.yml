@@ -1,0 +1,28 @@
+name: Verify published map in Chromium
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/atlas-relief]
+    paths: [.github/workflows/live-check.yml]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Check the public GitHub Pages map
+        env:
+          MAP_BASE_URL: https://c933103.github.io/openrailwaystyle/
+        run: node scripts/check-map-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: published-map-review
+          path: browser-review
