@@ -23,6 +23,7 @@ jobs:
         with:
           path: .snapshot-cache
           key: lifecycle-initial-20260922
+          restore-keys: lifecycle-initial-20260922-
       - name: Build complete worldwide snapshot
         run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
       - uses: actions/cache/save@v4
@@ -36,7 +37,12 @@ jobs:
           cp snapshot/manifest.json /tmp/rail-manifest.json
           cp snapshot/lifecycle.pmtiles /tmp/rail-lifecycle.pmtiles
           cp snapshot/lifecycle.geojson.gz /tmp/rail-lifecycle.geojson.gz
-          git checkout --orphan rail-data
+          if git ls-remote --exit-code --heads origin rail-data; then
+            git fetch origin rail-data
+            git checkout -B rail-data FETCH_HEAD
+          else
+            git checkout --orphan rail-data
+          fi
           git rm -rf .
           git clean -fdx
           cp /tmp/rail-manifest.json manifest.json
