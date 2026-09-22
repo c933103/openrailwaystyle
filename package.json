@@ -8,6 +8,8 @@
   },
   "devDependencies": {
     "@maplibre/maplibre-gl-style-spec": "23.1.0",
-    "jsdom": "26.1.0"
+    "geojson-vt": "^4.0.2",
+    "jsdom": "26.1.0",
+    "vt-pbf": "^3.1.3"
   }
 }

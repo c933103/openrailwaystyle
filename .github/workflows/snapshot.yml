@@ -1,0 +1,49 @@
+name: Build worldwide railway lifecycle snapshot
+on:
+  push:
+    branches: [build/world-lifecycle]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lifecycle-snapshot
+  cancel-in-progress: false
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: pip install pmtiles==3.8.1
+      - uses: actions/cache/restore@v4
+        with:
+          path: .snapshot-cache
+          key: lifecycle-initial-20260922
+      - name: Build complete worldwide snapshot
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .snapshot-cache
+          key: lifecycle-initial-20260922-${{ github.run_id }}
+      - run: python scripts/pack-snapshot.py
+      - name: Publish validated snapshot branch
+        run: |
+          cp snapshot/manifest.json /tmp/rail-manifest.json
+          cp snapshot/lifecycle.pmtiles /tmp/rail-lifecycle.pmtiles
+          cp snapshot/lifecycle.geojson.gz /tmp/rail-lifecycle.geojson.gz
+          git checkout --orphan rail-data
+          git rm -rf .
+          git clean -fdx
+          cp /tmp/rail-manifest.json manifest.json
+          cp /tmp/rail-lifecycle.pmtiles lifecycle.pmtiles
+          cp /tmp/rail-lifecycle.geojson.gz lifecycle.geojson.gz
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add manifest.json lifecycle.pmtiles lifecycle.geojson.gz
+          git commit -m "Publish complete worldwide railway lifecycle snapshot"
+          git push origin HEAD:refs/heads/rail-data
