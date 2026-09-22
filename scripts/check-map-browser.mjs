@@ -5,6 +5,26 @@ const deadline=setTimeout(()=>{console.error('Browser validation exceeded ten mi
 const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1365,height:900},deviceScaleFactor:1});
 page.setDefaultTimeout(120000);
+// Retain completed WebGL frames for reliable headless screenshots.
+await page.addInitScript(()=>{
+  const getContext=HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext=function(kind,options){
+    return getContext.call(this,kind,/^webgl2?$/.test(kind)?{...options,preserveDrawingBuffer:true}:options);
+  };
+});
+async function finishFrame(){
+  await page.waitForFunction(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    return map.areTilesLoaded();
+  },undefined,{timeout:120000});
+  await page.evaluate(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    await new Promise(resolve=>{map.once('render',resolve);map.triggerRepaint();});
+    const canvas=map.getCanvas();
+    (canvas.getContext('webgl2')||canvas.getContext('webgl'))?.finish();
+  });
+  await page.waitForTimeout(1000); // Finish label fades before visual review.
+}
 const errors=[],requests=[];
 page.on('pageerror', e=>errors.push(e.message));
 page.on('request',req=>requests.push(req.url()));
@@ -36,6 +56,7 @@ try{
   assert.equal(requests.some(url=>url.includes('overpass')),false,'Panning must not query Overpass');
   // Hide panel to assess railway/station/boundary prominence on the full map.
   await page.locator('#collapse').click();
+  await finishFrame();
   const shot=await page.screenshot({path:'browser-review/korea-z7.jpg',type:'jpeg',quality:45});
   console.log('REVIEW_IMAGE_START'+shot.toString('base64')+'REVIEW_IMAGE_END');
   await page.locator('#collapse').click();
@@ -47,12 +68,16 @@ try{
     return Math.abs(map.getZoom()-10)<0.01 && map.isSourceLoaded('railway') && map.queryRenderedFeatures().some(f=>f.layer.id.endsWith('-names') && !f.layer.id.startsWith('station-'));
   },undefined,{timeout:45000});
   console.log('PASS: railway names rendered at zoom 10');
+  await finishFrame();
   const detail=await page.screenshot({path:'browser-review/korea-z10.jpg',type:'jpeg',quality:55});
   console.log('DETAIL_IMAGE_START'+detail.toString('base64')+'DETAIL_IMAGE_END');
   console.log('Checking display controls');
   await page.locator('.display-options summary').click();
   await page.locator('#inactive').uncheck();
-  await page.waitForFunction(()=>+document.querySelector('#map-status').dataset.renderedConstruction===0,undefined,{timeout:30000});
+  await page.waitForFunction(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    return map.getLayoutProperty('inactive-regional','visibility')==='none' && !map.queryRenderedFeatures().some(f=>f.source==='inactiveRegional');
+  },undefined,{timeout:30000});
   await page.locator('#inactive').check();
   await page.locator('#relief').uncheck();
   await page.locator('#relief').check();
@@ -68,6 +93,7 @@ try{
     return Math.abs(map.getCenter().lng-116.4)<0.01 && Math.abs(map.getZoom()-7)<0.01 && !map.isMoving() && ['stationMed','openmaptiles','railway','relief'].every(id=>map.isSourceLoaded(id)) && map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('station-'));
   },undefined,{timeout:120000});
   await page.locator('#collapse').click();
+  await finishFrame();
   const china=await page.screenshot({path:'browser-review/china-z7.jpg',type:'jpeg',quality:45});
   console.log('CHINA_IMAGE_START'+china.toString('base64')+'CHINA_IMAGE_END');
   assert.deepEqual(errors,[]);
