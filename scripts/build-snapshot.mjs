@@ -52,7 +52,7 @@ async function collect(box, depth=0) {
           console.warn(error.message);json=undefined;
           if(downloaded>500_000_000) throw error;
           // A timeout in extraction/output calls for a smaller area immediately.
-          if(/timed out|memory|Timeout/.test(error.message) || attempt===2) {split=true;break;}
+          if(/timed out|memory|timeout/i.test(error.message) || attempt===2) {split=true;break;}
         }
       }
     }
@@ -71,6 +71,7 @@ async function collect(box, depth=0) {
 }
 // Split the already-observed eastern-US bottleneck before querying it again.
 await writeFile('.snapshot-cache/0_-90_45_-45.json.split','Previous extraction timed out.');
+await writeFile('.snapshot-cache/45_0_67.5_22.5.json.split','Dense European region; avoid repeating timed-out query.');
 const region=process.env.SNAPSHOT_REGION;
 if(region!==undefined && region!=='assemble') {
   const box=boxes[Number(region)];

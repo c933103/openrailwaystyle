@@ -130,10 +130,12 @@ jobs:
           git rm -rf .
           git clean -fdx
           cp /tmp/rail-manifest.json manifest.json
-          cp /tmp/rail-lifecycle.pmtiles lifecycle.pmtiles
-          cp /tmp/rail-lifecycle.geojson.gz lifecycle.geojson.gz
+          # Keep individual Git blobs below the hosting limit. Pages receives
+          # the reassembled archive; viewers still request just its needed bytes.
+          split -b 80M -d -a 3 /tmp/rail-lifecycle.pmtiles lifecycle.pmtiles.part-
+          split -b 80M -d -a 3 /tmp/rail-lifecycle.geojson.gz lifecycle.geojson.gz.part-
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add manifest.json lifecycle.pmtiles lifecycle.geojson.gz
+          git add manifest.json lifecycle.pmtiles.part-* lifecycle.geojson.gz.part-*
           git commit -m "Publish complete worldwide railway lifecycle snapshot"
           git push origin HEAD:refs/heads/rail-data
