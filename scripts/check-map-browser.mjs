@@ -22,17 +22,15 @@ async function finishFrame(){
   const until=Date.now()+120000;
   let quietSince;
   while(Date.now()<until) {
-    const loaded=await page.evaluate(async()=>{
-      const {map}=await import(document.querySelector('script[type="module"]').src);
-      return map.areTilesLoaded();
-    });
-    if(loaded && pendingRequests.size===0) {
+    // Hidden sources can retain cancelled loading tiles. Readiness assertions
+    // below inspect the visible features; do not wait on unrelated source flags.
+    if(pendingRequests.size===0) {
       quietSince ||= Date.now();
       if(Date.now()-quietSince>1000) break;
     } else quietSince=undefined;
     await page.waitForTimeout(200);
   }
-  assert.ok(quietSince && Date.now()-quietSince>1000,'Map requests should finish before screenshot');
+  assert.ok(quietSince && Date.now()-quietSince>1000,'Map requests should finish before screenshot: '+[...pendingRequests].map(r=>r.url()).join(', '));
   // Finish fades first, then submit and finish the final GPU frame immediately
   // before capture, rather than letting another asynchronous frame replace it.
   await page.waitForTimeout(1000);
