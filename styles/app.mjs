@@ -1,12 +1,12 @@
-import { SPEED_BANDS, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, CONTOUR_OPTIONS, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260923-1';
+import { SPEED_BANDS, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, CONTOUR_OPTIONS, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260923-2';
 
-import {installLabelProtocols, localizeTile} from './vendor/tile-labels.js?v=20260923-1';
+import {installLabelProtocols, localizeTile} from './vendor/tile-labels.js?v=20260923-2';
 
 const $ = id => document.getElementById(id);
 const settings = readSettings(location.search);
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260923-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260923-2';
 const errors = new Set();
 const textNode = (tag, value, className) => {
   const el = document.createElement(tag); el.textContent = value;
@@ -204,6 +204,8 @@ async function initialize() {
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
   map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
   map.on('error', e => {
+    // Panning and replacing language sources intentionally cancel old tiles.
+    if (e.error?.name === 'AbortError' || /^AbortError$|operation was aborted/i.test(e.error?.message || '')) return;
     console.error('Map resource error', e.error);
     errors.add(e.sourceId || 'resource');
     status.classList.add('error'); status.textContent = 'Some map data could not load. Check your connection or reload to retry.';

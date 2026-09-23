@@ -13,22 +13,35 @@ await page.addInitScript(()=>{
   };
 });
 async function finishFrame(){
-  // Flush camera/style changes so areTilesLoaded checks the new tile set.
+  // Flush camera/style changes before testing the new tile set. Require a
+  // quiet network interval because custom protocols may start follow-up work.
   await page.evaluate(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     await new Promise(resolve=>{map.once('render',resolve);map.triggerRepaint();});
   });
-  await page.waitForFunction(async()=>{
-    const {map}=await import(document.querySelector('script[type="module"]').src);
-    return map.areTilesLoaded();
-  },undefined,{timeout:120000});
+  const until=Date.now()+120000;
+  let quietSince;
+  while(Date.now()<until) {
+    const loaded=await page.evaluate(async()=>{
+      const {map}=await import(document.querySelector('script[type="module"]').src);
+      return map.areTilesLoaded();
+    });
+    if(loaded && pendingRequests.size===0) {
+      quietSince ||= Date.now();
+      if(Date.now()-quietSince>1000) break;
+    } else quietSince=undefined;
+    await page.waitForTimeout(200);
+  }
+  assert.ok(quietSince && Date.now()-quietSince>1000,'Map requests should finish before screenshot');
+  // Finish fades first, then submit and finish the final GPU frame immediately
+  // before capture, rather than letting another asynchronous frame replace it.
+  await page.waitForTimeout(1000);
   await page.evaluate(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     await new Promise(resolve=>{map.once('render',resolve);map.triggerRepaint();});
     const canvas=map.getCanvas();
     (canvas.getContext('webgl2')||canvas.getContext('webgl'))?.finish();
   });
-  await page.waitForTimeout(1000); // Finish label fades before visual review.
 }
 async function moveTo(zoom,lng,lat){
   await page.evaluate(async({zoom,lng,lat})=>{
@@ -36,13 +49,15 @@ async function moveTo(zoom,lng,lat){
     map.jumpTo({zoom,center:[lng,lat]});
   },{zoom,lng,lat});
 }
-const errors=[],requests=[];
+const errors=[],requests=[],pendingRequests=new Set();
 page.on('pageerror', e=>errors.push(e.message));
-page.on('request',req=>requests.push(req.url()));
+page.on('request',req=>{requests.push(req.url());pendingRequests.add(req);});
+page.on('requestfinished',req=>pendingRequests.delete(req));
+page.on('requestfailed',req=>pendingRequests.delete(req));
 page.on('console',msg=>{if(msg.type()==='error') console.log('Browser resource:',msg.text());});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260923-1&language=ko#7/34.229/129.245');
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260923-2&language=ko#7/34.229/129.245');
   await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:120000});
   await page.waitForFunction(()=>+document.querySelector('#map-status').dataset.renderedTracks>0,undefined,{timeout:120000});
   // Pan northwest at the SAME zoom before any visit to zoom 8.
@@ -112,6 +127,11 @@ try{
   });
   assert.ok(annotationCount>0,'Major contours should have visible elevation labels');
   console.log('PASS: labelled major contours',annotationCount);
+  assert.ok(await page.evaluate(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    const features=map.queryRenderedFeatures();
+    return features.some(f=>f.layer.id==='water') && features.filter(f=>f.layer.id.startsWith('station-')).length>5;
+  }),'Completed contour view must retain basemap water and station symbols');
   const contours=await page.screenshot({path:'browser-review/contours.jpg',type:'jpeg',quality:55});
   console.log('CONTOUR_IMAGE_START'+contours.toString('base64')+'CONTOUR_IMAGE_END');
   console.log('Checking display controls');
@@ -147,6 +167,11 @@ try{
   },undefined,{timeout:120000});
   await page.locator('#collapse').click();
   await finishFrame();
+  assert.ok(await page.evaluate(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    return map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-') && f.properties.atlas_language==='zh-Hans').length>5;
+  }),'Completed Chinese view must retain station labels');
+  assert.equal(await page.locator('#map-status.error').count(),0,'Cancelled old requests must not leave a load-failure warning');
   const china=await page.screenshot({path:'browser-review/china-z7.jpg',type:'jpeg',quality:45});
   console.log('CHINA_IMAGE_START'+china.toString('base64')+'CHINA_IMAGE_END');
   assert.deepEqual(errors,[]);

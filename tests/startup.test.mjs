@@ -64,6 +64,9 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
     maps[0].handlers.load();
     assert.equal(window.document.body.dataset.mapReady,'true');
     assert.equal(maps[0].visibility['speed-tracks'],'visible');
+    maps[0].handlers.error({error:{name:'AbortError',message:'AbortError'}});
+    assert.equal(window.document.getElementById('map-status').classList.contains('error'),false);
+    assert.equal(errors.length,0);
     window.document.querySelector('[data-mode="infrastructure"]').click();
     assert.equal(maps[0].visibility['speed-tracks'],'none');
     assert.equal(maps[0].visibility['infrastructure-tracks'],'visible');
