@@ -99,6 +99,11 @@ try{
     return Math.abs(map.getCenter().lng-129.4)<0.01 && map.isSourceLoaded('contours') && contours.some(f=>f.properties.ele<0) && contours.some(f=>f.properties.ele>0);
   },undefined,{timeout:120000});
   console.log('PASS: both land elevation and negative seabed contours rendered');
+  console.log('Contour annotations',await page.evaluate(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    const features=map.queryRenderedFeatures().filter(f=>f.source==='contours');
+    return {labels:features.filter(f=>f.layer.id==='terrain-contour-labels').length,levels:[...new Set(features.map(f=>JSON.stringify(f.properties)))].slice(0,30),field:map.getLayoutProperty('terrain-contour-labels','text-field')};
+  }));
   await finishFrame();
   const contours=await page.screenshot({path:'browser-review/contours.jpg',type:'jpeg',quality:55});
   console.log('CONTOUR_IMAGE_START'+contours.toString('base64')+'CONTOUR_IMAGE_END');
@@ -111,7 +116,10 @@ try{
   },undefined,{timeout:30000});
   await page.locator('#inactive').check();
   await page.locator('#relief').uncheck();
-  assert.equal(await page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map.queryRenderedFeatures().some(f=>f.source==='contours');}),false);
+  await page.waitForFunction(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    return map.getLayoutProperty('terrain-contours','visibility')==='none' && !map.queryRenderedFeatures().some(f=>f.source==='contours');
+  },undefined,{timeout:30000});
   await page.locator('#relief').check();
   assert.equal(await page.locator('.language-picker select').count(),1);
   assert.equal(await page.locator('#region').count(),0);
