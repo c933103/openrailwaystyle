@@ -13,6 +13,11 @@ await page.addInitScript(()=>{
   };
 });
 async function finishFrame(){
+  // Flush camera/style changes so areTilesLoaded checks the new tile set.
+  await page.evaluate(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    await new Promise(resolve=>{map.once('render',resolve);map.triggerRepaint();});
+  });
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return map.areTilesLoaded();
@@ -99,12 +104,14 @@ try{
     return Math.abs(map.getCenter().lng-129.4)<0.01 && map.isSourceLoaded('contours') && contours.some(f=>f.properties.ele<0) && contours.some(f=>f.properties.ele>0);
   },undefined,{timeout:120000});
   console.log('PASS: both land elevation and negative seabed contours rendered');
-  console.log('Contour annotations',await page.evaluate(async()=>{
+  await finishFrame();
+  const annotationCount=await page.evaluate(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     const features=map.queryRenderedFeatures().filter(f=>f.source==='contours');
-    return {labels:features.filter(f=>f.layer.id==='terrain-contour-labels').length,levels:[...new Set(features.map(f=>JSON.stringify(f.properties)))].slice(0,30),field:map.getLayoutProperty('terrain-contour-labels','text-field')};
-  }));
-  await finishFrame();
+    return features.filter(f=>f.layer.id==='terrain-contour-labels').length;
+  });
+  assert.ok(annotationCount>0,'Major contours should have visible elevation labels');
+  console.log('PASS: labelled major contours',annotationCount);
   const contours=await page.screenshot({path:'browser-review/contours.jpg',type:'jpeg',quality:55});
   console.log('CONTOUR_IMAGE_START'+contours.toString('base64')+'CONTOUR_IMAGE_END');
   console.log('Checking display controls');
@@ -125,6 +132,12 @@ try{
   assert.equal(await page.locator('#region').count(),0);
   assert.ok(requests.some(url=>url.includes('terrarium')),'Relief source requested');
   assert.ok(requests.some(url=>url.includes('standard_railway_text_stations')&&url.includes('lang=en')),'Translated station tiles requested');
+  await page.selectOption('#language','zh-Hant');
+  await page.waitForFunction(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    return map.isSourceLoaded('stations') && map.queryRenderedFeatures().some(f=>f.source==='stations' && f.properties.atlas_language==='zh-Hant' && /\p{Script=Hangul}/u.test(f.properties.name||'') && /\p{Script=Han}/u.test(f.properties.atlas_name||''));
+  },undefined,{timeout:120000});
+  console.log('PASS: Chinese language selects recorded ideographic names for Korean stations');
   console.log('Checking China regional map');
   await page.selectOption('#language','zh-Hans');
   await moveTo(7,116.4,30.5);

@@ -1261,7 +1261,7 @@
       ],
       "layout": {
         "symbol-placement": "line",
-        "symbol-spacing": 550,
+        "symbol-spacing": 250,
         "text-field": [
           "concat",
           [
@@ -1277,7 +1277,7 @@
           "Noto Sans Regular"
         ],
         "text-size": 10,
-        "text-padding": 14
+        "text-padding": 10
       },
       "paint": {
         "text-color": [

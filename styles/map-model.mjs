@@ -49,9 +49,10 @@ export function chooseName(p, lang = 'local') {
   ];
   else if (lang === 'ja') preferred = [
     ...selected.filter(han), ...local.filter(han), ...ideographicKeys.map(k=>p[k]).filter(han), ...recorded.filter(han),
-    ...selected, ...english,
+    ...selected, ...local.filter(v=>/[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(v)), ...english,
   ];
   else if (lang === 'ru') preferred = [...selected.filter(cyrillic), ...local.filter(cyrillic), ...recorded.filter(cyrillic), ...english];
+  else if (lang === 'ko') preferred = [...selected, ...local.filter(v=>/\p{Script=Hangul}/u.test(v)), ...english];
   else preferred = [...selected, ...english];
   return [...preferred, ...local, p.localized_name, p.label, p.ref].find(nonempty) || '';
 }

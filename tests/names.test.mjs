@@ -17,6 +17,8 @@ test('language fallbacks prefer English, Cyrillic, Hanja, Nôm and ordinary Japa
   assert.equal(chooseName({name:'test','name:vi-Hani':'𡗶','name:en':'English'},'zh-Hant'),'𡗶');
   assert.equal(chooseName({...korea,'name:fr':'','name:en':''},'fr'),'진주');
   assert.equal(chooseName(korea,'local'),'진주');
+  assert.equal(chooseName(korea,'ko'),'진주','English fetched for another station must not replace available native Korean');
+  assert.equal(chooseName({name:'つくば','name:en':'Tsukuba'},'ja'),'つくば');
   assert.equal(readSettings('?stationLanguage=ko').language,'ko');
   assert.equal(readSettings('?language=ru&stationLanguage=ko').language,'ru');
 });
