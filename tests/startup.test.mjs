@@ -21,6 +21,8 @@ async function start({ failWebGL = false } = {}) {
       this.options = options; this.handlers = {}; this.visibility = {};
       maps.push(this);
     }
+    once(name,handler) {this.handlers[name]=handler;}
+    setStyle(style) {this.options.style=style;this.handlers['style.load']?.();}
     addControl() {}
     addImage(id, data, options) { this.image = {id,data,options}; }
     off(name) { delete this.handlers[name]; }

@@ -236,19 +236,29 @@ document.querySelectorAll('[data-mode]').forEach(button => button.addEventListen
 for (const key of ['stations', 'labels', 'inactive', 'relief', 'names']) $(key).addEventListener('change', () => {
   settings[key] = $(key).checked; applySettings(); saveSettings();
 });
+function reloadLanguage() {
+  const appliedLanguage=settings.language;
+  const style=map.getStyle();localizeStyle(style);
+  ready=false;errors.clear();
+  status.classList.remove('error');status.textContent='Updating map labels…';
+  // Replace the style atomically. Incremental setUrl calls can leave stale
+  // symbol-placement buckets after a language switch followed by a long pan.
+  // Camera and display options persist; protocol/HTTP caches reuse the data.
+  map.once('style.load',()=>{
+    ready=true;
+    if(appliedLanguage!==settings.language) {reloadLanguage();return;}
+    applySettings();updateStatus();
+    if(currentFeature) showDetails(currentFeature);
+  });
+  map.setStyle(style,{diff:false});
+}
 {
   const select = $('language');
   for (const [code,name] of LANGUAGES) {const option=textNode('option',name);option.value=code;select.append(option);}
   select.value=settings.language;
   select.addEventListener('change',()=>{
     settings.language=select.value;
-    if(ready) {
-      const style=map.getStyle();localizeStyle(style);
-      for(const layer of style.layers) if(layer.type==='symbol' && layer.layout?.['text-field']) map.setLayoutProperty(layer.id,'text-field',layer.layout['text-field']);
-      for(const source of ['openmaptiles','stationLow','stationMed','stations']) map.getSource(source).setUrl(style.sources[source].url);
-      map.getSource('inactiveRegional').setTiles(style.sources.inactiveRegional.tiles);
-      if(currentFeature) showDetails(currentFeature);
-    }
+    if(ready) reloadLanguage();
     saveSettings();
   });
 }
