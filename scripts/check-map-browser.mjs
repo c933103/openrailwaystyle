@@ -62,7 +62,7 @@ try{
   await moveTo(7,128.1,35.65);
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
-    return Math.abs(map.getCenter().lng-128.1)<0.01 && map.isSourceLoaded('inactiveRegional') && document.querySelector('#map-status').dataset.lifecycleNames?.includes('남부내륙');
+    return Math.abs(map.getCenter().lng-128.1)<0.01 && (map.getSource('inactiveRegional') && map.isSourceLoaded('inactiveRegional')) && document.querySelector('#map-status').dataset.lifecycleNames?.includes('남부내륙');
   },undefined,{timeout:120000});
   console.log('PASS: 남부내륙선 rendered after pan at zoom 7, before visiting zoom 8');
   console.log('Inspecting rendered line extent, stations and borders');
@@ -88,7 +88,7 @@ try{
   await moveTo(10,128.12,35.17);
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
-    return Math.abs(map.getZoom()-10)<0.01 && map.isSourceLoaded('railway') && map.queryRenderedFeatures().some(f=>f.layer.id.endsWith('-names') && !f.layer.id.startsWith('station-'));
+    return Math.abs(map.getZoom()-10)<0.01 && (map.getSource('railway') && map.isSourceLoaded('railway')) && map.queryRenderedFeatures().some(f=>f.layer.id.endsWith('-names') && !f.layer.id.startsWith('station-'));
   },undefined,{timeout:45000});
   console.log('PASS: railway names rendered at zoom 10');
   await finishFrame();
@@ -97,7 +97,7 @@ try{
   await page.selectOption('#language','fr');
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
-    return map.isSourceLoaded('stations') && map.queryRenderedFeatures().some(f=>f.source==='stations' && f.properties.atlas_language==='fr' && !f.properties['name:fr'] && f.properties['name:en'] && f.properties.atlas_name===f.properties['name:en']);
+    return (map.getSource('stations') && map.isSourceLoaded('stations')) && map.queryRenderedFeatures().some(f=>f.source==='stations' && f.properties.atlas_language==='fr' && !f.properties['name:fr'] && f.properties['name:en'] && f.properties.atlas_name===f.properties['name:en']);
   },undefined,{timeout:120000});
   console.log('PASS: French station labels use fetched English names when French is absent');
   await page.locator('[data-mode="infrastructure"]').click();
@@ -114,7 +114,7 @@ try{
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     const contours=map.queryRenderedFeatures().filter(f=>f.layer.id==='terrain-contours');
-    return Math.abs(map.getCenter().lng-129.4)<0.01 && map.isSourceLoaded('contours') && contours.some(f=>f.properties.ele<0) && contours.some(f=>f.properties.ele>0);
+    return Math.abs(map.getCenter().lng-129.4)<0.01 && (map.getSource('contours') && map.isSourceLoaded('contours')) && contours.some(f=>f.properties.ele<0) && contours.some(f=>f.properties.ele>0);
   },undefined,{timeout:120000});
   console.log('PASS: both land elevation and negative seabed contours rendered');
   await finishFrame();
@@ -153,7 +153,7 @@ try{
   await page.selectOption('#language','zh-Hant');
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
-    return map.isSourceLoaded('stations') && map.queryRenderedFeatures().some(f=>f.source==='stations' && f.properties.atlas_language==='zh-Hant' && /\p{Script=Hangul}/u.test(f.properties.name||'') && /\p{Script=Han}/u.test(f.properties.atlas_name||''));
+    return (map.getSource('stations') && map.isSourceLoaded('stations')) && map.queryRenderedFeatures().some(f=>f.source==='stations' && f.properties.atlas_language==='zh-Hant' && /\p{Script=Hangul}/u.test(f.properties.name||'') && /\p{Script=Han}/u.test(f.properties.atlas_name||''));
   },undefined,{timeout:120000});
   console.log('PASS: Chinese language selects recorded ideographic names for Korean stations');
   console.log('Checking China regional map');
@@ -161,7 +161,7 @@ try{
   await moveTo(7,116.4,30.5);
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
-    return Math.abs(map.getCenter().lng-116.4)<0.01 && Math.abs(map.getZoom()-7)<0.01 && !map.isMoving() && ['stationMed','openmaptiles','railway','relief'].every(id=>map.isSourceLoaded(id)) && map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-') && f.geometry.type==='Point' && f.geometry.coordinates[0]>110 && f.geometry.coordinates[0]<125).length>5;
+    return Math.abs(map.getCenter().lng-116.4)<0.01 && Math.abs(map.getZoom()-7)<0.01 && !map.isMoving() && ['stationMed','openmaptiles','railway','relief'].every(id=>map.getSource(id) && map.isSourceLoaded(id)) && map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-') && f.geometry.type==='Point' && f.geometry.coordinates[0]>110 && f.geometry.coordinates[0]<125).length>5;
   },undefined,{timeout:120000});
   await page.locator('#collapse').click();
   await finishFrame();
