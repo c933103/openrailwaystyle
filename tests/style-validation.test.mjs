@@ -19,17 +19,11 @@ test('MapLibre evaluates unknown and mph-normalized speeds correctly', () => {
   assert.equal(evalColor({ maxspeed:300 }), '#742da0');
 });
 
-test('translated label expressions retain native names when translation is absent or empty', async () => {
-  const {labelExpression}=await import('../styles/map-model.mjs');
-  for(const lang of ['local','en','ko','zh-Hant']) {
-    const compiled=createExpression(labelExpression(lang,true));
-    assert.equal(compiled.result,'success');
-    const value=p=>compiled.value.evaluate({zoom:9},{type:1,properties:p});
-    assert.equal(value({name:'서울'}),'서울');
-    assert.equal(value({'name:nonlatin':'서울','name:latin':'Seoul'}),'서울');
-    assert.equal(value({'name:en':'',name:'서울'}),'서울');
-    assert.equal(value({'name:en':null,name:'서울'}),'서울');
-  }
-  const compiled=createExpression(labelExpression('en',true));
-  assert.equal(compiled.value.evaluate({zoom:9},{type:1,properties:{name:'서울',localized_name:'Seoul'}}),'Seoul');
+test('network colours distinguish classes, including empty service fields', () => {
+  const expression=style.layers.find(l=>l.id==='infrastructure-tracks').paint['line-color'];
+  const compiled=createExpression(expression);assert.equal(compiled.result,'success');
+  const color=p=>compiled.value.evaluate({zoom:12},{type:2,properties:p});
+  const values=[{highspeed:true},{feature:'rail',service:null},{feature:'rail',usage:'branch',service:''},{feature:'subway'},{feature:'tram'},{service:'siding'}].map(color);
+  assert.equal(new Set(values).size,6);
+  assert.equal(color({feature:'rail'}),color({feature:'rail',service:''}));
 });

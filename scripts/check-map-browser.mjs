@@ -37,7 +37,7 @@ page.on('request',req=>requests.push(req.url()));
 page.on('console',msg=>{if(msg.type()==='error') console.log('Browser resource:',msg.text());});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260922-3&mapLanguage=en&stationLanguage=ko#7/34.229/129.245');
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260923-1&language=ko#7/34.229/129.245');
   await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:120000});
   await page.waitForFunction(()=>+document.querySelector('#map-status').dataset.renderedTracks>0,undefined,{timeout:120000});
   // Pan northwest at the SAME zoom before any visit to zoom 8.
@@ -66,8 +66,7 @@ try{
   const shot=await page.screenshot({path:'browser-review/korea-z7.jpg',type:'jpeg',quality:45});
   console.log('REVIEW_IMAGE_START'+shot.toString('base64')+'REVIEW_IMAGE_END');
   await page.locator('#collapse').click();
-  await page.selectOption('#stationLanguage','en');
-  await page.selectOption('#lineLanguage','en');
+  await page.selectOption('#language','en');
   await moveTo(10,128.12,35.17);
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
@@ -77,6 +76,32 @@ try{
   await finishFrame();
   const detail=await page.screenshot({path:'browser-review/korea-z10.jpg',type:'jpeg',quality:55});
   console.log('DETAIL_IMAGE_START'+detail.toString('base64')+'DETAIL_IMAGE_END');
+  await page.selectOption('#language','fr');
+  await page.waitForFunction(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    return map.isSourceLoaded('stations') && map.queryRenderedFeatures().some(f=>f.source==='stations' && f.properties.atlas_language==='fr' && !f.properties['name:fr'] && f.properties['name:en'] && f.properties.atlas_name===f.properties['name:en']);
+  },undefined,{timeout:120000});
+  console.log('PASS: French station labels use fetched English names when French is absent');
+  await page.locator('[data-mode="infrastructure"]').click();
+  await page.waitForFunction(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    const features=map.queryRenderedFeatures();
+    return ['infrastructure-bridge-edge','infrastructure-tunnel'].every(id=>features.some(f=>f.layer.id===id));
+  },undefined,{timeout:45000});
+  console.log('PASS: bridge outlines and tunnel dashes render on real railway data');
+  await finishFrame();
+  const infrastructure=await page.screenshot({path:'browser-review/infrastructure.jpg',type:'jpeg',quality:55});
+  console.log('STRUCTURE_IMAGE_START'+infrastructure.toString('base64')+'STRUCTURE_IMAGE_END');
+  await moveTo(8,129.4,36.3);
+  await page.waitForFunction(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    const contours=map.queryRenderedFeatures().filter(f=>f.layer.id==='terrain-contours');
+    return Math.abs(map.getCenter().lng-129.4)<0.01 && map.isSourceLoaded('contours') && contours.some(f=>f.properties.ele<0) && contours.some(f=>f.properties.ele>0);
+  },undefined,{timeout:120000});
+  console.log('PASS: both land elevation and negative seabed contours rendered');
+  await finishFrame();
+  const contours=await page.screenshot({path:'browser-review/contours.jpg',type:'jpeg',quality:55});
+  console.log('CONTOUR_IMAGE_START'+contours.toString('base64')+'CONTOUR_IMAGE_END');
   console.log('Checking display controls');
   await page.locator('.display-options summary').click();
   await page.locator('#inactive').uncheck();
@@ -86,13 +111,14 @@ try{
   },undefined,{timeout:30000});
   await page.locator('#inactive').check();
   await page.locator('#relief').uncheck();
+  assert.equal(await page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map.queryRenderedFeatures().some(f=>f.source==='contours');}),false);
   await page.locator('#relief').check();
+  assert.equal(await page.locator('.language-picker select').count(),1);
   assert.equal(await page.locator('#region').count(),0);
   assert.ok(requests.some(url=>url.includes('terrarium')),'Relief source requested');
   assert.ok(requests.some(url=>url.includes('standard_railway_text_stations')&&url.includes('lang=en')),'Translated station tiles requested');
   console.log('Checking China regional map');
-  await page.selectOption('#mapLanguage','zh-Hans');
-  await page.selectOption('#stationLanguage','zh-Hans');
+  await page.selectOption('#language','zh-Hans');
   await moveTo(7,116.4,30.5);
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
@@ -103,7 +129,7 @@ try{
   const china=await page.screenshot({path:'browser-review/china-z7.jpg',type:'jpeg',quality:45});
   console.log('CHINA_IMAGE_START'+china.toString('base64')+'CHINA_IMAGE_END');
   assert.deepEqual(errors,[]);
-  console.log('PASS: languages, names, relief and lifecycle controls; no JavaScript exceptions');
+  console.log('PASS: one shared language, name fallbacks, contours, structures and lifecycle controls; no JavaScript exceptions');
 } catch(error) {
   console.log('Failure diagnostics',await page.evaluate(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);

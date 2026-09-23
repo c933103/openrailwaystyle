@@ -26,7 +26,7 @@ async function start({ failWebGL = false } = {}) {
     off(name) { delete this.handlers[name]; }
     on(name, handler) { this.handlers[name] = handler; }
     getStyle() { return this.options.style; }
-    getSource(id) { return {setUrl: url => {this.options.style.sources[id].url=url;}}; }
+    getSource(id) { return {setUrl: url => {this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
     setLayoutProperty(id, property, value) { this.visibility[id] = value; }
     getZoom() { return 4; }
     queryRenderedFeatures() { return []; }
@@ -35,6 +35,7 @@ async function start({ failWebGL = false } = {}) {
   // supported() is absent: older Mapbox examples must not gate startup.
   window.maplibregl = {Map, addProtocol(){}, NavigationControl:class {}, ScaleControl:class {}};
   window.pmtiles = {Protocol:class { tile() {} }};
+  window.mlcontour = {DemSource:class {setupMaplibre(){} contourProtocolUrl(){return 'atlas-contour://{z}/{x}/{y}';} sharedDemProtocolUrl='atlas-shared://{z}/{x}/{y}';}};
   window.fetch = async () => ({ok:true,json:async()=>structuredClone(style)});
   const context = dom.getInternalVMContext();
   const dependency = new vm.SyntheticModule(Object.keys(model), function() {
@@ -44,7 +45,8 @@ async function start({ failWebGL = false } = {}) {
     context,
     initializeImportMeta(meta) { meta.url = 'https://example.org/openrailwaystyle/app.mjs'; },
   });
-  await app.link(() => dependency);
+  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile'],function(){this.setExport('installLabelProtocols',()=>{});this.setExport('localizeTile',x=>x);},{context});
+  await app.link(specifier=>specifier.includes('tile-labels')?protocols:dependency);
   await app.evaluate();
   await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors};
@@ -55,7 +57,7 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
   try {
     assert.equal(maps.length,1,'startup must reach the map constructor');
     assert.equal(errors.length,0);
-    assert.deepEqual(maps[0].options.style.sources.inactiveRegional.tiles,['railtiles://{z}/{x}/{y}']);
+    assert.equal(maps[0].options.style.sources.inactiveRegional.tiles[0],'railtiles://{z}/{x}/{y}?lang=local');
     maps[0].handlers.styleimagemissing({id:'station-dot'});
     assert.equal(maps[0].image.id,'station-dot');
     assert.equal(maps[0].image.data.data.length,32*32*4);
@@ -66,10 +68,10 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
     assert.equal(maps[0].visibility['speed-tracks'],'none');
     assert.equal(maps[0].visibility['infrastructure-tracks'],'visible');
     assert.equal(maps[0].visibility['station-stations-dots'],'visible');
-    const language = window.document.getElementById('stationLanguage');
+    const language = window.document.getElementById('language');
     language.value='ko'; language.dispatchEvent(new window.Event('change'));
-    assert.match(maps[0].options.style.sources.stations.url, /lang=ko/);
-    assert.match(window.location.search, /stationLanguage=ko/);
+    assert.match(maps[0].options.style.sources.stations.url, /atlasstation:\/\/ko\//);
+    assert.match(window.location.search, /language=ko/);
     assert.equal(window.document.getElementById('region'),null);
     const former = window.document.getElementById('inactive');
     former.checked = false; former.dispatchEvent(new window.Event('change'));

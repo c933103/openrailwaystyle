@@ -1,5 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { ORM, SPEED_BANDS, UNKNOWN_COLOR, labelExpression } from '../styles/map-model.mjs';
+import { ORM, SPEED_BANDS, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL } from '../styles/map-model.mjs';
 
 // Keep the Hack4Rail base-map design and replace its Europe-only rail source.
 const original = JSON.parse(await readFile(new URL('../styles/default.style.json', import.meta.url)));
@@ -21,7 +21,8 @@ const style = {
     stationMed: vector('standard_railway_text_stations_med', 7, 7),
     stations: vector('standard_railway_text_stations', 8, 16),
     inactiveRegional: { type: 'vector', tiles: ['railtiles://{z}/{x}/{y}'], minzoom: 5, maxzoom: 10, promoteId: 'osm_id', attribution: '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>' },
-    relief: {type:'raster-dem', tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], tileSize:256, encoding:'terrarium', maxzoom:15, attribution:'<a href="terrain-credits.html">Terrain: Mapzen / AWS and data contributors</a>'},
+    contours: {type:'vector',tiles:['atlas-contour://{z}/{x}/{y}'],minzoom:7,maxzoom:15},
+    relief: {type:'raster-dem', tiles:[DEM_URL], tileSize:256, encoding:'terrarium', maxzoom:15, attribution:'<a href="terrain-credits.html">Terrain: Mapzen / AWS and data contributors</a>'},
   },
   layers: original.layers.filter(l => (!l.source || l.source === 'openmaptiles') && !l.id.startsWith('airport_')).map(l => structuredClone(l)),
 };
@@ -49,18 +50,24 @@ style.layers.push({...firstBoundary,id:'regional-borders',paint:{'line-color':'#
 style.layers = [...style.layers.filter(l=>l.type==='background'||l.type==='fill'), ...style.layers.filter(l=>l.type!=='background'&&l.type!=='fill')];
 const reliefIndex = style.layers.findIndex(l => l.type === 'line');
 style.layers.splice(reliefIndex,0,{id:'terrain-relief',type:'hillshade',source:'relief',paint:{'hillshade-exaggeration':0.3,'hillshade-shadow-color':'#667365','hillshade-highlight-color':'#ffffff','hillshade-accent-color':'#738978','hillshade-illumination-anchor':'map','hillshade-illumination-direction':315}});
+const contourBase = {type:'line',source:'contours','source-layer':'contours',minzoom:7,filter:['!=',['get','ele'],0],layout:{'line-join':'round'}};
+const contourColor = ['case',['<',['get','ele'],0],'#467d9a','#927b5a'];
+// Keep contours below transport and administrative linework.
+style.layers.splice(reliefIndex+1,0,{...contourBase,id:'terrain-contours',paint:{'line-color':contourColor,'line-width':['case',['>', ['get','level'],0],0.8,0.4],'line-opacity':['interpolate',['linear'],['zoom'],7,0.45,12,0.65]}});
+style.layers.push({id:'terrain-contour-labels',type:'symbol',source:'contours','source-layer':'contours',minzoom:8,filter:['all',['>', ['get','level'],0],['!=',['get','ele'],0]],layout:{'symbol-placement':'line','symbol-spacing':550,'text-field':['concat',['to-string',['get','ele']],' m'],'text-font':['Noto Sans Regular'],'text-size':10,'text-padding':14},paint:{'text-color':contourColor,'text-halo-color':'#f2f1e9','text-halo-width':1}});
 const number = key => ['to-number', ['coalesce', ['get', key], -1], -1];
 const present = ['==', ['coalesce', ['get', 'state'], 'present'], 'present'];
 const notFerry = ['!=', ['get', 'feature'], 'ferry'];
 const speed = number('maxspeed');
 const speedPaint = ['case', ['<', speed, 0], UNKNOWN_COLOR,
   ['step', speed, SPEED_BANDS[0].color, ...SPEED_BANDS.slice(1).flatMap(b => [b.min, b.color])]];
+const hasService = ['!=',['coalesce',['get','service'],''],''];
 const infrastructurePaint = ['case',
-  ['==', ['get', 'highspeed'], true], '#a92b47',
-  ['match', ['get', 'feature'], ['subway', 'light_rail', 'monorail'], true, false], '#237b82',
-  ['==', ['get', 'feature'], 'tram'], '#9f5e96',
-  ['has', 'service'], '#888278',
-  ['==', ['get', 'usage'], 'branch'], '#a97d29', '#b85c29'];
+  ['==', ['get', 'highspeed'], true], INFRASTRUCTURE[0][0],
+  ['match', ['get', 'feature'], ['subway', 'light_rail', 'monorail'], true, false], INFRASTRUCTURE[3][0],
+  ['==', ['get', 'feature'], 'tram'], INFRASTRUCTURE[4][0],
+  hasService, INFRASTRUCTURE[5][0],
+  ['==', ['get', 'usage'], 'branch'], INFRASTRUCTURE[2][0], INFRASTRUCTURE[1][0]];
 const electricPaint = ['case',
   ['match', ['get', 'electrification_state'], ['no', 'deelectrified'], true, false], '#525b62',
   ['<', number('voltage'), 0], UNKNOWN_COLOR,
@@ -79,10 +86,21 @@ for (const [mode, source, sourceLayer, color] of [
 ]) {
   addLine(`${mode}-overview`, source, sourceLayer, 0, 7, color);
   addLine(`${mode}-tracks`, 'railway', 'railway_line_high', 7, undefined, color, {
-    'line-opacity': ['case', ['==', ['get', 'tunnel'], true], 0.65, 1],
-    'line-width': ['interpolate', ['linear'], ['zoom'], 7, 1.6, 11, ['case', ['has', 'service'], 1.1, 2.8], 16, ['case', ['has', 'service'], 2, 4.8], 20, 7],
+    'line-opacity': mode === 'infrastructure' ? 1 : ['case', ['==', ['get', 'tunnel'], true], 0.65, 1],
+    'line-width': ['interpolate', ['linear'], ['zoom'], 7, 1.6, 11, ['case', hasService, 1.1, 2.8], 16, ['case', hasService, 2, 4.8], 20, 7],
   });
 }
+// Structural cues use shape as well as colour. A bridge has dark parapets
+// outside the class-coloured track; tunnels use a pale dashed core.
+const structure = {type:'line',source:'railway','source-layer':'railway_line_high',minzoom:10,layout:{'line-cap':'butt','line-join':'round'}};
+const bridge = {...structure,filter:['all',present,notFerry,['==',['get','bridge'],true]]};
+const bridgeWidth = ['interpolate',['linear'],['zoom'],10,5.4,14,8,18,12];
+const trackIndex = style.layers.findIndex(l=>l.id==='infrastructure-tracks');
+style.layers.splice(trackIndex,0,
+  {...bridge,id:'infrastructure-bridge-edge',paint:{'line-color':'#263b48','line-width':bridgeWidth}},
+  {...bridge,id:'infrastructure-bridge-deck',paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],10,3.8,14,6,18,10]}},
+);
+style.layers.push({...structure,id:'infrastructure-tunnel',filter:['all',present,notFerry,['==',['get','tunnel'],true]],paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],10,1.1,14,2,18,3], 'line-dasharray':[3,2]}});
 const inactivePaint = {
   'line-color': ['match', ['get', 'state'], 'construction', '#ad7619', 'proposed', '#896192', '#75675c'],
   'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1.2, 7, 1.7, 12, 2, 16, 2.8, 20, 4],

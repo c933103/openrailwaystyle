@@ -78,6 +78,14 @@
       "promoteId": "osm_id",
       "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
     },
+    "contours": {
+      "type": "vector",
+      "tiles": [
+        "atlas-contour://{z}/{x}/{y}"
+      ],
+      "minzoom": 7,
+      "maxzoom": 15
+    },
     "relief": {
       "type": "raster-dem",
       "tiles": [
@@ -328,6 +336,65 @@
         "hillshade-accent-color": "#738978",
         "hillshade-illumination-anchor": "map",
         "hillshade-illumination-direction": 315
+      }
+    },
+    {
+      "type": "line",
+      "source": "contours",
+      "source-layer": "contours",
+      "minzoom": 7,
+      "filter": [
+        "!=",
+        [
+          "get",
+          "ele"
+        ],
+        0
+      ],
+      "layout": {
+        "line-join": "round"
+      },
+      "id": "terrain-contours",
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "<",
+            [
+              "get",
+              "ele"
+            ],
+            0
+          ],
+          "#467d9a",
+          "#927b5a"
+        ],
+        "line-width": [
+          "case",
+          [
+            ">",
+            [
+              "get",
+              "level"
+            ],
+            0
+          ],
+          0.8,
+          0.4
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          0.45,
+          12,
+          0.65
+        ]
       }
     },
     {
@@ -1168,6 +1235,69 @@
       }
     },
     {
+      "id": "terrain-contour-labels",
+      "type": "symbol",
+      "source": "contours",
+      "source-layer": "contours",
+      "minzoom": 8,
+      "filter": [
+        "all",
+        [
+          ">",
+          [
+            "get",
+            "level"
+          ],
+          0
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "ele"
+          ],
+          0
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 550,
+        "text-field": [
+          "concat",
+          [
+            "to-string",
+            [
+              "get",
+              "ele"
+            ]
+          ],
+          " m"
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 10,
+        "text-padding": 14
+      },
+      "paint": {
+        "text-color": [
+          "case",
+          [
+            "<",
+            [
+              "get",
+              "ele"
+            ],
+            0
+          ],
+          "#467d9a",
+          "#927b5a"
+        ],
+        "text-halo-color": "#f2f1e9",
+        "text-halo-width": 1
+      }
+    },
+    {
       "id": "infrastructure-overview",
       "type": "line",
       "source": "network",
@@ -1213,7 +1343,7 @@
             ],
             true
           ],
-          "#a92b47",
+          "#d7191c",
           [
             "match",
             [
@@ -1228,7 +1358,7 @@
             true,
             false
           ],
-          "#237b82",
+          "#8226b0",
           [
             "==",
             [
@@ -1237,12 +1367,20 @@
             ],
             "tram"
           ],
-          "#9f5e96",
+          "#df7900",
           [
-            "has",
-            "service"
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "service"
+              ],
+              ""
+            ],
+            ""
           ],
-          "#888278",
+          "#747d86",
           [
             "==",
             [
@@ -1251,8 +1389,8 @@
             ],
             "branch"
           ],
-          "#a97d29",
-          "#b85c29"
+          "#00865a",
+          "#2356b6"
         ],
         "line-width": [
           "interpolate",
@@ -1274,6 +1412,128 @@
           4.5,
           20,
           7
+        ]
+      }
+    },
+    {
+      "type": "line",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 10,
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "bridge"
+          ],
+          true
+        ]
+      ],
+      "id": "infrastructure-bridge-edge",
+      "paint": {
+        "line-color": "#263b48",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          5.4,
+          14,
+          8,
+          18,
+          12
+        ]
+      }
+    },
+    {
+      "type": "line",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 10,
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "bridge"
+          ],
+          true
+        ]
+      ],
+      "id": "infrastructure-bridge-deck",
+      "paint": {
+        "line-color": "#fffef8",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          3.8,
+          14,
+          6,
+          18,
+          10
         ]
       }
     },
@@ -1322,7 +1582,7 @@
             ],
             true
           ],
-          "#a92b47",
+          "#d7191c",
           [
             "match",
             [
@@ -1337,7 +1597,7 @@
             true,
             false
           ],
-          "#237b82",
+          "#8226b0",
           [
             "==",
             [
@@ -1346,12 +1606,20 @@
             ],
             "tram"
           ],
-          "#9f5e96",
+          "#df7900",
           [
-            "has",
-            "service"
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "service"
+              ],
+              ""
+            ],
+            ""
           ],
-          "#888278",
+          "#747d86",
           [
             "==",
             [
@@ -1360,8 +1628,8 @@
             ],
             "branch"
           ],
-          "#a97d29",
-          "#b85c29"
+          "#00865a",
+          "#2356b6"
         ],
         "line-width": [
           "interpolate",
@@ -1377,8 +1645,16 @@
           [
             "case",
             [
-              "has",
-              "service"
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
             ],
             1.1,
             2.8
@@ -1387,8 +1663,16 @@
           [
             "case",
             [
-              "has",
-              "service"
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
             ],
             2,
             4.8
@@ -1396,19 +1680,7 @@
           20,
           7
         ],
-        "line-opacity": [
-          "case",
-          [
-            "==",
-            [
-              "get",
-              "tunnel"
-            ],
-            true
-          ],
-          0.65,
-          1
-        ]
+        "line-opacity": 1
       }
     },
     {
@@ -1617,8 +1889,16 @@
           [
             "case",
             [
-              "has",
-              "service"
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
             ],
             1.1,
             2.8
@@ -1627,8 +1907,16 @@
           [
             "case",
             [
-              "has",
-              "service"
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
             ],
             2,
             4.8
@@ -1909,8 +2197,16 @@
           [
             "case",
             [
-              "has",
-              "service"
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
             ],
             1.1,
             2.8
@@ -1919,8 +2215,16 @@
           [
             "case",
             [
-              "has",
-              "service"
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
             ],
             2,
             4.8
@@ -1940,6 +2244,71 @@
           ],
           0.65,
           1
+        ]
+      }
+    },
+    {
+      "type": "line",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 10,
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "id": "infrastructure-tunnel",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "tunnel"
+          ],
+          true
+        ]
+      ],
+      "paint": {
+        "line-color": "#fffef8",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          1.1,
+          14,
+          2,
+          18,
+          3
+        ],
+        "line-dasharray": [
+          3,
+          2
         ]
       }
     },
@@ -2577,6 +2946,25 @@
               "coalesce",
               [
                 "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "name"
               ],
               ""
@@ -2607,25 +2995,6 @@
             [
               "get",
               "name:nonlatin"
-            ]
-          ],
-          [
-            "!=",
-            [
-              "coalesce",
-              [
-                "get",
-                "name:latin"
-              ],
-              ""
-            ],
-            ""
-          ],
-          [
-            "to-string",
-            [
-              "get",
-              "name:latin"
             ]
           ],
           [
@@ -2719,6 +3088,25 @@
               "coalesce",
               [
                 "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "name"
               ],
               ""
@@ -2749,25 +3137,6 @@
             [
               "get",
               "name:nonlatin"
-            ]
-          ],
-          [
-            "!=",
-            [
-              "coalesce",
-              [
-                "get",
-                "name:latin"
-              ],
-              ""
-            ],
-            ""
-          ],
-          [
-            "to-string",
-            [
-              "get",
-              "name:latin"
             ]
           ],
           [
@@ -2882,6 +3251,25 @@
               "coalesce",
               [
                 "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "name"
               ],
               ""
@@ -2912,25 +3300,6 @@
             [
               "get",
               "name:nonlatin"
-            ]
-          ],
-          [
-            "!=",
-            [
-              "coalesce",
-              [
-                "get",
-                "name:latin"
-              ],
-              ""
-            ],
-            ""
-          ],
-          [
-            "to-string",
-            [
-              "get",
-              "name:latin"
             ]
           ],
           [
@@ -3039,7 +3408,7 @@
               "coalesce",
               [
                 "get",
-                "localized_name"
+                "atlas_name"
               ],
               ""
             ],
@@ -3049,7 +3418,7 @@
             "to-string",
             [
               "get",
-              "localized_name"
+              "atlas_name"
             ]
           ],
           [
@@ -3088,25 +3457,6 @@
             [
               "get",
               "name:nonlatin"
-            ]
-          ],
-          [
-            "!=",
-            [
-              "coalesce",
-              [
-                "get",
-                "name:latin"
-              ],
-              ""
-            ],
-            ""
-          ],
-          [
-            "to-string",
-            [
-              "get",
-              "name:latin"
             ]
           ],
           [
@@ -3282,7 +3632,7 @@
               "coalesce",
               [
                 "get",
-                "localized_name"
+                "atlas_name"
               ],
               ""
             ],
@@ -3292,7 +3642,7 @@
             "to-string",
             [
               "get",
-              "localized_name"
+              "atlas_name"
             ]
           ],
           [
@@ -3331,25 +3681,6 @@
             [
               "get",
               "name:nonlatin"
-            ]
-          ],
-          [
-            "!=",
-            [
-              "coalesce",
-              [
-                "get",
-                "name:latin"
-              ],
-              ""
-            ],
-            ""
-          ],
-          [
-            "to-string",
-            [
-              "get",
-              "name:latin"
             ]
           ],
           [
@@ -3617,7 +3948,7 @@
               "coalesce",
               [
                 "get",
-                "localized_name"
+                "atlas_name"
               ],
               ""
             ],
@@ -3627,7 +3958,7 @@
             "to-string",
             [
               "get",
-              "localized_name"
+              "atlas_name"
             ]
           ],
           [
@@ -3666,25 +3997,6 @@
             [
               "get",
               "name:nonlatin"
-            ]
-          ],
-          [
-            "!=",
-            [
-              "coalesce",
-              [
-                "get",
-                "name:latin"
-              ],
-              ""
-            ],
-            ""
-          ],
-          [
-            "to-string",
-            [
-              "get",
-              "name:latin"
             ]
           ],
           [
@@ -3927,7 +4239,7 @@
               "coalesce",
               [
                 "get",
-                "localized_name"
+                "atlas_name"
               ],
               ""
             ],
@@ -3937,7 +4249,7 @@
             "to-string",
             [
               "get",
-              "localized_name"
+              "atlas_name"
             ]
           ],
           [
@@ -3976,25 +4288,6 @@
             [
               "get",
               "name:nonlatin"
-            ]
-          ],
-          [
-            "!=",
-            [
-              "coalesce",
-              [
-                "get",
-                "name:latin"
-              ],
-              ""
-            ],
-            ""
-          ],
-          [
-            "to-string",
-            [
-              "get",
-              "name:latin"
             ]
           ],
           [

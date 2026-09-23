@@ -1,11 +1,12 @@
-import { SPEED_BANDS, UNKNOWN_COLOR, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260922-3';
+import { SPEED_BANDS, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, CONTOUR_OPTIONS, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260923-1';
 
+import {installLabelProtocols, localizeTile} from './vendor/tile-labels.js?v=20260923-1';
 
 const $ = id => document.getElementById(id);
 const settings = readSettings(location.search);
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260922-3';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260923-1';
 const errors = new Set();
 const textNode = (tag, value, className) => {
   const el = document.createElement(tag); el.textContent = value;
@@ -16,13 +17,14 @@ function renderLegend() {
   const box = $('legend'); box.replaceChildren();
   const legends = {
     speed: { title: 'Mapped maximum speed · km/h', rows: SPEED_BANDS.map(b => [b.color, b.label]) },
-    infrastructure: { title: 'Railway infrastructure', rows: [['#a92b47','High-speed line'],['#b85c29','Railway'],['#a97d29','Branch line'],['#237b82','Metro / light rail'],['#9f5e96','Tram'],['#888278','Service tracks']] },
+    infrastructure: { title: 'Railway infrastructure', rows: INFRASTRUCTURE },
     electrification: { title: 'Electrification · nominal voltage', rows: [['#d364a1','< 1 kV'],['#9d56b6','1–< 3 kV'],['#317cb9','3–< 15 kV'],['#42864a','15–< 25 kV'],['#c94831','≥ 25 kV'],['#525b62','Not electrified']] },
   };
   const legend = legends[settings.mode];
   box.append(textNode('h2', legend.title));
   const grid = textNode('div', '', 'legend-grid');
   const rows = [...legend.rows];
+  if (settings.mode === 'infrastructure') rows.push(['#2356b6','Bridge (zoom 10+)','bridge'], ['#2356b6','Tunnel (zoom 10+)','tunnel']);
   if (settings.mode !== 'infrastructure') rows.push([UNKNOWN_COLOR, 'Unknown']);
   if (settings.inactive) rows.push(['#896192', 'Proposed', 'dashed'], ['#ad7619', 'Construction', 'dashed'], ['#75675c', 'Former lines', 'dashed']);
   for (const [color, label, extra] of rows) {
@@ -43,7 +45,8 @@ function saveSettings() {
   const url = new URL(location.href);
   url.searchParams.set('mode', settings.mode);
   for (const key of ['stations', 'labels', 'inactive', 'relief', 'names']) url.searchParams.set(key, settings[key] ? '1' : '0');
-  for (const key of ['mapLanguage','stationLanguage','lineLanguage']) url.searchParams.set(key, settings[key]);
+  for (const key of ['mapLanguage','stationLanguage','lineLanguage']) url.searchParams.delete(key);
+  url.searchParams.set('language',settings.language);
   history.replaceState(null, '', url);
 }
 function applySettings() {
@@ -56,7 +59,7 @@ function applySettings() {
     if (layer.id === 'speed-labels') visible = settings.mode === 'speed' && settings.labels;
     if (layer.id.startsWith('inactive-')) visible = settings.inactive;
     if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive);
-    if (layer.id === 'terrain-relief') visible = settings.relief;
+    if (layer.id.startsWith('terrain-')) visible = settings.relief;
     if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
   }
   renderLegend();
@@ -72,7 +75,7 @@ function showDetails(feature) {
   const isStation = feature.source?.startsWith('station') || feature.kind === 'station';
   const panel = $('detail-content'); panel.replaceChildren();
   panel.append(textNode('div', isStation ? 'RAILWAY STATION' : 'RAILWAY INFRASTRUCTURE', 'eyebrow'));
-  panel.append(textNode('h2', displayName(p, settings[isStation ? 'stationLanguage' : 'lineLanguage'], isStation) || (isStation ? 'Unnamed station' : 'Unnamed railway')));
+  panel.append(textNode('h2', displayName(p, settings.language) || (isStation ? 'Unnamed station' : 'Unnamed railway')));
   const dl = document.createElement('dl');
   row(dl, 'Type', p.feature || p.railway || (isStation ? 'station' : undefined));
   row(dl, 'Status', p.state || 'present');
@@ -136,18 +139,15 @@ function updateStatus() {
   status.dataset.renderedFormer = String(regional.filter(f => !['proposed','construction'].includes(f.properties.state)).length);
   status.dataset.numericSpeeds = String(tracks.filter(f => numericSpeed(f.properties.maxspeed) !== null).length);
 }
+const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'');
 function localizeStyle(style) {
   for (const layer of style.layers) {
-    if (layer.type !== 'symbol' || layer.id === 'speed-labels') continue;
-    if (layer.source === 'openmaptiles') layer.layout['text-field'] = labelExpression(settings.mapLanguage);
-    else if (layer.id.startsWith('station-')) layer.layout['text-field'] = labelExpression(settings.stationLanguage, true);
-    else if (layer.id.endsWith('-names')) layer.layout['text-field'] = labelExpression(settings.lineLanguage);
+    if (layer.type !== 'symbol' || layer.id === 'speed-labels' || layer.id.startsWith('terrain-')) continue;
+    if (layer.source === 'openmaptiles' || layer.id.startsWith('station-') || layer.id.endsWith('-names')) layer.layout['text-field'] = labelExpression(settings.language);
   }
-  for (const [id,path] of [['stationLow','standard_railway_text_stations_low'],['stationMed','standard_railway_text_stations_med'],['stations','standard_railway_text_stations']]) {
-    const url = new URL(`${ORM}/${path}`);
-    if(settings.stationLanguage !== 'local') url.searchParams.set('lang',settings.stationLanguage);
-    style.sources[id].url=url.href;
-  }
+  style.sources.openmaptiles.url = `atlasbase://${settings.language}/${unwrap(style.sources.openmaptiles.url).replace(/^pmtiles:\/\//,'')}`;
+  for(const id of ['stationLow','stationMed','stations']) style.sources[id].url = `atlasstation://${settings.language}/${unwrap(style.sources[id].url)}`;
+  style.sources.inactiveRegional.tiles = [`railtiles://{z}/{x}/{y}?lang=${settings.language}`];
 }
 async function initialize() {
   if (!window.maplibregl || !window.pmtiles) throw new Error('Map libraries could not load. Check your connection and reload.');
@@ -155,10 +155,14 @@ async function initialize() {
   // WebGL itself; initialization errors are caught by the handler below.
   const protocol = new pmtiles.Protocol();
   maplibregl.addProtocol('pmtiles', protocol.tile);
+  installLabelProtocols(maplibregl,protocol);
+  const dem = new mlcontour.DemSource({url:DEM_URL,encoding:'terrarium',maxzoom:15,worker:true,cacheSize:200,timeoutMs:20000,id:'atlas'});
+  dem.setupMaplibre(maplibregl);
   const lifecycleRoot = new URL('./data/lifecycle/', import.meta.url);
   let tileIndex;
   maplibregl.addProtocol('railtiles', async (params, controller) => {
-    const key = params.url.slice('railtiles://'.length);
+    const [key,query] = params.url.slice('railtiles://'.length).split('?');
+    const lang = new URLSearchParams(query).get('lang') || 'local';
     if (!/^\d+\/\d+\/\d+$/.test(key)) throw new Error('Invalid lifecycle tile');
     tileIndex ||= fetch(new URL('index.json', lifecycleRoot)).then(async response => {
       if (!response.ok) throw new Error('The railway tile index could not load');
@@ -167,7 +171,7 @@ async function initialize() {
     if (!(await tileIndex).has(key)) return {data: new ArrayBuffer(0)};
     const response = await fetch(new URL(`${key}.pbf.gz`, lifecycleRoot), {signal: controller.signal});
     if (!response.ok) throw new Error(`Railway tile returned ${response.status}`);
-    return {data: await decodeLifecycleTile(await response.arrayBuffer())};
+    return {data: localizeTile(await decodeLifecycleTile(await response.arrayBuffer()),lang)};
   });
   const styleURL = new URL(`world.style.json?v=${encodeURIComponent(assetVersion)}`, import.meta.url);
   const response = await fetch(styleURL);
@@ -179,6 +183,8 @@ async function initialize() {
   // Apply language before constructing the map, avoiding an initial duplicate
   // station-tile download in the wrong language.
   localizeStyle(style);
+  style.sources.relief.tiles = [dem.sharedDemProtocolUrl];
+  style.sources.contours.tiles = [dem.contourProtocolUrl(CONTOUR_OPTIONS)];
   map = new maplibregl.Map({
     container: 'map', style,
     center: [15,23], zoom: 1.8, hash: true, minZoom: 1, maxZoom: 20,
@@ -228,16 +234,17 @@ document.querySelectorAll('[data-mode]').forEach(button => button.addEventListen
 for (const key of ['stations', 'labels', 'inactive', 'relief', 'names']) $(key).addEventListener('change', () => {
   settings[key] = $(key).checked; applySettings(); saveSettings();
 });
-for (const key of ['mapLanguage','stationLanguage','lineLanguage']) {
-  const select = $(key);
-  for (const [code,name] of LANGUAGES) { const option = textNode('option',name); option.value=code; select.append(option); }
-  select.value=settings[key];
-  select.addEventListener('change', () => {
-    settings[key]=select.value;
-    if (ready) {
-      const style=map.getStyle(); localizeStyle(style);
+{
+  const select = $('language');
+  for (const [code,name] of LANGUAGES) {const option=textNode('option',name);option.value=code;select.append(option);}
+  select.value=settings.language;
+  select.addEventListener('change',()=>{
+    settings.language=select.value;
+    if(ready) {
+      const style=map.getStyle();localizeStyle(style);
       for(const layer of style.layers) if(layer.type==='symbol' && layer.layout?.['text-field']) map.setLayoutProperty(layer.id,'text-field',layer.layout['text-field']);
-      if(key==='stationLanguage') for(const source of ['stationLow','stationMed','stations']) map.getSource(source).setUrl(style.sources[source].url);
+      for(const source of ['openmaptiles','stationLow','stationMed','stations']) map.getSource(source).setUrl(style.sources[source].url);
+      map.getSource('inactiveRegional').setTiles(style.sources.inactiveRegional.tiles);
       if(currentFeature) showDetails(currentFeature);
     }
     saveSettings();
@@ -250,6 +257,7 @@ $('collapse').addEventListener('click', () => {
   $('collapse').setAttribute('aria-label', `${$('controls').hidden ? 'Expand' : 'Collapse'} map controls`);
 });
 $('details-close').addEventListener('click', () => { $('details').hidden = true; currentFeature = null; });
+$('language-help').addEventListener('click',e=>{e.preventDefault();$('about').showModal();});
 $('about-open').addEventListener('click', () => $('about').showModal());
 $('about-close').addEventListener('click', () => $('about').close());
 $('share').addEventListener('click', async () => {
@@ -275,7 +283,7 @@ $('search-form').addEventListener('submit', async e => {
     for (const item of items) {
       if (!Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)) continue;
       const li = document.createElement('li'); const button = document.createElement('button'); button.type = 'button';
-      button.append(textNode('span', item.name || item.localized_name || item.railway_ref || 'Unnamed facility'));
+      button.append(textNode('span', displayName(item,settings.language) || item.railway_ref || 'Unnamed facility'));
       button.append(textNode('small', [item.station || item.feature || item.railway, item.railway_ref || item['railway:ref'], Array.isArray(item.operator) ? item.operator.join(', ') : item.operator].filter(Boolean).join(' · ')));
       button.addEventListener('click', () => {
         if (!ready) { $('search-status').textContent = 'The map is still loading. Try this result again shortly.'; return; }

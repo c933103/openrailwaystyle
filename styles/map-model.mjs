@@ -19,16 +19,67 @@ export const MODES = ['speed', 'infrastructure', 'electrification'];
 export const LANGUAGES = [
   ['local','Local names'], ['en','English'], ['ko','한국어'], ['ja','日本語'],
   ['zh-Hant','繁體中文'], ['zh-Hans','简体中文'], ['de','Deutsch'], ['fr','Français'],
-  ['es','Español'], ['pt','Português'], ['it','Italiano'], ['nl','Nederlands'],
+  ['ru','Русский'], ['es','Español'], ['pt','Português'], ['it','Italiano'], ['nl','Nederlands'],
 ];
 const language = value => LANGUAGES.some(([code]) => code === value) ? value : 'local';
-// Empty translations also fall back. Never substitute a blank for a name.
-export function labelExpression(lang, station = false) {
-  const keys = [...(lang !== 'local' ? [`name:${lang}`] : []), ...(station ? ['localized_name'] : []), 'name', 'name:nonlatin', 'name:latin', 'label', 'ref'];
-  return ['case', ...keys.flatMap(key => [['!=',['coalesce',['get',key],''],''],['to-string',['get',key]]]), ''];
+export const INFRASTRUCTURE = [
+  ['#d7191c', 'High-speed line'], ['#2356b6', 'Railway'],
+  ['#00865a', 'Branch line'], ['#8226b0', 'Metro / light rail'],
+  ['#df7900', 'Tram'], ['#747d86', 'Service tracks'],
+];
+const han = value => /\p{Script=Han}/u.test(value || '');
+const cyrillic = value => /\p{Script=Cyrillic}/u.test(value || '');
+const nonempty = value => typeof value === 'string' && value.trim() !== '';
+const chinese = lang => lang.startsWith('zh');
+const ideographicKeys = ['name:ja','name:ja-Hani','name:ko-Hani','name:ko:hanja','name:vi-Hani','name:vi:nom','name:zh','name:zh-Hant','name:zh-Hans','name:zh-TW','name:zh-CN'];
+// Select recorded names, never translate or transliterate a proper name ourselves.
+// Unicode scripts include supplementary-plane Han characters used by Nôm/Hanja.
+export function chooseName(p, lang = 'local') {
+  const local = [p.name,p['name:nonlatin']].filter(nonempty);
+  const english = [p['name:en'],p.int_name,p['name:latin'],p['name:en-Latn']].filter(nonempty);
+  const selected = [p[`name:${lang}`]].filter(nonempty);
+  const recorded = Object.entries(p).filter(([k,v])=>k.startsWith('name:') && nonempty(v)).map(([,v])=>v);
+  let preferred;
+  if (lang === 'local') preferred = local;
+  else if (chinese(lang)) preferred = [
+    ...selected.filter(han),
+    ...[p['name:zh'],p['name:zh-Hant'],p['name:zh-Hans'],p['name:zh-TW'],p['name:zh-CN']].filter(han),
+    ...local.filter(han), ...ideographicKeys.map(k=>p[k]).filter(han), ...recorded.filter(han),
+    ...english, ...selected,
+  ];
+  else if (lang === 'ja') preferred = [
+    ...selected.filter(han), ...local.filter(han), ...ideographicKeys.map(k=>p[k]).filter(han), ...recorded.filter(han),
+    ...selected, ...english,
+  ];
+  else if (lang === 'ru') preferred = [...selected.filter(cyrillic), ...local.filter(cyrillic), ...recorded.filter(cyrillic), ...english];
+  else preferred = [...selected, ...english];
+  return [...preferred, ...local, p.localized_name, p.label, p.ref].find(nonempty) || '';
 }
-export function displayName(p, lang, station = false) {
-  return [lang !== 'local' && p[`name:${lang}`], station && p.localized_name, p.name, p['name:nonlatin'], p['name:latin'], p.label, p.ref].find(Boolean) || '';
+export function displayName(p, lang = 'local') {
+  return p.atlas_language === lang ? p.atlas_name : chooseName(p,lang);
+}
+export function labelExpression(lang = 'local') {
+  const keys = ['atlas_name', ...(lang !== 'local' ? [`name:${lang}`,'name:en','name:latin'] : []), 'name','name:nonlatin','label','ref'];
+  return ['case', ...keys.flatMap(key=>[['!=',['coalesce',['get',key],''],''],['to-string',['get',key]]]), ''];
+}
+// The station service substitutes the native name for missing translations.
+// Store only distinct returned translations; native script remains available.
+export function mergeStationTranslation(p, translated, lang) {
+  const value = translated?.localized_name;
+  if (nonempty(value) && value !== translated.name) p[`name:${lang}`] = value;
+}
+export function stationLanguages(lang) {
+  if (lang === 'local') return ['local'];
+  if (chinese(lang)) return [...new Set([lang,'zh','zh-Hant','zh-Hans','ja','ko-Hani','vi-Hani','en'])];
+  if (lang === 'ja') return ['ja','ja-Hani','zh','ko-Hani','vi-Hani','en'];
+  return [...new Set([lang,'en'])];
+}
+export function stationNameResolved(p,lang) {
+  if (lang === 'local') return true;
+  const name = chooseName(p,lang);
+  if (chinese(lang) || lang === 'ja') return han(name);
+  if (lang === 'ru') return cyrillic(name) || nonempty(p['name:en']);
+  return nonempty(p[`name:${lang}`]) || nonempty(p['name:en']) || (lang === 'ko' && /\p{Script=Hangul}/u.test(p.name || ''));
 }
 
 export function numericSpeed(value) {
@@ -55,9 +106,7 @@ export function readSettings(search) {
     inactive: params.get('inactive') !== '0',
     relief: params.get('relief') !== '0',
     names: params.get('names') !== '0',
-    mapLanguage: language(params.get('mapLanguage')),
-    stationLanguage: language(params.get('stationLanguage')),
-    lineLanguage: language(params.get('lineLanguage')),
+    language: language(params.get('language') || params.get('stationLanguage') || params.get('mapLanguage') || params.get('lineLanguage')),
   };
 }
 export function stationRank(properties) {
@@ -70,3 +119,10 @@ export async function decodeLifecycleTile(data) {
   if (bytes[0] !== 0x1f || bytes[1] !== 0x8b) return data;
   return new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
 }
+
+export const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+// Fine / emphasized intervals in metres; signed elevations include the seabed.
+export const CONTOUR_OPTIONS = {
+  thresholds:{7:[200,1000],9:[100,500],11:[50,250],13:[20,100],15:[10,50]},
+  contourLayer:'contours',elevationKey:'ele',levelKey:'level',extent:4096,buffer:1,
+};
