@@ -20,7 +20,7 @@ const style = {
     stationLow: vector('standard_railway_text_stations_low', 4, 6),
     stationMed: vector('standard_railway_text_stations_med', 7, 7),
     stations: vector('standard_railway_text_stations', 8, 16),
-    inactiveRegional: { type: 'vector', tiles: ['railtiles://{z}/{x}/{y}'], minzoom: 5, maxzoom: 10, promoteId: 'osm_id', attribution: '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>' },
+    inactiveRegional: { type: 'vector', tiles: ['railtiles://{z}/{x}/{y}'], minzoom: 0, maxzoom: 10, promoteId: 'osm_id', attribution: '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>' },
     contours: {type:'vector',tiles:['atlas-contour://{z}/{x}/{y}'],minzoom:7,maxzoom:15},
     relief: {type:'raster-dem', tiles:[DEM_URL], tileSize:256, encoding:'terrarium', maxzoom:15, attribution:'<a href="terrain-credits.html">Terrain: Mapzen / AWS and data contributors</a>'},
   },
@@ -91,19 +91,20 @@ for (const [mode, source, sourceLayer, color] of [
   });
 }
 // Structural cues use shape as well as colour. A bridge has dark parapets
-// outside the class-coloured track; tunnels use a pale dashed core.
-const structure = {type:'line',source:'railway','source-layer':'railway_line_high',minzoom:10,layout:{'line-cap':'butt','line-join':'round'}};
+// outside the class-coloured track; tunnels use a pale dashed core. They start
+// with the detailed railway tiles: the z0–6 overview tiles carry no structure.
+const structure = {type:'line',source:'railway','source-layer':'railway_line_high',minzoom:7,layout:{'line-cap':'butt','line-join':'round'}};
 const bridge = {...structure,filter:['all',present,notFerry,['==',['get','bridge'],true]]};
-const bridgeWidth = ['interpolate',['linear'],['zoom'],10,5.4,14,8,18,12];
+const bridgeWidth = ['interpolate',['linear'],['zoom'],7,3.4,10,5.4,14,8,18,12];
 const trackIndex = style.layers.findIndex(l=>l.id==='infrastructure-tracks');
 style.layers.splice(trackIndex,0,
   {...bridge,id:'infrastructure-bridge-edge',paint:{'line-color':'#263b48','line-width':bridgeWidth}},
-  {...bridge,id:'infrastructure-bridge-deck',paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],10,3.8,14,6,18,10]}},
+  {...bridge,id:'infrastructure-bridge-deck',paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],7,2.2,10,3.8,14,6,18,10]}},
 );
-style.layers.push({...structure,id:'infrastructure-tunnel',filter:['all',present,notFerry,['==',['get','tunnel'],true]],paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],10,1.1,14,2,18,3], 'line-dasharray':[3,2]}});
+style.layers.push({...structure,id:'infrastructure-tunnel',filter:['all',present,notFerry,['==',['get','tunnel'],true]],paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],7,0.7,10,1.1,14,2,18,3], 'line-dasharray':[3,2]}});
 const inactivePaint = {
   'line-color': ['match', ['get', 'state'], 'construction', '#ad7619', 'proposed', '#896192', '#75675c'],
-  'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1.2, 7, 1.7, 12, 2, 16, 2.8, 20, 4],
+  'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.6, 5, 1.2, 7, 1.7, 12, 2, 16, 2.8, 20, 4],
   'line-dasharray': [3, 2], 'line-opacity': 0.9,
 };
 style.layers.push({
@@ -112,9 +113,10 @@ style.layers.push({
 });
 // The complete snapshot supplies every lifecycle at regional scales. The
 // ordinary detail tiles take over together at z12, avoiding duplicate lines.
+// Construction shows at every zoom, proposals from z5, former lines from z7.
 style.layers.push({
-  id:'inactive-regional', type:'line', source:'inactiveRegional', 'source-layer':'lifecycle', minzoom:5, maxzoom:12,
-  filter:['any', ['>=',['zoom'],7], ['all', ['match',['get','state'],['proposed','construction'],true,false], ['==',['get','feature'],'rail'], ['match',['get','usage'],['main','branch',''],true,false], ['==',['get','service'],'']]],
+  id:'inactive-regional', type:'line', source:'inactiveRegional', 'source-layer':'lifecycle', minzoom:0, maxzoom:12,
+  filter:['any', ['>=',['zoom'],7], ['==',['get','state'],'construction'], ['all', ['>=',['zoom'],5], ['==',['get','state'],'proposed']]],
   paint:inactivePaint,
 });
 for (const [id,source,sourceLayer,minzoom,maxzoom,filter] of [

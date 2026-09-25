@@ -47,7 +47,7 @@ async function start({ failWebGL = false } = {}) {
     context,
     initializeImportMeta(meta) { meta.url = 'https://example.org/openrailwaystyle/app.mjs'; },
   });
-  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile'],function(){this.setExport('installLabelProtocols',()=>{});this.setExport('localizeTile',x=>x);},{context});
+  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','hanRegion'],function(){this.setExport('installLabelProtocols',()=>{});this.setExport('localizeTile',x=>x);this.setExport('hanRegion',()=>'none');},{context});
   await app.link(specifier=>specifier.includes('tile-labels')?protocols:dependency);
   await app.evaluate();
   await new Promise(resolve => setTimeout(resolve,0));

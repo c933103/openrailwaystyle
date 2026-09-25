@@ -1,7 +1,9 @@
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import encode from 'vt-pbf';
-import {chooseName, mergeStationTranslation, stationLanguages, stationNameResolved} from './map-model.mjs';
+import {chooseName, hanFallback, mergeStationTranslation, stationLanguages, stationNameResolved} from './map-model.mjs';
+import {hanRegion} from './han-region.mjs';
+export {hanRegion};
 
 export function readTile(data) {
   const tile = new VectorTile(new Pbf(new Uint8Array(data)));
@@ -14,6 +16,21 @@ export function readTile(data) {
   return tile;
 }
 const features = tile => Object.values(tile.layers).flatMap(layer=>Array.from({length:layer.length},(_,i)=>layer.feature(i)));
+export const tileCoordinates = url => {
+  const match = /\/(\d+)\/(\d+)\/(\d+)(?:\.[a-z.]+)?(?:[?#].*)?$/i.exec(url || '');
+  return match && {z:+match[1],x:+match[2],y:+match[3]};
+};
+// Record the Han-name region at each feature's centre. Every tile URL used
+// by the map ends in z/x/y, so every labelled feature has a location.
+export function locateFeatures(tile, coordinates) {
+  if (!coordinates) throw new Error('Label tile has no z/x/y coordinates');
+  const {z,x,y} = coordinates, n = 2 ** z;
+  for (const f of features(tile)) {
+    const [w,s,e,north] = f.bbox();
+    const tx = x + (w+e)/2/f.extent, ty = y + (s+north)/2/f.extent;
+    f.properties.atlas_han = hanRegion(tx/n*360-180, Math.atan(Math.sinh(Math.PI*(1-2*ty/n)))*180/Math.PI);
+  }
+}
 export function writeLabels(tile, lang) {
   for (const f of features(tile)) {
     f.properties.atlas_name = chooseName(f.properties,lang);
@@ -22,9 +39,18 @@ export function writeLabels(tile, lang) {
   const result = encode(tile);
   return result.buffer.slice(result.byteOffset,result.byteOffset+result.byteLength);
 }
-export function localizeTile(data, lang) {
+export function localizeTile(data, lang, coordinates) {
   if (!data?.byteLength) return data;
-  return writeLabels(readTile(data),lang);
+  try {
+    const tile = readTile(data);
+    locateFeatures(tile,coordinates);
+    return writeLabels(tile,lang);
+  } catch (error) {
+    // A labelling failure must not hide map data; styles fall back to the
+    // names recorded in the tile.
+    console.error('Map labels unavailable:', error?.message || String(error));
+    return data;
+  }
 }
 
 export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch) {
@@ -47,7 +73,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     if (!url) throw new Error('Invalid basemap request');
     const result = await pmtilesProtocol.tile({...params,url:`pmtiles://${url}`},controller);
     if (params.type === 'json') return {...result,data:{...result.data,tiles:result.data.tiles.map(t=>t.replace('pmtiles://',`atlasbase://${lang}/`))}};
-    return {...result,data:localizeTile(result.data,lang)};
+    return {...result,data:localizeTile(result.data,lang,tileCoordinates(url))};
   });
   maplibregl.addProtocol('atlasstation',async (params,controller)=>{
     const [,lang,url] = /^atlasstation:\/\/([^/]+)\/(.+)$/.exec(params.url) || [];
@@ -57,25 +83,35 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       const data = await get(url,signal,true);
       return {data:{...data,tiles:data.tiles.map(t=>`atlasstation://${lang}/${t}`)}};
     }
-    let primary;
+    let primary, primaryData, borrow = true;
     for (const candidate of stationLanguages(lang)) {
+      if (primary && !borrow && !stationLanguages(lang,false).includes(candidate)) continue;
       signal.throwIfAborted();
       const requestURL = new URL(url);
       if(candidate === 'local') requestURL.searchParams.delete('lang');
       else requestURL.searchParams.set('lang',candidate);
-      let translated;
-      try { translated=readTile(await get(requestURL.href,signal)); }
+      let translated, data;
+      try { data=await get(requestURL.href,signal); translated=readTile(data); }
       catch(error) {
         if(!primary || signal.aborted) throw error;
         // One unavailable translation must not hide an otherwise loaded station.
         console.warn('Station translation unavailable',candidate,error.message);
         continue;
       }
-      if (!primary) primary=translated;
+      if (!primary) {
+        primary=translated; primaryData=data;
+        try { locateFeatures(primary,tileCoordinates(url)); }
+        catch (error) { console.error('Station labels unavailable:', error?.message || String(error)); }
+        borrow=features(primary).some(f=>hanFallback(f.properties,lang));
+      }
       const byId=new Map(features(translated).map(f=>[String(f.properties.id ?? f.id),f.properties]));
       for(const f of features(primary)) mergeStationTranslation(f.properties,byId.get(String(f.properties.id ?? f.id)),candidate);
       if(features(primary).every(f=>stationNameResolved(f.properties,lang))) break;
     }
-    return {data:writeLabels(primary,lang)};
+    try { return {data:writeLabels(primary,lang)}; }
+    catch (error) {
+      console.error('Station labels unavailable:', error?.message || String(error));
+      return {data:primaryData};
+    }
   });
 }

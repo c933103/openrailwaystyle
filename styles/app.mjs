@@ -1,12 +1,14 @@
-import { SPEED_BANDS, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, CONTOUR_OPTIONS, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260923-2';
+import { SPEED_BANDS, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, CONTOUR_OPTIONS, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260925-2';
 
-import {installLabelProtocols, localizeTile} from './vendor/tile-labels.js?v=20260923-2';
+import {installLabelProtocols, localizeTile, hanRegion} from './vendor/tile-labels.js?v=20260925-2';
 
 const $ = id => document.getElementById(id);
+// Every module loaded; index.html reports load failures before this point.
+document.body.dataset.appStarted = 'true';
 const settings = readSettings(location.search);
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260923-2';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260925-2';
 const errors = new Set();
 const textNode = (tag, value, className) => {
   const el = document.createElement(tag); el.textContent = value;
@@ -24,13 +26,15 @@ function renderLegend() {
   box.append(textNode('h2', legend.title));
   const grid = textNode('div', '', 'legend-grid');
   const rows = [...legend.rows];
-  if (settings.mode === 'infrastructure') rows.push(['#2356b6','Bridge (zoom 10+)','bridge'], ['#2356b6','Tunnel (zoom 10+)','tunnel']);
+  if (settings.mode === 'infrastructure') rows.push(['#2356b6','Bridge','bridge','from zoom 7'], ['#2356b6','Tunnel','tunnel','from zoom 7']);
   if (settings.mode !== 'infrastructure') rows.push([UNKNOWN_COLOR, 'Unknown']);
-  if (settings.inactive) rows.push(['#896192', 'Proposed', 'dashed'], ['#ad7619', 'Construction', 'dashed'], ['#75675c', 'Former lines', 'dashed']);
-  for (const [color, label, extra] of rows) {
+  if (settings.inactive) rows.push(['#ad7619', 'Construction', 'dashed', 'all zooms'], ['#896192', 'Proposed', 'dashed', 'from zoom 5'], ['#75675c', 'Former lines', 'dashed', 'from zoom 7']);
+  for (const [color, label, extra, zooms] of rows) {
     const row = textNode('div', '', 'legend-item');
     const swatch = textNode('span', '', `swatch ${extra || ''}`); swatch.style.setProperty('--swatch', color);
-    row.append(swatch, textNode('span', label)); grid.append(row);
+    const text = textNode('span', label);
+    if (zooms) text.append(textNode('small', zooms, 'legend-zoom'));
+    row.append(swatch, text); grid.append(row);
   }
   if (settings.stations) {
     const station = textNode('div', '', 'legend-item'); station.append(textNode('span', '', 'station-swatch'), textNode('span', 'Station')); grid.append(station);
@@ -171,7 +175,8 @@ async function initialize() {
     if (!(await tileIndex).has(key)) return {data: new ArrayBuffer(0)};
     const response = await fetch(new URL(`${key}.pbf.gz`, lifecycleRoot), {signal: controller.signal});
     if (!response.ok) throw new Error(`Railway tile returned ${response.status}`);
-    return {data: localizeTile(await decodeLifecycleTile(await response.arrayBuffer()),lang)};
+    const [z,x,y] = key.split('/').map(Number);
+    return {data: localizeTile(await decodeLifecycleTile(await response.arrayBuffer()),lang,{z,x,y})};
   });
   const styleURL = new URL(`world.style.json?v=${encodeURIComponent(assetVersion)}`, import.meta.url);
   const response = await fetch(styleURL);
@@ -206,7 +211,9 @@ async function initialize() {
   map.on('error', e => {
     // Panning and replacing language sources intentionally cancel old tiles.
     if (e.error?.name === 'AbortError' || /^AbortError$|operation was aborted/i.test(e.error?.message || '')) return;
-    console.error('Map resource error', e.error);
+    // Log text as well as the object: errors passed back from map workers
+    // carry no stack, and plain logs of them show only "Error".
+    console.error('Map resource error:', e.sourceId || 'map', e.error?.message || String(e.error), e.error);
     errors.add(e.sourceId || 'resource');
     status.classList.add('error'); status.textContent = 'Some map data could not load. Check your connection or reload to retry.';
   });
@@ -222,7 +229,11 @@ async function initialize() {
     const features = map.queryRenderedFeatures([[p.x - 7, p.y - 7], [p.x + 7, p.y + 7]])
       .filter(f => f.layer.id.startsWith('station-') || f.layer.id.startsWith('inactive-') || /^(speed|infrastructure|electrification)-(tracks|overview)$/.test(f.layer.id))
       .sort((a, b) => Number(!a.source.startsWith('station')) - Number(!b.source.startsWith('station')) || stationRank(a.properties) - stationRank(b.properties));
-    if (features[0]) showDetails(features[0]);
+    if (!features[0]) return;
+    // Operating-line tiles are not relabelled; locate them by the click.
+    const {properties} = features[0];
+    features[0].properties = {...properties, atlas_han: properties.atlas_han ?? hanRegion(event.lngLat.lng, event.lngLat.lat)};
+    showDetails(features[0]);
   });
   map.on('mousemove', event => {
     const hit = map.queryRenderedFeatures(event.point).some(f => f.layer.id.startsWith('station-') || f.source === 'railway' || f.layer.id.startsWith('inactive-'));
@@ -294,6 +305,7 @@ $('search-form').addEventListener('submit', async e => {
     const results = $('search-results'); results.replaceChildren();
     for (const item of items) {
       if (!Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)) continue;
+      item.atlas_han = hanRegion(item.longitude,item.latitude);
       const li = document.createElement('li'); const button = document.createElement('button'); button.type = 'button';
       button.append(textNode('span', displayName(item,settings.language) || item.railway_ref || 'Unnamed facility'));
       button.append(textNode('small', [item.station || item.feature || item.railway, item.railway_ref || item['railway:ref'], Array.isArray(item.operator) ? item.operator.join(', ') : item.operator].filter(Boolean).join(' · ')));

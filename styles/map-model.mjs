@@ -31,7 +31,24 @@ const han = value => /\p{Script=Han}/u.test(value || '');
 const cyrillic = value => /\p{Script=Cyrillic}/u.test(value || '');
 const nonempty = value => typeof value === 'string' && value.trim() !== '';
 const chinese = lang => lang.startsWith('zh');
-const ideographicKeys = ['name:ja','name:ja-Hani','name:ko-Hani','name:ko:hanja','name:vi-Hani','name:vi:nom','name:zh','name:zh-Hant','name:zh-Hans','name:zh-TW','name:zh-CN'];
+const chineseKeys = ['name:zh','name:zh-Hant','name:zh-Hans','name:zh-TW','name:zh-CN'];
+const ideographicKeys = ['name:ja','name:ja-Hani','name:ko-Hani','name:ko:hanja','name:vi-Hani','name:vi:nom',...chineseKeys];
+// Japanese names recorded as "kana (kanji)" or "kanji (kana)" show only the
+// kanji in Chinese.
+const kana = '[\\p{Script=Hiragana}\\p{Script=Katakana}ー・゠\\s]+';
+const kanaThenKanji = new RegExp(`^${kana}[（(]\\s*([^()（）]*\\p{Script=Han}[^()（）]*?)\\s*[）)]$`,'u');
+const kanjiThenKana = new RegExp(`^([^()（）]*\\p{Script=Han}[^()（）]*?)\\s*[（(]${kana}[）)]$`,'u');
+const withoutKana = value => nonempty(value) ? (kanaThenKanji.exec(value.trim()) || kanjiThenKana.exec(value.trim()))?.[1] ?? value : value;
+// Han-script fallbacks borrow names recorded for other languages or scripts.
+// Apply them only where Han characters are in use: Chinese labels within
+// CJKV, Singapore, Malaysia and the Russian Far East; Japanese labels within
+// CJKV. Elsewhere use names recorded in the requested language, then English,
+// then the native name. Every labelled feature carries atlas_han from its
+// location (see han-region.mjs); a missing value borrows nothing.
+export function hanFallback(p, lang) {
+  if (chinese(lang)) return p.atlas_han === 'cjkv' || p.atlas_han === 'zh';
+  return lang === 'ja' && p.atlas_han === 'cjkv';
+}
 // Select recorded names, never translate or transliterate a proper name ourselves.
 // Unicode scripts include supplementary-plane Han characters used by Nôm/Hanja.
 export function chooseName(p, lang = 'local') {
@@ -39,14 +56,17 @@ export function chooseName(p, lang = 'local') {
   const english = [p['name:en'],p.int_name,p['name:latin'],p['name:en-Latn']].filter(nonempty);
   const selected = [p[`name:${lang}`]].filter(nonempty);
   const recorded = Object.entries(p).filter(([k,v])=>k.startsWith('name:') && nonempty(v)).map(([,v])=>v);
+  const borrow = hanFallback(p, lang);
   let preferred;
   if (lang === 'local') preferred = local;
+  else if (chinese(lang) && !borrow) preferred = [...selected, ...chineseKeys.map(k=>p[k]).filter(nonempty), ...english];
   else if (chinese(lang)) preferred = [
     ...selected.filter(han),
-    ...[p['name:zh'],p['name:zh-Hant'],p['name:zh-Hans'],p['name:zh-TW'],p['name:zh-CN']].filter(han),
+    ...chineseKeys.map(k=>p[k]).filter(han),
     ...local.filter(han), ...ideographicKeys.map(k=>p[k]).filter(han), ...recorded.filter(han),
     ...english, ...selected,
   ];
+  else if (lang === 'ja' && !borrow) preferred = [...selected, ...english];
   else if (lang === 'ja') preferred = [
     ...selected.filter(han), ...local.filter(han), ...ideographicKeys.map(k=>p[k]).filter(han), ...recorded.filter(han),
     ...selected, ...local.filter(v=>/[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(v)), ...english,
@@ -54,7 +74,8 @@ export function chooseName(p, lang = 'local') {
   else if (lang === 'ru') preferred = [...selected.filter(cyrillic), ...local.filter(cyrillic), ...recorded.filter(cyrillic), ...english];
   else if (lang === 'ko') preferred = [...selected, ...local.filter(v=>/\p{Script=Hangul}/u.test(v)), ...english];
   else preferred = [...selected, ...english];
-  return [...preferred, ...local, p.localized_name, p.label, p.ref].find(nonempty) || '';
+  const name = [...preferred, ...local, p.localized_name, p.label, p.ref].find(nonempty) || '';
+  return chinese(lang) ? withoutKana(name) : name;
 }
 export function displayName(p, lang = 'local') {
   return p.atlas_language === lang ? p.atlas_name : chooseName(p,lang);
@@ -69,16 +90,18 @@ export function mergeStationTranslation(p, translated, lang) {
   const value = translated?.localized_name;
   if (nonempty(value) && value !== translated.name) p[`name:${lang}`] = value;
 }
-export function stationLanguages(lang) {
+// Other Han-script languages are requested only for tiles where they apply.
+export function stationLanguages(lang, borrow = true) {
   if (lang === 'local') return ['local'];
-  if (chinese(lang)) return [...new Set([lang,'zh','zh-Hant','zh-Hans','ja','ko-Hani','vi-Hani','en'])];
-  if (lang === 'ja') return ['ja','ja-Hani','zh','ko-Hani','vi-Hani','en'];
+  if (chinese(lang)) return [...new Set([lang,'zh','zh-Hant','zh-Hans',...(borrow ? ['ja','ko-Hani','vi-Hani'] : []),'en'])];
+  if (lang === 'ja') return borrow ? ['ja','ja-Hani','zh','ko-Hani','vi-Hani','en'] : ['ja','en'];
   return [...new Set([lang,'en'])];
 }
 export function stationNameResolved(p,lang) {
   if (lang === 'local') return true;
   const name = chooseName(p,lang);
-  if (chinese(lang) || lang === 'ja') return han(name);
+  if ((chinese(lang) || lang === 'ja') && hanFallback(p,lang)) return han(name);
+  if (chinese(lang)) return [`name:${lang}`,...chineseKeys,'name:en'].some(k=>nonempty(p[k]));
   if (lang === 'ru') return cyrillic(name) || nonempty(p['name:en']);
   return nonempty(p[`name:${lang}`]) || nonempty(p['name:en']) || (lang === 'ko' && /\p{Script=Hangul}/u.test(p.name || ''));
 }
