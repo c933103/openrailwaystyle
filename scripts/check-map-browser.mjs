@@ -204,6 +204,7 @@ try{
     }
     return {mapLoaded:map.loaded(),styleLoaded:map.isStyleLoaded(),moving:map.isMoving(),language:new URL(location.href).searchParams.get('language'),sources};
   });
+  console.log('Page errors so far',JSON.stringify(errors));
   console.log('Map internals',JSON.stringify(await internals()));
   await page.evaluate(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
