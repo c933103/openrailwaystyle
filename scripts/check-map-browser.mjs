@@ -57,6 +57,12 @@ page.on('requestfailed',req=>{
   if(req.failure()?.errorText!=='net::ERR_ABORTED') console.log('Request failed:',req.failure()?.errorText,req.url().slice(0,200));
 });
 page.on('response',res=>{if(res.status()>=400) console.log('HTTP',res.status(),res.url().slice(0,200));});
+// Basemap archive requests are byte ranges; log what was asked and returned.
+let basemapLog=0;
+const basemap=url=>url.includes('.pmtiles') && !url.startsWith('http://127.0.0.1');
+page.on('request',req=>{if(basemap(req.url()) && basemapLog++<40) console.log('Basemap request',req.headers().range||'(no range)',req.url().slice(0,120));});
+page.on('response',res=>{if(basemap(res.url()) && basemapLog++<40) {const h=res.headers();console.log('Basemap response',res.status(),'range',res.request().headers().range||'-','length',h['content-length'],'content-range',h['content-range'],'encoding',h['content-encoding']||'-');}});
+page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap request failed',req.failure()?.errorText,req.headers().range||'-');});
 page.on('console',msg=>{if(msg.type()==='error') console.log('Browser resource:',msg.text());});
 await mkdir('browser-review',{recursive:true});
 try{
