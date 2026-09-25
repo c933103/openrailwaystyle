@@ -56,11 +56,11 @@ jobs:
       - name: Install test browser
         run: npx playwright install --with-deps chromium
       - name: Verify actual WebGL rendering and zoom-7 panning
-        env:
-          STRESS_LANGUAGE: '12'
         run: |
           node scripts/serve.mjs &
-          node scripts/check-map-browser.mjs
+          # Diagnostic: six fresh browser sessions to catch the intermittent
+          # loss of Chinese station labels.
+          for session in 1 2 3 4 5 6; do echo "SESSION $session"; node scripts/check-map-browser.mjs; done
       - name: Save browser review
         if: always()
         uses: actions/upload-artifact@v4

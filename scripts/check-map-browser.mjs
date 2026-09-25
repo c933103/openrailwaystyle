@@ -49,7 +49,11 @@ async function moveTo(zoom,lng,lat){
 }
 const errors=[],requests=[],pendingRequests=new Set();
 page.on('pageerror', e=>errors.push(e.message));
-page.on('request',req=>{requests.push(req.url());pendingRequests.add(req);});
+const requestStart=new Map();
+page.on('request',req=>{requests.push(req.url());pendingRequests.add(req);requestStart.set(req,Date.now());});
+// Glyph (font) ranges are needed before any label can be drawn.
+page.on('requestfailed',req=>{if(req.url().includes('/fonts/')) console.log('Font request failed',req.failure()?.errorText,req.url().slice(-60));});
+page.on('response',res=>{if(res.url().includes('/fonts/') && res.status()>=400) console.log('Font HTTP',res.status(),res.url().slice(-60));});
 page.on('requestfinished',req=>pendingRequests.delete(req));
 page.on('requestfailed',req=>{
   pendingRequests.delete(req);
@@ -231,6 +235,8 @@ try{
     return {mapLoaded:map.loaded(),styleLoaded:map.isStyleLoaded(),moving:map.isMoving(),language:new URL(location.href).searchParams.get('language'),sources};
   });
   console.log('Page errors so far',JSON.stringify(errors));
+  console.log('Requests still pending',JSON.stringify([...pendingRequests].map(r=>`${Math.round((Date.now()-requestStart.get(r))/1000)}s ${r.url().slice(0,160)}`)));
+  console.log('Font requests made',requests.filter(u=>u.includes('/fonts/')).length);
   console.log('Map internals',JSON.stringify(await internals()));
   await page.evaluate(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
