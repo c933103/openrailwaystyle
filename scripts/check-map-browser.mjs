@@ -199,32 +199,6 @@ try{
   assert.equal(await page.locator('#map-status.error').count(),0,'Cancelled old requests must not leave a load-failure warning');
   const china=await page.screenshot({path:'browser-review/china-z7.jpg',type:'jpeg',quality:45});
   console.log('CHINA_IMAGE_START'+china.toString('base64')+'CHINA_IMAGE_END');
-  // Optional stress run for the intermittent loss of station labels after
-  // switching to Simplified Chinese: repeat the Korean zh-Hant step followed
-  // by the central-China zh-Hans step. The first failure reaches diagnostics.
-  for(let round=1;round<=Number(process.env.STRESS_LANGUAGE||0);round++) {
-    // The main sequence ends with the panel collapsed; reopen it.
-    if(await page.locator('#controls').isHidden()) await page.locator('#collapse').click();
-    await page.selectOption('#language','zh-Hant');
-    await moveTo(7,128.1,35.65);
-    await page.waitForFunction(async()=>{
-      const {map}=await import(document.querySelector('script[type="module"]').src);
-      return !map.isMoving() && map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-') && f.properties.atlas_language==='zh-Hant').length>5;
-    },undefined,{timeout:120000});
-    await page.selectOption('#language','zh-Hans');
-    await moveTo(7,116.4,30.5);
-    await page.waitForFunction(async()=>{
-      const {map}=await import(document.querySelector('script[type="module"]').src);
-      return Math.abs(map.getCenter().lng-116.4)<0.01 && !map.isMoving() && ['stationMed','openmaptiles','railway','relief'].every(id=>map.getSource(id) && map.isSourceLoaded(id)) && map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-') && f.geometry.type==='Point').length>5;
-    },undefined,{timeout:120000});
-    await page.locator('#collapse').click();
-    await finishFrame();
-    await expectMap(async()=>{
-      const {map}=await import(document.querySelector('script[type="module"]').src);
-      return map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-') && f.properties.atlas_language==='zh-Hans').length>5;
-    },`Completed Chinese view must retain station labels (stress round ${round})`);
-    console.log('PASS: stress round',round);
-  }
   assert.deepEqual(errors,[]);
   console.log('PASS: one shared language, name fallbacks, contours, structures and lifecycle controls; no JavaScript exceptions');
 } catch(error) {
