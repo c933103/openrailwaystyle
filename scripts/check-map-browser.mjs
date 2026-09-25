@@ -187,6 +187,8 @@ try{
   // switching to Simplified Chinese: repeat the Korean zh-Hant step followed
   // by the central-China zh-Hans step. The first failure reaches diagnostics.
   for(let round=1;round<=Number(process.env.STRESS_LANGUAGE||0);round++) {
+    // The main sequence ends with the panel collapsed; reopen it.
+    if(await page.locator('#controls').isHidden()) await page.locator('#collapse').click();
     await page.selectOption('#language','zh-Hant');
     await moveTo(7,128.1,35.65);
     await page.waitForFunction(async()=>{
@@ -199,6 +201,7 @@ try{
       const {map}=await import(document.querySelector('script[type="module"]').src);
       return Math.abs(map.getCenter().lng-116.4)<0.01 && !map.isMoving() && ['stationMed','openmaptiles','railway','relief'].every(id=>map.getSource(id) && map.isSourceLoaded(id)) && map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-') && f.geometry.type==='Point').length>5;
     },undefined,{timeout:120000});
+    await page.locator('#collapse').click();
     await finishFrame();
     assert.ok(await page.evaluate(async()=>{
       const {map}=await import(document.querySelector('script[type="module"]').src);
