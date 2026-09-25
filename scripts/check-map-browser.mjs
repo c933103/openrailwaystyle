@@ -190,6 +190,27 @@ try{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return {zoom:map.getZoom(),stationSources:['stationLow','stationMed','stations'].map(id=>({id,loaded:map.isSourceLoaded(id),url:map.getStyle().sources[id].url,features:map.querySourceFeatures(id).slice(0,3).map(f=>f.properties)})),renderedStations:map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-')).slice(0,10).map(f=>({source:f.source,properties:f.properties})),status:document.querySelector('#map-status').dataset, layers:map.getStyle().layers.filter(l=>l.id.endsWith('-names') && !l.id.startsWith('station-')), named:map.queryRenderedFeatures().filter(f=>['inactiveRegional','railway'].includes(f.source)&&f.properties.name).slice(0,12).map(f=>({layer:f.layer.id,name:f.properties.name}))};
   }));
+  // MapLibre internals: which tiles each source holds and whether they can
+  // still be queried. Compare queries before and after a forced redraw.
+  const internals=async()=>page.evaluate(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    const caches=map.style.sourceCaches||map.style.tileManagers||{};
+    const sources={};
+    for(const id of ['railway','stationMed','stations','openmaptiles','inactiveRegional']) {
+      const cache=caches[id];
+      const tiles=Object.values(cache?._tiles||{});
+      sources[id]={loaded:cache?.loaded(),tiles:tiles.map(t=>`${t.tileID.canonical.z}/${t.tileID.canonical.x}/${t.tileID.canonical.y} ${t.state}${t.latestFeatureIndex?'':' no-index'}${t.latestFeatureIndex&&!t.latestFeatureIndex.rawTileData?' no-raw':''}`).slice(0,12),
+        queried:map.queryRenderedFeatures().filter(f=>f.source===id).length};
+    }
+    return {mapLoaded:map.loaded(),styleLoaded:map.isStyleLoaded(),moving:map.isMoving(),language:new URL(location.href).searchParams.get('language'),sources};
+  });
+  console.log('Map internals',JSON.stringify(await internals()));
+  await page.evaluate(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    await new Promise(resolve=>{map.once('render',resolve);map.triggerRepaint();});
+  });
+  await page.waitForTimeout(5000);
+  console.log('Map internals after redraw',JSON.stringify(await internals()));
   const failure=await page.screenshot({path:'browser-review/failure.jpg',type:'jpeg',quality:45});
   console.log('FAIL_IMAGE_START'+failure.toString('base64')+'FAIL_IMAGE_END');
   throw error;
