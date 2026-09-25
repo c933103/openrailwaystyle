@@ -1,3 +1,4 @@
+import {POLYGONS, BORDERS} from './cjkv-region-data.mjs';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -27,11 +28,72 @@ export const INFRASTRUCTURE = [
   ['#00865a', 'Branch line'], ['#8226b0', 'Metro / light rail'],
   ['#df7900', 'Tram'], ['#747d86', 'Service tracks'],
 ];
+// China, Taiwan, Hong Kong, Macau, Japan, the Koreas and Vietnam: the areas
+// that historically write in Han characters. Coastal points slightly outside
+// the simplified outline (piers, reclaimed land) count as inside; points
+// beyond a land border with any other country never do.
+const COAST_KM = 8, CELL = 4, PAD = 0.15;
+let region;
+function indexRegion() {
+  const decode = line => { const points = []; let x = 0, y = 0; for (let i = 0; i < line.length; i += 2) { x += line[i]; y += line[i+1]; points.push([x/1000, y/1000]); } return points; };
+  const bands = new Map(), cells = new Map();
+  const add = (map, key, value) => { if (!map.has(key)) map.set(key, []); map.get(key).push(value); };
+  // Latitude bands serve ray casting; padded cells serve distance queries.
+  const segment = (a, b, border) => {
+    const s = [a[0],a[1],b[0],b[1],border];
+    if (!border) for (let y = Math.floor(Math.min(a[1],b[1])*CELL); y <= Math.floor(Math.max(a[1],b[1])*CELL); y++) add(bands, y, s);
+    for (let x = Math.floor((Math.min(a[0],b[0])-PAD)*CELL); x <= Math.floor((Math.max(a[0],b[0])+PAD)*CELL); x++)
+      for (let y = Math.floor((Math.min(a[1],b[1])-PAD)*CELL); y <= Math.floor((Math.max(a[1],b[1])+PAD)*CELL); y++) add(cells, `${x},${y}`, s);
+  };
+  for (const ring of POLYGONS.map(decode)) for (let i = 1; i < ring.length; i++) segment(ring[i-1], ring[i], false);
+  for (const line of BORDERS.map(decode)) for (let i = 1; i < line.length; i++) segment(line[i-1], line[i], true);
+  return {bands, cells, uniform: new Map()};
+}
+function distance(lon, lat, [ax,ay,bx,by]) {
+  const k = Math.cos(lat*Math.PI/180);
+  ax = (ax-lon)*k; bx = (bx-lon)*k; ay -= lat; by -= lat;
+  const dx = bx-ax, dy = by-ay, t = dx||dy ? Math.max(0, Math.min(1, -(ax*dx+ay*dy)/(dx*dx+dy*dy))) : 0;
+  return Math.hypot(ax+t*dx, ay+t*dy)*111.2;
+}
+function inside(lon, lat) {
+  let odd = false;
+  for (const [xi,yi,xj,yj] of region.bands.get(Math.floor(lat*CELL)) || [])
+    if ((yi > lat) !== (yj > lat) && lon < (xj-xi)*(lat-yi)/(yj-yi)+xi) odd = !odd;
+  return odd;
+}
+export function inCJKV(lon, lat) {
+  if (!Number.isFinite(lon) || !Number.isFinite(lat)) return false;
+  lon = ((lon + 180) % 360 + 360) % 360 - 180;
+  if (lon < 73 || lon > 154.5 || lat < 3 || lat > 54) return false;
+  region ||= indexRegion();
+  const key = `${Math.floor(lon*CELL)},${Math.floor(lat*CELL)}`, near = region.cells.get(key);
+  // A cell with no outline nearby has one answer throughout.
+  if (!near) {
+    if (!region.uniform.has(key)) region.uniform.set(key, inside(lon, lat));
+    return region.uniform.get(key);
+  }
+  if (inside(lon, lat)) return true;
+  let coast = Infinity, border = Infinity;
+  for (const s of near) {
+    const d = distance(lon, lat, s);
+    if (s[4]) border = Math.min(border, d); else coast = Math.min(coast, d);
+  }
+  return coast <= COAST_KM && border > coast + 0.01;
+}
 const han = value => /\p{Script=Han}/u.test(value || '');
 const cyrillic = value => /\p{Script=Cyrillic}/u.test(value || '');
 const nonempty = value => typeof value === 'string' && value.trim() !== '';
 const chinese = lang => lang.startsWith('zh');
-const ideographicKeys = ['name:ja','name:ja-Hani','name:ko-Hani','name:ko:hanja','name:vi-Hani','name:vi:nom','name:zh','name:zh-Hant','name:zh-Hans','name:zh-TW','name:zh-CN'];
+const chineseKeys = ['name:zh','name:zh-Hant','name:zh-Hans','name:zh-TW','name:zh-CN'];
+const ideographicKeys = ['name:ja','name:ja-Hani','name:ko-Hani','name:ko:hanja','name:vi-Hani','name:vi:nom',...chineseKeys];
+// Japanese names recorded as "kana (kanji)" show only the kanji in Chinese.
+const kanaKanji = /^[\p{Script=Hiragana}\p{Script=Katakana}ー・゠\s]+[（(]\s*([^()（）]*\p{Script=Han}[^()（）]*?)\s*[）)]$/u;
+const withoutKana = value => nonempty(value) ? kanaKanji.exec(value.trim())?.[1] ?? value : value;
+// Han-script fallbacks borrow names from other CJKV languages. Apply them only
+// where Han characters are historically used; elsewhere keep recorded names
+// in the requested language, then English, then the local name. Features
+// without a known location keep the Han fallbacks.
+const hanRegion = p => p.atlas_cjkv !== false;
 // Select recorded names, never translate or transliterate a proper name ourselves.
 // Unicode scripts include supplementary-plane Han characters used by Nôm/Hanja.
 export function chooseName(p, lang = 'local') {
@@ -41,12 +103,14 @@ export function chooseName(p, lang = 'local') {
   const recorded = Object.entries(p).filter(([k,v])=>k.startsWith('name:') && nonempty(v)).map(([,v])=>v);
   let preferred;
   if (lang === 'local') preferred = local;
+  else if (chinese(lang) && !hanRegion(p)) preferred = [...selected, ...chineseKeys.map(k=>p[k]).filter(nonempty), ...english];
   else if (chinese(lang)) preferred = [
     ...selected.filter(han),
-    ...[p['name:zh'],p['name:zh-Hant'],p['name:zh-Hans'],p['name:zh-TW'],p['name:zh-CN']].filter(han),
+    ...chineseKeys.map(k=>p[k]).filter(han),
     ...local.filter(han), ...ideographicKeys.map(k=>p[k]).filter(han), ...recorded.filter(han),
     ...english, ...selected,
-  ];
+  ].map(withoutKana);
+  else if (lang === 'ja' && !hanRegion(p)) preferred = [...selected, ...english];
   else if (lang === 'ja') preferred = [
     ...selected.filter(han), ...local.filter(han), ...ideographicKeys.map(k=>p[k]).filter(han), ...recorded.filter(han),
     ...selected, ...local.filter(v=>/[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(v)), ...english,
@@ -69,16 +133,18 @@ export function mergeStationTranslation(p, translated, lang) {
   const value = translated?.localized_name;
   if (nonempty(value) && value !== translated.name) p[`name:${lang}`] = value;
 }
-export function stationLanguages(lang) {
+// Other CJKV languages are requested only for tiles within the Han region.
+export function stationLanguages(lang, hanTile = true) {
   if (lang === 'local') return ['local'];
-  if (chinese(lang)) return [...new Set([lang,'zh','zh-Hant','zh-Hans','ja','ko-Hani','vi-Hani','en'])];
-  if (lang === 'ja') return ['ja','ja-Hani','zh','ko-Hani','vi-Hani','en'];
+  if (chinese(lang)) return [...new Set([lang,'zh','zh-Hant','zh-Hans',...(hanTile ? ['ja','ko-Hani','vi-Hani'] : []),'en'])];
+  if (lang === 'ja') return hanTile ? ['ja','ja-Hani','zh','ko-Hani','vi-Hani','en'] : ['ja','en'];
   return [...new Set([lang,'en'])];
 }
 export function stationNameResolved(p,lang) {
   if (lang === 'local') return true;
   const name = chooseName(p,lang);
-  if (chinese(lang) || lang === 'ja') return han(name);
+  if ((chinese(lang) || lang === 'ja') && hanRegion(p)) return han(name);
+  if (chinese(lang)) return [`name:${lang}`,...chineseKeys,'name:en'].some(k=>nonempty(p[k]));
   if (lang === 'ru') return cyrillic(name) || nonempty(p['name:en']);
   return nonempty(p[`name:${lang}`]) || nonempty(p['name:en']) || (lang === 'ko' && /\p{Script=Hangul}/u.test(p.name || ''));
 }

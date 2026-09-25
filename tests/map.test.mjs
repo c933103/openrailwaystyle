@@ -73,8 +73,13 @@ test('every lifecycle is shown at zoom 7 without a live query or a zoom-8 handof
   const layer=style.layers.find(l=>l.id==='inactive-regional');
   assert.equal(style.sources.inactiveRegional.type,'vector');
   assert.deepEqual(style.sources.inactiveRegional.tiles,['railtiles://{z}/{x}/{y}']);
-  assert.equal(layer.minzoom,5);assert.equal(layer.maxzoom,12);
+  assert.equal(layer.minzoom,0);assert.equal(layer.maxzoom,12);
   const filter=featureFilter(layer.filter);
+  // Construction at every zoom, proposals from z5, former lines from z7.
+  const lowest={construction:0,proposed:5,disused:7,abandoned:7,razed:7};
+  for(const zoom of [0,2,4.99,5,6.99]) for(const [state,min] of Object.entries(lowest)) {
+    assert.equal(filter.filter({zoom},{type:2,properties:{state,feature:'tram',usage:'',service:''}}),zoom>=min,`${state} at z${zoom}`);
+  }
   for(const zoom of [7,7.83,8,9,10,11.99]) for(const state of ['proposed','construction','disused','abandoned','razed']) {
     assert.equal(filter.filter({zoom},{type:2,properties:{state,feature:'rail',usage:'main',service:''}}),true);
   }

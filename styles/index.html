@@ -9,7 +9,7 @@
   <title>Open Railway Atlas · Worldwide rail map</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20260923-2" rel="stylesheet">
+  <link href="app.css?v=20260925-1" rel="stylesheet">
 </head>
 <body>
   <main id="map" aria-label="Interactive worldwide railway map"></main>
@@ -38,7 +38,7 @@
       </div></details>
       <div class="section-heading">LABEL LANGUAGE</div>
       <div class="language-picker"><label for="language">All labels</label><select id="language"></select></div>
-      <p class="small">English fallback; Chinese and Japanese prefer available ideographic names. Russian prefers Cyrillic. <a href="#" id="language-help">Name coverage</a></p>
+      <p class="small">English fallback; within China, Taiwan, Hong Kong, Macau, Japan, the Koreas and Vietnam, Chinese and Japanese prefer available ideographic names. Russian prefers Cyrillic. <a href="#" id="language-help">Name coverage</a></p>
       <p class="hint">Zoom in for stations and track detail.<br>Click a station or line to inspect it.</p>
       <div class="toolbar"><button id="share">Copy map link</button><button id="about-open">About & data</button></div>
       <p id="share-status" role="status" class="small" hidden></p>
@@ -51,7 +51,7 @@
     <h3>Reading the map</h3><p>Regional views show a spaced-out selection of major stations. Smaller stations appear as you zoom in; individual station markers appear at local scale. Major stations receive priority according to the provider’s mapped route importance, which is not a passenger-volume ranking. Coverage and station ranking depend on OpenStreetMap completeness.</p>
     <p>Speed colours use the provider’s numeric limit in km/h. Where directions differ, this is the preferred-direction limit, or the larger directional limit when no preferred direction is mapped. Track labels retain original units: bare numbers are km/h; mph is written explicitly. “A / B” means forward / backward; “A (B)” means preferred / opposite direction. A dash means missing data. These directions refer to the underlying OSM way.</p>
     <p>Grey means no numeric speed is available. Dashed lines show proposed, construction or former infrastructure from regional zoom; they are not presented as operating lines. Recorded infrastructure limits are not train running speeds or a timetable.</p>
-    <h3>Names and terrain</h3><p>One language setting applies to map, station and line labels. Western languages fall back to English, then recorded Latin names. Russian tries recorded Cyrillic names before English. Chinese tries Chinese variants, native ideographs, Japanese, Korean Hanja and Vietnamese Chữ Nôm before English. Japanese prioritizes recorded ideographic names before kana-only names. If none is recorded, the native name remains visible. Names are selected from source data; they are not automatically translated or transliterated.</p>
+    <h3>Names and terrain</h3><p>One language setting applies to map, station and line labels. Western languages fall back to English, then recorded Latin names. Russian tries recorded Cyrillic names before English. Within China, Taiwan, Hong Kong, Macau, Japan, the Koreas and Vietnam, Chinese tries Chinese variants, native ideographs, Japanese, Korean Hanja and Vietnamese Chữ Nôm before English, showing only the kanji of Japanese names recorded as “kana (kanji)”; Japanese prioritizes recorded ideographic names before kana-only names. Elsewhere both use only names recorded in that language, then English. If none is recorded, the native name remains visible. Names are selected from source data; they are not automatically translated or transliterated.</p>
     <p>Station translations are requested for the current view. Snapshot railways retain multilingual OSM tags; the current operating-line tile provider usually supplies only native names. The shared setting cannot recover translations omitted from a source. Search results use the names returned by the search service.</p>
     <p>Brown contours show land elevation; blue contours show negative elevation below sea level. Labels are signed metres. Intervals become finer as you zoom: 200 m at zoom 7, 100 m at 9, 50 m at 11, 20 m at 13, and 10 m at 15. Heavier index contours are labelled. Detail depends on the elevation dataset; seabed data is generally coarser than land data.</p>
     <h3>Sources</h3><p>Railway tiles: <a href="https://openrailwaymap.app/">OpenRailwayMap vector</a>. Station search: <a href="https://www.openrailwaymap.org/">OpenRailwayMap public API</a>. Regional planned, construction and former lines: <a href="data/manifest.json">published OSM snapshot</a>, extracted with <a href="https://overpass-api.de/">Overpass (FOSSGIS)</a>; <a href="data/lifecycle.geojson.gz">download the ODbL database</a>. Relief: <a href="terrain-credits.html">Mapzen Terrain Tiles / AWS, including NOAA ETOPO1 seabed data</a>. Base map: <a href="https://tuiles.enliberte.fr/">En Liberté</a>. Map data: <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>. Renderer: <a href="https://maplibre.org/">MapLibre</a>.</p>
@@ -61,7 +61,7 @@
   <noscript><div class="no-script">Enable JavaScript to use the interactive railway map.</div></noscript>
   <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js"></script>
-  <script src="vendor/maplibre-contour.js?v=20260923-2"></script>
-  <script type="module" src="app.mjs?v=20260923-2"></script>
+  <script src="vendor/maplibre-contour.js?v=20260925-1"></script>
+  <script type="module" src="app.mjs?v=20260925-1"></script>
 </body>
 </html>

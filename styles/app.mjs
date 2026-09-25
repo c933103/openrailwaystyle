@@ -1,12 +1,12 @@
-import { SPEED_BANDS, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, CONTOUR_OPTIONS, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260923-2';
+import { SPEED_BANDS, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, CONTOUR_OPTIONS, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile, inCJKV } from './map-model.mjs?v=20260925-1';
 
-import {installLabelProtocols, localizeTile} from './vendor/tile-labels.js?v=20260923-2';
+import {installLabelProtocols, localizeTile} from './vendor/tile-labels.js?v=20260925-1';
 
 const $ = id => document.getElementById(id);
 const settings = readSettings(location.search);
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260923-2';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260925-1';
 const errors = new Set();
 const textNode = (tag, value, className) => {
   const el = document.createElement(tag); el.textContent = value;
@@ -171,7 +171,8 @@ async function initialize() {
     if (!(await tileIndex).has(key)) return {data: new ArrayBuffer(0)};
     const response = await fetch(new URL(`${key}.pbf.gz`, lifecycleRoot), {signal: controller.signal});
     if (!response.ok) throw new Error(`Railway tile returned ${response.status}`);
-    return {data: localizeTile(await decodeLifecycleTile(await response.arrayBuffer()),lang)};
+    const [z,x,y] = key.split('/').map(Number);
+    return {data: localizeTile(await decodeLifecycleTile(await response.arrayBuffer()),lang,{z,x,y})};
   });
   const styleURL = new URL(`world.style.json?v=${encodeURIComponent(assetVersion)}`, import.meta.url);
   const response = await fetch(styleURL);
@@ -294,6 +295,7 @@ $('search-form').addEventListener('submit', async e => {
     const results = $('search-results'); results.replaceChildren();
     for (const item of items) {
       if (!Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)) continue;
+      item.atlas_cjkv = inCJKV(item.longitude,item.latitude);
       const li = document.createElement('li'); const button = document.createElement('button'); button.type = 'button';
       button.append(textNode('span', displayName(item,settings.language) || item.railway_ref || 'Unnamed facility'));
       button.append(textNode('small', [item.station || item.feature || item.railway, item.railway_ref || item['railway:ref'], Array.isArray(item.operator) ? item.operator.join(', ') : item.operator].filter(Boolean).join(' · ')));

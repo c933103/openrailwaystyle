@@ -73,7 +73,7 @@
       "tiles": [
         "railtiles://{z}/{x}/{y}"
       ],
-      "minzoom": 5,
+      "minzoom": 0,
       "maxzoom": 10,
       "promoteId": "osm_id",
       "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
@@ -1419,7 +1419,7 @@
       "type": "line",
       "source": "railway",
       "source-layer": "railway_line_high",
-      "minzoom": 10,
+      "minzoom": 7,
       "layout": {
         "line-cap": "butt",
         "line-join": "round",
@@ -1467,6 +1467,8 @@
           [
             "zoom"
           ],
+          7,
+          3.4,
           10,
           5.4,
           14,
@@ -1480,7 +1482,7 @@
       "type": "line",
       "source": "railway",
       "source-layer": "railway_line_high",
-      "minzoom": 10,
+      "minzoom": 7,
       "layout": {
         "line-cap": "butt",
         "line-join": "round",
@@ -1528,6 +1530,8 @@
           [
             "zoom"
           ],
+          7,
+          2.2,
           10,
           3.8,
           14,
@@ -2251,7 +2255,7 @@
       "type": "line",
       "source": "railway",
       "source-layer": "railway_line_high",
-      "minzoom": 10,
+      "minzoom": 7,
       "layout": {
         "line-cap": "butt",
         "line-join": "round",
@@ -2299,6 +2303,8 @@
           [
             "zoom"
           ],
+          7,
+          0.7,
           10,
           1.1,
           14,
@@ -2365,6 +2371,8 @@
           [
             "zoom"
           ],
+          0,
+          0.6,
           5,
           1.2,
           7,
@@ -2388,7 +2396,7 @@
       "type": "line",
       "source": "inactiveRegional",
       "source-layer": "lifecycle",
-      "minzoom": 5,
+      "minzoom": 0,
       "maxzoom": 12,
       "filter": [
         "any",
@@ -2400,49 +2408,29 @@
           7
         ],
         [
+          "==",
+          [
+            "get",
+            "state"
+          ],
+          "construction"
+        ],
+        [
           "all",
           [
-            "match",
+            ">=",
+            [
+              "zoom"
+            ],
+            5
+          ],
+          [
+            "==",
             [
               "get",
               "state"
             ],
-            [
-              "proposed",
-              "construction"
-            ],
-            true,
-            false
-          ],
-          [
-            "==",
-            [
-              "get",
-              "feature"
-            ],
-            "rail"
-          ],
-          [
-            "match",
-            [
-              "get",
-              "usage"
-            ],
-            [
-              "main",
-              "branch",
-              ""
-            ],
-            true,
-            false
-          ],
-          [
-            "==",
-            [
-              "get",
-              "service"
-            ],
-            ""
+            "proposed"
           ]
         ]
       ],
@@ -2467,6 +2455,8 @@
           [
             "zoom"
           ],
+          0,
+          0.6,
           5,
           1.2,
           7,

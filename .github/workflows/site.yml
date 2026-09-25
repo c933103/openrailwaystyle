@@ -51,6 +51,7 @@ jobs:
           cat lifecycle-data/lifecycle.pmtiles.part-* > /tmp/lifecycle.pmtiles
           pip install pmtiles==3.8.1
           python scripts/unpack-snapshot.py /tmp/lifecycle.pmtiles
+          node scripts/build-overview-tiles.mjs
           cat lifecycle-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
       - name: Install test browser
         run: npx playwright install --with-deps chromium

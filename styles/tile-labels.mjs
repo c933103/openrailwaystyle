@@ -1,7 +1,7 @@
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import encode from 'vt-pbf';
-import {chooseName, mergeStationTranslation, stationLanguages, stationNameResolved} from './map-model.mjs';
+import {chooseName, inCJKV, mergeStationTranslation, stationLanguages, stationNameResolved} from './map-model.mjs';
 
 export function readTile(data) {
   const tile = new VectorTile(new Pbf(new Uint8Array(data)));
@@ -14,6 +14,20 @@ export function readTile(data) {
   return tile;
 }
 const features = tile => Object.values(tile.layers).flatMap(layer=>Array.from({length:layer.length},(_,i)=>layer.feature(i)));
+export const tileCoordinates = url => {
+  const match = /\/(\d+)\/(\d+)\/(\d+)(?:\.[a-z.]+)?(?:[?#].*)?$/i.exec(url || '');
+  return match && {z:+match[1],x:+match[2],y:+match[3]};
+};
+// Record whether each feature's centre lies in the Han-character region.
+export function locateFeatures(tile, coordinates) {
+  if (!coordinates) return;
+  const {z,x,y} = coordinates, n = 2 ** z;
+  for (const f of features(tile)) {
+    const [w,s,e,north] = f.bbox();
+    const tx = x + (w+e)/2/f.extent, ty = y + (s+north)/2/f.extent;
+    f.properties.atlas_cjkv = inCJKV(tx/n*360-180, Math.atan(Math.sinh(Math.PI*(1-2*ty/n)))*180/Math.PI);
+  }
+}
 export function writeLabels(tile, lang) {
   for (const f of features(tile)) {
     f.properties.atlas_name = chooseName(f.properties,lang);
@@ -22,9 +36,11 @@ export function writeLabels(tile, lang) {
   const result = encode(tile);
   return result.buffer.slice(result.byteOffset,result.byteOffset+result.byteLength);
 }
-export function localizeTile(data, lang) {
+export function localizeTile(data, lang, coordinates) {
   if (!data?.byteLength) return data;
-  return writeLabels(readTile(data),lang);
+  const tile = readTile(data);
+  locateFeatures(tile,coordinates);
+  return writeLabels(tile,lang);
 }
 
 export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch) {
@@ -47,7 +63,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     if (!url) throw new Error('Invalid basemap request');
     const result = await pmtilesProtocol.tile({...params,url:`pmtiles://${url}`},controller);
     if (params.type === 'json') return {...result,data:{...result.data,tiles:result.data.tiles.map(t=>t.replace('pmtiles://',`atlasbase://${lang}/`))}};
-    return {...result,data:localizeTile(result.data,lang)};
+    return {...result,data:localizeTile(result.data,lang,tileCoordinates(url))};
   });
   maplibregl.addProtocol('atlasstation',async (params,controller)=>{
     const [,lang,url] = /^atlasstation:\/\/([^/]+)\/(.+)$/.exec(params.url) || [];
@@ -57,8 +73,9 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       const data = await get(url,signal,true);
       return {data:{...data,tiles:data.tiles.map(t=>`atlasstation://${lang}/${t}`)}};
     }
-    let primary;
+    let primary, hanTile = true;
     for (const candidate of stationLanguages(lang)) {
+      if (primary && !hanTile && !stationLanguages(lang,false).includes(candidate)) continue;
       signal.throwIfAborted();
       const requestURL = new URL(url);
       if(candidate === 'local') requestURL.searchParams.delete('lang');
@@ -71,7 +88,11 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
         console.warn('Station translation unavailable',candidate,error.message);
         continue;
       }
-      if (!primary) primary=translated;
+      if (!primary) {
+        primary=translated;
+        locateFeatures(primary,tileCoordinates(url));
+        hanTile=features(primary).some(f=>f.properties.atlas_cjkv !== false);
+      }
       const byId=new Map(features(translated).map(f=>[String(f.properties.id ?? f.id),f.properties]));
       for(const f of features(primary)) mergeStationTranslation(f.properties,byId.get(String(f.properties.id ?? f.id)),candidate);
       if(features(primary).every(f=>stationNameResolved(f.properties,lang))) break;
