@@ -1,7 +1,9 @@
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import encode from 'vt-pbf';
-import {chooseName, inCJKV, mergeStationTranslation, stationLanguages, stationNameResolved} from './map-model.mjs';
+import {chooseName, hanFallback, mergeStationTranslation, stationLanguages, stationNameResolved} from './map-model.mjs';
+import {hanRegion} from './han-region.mjs';
+export {hanRegion};
 
 export function readTile(data) {
   const tile = new VectorTile(new Pbf(new Uint8Array(data)));
@@ -18,14 +20,15 @@ export const tileCoordinates = url => {
   const match = /\/(\d+)\/(\d+)\/(\d+)(?:\.[a-z.]+)?(?:[?#].*)?$/i.exec(url || '');
   return match && {z:+match[1],x:+match[2],y:+match[3]};
 };
-// Record whether each feature's centre lies in the Han-character region.
+// Record the Han-name region at each feature's centre. Every tile URL used
+// by the map ends in z/x/y, so every labelled feature has a location.
 export function locateFeatures(tile, coordinates) {
-  if (!coordinates) return;
+  if (!coordinates) throw new Error('Label tile has no z/x/y coordinates');
   const {z,x,y} = coordinates, n = 2 ** z;
   for (const f of features(tile)) {
     const [w,s,e,north] = f.bbox();
     const tx = x + (w+e)/2/f.extent, ty = y + (s+north)/2/f.extent;
-    f.properties.atlas_cjkv = inCJKV(tx/n*360-180, Math.atan(Math.sinh(Math.PI*(1-2*ty/n)))*180/Math.PI);
+    f.properties.atlas_han = hanRegion(tx/n*360-180, Math.atan(Math.sinh(Math.PI*(1-2*ty/n)))*180/Math.PI);
   }
 }
 export function writeLabels(tile, lang) {
@@ -73,9 +76,9 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       const data = await get(url,signal,true);
       return {data:{...data,tiles:data.tiles.map(t=>`atlasstation://${lang}/${t}`)}};
     }
-    let primary, hanTile = true;
+    let primary, borrow = true;
     for (const candidate of stationLanguages(lang)) {
-      if (primary && !hanTile && !stationLanguages(lang,false).includes(candidate)) continue;
+      if (primary && !borrow && !stationLanguages(lang,false).includes(candidate)) continue;
       signal.throwIfAborted();
       const requestURL = new URL(url);
       if(candidate === 'local') requestURL.searchParams.delete('lang');
@@ -91,7 +94,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       if (!primary) {
         primary=translated;
         locateFeatures(primary,tileCoordinates(url));
-        hanTile=features(primary).some(f=>f.properties.atlas_cjkv !== false);
+        borrow=features(primary).some(f=>hanFallback(f.properties,lang));
       }
       const byId=new Map(features(translated).map(f=>[String(f.properties.id ?? f.id),f.properties]));
       for(const f of features(primary)) mergeStationTranslation(f.properties,byId.get(String(f.properties.id ?? f.id)),candidate);
