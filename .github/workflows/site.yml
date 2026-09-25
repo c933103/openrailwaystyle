@@ -56,6 +56,8 @@ jobs:
       - name: Install test browser
         run: npx playwright install --with-deps chromium
       - name: Verify actual WebGL rendering and zoom-7 panning
+        env:
+          STRESS_LANGUAGE: '12'
         run: |
           node scripts/serve.mjs &
           node scripts/check-map-browser.mjs
