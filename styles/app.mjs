@@ -211,7 +211,9 @@ async function initialize() {
   map.on('error', e => {
     // Panning and replacing language sources intentionally cancel old tiles.
     if (e.error?.name === 'AbortError' || /^AbortError$|operation was aborted/i.test(e.error?.message || '')) return;
-    console.error('Map resource error', e.error);
+    // Log text as well as the object: errors passed back from map workers
+    // carry no stack, and plain logs of them show only "Error".
+    console.error('Map resource error:', e.sourceId || 'map', e.error?.message || String(e.error), e.error);
     errors.add(e.sourceId || 'resource');
     status.classList.add('error'); status.textContent = 'Some map data could not load. Check your connection or reload to retry.';
   });

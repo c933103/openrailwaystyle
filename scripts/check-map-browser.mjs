@@ -51,7 +51,12 @@ const errors=[],requests=[],pendingRequests=new Set();
 page.on('pageerror', e=>errors.push(e.message));
 page.on('request',req=>{requests.push(req.url());pendingRequests.add(req);});
 page.on('requestfinished',req=>pendingRequests.delete(req));
-page.on('requestfailed',req=>pendingRequests.delete(req));
+page.on('requestfailed',req=>{
+  pendingRequests.delete(req);
+  // Cancelled tiles are expected while panning; report real network failures.
+  if(req.failure()?.errorText!=='net::ERR_ABORTED') console.log('Request failed:',req.failure()?.errorText,req.url().slice(0,200));
+});
+page.on('response',res=>{if(res.status()>=400) console.log('HTTP',res.status(),res.url().slice(0,200));});
 page.on('console',msg=>{if(msg.type()==='error') console.log('Browser resource:',msg.text());});
 await mkdir('browser-review',{recursive:true});
 try{

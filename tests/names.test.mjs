@@ -31,7 +31,10 @@ test('localization preserves geometry, identifiers, layers and unrelated propert
   const after=readTile(localizeTile(bytes,'fr',{z:7,x:109,y:50})).layers.stations.feature(0);
   assert.equal(after.properties.atlas_name,'Jinju');
   assert.equal(after.properties.atlas_han,'cjkv','z7 tile 109/50 covers southern Korea');
-  assert.throws(()=>localizeTile(bytes,'fr'),/coordinates/,'a label tile must have a location');
+  const logged=[],error=console.error;console.error=(...args)=>logged.push(args.join(' '));
+  try { assert.equal(localizeTile(bytes,'fr'),bytes,'a tile without a location keeps its source names'); }
+  finally { console.error=error; }
+  assert.match(logged.join('\n'),/Map labels unavailable: Label tile has no z\/x\/y coordinates/);
   assert.equal(after.properties.maxspeed,160);
   assert.equal(after.id,before.id);assert.equal(after.type,before.type);
   assert.deepEqual(after.loadGeometry(),before.loadGeometry());

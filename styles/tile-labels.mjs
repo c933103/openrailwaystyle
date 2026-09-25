@@ -41,9 +41,16 @@ export function writeLabels(tile, lang) {
 }
 export function localizeTile(data, lang, coordinates) {
   if (!data?.byteLength) return data;
-  const tile = readTile(data);
-  locateFeatures(tile,coordinates);
-  return writeLabels(tile,lang);
+  try {
+    const tile = readTile(data);
+    locateFeatures(tile,coordinates);
+    return writeLabels(tile,lang);
+  } catch (error) {
+    // A labelling failure must not hide map data; styles fall back to the
+    // names recorded in the tile.
+    console.error('Map labels unavailable:', error?.message || String(error));
+    return data;
+  }
 }
 
 export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch) {
@@ -76,15 +83,15 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       const data = await get(url,signal,true);
       return {data:{...data,tiles:data.tiles.map(t=>`atlasstation://${lang}/${t}`)}};
     }
-    let primary, borrow = true;
+    let primary, primaryData, borrow = true;
     for (const candidate of stationLanguages(lang)) {
       if (primary && !borrow && !stationLanguages(lang,false).includes(candidate)) continue;
       signal.throwIfAborted();
       const requestURL = new URL(url);
       if(candidate === 'local') requestURL.searchParams.delete('lang');
       else requestURL.searchParams.set('lang',candidate);
-      let translated;
-      try { translated=readTile(await get(requestURL.href,signal)); }
+      let translated, data;
+      try { data=await get(requestURL.href,signal); translated=readTile(data); }
       catch(error) {
         if(!primary || signal.aborted) throw error;
         // One unavailable translation must not hide an otherwise loaded station.
@@ -92,14 +99,19 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
         continue;
       }
       if (!primary) {
-        primary=translated;
-        locateFeatures(primary,tileCoordinates(url));
+        primary=translated; primaryData=data;
+        try { locateFeatures(primary,tileCoordinates(url)); }
+        catch (error) { console.error('Station labels unavailable:', error?.message || String(error)); }
         borrow=features(primary).some(f=>hanFallback(f.properties,lang));
       }
       const byId=new Map(features(translated).map(f=>[String(f.properties.id ?? f.id),f.properties]));
       for(const f of features(primary)) mergeStationTranslation(f.properties,byId.get(String(f.properties.id ?? f.id)),candidate);
       if(features(primary).every(f=>stationNameResolved(f.properties,lang))) break;
     }
-    return {data:writeLabels(primary,lang)};
+    try { return {data:writeLabels(primary,lang)}; }
+    catch (error) {
+      console.error('Station labels unavailable:', error?.message || String(error));
+      return {data:primaryData};
+    }
   });
 }
