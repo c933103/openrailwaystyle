@@ -2664,6 +2664,62 @@
       }
     },
     {
+      "id": "station-former-dots",
+      "type": "circle",
+      "source": "stations",
+      "source-layer": "standard_railway_text_stations",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "!",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ]
+        ],
+        [
+          "match",
+          [
+            "get",
+            "feature"
+          ],
+          [
+            "station",
+            "halt"
+          ],
+          true,
+          false
+        ]
+      ],
+      "paint": {
+        "circle-color": "#fffef8",
+        "circle-stroke-color": "#8a8076",
+        "circle-stroke-width": 1.5,
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          3,
+          17,
+          4.5
+        ]
+      }
+    },
+    {
       "id": "country_label-other",
       "type": "symbol",
       "source": "openmaptiles",
@@ -3362,6 +3418,1762 @@
       }
     },
     {
+      "id": "station-stationLow-mover-names",
+      "type": "symbol",
+      "source": "stationLow",
+      "source-layer": "standard_railway_text_stations_low",
+      "minzoom": 6,
+      "maxzoom": 7,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ],
+          [
+            "any",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "station"
+                ],
+                ""
+              ],
+              [
+                "monorail",
+                "funicular",
+                "miniature",
+                "tram"
+              ],
+              true,
+              false
+            ],
+            [
+              "==",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
+            ]
+          ]
+        ],
+        [
+          "all",
+          [
+            "any",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              7
+            ],
+            [
+              "==",
+              [
+                "get",
+                "station_size"
+              ],
+              "large"
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          14,
+          10,
+          [
+            "match",
+            [
+              "get",
+              "station_size"
+            ],
+            "large",
+            16,
+            "normal",
+            15,
+            14
+          ],
+          18,
+          18
+        ],
+        "symbol-sort-key": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          0,
+          "normal",
+          1,
+          2
+        ],
+        "text-variable-anchor": [
+          "top",
+          "bottom",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 0.7,
+        "text-padding": [
+          "step",
+          [
+            "zoom"
+          ],
+          14,
+          9,
+          9,
+          12,
+          4
+        ],
+        "text-max-width": 9,
+        "text-allow-overlap": false,
+        "icon-image": "station-dot",
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.95,
+          11,
+          1.15
+        ],
+        "icon-padding": 12,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "icon-optional": false,
+        "text-optional": false
+      },
+      "paint": {
+        "text-color": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          "#123e52",
+          "#0865c0"
+        ],
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "station-stationMed-mover-names",
+      "type": "symbol",
+      "source": "stationMed",
+      "source-layer": "standard_railway_text_stations_med",
+      "minzoom": 7,
+      "maxzoom": 8,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ],
+          [
+            "any",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "station"
+                ],
+                ""
+              ],
+              [
+                "monorail",
+                "funicular",
+                "miniature",
+                "tram"
+              ],
+              true,
+              false
+            ],
+            [
+              "==",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
+            ]
+          ]
+        ],
+        [
+          "all",
+          [
+            "any",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              7
+            ],
+            [
+              "==",
+              [
+                "get",
+                "station_size"
+              ],
+              "large"
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          14,
+          10,
+          [
+            "match",
+            [
+              "get",
+              "station_size"
+            ],
+            "large",
+            16,
+            "normal",
+            15,
+            14
+          ],
+          18,
+          18
+        ],
+        "symbol-sort-key": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          0,
+          "normal",
+          1,
+          2
+        ],
+        "text-variable-anchor": [
+          "top",
+          "bottom",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 0.7,
+        "text-padding": [
+          "step",
+          [
+            "zoom"
+          ],
+          14,
+          9,
+          9,
+          12,
+          4
+        ],
+        "text-max-width": 9,
+        "text-allow-overlap": false,
+        "icon-image": "station-dot",
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.95,
+          11,
+          1.15
+        ],
+        "icon-padding": 12,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "icon-optional": false,
+        "text-optional": false
+      },
+      "paint": {
+        "text-color": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          "#123e52",
+          "#0865c0"
+        ],
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "station-stations-mover-names",
+      "type": "symbol",
+      "source": "stations",
+      "source-layer": "standard_railway_text_stations",
+      "minzoom": 8,
+      "maxzoom": 12,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ],
+          [
+            "any",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "station"
+                ],
+                ""
+              ],
+              [
+                "monorail",
+                "funicular",
+                "miniature",
+                "tram"
+              ],
+              true,
+              false
+            ],
+            [
+              "==",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
+            ]
+          ]
+        ],
+        [
+          "all",
+          [
+            "any",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              7
+            ],
+            [
+              "==",
+              [
+                "get",
+                "station_size"
+              ],
+              "large"
+            ]
+          ]
+        ],
+        [
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ],
+          [
+            "any",
+            [
+              "==",
+              [
+                "get",
+                "feature"
+              ],
+              "station"
+            ],
+            [
+              "all",
+              [
+                ">=",
+                [
+                  "zoom"
+                ],
+                11
+              ],
+              [
+                "==",
+                [
+                  "get",
+                  "feature"
+                ],
+                "halt"
+              ]
+            ],
+            [
+              "all",
+              [
+                ">=",
+                [
+                  "zoom"
+                ],
+                13
+              ],
+              [
+                "==",
+                [
+                  "get",
+                  "feature"
+                ],
+                "tram_stop"
+              ]
+            ]
+          ],
+          [
+            "any",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              11
+            ],
+            [
+              "!",
+              [
+                "match",
+                [
+                  "get",
+                  "station"
+                ],
+                [
+                  "subway",
+                  "light_rail",
+                  "monorail"
+                ],
+                true,
+                false
+              ]
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          14,
+          10,
+          [
+            "match",
+            [
+              "get",
+              "station_size"
+            ],
+            "large",
+            16,
+            "normal",
+            15,
+            14
+          ],
+          18,
+          18
+        ],
+        "symbol-sort-key": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          0,
+          "normal",
+          1,
+          2
+        ],
+        "text-variable-anchor": [
+          "top",
+          "bottom",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 0.7,
+        "text-padding": [
+          "step",
+          [
+            "zoom"
+          ],
+          14,
+          9,
+          9,
+          12,
+          4
+        ],
+        "text-max-width": 9,
+        "text-allow-overlap": false,
+        "icon-image": "station-dot",
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.95,
+          11,
+          1.15
+        ],
+        "icon-padding": 12,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "icon-optional": false,
+        "text-optional": false
+      },
+      "paint": {
+        "text-color": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          "#123e52",
+          "#0865c0"
+        ],
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "station-stationLow-light-rail-names",
+      "type": "symbol",
+      "source": "stationLow",
+      "source-layer": "standard_railway_text_stations_low",
+      "minzoom": 6,
+      "maxzoom": 7,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ],
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "station"
+              ],
+              ""
+            ],
+            "light_rail"
+          ]
+        ],
+        [
+          "all",
+          [
+            "any",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              7
+            ],
+            [
+              "==",
+              [
+                "get",
+                "station_size"
+              ],
+              "large"
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          14,
+          10,
+          [
+            "match",
+            [
+              "get",
+              "station_size"
+            ],
+            "large",
+            16,
+            "normal",
+            15,
+            14
+          ],
+          18,
+          18
+        ],
+        "symbol-sort-key": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          0,
+          "normal",
+          1,
+          2
+        ],
+        "text-variable-anchor": [
+          "top",
+          "bottom",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 0.7,
+        "text-padding": [
+          "step",
+          [
+            "zoom"
+          ],
+          14,
+          9,
+          9,
+          12,
+          4
+        ],
+        "text-max-width": 9,
+        "text-allow-overlap": false,
+        "icon-image": "station-dot",
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.95,
+          11,
+          1.15
+        ],
+        "icon-padding": 12,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "icon-optional": false,
+        "text-optional": false
+      },
+      "paint": {
+        "text-color": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          "#123e52",
+          "#0865c0"
+        ],
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "station-stationMed-light-rail-names",
+      "type": "symbol",
+      "source": "stationMed",
+      "source-layer": "standard_railway_text_stations_med",
+      "minzoom": 7,
+      "maxzoom": 8,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ],
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "station"
+              ],
+              ""
+            ],
+            "light_rail"
+          ]
+        ],
+        [
+          "all",
+          [
+            "any",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              7
+            ],
+            [
+              "==",
+              [
+                "get",
+                "station_size"
+              ],
+              "large"
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          14,
+          10,
+          [
+            "match",
+            [
+              "get",
+              "station_size"
+            ],
+            "large",
+            16,
+            "normal",
+            15,
+            14
+          ],
+          18,
+          18
+        ],
+        "symbol-sort-key": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          0,
+          "normal",
+          1,
+          2
+        ],
+        "text-variable-anchor": [
+          "top",
+          "bottom",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 0.7,
+        "text-padding": [
+          "step",
+          [
+            "zoom"
+          ],
+          14,
+          9,
+          9,
+          12,
+          4
+        ],
+        "text-max-width": 9,
+        "text-allow-overlap": false,
+        "icon-image": "station-dot",
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.95,
+          11,
+          1.15
+        ],
+        "icon-padding": 12,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "icon-optional": false,
+        "text-optional": false
+      },
+      "paint": {
+        "text-color": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          "#123e52",
+          "#0865c0"
+        ],
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "station-stations-light-rail-names",
+      "type": "symbol",
+      "source": "stations",
+      "source-layer": "standard_railway_text_stations",
+      "minzoom": 8,
+      "maxzoom": 12,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ],
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "station"
+              ],
+              ""
+            ],
+            "light_rail"
+          ]
+        ],
+        [
+          "all",
+          [
+            "any",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              7
+            ],
+            [
+              "==",
+              [
+                "get",
+                "station_size"
+              ],
+              "large"
+            ]
+          ]
+        ],
+        [
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ],
+          [
+            "any",
+            [
+              "==",
+              [
+                "get",
+                "feature"
+              ],
+              "station"
+            ],
+            [
+              "all",
+              [
+                ">=",
+                [
+                  "zoom"
+                ],
+                11
+              ],
+              [
+                "==",
+                [
+                  "get",
+                  "feature"
+                ],
+                "halt"
+              ]
+            ],
+            [
+              "all",
+              [
+                ">=",
+                [
+                  "zoom"
+                ],
+                13
+              ],
+              [
+                "==",
+                [
+                  "get",
+                  "feature"
+                ],
+                "tram_stop"
+              ]
+            ]
+          ],
+          [
+            "any",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              11
+            ],
+            [
+              "!",
+              [
+                "match",
+                [
+                  "get",
+                  "station"
+                ],
+                [
+                  "subway",
+                  "light_rail",
+                  "monorail"
+                ],
+                true,
+                false
+              ]
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          14,
+          10,
+          [
+            "match",
+            [
+              "get",
+              "station_size"
+            ],
+            "large",
+            16,
+            "normal",
+            15,
+            14
+          ],
+          18,
+          18
+        ],
+        "symbol-sort-key": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          0,
+          "normal",
+          1,
+          2
+        ],
+        "text-variable-anchor": [
+          "top",
+          "bottom",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 0.7,
+        "text-padding": [
+          "step",
+          [
+            "zoom"
+          ],
+          14,
+          9,
+          9,
+          12,
+          4
+        ],
+        "text-max-width": 9,
+        "text-allow-overlap": false,
+        "icon-image": "station-dot",
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.95,
+          11,
+          1.15
+        ],
+        "icon-padding": 12,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "icon-optional": false,
+        "text-optional": false
+      },
+      "paint": {
+        "text-color": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          "#123e52",
+          "#0865c0"
+        ],
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      }
+    },
+    {
       "id": "station-stationLow-metro-names",
       "type": "symbol",
       "source": "stationLow",
@@ -3371,9 +5183,21 @@
       "filter": [
         "all",
         [
-          "any",
+          "all",
           [
-            "match",
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ],
+          [
+            "==",
             [
               "coalesce",
               [
@@ -3382,24 +5206,7 @@
               ],
               ""
             ],
-            [
-              "subway",
-              "light_rail",
-              "monorail",
-              "funicular",
-              "miniature",
-              "tram"
-            ],
-            true,
-            false
-          ],
-          [
-            "==",
-            [
-              "get",
-              "feature"
-            ],
-            "tram_stop"
+            "subway"
           ]
         ],
         [
@@ -3630,9 +5437,21 @@
       "filter": [
         "all",
         [
-          "any",
+          "all",
           [
-            "match",
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ],
+          [
+            "==",
             [
               "coalesce",
               [
@@ -3641,24 +5460,7 @@
               ],
               ""
             ],
-            [
-              "subway",
-              "light_rail",
-              "monorail",
-              "funicular",
-              "miniature",
-              "tram"
-            ],
-            true,
-            false
-          ],
-          [
-            "==",
-            [
-              "get",
-              "feature"
-            ],
-            "tram_stop"
+            "subway"
           ]
         ],
         [
@@ -3889,9 +5691,21 @@
       "filter": [
         "all",
         [
-          "any",
+          "all",
           [
-            "match",
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ],
+          [
+            "==",
             [
               "coalesce",
               [
@@ -3900,24 +5714,7 @@
               ],
               ""
             ],
-            [
-              "subway",
-              "light_rail",
-              "monorail",
-              "funicular",
-              "miniature",
-              "tram"
-            ],
-            true,
-            false
-          ],
-          [
-            "==",
-            [
-              "get",
-              "feature"
-            ],
-            "tram_stop"
+            "subway"
           ]
         ],
         [
@@ -4239,9 +6036,21 @@
         [
           "all",
           [
-            "!",
+            "all",
             [
-              "any",
+              "==",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "state"
+                ],
+                "present"
+              ],
+              "present"
+            ],
+            [
+              "!",
               [
                 "match",
                 [
@@ -4262,15 +6071,15 @@
                 ],
                 true,
                 false
-              ],
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
               ]
+            ],
+            [
+              "!=",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
             ]
           ],
           [
@@ -4519,9 +6328,21 @@
         [
           "all",
           [
-            "!",
+            "all",
             [
-              "any",
+              "==",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "state"
+                ],
+                "present"
+              ],
+              "present"
+            ],
+            [
+              "!",
               [
                 "match",
                 [
@@ -4542,15 +6363,15 @@
                 ],
                 true,
                 false
-              ],
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
               ]
+            ],
+            [
+              "!=",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
             ]
           ],
           [
@@ -4799,9 +6620,21 @@
         [
           "all",
           [
-            "!",
+            "all",
             [
-              "any",
+              "==",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "state"
+                ],
+                "present"
+              ],
+              "present"
+            ],
+            [
+              "!",
               [
                 "match",
                 [
@@ -4822,15 +6655,15 @@
                 ],
                 true,
                 false
-              ],
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
               ]
+            ],
+            [
+              "!=",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
             ]
           ],
           [
@@ -5168,9 +7001,21 @@
         [
           "all",
           [
-            "!",
+            "all",
             [
-              "any",
+              "==",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "state"
+                ],
+                "present"
+              ],
+              "present"
+            ],
+            [
+              "!",
               [
                 "match",
                 [
@@ -5191,15 +7036,15 @@
                 ],
                 true,
                 false
-              ],
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
               ]
+            ],
+            [
+              "!=",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
             ]
           ],
           [
@@ -5465,9 +7310,21 @@
         [
           "all",
           [
-            "!",
+            "all",
             [
-              "any",
+              "==",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "state"
+                ],
+                "present"
+              ],
+              "present"
+            ],
+            [
+              "!",
               [
                 "match",
                 [
@@ -5488,15 +7345,15 @@
                 ],
                 true,
                 false
-              ],
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
               ]
+            ],
+            [
+              "!=",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
             ]
           ],
           [
@@ -5762,9 +7619,21 @@
         [
           "all",
           [
-            "!",
+            "all",
             [
-              "any",
+              "==",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "state"
+                ],
+                "present"
+              ],
+              "present"
+            ],
+            [
+              "!",
               [
                 "match",
                 [
@@ -5785,15 +7654,15 @@
                 ],
                 true,
                 false
-              ],
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
               ]
+            ],
+            [
+              "!=",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
             ]
           ],
           [
@@ -6148,9 +8017,21 @@
         [
           "all",
           [
-            "!",
+            "all",
             [
-              "any",
+              "==",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "state"
+                ],
+                "present"
+              ],
+              "present"
+            ],
+            [
+              "!",
               [
                 "match",
                 [
@@ -6171,15 +8052,15 @@
                 ],
                 true,
                 false
-              ],
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
               ]
+            ],
+            [
+              "!=",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
             ]
           ],
           [
@@ -6437,9 +8318,21 @@
         [
           "all",
           [
-            "!",
+            "all",
             [
-              "any",
+              "==",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "state"
+                ],
+                "present"
+              ],
+              "present"
+            ],
+            [
+              "!",
               [
                 "match",
                 [
@@ -6460,15 +8353,15 @@
                 ],
                 true,
                 false
-              ],
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
               ]
+            ],
+            [
+              "!=",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
             ]
           ],
           [
@@ -6726,9 +8619,21 @@
         [
           "all",
           [
-            "!",
+            "all",
             [
-              "any",
+              "==",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "state"
+                ],
+                "present"
+              ],
+              "present"
+            ],
+            [
+              "!",
               [
                 "match",
                 [
@@ -6749,15 +8654,15 @@
                 ],
                 true,
                 false
-              ],
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
               ]
+            ],
+            [
+              "!=",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
             ]
           ],
           [
@@ -7104,9 +9009,21 @@
         [
           "all",
           [
-            "!",
+            "all",
             [
-              "any",
+              "==",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "state"
+                ],
+                "present"
+              ],
+              "present"
+            ],
+            [
+              "!",
               [
                 "match",
                 [
@@ -7127,15 +9044,15 @@
                 ],
                 true,
                 false
-              ],
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
               ]
+            ],
+            [
+              "!=",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
             ]
           ],
           [
@@ -7393,9 +9310,21 @@
         [
           "all",
           [
-            "!",
+            "all",
             [
-              "any",
+              "==",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "state"
+                ],
+                "present"
+              ],
+              "present"
+            ],
+            [
+              "!",
               [
                 "match",
                 [
@@ -7416,15 +9345,15 @@
                 ],
                 true,
                 false
-              ],
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
               ]
+            ],
+            [
+              "!=",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
             ]
           ],
           [
@@ -7682,9 +9611,21 @@
         [
           "all",
           [
-            "!",
+            "all",
             [
-              "any",
+              "==",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "state"
+                ],
+                "present"
+              ],
+              "present"
+            ],
+            [
+              "!",
               [
                 "match",
                 [
@@ -7705,15 +9646,15 @@
                 ],
                 true,
                 false
-              ],
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
               ]
+            ],
+            [
+              "!=",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
             ]
           ],
           [
@@ -8049,7 +9990,7 @@
       }
     },
     {
-      "id": "station-detail-metro-names",
+      "id": "station-former-names",
       "type": "symbol",
       "source": "stations",
       "source-layer": "standard_railway_text_stations",
@@ -8057,9 +9998,533 @@
       "filter": [
         "all",
         [
-          "any",
+          "!",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ]
+        ],
+        [
+          "match",
+          [
+            "get",
+            "feature"
+          ],
+          [
+            "station",
+            "halt"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          12,
+          18,
+          15
+        ],
+        "symbol-sort-key": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          0,
+          "normal",
+          1,
+          2
+        ],
+        "text-variable-anchor": [
+          "top",
+          "bottom",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 0.7,
+        "text-padding": [
+          "step",
+          [
+            "zoom"
+          ],
+          14,
+          9,
+          9,
+          12,
+          4
+        ],
+        "text-max-width": 9,
+        "text-allow-overlap": false
+      },
+      "paint": {
+        "text-color": "#8a8076",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "station-detail-mover-names",
+      "type": "symbol",
+      "source": "stations",
+      "source-layer": "standard_railway_text_stations",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ],
+          [
+            "any",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "station"
+                ],
+                ""
+              ],
+              [
+                "monorail",
+                "funicular",
+                "miniature",
+                "tram"
+              ],
+              true,
+              false
+            ],
+            [
+              "==",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
+            ]
+          ]
+        ],
+        [
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ],
+          [
+            "any",
+            [
+              "==",
+              [
+                "get",
+                "feature"
+              ],
+              "station"
+            ],
+            [
+              "all",
+              [
+                ">=",
+                [
+                  "zoom"
+                ],
+                11
+              ],
+              [
+                "==",
+                [
+                  "get",
+                  "feature"
+                ],
+                "halt"
+              ]
+            ],
+            [
+              "all",
+              [
+                ">=",
+                [
+                  "zoom"
+                ],
+                13
+              ],
+              [
+                "==",
+                [
+                  "get",
+                  "feature"
+                ],
+                "tram_stop"
+              ]
+            ]
+          ],
+          [
+            "any",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              11
+            ],
+            [
+              "!",
+              [
+                "match",
+                [
+                  "get",
+                  "station"
+                ],
+                [
+                  "subway",
+                  "light_rail",
+                  "monorail"
+                ],
+                true,
+                false
+              ]
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          14,
+          10,
           [
             "match",
+            [
+              "get",
+              "station_size"
+            ],
+            "large",
+            16,
+            "normal",
+            15,
+            14
+          ],
+          18,
+          18
+        ],
+        "symbol-sort-key": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          0,
+          "normal",
+          1,
+          2
+        ],
+        "text-variable-anchor": [
+          "top",
+          "bottom",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 0.7,
+        "text-padding": [
+          "step",
+          [
+            "zoom"
+          ],
+          14,
+          9,
+          9,
+          12,
+          4
+        ],
+        "text-max-width": 9,
+        "text-allow-overlap": false
+      },
+      "paint": {
+        "text-color": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          "#123e52",
+          "#0865c0"
+        ],
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "station-detail-light-rail-names",
+      "type": "symbol",
+      "source": "stations",
+      "source-layer": "standard_railway_text_stations",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ],
+          [
+            "==",
             [
               "coalesce",
               [
@@ -8068,24 +10533,309 @@
               ],
               ""
             ],
+            "light_rail"
+          ]
+        ],
+        [
+          "all",
+          [
+            "==",
             [
-              "subway",
-              "light_rail",
-              "monorail",
-              "funicular",
-              "miniature",
-              "tram"
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
             ],
-            true,
-            false
+            "present"
+          ],
+          [
+            "any",
+            [
+              "==",
+              [
+                "get",
+                "feature"
+              ],
+              "station"
+            ],
+            [
+              "all",
+              [
+                ">=",
+                [
+                  "zoom"
+                ],
+                11
+              ],
+              [
+                "==",
+                [
+                  "get",
+                  "feature"
+                ],
+                "halt"
+              ]
+            ],
+            [
+              "all",
+              [
+                ">=",
+                [
+                  "zoom"
+                ],
+                13
+              ],
+              [
+                "==",
+                [
+                  "get",
+                  "feature"
+                ],
+                "tram_stop"
+              ]
+            ]
+          ],
+          [
+            "any",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              11
+            ],
+            [
+              "!",
+              [
+                "match",
+                [
+                  "get",
+                  "station"
+                ],
+                [
+                  "subway",
+                  "light_rail",
+                  "monorail"
+                ],
+                true,
+                false
+              ]
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          14,
+          10,
+          [
+            "match",
+            [
+              "get",
+              "station_size"
+            ],
+            "large",
+            16,
+            "normal",
+            15,
+            14
+          ],
+          18,
+          18
+        ],
+        "symbol-sort-key": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          0,
+          "normal",
+          1,
+          2
+        ],
+        "text-variable-anchor": [
+          "top",
+          "bottom",
+          "left",
+          "right"
+        ],
+        "text-radial-offset": 0.7,
+        "text-padding": [
+          "step",
+          [
+            "zoom"
+          ],
+          14,
+          9,
+          9,
+          12,
+          4
+        ],
+        "text-max-width": 9,
+        "text-allow-overlap": false
+      },
+      "paint": {
+        "text-color": [
+          "match",
+          [
+            "get",
+            "station_size"
+          ],
+          "large",
+          "#123e52",
+          "#0865c0"
+        ],
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "station-detail-metro-names",
+      "type": "symbol",
+      "source": "stations",
+      "source-layer": "standard_railway_text_stations",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
           ],
           [
             "==",
             [
-              "get",
-              "feature"
+              "coalesce",
+              [
+                "get",
+                "station"
+              ],
+              ""
             ],
-            "tram_stop"
+            "subway"
           ]
         ],
         [
@@ -8366,9 +11116,21 @@
         [
           "all",
           [
-            "!",
+            "all",
             [
-              "any",
+              "==",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "state"
+                ],
+                "present"
+              ],
+              "present"
+            ],
+            [
+              "!",
               [
                 "match",
                 [
@@ -8389,15 +11151,15 @@
                 ],
                 true,
                 false
-              ],
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
               ]
+            ],
+            [
+              "!=",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
             ]
           ],
           [
@@ -8694,9 +11456,21 @@
         [
           "all",
           [
-            "!",
+            "all",
             [
-              "any",
+              "==",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "state"
+                ],
+                "present"
+              ],
+              "present"
+            ],
+            [
+              "!",
               [
                 "match",
                 [
@@ -8717,15 +11491,15 @@
                 ],
                 true,
                 false
-              ],
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
               ]
+            ],
+            [
+              "!=",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
             ]
           ],
           [
@@ -9039,9 +11813,21 @@
         [
           "all",
           [
-            "!",
+            "all",
             [
-              "any",
+              "==",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "state"
+                ],
+                "present"
+              ],
+              "present"
+            ],
+            [
+              "!",
               [
                 "match",
                 [
@@ -9062,15 +11848,15 @@
                 ],
                 true,
                 false
-              ],
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
               ]
+            ],
+            [
+              "!=",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
             ]
           ],
           [
@@ -9376,9 +12162,21 @@
         [
           "all",
           [
-            "!",
+            "all",
             [
-              "any",
+              "==",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "state"
+                ],
+                "present"
+              ],
+              "present"
+            ],
+            [
+              "!",
               [
                 "match",
                 [
@@ -9399,15 +12197,15 @@
                 ],
                 true,
                 false
-              ],
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
               ]
+            ],
+            [
+              "!=",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
             ]
           ],
           [

@@ -206,6 +206,7 @@ export function readSettings(search) {
     relief: params.get('relief') !== '0',
     names: params.get('names') !== '0',
     units: params.get('units') === 'imperial' ? 'imperial' : 'metric',
+    detail: params.get('detail') === '1',
     language: language(params.get('language') || params.get('stationLanguage') || params.get('mapLanguage') || params.get('lineLanguage')),
   };
 }

@@ -4,14 +4,15 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 import * as model from '../styles/map-model.mjs';
+import * as draw from '../styles/draw.mjs';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
 const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
 
-async function start({ failWebGL = false, delayLibraries = false } = {}) {
-  const dom = new JSDOM(html, {url:'https://example.org/openrailwaystyle/', runScripts:'outside-only'});
+async function start({ failWebGL = false, delayLibraries = false, search = '' } = {}) {
+  const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   const window = dom.window;
   const errors = [], maps = [];
   window.console.error = error => errors.push(error);
@@ -23,15 +24,25 @@ async function start({ failWebGL = false, delayLibraries = false } = {}) {
     }
     once(name,handler) {this.handlers[name]=handler;}
     setStyle(style, options) {this.options.style=style;this.styleOptions=options;this.handlers['style.load']?.();}
-    addControl() {}
+    addControl(control) { (this.controls ||= []).push(control); }
     addImage(id, data, options) { this.image = {id,data,options}; }
     off(name) { delete this.handlers[name]; }
     on(name, handler) { this.handlers[name] = handler; }
     getStyle() { return this.options.style; }
-    getSource(id) { return {setUrl: url => {this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
+    getSource(id) { return {setData(){},setUrl: url => {this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
     setLayoutProperty(id, property, value) { if (property === 'visibility') this.visibility[id] = value; else (this.layout ||= {})[id] = value; }
     setPaintProperty(id, property, value) { (this.paint ||= {})[id] = value; }
-    getZoom() { return 4; }
+    setPixelRatio(ratio) { this.pixelRatio = ratio; }
+    zoom = 20;
+    getZoom() { return this.zoom; }
+    setMinZoom(z) { this.minZoom = z; this.zoom = Math.max(this.zoom, z); }
+    setMaxZoom(z) { this.maxZoom = z; this.zoom = Math.min(this.zoom, z); }
+    jumpTo(options) { this.zoom = Math.min(Math.max(options.zoom, this.minZoom ?? -Infinity), this.maxZoom ?? Infinity); }
+    getLayer() {}
+    addLayer(layer) { (this.added ||= []).push(layer.id); }
+    addSource() {}
+    getCanvas() { return {style:{}}; }
+    doubleClickZoom = {enable(){}, disable(){}};
     queryRenderedFeatures() { return []; }
   }
   // This is the MapLibre 5 public surface used by the app. In particular,
@@ -64,7 +75,10 @@ async function start({ failWebGL = false, delayLibraries = false } = {}) {
       return protocols;
     },
   });
-  await app.link(() => dependency);
+  const drawing = new vm.SyntheticModule(Object.keys(draw), function() {
+    for (const [key,value] of Object.entries(draw)) this.setExport(key,value);
+  }, {context});
+  await app.link(specifier => specifier.includes('draw.mjs') ? drawing : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries};
@@ -132,6 +146,27 @@ test('controls work while the map is still loading, and settings take effect onc
     assert.match(JSON.stringify(map.layout['terrain-contour-labels']),/ m"/);
     language.value='zh-Hant'; language.dispatchEvent(new window.Event('change'));
     assert.match(map.styleOptions.localIdeographFontFamily,/TC/);
+  } finally {dom.window.close();}
+});
+test('more detail draws the next zoom level at half size', async () => {
+  const {dom,window,maps} = await start({search:'?detail=1'});
+  try {
+    assert.equal(window.document.getElementById('map').classList.contains('detail'),true);
+    assert.equal(maps[0].options.pixelRatio,(window.devicePixelRatio||1)/2,'the canvas keeps its pixel count');
+    maps[0].handlers.load();
+    assert.ok(maps[0].added.includes('drawing-line'),'drawing layers are installed with the map');
+    // Toggling at the zoom limit keeps the viewport: the range shifts by one.
+    const map = maps[0];
+    assert.deepEqual([map.options.minZoom,map.options.maxZoom],[2,21]);
+    const detail = map.controls.find(c => c.onAdd && c.buttons).onAdd().querySelector('button[title^="More detail"]');
+    map.zoom = 21;
+    detail.click();
+    assert.equal(window.document.getElementById('map').classList.contains('detail'),false);
+    assert.deepEqual([map.zoom,map.minZoom,map.maxZoom],[20,1,20]);
+    detail.click();
+    assert.deepEqual([map.zoom,map.minZoom,map.maxZoom],[21,2,21]);
+    map.zoom = 2; detail.click();
+    assert.equal(map.zoom,1);
   } finally {dom.window.close();}
 });
 test('real renderer initialization failures reach the visible error message', async () => {
