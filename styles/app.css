@@ -11,3 +11,5 @@
 .swatch.bridge{height:8px;border-top:2px solid #263b48;border-bottom:2px solid #263b48;border-radius:0;box-shadow:inset 0 1px #fffef8,inset 0 -1px #fffef8}
 .swatch.tunnel{height:5px;position:relative}.swatch.tunnel:after{content:"";position:absolute;inset:2px 0;background:repeating-linear-gradient(90deg,#fffef8 0 4px,transparent 4px 7px)}
 .legend-zoom{display:block;font-size:10px;color:#7b8980;margin-top:1px}
+.units-picker{display:grid;grid-template-columns:85px 1fr;gap:8px;align-items:center}
+.units-picker select{min-width:0;padding:7px 8px;font-size:12px}
