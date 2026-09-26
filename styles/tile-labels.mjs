@@ -21,11 +21,11 @@ export const tileCoordinates = url => {
   return match && {z:+match[1],x:+match[2],y:+match[3]};
 };
 // Han-name region and Chinese naming area (mainland China, Taiwan, Hong Kong
-// or Macau) of a point, as label properties. The Chinese areas' time-zone
-// outlines also reach islands Natural Earth omits, such as Pratas.
+// or Macau) of a point, as label properties. The region decides; the area
+// only distinguishes places within it.
 export function locate(lon, lat) {
-  const atlas_zh = chineseArea(lon, lat);
-  return {atlas_han: atlas_zh ? 'cjkv' : hanRegion(lon, lat), atlas_zh};
+  const atlas_han = hanRegion(lon, lat);
+  return {atlas_han, atlas_zh: atlas_han === 'cjkv' ? chineseArea(lon, lat) : ''};
 }
 // Record the Han-name region at each feature's centre. Every tile URL used
 // by the map ends in z/x/y, so every labelled feature has a location.

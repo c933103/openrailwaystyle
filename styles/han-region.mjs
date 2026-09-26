@@ -1,9 +1,9 @@
-import {CJKV, CHINESE, AREAS} from './han-region-data.mjs';
+import {CJKV, CHINESE, INLAND, AREAS} from './han-region-data.mjs';
 // Areas whose place names may borrow Han-character names:
 // 'cjkv' — China, Taiwan, Hong Kong, Macau, Japan, the Koreas and Vietnam
 //          (Chinese and Japanese labels);
 // 'zh'   — Singapore, Malaysia, the Russian Far East and Chinese-speaking
-//          Kokang, Wa, Mong La and Mae Fa Luang (Chinese labels only);
+//          Wa State, Mong La, Kokang and Mae Fa Luang (Chinese labels only);
 // 'none' — everywhere else.
 // Sea within 12 nautical miles goes to the nearest land: a pier, a bridge or
 // an undersea tunnel such as Seikan counts as inside when the zone's coast is
@@ -76,7 +76,9 @@ const normalize = lon => ((lon + 180) % 360 + 360) % 360 - 180;
 export function hanRegion(lon, lat) {
   if (!Number.isFinite(lon) || !Number.isFinite(lat) || lat < -5 || lat > 85) return 'none';
   lon = normalize(lon);
-  zones ||= {cjkv: index(...CJKV), zh: index(...CHINESE)};
+  zones ||= {inland: index(...INLAND), cjkv: index(...CJKV), zh: index(...CHINESE)};
+  // The inland outlines are more precise than Natural Earth's borders.
+  if (contains(zones.inland, lon, lat)) return 'zh';
   return contains(zones.cjkv, lon, lat) ? 'cjkv' : contains(zones.zh, lon, lat) ? 'zh' : 'none';
 }
 // Which of mainland China ('CN'), Taiwan ('TW'), Hong Kong ('HK') or Macau

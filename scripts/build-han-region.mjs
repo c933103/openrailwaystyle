@@ -6,11 +6,13 @@
 //   npm module (ODbL, derived from OpenStreetMap). These follow OSM land and
 //   territorial-sea boundaries and include every outlying island, such as
 //   Matsu, Kinmen and Pratas.
-// - Chinese-speaking areas of Myanmar and Thailand from geoBoundaries:
-//   Myanmar townships (Myanmar Analytics Project, CC BY 4.0) and Thai
-//   districts (Royal Thai Survey Department / OCHA ROAP, CC BY 3.0 IGO).
+// - Chinese-speaking areas of Myanmar and Thailand: Wa State and Mong La from
+//   OpenStreetMap boundary relations (ODbL); Kokang townships and a Thai
+//   district from geoBoundaries (Myanmar Analytics Project, CC BY 4.0; Royal
+//   Thai Survey Department / OCHA ROAP, CC BY 3.0 IGO).
 // Usage:
-//   node scripts/build-han-region.mjs [admin-0.geojson admin-1.geojson geo-tz-data-dir mmr-adm3.geojson tha-adm2.geojson]
+//   node scripts/build-han-region.mjs [admin-0.geojson admin-1.geojson geo-tz-data-dir mmr-adm3.geojson tha-adm2.geojson osm-dir]
+// osm-dir holds <relation id>.json downloads of /api/0.6/relation/<id>/full.json.
 import {readFile, writeFile} from 'node:fs/promises';
 import {gunzipSync} from 'node:zlib';
 import geobuf from 'geobuf';
@@ -22,14 +24,15 @@ const CJKV = ['CHN','TWN','HKG','MAC','JPN','KOR','PRK','VNM'];
 // Chinese labels only: Singapore, Malaysia and the Russian Far East (the Far
 // Eastern Federal District as constituted since 2018).
 const CHINESE = ['SGP','MYS'];
-// Chinese labels only, inland: Chinese-speaking areas of Myanmar — the Kokang
-// Self-Administered Zone (Laukkaing, Konkyan), the Wa Self-Administered
-// Division (Hopang, Mongmao, Pangwaun, Narphan, Pangsang, Matman) and Mong La
-// (Special Region 4) — and Thailand's Mae Fa Luang district, home of the
-// Yunnanese villages of Santikhiri (Mae Salong) and Thoet Thai.
+// Chinese labels only, inland: Chinese-speaking areas of Myanmar — Wa State
+// as it is governed, northern and southern parts (Mandarin is its working
+// language), Mong La (Special Region 4) and the Kokang Self-Administered Zone
+// (Laukkaing, Konkyan townships) — and Thailand's Mae Fa Luang district, home
+// of the Yunnanese villages of Santikhiri (Mae Salong) and Thoet Thai.
+const OSM_RELATIONS = {9399863:'Wa State', 16742698:'Mong La District'};
 const GB = 'https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/main/releaseData/gbOpen/';
 const INLAND = [
-  ['MMR/ADM3/geoBoundaries-MMR-ADM3_simplified.geojson', ['Laukkaing','Konkyan','Hopang','Mongmao','Pangwaun','Narphan','Pangsang','Matman','Mongla']],
+  ['MMR/ADM3/geoBoundaries-MMR-ADM3_simplified.geojson', ['Laukkaing','Konkyan']],
   ['THA/ADM2/geoBoundaries-THA-ADM2_simplified.geojson', ['Mae Fa Luang']],
 ];
 const FAR_EAST = ['RU-AMU','RU-BU','RU-CHU','RU-KAM','RU-KHA','RU-MAG','RU-PRI','RU-SA','RU-SAK','RU-YEV','RU-ZAB'];
@@ -114,7 +117,7 @@ function zone(members, inland = []) {
   });
   const others = [];
   let otherPoints = 0;
-  for (const a of areas.filter(a => !members.includes(a.id))) for (const ring of rings(a.geometry)) {
+  if (members.length) for (const a of areas.filter(a => !members.includes(a.id))) for (const ring of rings(a.geometry)) {
     let run = [];
     const flush = () => { if (run.length > 1) { const line = simplify(run, COAST); others.push(encode(line)); otherPoints += line.length; } run = []; };
     for (let i = 0; i < ring.length-1; i++) {
@@ -126,7 +129,8 @@ function zone(members, inland = []) {
     }
     flush();
   }
-  // Inland areas cut out of a country: every edge is a land border.
+  // Areas added by outline (inland areas cut out of a country, offshore
+  // islands with their territorial sea): every edge is a border.
   for (const ring of inland.flatMap(rings)) {
     const outline = simplify(ring, BORDER);
     polygons.push([encode(outline), [0, outline.length-1]]);
@@ -190,11 +194,40 @@ async function chineseAreas(dir) {
     // tests; area outlines have no land-border runs.
     const rings = polygonClipping.union(...list.map(p => [p])).flat(1).map(detail).filter(ring => ring.length > 3);
     console.log(`${code}: ${rings.length} rings, ${rings.reduce((n, r) => n + r.length, 0)} points`);
-    result[code] = rings.map(ring => [encode(ring, 10000), []]);
+    result[code] = rings;
   }
   return result;
 }
+// Join a boundary relation's outer ways into closed rings.
+async function osmRelation(id, name, dir) {
+  let data;
+  if (dir) data = JSON.parse(await readFile(`${dir}/${id}.json`, 'utf8'));
+  else {
+    const response = await fetch(`https://www.openstreetmap.org/api/0.6/relation/${id}/full.json`, {headers:{'User-Agent':'openrailwaystyle build-han-region (github.com/c933103/openrailwaystyle)'}});
+    if (!response.ok) throw new Error(`OSM relation ${id} returned ${response.status}`);
+    data = await response.json();
+  }
+  const elements = data.elements;
+  const nodes = new Map(elements.filter(e => e.type === 'node').map(e => [e.id, [e.lon, e.lat]]));
+  const ways = new Map(elements.filter(e => e.type === 'way').map(e => [e.id, e.nodes]));
+  const relation = elements.find(e => e.type === 'relation' && e.id === id);
+  if (relation.tags['name:en'] !== name) throw new Error(`OSM relation ${id} is ${relation.tags['name:en']}, not ${name}`);
+  const open = relation.members.filter(m => m.type === 'way' && m.role === 'outer').map(m => [...ways.get(m.ref)]);
+  const rings = [];
+  while (open.length) {
+    const ring = open.shift();
+    while (ring[0] !== ring.at(-1)) {
+      const i = open.findIndex(w => w[0] === ring.at(-1) || w.at(-1) === ring.at(-1));
+      if (i < 0) throw new Error(`OSM relation ${id} has an unclosed outer ring`);
+      const [next] = open.splice(i, 1);
+      ring.push(...(next[0] === ring.at(-1) ? next : next.reverse()).slice(1));
+    }
+    rings.push([ring.map(n => nodes.get(n))]);
+  }
+  return {type:'MultiPolygon', coordinates:rings};
+}
 const inland = [];
+for (const [id, name] of Object.entries(OSM_RELATIONS)) inland.push(await osmRelation(Number(id), name, process.argv[7]));
 for (const [i, [file, names]] of INLAND.entries()) {
   const features = (await load(process.argv[5+i], file, GB)).features;
   for (const name of names) {
@@ -203,16 +236,27 @@ for (const [i, [file, names]] of INLAND.entries()) {
     inland.push(found[0].geometry);
   }
 }
-const [cjkv, chinese] = [zone(CJKV), zone([...CHINESE, ...FAR_EAST], inland)];
-const chineseAreaOutlines = await chineseAreas(process.argv[4]);
+const areaRings = await chineseAreas(process.argv[4]);
+const chineseAreaOutlines = Object.fromEntries(Object.entries(areaRings).map(([code, list]) => [code, list.map(ring => [encode(ring, 10000), []])]));
+// Chinese-area islands far from Natural Earth land, such as Pratas and
+// Taiping, join the Han-character region with their territorial sea.
+const land = areas.filter(a => CJKV.includes(a.id)).flatMap(a => rings(a.geometry)).flat();
+const offshore = Object.values(areaRings).flat().filter(ring => {
+  const [w,s,e,n] = bbox(ring);
+  return !land.some(([x,y]) => x >= w-NEAR && x <= e+NEAR && y >= s-NEAR && y <= n+NEAR);
+}).map(ring => ({type:'Polygon', coordinates:[ring]}));
+console.log(`Offshore Chinese-area rings: ${offshore.length}`);
+const [cjkv, chinese, inlandZone] = [zone(CJKV, offshore), zone([...CHINESE, ...FAR_EAST]), zone([], inland)];
 await writeFile(new URL('../styles/han-region-data.mjs', import.meta.url),
   `// Generated by scripts/build-han-region.mjs.\n` +
   `// CJKV and CHINESE: Natural Earth 1:10m admin-0 and admin-1 (public domain),\n` +
   `// delta-encoded 1e-3 degrees: [[outline, border runs]...], [nearby outside lines...].\n` +
-  `// ${CJKV.join(', ')}\nexport const CJKV = ${JSON.stringify(cjkv)};\n` +
-  `// ${[...CHINESE, ...FAR_EAST, ...INLAND.flatMap(([,names]) => names)].join(', ')}\n` +
+  `// ${CJKV.join(', ')}; plus offshore Chinese-area islands from AREAS below (ODbL)\nexport const CJKV = ${JSON.stringify(cjkv)};\n` +
+  `// ${[...CHINESE, ...FAR_EAST].join(', ')}\nexport const CHINESE = ${JSON.stringify(chinese)};\n` +
+  `// INLAND (Chinese labels only; precedes the Natural Earth regions): ${[...Object.values(OSM_RELATIONS), ...INLAND.flatMap(([,names]) => names)].join(', ')}\n` +
+  `// Wa State, Mong La: OSM relations ${Object.keys(OSM_RELATIONS).join(', ')}, © OpenStreetMap contributors, ODbL;\n` +
   `// Myanmar townships: geoBoundaries / Myanmar Analytics Project, CC BY 4.0;\n` +
-  `// Thai district: geoBoundaries / Royal Thai Survey Department, OCHA ROAP, CC BY 3.0 IGO.\nexport const CHINESE = ${JSON.stringify(chinese)};\n` +
+  `// Thai district: geoBoundaries / Royal Thai Survey Department, OCHA ROAP, CC BY 3.0 IGO.\nexport const INLAND = ${JSON.stringify(inlandZone)};\n` +
   `// AREAS: timezone-boundary-builder via geo-tz 8.1.9, © OpenStreetMap contributors,\n` +
   `// ODbL 1.0 (https://opendatacommons.org/licenses/odbl/). Delta-encoded 1e-4 degrees.\n` +
   `// ${Object.entries(CHINESE_AREAS).map(([zone, code]) => `${code} = ${zone}`).join(', ')}\n` +

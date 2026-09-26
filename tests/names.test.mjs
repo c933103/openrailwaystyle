@@ -64,8 +64,10 @@ test('Han regions: Chinese and Japanese in CJKV; Chinese only in Singapore, Mala
   // 20 km from Phu Quoc.
   for(const [lon,lat] of [[140.34,41.30],[140.30,41.38],[130.93,33.96]]) assert.equal(hanRegion(lon,lat),'cjkv',`${lon},${lat}`);
   for(const [lon,lat] of [[104.03,1.13],[104.32,10.48],[101.4,20.95]]) assert.equal(hanRegion(lon,lat),'none',`${lon},${lat}`);
-  // Chinese-speaking Kokang, Wa and Mong La in Myanmar and Mae Fa Luang (Santikhiri, Thoet Thai) in Thailand.
-  for(const [lon,lat] of [[98.76,23.70],[99.14,22.17],[99.96,21.68],[99.62,20.16],[99.72,20.26]]) assert.equal(hanRegion(lon,lat),'zh',`${lon},${lat}`);
+  // Chinese-speaking Kokang, Wa State (north: Pangkham, beside the Chinese
+  // border; south: Wan Hong), Mong La and Mae Fa Luang (Santikhiri, Thoet Thai).
+  // Centres of Pangkham, Wan Hong and Mong La are their OSM admin-centre nodes.
+  for(const [lon,lat] of [[98.76,23.70],[99.1668,22.1788],[99.2962,20.4387],[100.0223,21.6762],[99.62,20.16],[99.72,20.26]]) assert.equal(hanRegion(lon,lat),'zh',`${lon},${lat}`);
   for(const [lon,lat] of [[97.75,22.94],[99.6,21.29],[99.83,19.91],[98.98,18.79]]) assert.equal(hanRegion(lon,lat),'none',`${lon},${lat}`);
   const vladivostok={name:'Владивосток','name:en':'Vladivostok','name:ja':'浦塩','name:ko-Hani':'海蔘威'};
   for(const lang of ['zh-Hant','zh-Hans']) {
@@ -98,7 +100,7 @@ test('Chinese labels always fall back to the other script before English, in eve
 });
 test('Chinese areas: mainland China, Taiwan, Hong Kong and Macau',()=>{
   const places={
-    CN:[[116.4,39.9],[121.47,31.23],[87.6,43.8],[127.47,50.22],[91.1,29.65],[109.5,18.25],[114.12,22.545],[114.055,22.536],[113.549,22.217],[124.39,40.13],[118.315,24.556],[118.1,24.48],[119.88,26.33],[119.13,25.06],[110.2,20.1],[106.75,22.1],[117.43,49.6]],
+    CN:[[116.4,39.9],[121.47,31.23],[87.6,43.8],[127.47,50.22],[91.1,29.65],[109.5,18.25],[114.12,22.545],[114.055,22.536],[113.549,22.217],[124.39,40.13],[118.315,24.556],[118.1,24.48],[119.88,26.33],[119.13,25.06],[110.2,20.1],[106.75,22.1],[117.43,49.6],[112.33,16.83]],
     TW:[[121.52,25.05],[120.3,22.62],[118.32,24.44],[119.57,23.57],[119.94,26.155],[119.99,26.22],[120.49,26.37],[119.98,25.955],[119.94,25.973],[118.24,24.43],[119.467,24.986],[116.72,20.7],[114.366,10.377],[118.2,24.44]],
     HK:[[114.18,22.30],[114.113,22.528],[114.066,22.514],[113.92,22.31]],
     MO:[[113.54,22.19],[113.56,22.14],[113.545,22.125]],
