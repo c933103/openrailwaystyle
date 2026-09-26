@@ -1,8 +1,8 @@
 # Open Railway Atlas — worldwide GitHub Pages map
 
 A worldwide, station-first railway map built with MapLibre and published at
-**https://c933103.github.io/openrailwaystyle/**. It is a fork of **[Open Railway
-Styles](https://github.com/OpenRail-Playground/openrailwaystyle)** (described at the end of this file); the original Hack4Rail example
+**https://c933103.github.io/openrailwaystyle/**. It is a fork of **Open Railway
+Styles** (described at the end of this file); the original Hack4Rail example
 styles and Europe extractor remain in the repository but are not used by the site.
 
 - Worldwide railway vectors from OpenRailwayMap, replacing the demo’s Europe-only railway extract.
