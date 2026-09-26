@@ -10,6 +10,13 @@ export const SPEED_BANDS = [
   { min: 250, color: '#ad2463', label: '250–299' },
   { min: 300, color: '#742da0', label: '≥ 300' },
 ];
+// Imperial view: round mph bands close to the km/h ones, same colours.
+export const MPH = 1.609344;
+export const SPEED_BANDS_MPH = [0,25,50,75,100,125,155,185].map((min, i, all) => ({
+  min, kmh: min*MPH, color: SPEED_BANDS[i].color,
+  label: i === 0 ? `< ${all[1]}` : i === all.length-1 ? `≥ ${min}` : `${min}–${all[i+1]-1}`,
+}));
+export const speedBands = units => units === 'imperial' ? SPEED_BANDS_MPH : SPEED_BANDS;
 export const UNKNOWN_COLOR = '#899197';
 export const ORM = 'https://openrailwaymap.app';
 // Public API explicitly supports cross-origin clients; the vector site's
@@ -180,11 +187,12 @@ export function speedColor(value) {
   const speed = numericSpeed(value);
   return speed === null ? UNKNOWN_COLOR : SPEED_BANDS.findLast(b => speed >= b.min).color;
 }
-export function formatSpeed(properties) {
+export function formatSpeed(properties, units = 'metric') {
   const n = numericSpeed(properties.maxspeed);
   const raw = properties.speed_label;
+  const kmh = n === null ? '' : `${Number(n.toFixed(1))} km/h`, mph = n === null ? '' : `${Number((n / MPH).toFixed(1))} mph`;
   return {
-    mapped: n === null ? 'Not recorded / not numeric' : `${Number(n.toFixed(1))} km/h (${Number((n / 1.609344).toFixed(1))} mph)`,
+    mapped: n === null ? 'Not recorded / not numeric' : units === 'imperial' ? `${mph} (${kmh})` : `${kmh} (${mph})`,
     tagged: raw ? `${raw}${/mph|km\/h/.test(raw) ? '' : ' (km/h)'}` : 'Not recorded',
   };
 }
@@ -197,6 +205,7 @@ export function readSettings(search) {
     inactive: params.get('inactive') !== '0',
     relief: params.get('relief') !== '0',
     names: params.get('names') !== '0',
+    units: params.get('units') === 'imperial' ? 'imperial' : 'metric',
     language: language(params.get('language') || params.get('stationLanguage') || params.get('mapLanguage') || params.get('lineLanguage')),
   };
 }
@@ -217,3 +226,22 @@ export const CONTOUR_OPTIONS = {
   thresholds:{7:[200,1000],9:[100,500],11:[50,250],13:[20,100],15:[10,50]},
   contourLayer:'contours',elevationKey:'ele',levelKey:'level',extent:4096,buffer:1,
 };
+// Imperial contours are drawn in feet at round intervals.
+export const contourOptions = units => units === 'imperial'
+  ? {...CONTOUR_OPTIONS, multiplier:3.28084, thresholds:{7:[500,2500],9:[250,1000],11:[100,500],13:[50,250],15:[25,100]}}
+  : CONTOUR_OPTIONS;
+// Speed colours and track labels for the chosen units. maxspeed is km/h.
+export function speedPaint(units) {
+  const speed = ['to-number', ['coalesce', ['get', 'maxspeed'], -1], -1];
+  const bands = speedBands(units);
+  return ['case', ['<', speed, 0], UNKNOWN_COLOR,
+    ['step', speed, bands[0].color, ...bands.slice(1).flatMap(b => [b.kmh ?? b.min, b.color])]];
+}
+// Metric keeps the tagged label (bare numbers are km/h, mph explicit).
+// Imperial keeps labels already in mph and converts the rest.
+export function speedLabel(units) {
+  const label = ['coalesce', ['get', 'speed_label'], ''];
+  if (units !== 'imperial') return ['get', 'speed_label'];
+  const speed = ['to-number', ['coalesce', ['get', 'maxspeed'], -1], -1];
+  return ['case', ['in', 'mph', label], label, ['>=', speed, 0], ['concat', ['to-string', ['round', ['/', speed, MPH]]], ' mph'], label];
+}

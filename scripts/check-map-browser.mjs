@@ -83,7 +83,13 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') console.log('Browser resource:',msg.text());});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260926-7&language=ko#7/34.229/129.245');
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260926-8&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  // Controls must respond while the map is still loading.
+  await page.locator('#about-open').click();
+  const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
+  assert.equal(await page.locator('dialog#about[open]').count(),1,'About must open before the map has loaded');
+  await page.locator('#about-close').click();
+  console.log(`PASS: About opened while loading (map ready at click: ${earlyReady})`);
   await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:120000});
   await page.waitForFunction(()=>+document.querySelector('#map-status').dataset.renderedTracks>0,undefined,{timeout:120000});
   // Pan northwest at the SAME zoom before any visit to zoom 8.
@@ -199,6 +205,37 @@ try{
   assert.equal(await page.locator('#map-status.error').count(),0,'Cancelled old requests must not leave a load-failure warning');
   const china=await page.screenshot({path:'browser-review/china-z7.jpg',type:'jpeg',quality:45});
   console.log('CHINA_IMAGE_START'+china.toString('base64')+'CHINA_IMAGE_END');
+  // The panel stays collapsed from the China view until the units check.
+  console.log('Checking mouse panning over a dense city, compass and units');
+  await moveTo(12,139.765,35.68);
+  await page.waitForFunction(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    return !map.isMoving() && ['stations','railway','openmaptiles'].every(id=>map.getSource(id) && map.isSourceLoaded(id)) && map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-')).length>10;
+  },undefined,{timeout:120000});
+  const centre=()=>page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);const c=map.getCenter();return [c.lng,c.lat];});
+  const before=await centre(), started=Date.now();
+  await page.mouse.move(900,450); await page.mouse.down();
+  for(let i=1;i<=30;i++) await page.mouse.move(900-i*8,450-i*4);
+  await page.mouse.up();
+  await page.waitForTimeout(800);
+  const after=await centre();
+  console.log('Mouse drag over Tokyo',Date.now()-started,'ms',JSON.stringify(before),'→',JSON.stringify(after));
+  assert.ok(Math.abs(after[0]-before[0])>0.005,'A mouse drag must pan the map in a dense area');
+  const compass=await page.locator('.maplibregl-ctrl-compass').boundingBox(), zoomIn=await page.locator('.maplibregl-ctrl-zoom-in').boundingBox();
+  assert.ok(compass && zoomIn && compass.y<zoomIn.y,'The compass sits above the zoom buttons');
+  await page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);map.setBearing(40);});
+  await page.locator('.maplibregl-ctrl-compass').click();
+  await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return Math.abs(map.getBearing())<0.5 && !map.isMoving();},undefined,{timeout:10000});
+  console.log('PASS: compass resets north');
+  await page.locator('#collapse').click();
+  await page.locator('[data-mode="speed"]').click();
+  await page.selectOption('#units','imperial');
+  assert.match(await page.locator('#legend').textContent(),/mph/);
+  assert.match(await page.locator('.maplibregl-ctrl-scale').textContent(),/ft|mi/);
+  await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return JSON.stringify(map.getLayoutProperty('speed-labels','text-field')).includes('mph');},undefined,{timeout:10000});
+  await page.selectOption('#units','metric');
+  assert.match(await page.locator('.maplibregl-ctrl-scale').textContent(),/km|\bm\b/);
+  console.log('PASS: units switch legend, scale bar and speed labels');
   assert.deepEqual(errors,[]);
   console.log('PASS: one shared language, name fallbacks, contours, structures and lifecycle controls; no JavaScript exceptions');
 } catch(error) {

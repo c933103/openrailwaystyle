@@ -10,7 +10,7 @@ const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
 
-async function start({ failWebGL = false } = {}) {
+async function start({ failWebGL = false, delayLibraries = false } = {}) {
   const dom = new JSDOM(html, {url:'https://example.org/openrailwaystyle/', runScripts:'outside-only'});
   const window = dom.window;
   const errors = [], maps = [];
@@ -22,36 +22,52 @@ async function start({ failWebGL = false } = {}) {
       maps.push(this);
     }
     once(name,handler) {this.handlers[name]=handler;}
-    setStyle(style) {this.options.style=style;this.handlers['style.load']?.();}
+    setStyle(style, options) {this.options.style=style;this.styleOptions=options;this.handlers['style.load']?.();}
     addControl() {}
     addImage(id, data, options) { this.image = {id,data,options}; }
     off(name) { delete this.handlers[name]; }
     on(name, handler) { this.handlers[name] = handler; }
     getStyle() { return this.options.style; }
     getSource(id) { return {setUrl: url => {this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
-    setLayoutProperty(id, property, value) { this.visibility[id] = value; }
+    setLayoutProperty(id, property, value) { if (property === 'visibility') this.visibility[id] = value; else (this.layout ||= {})[id] = value; }
+    setPaintProperty(id, property, value) { (this.paint ||= {})[id] = value; }
     getZoom() { return 4; }
     queryRenderedFeatures() { return []; }
   }
   // This is the MapLibre 5 public surface used by the app. In particular,
   // supported() is absent: older Mapbox examples must not gate startup.
-  window.maplibregl = {Map, addProtocol(){}, NavigationControl:class {}, ScaleControl:class {}};
-  window.pmtiles = {Protocol:class { tile() {} }};
-  window.mlcontour = {DemSource:class {setupMaplibre(){} contourProtocolUrl(){return 'atlas-contour://{z}/{x}/{y}';} sharedDemProtocolUrl='atlas-shared://{z}/{x}/{y}';}};
+  const libraries = {};
+  libraries.maplibregl = {Map, addProtocol(){}, NavigationControl:class { constructor(options) { maps.controls.push(options); } }, ScaleControl:class { constructor(options) { this.unit = options.unit; maps.scale = this; } setUnit(unit) { this.unit = unit; } }};
+  maps.controls = [];
+  libraries.pmtiles = {Protocol:class { tile() {} }};
+  libraries.mlcontour = {DemSource:class {setupMaplibre(){} contourProtocolUrl(options){return `atlas-contour://${options.multiplier ? 'ft' : 'm'}/{z}/{x}/{y}`;} sharedDemProtocolUrl='atlas-shared://{z}/{x}/{y}';}};
+  // Delayed libraries are provided later by loadLibraries().
+  const loadLibraries = () => {
+    Object.assign(window, libraries);
+    for (const script of window.document.head.querySelectorAll('script')) script.onload?.();
+  };
+  if (!delayLibraries) Object.assign(window, libraries);
   window.fetch = async () => ({ok:true,json:async()=>structuredClone(style)});
   const context = dom.getInternalVMContext();
   const dependency = new vm.SyntheticModule(Object.keys(model), function() {
     for (const [key,value] of Object.entries(model)) this.setExport(key,value);
   }, {context});
+  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','locate'],function(){this.setExport('installLabelProtocols',()=>{});this.setExport('localizeTile',x=>x);this.setExport('locate',()=>({atlas_han:'none',atlas_zh:''}));},{context});
+  // The label code is imported on demand, after the controls are wired.
   const app = new vm.SourceTextModule(code, {
     context,
     initializeImportMeta(meta) { meta.url = 'https://example.org/openrailwaystyle/app.mjs'; },
+    importModuleDynamically: async specifier => {
+      if (!specifier.includes('tile-labels')) throw new Error(`Unexpected import ${specifier}`);
+      if (protocols.status === 'unlinked') await protocols.link(() => {});
+      if (protocols.status === 'linked') await protocols.evaluate();
+      return protocols;
+    },
   });
-  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','locate'],function(){this.setExport('installLabelProtocols',()=>{});this.setExport('localizeTile',x=>x);this.setExport('locate',()=>({atlas_han:'none',atlas_zh:''}));},{context});
-  await app.link(specifier=>specifier.includes('tile-labels')?protocols:dependency);
+  await app.link(() => dependency);
   await app.evaluate();
-  await new Promise(resolve => setTimeout(resolve,0));
-  return {dom,window,maps,errors};
+  for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
+  return {dom,window,maps,errors,loadLibraries};
 }
 
 test('app starts with the MapLibre 5 API and enables map controls', async () => {
@@ -82,6 +98,40 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
     former.checked = false; former.dispatchEvent(new window.Event('change'));
     assert.equal(maps[0].visibility['inactive-railways'],'none');
     assert.equal(maps[0].visibility['inactive-regional'],'none');
+  } finally {dom.window.close();}
+});
+test('controls work while the map is still loading, and settings take effect once it loads', async () => {
+  const {dom,window,maps,errors,loadLibraries} = await start({delayLibraries:true});
+  try {
+    assert.equal(maps.length,0,'the map waits for its libraries');
+    assert.equal(window.document.head.querySelectorAll('script').length,3,'libraries load from the app, not blocking the page');
+    window.document.querySelector('[data-mode="electrification"]').click();
+    assert.equal(window.document.querySelector('[data-mode="electrification"]').getAttribute('aria-pressed'),'true');
+    const units = window.document.getElementById('units');
+    units.value = 'imperial'; units.dispatchEvent(new window.Event('change'));
+    window.document.querySelector('[data-mode="speed"]').click();
+    assert.match(window.document.getElementById('legend').textContent,/mph.*< 25/);
+    window.document.querySelector('[data-mode="electrification"]').click();
+    assert.match(window.location.search,/units=imperial/);
+    const language = window.document.getElementById('language');
+    language.value='zh-Hans'; language.dispatchEvent(new window.Event('change'));
+    loadLibraries();
+    for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
+    assert.equal(maps.length,1);
+    assert.equal(errors.length,0);
+    const map = maps[0];
+    assert.match(map.options.style.sources.stations.url,/atlasstation:\/\/zh-Hans\//);
+    assert.match(map.options.localIdeographFontFamily,/SC/,'Simplified Chinese labels use one Simplified Chinese font');
+    assert.match(map.options.style.sources.contours.tiles[0],/\/ft\//);
+    assert.equal(maps.scale.unit,'imperial');
+    assert.deepEqual(maps.controls.slice(0,2).map(c=>[c.showZoom,c.showCompass]),[[false,true],[undefined,false]],'compass above the zoom buttons');
+    map.handlers.load();
+    assert.equal(map.visibility['electrification-tracks'],'visible');
+    units.value = 'metric'; units.dispatchEvent(new window.Event('change'));
+    assert.equal(maps.scale.unit,'metric');
+    assert.match(JSON.stringify(map.layout['terrain-contour-labels']),/ m"/);
+    language.value='zh-Hant'; language.dispatchEvent(new window.Event('change'));
+    assert.match(map.styleOptions.localIdeographFontFamily,/TC/);
   } finally {dom.window.close();}
 });
 test('real renderer initialization failures reach the visible error message', async () => {

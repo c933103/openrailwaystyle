@@ -1,14 +1,48 @@
-import { SPEED_BANDS, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, CONTOUR_OPTIONS, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260926-7';
-
-import {installLabelProtocols, localizeTile, locate} from './vendor/tile-labels.js?v=20260926-7';
+import { speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260926-8';
 
 const $ = id => document.getElementById(id);
-// Every module loaded; index.html reports load failures before this point.
+// The controls work as soon as this small module runs; the map libraries and
+// label code load in the background (index.html reports a failure to load
+// this module itself).
 document.body.dataset.appStarted = 'true';
 const settings = readSettings(location.search);
 const status = $('map-status');
-let map, ready = false, currentFeature, searchController;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260926-7';
+let map, ready = false, currentFeature, searchController, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame;
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260926-8';
+const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
+  const script = document.createElement('script');
+  script.src = src; script.onload = resolve;
+  script.onerror = () => reject(new Error('Map libraries could not load. Check your connection and reload.'));
+  document.head.append(script);
+});
+const libraries = Promise.all([
+  loadScript('https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.js', 'maplibregl'),
+  loadScript('https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js', 'pmtiles'),
+  loadScript(new URL(`vendor/maplibre-contour.js?v=${assetVersion}`, import.meta.url).href, 'mlcontour'),
+]);
+const labels = import(`./vendor/tile-labels.js?v=${assetVersion}`);
+libraries.catch(() => {}); labels.catch(() => {});
+// Han characters are drawn with local fonts. One font per label language keeps
+// glyph styles consistent: with a generic family, browsers mix fonts, e.g.
+// a Japanese font for shared characters and a Chinese one for the rest.
+const CJK_FONTS = {
+  'zh-Hans': '"Noto Sans SC","Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei","Hiragino Sans GB",sans-serif',
+  'zh-Hant': '"Noto Sans TC","Noto Sans CJK TC","Source Han Sans TC","PingFang TC","Microsoft JhengHei",sans-serif',
+  ja: '"Noto Sans JP","Noto Sans CJK JP","Source Han Sans JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo",sans-serif',
+  ko: '"Noto Sans KR","Noto Sans CJK KR","Source Han Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif',
+};
+function cjkFont(lang) {
+  if (CJK_FONTS[lang]) return CJK_FONTS[lang];
+  // Other label languages follow the browser's language, else a Simplified
+  // Chinese font, which also covers Traditional characters.
+  const browser = (navigator.languages || [navigator.language]).map(l => l || '').find(l => /^(zh|ja|ko)/i.test(l)) || '';
+  return /^zh-(Hant|TW|HK|MO)/i.test(browser) ? CJK_FONTS['zh-Hant'] : /^ja/i.test(browser) ? CJK_FONTS.ja : /^ko/i.test(browser) ? CJK_FONTS.ko : CJK_FONTS['zh-Hans'];
+}
+// Run once the map has loaded, or now if it has.
+function whenReady(action) {
+  if (ready) action();
+  else pendingView = action;
+}
 const errors = new Set();
 const textNode = (tag, value, className) => {
   const el = document.createElement(tag); el.textContent = value;
@@ -18,7 +52,7 @@ const textNode = (tag, value, className) => {
 function renderLegend() {
   const box = $('legend'); box.replaceChildren();
   const legends = {
-    speed: { title: 'Mapped maximum speed · km/h', rows: SPEED_BANDS.map(b => [b.color, b.label]) },
+    speed: { title: `Mapped maximum speed · ${settings.units === 'imperial' ? 'mph' : 'km/h'}`, rows: speedBands(settings.units).map(b => [b.color, b.label]) },
     infrastructure: { title: 'Railway infrastructure', rows: INFRASTRUCTURE },
     electrification: { title: 'Electrification · nominal voltage', rows: [['#d364a1','< 1 kV'],['#9d56b6','1–< 3 kV'],['#317cb9','3–< 15 kV'],['#42864a','15–< 25 kV'],['#c94831','≥ 25 kV'],['#525b62','Not electrified']] },
   };
@@ -41,7 +75,7 @@ function renderLegend() {
   }
   box.append(grid);
   const note = settings.mode === 'speed'
-    ? 'Colours use km/h. Labels preserve mph and directional limits. Grey means no numeric limit is recorded.'
+    ? settings.units === 'imperial' ? 'Labels in mph; limits tagged in mph keep their directional values. Grey means no numeric limit is recorded.' : 'Labels keep tagged units: bare numbers are km/h, mph is written out. Grey means no numeric limit is recorded.'
     : settings.mode === 'electrification' ? 'Click a track for voltage and frequency. Grey means unknown.' : 'Stations stay visible in every view.';
   box.append(textNode('p', note, 'legend-note'));
 }
@@ -49,6 +83,7 @@ function saveSettings() {
   const url = new URL(location.href);
   url.searchParams.set('mode', settings.mode);
   for (const key of ['stations', 'labels', 'inactive', 'relief', 'names']) url.searchParams.set(key, settings[key] ? '1' : '0');
+  if (settings.units === 'imperial') url.searchParams.set('units', 'imperial'); else url.searchParams.delete('units');
   for (const key of ['mapLanguage','stationLanguage','lineLanguage']) url.searchParams.delete(key);
   url.searchParams.set('language',settings.language);
   history.replaceState(null, '', url);
@@ -56,6 +91,8 @@ function saveSettings() {
 function applySettings() {
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
   for (const key of ['stations', 'labels', 'inactive', 'relief', 'names']) $(key).checked = settings[key];
+  $('units').value = settings.units;
+  if (ready) clickable = [];
   if (ready) for (const layer of map.getStyle().layers) {
     let visible;
     if (MODES.some(mode => layer.id.startsWith(`${mode}-`)) && layer.id !== 'speed-labels') visible = layer.id.startsWith(`${settings.mode}-`);
@@ -65,10 +102,12 @@ function applySettings() {
     if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive);
     if (layer.id.startsWith('terrain-')) visible = settings.relief;
     if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
+    if ((visible ?? true) && isClickable(layer.id)) clickable.push(layer.id);
   }
   renderLegend();
 
 }
+const isClickable = id => id.startsWith('station-') || id.startsWith('inactive-') || /^(speed|infrastructure|electrification)-(tracks|overview)$/.test(id);
 function row(dl, label, value) {
   if (value === undefined || value === null || value === '') return;
   dl.append(textNode('dt', label), textNode('dd', String(value)));
@@ -89,7 +128,7 @@ function showDetails(feature) {
     row(dl, 'Mapped size', p.station_size);
     if (p.station_size) panel.append(textNode('p', 'Size follows mapped route importance, not passenger numbers.', 'small'));
   } else {
-    const speed = formatSpeed(p);
+    const speed = formatSpeed(p, settings.units);
     if (!p.state || p.state === 'present') {
       panel.append(textNode('p', speed.mapped, 'speed-value'));
       row(dl, 'Speed label', speed.tagged);
@@ -101,14 +140,14 @@ function showDetails(feature) {
     row(dl, 'Voltage', typeof p.voltage === 'number' ? `${p.voltage.toLocaleString()} V` : undefined);
     row(dl, 'Frequency', typeof p.frequency === 'number' ? p.frequency === 0 ? 'DC' : `${p.frequency} Hz AC` : undefined);
     row(dl, 'Electrification', p.electrification_state);
-    row(dl, 'Gauge', p.gauges ? `${p.gauges} mm` : undefined);
+    row(dl, 'Gauge', p.gauges ? String(p.gauges).split(/[;,]\s*/).map(gauge).join(', ') : undefined);
     row(dl, 'Tunnel', p.tunnel === true ? 'Yes' : undefined);
     row(dl, 'Bridge', p.bridge === true ? 'Yes' : undefined);
     if (!p.state || p.state === 'present') panel.append(textNode('p', 'Colour uses the preferred-direction limit, or the larger directional limit if no preference is mapped. The source label above retains both directions. Bare numbers are km/h.', 'small'));
   }
   row(dl, 'Operator', Array.isArray(p.operator) ? p.operator.join(', ') : p.primary_operator || p.operator);
   panel.append(dl);
-  if (!isStation && map.getZoom() < 7) panel.append(textNode('p', 'This is a generalized overview. Zoom in for individual tracks and full details.', 'small'));
+  if (!isStation && map?.getZoom() < 7) panel.append(textNode('p', 'This is a generalized overview. Zoom in for individual tracks and full details.', 'small'));
   if (p.osm_id) {
     const link = textNode('a', 'View railway on OpenStreetMap ↗');
     link.href = `https://www.openstreetmap.org/way/${encodeURIComponent(p.osm_id)}`;
@@ -121,6 +160,34 @@ function showDetails(feature) {
     link.target = '_blank'; link.rel = 'noopener'; panel.append(link);
   }
   $('details').hidden = false;
+}
+const EIGHTHS = ['','⅛','¼','⅜','½','⅝','¾','⅞'];
+function gauge(value) {
+  const mm = Number(value);
+  if (!Number.isFinite(mm) || mm <= 0) return value;
+  if (settings.units !== 'imperial') return `${mm} mm`;
+  const eighths = Math.round(mm/25.4*8), feet = Math.floor(eighths/96), inches = Math.floor(eighths%96/8);
+  return `${feet ? `${feet} ft ` : ''}${inches}${EIGHTHS[eighths%8]} in (${mm} mm)`;
+}
+// Units change speed colours and labels, contour intervals and the scale bar.
+function unitStyle(style) {
+  for (const layer of style.layers) {
+    if (/^speed-(overview|tracks)$/.test(layer.id)) layer.paint['line-color'] = speedPaint(settings.units);
+    if (layer.id === 'speed-labels') layer.layout['text-field'] = speedLabel(settings.units);
+    if (layer.id === 'terrain-contour-labels') layer.layout['text-field'] = ['concat', ['to-string', ['get','ele']], settings.units === 'imperial' ? ' ft' : ' m'];
+  }
+  if (dem) style.sources.contours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units))];
+}
+function applyUnits() {
+  scale?.setUnit(settings.units);
+  if (!ready) return;
+  const style = {layers: map.getStyle().layers, sources: {contours: {}}};
+  unitStyle(style);
+  for (const layer of style.layers) {
+    if (/^speed-(overview|tracks)$/.test(layer.id)) map.setPaintProperty(layer.id, 'line-color', layer.paint['line-color']);
+    if (layer.id === 'speed-labels' || layer.id === 'terrain-contour-labels') map.setLayoutProperty(layer.id, 'text-field', layer.layout['text-field']);
+  }
+  map.getSource('contours')?.setTiles(style.sources.contours.tiles);
 }
 function updateStatus() {
   if (errors.size) {
@@ -152,15 +219,21 @@ function localizeStyle(style) {
   style.sources.openmaptiles.url = `atlasbase://${settings.language}/${unwrap(style.sources.openmaptiles.url).replace(/^pmtiles:\/\//,'')}`;
   for(const id of ['stationLow','stationMed','stations']) style.sources[id].url = `atlasstation://${settings.language}/${unwrap(style.sources[id].url)}`;
   style.sources.inactiveRegional.tiles = [`railtiles://{z}/{x}/{y}?lang=${settings.language}`];
+  unitStyle(style);
+  styleLanguage = settings.language;
 }
+let locate = () => ({});
 async function initialize() {
+  const [, labelCode] = await Promise.all([libraries, labels]);
+  const {installLabelProtocols, localizeTile} = labelCode;
+  locate = labelCode.locate;
   if (!window.maplibregl || !window.pmtiles) throw new Error('Map libraries could not load. Check your connection and reload.');
   // MapLibre 5 has no top-level supported() export. The Map constructor checks
   // WebGL itself; initialization errors are caught by the handler below.
   const protocol = new pmtiles.Protocol();
   maplibregl.addProtocol('pmtiles', protocol.tile);
   installLabelProtocols(maplibregl,protocol);
-  const dem = new mlcontour.DemSource({url:DEM_URL,encoding:'terrarium',maxzoom:15,worker:true,cacheSize:200,timeoutMs:20000,id:'atlas'});
+  dem = new mlcontour.DemSource({url:DEM_URL,encoding:'terrarium',maxzoom:15,worker:true,cacheSize:200,timeoutMs:20000,id:'atlas'});
   dem.setupMaplibre(maplibregl);
   const lifecycleRoot = new URL('./data/lifecycle/', import.meta.url);
   let tileIndex;
@@ -189,9 +262,9 @@ async function initialize() {
   // station-tile download in the wrong language.
   localizeStyle(style);
   style.sources.relief.tiles = [dem.sharedDemProtocolUrl];
-  style.sources.contours.tiles = [dem.contourProtocolUrl(CONTOUR_OPTIONS)];
+  style.sources.contours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units))];
   map = new maplibregl.Map({
-    container: 'map', style,
+    container: 'map', style, localIdeographFontFamily: cjkFont(settings.language),
     center: [15,23], zoom: 1.8, hash: true, minZoom: 1, maxZoom: 20,
     renderWorldCopies: true, attributionControl: { compact: true },
   });
@@ -206,8 +279,11 @@ async function initialize() {
     }
     map.addImage('station-dot', {width,height:width,data}, {pixelRatio:2});
   });
+  // Compass above the zoom buttons: shows the heading; click to face north.
+  map.addControl(new maplibregl.NavigationControl({ showZoom: false, showCompass: true, visualizePitch: true }), 'top-right');
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-  map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
+  scale = new maplibregl.ScaleControl({ unit: settings.units });
+  map.addControl(scale, 'bottom-left');
   map.on('error', e => {
     // Panning and replacing language sources intentionally cancel old tiles.
     if (e.error?.name === 'AbortError' || /^AbortError$|operation was aborted/i.test(e.error?.message || '')) return;
@@ -220,14 +296,16 @@ async function initialize() {
   map.on('sourcedata', e => { if (e.isSourceLoaded && e.sourceId) errors.delete(e.sourceId); });
   map.on('load', () => {
     ready = true;
-    applySettings(); updateStatus();
+    // Settings changed while the map was loading take effect now.
+    if (styleLanguage !== settings.language) { reloadLanguage(); return; }
+    applySettings(); applyUnits(); updateStatus();
     document.body.dataset.mapReady = 'true';
+    const action = pendingView; pendingView = undefined; action?.();
   });
   map.on('idle', updateStatus);
   map.on('click', event => {
     const p = event.point;
-    const features = map.queryRenderedFeatures([[p.x - 7, p.y - 7], [p.x + 7, p.y + 7]])
-      .filter(f => f.layer.id.startsWith('station-') || f.layer.id.startsWith('inactive-') || /^(speed|infrastructure|electrification)-(tracks|overview)$/.test(f.layer.id))
+    const features = map.queryRenderedFeatures([[p.x - 7, p.y - 7], [p.x + 7, p.y + 7]], {layers: clickable})
       .sort((a, b) => Number(!a.source.startsWith('station')) - Number(!b.source.startsWith('station')) || stationRank(a.properties) - stationRank(b.properties));
     if (!features[0]) return;
     // Operating-line tiles are not relabelled; locate them by the click.
@@ -235,9 +313,16 @@ async function initialize() {
     features[0].properties = properties.atlas_han ? properties : {...properties, ...locate(event.lngLat.lng, event.lngLat.lat)};
     showDetails(features[0]);
   });
+  // A full feature query on every mouse move is slow in dense areas and made
+  // mouse panning stall. Skip it while dragging or moving, query only the
+  // clickable layers, and at most once per frame.
   map.on('mousemove', event => {
-    const hit = map.queryRenderedFeatures(event.point).some(f => f.layer.id.startsWith('station-') || f.source === 'railway' || f.layer.id.startsWith('inactive-'));
-    map.getCanvas().style.cursor = hit ? 'pointer' : '';
+    cancelAnimationFrame(hoverFrame);
+    if (!ready || event.originalEvent.buttons || map.isMoving()) return;
+    hoverFrame = requestAnimationFrame(() => {
+      const hit = clickable.length && map.queryRenderedFeatures(event.point, {layers: clickable}).length > 0;
+      map.getCanvas().style.cursor = hit ? 'pointer' : '';
+    });
   });
 }
 
@@ -258,10 +343,12 @@ function reloadLanguage() {
   map.once('style.load',()=>{
     ready=true;
     if(appliedLanguage!==settings.language) {reloadLanguage();return;}
-    applySettings();updateStatus();
+    applySettings();applyUnits();updateStatus();
+    document.body.dataset.mapReady = 'true';
     if(currentFeature) showDetails(currentFeature);
+    const action = pendingView; pendingView = undefined; action?.();
   });
-  map.setStyle(style,{diff:false});
+  map.setStyle(style,{diff:false,localIdeographFontFamily:cjkFont(appliedLanguage)});
 }
 {
   const select = $('language');
@@ -273,6 +360,11 @@ function reloadLanguage() {
     saveSettings();
   });
 }
+$('units').addEventListener('change', () => {
+  settings.units = $('units').value === 'imperial' ? 'imperial' : 'metric';
+  applyUnits(); renderLegend(); saveSettings();
+  if (currentFeature) showDetails(currentFeature);
+});
 $('collapse').addEventListener('click', () => {
   $('controls').hidden = !$('controls').hidden;
   $('collapse').textContent = $('controls').hidden ? '+' : '−';
@@ -280,7 +372,6 @@ $('collapse').addEventListener('click', () => {
   $('collapse').setAttribute('aria-label', `${$('controls').hidden ? 'Expand' : 'Collapse'} map controls`);
 });
 $('details-close').addEventListener('click', () => { $('details').hidden = true; currentFeature = null; });
-$('language-help').addEventListener('click',e=>{e.preventDefault();$('about').showModal();});
 $('about-open').addEventListener('click', () => $('about').showModal());
 $('about-close').addEventListener('click', () => $('about').close());
 $('share').addEventListener('click', async () => {
@@ -297,6 +388,8 @@ $('search-form').addEventListener('submit', async e => {
   $('search-results').hidden = true;
   $('search-status').hidden = false; $('search-status').textContent = 'Searching railway facilities…';
   try {
+    // Search results are located for their Chinese name order.
+    await labels.catch(() => {});
     const url = new URL(SEARCH_API); url.searchParams.set('q', q); url.searchParams.set('limit', '8');
     const response = await fetch(url, { signal: controller.signal });
     if (!response.ok) throw new Error(`Search returned ${response.status}`);
@@ -305,14 +398,14 @@ $('search-form').addEventListener('submit', async e => {
     const results = $('search-results'); results.replaceChildren();
     for (const item of items) {
       if (!Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)) continue;
-      Object.assign(item, locate(item.longitude,item.latitude));
+      try { Object.assign(item, locate(item.longitude,item.latitude)); } catch {}
       const li = document.createElement('li'); const button = document.createElement('button'); button.type = 'button';
       button.append(textNode('span', displayName(item,settings.language) || item.railway_ref || 'Unnamed facility'));
       button.append(textNode('small', [item.station || item.feature || item.railway, item.railway_ref || item['railway:ref'], Array.isArray(item.operator) ? item.operator.join(', ') : item.operator].filter(Boolean).join(' · ')));
       button.addEventListener('click', () => {
-        if (!ready) { $('search-status').textContent = 'The map is still loading. Try this result again shortly.'; return; }
         const coordinates = [item.longitude, item.latitude];
-        map.flyTo({ center: coordinates, zoom: 14, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1000 });
+        // Before the map has loaded, go there as soon as it has.
+        whenReady(() => map.flyTo({ center: coordinates, zoom: 14, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1000 }));
         showDetails({ kind: 'station', properties: item, geometry: { type: 'Point', coordinates } });
         results.hidden = true; $('search-status').hidden = true;
         if (matchMedia('(max-width: 650px)').matches && !$('controls').hidden) $('collapse').click();

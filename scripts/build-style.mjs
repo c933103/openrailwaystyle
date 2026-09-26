@@ -1,5 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { ORM, SPEED_BANDS, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL } from '../styles/map-model.mjs';
+import { ORM, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel } from '../styles/map-model.mjs';
 
 // Keep the Hack4Rail base-map design and replace its Europe-only rail source.
 const original = JSON.parse(await readFile(new URL('../styles/default.style.json', import.meta.url)));
@@ -58,9 +58,7 @@ style.layers.push({id:'terrain-contour-labels',type:'symbol',source:'contours','
 const number = key => ['to-number', ['coalesce', ['get', key], -1], -1];
 const present = ['==', ['coalesce', ['get', 'state'], 'present'], 'present'];
 const notFerry = ['!=', ['get', 'feature'], 'ferry'];
-const speed = number('maxspeed');
-const speedPaint = ['case', ['<', speed, 0], UNKNOWN_COLOR,
-  ['step', speed, SPEED_BANDS[0].color, ...SPEED_BANDS.slice(1).flatMap(b => [b.min, b.color])]];
+const speedPaint = speedColours('metric');
 const hasService = ['!=',['coalesce',['get','service'],''],''];
 const infrastructurePaint = ['case',
   ['==', ['get', 'highspeed'], true], INFRASTRUCTURE[0][0],
@@ -131,7 +129,7 @@ for (const [id,source,sourceLayer,minzoom,maxzoom,filter] of [
 style.layers.push({
   id: 'speed-labels', type: 'symbol', source: 'railway', 'source-layer': 'railway_line_high', minzoom: 10,
   filter: ['all', present, notFerry, ['has', 'speed_label']],
-  layout: { 'symbol-placement': 'line', 'symbol-spacing': 300, 'text-field': ['get', 'speed_label'], 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-padding': 5 },
+  layout: { 'symbol-placement': 'line', 'symbol-spacing': 300, 'text-field': speedLabel('metric'), 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-padding': 5 },
   paint: { 'text-color': '#26363d', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
 });
 // Keep distant views sparse. Marker and name form one collision-aware symbol
@@ -151,14 +149,31 @@ const stationText = {
   'text-padding': ['step', ['zoom'], 14, 9, 9, 12, 4], 'text-max-width': 9, 'text-allow-overlap': false,
 };
 const stationInk = { 'text-color': ['match', ['get','station_size'], 'large', '#123e52', '#0865c0'], 'text-halo-color': '#fffef8', 'text-halo-width': 2 };
-for (const [source, layer, minzoom, maxzoom] of [
+// symbol-sort-key only orders labels within one tile, so a minor stop in one
+// tile could block a main station in the next. MapLibre places whole layers
+// from the top down, so each importance tier gets its own layer: main-line
+// stations by size, then halts, then metro, light rail, people movers and
+// trams. Low- and mid-zoom tiles carry only station_size (and already omit
+// metro stations).
+const metro = ['any', ['match', ['coalesce', ['get','station'], ''], ['subway','light_rail','monorail','funicular','miniature','tram'], true, false],
+  ['==', ['get','feature'], 'tram_stop']];
+const isStation = ['==', ['coalesce', ['get','feature'], 'station'], 'station'];
+const size = ['coalesce', ['get','station_size'], 'small'];
+const tiers = [ // bottom to top
+  ['metro', metro],
+  ['halt', ['all', ['!', metro], ['!', isStation]]],
+  ['small', ['all', ['!', metro], isStation, ['!', ['match', size, ['large','normal'], true, false]]]],
+  ['normal', ['all', ['!', metro], isStation, ['==', size, 'normal']]],
+  ['large', ['all', ['!', metro], isStation, ['==', size, 'large']]],
+];
+for (const [tier, filter] of tiers) for (const [source, layer, minzoom, maxzoom] of [
   ['stationLow', 'standard_railway_text_stations_low', 6, 7],
   ['stationMed', 'standard_railway_text_stations_med', 7, 8],
   ['stations', 'standard_railway_text_stations', 8, 12],
 ]) {
   style.layers.push({
-    id: `station-${source}-names`, type: 'symbol', source, 'source-layer': layer, minzoom, maxzoom,
-    filter: source === 'stations' ? ['all', stationSelection, stationFeatures] : stationSelection,
+    id: `station-${source}-${tier}-names`, type: 'symbol', source, 'source-layer': layer, minzoom, maxzoom,
+    filter: ['all', filter, ...(source === 'stations' ? [stationSelection, stationFeatures] : [stationSelection])],
     layout: { ...stationText, 'icon-image': 'station-dot', 'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.95, 11, 1.15],
       'icon-padding': 12, 'icon-allow-overlap': false, 'icon-ignore-placement': false, 'icon-optional': false, 'text-optional': false },
     paint: stationInk,
@@ -170,9 +185,9 @@ style.layers.push({
   paint: { 'circle-color': '#ffa323', 'circle-stroke-color': '#123e52', 'circle-stroke-width': 1.5,
     'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, ['match', ['get', 'station_size'], 'large', 5, 'normal', 4, 3], 17, ['match', ['get', 'station_size'], 'large', 7, 'normal', 5.5, 4]] },
 });
-style.layers.push({
-  id: 'station-detail-names', type: 'symbol', source: 'stations', 'source-layer': 'standard_railway_text_stations', minzoom: 12,
-  filter: stationFeatures, layout: stationText, paint: stationInk,
+for (const [tier, filter] of tiers) style.layers.push({
+  id: `station-detail-${tier}-names`, type: 'symbol', source: 'stations', 'source-layer': 'standard_railway_text_stations', minzoom: 12,
+  filter: ['all', filter, stationFeatures], layout: stationText, paint: stationInk,
 });
 // Place labels are visually secondary. App moves station labels to the end to
 // give them placement priority under MapLibre's reverse layer placement order.
