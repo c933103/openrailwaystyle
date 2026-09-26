@@ -34,3 +34,6 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 .swatch-button[aria-pressed=true]{box-shadow:0 0 0 2px var(--ink)}
 #draw-color{width:26px;height:24px;padding:0;border:1px solid var(--border);border-radius:5px;background:none}
 .draw-style select{width:auto;padding:4px 6px;font-size:12px}
+/* Only the details content scrolls, so the close button stays in view. */
+.detail-panel{display:flex;flex-direction:column;overflow:hidden}
+#detail-content{overflow:auto;min-height:0;padding-right:4px}

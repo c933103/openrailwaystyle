@@ -1,20 +1,22 @@
-import { speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260926-10';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260926-11';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260926-10';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260926-11';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
 // label code load in the background (index.html reports a failure to load
 // this module itself).
 document.body.dataset.appStarted = 'true';
-// The label language is remembered in a cookie; a language in the URL wins.
-const LANGUAGE_COOKIE = 'atlas_language';
+// Display settings are remembered in a cookie, not the address; settings in a
+// shared link apply once and are then saved and removed from the address.
+const SETTINGS_COOKIE = 'atlas_settings', LANGUAGE_COOKIE = 'atlas_language';
 const readCookie = name => { try { return decodeURIComponent(document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))?.[1] || ''); } catch { return ''; } };
-const rememberLanguage = code => { try { document.cookie = `${LANGUAGE_COOKIE}=${encodeURIComponent(code)}; max-age=31536000; path=/; SameSite=Lax`; } catch {} };
-const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE)});
+const writeCookie = (name, value) => { try { document.cookie = `${name}=${encodeURIComponent(value)}; max-age=31536000; path=/; SameSite=Lax`; } catch {} };
+const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_COOKIE) || '{}'); return value && typeof value === 'object' ? value : {}; } catch { return {}; } })();
+const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260926-10';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260926-11';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -37,12 +39,28 @@ const CJK_FONTS = {
   ja: '"Noto Sans JP","Noto Sans CJK JP","Source Han Sans JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo",sans-serif',
   ko: '"Noto Sans KR","Noto Sans CJK KR","Source Han Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif',
 };
-function cjkFont(lang) {
-  if (CJK_FONTS[lang]) return CJK_FONTS[lang];
-  // Other label languages follow the browser's language, else a Simplified
-  // Chinese font, which also covers Traditional characters.
+function cjkScript(lang) {
+  if (CJK_FONTS[lang]) return lang;
+  // Other label languages follow the browser's language, else Simplified
+  // Chinese, whose fonts also cover Traditional characters.
   const browser = (navigator.languages || [navigator.language]).map(l => l || '').find(l => /^(zh|ja|ko)/i.test(l)) || '';
-  return /^zh-(Hant|TW|HK|MO)/i.test(browser) ? CJK_FONTS['zh-Hant'] : /^ja/i.test(browser) ? CJK_FONTS.ja : /^ko/i.test(browser) ? CJK_FONTS.ko : CJK_FONTS['zh-Hans'];
+  return /^zh-(Hant|TW|HK|MO)/i.test(browser) ? 'zh-Hant' : /^ja/i.test(browser) ? 'ja' : /^ko/i.test(browser) ? 'ko' : 'zh-Hans';
+}
+const cjkFont = lang => CJK_FONTS[cjkScript(lang)];
+// Named fonts are missing on many systems (Android exposes none), and the
+// generic fallback then picks glyph shapes by language. MapLibre draws on a
+// canvas outside the page, which has no language, so the browser's default
+// applies: often Japanese shapes for Chinese names (e.g. 门). Give the canvas
+// the label language whenever MapLibre sets up one of these fonts.
+const CANVAS_LANG = {'zh-Hans':'zh-CN', 'zh-Hant':'zh-TW', ja:'ja', ko:'ko'};
+{
+  const context = window.CanvasRenderingContext2D?.prototype;
+  const font = context && Object.getOwnPropertyDescriptor(context, 'font');
+  if (font?.set && 'lang' in context) Object.defineProperty(context, 'font', {...font, set(value) {
+    font.set.call(this, value);
+    const script = Object.keys(CJK_FONTS).find(key => String(value).includes(CJK_FONTS[key]));
+    if (script) this.lang = CANVAS_LANG[script];
+  }});
 }
 // Run once the map has loaded, or now if it has.
 function whenReady(action) {
@@ -86,15 +104,20 @@ function renderLegend() {
   box.append(textNode('p', note, 'legend-note'));
 }
 function saveSettings() {
+  writeCookie(SETTINGS_COOKIE, JSON.stringify(Object.fromEntries(SETTING_KEYS.map(key => [key, settings[key]]))));
   const url = new URL(location.href);
-  url.searchParams.set('mode', settings.mode);
-  for (const key of ['stations', 'labels', 'inactive', 'relief', 'names']) url.searchParams.set(key, settings[key] ? '1' : '0');
-  if (settings.units === 'imperial') url.searchParams.set('units', 'imperial'); else url.searchParams.delete('units');
-  if (settings.detail) url.searchParams.set('detail', '1'); else url.searchParams.delete('detail');
-  for (const key of ['mapLanguage','stationLanguage','lineLanguage']) url.searchParams.delete(key);
-  url.searchParams.set('language',settings.language);
-  history.replaceState(null, '', url);
+  if (SETTING_PARAMS.some(key => url.searchParams.has(key))) {
+    for (const key of SETTING_PARAMS) url.searchParams.delete(key);
+    history.replaceState(null, '', url);
+  }
 }
+// The address of this view with its display settings, for sharing.
+function shareURL() {
+  const url = new URL(location.href);
+  for (const [key, value] of settingsQuery(settings)) url.searchParams.set(key, value);
+  return url.href;
+}
+saveSettings();
 function applySettings() {
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
   for (const key of ['stations', 'labels', 'inactive', 'relief', 'names']) $(key).checked = settings[key];
@@ -477,7 +500,6 @@ function reloadLanguage() {
   select.value=settings.language;
   select.addEventListener('change',()=>{
     settings.language=select.value;
-    rememberLanguage(settings.language);
     if(ready) reloadLanguage();
     saveSettings();
   });
@@ -493,13 +515,16 @@ $('collapse').addEventListener('click', () => {
   $('collapse').setAttribute('aria-expanded', String(!$('controls').hidden));
   $('collapse').setAttribute('aria-label', `${$('controls').hidden ? 'Expand' : 'Collapse'} map controls`);
 });
-$('details-close').addEventListener('click', () => { $('details').hidden = true; currentFeature = null; });
+function closeDetails() { $('details').hidden = true; currentFeature = null; }
+$('details-close').addEventListener('click', closeDetails);
+addEventListener('keydown', event => { if (event.key === 'Escape' && !$('details').hidden && !drawing?.active && !measuring?.active && !document.querySelector('dialog[open]')) closeDetails(); });
 $('about-open').addEventListener('click', () => $('about').showModal());
 $('about-close').addEventListener('click', () => $('about').close());
 $('share').addEventListener('click', async () => {
   saveSettings(); $('share-status').hidden = false;
-  try { await navigator.clipboard.writeText(location.href); $('share-status').textContent = 'Map link copied, including position and display options.'; }
-  catch { $('share-status').replaceChildren(textNode('span', 'Copy this address: ')); const input = document.createElement('input'); input.value = location.href; input.readOnly = true; input.setAttribute('aria-label', 'Shareable map address'); input.style.width = '100%'; $('share-status').append(input); input.select(); }
+  const link = shareURL();
+  try { await navigator.clipboard.writeText(link); $('share-status').textContent = 'Map link copied, including position and display options.'; }
+  catch { $('share-status').replaceChildren(textNode('span', 'Copy this address: ')); const input = document.createElement('input'); input.value = link; input.readOnly = true; input.setAttribute('aria-label', 'Shareable map address'); input.style.width = '100%'; $('share-status').append(input); input.select(); }
 });
 $('search-form').addEventListener('submit', async e => {
   e.preventDefault();

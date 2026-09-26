@@ -33,6 +33,7 @@ test('shared URLs keep display settings and reject invalid map modes', () => {
   assert.equal(readSettings('', {language:'ja'}).language, 'ja');
   assert.equal(readSettings('?language=ko', {language:'ja'}).language, 'ko');
   assert.equal(readSettings('', {language:'xx'}).language, 'local');
+  assert.deepEqual(readSettings('?relief=1', {relief:false, stations:false, mode:'bogus', units:'imperial'}), {mode:'speed',stations:false,labels:true,inactive:true,relief:true,names:true,units:'imperial',detail:false,language:'local'});
 });
 test('world map has no European rail source or geographic bounds', () => {
   assert.ok(!JSON.stringify(style).includes('europe-railway'));
