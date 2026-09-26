@@ -151,20 +151,24 @@ const stationText = {
 const stationInk = { 'text-color': ['match', ['get','station_size'], 'large', '#123e52', '#0865c0'], 'text-halo-color': '#fffef8', 'text-halo-width': 2 };
 // symbol-sort-key only orders labels within one tile, so a minor stop in one
 // tile could block a main station in the next. MapLibre places whole layers
-// from the top down, so each importance tier gets its own layer: main-line
-// stations by size, then halts, then metro, light rail, people movers and
-// trams. Low- and mid-zoom tiles carry only station_size (and already omit
-// metro stations).
-const metro = ['any', ['match', ['coalesce', ['get','station'], ''], ['subway','light_rail','monorail','funicular','miniature','tram'], true, false],
-  ['==', ['get','feature'], 'tram_stop']];
+// from the top down, so each importance tier gets its own layer. By mode:
+// heavy rail (by mapped size, then halts) > metro > light rail > people
+// movers, monorail, funicular and tram > former and planned stations.
+// Low- and mid-zoom tiles carry only station_size (and omit metro stations).
+const mode = ['coalesce', ['get','station'], ''];
+const current = ['==', ['coalesce', ['get','state'], 'present'], 'present'];
+const metro = ['all', current, ['==', mode, 'subway']];
+const lightRail = ['all', current, ['==', mode, 'light_rail']];
+const mover = ['all', current, ['any', ['match', mode, ['monorail','funicular','miniature','tram'], true, false], ['==', ['get','feature'], 'tram_stop']]];
+const heavy = ['all', current, ['!', ['match', mode, ['subway','light_rail','monorail','funicular','miniature','tram'], true, false]], ['!=', ['get','feature'], 'tram_stop']];
 const isStation = ['==', ['coalesce', ['get','feature'], 'station'], 'station'];
 const size = ['coalesce', ['get','station_size'], 'small'];
 const tiers = [ // bottom to top
-  ['metro', metro],
-  ['halt', ['all', ['!', metro], ['!', isStation]]],
-  ['small', ['all', ['!', metro], isStation, ['!', ['match', size, ['large','normal'], true, false]]]],
-  ['normal', ['all', ['!', metro], isStation, ['==', size, 'normal']]],
-  ['large', ['all', ['!', metro], isStation, ['==', size, 'large']]],
+  ['mover', mover], ['light-rail', lightRail], ['metro', metro],
+  ['halt', ['all', heavy, ['!', isStation]]],
+  ['small', ['all', heavy, isStation, ['!', ['match', size, ['large','normal'], true, false]]]],
+  ['normal', ['all', heavy, isStation, ['==', size, 'normal']]],
+  ['large', ['all', heavy, isStation, ['==', size, 'large']]],
 ];
 for (const [tier, filter] of tiers) for (const [source, layer, minzoom, maxzoom] of [
   ['stationLow', 'standard_railway_text_stations_low', 6, 7],
@@ -184,6 +188,18 @@ style.layers.push({
   filter: stationFeatures,
   paint: { 'circle-color': '#ffa323', 'circle-stroke-color': '#123e52', 'circle-stroke-width': 1.5,
     'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, ['match', ['get', 'station_size'], 'large', 5, 'normal', 4, 3], 17, ['match', ['get', 'station_size'], 'large', 7, 'normal', 5.5, 4]] },
+});
+// Former, disused and planned stations rank last, from zoom 12, muted.
+style.layers.push({
+  id: 'station-former-dots', type: 'circle', source: 'stations', 'source-layer': 'standard_railway_text_stations', minzoom: 12,
+  filter: ['all', ['!', current], ['match', ['get','feature'], ['station','halt'], true, false]],
+  paint: { 'circle-color': '#fffef8', 'circle-stroke-color': '#8a8076', 'circle-stroke-width': 1.5, 'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 3, 17, 4.5] },
+});
+style.layers.push({
+  id: 'station-former-names', type: 'symbol', source: 'stations', 'source-layer': 'standard_railway_text_stations', minzoom: 12,
+  filter: ['all', ['!', current], ['match', ['get','feature'], ['station','halt'], true, false]],
+  layout: {...stationText, 'text-font': ['Noto Sans Regular'], 'text-size': ['interpolate', ['linear'], ['zoom'], 12, 12, 18, 15]},
+  paint: { 'text-color': '#8a8076', 'text-halo-color': '#fffef8', 'text-halo-width': 2 },
 });
 for (const [tier, filter] of tiers) style.layers.push({
   id: `station-detail-${tier}-names`, type: 'symbol', source: 'stations', 'source-layer': 'standard_railway_text_stations', minzoom: 12,

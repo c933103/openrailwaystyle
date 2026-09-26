@@ -96,7 +96,7 @@ function applySettings() {
   if (ready) for (const layer of map.getStyle().layers) {
     let visible;
     if (MODES.some(mode => layer.id.startsWith(`${mode}-`)) && layer.id !== 'speed-labels') visible = layer.id.startsWith(`${settings.mode}-`);
-    if (layer.id.startsWith('station-')) visible = settings.stations;
+    if (layer.id.startsWith('station-')) visible = settings.stations && (!layer.id.startsWith('station-former-') || settings.inactive);
     if (layer.id === 'speed-labels') visible = settings.mode === 'speed' && settings.labels;
     if (layer.id.startsWith('inactive-')) visible = settings.inactive;
     if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive);

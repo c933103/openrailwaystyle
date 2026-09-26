@@ -92,3 +92,18 @@ test('only present lines receive operating speed colours', () => {
   assert.ok(JSON.stringify(layer.paint['line-color']).includes(UNKNOWN_COLOR));
   assert.ok(style.layers.find(l => l.id === 'inactive-railways').paint['line-dasharray']);
 });
+test('station labels rank heavy rail over metro, light rail, people movers and former stations', () => {
+  const order = id => style.layers.findIndex(l => l.id === id);
+  const detail = ['station-former-names','station-detail-mover-names','station-detail-light-rail-names','station-detail-metro-names','station-detail-halt-names','station-detail-small-names','station-detail-normal-names','station-detail-large-names'];
+  // MapLibre places the topmost layer first.
+  assert.deepEqual([...detail].sort((a,b)=>order(a)-order(b)), detail);
+  const tier = properties => style.layers.filter(l => l.id.startsWith('station-detail-') && featureFilter(l.filter).filter({zoom:14}, {type:1,properties:{state:'present',feature:'station',...properties}})).map(l => l.id);
+  assert.deepEqual(tier({station:'train',station_size:'large'}), ['station-detail-large-names']);
+  assert.deepEqual(tier({station:'subway',station_size:'large'}), ['station-detail-metro-names']);
+  assert.deepEqual(tier({station:'light_rail'}), ['station-detail-light-rail-names']);
+  assert.deepEqual(tier({station:'monorail'}), ['station-detail-mover-names']);
+  assert.deepEqual(tier({feature:'halt'}), ['station-detail-halt-names']);
+  assert.deepEqual(tier({state:'abandoned'}), []);
+  const former = style.layers.find(l => l.id === 'station-former-names');
+  assert.equal(featureFilter(former.filter).filter({zoom:14}, {type:1,properties:{state:'abandoned',feature:'station'}}), true);
+});
