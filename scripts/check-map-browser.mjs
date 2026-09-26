@@ -274,6 +274,16 @@ try{
   assert.equal(saved.features[0].geometry.coordinates.length,3);
   await page.locator('#draw-close').click();
   console.log('PASS: drawing tool draws a line and saves it as GeoJSON');
+  await page.locator('button.atlas-ctrl[title="Measure"]').click();
+  await page.locator('[data-measure="distance"]').click();
+  for (const [x,y] of [[700,500],[850,500],[850,600]]) await page.mouse.click(x,y);
+  await page.mouse.dblclick(850,600);
+  assert.match(await page.locator('#measure-status').textContent(),/Distance: .* over 2 segments/);
+  await page.locator('[data-measure="radius"]').click();
+  for (const [x,y] of [[700,600],[760,500],[860,470],[960,500]]) await page.mouse.click(x,y);
+  assert.match(await page.locator('#measure-status').textContent(),/Curve radius ≈ [\d,.]+ (m|km)/);
+  await page.locator('#measure-close').click();
+  console.log('PASS: measure tool gives distance and curve radius');
   assert.deepEqual(errors,[]);
   console.log('PASS: one shared language, name fallbacks, contours, structures and lifecycle controls; no JavaScript exceptions');
 } catch(error) {

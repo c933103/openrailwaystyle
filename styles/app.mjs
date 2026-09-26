@@ -1,6 +1,6 @@
 import { speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260926-10';
 
-import { Drawing, readDrawing } from './draw.mjs?v=20260926-10';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260926-10';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -13,7 +13,7 @@ const readCookie = name => { try { return decodeURIComponent(document.cookie.mat
 const rememberLanguage = code => { try { document.cookie = `${LANGUAGE_COOKIE}=${encodeURIComponent(code)}; max-age=31536000; path=/; SameSite=Lax`; } catch {} };
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE)});
 const status = $('map-status');
-let map, ready = false, currentFeature, searchController, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing;
+let map, ready = false, currentFeature, searchController, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
 const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260926-10';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
@@ -238,6 +238,7 @@ function localizeStyle(style) {
 // the canvas keeps its pixel count. Controls are scaled back to normal size.
 const detailButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'⊞', title:'More detail: show the next zoom level at half size'});
 const drawButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'✎', title:'Drawing tools'});
+const measureButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'📏', title:'Measure'});
 const MIN_ZOOM = 1, MAX_ZOOM = 20;
 function applyDetail(changeZoom) {
   $('map').classList.toggle('detail', settings.detail);
@@ -260,16 +261,39 @@ class ButtonControl {
 // Drawing tools: points, lines and areas, kept in this browser and saved or
 // opened as GeoJSON.
 function updateDrawing() {
-  const open = !$('draw-toolbar').hidden;
-  drawButton.setAttribute('aria-pressed', String(open));
+  drawButton.setAttribute('aria-pressed', String(!$('draw-toolbar').hidden));
+  measureButton.setAttribute('aria-pressed', String(!$('measure-toolbar').hidden));
   document.querySelectorAll('[data-draw]').forEach(b => b.setAttribute('aria-pressed', String(drawing?.mode === b.dataset.draw)));
+  document.querySelectorAll('[data-measure]').forEach(b => b.setAttribute('aria-pressed', String(measuring?.mode === b.dataset.measure)));
 }
-drawButton.addEventListener('click', () => {
-  $('draw-toolbar').hidden = !$('draw-toolbar').hidden;
-  if ($('draw-toolbar').hidden && drawing?.active) drawing.setMode(drawing.mode);
+// Drawing and measuring are exclusive: opening one closes the other.
+function openTools(id) {
+  for (const [toolbar, tool] of [['draw-toolbar', drawing], ['measure-toolbar', measuring]]) {
+    const show = toolbar === id && $(toolbar).hidden;
+    $(toolbar).hidden = !show;
+    if (!show && tool?.active) tool.setMode(tool.mode);
+  }
   updateDrawing();
-});
-$('draw-close').addEventListener('click', () => { $('draw-toolbar').hidden = true; if (drawing?.active) drawing.setMode(drawing.mode); updateDrawing(); });
+}
+drawButton.addEventListener('click', () => openTools('draw-toolbar'));
+measureButton.addEventListener('click', () => openTools('measure-toolbar'));
+$('draw-close').addEventListener('click', () => openTools(null));
+$('measure-close').addEventListener('click', () => openTools(null));
+document.querySelectorAll('[data-measure]').forEach(b => b.addEventListener('click', () => whenMap(() => measuring.setMode(b.dataset.measure))));
+$('measure-undo').addEventListener('click', () => measuring?.undo());
+$('measure-clear').addEventListener('click', () => measuring?.clear());
+// Drawing style: colour, line style and width for new drawings.
+function drawStyle(style) {
+  whenMap(() => drawing.setStyle(style));
+  if (style.color) {
+    $('draw-color').value = style.color;
+    document.querySelectorAll('[data-color]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.color === style.color)));
+  }
+}
+document.querySelectorAll('[data-color]').forEach(b => { b.style.setProperty('--c', b.dataset.color); b.addEventListener('click', () => drawStyle({color: b.dataset.color})); });
+$('draw-color').addEventListener('input', () => drawStyle({color: $('draw-color').value}));
+$('draw-dash').addEventListener('change', () => drawStyle({dash: $('draw-dash').value}));
+$('draw-width').addEventListener('change', () => drawStyle({width: Number($('draw-width').value)}));
 document.querySelectorAll('[data-draw]').forEach(b => b.addEventListener('click', () => whenMap(() => drawing.setMode(b.dataset.draw))));
 $('draw-undo').addEventListener('click', () => drawing?.undo());
 $('draw-finish').addEventListener('click', () => drawing?.finish());
@@ -291,13 +315,15 @@ $('draw-file').addEventListener('change', async () => {
   } catch { $('draw-status').textContent = 'That file is not valid GeoJSON.'; }
 });
 addEventListener('keydown', event => {
-  if (!drawing?.active || /^(INPUT|SELECT|TEXTAREA)$/.test(event.target.tagName)) return;
+  if (/^(INPUT|SELECT|TEXTAREA)$/.test(event.target.tagName)) return;
+  if (measuring?.active) { if (event.key === 'Enter') measuring.end(); if (event.key === 'Escape') measuring.clear(); return; }
+  if (!drawing?.active) return;
   if (event.key === 'Enter') drawing.finish();
   if (event.key === 'Escape') drawing.cancel();
 });
 // A drawing-layer failure must not stop the map from loading.
 function installDrawing() {
-  try { drawing.install(); } catch (error) { console.error('Drawing tools unavailable:', error?.message || String(error)); }
+  try { drawing.install(); measuring.install(); } catch (error) { console.error('Drawing tools unavailable:', error?.message || String(error)); }
 }
 // Once the map object exists (drawing needs it; loading can still be under way).
 function whenMap(action) { if (drawing) action(); else pendingDraw = action; }
@@ -363,12 +389,16 @@ async function initialize() {
   // Compass above the zoom buttons: shows the heading; click to face north.
   map.addControl(new maplibregl.NavigationControl({ showZoom: false, showCompass: true, visualizePitch: true }), 'top-right');
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-  map.addControl(new ButtonControl([detailButton, drawButton]), 'top-right');
+  map.addControl(new ButtonControl([detailButton, drawButton, measureButton]), 'top-right');
   scale = new maplibregl.ScaleControl({ unit: settings.units });
   map.addControl(scale, 'bottom-left');
   drawing = new Drawing(map, {units: () => settings.units, status: text => { $('draw-status').textContent = text; }, changed: updateDrawing});
+  measuring = new Measure(map, {units: () => settings.units, status: text => { $('measure-status').textContent = text; }, changed: updateDrawing});
   map.on('style.load', installDrawing);
-  map.on('dblclick', event => { if (drawing.mode === 'line' || drawing.mode === 'area') { event.preventDefault(); drawing.finish(); } });
+  map.on('dblclick', event => {
+    if (measuring.mode === 'distance') { event.preventDefault(); measuring.end(); }
+    else if (drawing.multiPoint) { event.preventDefault(); drawing.finish(); }
+  });
   const action = pendingDraw; pendingDraw = undefined; action?.();
   map.on('error', e => {
     // Panning and replacing language sources intentionally cancel old tiles.
@@ -391,6 +421,7 @@ async function initialize() {
   });
   map.on('idle', updateStatus);
   map.on('click', event => {
+    if (measuring.active) { measuring.click(event.lngLat); return; }
     if (drawing.active) { drawing.click(event.lngLat, event.point); return; }
     const p = event.point;
     const features = map.queryRenderedFeatures([[p.x - 7, p.y - 7], [p.x + 7, p.y + 7]], {layers: clickable})
@@ -406,6 +437,7 @@ async function initialize() {
   // clickable layers, and at most once per frame.
   map.on('mousemove', event => {
     cancelAnimationFrame(hoverFrame);
+    if (measuring.active) { if (!event.originalEvent.buttons) measuring.move(event.lngLat); return; }
     if (drawing.active) { if (!event.originalEvent.buttons) drawing.move(event.lngLat); return; }
     if (!ready || event.originalEvent.buttons || map.isMoving()) return;
     hoverFrame = requestAnimationFrame(() => {
@@ -452,7 +484,7 @@ function reloadLanguage() {
 }
 $('units').addEventListener('change', () => {
   settings.units = $('units').value === 'imperial' ? 'imperial' : 'metric';
-  applyUnits(); renderLegend(); saveSettings(); drawing?.refresh();
+  applyUnits(); renderLegend(); saveSettings(); drawing?.refresh(); measuring?.refresh();
   if (currentFeature) showDetails(currentFeature);
 });
 $('collapse').addEventListener('click', () => {
