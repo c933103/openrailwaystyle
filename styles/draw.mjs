@@ -16,7 +16,9 @@ export function areaKm2(ring) {
   let sum = 0;
   for (let i = 0; i < ring.length; i++) {
     const [a, b] = [ring[i], ring[(i+1) % ring.length]];
-    sum += rad(b[0]-a[0]) * (2 + Math.sin(rad(a[1])) + Math.sin(rad(b[1])));
+    // Shortest arc, so an edge from 179° to −179° spans 2°, not 358°.
+    const dLon = ((b[0] - a[0]) % 360 + 540) % 360 - 180;
+    sum += rad(dLon) * (2 + Math.sin(rad(a[1])) + Math.sin(rad(b[1])));
   }
   return Math.abs(sum * R * R / 2);
 }

@@ -24,7 +24,7 @@ async function start({ failWebGL = false, delayLibraries = false, search = '' } 
     }
     once(name,handler) {this.handlers[name]=handler;}
     setStyle(style, options) {this.options.style=style;this.styleOptions=options;this.handlers['style.load']?.();}
-    addControl() {}
+    addControl(control) { (this.controls ||= []).push(control); }
     addImage(id, data, options) { this.image = {id,data,options}; }
     off(name) { delete this.handlers[name]; }
     on(name, handler) { this.handlers[name] = handler; }
@@ -32,9 +32,12 @@ async function start({ failWebGL = false, delayLibraries = false, search = '' } 
     getSource(id) { return {setData(){},setUrl: url => {this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
     setLayoutProperty(id, property, value) { if (property === 'visibility') this.visibility[id] = value; else (this.layout ||= {})[id] = value; }
     setPaintProperty(id, property, value) { (this.paint ||= {})[id] = value; }
-    getZoom() { return 4; }
     setPixelRatio(ratio) { this.pixelRatio = ratio; }
-    jumpTo(options) { this.jumped = options; }
+    zoom = 20;
+    getZoom() { return this.zoom; }
+    setMinZoom(z) { this.minZoom = z; this.zoom = Math.max(this.zoom, z); }
+    setMaxZoom(z) { this.maxZoom = z; this.zoom = Math.min(this.zoom, z); }
+    jumpTo(options) { this.zoom = Math.min(Math.max(options.zoom, this.minZoom ?? -Infinity), this.maxZoom ?? Infinity); }
     getLayer() {}
     addLayer(layer) { (this.added ||= []).push(layer.id); }
     addSource() {}
@@ -152,6 +155,18 @@ test('more detail draws the next zoom level at half size', async () => {
     assert.equal(maps[0].options.pixelRatio,(window.devicePixelRatio||1)/2,'the canvas keeps its pixel count');
     maps[0].handlers.load();
     assert.ok(maps[0].added.includes('drawing-line'),'drawing layers are installed with the map');
+    // Toggling at the zoom limit keeps the viewport: the range shifts by one.
+    const map = maps[0];
+    assert.deepEqual([map.options.minZoom,map.options.maxZoom],[2,21]);
+    const detail = map.controls.find(c => c.onAdd && c.buttons).onAdd().querySelector('button[title^="More detail"]');
+    map.zoom = 21;
+    detail.click();
+    assert.equal(window.document.getElementById('map').classList.contains('detail'),false);
+    assert.deepEqual([map.zoom,map.minZoom,map.maxZoom],[20,1,20]);
+    detail.click();
+    assert.deepEqual([map.zoom,map.minZoom,map.maxZoom],[21,2,21]);
+    map.zoom = 2; detail.click();
+    assert.equal(map.zoom,1);
   } finally {dom.window.close();}
 });
 test('real renderer initialization failures reach the visible error message', async () => {

@@ -8,6 +8,8 @@ test('drawing measurements', () => {
   assert.ok(Math.abs(lengthKm([[0,0],[0,1]]) - 111.19) < 0.1);
   // A 1°×1° cell at the equator is about 12,364 km².
   assert.ok(Math.abs(areaKm2([[0,0],[1,0],[1,1],[0,1],[0,0]]) - 12364) / 12364 < 0.01);
+  // Across the antimeridian: a 2°×1° cell, not one spanning 358°.
+  assert.ok(Math.abs(areaKm2([[179,0],[-179,0],[-179,1],[179,1],[179,0]]) - 2*12364) / (2*12364) < 0.01);
   assert.equal(formatLength(0.25), '250 m');
   assert.equal(formatLength(12.345), '12.3 km');
   assert.equal(formatLength(1.609344, 'imperial'), '1 mi');

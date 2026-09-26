@@ -230,13 +230,17 @@ function localizeStyle(style) {
 // the canvas keeps its pixel count. Controls are scaled back to normal size.
 const detailButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'⊞', title:'More detail: show the next zoom level at half size'});
 const drawButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'✎', title:'Drawing tools'});
+const MIN_ZOOM = 1, MAX_ZOOM = 20;
 function applyDetail(changeZoom) {
   $('map').classList.toggle('detail', settings.detail);
   detailButton.setAttribute('aria-pressed', String(settings.detail));
   detailButton.setAttribute('aria-label', settings.detail ? 'Show normal detail' : 'Show more detail');
   if (!map) return;
   map.setPixelRatio(devicePixelRatio / (settings.detail ? 2 : 1));
-  if (changeZoom) map.jumpTo({zoom: map.getZoom() + (settings.detail ? 1 : -1)});
+  // The zoom range shifts with the mode, so toggling always moves exactly one
+  // level and keeps the viewport, even at the zoom limits.
+  if (settings.detail) { map.setMaxZoom(MAX_ZOOM + 1); if (changeZoom) map.jumpTo({zoom: map.getZoom() + 1}); map.setMinZoom(MIN_ZOOM + 1); }
+  else { map.setMinZoom(MIN_ZOOM); if (changeZoom) map.jumpTo({zoom: map.getZoom() - 1}); map.setMaxZoom(MAX_ZOOM); }
 }
 detailButton.addEventListener('click', () => { settings.detail = !settings.detail; applyDetail(true); saveSettings(); });
 applyDetail(false);
@@ -333,7 +337,7 @@ async function initialize() {
   style.sources.contours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units))];
   map = new maplibregl.Map({
     container: 'map', style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / (settings.detail ? 2 : 1),
-    center: [15,23], zoom: 1.8, hash: true, minZoom: 1, maxZoom: 20,
+    center: [15,23], zoom: 1.8, hash: true, minZoom: MIN_ZOOM + (settings.detail ? 1 : 0), maxZoom: MAX_ZOOM + (settings.detail ? 1 : 0),
     renderWorldCopies: true, attributionControl: { compact: true },
   });
   map.on('styleimagemissing', event => {
