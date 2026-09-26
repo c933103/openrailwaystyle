@@ -54,12 +54,11 @@
     },
     "stationMed": {
       "type": "vector",
-      "url": "https://openrailwaymap.app/standard_railway_text_stations_med#maxzoom=7",
-      "minzoom": 7,
+      "url": "https://openrailwaymap.app/standard_railway_text_stations_med#minzoom=6&maxzoom=7&underzoom=7",
+      "minzoom": 6,
       "maxzoom": 7,
       "promoteId": "id",
-      "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>",
-      "tileSize": 256
+      "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
     },
     "stations": {
       "type": "vector",

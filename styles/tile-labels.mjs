@@ -82,18 +82,52 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     if (params.type === 'json') return {...result,data:{...result.data,tiles:result.data.tiles.map(t=>t.replace('pmtiles://',`atlasbase://${lang}/`))}};
     return {...result,data:localizeTile(result.data,lang,tileCoordinates(url))};
   });
+  // A tile below the provider's first zoom, made from its children at that
+  // zoom: points only (station tiles), duplicates across child buffers
+  // dropped by id.
+  async function childTiles(requestURL, target, signal) {
+    const match = /\/(\d+)\/(\d+)\/(\d+)(\.[a-z.]+)?$/i.exec(requestURL.pathname);
+    const [z, x, y] = match.slice(1, 4).map(Number), n = 2 ** (target - z);
+    const layers = {}, seen = new Set();
+    for (let dx = 0; dx < n; dx++) for (let dy = 0; dy < n; dy++) {
+      const child = new URL(requestURL);
+      child.pathname = requestURL.pathname.slice(0, match.index) + `/${target}/${x*n+dx}/${y*n+dy}${match[4] || ''}`;
+      const tile = readTile(await get(child.href, signal));
+      for (const [name, layer] of Object.entries(tile.layers)) {
+        const out = layers[name] ||= {features: []};
+        for (let i = 0; i < layer.length; i++) {
+          const f = layer.feature(i), key = `${name}:${f.properties.id ?? f.id}`;
+          if (f.type !== 1 || seen.has(key)) continue;
+          const scale = 4096 / f.extent;
+          const geometry = f.loadGeometry().flat().map(p => [Math.round((dx*f.extent + p.x)*scale/n), Math.round((dy*f.extent + p.y)*scale/n)])
+            .filter(([px, py]) => px >= 0 && px < 4096 && py >= 0 && py < 4096);
+          if (!geometry.length) continue;
+          seen.add(key);
+          out.features.push({type:1, id:f.id, tags:f.properties, geometry});
+        }
+      }
+    }
+    const result = encode.fromGeojsonVt(layers, {version:2, extent:4096});
+    return result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength);
+  }
   maplibregl.addProtocol('atlasstation',async (params,controller)=>{
-    const [,lang,url] = /^atlasstation:\/\/([^/]+)\/(.+)$/.exec(params.url) || [];
+    let [,lang,url] = /^atlasstation:\/\/([^/]+)\/(.+)$/.exec(params.url) || [];
     if (!url) throw new Error('Invalid station request');
     const signal = controller.signal;
     if (params.type === 'json') {
-      // A #maxzoom=N fragment on the source URL caps the provider's TileJSON
-      // (the fragment is never requested).
+      // A fragment on the source URL (never requested) can override the
+      // provider's zoom range. underzoom=N builds tiles below zoom N from
+      // their zoom-N children, for providers that return nothing there.
       const [address, fragment = ''] = url.split('#');
-      const data = await get(address,signal,true);
-      const maxzoom = Number(new URLSearchParams(fragment).get('maxzoom'));
-      return {data:{...data,...(Number.isFinite(maxzoom) && maxzoom > 0 ? {maxzoom} : {}),tiles:data.tiles.map(t=>`atlasstation://${lang}/${t}`)}};
+      const data = await get(address,signal,true), options = new URLSearchParams(fragment);
+      const zoom = key => { const value = Number(options.get(key)); return Number.isInteger(value) && value >= 0 ? {[key]:value} : {}; };
+      const underzoom = zoom('underzoom').underzoom;
+      return {data:{...data,...zoom('minzoom'),...zoom('maxzoom'),tiles:data.tiles.map(t=>`atlasstation://${lang}/${t}${underzoom ? `#underzoom=${underzoom}` : ''}`)}};
     }
+    const [address, fragment = ''] = url.split('#');
+    const coordinates = tileCoordinates(address), target = Number(new URLSearchParams(fragment).get('underzoom'));
+    const underzoom = coordinates && Number.isInteger(target) && target > coordinates.z ? target : 0;
+    url = address;
     const candidates = stationLanguages(lang), fetched = new Set();
     let primary, primaryData;
     for (;;) {
@@ -107,7 +141,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       if(candidate === 'local') requestURL.searchParams.delete('lang');
       else requestURL.searchParams.set('lang',candidate);
       let translated, data;
-      try { data=await get(requestURL.href,signal); translated=readTile(data); }
+      try { data=await (underzoom ? childTiles(requestURL, underzoom, signal) : get(requestURL.href,signal)); translated=readTile(data); }
       catch(error) {
         if(!primary || signal.aborted) throw error;
         // One unavailable translation must not hide an otherwise loaded station.

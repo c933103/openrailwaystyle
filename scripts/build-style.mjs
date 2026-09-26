@@ -18,13 +18,12 @@ const style = {
     electric: vector('electrification_railway_line_low', 0, 6),
     railway: vector('railway_line_high', 7, 16),
     stationLow: vector('standard_railway_text_stations_low', 4, 6),
-    // 256-pixel tiles make MapLibre use the zoom-7 tiles from map zoom 6: the
-    // endpoint returns nothing below zoom 7, and the low-zoom endpoint keeps
-    // only stations OpenRailwayMap sizes large or normal, which excludes
-    // nearly all of China.
-    // The provider's TileJSON says maxzoom 8; #maxzoom=7 keeps zoom 7 on
-    // zoom-7 tiles (see tile-labels.mjs).
-    stationMed: {...vector('standard_railway_text_stations_med', 7, 7), url: `${ORM}/standard_railway_text_stations_med#maxzoom=7`, tileSize: 256},
+    // The mid-zoom endpoint returns nothing below zoom 7, and the low-zoom
+    // one keeps only stations OpenRailwayMap sizes large or normal, which
+    // excludes nearly all of China. The fragment (never requested; see
+    // tile-labels.mjs) makes zoom-6 tiles from their four zoom-7 children
+    // and keeps zoom 7 on zoom-7 tiles (the provider says maxzoom 8).
+    stationMed: {...vector('standard_railway_text_stations_med', 6, 7), url: `${ORM}/standard_railway_text_stations_med#minzoom=6&maxzoom=7&underzoom=7`},
     stations: vector('standard_railway_text_stations', 8, 16),
     inactiveRegional: { type: 'vector', tiles: ['railtiles://{z}/{x}/{y}'], minzoom: 0, maxzoom: 10, promoteId: 'osm_id', attribution: '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>' },
     contours: {type:'vector',tiles:['atlas-contour://{z}/{x}/{y}'],minzoom:7,maxzoom:15},

@@ -50,7 +50,9 @@ test('regional stations have collision-aware markers and progressive size thresh
   assert.equal(shown(5.9, {station_size:'normal'}),false);
   assert.equal(shown(6, {station_size:'normal'}),true);
   assert.equal(shown(6, {station_size:'small'}),true,'zoom-7 tiles supply small stations from zoom 6');
-  assert.equal(style.sources.stationMed.tileSize,256);
+  // MapLibre 5 rejects vector sources whose tileSize is not 512.
+  for (const [id, source] of Object.entries(style.sources)) if (source.type === 'vector') assert.equal(source.tileSize ?? 512, 512, id);
+  assert.match(style.sources.stationMed.url, /#minzoom=6&maxzoom=7&underzoom=7$/);
   assert.equal(shown(7, {station_size:'normal'}),true);
   assert.equal(shown(7, {station_size:'small'}),true);
   assert.equal(shown(9.9, {station_size:'small'}),true);
