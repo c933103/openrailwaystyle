@@ -196,19 +196,30 @@ export function formatSpeed(properties, units = 'metric') {
     tagged: raw ? `${raw}${/mph|km\/h/.test(raw) ? '' : ' (km/h)'}` : 'Not recorded',
   };
 }
-export function readSettings(search) {
+// Display settings live in a cookie; a link can still carry them (the app
+// then saves them and removes them from the address). remembered: settings
+// kept in this browser, used for anything the URL does not name.
+export const SETTING_KEYS = ['mode','stations','labels','inactive','relief','names','units','detail','language'];
+const LEGACY_LANGUAGE_KEYS = ['stationLanguage','mapLanguage','lineLanguage'];
+export const SETTING_PARAMS = [...SETTING_KEYS, ...LEGACY_LANGUAGE_KEYS];
+export function readSettings(search, remembered = {}) {
   const params = new URLSearchParams(search);
+  const flag = (key, fallback) => params.has(key) ? params.get(key) !== '0' && (fallback || params.get(key) === '1') : typeof remembered[key] === 'boolean' ? remembered[key] : fallback;
+  const pick = (key, valid, fallback) => [params.get(key), remembered[key]].find(valid) ?? fallback;
   return {
-    mode: MODES.includes(params.get('mode')) ? params.get('mode') : 'speed',
-    stations: params.get('stations') !== '0',
-    labels: params.get('labels') !== '0',
-    inactive: params.get('inactive') !== '0',
-    relief: params.get('relief') !== '0',
-    names: params.get('names') !== '0',
-    units: params.get('units') === 'imperial' ? 'imperial' : 'metric',
-    detail: params.get('detail') === '1',
-    language: language(params.get('language') || params.get('stationLanguage') || params.get('mapLanguage') || params.get('lineLanguage')),
+    mode: pick('mode', v => MODES.includes(v), 'speed'),
+    stations: flag('stations', true), labels: flag('labels', true), inactive: flag('inactive', true),
+    relief: flag('relief', true), names: flag('names', true),
+    units: pick('units', v => v === 'metric' || v === 'imperial', 'metric'),
+    detail: flag('detail', false),
+    language: language(params.get('language') || LEGACY_LANGUAGE_KEYS.map(k => params.get(k)).find(Boolean) || remembered.language),
   };
+}
+// Settings as link parameters, for sharing a view.
+export function settingsQuery(settings) {
+  const params = new URLSearchParams();
+  for (const key of SETTING_KEYS) params.set(key, typeof settings[key] === 'boolean' ? (settings[key] ? '1' : '0') : settings[key]);
+  return params;
 }
 export function stationRank(properties) {
   return ({ large: 0, normal: 1, small: 2 })[properties.station_size] ?? 3;
@@ -228,9 +239,11 @@ export const CONTOUR_OPTIONS = {
   contourLayer:'contours',elevationKey:'ele',levelKey:'level',extent:4096,buffer:1,
 };
 // Imperial contours are drawn in feet at round intervals.
-export const contourOptions = units => units === 'imperial'
-  ? {...CONTOUR_OPTIONS, multiplier:3.28084, thresholds:{7:[500,2500],9:[250,1000],11:[100,500],13:[50,250],15:[25,100]}}
-  : CONTOUR_OPTIONS;
+// The seabed source is drawn only below sea level: 20 m from zoom 9 and 10 m
+// from zoom 11 (the elevation data resolves shallow coastal depths).
+export const contourOptions = (units, seabed = false) => units === 'imperial'
+  ? {...CONTOUR_OPTIONS, multiplier:3.28084, thresholds: seabed ? {9:[50,250],11:[25,100]} : {7:[500,2500],9:[250,1000],11:[100,500],13:[50,250],15:[25,100]}}
+  : seabed ? {...CONTOUR_OPTIONS, thresholds:{9:[20,100],11:[10,50]}} : CONTOUR_OPTIONS;
 // Speed colours and track labels for the chosen units. maxspeed is km/h.
 export function speedPaint(units) {
   const speed = ['to-number', ['coalesce', ['get', 'maxspeed'], -1], -1];

@@ -13,8 +13,12 @@
 .legend-zoom{display:block;font-size:10px;color:#7b8980;margin-top:1px}
 .units-picker{display:grid;grid-template-columns:85px 1fr;gap:8px;align-items:center}
 .units-picker select{min-width:0;padding:7px 8px;font-size:12px}
+/* The frame clips the double-size detail map, so the page never overflows:
+   otherwise mobile browsers take a pinch as a page zoom. */
+#map-frame{position:absolute;inset:0;overflow:hidden;touch-action:none}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 #map.detail{width:200%;height:200%;inset:auto;top:0;left:0;transform:scale(.5);transform-origin:0 0}
-#map.detail .maplibregl-control-container{position:absolute;top:0;left:0;width:50%;height:50%;transform:scale(2);transform-origin:0 0}
+#map.detail .maplibregl-control-container{position:absolute;top:0;left:0;width:50%;height:50%;transform:scale(2);transform-origin:0 0;pointer-events:none}
 .maplibregl-ctrl-group button.atlas-ctrl{font-size:17px;line-height:29px;color:#203c44}
 .maplibregl-ctrl-group button.atlas-ctrl[aria-pressed=true]{background:#173e47;color:#fff}
 .draw-toolbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:min(560px,calc(100% - 420px));background:var(--paper);border-radius:12px;box-shadow:0 6px 30px #28414a22;padding:8px 38px 8px 8px}
@@ -24,3 +28,12 @@
 .draw-close{position:absolute;right:6px;top:6px;border:0;font-size:20px;padding:0 7px}
 .draw-status{flex-basis:100%;margin:0 2px;font-size:11px;color:#697970;min-height:1em}
 @media(max-width:1000px){.draw-toolbar{top:auto;bottom:78px;max-width:calc(100% - 20px)}}
+.draw-style{align-items:center;gap:4px;padding:2px 4px}
+.swatches{display:flex;gap:3px}
+.swatch-button{width:20px;height:20px;border-radius:50%;padding:0;border:2px solid #fffef8;box-shadow:0 0 0 1px var(--border);background:var(--c)}
+.swatch-button[aria-pressed=true]{box-shadow:0 0 0 2px var(--ink)}
+#draw-color{width:26px;height:24px;padding:0;border:1px solid var(--border);border-radius:5px;background:none}
+.draw-style select{width:auto;padding:4px 6px;font-size:12px}
+/* Only the details content scrolls, so the close button stays in view. */
+.detail-panel{display:flex;flex-direction:column;overflow:hidden}
+#detail-content{overflow:auto;min-height:0;padding-right:4px}

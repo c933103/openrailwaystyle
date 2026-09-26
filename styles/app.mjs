@@ -1,16 +1,22 @@
-import { speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260926-9';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260926-11';
 
-import { Drawing, readDrawing } from './draw.mjs?v=20260926-9';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260926-11';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
 // label code load in the background (index.html reports a failure to load
 // this module itself).
 document.body.dataset.appStarted = 'true';
-const settings = readSettings(location.search);
+// Display settings are remembered in a cookie, not the address; settings in a
+// shared link apply once and are then saved and removed from the address.
+const SETTINGS_COOKIE = 'atlas_settings', LANGUAGE_COOKIE = 'atlas_language';
+const readCookie = name => { try { return decodeURIComponent(document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))?.[1] || ''); } catch { return ''; } };
+const writeCookie = (name, value) => { try { document.cookie = `${name}=${encodeURIComponent(value)}; max-age=31536000; path=/; SameSite=Lax`; } catch {} };
+const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_COOKIE) || '{}'); return value && typeof value === 'object' ? value : {}; } catch { return {}; } })();
+const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
-let map, ready = false, currentFeature, searchController, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260926-9';
+let map, ready = false, currentFeature, searchController, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260926-11';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -33,12 +39,28 @@ const CJK_FONTS = {
   ja: '"Noto Sans JP","Noto Sans CJK JP","Source Han Sans JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo",sans-serif',
   ko: '"Noto Sans KR","Noto Sans CJK KR","Source Han Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif',
 };
-function cjkFont(lang) {
-  if (CJK_FONTS[lang]) return CJK_FONTS[lang];
-  // Other label languages follow the browser's language, else a Simplified
-  // Chinese font, which also covers Traditional characters.
+function cjkScript(lang) {
+  if (CJK_FONTS[lang]) return lang;
+  // Other label languages follow the browser's language, else Simplified
+  // Chinese, whose fonts also cover Traditional characters.
   const browser = (navigator.languages || [navigator.language]).map(l => l || '').find(l => /^(zh|ja|ko)/i.test(l)) || '';
-  return /^zh-(Hant|TW|HK|MO)/i.test(browser) ? CJK_FONTS['zh-Hant'] : /^ja/i.test(browser) ? CJK_FONTS.ja : /^ko/i.test(browser) ? CJK_FONTS.ko : CJK_FONTS['zh-Hans'];
+  return /^zh-(Hant|TW|HK|MO)/i.test(browser) ? 'zh-Hant' : /^ja/i.test(browser) ? 'ja' : /^ko/i.test(browser) ? 'ko' : 'zh-Hans';
+}
+const cjkFont = lang => CJK_FONTS[cjkScript(lang)];
+// Named fonts are missing on many systems (Android exposes none), and the
+// generic fallback then picks glyph shapes by language. MapLibre draws on a
+// canvas outside the page, which has no language, so the browser's default
+// applies: often Japanese shapes for Chinese names (e.g. 门). Give the canvas
+// the label language whenever MapLibre sets up one of these fonts.
+const CANVAS_LANG = {'zh-Hans':'zh-CN', 'zh-Hant':'zh-TW', ja:'ja', ko:'ko'};
+{
+  const context = window.CanvasRenderingContext2D?.prototype;
+  const font = context && Object.getOwnPropertyDescriptor(context, 'font');
+  if (font?.set && 'lang' in context) Object.defineProperty(context, 'font', {...font, set(value) {
+    font.set.call(this, value);
+    const script = Object.keys(CJK_FONTS).find(key => String(value).includes(CJK_FONTS[key]));
+    if (script) this.lang = CANVAS_LANG[script];
+  }});
 }
 // Run once the map has loaded, or now if it has.
 function whenReady(action) {
@@ -82,15 +104,20 @@ function renderLegend() {
   box.append(textNode('p', note, 'legend-note'));
 }
 function saveSettings() {
+  writeCookie(SETTINGS_COOKIE, JSON.stringify(Object.fromEntries(SETTING_KEYS.map(key => [key, settings[key]]))));
   const url = new URL(location.href);
-  url.searchParams.set('mode', settings.mode);
-  for (const key of ['stations', 'labels', 'inactive', 'relief', 'names']) url.searchParams.set(key, settings[key] ? '1' : '0');
-  if (settings.units === 'imperial') url.searchParams.set('units', 'imperial'); else url.searchParams.delete('units');
-  if (settings.detail) url.searchParams.set('detail', '1'); else url.searchParams.delete('detail');
-  for (const key of ['mapLanguage','stationLanguage','lineLanguage']) url.searchParams.delete(key);
-  url.searchParams.set('language',settings.language);
-  history.replaceState(null, '', url);
+  if (SETTING_PARAMS.some(key => url.searchParams.has(key))) {
+    for (const key of SETTING_PARAMS) url.searchParams.delete(key);
+    history.replaceState(null, '', url);
+  }
 }
+// The address of this view with its display settings, for sharing.
+function shareURL() {
+  const url = new URL(location.href);
+  for (const [key, value] of settingsQuery(settings)) url.searchParams.set(key, value);
+  return url.href;
+}
+saveSettings();
 function applySettings() {
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
   for (const key of ['stations', 'labels', 'inactive', 'relief', 'names']) $(key).checked = settings[key];
@@ -177,20 +204,24 @@ function unitStyle(style) {
   for (const layer of style.layers) {
     if (/^speed-(overview|tracks)$/.test(layer.id)) layer.paint['line-color'] = speedPaint(settings.units);
     if (layer.id === 'speed-labels') layer.layout['text-field'] = speedLabel(settings.units);
-    if (layer.id === 'terrain-contour-labels') layer.layout['text-field'] = ['concat', ['to-string', ['get','ele']], settings.units === 'imperial' ? ' ft' : ' m'];
+    if (layer.id === 'terrain-contour-labels' || layer.id === 'terrain-seabed-contour-labels') layer.layout['text-field'] = ['concat', ['to-string', ['get','ele']], settings.units === 'imperial' ? ' ft' : ' m'];
   }
-  if (dem) style.sources.contours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units))];
+  if (dem) {
+    style.sources.contours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units))];
+    style.sources.seabedContours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units, true))];
+  }
 }
 function applyUnits() {
   scale?.setUnit(settings.units);
   if (!ready) return;
-  const style = {layers: map.getStyle().layers, sources: {contours: {}}};
+  const style = {layers: map.getStyle().layers, sources: {contours: {}, seabedContours: {}}};
   unitStyle(style);
   for (const layer of style.layers) {
     if (/^speed-(overview|tracks)$/.test(layer.id)) map.setPaintProperty(layer.id, 'line-color', layer.paint['line-color']);
-    if (layer.id === 'speed-labels' || layer.id === 'terrain-contour-labels') map.setLayoutProperty(layer.id, 'text-field', layer.layout['text-field']);
+    if (['speed-labels','terrain-contour-labels','terrain-seabed-contour-labels'].includes(layer.id)) map.setLayoutProperty(layer.id, 'text-field', layer.layout['text-field']);
   }
   map.getSource('contours')?.setTiles(style.sources.contours.tiles);
+  map.getSource('seabedContours')?.setTiles(style.sources.seabedContours.tiles);
 }
 function updateStatus() {
   if (errors.size) {
@@ -230,6 +261,7 @@ function localizeStyle(style) {
 // the canvas keeps its pixel count. Controls are scaled back to normal size.
 const detailButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'⊞', title:'More detail: show the next zoom level at half size'});
 const drawButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'✎', title:'Drawing tools'});
+const measureButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'📏', title:'Measure'});
 const MIN_ZOOM = 1, MAX_ZOOM = 20;
 function applyDetail(changeZoom) {
   $('map').classList.toggle('detail', settings.detail);
@@ -252,16 +284,39 @@ class ButtonControl {
 // Drawing tools: points, lines and areas, kept in this browser and saved or
 // opened as GeoJSON.
 function updateDrawing() {
-  const open = !$('draw-toolbar').hidden;
-  drawButton.setAttribute('aria-pressed', String(open));
+  drawButton.setAttribute('aria-pressed', String(!$('draw-toolbar').hidden));
+  measureButton.setAttribute('aria-pressed', String(!$('measure-toolbar').hidden));
   document.querySelectorAll('[data-draw]').forEach(b => b.setAttribute('aria-pressed', String(drawing?.mode === b.dataset.draw)));
+  document.querySelectorAll('[data-measure]').forEach(b => b.setAttribute('aria-pressed', String(measuring?.mode === b.dataset.measure)));
 }
-drawButton.addEventListener('click', () => {
-  $('draw-toolbar').hidden = !$('draw-toolbar').hidden;
-  if ($('draw-toolbar').hidden && drawing?.active) drawing.setMode(drawing.mode);
+// Drawing and measuring are exclusive: opening one closes the other.
+function openTools(id) {
+  for (const [toolbar, tool] of [['draw-toolbar', drawing], ['measure-toolbar', measuring]]) {
+    const show = toolbar === id && $(toolbar).hidden;
+    $(toolbar).hidden = !show;
+    if (!show && tool?.active) tool.setMode(tool.mode);
+  }
   updateDrawing();
-});
-$('draw-close').addEventListener('click', () => { $('draw-toolbar').hidden = true; if (drawing?.active) drawing.setMode(drawing.mode); updateDrawing(); });
+}
+drawButton.addEventListener('click', () => openTools('draw-toolbar'));
+measureButton.addEventListener('click', () => openTools('measure-toolbar'));
+$('draw-close').addEventListener('click', () => openTools(null));
+$('measure-close').addEventListener('click', () => openTools(null));
+document.querySelectorAll('[data-measure]').forEach(b => b.addEventListener('click', () => whenMap(() => measuring.setMode(b.dataset.measure))));
+$('measure-undo').addEventListener('click', () => measuring?.undo());
+$('measure-clear').addEventListener('click', () => measuring?.clear());
+// Drawing style: colour, line style and width for new drawings.
+function drawStyle(style) {
+  whenMap(() => drawing.setStyle(style));
+  if (style.color) {
+    $('draw-color').value = style.color;
+    document.querySelectorAll('[data-color]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.color === style.color)));
+  }
+}
+document.querySelectorAll('[data-color]').forEach(b => { b.style.setProperty('--c', b.dataset.color); b.addEventListener('click', () => drawStyle({color: b.dataset.color})); });
+$('draw-color').addEventListener('input', () => drawStyle({color: $('draw-color').value}));
+$('draw-dash').addEventListener('change', () => drawStyle({dash: $('draw-dash').value}));
+$('draw-width').addEventListener('change', () => drawStyle({width: Number($('draw-width').value)}));
 document.querySelectorAll('[data-draw]').forEach(b => b.addEventListener('click', () => whenMap(() => drawing.setMode(b.dataset.draw))));
 $('draw-undo').addEventListener('click', () => drawing?.undo());
 $('draw-finish').addEventListener('click', () => drawing?.finish());
@@ -283,13 +338,15 @@ $('draw-file').addEventListener('change', async () => {
   } catch { $('draw-status').textContent = 'That file is not valid GeoJSON.'; }
 });
 addEventListener('keydown', event => {
-  if (!drawing?.active || /^(INPUT|SELECT|TEXTAREA)$/.test(event.target.tagName)) return;
+  if (/^(INPUT|SELECT|TEXTAREA)$/.test(event.target.tagName)) return;
+  if (measuring?.active) { if (event.key === 'Enter') measuring.end(); if (event.key === 'Escape') measuring.clear(); return; }
+  if (!drawing?.active) return;
   if (event.key === 'Enter') drawing.finish();
   if (event.key === 'Escape') drawing.cancel();
 });
 // A drawing-layer failure must not stop the map from loading.
 function installDrawing() {
-  try { drawing.install(); } catch (error) { console.error('Drawing tools unavailable:', error?.message || String(error)); }
+  try { drawing.install(); measuring.install(); } catch (error) { console.error('Drawing tools unavailable:', error?.message || String(error)); }
 }
 // Once the map object exists (drawing needs it; loading can still be under way).
 function whenMap(action) { if (drawing) action(); else pendingDraw = action; }
@@ -335,6 +392,7 @@ async function initialize() {
   localizeStyle(style);
   style.sources.relief.tiles = [dem.sharedDemProtocolUrl];
   style.sources.contours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units))];
+  style.sources.seabedContours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units, true))];
   map = new maplibregl.Map({
     container: 'map', style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / (settings.detail ? 2 : 1),
     center: [15,23], zoom: 1.8, hash: true, minZoom: MIN_ZOOM + (settings.detail ? 1 : 0), maxZoom: MAX_ZOOM + (settings.detail ? 1 : 0),
@@ -354,12 +412,16 @@ async function initialize() {
   // Compass above the zoom buttons: shows the heading; click to face north.
   map.addControl(new maplibregl.NavigationControl({ showZoom: false, showCompass: true, visualizePitch: true }), 'top-right');
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-  map.addControl(new ButtonControl([detailButton, drawButton]), 'top-right');
+  map.addControl(new ButtonControl([detailButton, drawButton, measureButton]), 'top-right');
   scale = new maplibregl.ScaleControl({ unit: settings.units });
   map.addControl(scale, 'bottom-left');
   drawing = new Drawing(map, {units: () => settings.units, status: text => { $('draw-status').textContent = text; }, changed: updateDrawing});
+  measuring = new Measure(map, {units: () => settings.units, status: text => { $('measure-status').textContent = text; }, changed: updateDrawing});
   map.on('style.load', installDrawing);
-  map.on('dblclick', event => { if (drawing.mode === 'line' || drawing.mode === 'area') { event.preventDefault(); drawing.finish(); } });
+  map.on('dblclick', event => {
+    if (measuring.mode === 'distance') { event.preventDefault(); measuring.end(); }
+    else if (drawing.multiPoint) { event.preventDefault(); drawing.finish(); }
+  });
   const action = pendingDraw; pendingDraw = undefined; action?.();
   map.on('error', e => {
     // Panning and replacing language sources intentionally cancel old tiles.
@@ -382,6 +444,7 @@ async function initialize() {
   });
   map.on('idle', updateStatus);
   map.on('click', event => {
+    if (measuring.active) { measuring.click(event.lngLat); return; }
     if (drawing.active) { drawing.click(event.lngLat, event.point); return; }
     const p = event.point;
     const features = map.queryRenderedFeatures([[p.x - 7, p.y - 7], [p.x + 7, p.y + 7]], {layers: clickable})
@@ -397,6 +460,7 @@ async function initialize() {
   // clickable layers, and at most once per frame.
   map.on('mousemove', event => {
     cancelAnimationFrame(hoverFrame);
+    if (measuring.active) { if (!event.originalEvent.buttons) measuring.move(event.lngLat); return; }
     if (drawing.active) { if (!event.originalEvent.buttons) drawing.move(event.lngLat); return; }
     if (!ready || event.originalEvent.buttons || map.isMoving()) return;
     hoverFrame = requestAnimationFrame(() => {
@@ -442,7 +506,7 @@ function reloadLanguage() {
 }
 $('units').addEventListener('change', () => {
   settings.units = $('units').value === 'imperial' ? 'imperial' : 'metric';
-  applyUnits(); renderLegend(); saveSettings(); drawing?.refresh();
+  applyUnits(); renderLegend(); saveSettings(); drawing?.refresh(); measuring?.refresh();
   if (currentFeature) showDetails(currentFeature);
 });
 $('collapse').addEventListener('click', () => {
@@ -451,13 +515,16 @@ $('collapse').addEventListener('click', () => {
   $('collapse').setAttribute('aria-expanded', String(!$('controls').hidden));
   $('collapse').setAttribute('aria-label', `${$('controls').hidden ? 'Expand' : 'Collapse'} map controls`);
 });
-$('details-close').addEventListener('click', () => { $('details').hidden = true; currentFeature = null; });
+function closeDetails() { $('details').hidden = true; currentFeature = null; }
+$('details-close').addEventListener('click', closeDetails);
+addEventListener('keydown', event => { if (event.key === 'Escape' && !$('details').hidden && !drawing?.active && !measuring?.active && !document.querySelector('dialog[open]')) closeDetails(); });
 $('about-open').addEventListener('click', () => $('about').showModal());
 $('about-close').addEventListener('click', () => $('about').close());
 $('share').addEventListener('click', async () => {
   saveSettings(); $('share-status').hidden = false;
-  try { await navigator.clipboard.writeText(location.href); $('share-status').textContent = 'Map link copied, including position and display options.'; }
-  catch { $('share-status').replaceChildren(textNode('span', 'Copy this address: ')); const input = document.createElement('input'); input.value = location.href; input.readOnly = true; input.setAttribute('aria-label', 'Shareable map address'); input.style.width = '100%'; $('share-status').append(input); input.select(); }
+  const link = shareURL();
+  try { await navigator.clipboard.writeText(link); $('share-status').textContent = 'Map link copied, including position and display options.'; }
+  catch { $('share-status').replaceChildren(textNode('span', 'Copy this address: ')); const input = document.createElement('input'); input.value = link; input.readOnly = true; input.setAttribute('aria-label', 'Shareable map address'); input.style.width = '100%'; $('share-status').append(input); input.select(); }
 });
 $('search-form').addEventListener('submit', async e => {
   e.preventDefault();

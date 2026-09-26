@@ -11,8 +11,9 @@ const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
 
-async function start({ failWebGL = false, delayLibraries = false, search = '' } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, search = '', cookie = '' } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
+  if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
   const errors = [], maps = [];
   window.console.error = error => errors.push(error);
@@ -106,7 +107,8 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
     const language = window.document.getElementById('language');
     language.value='ko'; language.dispatchEvent(new window.Event('change'));
     assert.match(maps[0].options.style.sources.stations.url, /atlasstation:\/\/ko\//);
-    assert.match(window.location.search, /language=ko/);
+    assert.equal(window.location.search, '', 'settings stay out of the address');
+    assert.match(decodeURIComponent(window.document.cookie), /atlas_settings=\{[^;]*"language":"ko"/);
     assert.equal(window.document.getElementById('region'),null);
     const former = window.document.getElementById('inactive');
     former.checked = false; former.dispatchEvent(new window.Event('change'));
@@ -126,7 +128,7 @@ test('controls work while the map is still loading, and settings take effect onc
     window.document.querySelector('[data-mode="speed"]').click();
     assert.match(window.document.getElementById('legend').textContent,/mph.*< 25/);
     window.document.querySelector('[data-mode="electrification"]').click();
-    assert.match(window.location.search,/units=imperial/);
+    assert.match(decodeURIComponent(window.document.cookie),/"units":"imperial"/);
     const language = window.document.getElementById('language');
     language.value='zh-Hans'; language.dispatchEvent(new window.Event('change'));
     loadLibraries();
@@ -168,6 +170,34 @@ test('more detail draws the next zoom level at half size', async () => {
     map.zoom = 2; detail.click();
     assert.equal(map.zoom,1);
   } finally {dom.window.close();}
+});
+test('settings are remembered in a cookie; a shared link applies once and leaves the address', async () => {
+  // The older language-only cookie still applies.
+  for (const [search, expected] of [['', 'ja'], ['?language=ru', 'ru']]) {
+    const {dom,maps} = await start({search, cookie:'atlas_language=ja'});
+    try { assert.match(maps[0].options.style.sources.stations.url, new RegExp(`atlasstation://${expected}/`)); }
+    finally {dom.window.close();}
+  }
+  const saved = encodeURIComponent(JSON.stringify({mode:'electrification', relief:false, units:'imperial', detail:true, language:'ko'}));
+  {
+    const {dom,window,maps} = await start({cookie:`atlas_settings=${saved}`});
+    try {
+      assert.match(maps[0].options.style.sources.stations.url, /atlasstation:\/\/ko\//);
+      assert.equal(window.document.querySelector('[data-mode="electrification"]').getAttribute('aria-pressed'),'true');
+      assert.equal(window.document.getElementById('relief').checked,false);
+      assert.equal(window.document.getElementById('units').value,'imperial');
+      assert.equal(window.document.getElementById('map').classList.contains('detail'),true);
+    } finally {dom.window.close();}
+  }
+  {
+    const {dom,window,maps} = await start({search:'?mode=infrastructure&language=fr&v=1', cookie:`atlas_settings=${saved}`});
+    try {
+      assert.match(maps[0].options.style.sources.stations.url, /atlasstation:\/\/fr\//, 'a link wins over the cookie');
+      assert.equal(window.location.search, '?v=1', 'setting parameters are removed from the address; others stay');
+      const cookie = JSON.parse(decodeURIComponent(window.document.cookie).match(/atlas_settings=([^;]*)/)[1]);
+      assert.deepEqual([cookie.mode, cookie.language, cookie.units], ['infrastructure','fr','imperial']);
+    } finally {dom.window.close();}
+  }
 });
 test('real renderer initialization failures reach the visible error message', async () => {
   const {dom,window,errors} = await start({failWebGL:true});
