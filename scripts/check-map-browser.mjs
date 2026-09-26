@@ -50,8 +50,8 @@ async function finishFrame(){
 }
 // Rendered-feature queries only include placed symbols, so a single sample can
 // land between frames. Require the condition within 30 s instead.
-async function expectMap(condition,message){
-  try { await page.waitForFunction(condition,undefined,{timeout:30000}); }
+async function expectMap(condition,message,argument){
+  try { await page.waitForFunction(condition,argument,{timeout:30000}); }
   catch(error) { if(error.name==='TimeoutError') throw new assert.AssertionError({message}); throw error; }
 }
 async function moveTo(zoom,lng,lat){
@@ -248,9 +248,11 @@ try{
   await page.mouse.up(); await page.waitForTimeout(600);
   assert.ok(Math.abs((await centre())[0]-beforeDrag[0])>0.0005,'A mouse drag must pan the map in detail mode');
   const zoomed=await zoomNow();
-  await page.locator('.maplibregl-ctrl-zoom-in').click(); await page.waitForTimeout(700);
-  assert.ok(await zoomNow()>zoomed+0.5,'The zoom button must work in detail mode');
-  await page.locator('.maplibregl-ctrl-zoom-out').click(); await page.waitForTimeout(700);
+  // Zoom animations are time-based and slow in software rendering: wait for them.
+  await page.locator('.maplibregl-ctrl-zoom-in').click();
+  await expectMap(async z=>{const {map}=await import(document.querySelector('script[type="module"]').src);return !map.isMoving() && map.getZoom()>z+0.9;},'The zoom button must work in detail mode',zoomed);
+  await page.locator('.maplibregl-ctrl-zoom-out').click();
+  await expectMap(async z=>{const {map}=await import(document.querySelector('script[type="module"]').src);return !map.isMoving() && Math.abs(map.getZoom()-z)<0.1;},'The zoom-out button must work in detail mode',zoomed);
   const detailShot=await page.screenshot({path:'browser-review/more-detail.jpg',type:'jpeg',quality:55});
   console.log('DETAILVIEW_IMAGE_START'+detailShot.toString('base64')+'DETAILVIEW_IMAGE_END');
   await page.locator('button.atlas-ctrl[title^="More detail"]').click();
