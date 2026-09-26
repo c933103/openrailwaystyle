@@ -9,7 +9,7 @@
   <title>Open Railway Atlas · Worldwide rail map</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20260926-1" rel="stylesheet">
+  <link href="app.css?v=20260926-2" rel="stylesheet">
 </head>
 <body>
   <main id="map" aria-label="Interactive worldwide railway map"></main>
@@ -51,7 +51,7 @@
     <h3>Reading the map</h3><p>Regional views show a spaced-out selection of major stations. Smaller stations appear as you zoom in; individual station markers appear at local scale. Major stations receive priority according to the provider’s mapped route importance, which is not a passenger-volume ranking. Coverage and station ranking depend on OpenStreetMap completeness.</p>
     <p>Speed colours use the provider’s numeric limit in km/h. Where directions differ, this is the preferred-direction limit, or the larger directional limit when no preferred direction is mapped. Track labels retain original units: bare numbers are km/h; mph is written explicitly. “A / B” means forward / backward; “A (B)” means preferred / opposite direction. A dash means missing data. These directions refer to the underlying OSM way.</p>
     <p>Grey means no numeric speed is available. Dashed lines show railways under construction at every zoom, proposed railways from zoom 5 and former railways from zoom 7; they are not presented as operating lines. In the Network view, bridges and tunnels are outlined from zoom 7. Recorded infrastructure limits are not train running speeds or a timetable.</p>
-    <h3>Names and terrain</h3><p>One language setting applies to map, station and line labels. Western languages fall back to English, then recorded Latin names. Russian tries recorded Cyrillic names before English. In China, Taiwan, Hong Kong, Macau, Japan, the Koreas, Vietnam, Singapore, Malaysia and the Russian Far East, Chinese tries Chinese variants, native ideographs, Japanese, Korean Hanja and Vietnamese Chữ Nôm before English; Japanese names recorded as “kana (kanji)” or “kanji (kana)” show only the kanji. In China, Taiwan, Hong Kong, Macau, Japan, the Koreas and Vietnam, Japanese prioritizes recorded ideographic names before kana-only names. Elsewhere Chinese uses recorded Chinese names and Japanese recorded Japanese names, then English. Traditional and Simplified Chinese always fall back to each other before English, everywhere. Regions follow Natural Earth 1:10m boundaries, so a place within a kilometre or two of a border may be assigned to the neighbouring area. If none is recorded, the native name remains visible. Names are selected from source data; they are not automatically translated or transliterated.</p>
+    <h3>Names and terrain</h3><p>One language setting applies to map, station and line labels. Western languages fall back to English, then recorded Latin names. Russian tries recorded Cyrillic names before English. In China, Taiwan, Hong Kong, Macau, Japan, the Koreas, Vietnam, Singapore, Malaysia and the Russian Far East, Chinese tries Chinese variants, native ideographs, Japanese, Korean Hanja and Vietnamese Chữ Nôm before English; Japanese names recorded as “kana (kanji)” or “kanji (kana)” show only the kanji. In China, Taiwan, Hong Kong, Macau, Japan, the Koreas and Vietnam, Japanese prioritizes recorded ideographic names before kana-only names. Elsewhere Chinese uses recorded Chinese names and Japanese recorded Japanese names, then English. Chinese name tags are read by area: in Taiwan and mainland China the local name comes first for its own script, in Hong Kong and Macau untagged Chinese names do; Taiwan wording ranks before Hong Kong wording. Traditional and Simplified always fall back to each other before English, everywhere. Regions follow Natural Earth 1:10m boundaries, so a place within a kilometre or two of a border may be assigned to the neighbouring area. If none is recorded, the native name remains visible. Names are selected from source data; they are not automatically translated or transliterated.</p>
     <p>Station translations are requested for the current view. Snapshot railways retain multilingual OSM tags; the current operating-line tile provider usually supplies only native names. The shared setting cannot recover translations omitted from a source. Search results use the names returned by the search service.</p>
     <p>Brown contours show land elevation; blue contours show negative elevation below sea level. Labels are signed metres. Intervals become finer as you zoom: 200 m at zoom 7, 100 m at 9, 50 m at 11, 20 m at 13, and 10 m at 15. Heavier index contours are labelled. Detail depends on the elevation dataset; seabed data is generally coarser than land data.</p>
     <h3>Sources</h3><p>Railway tiles: <a href="https://openrailwaymap.app/">OpenRailwayMap vector</a>. Station search: <a href="https://www.openrailwaymap.org/">OpenRailwayMap public API</a>. Regional planned, construction and former lines: <a href="data/manifest.json">published OSM snapshot</a>, extracted with <a href="https://overpass-api.de/">Overpass (FOSSGIS)</a>; <a href="data/lifecycle.geojson.gz">download the ODbL database</a>. Relief: <a href="terrain-credits.html">Mapzen Terrain Tiles / AWS, including NOAA ETOPO1 seabed data</a>. Base map: <a href="https://tuiles.enliberte.fr/">En Liberté</a>. Map data: <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>. Renderer: <a href="https://maplibre.org/">MapLibre</a>.</p>
@@ -61,7 +61,7 @@
   <noscript><div class="no-script">Enable JavaScript to use the interactive railway map.</div></noscript>
   <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js"></script>
-  <script src="vendor/maplibre-contour.js?v=20260926-1"></script>
+  <script src="vendor/maplibre-contour.js?v=20260926-2"></script>
   <script>
     // Report a map script that fails to download or start instead of leaving
     // the loading message in place. app.mjs sets appStarted once it runs.
@@ -72,6 +72,6 @@
       status.textContent = 'The map could not load. Check your connection and reload the page.';
     }, true);
   </script>
-  <script type="module" src="app.mjs?v=20260926-1"></script>
+  <script type="module" src="app.mjs?v=20260926-2"></script>
 </body>
 </html>

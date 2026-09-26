@@ -1,6 +1,6 @@
-import { SPEED_BANDS, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, CONTOUR_OPTIONS, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260926-1';
+import { SPEED_BANDS, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, CONTOUR_OPTIONS, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260926-2';
 
-import {installLabelProtocols, localizeTile, hanRegion} from './vendor/tile-labels.js?v=20260926-1';
+import {installLabelProtocols, localizeTile, locate} from './vendor/tile-labels.js?v=20260926-2';
 
 const $ = id => document.getElementById(id);
 // Every module loaded; index.html reports load failures before this point.
@@ -8,7 +8,7 @@ document.body.dataset.appStarted = 'true';
 const settings = readSettings(location.search);
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260926-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260926-2';
 const errors = new Set();
 const textNode = (tag, value, className) => {
   const el = document.createElement(tag); el.textContent = value;
@@ -232,7 +232,7 @@ async function initialize() {
     if (!features[0]) return;
     // Operating-line tiles are not relabelled; locate them by the click.
     const {properties} = features[0];
-    features[0].properties = {...properties, atlas_han: properties.atlas_han ?? hanRegion(event.lngLat.lng, event.lngLat.lat)};
+    features[0].properties = properties.atlas_han ? properties : {...properties, ...locate(event.lngLat.lng, event.lngLat.lat)};
     showDetails(features[0]);
   });
   map.on('mousemove', event => {
@@ -305,7 +305,7 @@ $('search-form').addEventListener('submit', async e => {
     const results = $('search-results'); results.replaceChildren();
     for (const item of items) {
       if (!Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)) continue;
-      item.atlas_han = hanRegion(item.longitude,item.latitude);
+      Object.assign(item, locate(item.longitude,item.latitude));
       const li = document.createElement('li'); const button = document.createElement('button'); button.type = 'button';
       button.append(textNode('span', displayName(item,settings.language) || item.railway_ref || 'Unnamed facility'));
       button.append(textNode('small', [item.station || item.feature || item.railway, item.railway_ref || item['railway:ref'], Array.isArray(item.operator) ? item.operator.join(', ') : item.operator].filter(Boolean).join(' · ')));

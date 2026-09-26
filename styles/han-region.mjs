@@ -1,4 +1,4 @@
-import {CJKV, CHINESE} from './han-region-data.mjs';
+import {CJKV, CHINESE, AREAS} from './han-region-data.mjs';
 // Areas whose place names may borrow Han-character names:
 // 'cjkv' — China, Taiwan, Hong Kong, Macau, Japan, the Koreas and Vietnam
 //          (Chinese and Japanese labels);
@@ -35,20 +35,20 @@ function distance(lon, lat, [ax,ay,bx,by]) {
   const dx = bx-ax, dy = by-ay, t = dx||dy ? Math.max(0, Math.min(1, -(ax*dx+ay*dy)/(dx*dx+dy*dy))) : 0;
   return Math.hypot(ax+t*dx, ay+t*dy)*111.2;
 }
+function inside(zone, lon, lat) {
+  let odd = false;
+  for (const [xi,yi,xj,yj] of zone.bands.get(Math.floor(lat*CELL)) || [])
+    if ((yi > lat) !== (yj > lat) && lon < (xj-xi)*(lat-yi)/(yj-yi)+xi) odd = !odd;
+  return odd;
+}
 function contains(zone, lon, lat) {
   const key = `${Math.floor(lon*CELL)},${Math.floor(lat*CELL)}`, near = zone.cells.get(key);
-  const inside = () => {
-    let odd = false;
-    for (const [xi,yi,xj,yj] of zone.bands.get(Math.floor(lat*CELL)) || [])
-      if ((yi > lat) !== (yj > lat) && lon < (xj-xi)*(lat-yi)/(yj-yi)+xi) odd = !odd;
-    return odd;
-  };
   // A cell with no outline nearby has one answer throughout.
   if (!near) {
-    if (!zone.uniform.has(key)) zone.uniform.set(key, inside());
+    if (!zone.uniform.has(key)) zone.uniform.set(key, inside(zone, lon, lat));
     return zone.uniform.get(key);
   }
-  if (inside()) return true;
+  if (inside(zone, lon, lat)) return true;
   let coast = Infinity, border = Infinity;
   for (const s of near) {
     const d = distance(lon, lat, s);
@@ -56,10 +56,22 @@ function contains(zone, lon, lat) {
   }
   return coast <= COAST_KM && border > coast + 0.01;
 }
-let zones;
+let zones, areas;
+const normalize = lon => ((lon + 180) % 360 + 360) % 360 - 180;
 export function hanRegion(lon, lat) {
   if (!Number.isFinite(lon) || !Number.isFinite(lat) || lat < -5 || lat > 85) return 'none';
-  lon = ((lon + 180) % 360 + 360) % 360 - 180;
+  lon = normalize(lon);
   zones ||= {cjkv: index(CJKV), zh: index(CHINESE)};
   return contains(zones.cjkv, lon, lat) ? 'cjkv' : contains(zones.zh, lon, lat) ? 'zh' : 'none';
+}
+// Which of mainland China ('CN'), Taiwan ('TW'), Hong Kong ('HK') or Macau
+// ('MO') a point is in, or '' elsewhere. OSM Chinese name keys are used
+// differently in each. A point inside one outline wins over another's
+// coastal margin.
+export function chineseArea(lon, lat) {
+  if (!Number.isFinite(lon) || !Number.isFinite(lat) || lat < 15 || lat > 55) return '';
+  lon = normalize(lon);
+  if (lon < 70 || lon > 136) return '';
+  areas ||= Object.entries(AREAS).map(([code, polygons]) => [code, index(polygons)]);
+  return (areas.find(([,zone]) => inside(zone, lon, lat)) || areas.find(([,zone]) => contains(zone, lon, lat)))?.[0] || '';
 }

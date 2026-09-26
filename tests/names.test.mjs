@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import encode from 'vt-pbf';
-import {readTile,localizeTile,installLabelProtocols,hanRegion} from '../styles/tile-labels.mjs';
-import {chooseName,readSettings,stationLanguages,labelExpression} from '../styles/map-model.mjs';
+import {readTile,localizeTile,installLabelProtocols,hanRegion,chineseArea} from '../styles/tile-labels.mjs';
+import {chooseName,readSettings,stationLanguages,stationPending,labelExpression} from '../styles/map-model.mjs';
 
 // Tiles give every feature its Han-name region; tests state it explicitly.
 const at=(p,zone='cjkv')=>({...p,atlas_han:zone});
@@ -70,7 +70,8 @@ test('Han regions: Chinese and Japanese in CJKV; Chinese only in Singapore, Mala
   assert.equal(chooseName({...vladivostok,'name:ja':''},'ja'),'Vladivostok','a feature without a region borrows nothing');
   assert.equal(chooseName(at({...vladivostok,'name:zh':'符拉迪沃斯托克'},'none'),'zh-Hans'),'符拉迪沃斯托克','recorded Chinese names remain available');
   assert.equal(chooseName(at({...vladivostok,'name:ja':'ウラジオストク'},'zh'),'ja'),'ウラジオストク');
-  assert.deepEqual(stationLanguages('zh-Hant',false),['zh-Hant','zh','zh-Hans','en']);
+  assert.deepEqual(stationLanguages('zh-Hant',false),['zh-Hant','zh','zh-Hans','zh-TW','zh-HK','zh-CN','en']);
+  assert.deepEqual(stationLanguages('zh-Hans',false),['zh-Hans','zh','zh-Hant','zh-CN','zh-TW','zh-HK','en']);
   assert.deepEqual(stationLanguages('ja',false),['ja','en']);
 });
 test('Chinese labels always fall back to the other script before English, in every region',()=>{
@@ -86,6 +87,57 @@ test('Chinese labels always fall back to the other script before English, in eve
     assert.ok(Math.max(keys.indexOf('name:zh-Hant'),keys.indexOf('name:zh-Hans'),keys.indexOf('name:zh'))<keys.indexOf('name:en'),'Chinese keys come before English');
     assert.equal(keys[1],`name:${lang}`,'the requested script comes first');
   }
+});
+test('Chinese areas: mainland China, Taiwan, Hong Kong and Macau',()=>{
+  const places={
+    CN:[[116.4,39.9],[121.47,31.23],[87.6,43.8],[127.47,50.22],[91.1,29.65],[109.5,18.25],[114.118,22.533],[114.055,22.536],[113.549,22.217],[124.39,40.13]],
+    TW:[[121.52,25.05],[120.3,22.62],[118.32,24.44],[119.57,23.57]],
+    HK:[[114.18,22.30],[114.113,22.528],[114.066,22.514],[113.92,22.31]],
+    MO:[[113.54,22.19],[113.56,22.14]],
+    '':[[126.97,37.55],[139.77,35.68],[105.84,21.02],[106.9,47.9],[127.53,50.27],[124.40,40.10],[103.85,1.29],[13.4,52.5]],
+  };
+  for(const [area,points] of Object.entries(places)) for(const [lon,lat] of points) assert.equal(chineseArea(lon,lat),area,`${lon},${lat}`);
+  const after=readTile(localizeTile(tile({name:'臺北'}),'zh-Hans',{z:12,x:3430,y:1753})).layers.stations.feature(0);
+  assert.equal(after.properties.atlas_zh,'TW','z12 tile 3430/1753 covers Taipei');
+});
+const zh=(p,area)=>({...p,atlas_han:area?'cjkv':'none',atlas_zh:area||''});
+test('Chinese keys are read by region; the other script and regional names stay fallbacks',()=>{
+  // name:zh may be Traditional already while name:zh-HK carries Hong Kong wording.
+  const singapore={name:'Singapore','name:en':'Singapore','name:zh':'星加坡','name:zh-HK':'新加坡'};
+  assert.equal(chooseName(zh(singapore),'zh-Hant'),'星加坡','general name:zh before Hong Kong wording');
+  assert.equal(chooseName(zh({...singapore,'name:zh':''}),'zh-Hant'),'新加坡','regional wording in the right script before English');
+  assert.equal(chooseName(zh({name:'Paris','name:zh-HK':'巴黎（港）','name:zh-TW':'巴黎（臺）','name:zh-Hans':'巴黎（简）'}),'zh-Hant'),'巴黎（臺）','Taiwan wording before Hong Kong wording, both before the other script');
+  assert.equal(chooseName(zh({name:'Paris','name:zh-CN':'巴黎（中）','name:zh-Hant':'巴黎（繁）'}),'zh-Hans'),'巴黎（中）','Simplified regional wording before Traditional');
+  assert.equal(chooseName(zh({name:'Paris','name:zh-TW':'巴黎（臺）'}),'zh-Hans'),'巴黎（臺）','Simplified falls back to Traditional before English');
+  // Taiwan: the local name is Traditional.
+  const taipei={name:'臺北','name:zh':'台北','name:zh-Hans':'台北（简）','name:zh-Hant':'臺北（繁）'};
+  assert.equal(chooseName(zh(taipei,'TW'),'zh-Hant'),'臺北');
+  assert.equal(chooseName(zh(taipei,'TW'),'zh-Hans'),'台北（简）');
+  assert.equal(chooseName(zh({name:'臺北','name:zh-TW':'臺北（臺）'},'TW'),'zh-Hans'),'臺北','Taiwan: the local name before Traditional tags for Simplified');
+  // Hong Kong and Macau: name is multilingual; name:zh holds the local Chinese name.
+  const hunghom={name:'紅磡 Hung Hom','name:en':'Hung Hom','name:zh':'紅磡','name:zh-TW':'紅磡（臺）','name:zh-Hans':'红磡'};
+  assert.equal(chooseName(zh(hunghom,'HK'),'zh-Hant'),'紅磡');
+  assert.equal(chooseName(zh(hunghom,'MO'),'zh-Hant'),'紅磡');
+  assert.equal(chooseName(zh(hunghom,'HK'),'zh-Hans'),'红磡');
+  assert.equal(chooseName(zh({...hunghom,'name:zh':'','name:zh-HK':'紅磡（港）'},'HK'),'zh-Hant'),'紅磡（港）','Hong Kong wording before Taiwan wording in Hong Kong');
+  assert.equal(chooseName(zh({...hunghom,'name:zh':'','name:zh-TW':'','name:zh-Hans':''},'HK'),'zh-Hans'),'紅磡 Hung Hom','Hong Kong: a bilingual local name ranks below all Chinese keys, above English');
+  assert.equal(chooseName(zh({name:'紅磡','name:zh-TW':'紅磡（臺）'},'HK'),'zh-Hant'),'紅磡（臺）','Taiwan wording before the local name in Hong Kong');
+  // Mainland China: the local name is Simplified.
+  const beijing={name:'北京','name:zh':'北京（中）','name:zh-Hant':'北京（繁）','name:zh-TW':'北京（臺）','name:zh-HK':'北京（港）'};
+  assert.equal(chooseName(zh(beijing,'CN'),'zh-Hans'),'北京');
+  assert.equal(chooseName(zh(beijing,'CN'),'zh-Hant'),'北京（繁）');
+  assert.equal(chooseName(zh({...beijing,'name:zh-Hant':''},'CN'),'zh-Hant'),'北京（臺）','mainland: Traditional regional wording before name:zh');
+  assert.equal(chooseName(zh({...beijing,'name:zh-Hant':'','name:zh-TW':'','name:zh-HK':''},'CN'),'zh-Hant'),'北京（中）');
+  assert.equal(chooseName(zh({name:'北京'},'CN'),'zh-Hant'),'北京');
+});
+test('station names fetch only language tags that could still outrank the best known name',()=>{
+  const fetched=codes=>new Set(codes);
+  assert.deepEqual(stationPending(zh({name:'臺北'},'TW'),'zh-Hant',fetched(['zh-Hant'])),[],'Taiwan: the local name settles Traditional');
+  assert.deepEqual(stationPending(zh({name:'北京'},'CN'),'zh-Hant',fetched(['zh-Hant'])),['zh-TW','zh-HK','zh']);
+  assert.deepEqual(stationPending(zh({name:'北京','name:zh-TW':'北京（臺）'},'CN'),'zh-Hant',fetched(['zh-Hant','zh-TW'])),[]);
+  assert.deepEqual(stationPending(zh({name:'紅磡 Hung Hom'},'HK'),'zh-Hant',fetched(['zh-Hant'])),['zh','zh-HK','zh-TW','zh-Hans','zh-CN'],'a bilingual Hong Kong name settles nothing');
+  assert.deepEqual(stationPending(zh({name:'Berlin Hbf','name:zh':'柏林'}),'zh-Hant',fetched(['zh-Hant','zh'])),[]);
+  assert.deepEqual(stationPending(zh({name:'Berlin Hbf'}),'zh-Hant',fetched(['zh-Hant','zh','zh-Hans','zh-TW','zh-HK','zh-CN','en'])),[]);
 });
 test('Chinese labels show only the kanji of Japanese "kana (kanji)" and "kanji (kana)" names',()=>{
   assert.equal(chooseName(at({name:'つくば (筑波)','name:en':'Tsukuba'}),'zh-Hant'),'筑波');
@@ -106,7 +158,7 @@ test('station protocol skips other CJKV languages outside the Han region',async(
   // z7 tile 70/41 covers Berlin.
   const result=await protocols.atlasstation({url:'atlasstation://zh-Hant/https://example.org/stations/7/70/41'},new AbortController());
   assert.equal(readTile(result.data).layers.stations.feature(0).properties.atlas_name,'Berlin Central');
-  assert.deepEqual(requests,['zh-Hant','zh','zh-Hans','en']);
+  assert.deepEqual(requests,['zh-Hant','zh','zh-Hans','zh-TW','zh-HK','zh-CN','en']);
 });
 test('PMTiles wrapper localizes bytes and carries language through TileJSON templates',async()=>{
   const protocols={};

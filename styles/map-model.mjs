@@ -32,11 +32,45 @@ const cyrillic = value => /\p{Script=Cyrillic}/u.test(value || '');
 const nonempty = value => typeof value === 'string' && value.trim() !== '';
 const chinese = lang => lang.startsWith('zh');
 // Chinese labels always fall back to the other script before English, in
-// every region and independently of Han-character borrowing. name:zh holds
-// whichever script its editor chose, so it follows the requested tag.
-const chineseKeys = ['name:zh','name:zh-Hant','name:zh-Hans','name:zh-TW','name:zh-CN'];
-export function chineseVariantKeys(lang) {
-  return [...new Set([`name:${lang}`, ...chineseKeys])];
+// every region and independently of Han-character borrowing. OSM keys:
+//   name:zh-Hant / name:zh-Hans  general wording in a stated script;
+//   name:zh                      general wording in whichever script its
+//                                editor chose (Hong Kong/Macau: the local
+//                                Chinese name);
+//   name:zh-TW / -HK / -CN       regional wording;
+//   name                         the local name: Chinese in mainland China and
+//                                Taiwan, multilingual in Hong Kong and Macau.
+// Keys are read by region (atlas_zh, see chineseArea in han-region.mjs). The
+// script of a value is never guessed from its characters. Taiwan wording
+// ranks before Hong Kong wording as a Traditional fallback; zh-SG, zh-MY and
+// zh-MO are too rare to consult. 'name' below stands for the local name.
+const CHINESE_ORDER = {
+  'zh-Hant': {
+    TW: ['name','name:zh-Hant','name:zh','name:zh-TW','name:zh-HK','name:zh-Hans','name:zh-CN'],
+    HK: ['name:zh','name:zh-Hant','name:zh-HK','name:zh-TW','name','name:zh-Hans','name:zh-CN'],
+    CN: ['name:zh-Hant','name:zh-TW','name:zh-HK','name:zh','name','name:zh-Hans','name:zh-CN'],
+    '': ['name:zh-Hant','name:zh','name:zh-TW','name:zh-HK','name:zh-Hans','name:zh-CN'],
+  },
+  'zh-Hans': {
+    CN: ['name','name:zh-Hans','name:zh','name:zh-CN','name:zh-Hant','name:zh-TW','name:zh-HK'],
+    HK: ['name:zh-Hans','name:zh-CN','name:zh','name:zh-Hant','name:zh-HK','name:zh-TW','name'],
+    TW: ['name:zh-Hans','name:zh-CN','name:zh','name','name:zh-Hant','name:zh-TW','name:zh-HK'],
+    '': ['name:zh-Hans','name:zh','name:zh-CN','name:zh-Hant','name:zh-TW','name:zh-HK'],
+  },
+};
+CHINESE_ORDER['zh-Hant'].MO = CHINESE_ORDER['zh-Hant'].HK;
+CHINESE_ORDER['zh-Hans'].MO = CHINESE_ORDER['zh-Hans'].HK;
+export function chineseVariantKeys(lang, area = '') {
+  const order = CHINESE_ORDER[lang] || CHINESE_ORDER['zh-Hant'];
+  return order[area] || order[''];
+}
+const chineseKeys = CHINESE_ORDER['zh-Hant'][''];
+// Hong Kong and Macau names are usually "中文 English"; only a Chinese-only
+// local name stands in for name:zh there.
+function chineseVariants(p, lang) {
+  const area = p.atlas_zh || '';
+  return chineseVariantKeys(lang, area).map(k => k !== 'name' ? p[k]
+    : han(p.name) && !((area === 'HK' || area === 'MO') && /\p{Script=Latin}/u.test(p.name)) ? p.name : '').filter(nonempty);
 }
 const ideographicKeys = ['name:ja','name:ja-Hani','name:ko-Hani','name:ko:hanja','name:vi-Hani','name:vi:nom',...chineseKeys];
 // Japanese names recorded as "kana (kanji)" or "kanji (kana)" show only the
@@ -66,7 +100,7 @@ export function chooseName(p, lang = 'local') {
   let preferred;
   if (lang === 'local') preferred = local;
   else if (chinese(lang)) {
-    const variants = chineseVariantKeys(lang).map(k=>p[k]).filter(nonempty);
+    const variants = chineseVariants(p, lang);
     preferred = borrow ? [
       ...variants.filter(han),
       ...local.filter(han), ...ideographicKeys.map(k=>p[k]).filter(han), ...recorded.filter(han),
@@ -88,6 +122,7 @@ export function displayName(p, lang = 'local') {
   return p.atlas_language === lang ? p.atlas_name : chooseName(p,lang);
 }
 export function labelExpression(lang = 'local') {
+  // Styles cannot tell regions apart; use the order for places elsewhere.
   const requested = chinese(lang) ? chineseVariantKeys(lang) : [`name:${lang}`];
   const keys = ['atlas_name', ...(lang !== 'local' ? [...new Set(requested),'name:en','name:latin'] : []), 'name','name:nonlatin','label','ref'];
   return ['case', ...keys.flatMap(key=>[['!=',['coalesce',['get',key],''],''],['to-string',['get',key]]]), ''];
@@ -98,20 +133,48 @@ export function mergeStationTranslation(p, translated, lang) {
   const value = translated?.localized_name;
   if (nonempty(value) && value !== translated.name) p[`name:${lang}`] = value;
 }
-// Other Han-script languages are requested only for tiles where they apply.
+// Station names are fetched one language tag at a time; the service returns
+// exactly name:<lang>, else the native name. Other Han-script languages are
+// requested only where they apply.
+const borrowLanguages = {zh:['ja','ko-Hani','vi-Hani'], ja:['ja-Hani','zh','ko-Hani','vi-Hani']};
 export function stationLanguages(lang, borrow = true) {
   if (lang === 'local') return ['local'];
-  if (chinese(lang)) return [...new Set([lang,'zh','zh-Hant','zh-Hans',...(borrow ? ['ja','ko-Hani','vi-Hani'] : []),'en'])];
-  if (lang === 'ja') return borrow ? ['ja','ja-Hani','zh','ko-Hani','vi-Hani','en'] : ['ja','en'];
+  if (chinese(lang)) {
+    const regional = lang === 'zh-Hans' ? ['zh-CN','zh-TW','zh-HK'] : ['zh-TW','zh-HK','zh-CN'];
+    return [...new Set([lang,'zh',lang === 'zh-Hans' ? 'zh-Hant' : 'zh-Hans',...regional,...(borrow ? borrowLanguages.zh : []),'en'])];
+  }
+  if (lang === 'ja') return ['ja',...(borrow ? borrowLanguages.ja : []),'en'];
   return [...new Set([lang,'en'])];
 }
-export function stationNameResolved(p,lang) {
-  if (lang === 'local') return true;
+// Language tags still worth fetching for a station: those that could
+// outrank the best name already known. Empty once the label is settled.
+export function stationPending(p, lang, fetched) {
+  if (lang === 'local') return [];
+  const unfetched = codes => codes.filter(code => !fetched.has(code));
+  const borrow = hanFallback(p,lang);
+  if (chinese(lang)) {
+    const wanted = [];
+    const area = p.atlas_zh || '';
+    for (const key of chineseVariantKeys(lang, area)) {
+      if (key === 'name') { if (chineseVariants({name:p.name, atlas_zh:area}, lang).length) return wanted; continue; }
+      const code = key.slice(5);
+      if (!fetched.has(code)) wanted.push(code);
+      else if (nonempty(p[key])) return wanted;
+    }
+    if (borrow) {
+      if (han(p.name) || han(p['name:nonlatin'])) return wanted;
+      for (const code of borrowLanguages.zh) {
+        if (!fetched.has(code)) wanted.push(code);
+        else if (han(p[`name:${code}`])) return wanted;
+      }
+    }
+    return nonempty(p['name:en']) ? wanted : [...wanted, ...unfetched(['en'])];
+  }
   const name = chooseName(p,lang);
-  if ((chinese(lang) || lang === 'ja') && hanFallback(p,lang)) return han(name);
-  if (chinese(lang)) return [...chineseVariantKeys(lang),'name:en'].some(k=>nonempty(p[k]));
-  if (lang === 'ru') return cyrillic(name) || nonempty(p['name:en']);
-  return nonempty(p[`name:${lang}`]) || nonempty(p['name:en']) || (lang === 'ko' && /\p{Script=Hangul}/u.test(p.name || ''));
+  const resolved = lang === 'ja' && borrow ? han(name)
+    : lang === 'ru' ? cyrillic(name) || nonempty(p['name:en'])
+    : nonempty(p[`name:${lang}`]) || nonempty(p['name:en']) || (lang === 'ko' && /\p{Script=Hangul}/u.test(p.name || ''));
+  return resolved ? [] : unfetched(stationLanguages(lang, borrow));
 }
 
 export function numericSpeed(value) {
