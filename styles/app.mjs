@@ -283,6 +283,10 @@ addEventListener('keydown', event => {
   if (event.key === 'Enter') drawing.finish();
   if (event.key === 'Escape') drawing.cancel();
 });
+// A drawing-layer failure must not stop the map from loading.
+function installDrawing() {
+  try { drawing.install(); } catch (error) { console.error('Drawing tools unavailable:', error?.message || String(error)); }
+}
 // Once the map object exists (drawing needs it; loading can still be under way).
 function whenMap(action) { if (drawing) action(); else pendingDraw = action; }
 let pendingDraw;
@@ -350,7 +354,7 @@ async function initialize() {
   scale = new maplibregl.ScaleControl({ unit: settings.units });
   map.addControl(scale, 'bottom-left');
   drawing = new Drawing(map, {units: () => settings.units, status: text => { $('draw-status').textContent = text; }, changed: updateDrawing});
-  map.on('style.load', () => drawing.install());
+  map.on('style.load', installDrawing);
   map.on('dblclick', event => { if (drawing.mode === 'line' || drawing.mode === 'area') { event.preventDefault(); drawing.finish(); } });
   const action = pendingDraw; pendingDraw = undefined; action?.();
   map.on('error', e => {
@@ -367,7 +371,7 @@ async function initialize() {
     ready = true;
     // Settings changed while the map was loading take effect now.
     if (styleLanguage !== settings.language) { reloadLanguage(); return; }
-    drawing.install();
+    installDrawing();
     applySettings(); applyUnits(); updateStatus();
     document.body.dataset.mapReady = 'true';
     const action = pendingView; pendingView = undefined; action?.();

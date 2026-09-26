@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
 import {lengthKm, areaKm2, formatLength, formatArea, readDrawing, Drawing} from '../styles/draw.mjs';
 
 test('drawing measurements', () => {
@@ -64,4 +65,11 @@ test('drawing lines and areas, undo, erase and saving', () => {
   // Reloading restores what was kept in the browser.
   d.add(readDrawing(saved));
   assert.equal(new Drawing(map).features.length, 2);
+});
+test('drawing layers are valid MapLibre style layers', () => {
+  const sources = {}, layers = [];
+  const map = {getSource: id => sources[id], addSource: (id, source) => { sources[id] = source; }, getLayer: () => undefined, addLayer: layer => layers.push(layer), getCanvas: () => ({style:{}})};
+  new Drawing(map).install();
+  const errors = validateStyleMin({version:8, glyphs:'https://example.org/{fontstack}/{range}.pbf', sources, layers});
+  assert.deepEqual(errors.map(e => e.message), []);
 });

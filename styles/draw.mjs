@@ -68,11 +68,15 @@ export class Drawing {
     const map = this.map;
     if (!map.getSource('atlas-drawing')) map.addSource('atlas-drawing', {type:'geojson', data:this.collection(true)});
     if (!map.getSource('atlas-drawing-draft')) map.addSource('atlas-drawing-draft', {type:'geojson', data:this.draftCollection()});
-    const layers = [
+    const label = {'text-field':['get','measure'],'text-font':['Noto Sans Bold'],'text-size':12,'text-allow-overlap':true};
+    const labelPaint = {'text-color':COLOR,'text-halo-color':'#fffef8','text-halo-width':2};
+    const layers = this.layers = [
       {id:'drawing-fill', type:'fill', source:'atlas-drawing', filter:['==',['geometry-type'],'Polygon'], paint:{'fill-color':COLOR,'fill-opacity':0.14}},
       {id:'drawing-line', type:'line', source:'atlas-drawing', filter:['!=',['geometry-type'],'Point'], layout:{'line-join':'round','line-cap':'round'}, paint:{'line-color':COLOR,'line-width':3}},
       {id:'drawing-points', type:'circle', source:'atlas-drawing', filter:['==',['geometry-type'],'Point'], paint:{'circle-color':COLOR,'circle-radius':6,'circle-stroke-color':'#fffef8','circle-stroke-width':2}},
-      {id:'drawing-labels', type:'symbol', source:'atlas-drawing', filter:['!=',['coalesce',['get','measure'],''],''], layout:{'text-field':['get','measure'],'text-font':['Noto Sans Bold'],'text-size':12,'symbol-placement':['match',['geometry-type'],'LineString','line-center','point'],'text-allow-overlap':true}, paint:{'text-color':COLOR,'text-halo-color':'#fffef8','text-halo-width':2}},
+      // symbol-placement cannot vary by feature: one layer each.
+      {id:'drawing-line-labels', type:'symbol', source:'atlas-drawing', filter:['==',['geometry-type'],'LineString'], layout:{...label, 'symbol-placement':'line-center'}, paint:labelPaint},
+      {id:'drawing-area-labels', type:'symbol', source:'atlas-drawing', filter:['==',['geometry-type'],'Polygon'], layout:label, paint:labelPaint},
       {id:'drawing-draft-line', type:'line', source:'atlas-drawing-draft', filter:['!=',['geometry-type'],'Point'], paint:{'line-color':COLOR,'line-width':2,'line-dasharray':[2,1.5]}},
       {id:'drawing-draft-vertices', type:'circle', source:'atlas-drawing-draft', filter:['==',['geometry-type'],'Point'], paint:{'circle-color':'#fffef8','circle-radius':4,'circle-stroke-color':COLOR,'circle-stroke-width':2}},
     ];
