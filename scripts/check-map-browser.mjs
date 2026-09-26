@@ -241,6 +241,16 @@ try{
   await page.locator('button.atlas-ctrl[title^="More detail"]').click();
   assert.equal(await page.locator('#map.detail').count(),1);
   assert.ok(Math.abs(await zoomNow()-zoomBefore-1)<0.01,'More detail shows the next zoom level');
+  // The map must stay interactive in detail mode: drag, and the zoom button.
+  const beforeDrag=await centre();
+  await page.mouse.move(900,450); await page.mouse.down();
+  for(let i=1;i<=10;i++) await page.mouse.move(900-i*10,450);
+  await page.mouse.up(); await page.waitForTimeout(600);
+  assert.ok(Math.abs((await centre())[0]-beforeDrag[0])>0.0005,'A mouse drag must pan the map in detail mode');
+  const zoomed=await zoomNow();
+  await page.locator('.maplibregl-ctrl-zoom-in').click(); await page.waitForTimeout(700);
+  assert.ok(await zoomNow()>zoomed+0.5,'The zoom button must work in detail mode');
+  await page.locator('.maplibregl-ctrl-zoom-out').click(); await page.waitForTimeout(700);
   const detailShot=await page.screenshot({path:'browser-review/more-detail.jpg',type:'jpeg',quality:55});
   console.log('DETAILVIEW_IMAGE_START'+detailShot.toString('base64')+'DETAILVIEW_IMAGE_END');
   await page.locator('button.atlas-ctrl[title^="More detail"]').click();
