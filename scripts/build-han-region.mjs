@@ -1,19 +1,56 @@
-// Maintenance build only: derive the Han-character label regions from Natural
-// Earth 1:10m admin-0 countries and admin-1 regions (public domain, de facto
-// boundaries). Usage:
-//   node scripts/build-han-region.mjs [admin-0.geojson admin-1.geojson]
+// Maintenance build only. Derives two things:
+// - the Han-character label regions from Natural Earth 1:10m admin-0
+//   countries and admin-1 regions (public domain, de facto boundaries);
+// - the Chinese naming areas (mainland China, Taiwan, Hong Kong, Macau) from
+//   timezone-boundary-builder's time-zone polygons, as packaged by the geo-tz
+//   npm module (ODbL, derived from OpenStreetMap). These follow OSM land and
+//   territorial-sea boundaries and include every outlying island, such as
+//   Matsu, Kinmen and Pratas.
+// - Chinese-speaking areas of Myanmar and Thailand: Wa State and Mong La from
+//   OpenStreetMap boundary relations (ODbL); Kokang townships and a Thai
+//   district from geoBoundaries (Myanmar Analytics Project, CC BY 4.0; Royal
+//   Thai Survey Department / OCHA ROAP, CC BY 3.0 IGO).
+// Usage:
+//   node scripts/build-han-region.mjs [admin-0.geojson admin-1.geojson geo-tz-data-dir mmr-adm3.geojson tha-adm2.geojson osm-dir]
+// osm-dir holds <relation id>.json downloads of /api/0.6/relation/<id>/full.json.
 import {readFile, writeFile} from 'node:fs/promises';
+import {gunzipSync} from 'node:zlib';
+import geobuf from 'geobuf';
+import Pbf from 'pbf';
+import polygonClipping from 'polygon-clipping';
 const NE = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/';
 // Chinese and Japanese labels may borrow Han names within CJKV.
 const CJKV = ['CHN','TWN','HKG','MAC','JPN','KOR','PRK','VNM'];
 // Chinese labels only: Singapore, Malaysia and the Russian Far East (the Far
 // Eastern Federal District as constituted since 2018).
 const CHINESE = ['SGP','MYS'];
+// Chinese labels only, inland: Chinese-speaking areas of Myanmar — Wa State
+// as it is governed, northern and southern parts (Mandarin is its working
+// language), Mong La (Special Region 4) and the Kokang Self-Administered Zone
+// (Laukkaing, Konkyan townships) — and Thailand's Mae Fa Luang district, home
+// of the Yunnanese villages of Santikhiri (Mae Salong) and Thoet Thai.
+const OSM_RELATIONS = {9399863:'Wa State', 16742698:'Mong La District'};
+const GB = 'https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/main/releaseData/gbOpen/';
+const INLAND = [
+  ['MMR/ADM3/geoBoundaries-MMR-ADM3_simplified.geojson', ['Laukkaing','Konkyan']],
+  ['THA/ADM2/geoBoundaries-THA-ADM2_simplified.geojson', ['Mae Fa Luang']],
+];
 const FAR_EAST = ['RU-AMU','RU-BU','RU-CHU','RU-KAM','RU-KHA','RU-MAG','RU-PRI','RU-SA','RU-SAK','RU-YEV','RU-ZAB'];
+// Chinese name keys are read differently in mainland China, Taiwan, Hong
+// Kong and Macau (see chineseVariantKeys in map-model.mjs).
+const CHINESE_AREAS = {'Asia/Shanghai':'CN', 'Asia/Urumqi':'CN', 'Asia/Taipei':'TW', 'Asia/Hong_Kong':'HK', 'Asia/Macau':'MO'};
+const GEO_TZ = 'https://registry.npmjs.org/geo-tz/-/geo-tz-8.1.9.tgz';
 // Coasts are simplified to about 1 km. Land borders keep about 200 m: border
 // towns such as Heihe and Blagoveshchensk face each other across one river.
-const COAST = 0.01, BORDER = 0.002; // degrees
-const load = async (file, name) => JSON.parse(file ? await readFile(file,'utf8') : await (await fetch(NE+name)).text());
+// Area outlines keep about 1 km, 200 m along the Vietnam and North Korea
+// borders, and 30 m around Hong Kong and Macau for crossings such as Lo Wu
+// and Gongbei. Elsewhere only the Han-character region decides.
+const COAST = 0.01, BORDER = 0.002, FINE = 0.0003; // degrees
+const DETAIL = [[FINE,[113.3,21.9,114.6,22.7]], [BORDER,[102,21,108.5,23.6]], [BORDER,[124,39.5,131,43]]];
+// Other countries' outlines are kept this far around each zone, so that sea
+// within 12 nautical miles goes to the nearest land (see han-region.mjs).
+const NEAR = 0.3; // degrees
+const load = async (file, name, base = NE) => JSON.parse(file ? await readFile(file,'utf8') : await (await fetch(base+name)).text());
 const countries = (await load(process.argv[2],'ne_10m_admin_0_countries.geojson')).features;
 const regions = (await load(process.argv[3],'ne_10m_admin_1_states_provinces.geojson')).features;
 const areas = [
@@ -40,14 +77,16 @@ function simplify(points, tolerance) {
   }
   return points.filter((_,i)=>keep[i]);
 }
-// Delta encoding in 1e-3 degree integers keeps the module compact.
-const encode = line => { let px = 0, py = 0; return line.flatMap(([x,y]) => { const X = Math.round(x*1000), Y = Math.round(y*1000), d = [X-px, Y-py]; px = X; py = Y; return d; }); };
-function zone(members) {
+// Delta encoding in integer steps (1e-3 degrees unless stated) keeps the
+// module compact.
+const encode = (line, scale = 1000) => { let px = 0, py = 0; return line.flatMap(([x,y]) => { const X = Math.round(x*scale), Y = Math.round(y*scale), d = [X-px, Y-py]; px = X; py = Y; return d; }); };
+const bbox = ring => ring.reduce(([w,s,e,n],[x,y]) => [Math.min(w,x),Math.min(s,y),Math.max(e,x),Math.max(n,y)], [Infinity,Infinity,-Infinity,-Infinity]);
+function zone(members, inland = []) {
   // Vertices shared with an area outside the zone are land borders. Only
   // coastal edges receive the tolerance buffer for reclaimed land and gaps.
-  const foreign = new Set();
-  for (const a of areas) if (!members.includes(a.id)) for (const ring of rings(a.geometry)) for (const p of ring) foreign.add(key(p));
-  const polygons = [];
+  const foreign = new Set(), own = new Set();
+  for (const a of areas) for (const ring of rings(a.geometry)) for (const p of ring) (members.includes(a.id) ? own : foreign).add(key(p));
+  const polygons = [], boxes = [];
   let points = 0, borders = 0;
   for (const a of areas.filter(a => members.includes(a.id))) for (const ring of rings(a.geometry)) {
     // Split each ring into border and coast runs and simplify each run while
@@ -66,13 +105,159 @@ function zone(members) {
       if (run.border) { spans.push(start, outline.length-1); borders++; }
     }
     points += outline.length;
+    boxes.push(bbox(ring));
     // [delta-encoded outline, [first, last point index of each border run]]
     polygons.push([encode(outline), spans]);
   }
-  console.log(`${members.join(' ')}: ${polygons.length} polygons, ${points} points, ${borders} border runs`);
-  return polygons;
+  // Outlines of land outside the zone near it: a point on that land, or at sea
+  // nearer to it, is never in the zone.
+  const near = ([x,y]) => boxes.some(([w,s,e,n]) => {
+    const pad = NEAR/Math.cos(Math.min(85, Math.abs(y))*Math.PI/180);
+    return x >= w-pad && x <= e+pad && y >= s-NEAR && y <= n+NEAR;
+  });
+  const others = [];
+  let otherPoints = 0;
+  if (members.length) for (const a of areas.filter(a => !members.includes(a.id))) for (const ring of rings(a.geometry)) {
+    let run = [];
+    const flush = () => { if (run.length > 1) { const line = simplify(run, COAST); others.push(encode(line)); otherPoints += line.length; } run = []; };
+    for (let i = 0; i < ring.length-1; i++) {
+      // Edges shared with the zone are already its land borders.
+      const keep = !(own.has(key(ring[i])) && own.has(key(ring[i+1]))) && (near(ring[i]) || near(ring[i+1]));
+      if (!keep) { flush(); continue; }
+      if (!run.length) run.push(ring[i]);
+      run.push(ring[i+1]);
+    }
+    flush();
+  }
+  // Areas added by outline (inland areas cut out of a country, offshore
+  // islands with their territorial sea): every edge is a border.
+  for (const ring of inland.flatMap(rings)) {
+    const outline = simplify(ring, BORDER);
+    polygons.push([encode(outline), [0, outline.length-1]]);
+    boxes.push(bbox(ring));
+    points += outline.length; borders++;
+  }
+  console.log(`${members.join(' ')}: ${polygons.length} polygons, ${points} points, ${borders} border runs; ${others.length} nearby outside lines, ${otherPoints} points`);
+  return [polygons, others];
 }
+
+// geo-tz packs time-zone polygons as geobuf quadtree cells: a cell is either
+// wholly in listed zones or holds polygons clipped to it.
+function untar(bytes) {
+  const files = new Map();
+  for (let offset = 0; offset + 512 <= bytes.length;) {
+    const name = bytes.subarray(offset, offset+100).toString().replace(/\0.*$/s, '');
+    if (!name) break;
+    const size = parseInt(bytes.subarray(offset+124, offset+136).toString().replace(/\0.*$/s, '').trim() || '0', 8);
+    files.set(name, bytes.subarray(offset+512, offset+512+size));
+    offset += 512 + Math.ceil(size/512)*512;
+  }
+  return files;
+}
+async function timeZoneData(dir) {
+  if (dir) return [JSON.parse(await readFile(`${dir}/timezones.geojson.index.json`,'utf8')), await readFile(`${dir}/timezones.geojson.geo.dat`)];
+  const files = untar(gunzipSync(Buffer.from(await (await fetch(GEO_TZ)).arrayBuffer())));
+  return [JSON.parse(files.get('package/data/timezones.geojson.index.json').toString()), files.get('package/data/timezones.geojson.geo.dat')];
+}
+// Simplify each run of a ring at the tolerance its location needs.
+function detail(ring) {
+  const tolerance = ([x,y]) => DETAIL.find(([,[w,s,e,n]]) => x >= w && x <= e && y >= s && y <= n)?.[0] ?? COAST;
+  const runs = [];
+  for (const p of ring) {
+    if (!runs.length || runs.at(-1).tolerance !== tolerance(p)) runs.push({tolerance:tolerance(p), points:runs.length ? [runs.at(-1).points.at(-1)] : []});
+    runs.at(-1).points.push(p);
+  }
+  return runs.flatMap((run, i) => simplify(run.points, run.tolerance).slice(i ? 1 : 0));
+}
+async function chineseAreas(dir) {
+  const [index, data] = await timeZoneData(dir);
+  const pieces = Object.fromEntries(Object.values(CHINESE_AREAS).map(code => [code, []]));
+  const walk = (node, [w,s,e,n]) => {
+    if (!node) return;
+    if (node.pos >= 0 && node.len) {
+      for (const f of geobuf.decode(new Pbf(data.subarray(node.pos, node.pos+node.len))).features) {
+        const code = CHINESE_AREAS[f.properties.tzid], g = f.geometry;
+        if (code) pieces[code].push(...(g.type === 'Polygon' ? [g.coordinates] : g.coordinates));
+      }
+    } else if (Array.isArray(node)) {
+      for (const i of node) if (CHINESE_AREAS[index.timezones[i]]) pieces[CHINESE_AREAS[index.timezones[i]]].push([[[w,s],[e,s],[e,n],[w,n],[w,s]]]);
+    } else {
+      const x = (w+e)/2, y = (s+n)/2;
+      walk(node.a, [x,y,e,n]); walk(node.b, [w,y,x,n]); walk(node.c, [w,s,x,y]); walk(node.d, [x,s,e,y]);
+    }
+  };
+  walk(index.lookup, [-179.9999,-89.9999,179.9999,89.9999]);
+  const result = {};
+  for (const [code, list] of Object.entries(pieces)) {
+    if (!list.length) throw new Error(`No time-zone polygons for ${code}`);
+    // Union the cells, then store every ring (outer and holes) for even-odd
+    // tests; area outlines have no land-border runs.
+    const rings = polygonClipping.union(...list.map(p => [p])).flat(1).map(detail).filter(ring => ring.length > 3);
+    console.log(`${code}: ${rings.length} rings, ${rings.reduce((n, r) => n + r.length, 0)} points`);
+    result[code] = rings;
+  }
+  return result;
+}
+// Join a boundary relation's outer ways into closed rings.
+async function osmRelation(id, name, dir) {
+  let data;
+  if (dir) data = JSON.parse(await readFile(`${dir}/${id}.json`, 'utf8'));
+  else {
+    const response = await fetch(`https://www.openstreetmap.org/api/0.6/relation/${id}/full.json`, {headers:{'User-Agent':'openrailwaystyle build-han-region (github.com/c933103/openrailwaystyle)'}});
+    if (!response.ok) throw new Error(`OSM relation ${id} returned ${response.status}`);
+    data = await response.json();
+  }
+  const elements = data.elements;
+  const nodes = new Map(elements.filter(e => e.type === 'node').map(e => [e.id, [e.lon, e.lat]]));
+  const ways = new Map(elements.filter(e => e.type === 'way').map(e => [e.id, e.nodes]));
+  const relation = elements.find(e => e.type === 'relation' && e.id === id);
+  if (relation.tags['name:en'] !== name) throw new Error(`OSM relation ${id} is ${relation.tags['name:en']}, not ${name}`);
+  const open = relation.members.filter(m => m.type === 'way' && m.role === 'outer').map(m => [...ways.get(m.ref)]);
+  const rings = [];
+  while (open.length) {
+    const ring = open.shift();
+    while (ring[0] !== ring.at(-1)) {
+      const i = open.findIndex(w => w[0] === ring.at(-1) || w.at(-1) === ring.at(-1));
+      if (i < 0) throw new Error(`OSM relation ${id} has an unclosed outer ring`);
+      const [next] = open.splice(i, 1);
+      ring.push(...(next[0] === ring.at(-1) ? next : next.reverse()).slice(1));
+    }
+    rings.push([ring.map(n => nodes.get(n))]);
+  }
+  return {type:'MultiPolygon', coordinates:rings};
+}
+const inland = [];
+for (const [id, name] of Object.entries(OSM_RELATIONS)) inland.push(await osmRelation(Number(id), name, process.argv[7]));
+for (const [i, [file, names]] of INLAND.entries()) {
+  const features = (await load(process.argv[5+i], file, GB)).features;
+  for (const name of names) {
+    const found = features.filter(f => f.properties.shapeName === name);
+    if (found.length !== 1) throw new Error(`Found ${found.length} areas named ${name}`);
+    inland.push(found[0].geometry);
+  }
+}
+const areaRings = await chineseAreas(process.argv[4]);
+const chineseAreaOutlines = Object.fromEntries(Object.entries(areaRings).map(([code, list]) => [code, list.map(ring => [encode(ring, 10000), []])]));
+// Chinese-area islands far from Natural Earth land, such as Pratas and
+// Taiping, join the Han-character region with their territorial sea.
+const land = areas.filter(a => CJKV.includes(a.id)).flatMap(a => rings(a.geometry)).flat();
+const offshore = Object.values(areaRings).flat().filter(ring => {
+  const [w,s,e,n] = bbox(ring);
+  return !land.some(([x,y]) => x >= w-NEAR && x <= e+NEAR && y >= s-NEAR && y <= n+NEAR);
+}).map(ring => ({type:'Polygon', coordinates:[ring]}));
+console.log(`Offshore Chinese-area rings: ${offshore.length}`);
+const [cjkv, chinese, inlandZone] = [zone(CJKV, offshore), zone([...CHINESE, ...FAR_EAST]), zone([], inland)];
 await writeFile(new URL('../styles/han-region-data.mjs', import.meta.url),
-  `// Generated by scripts/build-han-region.mjs from Natural Earth 1:10m admin-0\n// and admin-1 (public domain). Delta-encoded 1e-3 degrees.\n` +
-  `// ${CJKV.join(', ')}\nexport const CJKV = ${JSON.stringify(zone(CJKV))};\n` +
-  `// ${[...CHINESE, ...FAR_EAST].join(', ')}\nexport const CHINESE = ${JSON.stringify(zone([...CHINESE, ...FAR_EAST]))};\n`);
+  `// Generated by scripts/build-han-region.mjs.\n` +
+  `// CJKV and CHINESE: Natural Earth 1:10m admin-0 and admin-1 (public domain),\n` +
+  `// delta-encoded 1e-3 degrees: [[outline, border runs]...], [nearby outside lines...].\n` +
+  `// ${CJKV.join(', ')}; plus offshore Chinese-area islands from AREAS below (ODbL)\nexport const CJKV = ${JSON.stringify(cjkv)};\n` +
+  `// ${[...CHINESE, ...FAR_EAST].join(', ')}\nexport const CHINESE = ${JSON.stringify(chinese)};\n` +
+  `// INLAND (Chinese labels only; precedes the Natural Earth regions): ${[...Object.values(OSM_RELATIONS), ...INLAND.flatMap(([,names]) => names)].join(', ')}\n` +
+  `// Wa State, Mong La: OSM relations ${Object.keys(OSM_RELATIONS).join(', ')}, © OpenStreetMap contributors, ODbL;\n` +
+  `// Myanmar townships: geoBoundaries / Myanmar Analytics Project, CC BY 4.0;\n` +
+  `// Thai district: geoBoundaries / Royal Thai Survey Department, OCHA ROAP, CC BY 3.0 IGO.\nexport const INLAND = ${JSON.stringify(inlandZone)};\n` +
+  `// AREAS: timezone-boundary-builder via geo-tz 8.1.9, © OpenStreetMap contributors,\n` +
+  `// ODbL 1.0 (https://opendatacommons.org/licenses/odbl/). Delta-encoded 1e-4 degrees.\n` +
+  `// ${Object.entries(CHINESE_AREAS).map(([zone, code]) => `${code} = ${zone}`).join(', ')}\n` +
+  `export const AREAS = ${JSON.stringify(chineseAreaOutlines)};\n`);

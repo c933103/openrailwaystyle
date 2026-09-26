@@ -1,9 +1,9 @@
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import encode from 'vt-pbf';
-import {chooseName, hanFallback, mergeStationTranslation, stationLanguages, stationNameResolved} from './map-model.mjs';
-import {hanRegion} from './han-region.mjs';
-export {hanRegion};
+import {chooseName, mergeStationTranslation, stationLanguages, stationPending} from './map-model.mjs';
+import {hanRegion, chineseArea} from './han-region.mjs';
+export {hanRegion, chineseArea};
 
 export function readTile(data) {
   const tile = new VectorTile(new Pbf(new Uint8Array(data)));
@@ -20,6 +20,13 @@ export const tileCoordinates = url => {
   const match = /\/(\d+)\/(\d+)\/(\d+)(?:\.[a-z.]+)?(?:[?#].*)?$/i.exec(url || '');
   return match && {z:+match[1],x:+match[2],y:+match[3]};
 };
+// Han-name region and Chinese naming area (mainland China, Taiwan, Hong Kong
+// or Macau) of a point, as label properties. The region decides; the area
+// only distinguishes places within it.
+export function locate(lon, lat) {
+  const atlas_han = hanRegion(lon, lat);
+  return {atlas_han, atlas_zh: atlas_han === 'cjkv' ? chineseArea(lon, lat) : ''};
+}
 // Record the Han-name region at each feature's centre. Every tile URL used
 // by the map ends in z/x/y, so every labelled feature has a location.
 export function locateFeatures(tile, coordinates) {
@@ -28,7 +35,7 @@ export function locateFeatures(tile, coordinates) {
   for (const f of features(tile)) {
     const [w,s,e,north] = f.bbox();
     const tx = x + (w+e)/2/f.extent, ty = y + (s+north)/2/f.extent;
-    f.properties.atlas_han = hanRegion(tx/n*360-180, Math.atan(Math.sinh(Math.PI*(1-2*ty/n)))*180/Math.PI);
+    Object.assign(f.properties, locate(tx/n*360-180, Math.atan(Math.sinh(Math.PI*(1-2*ty/n)))*180/Math.PI));
   }
 }
 export function writeLabels(tile, lang) {
@@ -83,9 +90,14 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       const data = await get(url,signal,true);
       return {data:{...data,tiles:data.tiles.map(t=>`atlasstation://${lang}/${t}`)}};
     }
-    let primary, primaryData, borrow = true;
-    for (const candidate of stationLanguages(lang)) {
-      if (primary && !borrow && !stationLanguages(lang,false).includes(candidate)) continue;
+    const candidates = stationLanguages(lang), fetched = new Set();
+    let primary, primaryData;
+    for (;;) {
+      // Fetch the first listed language some station could still use.
+      const wanted = primary && new Set(features(primary).flatMap(f=>stationPending(f.properties,lang,fetched)));
+      const candidate = primary ? candidates.find(c=>!fetched.has(c) && wanted.has(c)) : candidates[0];
+      if (!candidate) break;
+      fetched.add(candidate);
       signal.throwIfAborted();
       const requestURL = new URL(url);
       if(candidate === 'local') requestURL.searchParams.delete('lang');
@@ -102,11 +114,9 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
         primary=translated; primaryData=data;
         try { locateFeatures(primary,tileCoordinates(url)); }
         catch (error) { console.error('Station labels unavailable:', error?.message || String(error)); }
-        borrow=features(primary).some(f=>hanFallback(f.properties,lang));
       }
       const byId=new Map(features(translated).map(f=>[String(f.properties.id ?? f.id),f.properties]));
       for(const f of features(primary)) mergeStationTranslation(f.properties,byId.get(String(f.properties.id ?? f.id)),candidate);
-      if(features(primary).every(f=>stationNameResolved(f.properties,lang))) break;
     }
     try { return {data:writeLabels(primary,lang)}; }
     catch (error) {
