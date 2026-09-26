@@ -229,9 +229,11 @@ export const CONTOUR_OPTIONS = {
   contourLayer:'contours',elevationKey:'ele',levelKey:'level',extent:4096,buffer:1,
 };
 // Imperial contours are drawn in feet at round intervals.
-export const contourOptions = units => units === 'imperial'
-  ? {...CONTOUR_OPTIONS, multiplier:3.28084, thresholds:{7:[500,2500],9:[250,1000],11:[100,500],13:[50,250],15:[25,100]}}
-  : CONTOUR_OPTIONS;
+// The seabed source is drawn only below sea level: 20 m from zoom 9 and 10 m
+// from zoom 11 (the elevation data resolves shallow coastal depths).
+export const contourOptions = (units, seabed = false) => units === 'imperial'
+  ? {...CONTOUR_OPTIONS, multiplier:3.28084, thresholds: seabed ? {9:[50,250],11:[25,100]} : {7:[500,2500],9:[250,1000],11:[100,500],13:[50,250],15:[25,100]}}
+  : seabed ? {...CONTOUR_OPTIONS, thresholds:{9:[20,100],11:[10,50]}} : CONTOUR_OPTIONS;
 // Speed colours and track labels for the chosen units. maxspeed is km/h.
 export function speedPaint(units) {
   const speed = ['to-number', ['coalesce', ['get', 'maxspeed'], -1], -1];

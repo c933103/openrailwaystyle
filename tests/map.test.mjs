@@ -114,3 +114,14 @@ test('station labels rank heavy rail over metro, light rail, people movers and f
   const former = style.layers.find(l => l.id === 'station-former-names');
   assert.equal(featureFilter(former.filter).filter({zoom:14}, {type:1,properties:{state:'abandoned',feature:'station'}}), true);
 });
+test('seabed contours come from a finer source from zoom 9, without duplicates', async () => {
+  const {contourOptions} = await import('../styles/map-model.mjs');
+  const shows = (id, zoom, ele) => { const l = style.layers.find(x => x.id === id); return zoom >= l.minzoom && featureFilter(l.filter).filter({zoom}, {type:2, properties:{ele, level:1}}); };
+  assert.equal(shows('terrain-contours', 8, -100), true);
+  assert.equal(shows('terrain-contours', 9, -100), false);
+  assert.equal(shows('terrain-contours', 9, 100), true);
+  assert.equal(shows('terrain-seabed-contours', 9, -100), true);
+  assert.equal(shows('terrain-seabed-contours', 9, 100), false);
+  assert.deepEqual(contourOptions('metric', true).thresholds[11], [10, 50]);
+  assert.equal(contourOptions('imperial', true).multiplier, 3.28084);
+});

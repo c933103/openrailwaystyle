@@ -28,6 +28,8 @@ const style = {
     stations: vector('standard_railway_text_stations', 8, 16),
     inactiveRegional: { type: 'vector', tiles: ['railtiles://{z}/{x}/{y}'], minzoom: 0, maxzoom: 10, promoteId: 'osm_id', attribution: '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>' },
     contours: {type:'vector',tiles:['atlas-contour://{z}/{x}/{y}'],minzoom:7,maxzoom:15},
+    // Finer seabed contours from zoom 9 (see contourOptions in map-model.mjs).
+    seabedContours: {type:'vector',tiles:['atlas-contour://{z}/{x}/{y}'],minzoom:9,maxzoom:15},
     relief: {type:'raster-dem', tiles:[DEM_URL], tileSize:256, encoding:'terrarium', maxzoom:15, attribution:'<a href="terrain-credits.html">Terrain: Mapzen / AWS and data contributors</a>'},
   },
   layers: original.layers.filter(l => (!l.source || l.source === 'openmaptiles') && !l.id.startsWith('airport_')).map(l => structuredClone(l)),
@@ -59,8 +61,9 @@ style.layers.splice(reliefIndex,0,{id:'terrain-relief',type:'hillshade',source:'
 const contourBase = {type:'line',source:'contours','source-layer':'contours',minzoom:7,filter:['!=',['get','ele'],0],layout:{'line-join':'round'}};
 const contourColor = ['case',['<',['get','ele'],0],'#467d9a','#927b5a'];
 // Keep contours below transport and administrative linework.
-style.layers.splice(reliefIndex+1,0,{...contourBase,id:'terrain-contours',paint:{'line-color':contourColor,'line-width':['case',['>', ['get','level'],0],0.8,0.4],'line-opacity':['interpolate',['linear'],['zoom'],7,0.45,12,0.65]}});
-style.layers.push({id:'terrain-contour-labels',type:'symbol',source:'contours','source-layer':'contours',minzoom:8,filter:['all',['>', ['get','level'],0],['!=',['get','ele'],0]],layout:{'symbol-placement':'line','symbol-spacing':250,'text-field':['concat',['to-string',['get','ele']],' m'],'text-font':['Noto Sans Regular'],'text-size':10,'text-padding':10},paint:{'text-color':contourColor,'text-halo-color':'#f2f1e9','text-halo-width':1}});
+style.layers.splice(reliefIndex+1,0,{...contourBase,id:'terrain-contours',filter:['all',['!=',['get','ele'],0],['any',['<',['zoom'],9],['>',['get','ele'],0]]],paint:{'line-color':contourColor,'line-width':['case',['>', ['get','level'],0],0.8,0.4],'line-opacity':['interpolate',['linear'],['zoom'],7,0.45,12,0.65]}},{...contourBase,id:'terrain-seabed-contours',source:'seabedContours',minzoom:9,filter:['<',['get','ele'],0],paint:{'line-color':contourColor,'line-width':['case',['>', ['get','level'],0],0.8,0.4],'line-opacity':['interpolate',['linear'],['zoom'],9,0.45,12,0.65]}});
+style.layers.push({id:'terrain-contour-labels',type:'symbol',source:'contours','source-layer':'contours',minzoom:8,filter:['all',['>', ['get','level'],0],['!=',['get','ele'],0],['any',['<',['zoom'],9],['>',['get','ele'],0]]],layout:{'symbol-placement':'line','symbol-spacing':250,'text-field':['concat',['to-string',['get','ele']],' m'],'text-font':['Noto Sans Regular'],'text-size':10,'text-padding':10},paint:{'text-color':contourColor,'text-halo-color':'#f2f1e9','text-halo-width':1}});
+style.layers.push({id:'terrain-seabed-contour-labels',type:'symbol',source:'seabedContours','source-layer':'contours',minzoom:9,filter:['all',['>', ['get','level'],0],['<',['get','ele'],0]],layout:{'symbol-placement':'line','symbol-spacing':250,'text-field':['concat',['to-string',['get','ele']],' m'],'text-font':['Noto Sans Regular'],'text-size':10,'text-padding':10},paint:{'text-color':contourColor,'text-halo-color':'#f2f1e9','text-halo-width':1}});
 const number = key => ['to-number', ['coalesce', ['get', key], -1], -1];
 const present = ['==', ['coalesce', ['get', 'state'], 'present'], 'present'];
 const notFerry = ['!=', ['get', 'feature'], 'ferry'];

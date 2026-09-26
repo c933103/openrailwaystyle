@@ -1,6 +1,6 @@
-import { speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260926-9';
+import { speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260926-10';
 
-import { Drawing, readDrawing } from './draw.mjs?v=20260926-9';
+import { Drawing, readDrawing } from './draw.mjs?v=20260926-10';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -14,7 +14,7 @@ const rememberLanguage = code => { try { document.cookie = `${LANGUAGE_COOKIE}=$
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE)});
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260926-9';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260926-10';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -181,20 +181,24 @@ function unitStyle(style) {
   for (const layer of style.layers) {
     if (/^speed-(overview|tracks)$/.test(layer.id)) layer.paint['line-color'] = speedPaint(settings.units);
     if (layer.id === 'speed-labels') layer.layout['text-field'] = speedLabel(settings.units);
-    if (layer.id === 'terrain-contour-labels') layer.layout['text-field'] = ['concat', ['to-string', ['get','ele']], settings.units === 'imperial' ? ' ft' : ' m'];
+    if (layer.id === 'terrain-contour-labels' || layer.id === 'terrain-seabed-contour-labels') layer.layout['text-field'] = ['concat', ['to-string', ['get','ele']], settings.units === 'imperial' ? ' ft' : ' m'];
   }
-  if (dem) style.sources.contours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units))];
+  if (dem) {
+    style.sources.contours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units))];
+    style.sources.seabedContours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units, true))];
+  }
 }
 function applyUnits() {
   scale?.setUnit(settings.units);
   if (!ready) return;
-  const style = {layers: map.getStyle().layers, sources: {contours: {}}};
+  const style = {layers: map.getStyle().layers, sources: {contours: {}, seabedContours: {}}};
   unitStyle(style);
   for (const layer of style.layers) {
     if (/^speed-(overview|tracks)$/.test(layer.id)) map.setPaintProperty(layer.id, 'line-color', layer.paint['line-color']);
-    if (layer.id === 'speed-labels' || layer.id === 'terrain-contour-labels') map.setLayoutProperty(layer.id, 'text-field', layer.layout['text-field']);
+    if (['speed-labels','terrain-contour-labels','terrain-seabed-contour-labels'].includes(layer.id)) map.setLayoutProperty(layer.id, 'text-field', layer.layout['text-field']);
   }
   map.getSource('contours')?.setTiles(style.sources.contours.tiles);
+  map.getSource('seabedContours')?.setTiles(style.sources.seabedContours.tiles);
 }
 function updateStatus() {
   if (errors.size) {
@@ -339,6 +343,7 @@ async function initialize() {
   localizeStyle(style);
   style.sources.relief.tiles = [dem.sharedDemProtocolUrl];
   style.sources.contours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units))];
+  style.sources.seabedContours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units, true))];
   map = new maplibregl.Map({
     container: 'map', style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / (settings.detail ? 2 : 1),
     center: [15,23], zoom: 1.8, hash: true, minZoom: MIN_ZOOM + (settings.detail ? 1 : 0), maxZoom: MAX_ZOOM + (settings.detail ? 1 : 0),

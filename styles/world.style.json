@@ -87,6 +87,14 @@
       "minzoom": 7,
       "maxzoom": 15
     },
+    "seabedContours": {
+      "type": "vector",
+      "tiles": [
+        "atlas-contour://{z}/{x}/{y}"
+      ],
+      "minzoom": 9,
+      "maxzoom": 15
+    },
     "relief": {
       "type": "raster-dem",
       "tiles": [
@@ -345,12 +353,33 @@
       "source-layer": "contours",
       "minzoom": 7,
       "filter": [
-        "!=",
+        "all",
         [
-          "get",
-          "ele"
+          "!=",
+          [
+            "get",
+            "ele"
+          ],
+          0
         ],
-        0
+        [
+          "any",
+          [
+            "<",
+            [
+              "zoom"
+            ],
+            9
+          ],
+          [
+            ">",
+            [
+              "get",
+              "ele"
+            ],
+            0
+          ]
+        ]
       ],
       "layout": {
         "line-join": "round"
@@ -392,6 +421,65 @@
             "zoom"
           ],
           7,
+          0.45,
+          12,
+          0.65
+        ]
+      }
+    },
+    {
+      "type": "line",
+      "source": "seabedContours",
+      "source-layer": "contours",
+      "minzoom": 9,
+      "filter": [
+        "<",
+        [
+          "get",
+          "ele"
+        ],
+        0
+      ],
+      "layout": {
+        "line-join": "round"
+      },
+      "id": "terrain-seabed-contours",
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "<",
+            [
+              "get",
+              "ele"
+            ],
+            0
+          ],
+          "#467d9a",
+          "#927b5a"
+        ],
+        "line-width": [
+          "case",
+          [
+            ">",
+            [
+              "get",
+              "level"
+            ],
+            0
+          ],
+          0.8,
+          0.4
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
           0.45,
           12,
           0.65
@@ -1253,6 +1341,87 @@
         ],
         [
           "!=",
+          [
+            "get",
+            "ele"
+          ],
+          0
+        ],
+        [
+          "any",
+          [
+            "<",
+            [
+              "zoom"
+            ],
+            9
+          ],
+          [
+            ">",
+            [
+              "get",
+              "ele"
+            ],
+            0
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 250,
+        "text-field": [
+          "concat",
+          [
+            "to-string",
+            [
+              "get",
+              "ele"
+            ]
+          ],
+          " m"
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 10,
+        "text-padding": 10
+      },
+      "paint": {
+        "text-color": [
+          "case",
+          [
+            "<",
+            [
+              "get",
+              "ele"
+            ],
+            0
+          ],
+          "#467d9a",
+          "#927b5a"
+        ],
+        "text-halo-color": "#f2f1e9",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "terrain-seabed-contour-labels",
+      "type": "symbol",
+      "source": "seabedContours",
+      "source-layer": "contours",
+      "minzoom": 9,
+      "filter": [
+        "all",
+        [
+          ">",
+          [
+            "get",
+            "level"
+          ],
+          0
+        ],
+        [
+          "<",
           [
             "get",
             "ele"
