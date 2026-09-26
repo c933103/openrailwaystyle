@@ -9,7 +9,7 @@
   <title>Open Railway Atlas · Worldwide rail map</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20260926-8" rel="stylesheet">
+  <link href="app.css?v=20260926-9" rel="stylesheet">
 </head>
 <body>
   <main id="map" aria-label="Interactive worldwide railway map"></main>
@@ -44,6 +44,14 @@
       <p id="share-status" role="status" class="small" hidden></p>
     </div>
   </aside>
+  <div id="draw-toolbar" class="draw-toolbar" role="toolbar" aria-label="Drawing tools" hidden>
+    <div class="draw-group"><button data-draw="point" aria-pressed="false">Point</button><button data-draw="line" aria-pressed="false">Line</button><button data-draw="area" aria-pressed="false">Area</button><button data-draw="erase" aria-pressed="false">Erase</button></div>
+    <div class="draw-group"><button id="draw-undo">Undo</button><button id="draw-finish">Finish</button></div>
+    <div class="draw-group"><button id="draw-save">Save</button><button id="draw-open">Open</button><button id="draw-clear">Clear</button></div>
+    <input type="file" id="draw-file" accept=".geojson,.json,application/geo+json,application/json" hidden>
+    <button id="draw-close" class="draw-close" aria-label="Close drawing tools">×</button>
+    <p id="draw-status" class="draw-status" role="status"></p>
+  </div>
   <div class="map-status"><span id="map-status" role="status">Loading the world’s railways…</span></div>
   <section class="detail-panel" id="details" aria-label="Railway details" hidden><button class="close" id="details-close" aria-label="Close railway details">×</button><div id="detail-content"></div></section>
   <dialog id="about"><button class="close" id="about-close" aria-label="Close about">×</button><h2>A world built around rail</h2>
@@ -51,6 +59,7 @@
     <h3>Reading the map</h3><p>Regional views show a spaced-out selection of major stations. Smaller stations appear as you zoom in; individual station markers appear at local scale. Major stations receive priority according to the provider’s mapped route importance, which is not a passenger-volume ranking. Coverage and station ranking depend on OpenStreetMap completeness.</p>
     <p>Speed colours use the provider’s numeric limit in km/h. Where directions differ, this is the preferred-direction limit, or the larger directional limit when no preferred direction is mapped. Track labels retain original units: bare numbers are km/h; mph is written explicitly. “A / B” means forward / backward; “A (B)” means preferred / opposite direction. A dash means missing data. These directions refer to the underlying OSM way.</p>
     <p>Grey means no numeric speed is available. Dashed lines show railways under construction at every zoom, proposed railways from zoom 5 and former railways from zoom 7; they are not presented as operating lines. In the Infrastructure view, bridges and tunnels are outlined from zoom 7. Recorded infrastructure limits are not train running speeds or a timetable.</p>
+    <p>Station labels give priority to heavy rail, then metro, light rail, people movers and trams, then former stations. The ⊞ button shows more detail by drawing the next zoom level at half size. The ✎ button opens drawing tools; drawings stay in this browser and can be saved or opened as GeoJSON files.</p>
     <h3>Names and terrain</h3><p>One language setting applies to map, station and line labels. Only names recorded in the source data are shown; nothing is automatically translated or transliterated. When no name is recorded in the chosen language, a related recorded name is used where one exists, such as the other Chinese script or English, and otherwise the local name.</p>
     <p>Station translations are requested for the current view. Snapshot railways retain multilingual OSM tags; the current operating-line tile provider usually supplies only native names. The shared setting cannot recover translations omitted from a source. Search results use the names returned by the search service.</p>
     <p>Brown contours show land elevation; blue contours show negative elevation below sea level. Labels are signed metres. Intervals become finer as you zoom: 200 m at zoom 7, 100 m at 9, 50 m at 11, 20 m at 13, and 10 m at 15. Heavier index contours are labelled. Detail depends on the elevation dataset; seabed data is generally coarser than land data.</p>
@@ -70,6 +79,6 @@
       status.textContent = 'The map could not load. Check your connection and reload the page.';
     }, true);
   </script>
-  <script type="module" src="app.mjs?v=20260926-8"></script>
+  <script type="module" src="app.mjs?v=20260926-9"></script>
 </body>
 </html>

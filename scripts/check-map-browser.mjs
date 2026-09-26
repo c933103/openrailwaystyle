@@ -83,7 +83,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') console.log('Browser resource:',msg.text());});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260926-8&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260926-9&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
@@ -236,6 +236,30 @@ try{
   await page.selectOption('#units','metric');
   assert.match(await page.locator('.maplibregl-ctrl-scale').textContent(),/km|\bm\b/);
   console.log('PASS: units switch legend, scale bar and speed labels');
+  const zoomNow=()=>page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map.getZoom();});
+  const zoomBefore=await zoomNow();
+  await page.locator('button.atlas-ctrl[title^="More detail"]').click();
+  assert.equal(await page.locator('#map.detail').count(),1);
+  assert.ok(Math.abs(await zoomNow()-zoomBefore-1)<0.01,'More detail shows the next zoom level');
+  const detailShot=await page.screenshot({path:'browser-review/more-detail.jpg',type:'jpeg',quality:55});
+  console.log('DETAILVIEW_IMAGE_START'+detailShot.toString('base64')+'DETAILVIEW_IMAGE_END');
+  await page.locator('button.atlas-ctrl[title^="More detail"]').click();
+  assert.equal(await page.locator('#map.detail').count(),0);
+  console.log('PASS: more detail view toggles');
+  await page.locator('#collapse').click();
+  await page.locator('button.atlas-ctrl[title="Drawing tools"]').click();
+  await page.locator('[data-draw="line"]').click();
+  for (const [x,y] of [[700,500],[850,450],[950,520]]) await page.mouse.click(x,y);
+  await page.locator('#draw-finish').click();
+  assert.match(await page.locator('#draw-status').textContent(),/./);
+  const drawn=await page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map.querySourceFeatures('atlas-drawing').length;});
+  assert.ok(drawn>0,'A drawn line must be on the map');
+  const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#draw-save').click()]);
+  const saved=JSON.parse(await (await import('node:fs/promises')).readFile(await download.path(),'utf8'));
+  assert.equal(saved.features[0].geometry.type,'LineString');
+  assert.equal(saved.features[0].geometry.coordinates.length,3);
+  await page.locator('#draw-close').click();
+  console.log('PASS: drawing tool draws a line and saves it as GeoJSON');
   assert.deepEqual(errors,[]);
   console.log('PASS: one shared language, name fallbacks, contours, structures and lifecycle controls; no JavaScript exceptions');
 } catch(error) {

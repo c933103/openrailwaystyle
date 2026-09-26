@@ -1,4 +1,6 @@
-import { speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260926-8';
+import { speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260926-9';
+
+import { Drawing, readDrawing } from './draw.mjs?v=20260926-9';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -7,8 +9,8 @@ const $ = id => document.getElementById(id);
 document.body.dataset.appStarted = 'true';
 const settings = readSettings(location.search);
 const status = $('map-status');
-let map, ready = false, currentFeature, searchController, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260926-8';
+let map, ready = false, currentFeature, searchController, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing;
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260926-9';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -84,6 +86,7 @@ function saveSettings() {
   url.searchParams.set('mode', settings.mode);
   for (const key of ['stations', 'labels', 'inactive', 'relief', 'names']) url.searchParams.set(key, settings[key] ? '1' : '0');
   if (settings.units === 'imperial') url.searchParams.set('units', 'imperial'); else url.searchParams.delete('units');
+  if (settings.detail) url.searchParams.set('detail', '1'); else url.searchParams.delete('detail');
   for (const key of ['mapLanguage','stationLanguage','lineLanguage']) url.searchParams.delete(key);
   url.searchParams.set('language',settings.language);
   history.replaceState(null, '', url);
@@ -222,6 +225,67 @@ function localizeStyle(style) {
   unitStyle(style);
   styleLanguage = settings.language;
 }
+// More detail: draw the map at twice the size, scaled to half, one zoom level
+// further in. The same area shows more tiles, features and smaller labels;
+// the canvas keeps its pixel count. Controls are scaled back to normal size.
+const detailButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'⊞', title:'More detail: show the next zoom level at half size'});
+const drawButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'✎', title:'Drawing tools'});
+function applyDetail(changeZoom) {
+  $('map').classList.toggle('detail', settings.detail);
+  detailButton.setAttribute('aria-pressed', String(settings.detail));
+  detailButton.setAttribute('aria-label', settings.detail ? 'Show normal detail' : 'Show more detail');
+  if (!map) return;
+  map.setPixelRatio(devicePixelRatio / (settings.detail ? 2 : 1));
+  if (changeZoom) map.jumpTo({zoom: map.getZoom() + (settings.detail ? 1 : -1)});
+}
+detailButton.addEventListener('click', () => { settings.detail = !settings.detail; applyDetail(true); saveSettings(); });
+applyDetail(false);
+class ButtonControl {
+  constructor(buttons) { this.buttons = buttons; }
+  onAdd() { this.container = Object.assign(document.createElement('div'), {className:'maplibregl-ctrl maplibregl-ctrl-group'}); this.container.append(...this.buttons); return this.container; }
+  onRemove() { this.container.remove(); }
+}
+// Drawing tools: points, lines and areas, kept in this browser and saved or
+// opened as GeoJSON.
+function updateDrawing() {
+  const open = !$('draw-toolbar').hidden;
+  drawButton.setAttribute('aria-pressed', String(open));
+  document.querySelectorAll('[data-draw]').forEach(b => b.setAttribute('aria-pressed', String(drawing?.mode === b.dataset.draw)));
+}
+drawButton.addEventListener('click', () => {
+  $('draw-toolbar').hidden = !$('draw-toolbar').hidden;
+  if ($('draw-toolbar').hidden && drawing?.active) drawing.setMode(drawing.mode);
+  updateDrawing();
+});
+$('draw-close').addEventListener('click', () => { $('draw-toolbar').hidden = true; if (drawing?.active) drawing.setMode(drawing.mode); updateDrawing(); });
+document.querySelectorAll('[data-draw]').forEach(b => b.addEventListener('click', () => whenMap(() => drawing.setMode(b.dataset.draw))));
+$('draw-undo').addEventListener('click', () => drawing?.undo());
+$('draw-finish').addEventListener('click', () => drawing?.finish());
+$('draw-clear').addEventListener('click', () => { if (drawing?.features.length && confirm('Delete all drawings?')) drawing.clear(); });
+$('draw-save').addEventListener('click', () => {
+  if (!drawing) return;
+  const link = Object.assign(document.createElement('a'), {href:URL.createObjectURL(drawing.file()), download:`railway-atlas-drawing-${new Date().toISOString().slice(0,10)}.geojson`});
+  document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+});
+$('draw-open').addEventListener('click', () => $('draw-file').click());
+$('draw-file').addEventListener('change', async () => {
+  const file = $('draw-file').files[0]; $('draw-file').value = '';
+  if (!file || !drawing) return;
+  try {
+    const features = readDrawing(JSON.parse(await file.text()));
+    drawing.add(features);
+    $('draw-status').textContent = features.length ? `Opened ${features.length} drawing${features.length > 1 ? 's' : ''}.` : 'No points, lines or areas found in that file.';
+  } catch { $('draw-status').textContent = 'That file is not valid GeoJSON.'; }
+});
+addEventListener('keydown', event => {
+  if (!drawing?.active || /^(INPUT|SELECT|TEXTAREA)$/.test(event.target.tagName)) return;
+  if (event.key === 'Enter') drawing.finish();
+  if (event.key === 'Escape') drawing.cancel();
+});
+// Once the map object exists (drawing needs it; loading can still be under way).
+function whenMap(action) { if (drawing) action(); else pendingDraw = action; }
+let pendingDraw;
 let locate = () => ({});
 async function initialize() {
   const [, labelCode] = await Promise.all([libraries, labels]);
@@ -264,7 +328,7 @@ async function initialize() {
   style.sources.relief.tiles = [dem.sharedDemProtocolUrl];
   style.sources.contours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units))];
   map = new maplibregl.Map({
-    container: 'map', style, localIdeographFontFamily: cjkFont(settings.language),
+    container: 'map', style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / (settings.detail ? 2 : 1),
     center: [15,23], zoom: 1.8, hash: true, minZoom: 1, maxZoom: 20,
     renderWorldCopies: true, attributionControl: { compact: true },
   });
@@ -282,8 +346,13 @@ async function initialize() {
   // Compass above the zoom buttons: shows the heading; click to face north.
   map.addControl(new maplibregl.NavigationControl({ showZoom: false, showCompass: true, visualizePitch: true }), 'top-right');
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+  map.addControl(new ButtonControl([detailButton, drawButton]), 'top-right');
   scale = new maplibregl.ScaleControl({ unit: settings.units });
   map.addControl(scale, 'bottom-left');
+  drawing = new Drawing(map, {units: () => settings.units, status: text => { $('draw-status').textContent = text; }, changed: updateDrawing});
+  map.on('style.load', () => drawing.install());
+  map.on('dblclick', event => { if (drawing.mode === 'line' || drawing.mode === 'area') { event.preventDefault(); drawing.finish(); } });
+  const action = pendingDraw; pendingDraw = undefined; action?.();
   map.on('error', e => {
     // Panning and replacing language sources intentionally cancel old tiles.
     if (e.error?.name === 'AbortError' || /^AbortError$|operation was aborted/i.test(e.error?.message || '')) return;
@@ -298,12 +367,14 @@ async function initialize() {
     ready = true;
     // Settings changed while the map was loading take effect now.
     if (styleLanguage !== settings.language) { reloadLanguage(); return; }
+    drawing.install();
     applySettings(); applyUnits(); updateStatus();
     document.body.dataset.mapReady = 'true';
     const action = pendingView; pendingView = undefined; action?.();
   });
   map.on('idle', updateStatus);
   map.on('click', event => {
+    if (drawing.active) { drawing.click(event.lngLat, event.point); return; }
     const p = event.point;
     const features = map.queryRenderedFeatures([[p.x - 7, p.y - 7], [p.x + 7, p.y + 7]], {layers: clickable})
       .sort((a, b) => Number(!a.source.startsWith('station')) - Number(!b.source.startsWith('station')) || stationRank(a.properties) - stationRank(b.properties));
@@ -318,6 +389,7 @@ async function initialize() {
   // clickable layers, and at most once per frame.
   map.on('mousemove', event => {
     cancelAnimationFrame(hoverFrame);
+    if (drawing.active) { if (!event.originalEvent.buttons) drawing.move(event.lngLat); return; }
     if (!ready || event.originalEvent.buttons || map.isMoving()) return;
     hoverFrame = requestAnimationFrame(() => {
       const hit = clickable.length && map.queryRenderedFeatures(event.point, {layers: clickable}).length > 0;
@@ -362,7 +434,7 @@ function reloadLanguage() {
 }
 $('units').addEventListener('change', () => {
   settings.units = $('units').value === 'imperial' ? 'imperial' : 'metric';
-  applyUnits(); renderLegend(); saveSettings();
+  applyUnits(); renderLegend(); saveSettings(); drawing?.refresh();
   if (currentFeature) showDetails(currentFeature);
 });
 $('collapse').addEventListener('click', () => {

@@ -27,7 +27,7 @@ test('source mph and directional speed labels are preserved', () => {
   assert.equal(formatSpeed({ speed_label: '- / 80' }).tagged, '- / 80 (km/h)');
 });
 test('shared URLs keep display settings and reject invalid map modes', () => {
-  assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',stations:false,labels:true,inactive:false,relief:true,names:true,units:'metric',language:'local' });
+  assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',stations:false,labels:true,inactive:false,relief:true,names:true,units:'metric',detail:false,language:'local' });
   assert.equal(readSettings('?mode=invalid').mode, 'speed');
 });
 test('world map has no European rail source or geographic bounds', () => {
