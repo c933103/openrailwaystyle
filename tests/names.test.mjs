@@ -120,7 +120,10 @@ test('Chinese keys are read by region; the other script and regional names stay 
   assert.equal(chooseName(zh(hunghom,'MO'),'zh-Hant'),'紅磡');
   assert.equal(chooseName(zh(hunghom,'HK'),'zh-Hans'),'红磡');
   assert.equal(chooseName(zh({...hunghom,'name:zh':'','name:zh-HK':'紅磡（港）'},'HK'),'zh-Hant'),'紅磡（港）','Hong Kong wording before Taiwan wording in Hong Kong');
-  assert.equal(chooseName(zh({...hunghom,'name:zh':'','name:zh-TW':'','name:zh-Hans':''},'HK'),'zh-Hans'),'紅磡 Hung Hom','Hong Kong: a bilingual local name ranks below all Chinese keys, above English');
+  assert.equal(chooseName(zh({...hunghom,'name:zh':'','name:zh-TW':'','name:zh-Hans':''},'HK'),'zh-Hans'),'紅磡 Hung Hom','Hong Kong: the multilingual local name comes last, before English');
+  assert.equal(chooseName(zh({name:'KFC','name:en':'KFC','name:ja':'ケンタッキー・フライド・チキン','name:ko-Hani':'肯德基'},'HK'),'zh-Hant'),'KFC','Hong Kong: a local name need not be Chinese');
+  assert.equal(chooseName(zh({name:'Sukiya','name:ja':'すき家','name:zh-Hans':'食其家'},'MO'),'zh-Hant'),'Sukiya','the local name ends the list; the other script is not reached');
+  assert.equal(chooseName(zh({name:'7-Eleven','name:zh':'統一超商'},'TW'),'zh-Hant'),'7-Eleven');
   assert.equal(chooseName(zh({name:'紅磡','name:zh-TW':'紅磡（臺）'},'HK'),'zh-Hant'),'紅磡（臺）','Taiwan wording before the local name in Hong Kong');
   // Mainland China: the local name is Simplified.
   const beijing={name:'北京','name:zh':'北京（中）','name:zh-Hant':'北京（繁）','name:zh-TW':'北京（臺）','name:zh-HK':'北京（港）'};
@@ -135,7 +138,7 @@ test('station names fetch only language tags that could still outrank the best k
   assert.deepEqual(stationPending(zh({name:'臺北'},'TW'),'zh-Hant',fetched(['zh-Hant'])),[],'Taiwan: the local name settles Traditional');
   assert.deepEqual(stationPending(zh({name:'北京'},'CN'),'zh-Hant',fetched(['zh-Hant'])),['zh-TW','zh-HK','zh']);
   assert.deepEqual(stationPending(zh({name:'北京','name:zh-TW':'北京（臺）'},'CN'),'zh-Hant',fetched(['zh-Hant','zh-TW'])),[]);
-  assert.deepEqual(stationPending(zh({name:'紅磡 Hung Hom'},'HK'),'zh-Hant',fetched(['zh-Hant'])),['zh','zh-HK','zh-TW','zh-Hans','zh-CN'],'a bilingual Hong Kong name settles nothing');
+  assert.deepEqual(stationPending(zh({name:'紅磡 Hung Hom'},'HK'),'zh-Hant',fetched(['zh-Hant'])),['zh','zh-HK','zh-TW'],'nothing after the local name is fetched');
   assert.deepEqual(stationPending(zh({name:'Berlin Hbf','name:zh':'柏林'}),'zh-Hant',fetched(['zh-Hant','zh'])),[]);
   assert.deepEqual(stationPending(zh({name:'Berlin Hbf'}),'zh-Hant',fetched(['zh-Hant','zh','zh-Hans','zh-TW','zh-HK','zh-CN','en'])),[]);
 });

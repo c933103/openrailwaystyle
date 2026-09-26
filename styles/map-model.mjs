@@ -43,18 +43,20 @@ const chinese = lang => lang.startsWith('zh');
 // Keys are read by region (atlas_zh, see chineseArea in han-region.mjs). The
 // script of a value is never guessed from its characters. Taiwan wording
 // ranks before Hong Kong wording as a Traditional fallback; zh-SG, zh-MY and
-// zh-MO are too rare to consult. 'name' below stands for the local name.
+// zh-MO are too rare to consult. 'name' below stands for the local name,
+// used as recorded (Hong Kong and Macau names such as KFC, K11 or D2 Place
+// are not Chinese). Every feature has one, so the list ends there.
 const CHINESE_ORDER = {
   'zh-Hant': {
-    TW: ['name','name:zh-Hant','name:zh','name:zh-TW','name:zh-HK','name:zh-Hans','name:zh-CN'],
-    HK: ['name:zh','name:zh-Hant','name:zh-HK','name:zh-TW','name','name:zh-Hans','name:zh-CN'],
-    CN: ['name:zh-Hant','name:zh-TW','name:zh-HK','name:zh','name','name:zh-Hans','name:zh-CN'],
+    TW: ['name'],
+    HK: ['name:zh','name:zh-Hant','name:zh-HK','name:zh-TW','name'],
+    CN: ['name:zh-Hant','name:zh-TW','name:zh-HK','name:zh','name'],
     '': ['name:zh-Hant','name:zh','name:zh-TW','name:zh-HK','name:zh-Hans','name:zh-CN'],
   },
   'zh-Hans': {
-    CN: ['name','name:zh-Hans','name:zh','name:zh-CN','name:zh-Hant','name:zh-TW','name:zh-HK'],
+    CN: ['name'],
     HK: ['name:zh-Hans','name:zh-CN','name:zh','name:zh-Hant','name:zh-HK','name:zh-TW','name'],
-    TW: ['name:zh-Hans','name:zh-CN','name:zh','name','name:zh-Hant','name:zh-TW','name:zh-HK'],
+    TW: ['name:zh-Hans','name:zh-CN','name:zh','name'],
     '': ['name:zh-Hans','name:zh','name:zh-CN','name:zh-Hant','name:zh-TW','name:zh-HK'],
   },
 };
@@ -65,13 +67,7 @@ export function chineseVariantKeys(lang, area = '') {
   return order[area] || order[''];
 }
 const chineseKeys = CHINESE_ORDER['zh-Hant'][''];
-// Hong Kong and Macau names are usually "中文 English"; only a Chinese-only
-// local name stands in for name:zh there.
-function chineseVariants(p, lang) {
-  const area = p.atlas_zh || '';
-  return chineseVariantKeys(lang, area).map(k => k !== 'name' ? p[k]
-    : han(p.name) && !((area === 'HK' || area === 'MO') && /\p{Script=Latin}/u.test(p.name)) ? p.name : '').filter(nonempty);
-}
+const chineseVariants = (p, lang) => chineseVariantKeys(lang, p.atlas_zh || '').map(k => p[k]).filter(nonempty);
 const ideographicKeys = ['name:ja','name:ja-Hani','name:ko-Hani','name:ko:hanja','name:vi-Hani','name:vi:nom',...chineseKeys];
 // Japanese names recorded as "kana (kanji)" or "kanji (kana)" show only the
 // kanji in Chinese.
@@ -102,9 +98,9 @@ export function chooseName(p, lang = 'local') {
   else if (chinese(lang)) {
     const variants = chineseVariants(p, lang);
     preferred = borrow ? [
-      ...variants.filter(han),
+      ...variants,
       ...local.filter(han), ...ideographicKeys.map(k=>p[k]).filter(han), ...recorded.filter(han),
-      ...english, ...variants,
+      ...english,
     ] : [...variants, ...english];
   }
   else if (lang === 'ja' && !borrow) preferred = [...selected, ...english];
@@ -156,7 +152,7 @@ export function stationPending(p, lang, fetched) {
     const wanted = [];
     const area = p.atlas_zh || '';
     for (const key of chineseVariantKeys(lang, area)) {
-      if (key === 'name') { if (chineseVariants({name:p.name, atlas_zh:area}, lang).length) return wanted; continue; }
+      if (key === 'name') { if (nonempty(p.name)) return wanted; continue; }
       const code = key.slice(5);
       if (!fetched.has(code)) wanted.push(code);
       else if (nonempty(p[key])) return wanted;
