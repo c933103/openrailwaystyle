@@ -252,8 +252,12 @@ try{
   for (const [x,y] of [[700,500],[850,450],[950,520]]) await page.mouse.click(x,y);
   await page.locator('#draw-finish').click();
   assert.match(await page.locator('#draw-status').textContent(),/./);
-  const drawn=await page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map.querySourceFeatures('atlas-drawing').length;});
-  assert.ok(drawn>0,'A drawn line must be on the map');
+  // GeoJSON updates are tiled asynchronously; wait for the line and its length label.
+  await expectMap(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    const rendered=map.queryRenderedFeatures({layers:['drawing-line','drawing-line-labels']});
+    return rendered.some(f=>f.layer.id==='drawing-line') && rendered.some(f=>f.layer.id==='drawing-line-labels' && /km|m$/.test(f.properties.measure));
+  },'A drawn line and its length label must be on the map');
   const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#draw-save').click()]);
   const saved=JSON.parse(await (await import('node:fs/promises')).readFile(await download.path(),'utf8'));
   assert.equal(saved.features[0].geometry.type,'LineString');
