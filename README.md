@@ -10,7 +10,7 @@ styles and Europe extractor remain in the repository but are not used by the sit
 - Maximum-speed colouring with eight bands, original directional speed labels and an explicit unknown category; track-type and electrification views.
 - Bridge outlines and tunnel dashes from zoom 7 (the upstream zoom 0–6 overview tiles carry no bridge or tunnel data); click a railway for recorded speed, voltage, frequency, gauge and operator.
 - Railways under construction at every zoom, proposed railways from zoom 5 and former lines from zoom 7, from a published worldwide OSM lifecycle snapshot, drawn dashed and apart from operating lines.
-- One label-language selector for map, station and line names (13 languages), choosing only recorded names: Traditional and Simplified Chinese read OSM’s Chinese tags by area (mainland China, Taiwan, Hong Kong, Macau, elsewhere) and always fall back to each other; Han-character names are borrowed from other languages only in the CJKV region and Chinese-speaking areas nearby.
+- One label-language selector for map, station and line names (local names or 12 languages), choosing only recorded names: Traditional and Simplified Chinese read OSM’s Chinese tags by area (mainland China, Taiwan, Hong Kong, Macau, elsewhere) and always fall back to each other; Han-character names are borrowed from other languages only in the CJKV region and Chinese-speaking areas nearby.
 - Station search, responsive controls and shareable URLs retaining position and display settings.
 - Shaded land and seabed relief with signed elevation contours, prominent first-level regional boundaries, and railway names along tracks from zoom 9.
 - Static site: no server, account, API key or paid hosting; deployed by GitHub Actions after a real Chromium/WebGL check.
