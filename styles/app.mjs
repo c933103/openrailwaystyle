@@ -1,6 +1,6 @@
-import { SPEED_BANDS, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, CONTOUR_OPTIONS, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260926-4';
+import { SPEED_BANDS, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, CONTOUR_OPTIONS, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260926-5';
 
-import {installLabelProtocols, localizeTile, locate} from './vendor/tile-labels.js?v=20260926-4';
+import {installLabelProtocols, localizeTile, locate} from './vendor/tile-labels.js?v=20260926-5';
 
 const $ = id => document.getElementById(id);
 // Every module loaded; index.html reports load failures before this point.
@@ -8,7 +8,7 @@ document.body.dataset.appStarted = 'true';
 const settings = readSettings(location.search);
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260926-4';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260926-5';
 const errors = new Set();
 const textNode = (tag, value, className) => {
   const el = document.createElement(tag); el.textContent = value;

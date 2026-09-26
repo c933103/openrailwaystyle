@@ -59,6 +59,11 @@ test('Han regions: Chinese and Japanese in CJKV; Chinese only in Singapore, Mala
     none:[[104.28,52.29],[106.9,47.9],[111.9,43.72],[102.6,17.97],[100.5,13.75],[104.03,1.13],[114.94,4.89],[76.9,43.2],[13.4,52.5],[-74,40.7],[-165.4,64.5]],
   };
   for(const [zone,points] of Object.entries(places)) for(const [lon,lat] of points) assert.equal(hanRegion(lon,lat),zone,`${lon},${lat}`);
+  // Sea within 12 nautical miles goes to the nearest land: the Seikan Tunnel
+  // under the Tsugaru Strait, but never Batam, 20 km from Singapore, or Kep,
+  // 20 km from Phu Quoc.
+  for(const [lon,lat] of [[140.34,41.30],[140.30,41.38],[130.93,33.96]]) assert.equal(hanRegion(lon,lat),'cjkv',`${lon},${lat}`);
+  for(const [lon,lat] of [[104.03,1.13],[104.32,10.48],[101.4,20.95]]) assert.equal(hanRegion(lon,lat),'none',`${lon},${lat}`);
   const vladivostok={name:'Владивосток','name:en':'Vladivostok','name:ja':'浦塩','name:ko-Hani':'海蔘威'};
   for(const lang of ['zh-Hant','zh-Hans']) {
     assert.equal(chooseName(at(vladivostok,'zh'),lang),'浦塩','Chinese labels borrow Han names in the Russian Far East');
@@ -90,13 +95,15 @@ test('Chinese labels always fall back to the other script before English, in eve
 });
 test('Chinese areas: mainland China, Taiwan, Hong Kong and Macau',()=>{
   const places={
-    CN:[[116.4,39.9],[121.47,31.23],[87.6,43.8],[127.47,50.22],[91.1,29.65],[109.5,18.25],[114.118,22.533],[114.055,22.536],[113.549,22.217],[124.39,40.13],[118.315,24.556],[118.1,24.48],[119.88,26.33]],
-    TW:[[121.52,25.05],[120.3,22.62],[118.32,24.44],[119.57,23.57],[119.94,26.155],[119.99,26.22],[120.49,26.37],[119.98,25.955],[119.94,25.973],[118.24,24.43],[119.467,24.986]],
+    CN:[[116.4,39.9],[121.47,31.23],[87.6,43.8],[127.47,50.22],[91.1,29.65],[109.5,18.25],[114.12,22.545],[114.055,22.536],[113.549,22.217],[124.39,40.13],[118.315,24.556],[118.1,24.48],[119.88,26.33],[119.13,25.06],[110.2,20.1],[106.75,22.1],[117.43,49.6]],
+    TW:[[121.52,25.05],[120.3,22.62],[118.32,24.44],[119.57,23.57],[119.94,26.155],[119.99,26.22],[120.49,26.37],[119.98,25.955],[119.94,25.973],[118.24,24.43],[119.467,24.986],[116.72,20.7],[114.366,10.377],[118.2,24.44]],
     HK:[[114.18,22.30],[114.113,22.528],[114.066,22.514],[113.92,22.31]],
-    MO:[[113.54,22.19],[113.56,22.14]],
+    MO:[[113.54,22.19],[113.56,22.14],[113.545,22.125]],
     '':[[126.97,37.55],[139.77,35.68],[105.84,21.02],[106.9,47.9],[127.53,50.27],[124.40,40.10],[103.85,1.29],[13.4,52.5]],
   };
   for(const [area,points] of Object.entries(places)) for(const [lon,lat] of points) assert.equal(chineseArea(lon,lat),area,`${lon},${lat}`);
+  const pratas=readTile(localizeTile(tile({name:'東沙'}),'zh-Hant',{z:10,x:844,y:451})).layers.stations.feature(0).properties;
+  assert.deepEqual([pratas.atlas_han,pratas.atlas_zh],['cjkv','TW'],'Pratas is in the Han region although Natural Earth omits it');
   const after=readTile(localizeTile(tile({name:'臺北'}),'zh-Hans',{z:12,x:3430,y:1753})).layers.stations.feature(0);
   assert.equal(after.properties.atlas_zh,'TW','z12 tile 3430/1753 covers Taipei');
 });
