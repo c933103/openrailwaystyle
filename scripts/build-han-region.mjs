@@ -1,7 +1,7 @@
 // Maintenance build only: derive the Han-character label regions from Natural
 // Earth 1:10m admin-0 countries and admin-1 regions (public domain, de facto
 // boundaries). Usage:
-//   node scripts/build-han-region.mjs [admin-0.geojson admin-1.geojson]
+//   node scripts/build-han-region.mjs [admin-0.geojson admin-1.geojson minor-islands.geojson]
 import {readFile, writeFile} from 'node:fs/promises';
 const NE = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/';
 // Chinese and Japanese labels may borrow Han names within CJKV.
@@ -19,6 +19,19 @@ const COAST = 0.01, BORDER = 0.002; // degrees
 const load = async (file, name) => JSON.parse(file ? await readFile(file,'utf8') : await (await fetch(NE+name)).text());
 const countries = (await load(process.argv[2],'ne_10m_admin_0_countries.geojson')).features;
 const regions = (await load(process.argv[3],'ne_10m_admin_1_states_provinces.geojson')).features;
+const minor = (await load(process.argv[4],'ne_10m_minor_islands.geojson')).features;
+// Admin-0 omits Taiwan's Matsu Islands (Nangan, Beigan, Dongju, Xiju,
+// Dongyin), Lieyu and Wuqiu; take them from the minor-islands layer, which
+// has no country attribute, by a point on each island. Nearby Dadeng and
+// Nanri islands belong to the PRC and are not listed.
+const TAIWAN_ISLANDS = [[119.939,26.155],[119.971,26.21],[119.978,25.958],[119.94,25.973],[120.492,26.376],[118.236,24.43],[119.467,24.986]];
+const within = ([x,y], ring) => { let odd = false; for (let i = 0, j = ring.length-1; i < ring.length; j = i++) { const [xi,yi] = ring[i], [xj,yj] = ring[j]; if ((yi > y) !== (yj > y) && x < (xj-xi)*(y-yi)/(yj-yi)+xi) odd = !odd; } return odd; };
+const islands = minor.flatMap(f => f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates)
+  .filter(polygon => TAIWAN_ISLANDS.some(point => within(point, polygon[0])));
+if (islands.length !== TAIWAN_ISLANDS.length) throw new Error(`Found ${islands.length} of ${TAIWAN_ISLANDS.length} Taiwan islands`);
+const taiwan = countries.find(f => f.properties.ADM0_A3 === 'TWN').geometry;
+taiwan.coordinates = [...(taiwan.type === 'Polygon' ? [taiwan.coordinates] : taiwan.coordinates), ...islands];
+taiwan.type = 'MultiPolygon';
 const areas = [
   ...countries.filter(f => f.properties.ADM0_A3 !== 'RUS').map(f => ({id:f.properties.ADM0_A3, geometry:f.geometry})),
   ...regions.filter(f => f.properties.adm0_a3 === 'RUS').map(f => ({id:f.properties.iso_3166_2, geometry:f.geometry})),

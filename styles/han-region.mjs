@@ -41,21 +41,24 @@ function inside(zone, lon, lat) {
     if ((yi > lat) !== (yj > lat) && lon < (xj-xi)*(lat-yi)/(yj-yi)+xi) odd = !odd;
   return odd;
 }
-function contains(zone, lon, lat) {
+// Distance in km to the zone: 0 inside, the coastal margin within it,
+// Infinity outside.
+function reach(zone, lon, lat) {
   const key = `${Math.floor(lon*CELL)},${Math.floor(lat*CELL)}`, near = zone.cells.get(key);
   // A cell with no outline nearby has one answer throughout.
   if (!near) {
-    if (!zone.uniform.has(key)) zone.uniform.set(key, inside(zone, lon, lat));
+    if (!zone.uniform.has(key)) zone.uniform.set(key, inside(zone, lon, lat) ? 0 : Infinity);
     return zone.uniform.get(key);
   }
-  if (inside(zone, lon, lat)) return true;
+  if (inside(zone, lon, lat)) return 0;
   let coast = Infinity, border = Infinity;
   for (const s of near) {
     const d = distance(lon, lat, s);
     if (s[4]) border = Math.min(border, d); else coast = Math.min(coast, d);
   }
-  return coast <= COAST_KM && border > coast + 0.01;
+  return coast <= COAST_KM && border > coast + 0.01 ? coast : Infinity;
 }
+const contains = (zone, lon, lat) => reach(zone, lon, lat) < Infinity;
 let zones, areas;
 const normalize = lon => ((lon + 180) % 360 + 360) % 360 - 180;
 export function hanRegion(lon, lat) {
@@ -66,12 +69,16 @@ export function hanRegion(lon, lat) {
 }
 // Which of mainland China ('CN'), Taiwan ('TW'), Hong Kong ('HK') or Macau
 // ('MO') a point is in, or '' elsewhere. OSM Chinese name keys are used
-// differently in each. A point inside one outline wins over another's
-// coastal margin.
+// differently in each. A point in two coastal margins goes to the nearer.
 export function chineseArea(lon, lat) {
   if (!Number.isFinite(lon) || !Number.isFinite(lat) || lat < 15 || lat > 55) return '';
   lon = normalize(lon);
   if (lon < 70 || lon > 136) return '';
   areas ||= Object.entries(AREAS).map(([code, polygons]) => [code, index(polygons)]);
-  return (areas.find(([,zone]) => inside(zone, lon, lat)) || areas.find(([,zone]) => contains(zone, lon, lat)))?.[0] || '';
+  let best = '', nearest = Infinity;
+  for (const [code, zone] of areas) {
+    const d = reach(zone, lon, lat);
+    if (d < nearest) { best = code; nearest = d; }
+  }
+  return best;
 }
