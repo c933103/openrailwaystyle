@@ -1,15 +1,19 @@
 # Open Railway Atlas — worldwide GitHub Pages map
 
-This fork adds a worldwide, station-first browsing map to **Open Railway Styles**.
-The page is designed for `https://c933103.github.io/openrailwaystyle/`.
+A worldwide, station-first railway map built with MapLibre and published at
+**https://c933103.github.io/openrailwaystyle/**. It is a fork of **Open Railway
+Styles** (described at the end of this file); the original Hack4Rail example
+styles and Europe extractor remain in the repository but are not used by the site.
 
 - Worldwide railway vectors from OpenRailwayMap, replacing the demo’s Europe-only railway extract.
 - Spaced, collision-aware station symbols at regional zoom, with major stations first and smaller stops appearing progressively.
-- Maximum-speed colouring with eight bands, original directional speed labels and an explicit unknown category.
-- Distinct network colours, bridge outlines and tunnel dashes from zoom 7 (the upstream zoom 0–6 overview tiles carry no bridge or tunnel data); electrification view; click a railway for recorded speed, voltage, frequency, gauge and operator.
-- Station search, one shared label-language selector, responsive controls and shareable URLs retaining position and display settings.
+- Maximum-speed colouring with eight bands, original directional speed labels and an explicit unknown category; track-type and electrification views.
+- Bridge outlines and tunnel dashes from zoom 7 (the upstream zoom 0–6 overview tiles carry no bridge or tunnel data); click a railway for recorded speed, voltage, frequency, gauge and operator.
+- Railways under construction at every zoom, proposed railways from zoom 5 and former lines from zoom 7, from a published worldwide OSM lifecycle snapshot, drawn dashed and apart from operating lines.
+- One label-language selector for map, station and line names (13 languages), choosing only recorded names: Traditional and Simplified Chinese read OSM’s Chinese tags by area (mainland China, Taiwan, Hong Kong, Macau, elsewhere) and always fall back to each other; Han-character names are borrowed from other languages only in the CJKV region and Chinese-speaking areas nearby.
+- Station search, responsive controls and shareable URLs retaining position and display settings.
 - Shaded land and seabed relief with signed elevation contours, prominent first-level regional boundaries, and railway names along tracks from zoom 9.
-- Separate dashed non-operating railways, so proposed, construction and former tracks are not shown as operating speed-coded lines.
+- Static site: no server, account, API key or paid hosting; deployed by GitHub Actions after a real Chromium/WebGL check.
 
 ## Run locally
 
@@ -64,7 +68,9 @@ Community-hosted external services can be unavailable or change schema. The appl
 
 ---
 
-# Open Railway Styles
+# Open Railway Styles (upstream project)
+
+*The rest of this file is the upstream project's original description.*
 
 Design a style for railways using [OpenStreetMap](https://www.openstreetmap.org/) data.
 
