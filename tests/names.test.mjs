@@ -64,6 +64,9 @@ test('Han regions: Chinese and Japanese in CJKV; Chinese only in Singapore, Mala
   // 20 km from Phu Quoc.
   for(const [lon,lat] of [[140.34,41.30],[140.30,41.38],[130.93,33.96]]) assert.equal(hanRegion(lon,lat),'cjkv',`${lon},${lat}`);
   for(const [lon,lat] of [[104.03,1.13],[104.32,10.48],[101.4,20.95]]) assert.equal(hanRegion(lon,lat),'none',`${lon},${lat}`);
+  // Chinese-speaking Kokang, Wa and Mong La in Myanmar and Mae Fa Luang (Santikhiri, Thoet Thai) in Thailand.
+  for(const [lon,lat] of [[98.76,23.70],[99.14,22.17],[99.96,21.68],[99.62,20.16],[99.72,20.26]]) assert.equal(hanRegion(lon,lat),'zh',`${lon},${lat}`);
+  for(const [lon,lat] of [[97.75,22.94],[99.6,21.29],[99.83,19.91],[98.98,18.79]]) assert.equal(hanRegion(lon,lat),'none',`${lon},${lat}`);
   const vladivostok={name:'Владивосток','name:en':'Vladivostok','name:ja':'浦塩','name:ko-Hani':'海蔘威'};
   for(const lang of ['zh-Hant','zh-Hans']) {
     assert.equal(chooseName(at(vladivostok,'zh'),lang),'浦塩','Chinese labels borrow Han names in the Russian Far East');

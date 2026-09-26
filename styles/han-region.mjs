@@ -2,7 +2,8 @@ import {CJKV, CHINESE, AREAS} from './han-region-data.mjs';
 // Areas whose place names may borrow Han-character names:
 // 'cjkv' — China, Taiwan, Hong Kong, Macau, Japan, the Koreas and Vietnam
 //          (Chinese and Japanese labels);
-// 'zh'   — Singapore, Malaysia and the Russian Far East (Chinese labels only);
+// 'zh'   — Singapore, Malaysia, the Russian Far East and Chinese-speaking
+//          Kokang, Wa, Mong La and Mae Fa Luang (Chinese labels only);
 // 'none' — everywhere else.
 // Sea within 12 nautical miles goes to the nearest land: a pier, a bridge or
 // an undersea tunnel such as Seikan counts as inside when the zone's coast is
