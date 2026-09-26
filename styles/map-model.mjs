@@ -196,7 +196,8 @@ export function formatSpeed(properties, units = 'metric') {
     tagged: raw ? `${raw}${/mph|km\/h/.test(raw) ? '' : ' (km/h)'}` : 'Not recorded',
   };
 }
-export function readSettings(search) {
+// remembered: settings kept in this browser, used when the URL has none.
+export function readSettings(search, remembered = {}) {
   const params = new URLSearchParams(search);
   return {
     mode: MODES.includes(params.get('mode')) ? params.get('mode') : 'speed',
@@ -207,7 +208,7 @@ export function readSettings(search) {
     names: params.get('names') !== '0',
     units: params.get('units') === 'imperial' ? 'imperial' : 'metric',
     detail: params.get('detail') === '1',
-    language: language(params.get('language') || params.get('stationLanguage') || params.get('mapLanguage') || params.get('lineLanguage')),
+    language: language(params.get('language') || params.get('stationLanguage') || params.get('mapLanguage') || params.get('lineLanguage') || remembered.language),
   };
 }
 export function stationRank(properties) {

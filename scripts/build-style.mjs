@@ -18,7 +18,13 @@ const style = {
     electric: vector('electrification_railway_line_low', 0, 6),
     railway: vector('railway_line_high', 7, 16),
     stationLow: vector('standard_railway_text_stations_low', 4, 6),
-    stationMed: vector('standard_railway_text_stations_med', 7, 7),
+    // 256-pixel tiles make MapLibre use the zoom-7 tiles from map zoom 6: the
+    // endpoint returns nothing below zoom 7, and the low-zoom endpoint keeps
+    // only stations OpenRailwayMap sizes large or normal, which excludes
+    // nearly all of China.
+    // The provider's TileJSON says maxzoom 8; #maxzoom=7 keeps zoom 7 on
+    // zoom-7 tiles (see tile-labels.mjs).
+    stationMed: {...vector('standard_railway_text_stations_med', 7, 7), url: `${ORM}/standard_railway_text_stations_med#maxzoom=7`, tileSize: 256},
     stations: vector('standard_railway_text_stations', 8, 16),
     inactiveRegional: { type: 'vector', tiles: ['railtiles://{z}/{x}/{y}'], minzoom: 0, maxzoom: 10, promoteId: 'osm_id', attribution: '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>' },
     contours: {type:'vector',tiles:['atlas-contour://{z}/{x}/{y}'],minzoom:7,maxzoom:15},
@@ -134,16 +140,17 @@ style.layers.push({
 });
 // Keep distant views sparse. Marker and name form one collision-aware symbol
 // below zoom 12; individual circles appear only at local scale.
-const stationSelection = ['all',
-  ['any', ['>=', ['zoom'], 7], ['==', ['get','station_size'], 'large']],
-];
+// Zoom 4–5: large stations; 6: large and normal, plus small ones from the
+// zoom-7 tiles; 7 and above: all.
+const stationSelection = ['any', ['>=', ['zoom'], 6], ['==', ['get','station_size'], 'large']];
+const zoom6Small = ['any', ['>=', ['zoom'], 7], ['!', ['match', ['get','station_size'], ['large','normal'], true, false]]];
 const stationFeatures = ['all', present,
   ['any', ['==', ['get','feature'], 'station'], ['all', ['>=', ['zoom'], 11], ['==', ['get','feature'], 'halt']], ['all', ['>=', ['zoom'], 13], ['==', ['get','feature'], 'tram_stop']]],
   ['any', ['>=', ['zoom'], 11], ['!', ['match', ['get','station'], ['subway','light_rail','monorail'], true, false]]],
 ];
 const stationText = {
   'text-field': labelExpression('local', true), 'text-font': ['Noto Sans Bold'],
-  'text-size': ['interpolate', ['linear'], ['zoom'], 6, 14, 10, ['match', ['get', 'station_size'], 'large', 16, 'normal', 15, 14], 18, 18],
+  'text-size': ['interpolate', ['linear'], ['zoom'], 4, 12, 6, 14, 10, ['match', ['get', 'station_size'], 'large', 16, 'normal', 15, 14], 18, 18],
   'symbol-sort-key': ['match', ['get', 'station_size'], 'large', 0, 'normal', 1, 2],
   'text-variable-anchor': ['top', 'bottom', 'left', 'right'], 'text-radial-offset': 0.7,
   'text-padding': ['step', ['zoom'], 14, 9, 9, 12, 4], 'text-max-width': 9, 'text-allow-overlap': false,
@@ -171,14 +178,14 @@ const tiers = [ // bottom to top
   ['large', ['all', heavy, isStation, ['==', size, 'large']]],
 ];
 for (const [tier, filter] of tiers) for (const [source, layer, minzoom, maxzoom] of [
-  ['stationLow', 'standard_railway_text_stations_low', 6, 7],
-  ['stationMed', 'standard_railway_text_stations_med', 7, 8],
+  ['stationLow', 'standard_railway_text_stations_low', 4, 7],
+  ['stationMed', 'standard_railway_text_stations_med', 6, 8],
   ['stations', 'standard_railway_text_stations', 8, 12],
 ]) {
   style.layers.push({
     id: `station-${source}-${tier}-names`, type: 'symbol', source, 'source-layer': layer, minzoom, maxzoom,
-    filter: ['all', filter, ...(source === 'stations' ? [stationSelection, stationFeatures] : [stationSelection])],
-    layout: { ...stationText, 'icon-image': 'station-dot', 'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.95, 11, 1.15],
+    filter: ['all', filter, ...(source === 'stations' ? [stationSelection, stationFeatures] : source === 'stationMed' ? [zoom6Small] : [stationSelection])],
+    layout: { ...stationText, 'icon-image': 'station-dot', 'icon-size': ['interpolate', ['linear'], ['zoom'], 4, 0.8, 6, 0.95, 11, 1.15],
       'icon-padding': 12, 'icon-allow-overlap': false, 'icon-ignore-placement': false, 'icon-optional': false, 'text-optional': false },
     paint: stationInk,
   });

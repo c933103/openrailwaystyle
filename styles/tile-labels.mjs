@@ -87,8 +87,12 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     if (!url) throw new Error('Invalid station request');
     const signal = controller.signal;
     if (params.type === 'json') {
-      const data = await get(url,signal,true);
-      return {data:{...data,tiles:data.tiles.map(t=>`atlasstation://${lang}/${t}`)}};
+      // A #maxzoom=N fragment on the source URL caps the provider's TileJSON
+      // (the fragment is never requested).
+      const [address, fragment = ''] = url.split('#');
+      const data = await get(address,signal,true);
+      const maxzoom = Number(new URLSearchParams(fragment).get('maxzoom'));
+      return {data:{...data,...(Number.isFinite(maxzoom) && maxzoom > 0 ? {maxzoom} : {}),tiles:data.tiles.map(t=>`atlasstation://${lang}/${t}`)}};
     }
     const candidates = stationLanguages(lang), fetched = new Set();
     let primary, primaryData;

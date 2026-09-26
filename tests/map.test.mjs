@@ -29,6 +29,10 @@ test('source mph and directional speed labels are preserved', () => {
 test('shared URLs keep display settings and reject invalid map modes', () => {
   assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',stations:false,labels:true,inactive:false,relief:true,names:true,units:'metric',detail:false,language:'local' });
   assert.equal(readSettings('?mode=invalid').mode, 'speed');
+  // A remembered language applies unless the URL names one.
+  assert.equal(readSettings('', {language:'ja'}).language, 'ja');
+  assert.equal(readSettings('?language=ko', {language:'ja'}).language, 'ko');
+  assert.equal(readSettings('', {language:'xx'}).language, 'local');
 });
 test('world map has no European rail source or geographic bounds', () => {
   assert.ok(!JSON.stringify(style).includes('europe-railway'));
@@ -41,9 +45,12 @@ test('regional stations have collision-aware markers and progressive size thresh
   const visible = (layer, zoom, properties) => zoom >= layer.minzoom && (layer.maxzoom === undefined || zoom < layer.maxzoom) && featureFilter(layer.filter).filter({zoom}, {type:1,properties});
   const layers = style.layers.filter(l => l.id.startsWith('station-'));
   const shown = (zoom, properties) => layers.some(layer => visible(layer, zoom, {state:'present',feature:'station', ...properties}));
-  assert.equal(shown(5.9, {station_size:'large'}),false);
-  assert.equal(shown(6, {station_size:'large'}),true);
-  assert.equal(shown(6.9, {station_size:'normal'}),false);
+  assert.equal(shown(3.9, {station_size:'large'}),false);
+  assert.equal(shown(4, {station_size:'large'}),true);
+  assert.equal(shown(5.9, {station_size:'normal'}),false);
+  assert.equal(shown(6, {station_size:'normal'}),true);
+  assert.equal(shown(6, {station_size:'small'}),true,'zoom-7 tiles supply small stations from zoom 6');
+  assert.equal(style.sources.stationMed.tileSize,256);
   assert.equal(shown(7, {station_size:'normal'}),true);
   assert.equal(shown(7, {station_size:'small'}),true);
   assert.equal(shown(9.9, {station_size:'small'}),true);

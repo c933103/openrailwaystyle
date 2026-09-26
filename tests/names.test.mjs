@@ -183,3 +183,11 @@ test('PMTiles wrapper localizes bytes and carries language through TileJSON temp
   const result=await protocols.atlasbase({url:'atlasbase://fr/https://example.org/world.pmtiles/7/1/1'},new AbortController());
   assert.equal(readTile(result.data).layers.stations.feature(0).properties.atlas_name,'Seoul');
 });
+test('station TileJSON can be capped by a URL fragment that is never requested',async()=>{
+  const protocols={},requests=[];
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},async url=>{requests.push(url);return {ok:true,json:async()=>({maxzoom:8,tiles:['https://example.org/med/{z}/{x}/{y}']})};});
+  const result=await protocols.atlasstation({url:'atlasstation://en/https://example.org/med#maxzoom=7',type:'json'},new AbortController());
+  assert.equal(result.data.maxzoom,7);
+  assert.deepEqual(requests,['https://example.org/med']);
+  assert.equal(result.data.tiles[0],'atlasstation://en/https://example.org/med/{z}/{x}/{y}');
+});

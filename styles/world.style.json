@@ -54,11 +54,12 @@
     },
     "stationMed": {
       "type": "vector",
-      "url": "https://openrailwaymap.app/standard_railway_text_stations_med",
+      "url": "https://openrailwaymap.app/standard_railway_text_stations_med#maxzoom=7",
       "minzoom": 7,
       "maxzoom": 7,
       "promoteId": "id",
-      "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
+      "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>",
+      "tileSize": 256
     },
     "stations": {
       "type": "vector",
@@ -3422,7 +3423,7 @@
       "type": "symbol",
       "source": "stationLow",
       "source-layer": "standard_railway_text_stations_low",
-      "minzoom": 6,
+      "minzoom": 4,
       "maxzoom": 7,
       "filter": [
         "all",
@@ -3472,24 +3473,21 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            6
+          ],
+          [
+            "==",
             [
-              "==",
-              [
-                "get",
-                "station_size"
-              ],
-              "large"
-            ]
+              "get",
+              "station_size"
+            ],
+            "large"
           ]
         ]
       ],
@@ -3604,6 +3602,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -3663,6 +3663,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -3694,7 +3696,7 @@
       "type": "symbol",
       "source": "stationMed",
       "source-layer": "standard_railway_text_stations_med",
-      "minzoom": 7,
+      "minzoom": 6,
       "maxzoom": 8,
       "filter": [
         "all",
@@ -3744,23 +3746,28 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            7
+          ],
+          [
+            "!",
             [
-              "==",
+              "match",
               [
                 "get",
                 "station_size"
               ],
-              "large"
+              [
+                "large",
+                "normal"
+              ],
+              true,
+              false
             ]
           ]
         ]
@@ -3876,6 +3883,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -3935,6 +3944,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -4016,24 +4027,21 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            6
+          ],
+          [
+            "==",
             [
-              "==",
-              [
-                "get",
-                "station_size"
-              ],
-              "large"
-            ]
+              "get",
+              "station_size"
+            ],
+            "large"
           ]
         ],
         [
@@ -4237,6 +4245,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -4296,6 +4306,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -4327,7 +4339,7 @@
       "type": "symbol",
       "source": "stationLow",
       "source-layer": "standard_railway_text_stations_low",
-      "minzoom": 6,
+      "minzoom": 4,
       "maxzoom": 7,
       "filter": [
         "all",
@@ -4359,24 +4371,21 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            6
+          ],
+          [
+            "==",
             [
-              "==",
-              [
-                "get",
-                "station_size"
-              ],
-              "large"
-            ]
+              "get",
+              "station_size"
+            ],
+            "large"
           ]
         ]
       ],
@@ -4491,6 +4500,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -4550,6 +4561,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -4581,7 +4594,7 @@
       "type": "symbol",
       "source": "stationMed",
       "source-layer": "standard_railway_text_stations_med",
-      "minzoom": 7,
+      "minzoom": 6,
       "maxzoom": 8,
       "filter": [
         "all",
@@ -4613,23 +4626,28 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            7
+          ],
+          [
+            "!",
             [
-              "==",
+              "match",
               [
                 "get",
                 "station_size"
               ],
-              "large"
+              [
+                "large",
+                "normal"
+              ],
+              true,
+              false
             ]
           ]
         ]
@@ -4745,6 +4763,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -4804,6 +4824,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -4867,24 +4889,21 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            6
+          ],
+          [
+            "==",
             [
-              "==",
-              [
-                "get",
-                "station_size"
-              ],
-              "large"
-            ]
+              "get",
+              "station_size"
+            ],
+            "large"
           ]
         ],
         [
@@ -5088,6 +5107,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -5147,6 +5168,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -5178,7 +5201,7 @@
       "type": "symbol",
       "source": "stationLow",
       "source-layer": "standard_railway_text_stations_low",
-      "minzoom": 6,
+      "minzoom": 4,
       "maxzoom": 7,
       "filter": [
         "all",
@@ -5210,24 +5233,21 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            6
+          ],
+          [
+            "==",
             [
-              "==",
-              [
-                "get",
-                "station_size"
-              ],
-              "large"
-            ]
+              "get",
+              "station_size"
+            ],
+            "large"
           ]
         ]
       ],
@@ -5342,6 +5362,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -5401,6 +5423,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -5432,7 +5456,7 @@
       "type": "symbol",
       "source": "stationMed",
       "source-layer": "standard_railway_text_stations_med",
-      "minzoom": 7,
+      "minzoom": 6,
       "maxzoom": 8,
       "filter": [
         "all",
@@ -5464,23 +5488,28 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            7
+          ],
+          [
+            "!",
             [
-              "==",
+              "match",
               [
                 "get",
                 "station_size"
               ],
-              "large"
+              [
+                "large",
+                "normal"
+              ],
+              true,
+              false
             ]
           ]
         ]
@@ -5596,6 +5625,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -5655,6 +5686,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -5718,24 +5751,21 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            6
+          ],
+          [
+            "==",
             [
-              "==",
-              [
-                "get",
-                "station_size"
-              ],
-              "large"
-            ]
+              "get",
+              "station_size"
+            ],
+            "large"
           ]
         ],
         [
@@ -5939,6 +5969,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -5998,6 +6030,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -6029,7 +6063,7 @@
       "type": "symbol",
       "source": "stationLow",
       "source-layer": "standard_railway_text_stations_low",
-      "minzoom": 6,
+      "minzoom": 4,
       "maxzoom": 7,
       "filter": [
         "all",
@@ -6099,24 +6133,21 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            6
+          ],
+          [
+            "==",
             [
-              "==",
-              [
-                "get",
-                "station_size"
-              ],
-              "large"
-            ]
+              "get",
+              "station_size"
+            ],
+            "large"
           ]
         ]
       ],
@@ -6231,6 +6262,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -6290,6 +6323,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -6321,7 +6356,7 @@
       "type": "symbol",
       "source": "stationMed",
       "source-layer": "standard_railway_text_stations_med",
-      "minzoom": 7,
+      "minzoom": 6,
       "maxzoom": 8,
       "filter": [
         "all",
@@ -6391,23 +6426,28 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            7
+          ],
+          [
+            "!",
             [
-              "==",
+              "match",
               [
                 "get",
                 "station_size"
               ],
-              "large"
+              [
+                "large",
+                "normal"
+              ],
+              true,
+              false
             ]
           ]
         ]
@@ -6523,6 +6563,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -6582,6 +6624,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -6683,24 +6727,21 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            6
+          ],
+          [
+            "==",
             [
-              "==",
-              [
-                "get",
-                "station_size"
-              ],
-              "large"
-            ]
+              "get",
+              "station_size"
+            ],
+            "large"
           ]
         ],
         [
@@ -6904,6 +6945,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -6963,6 +7006,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -6994,7 +7039,7 @@
       "type": "symbol",
       "source": "stationLow",
       "source-layer": "standard_railway_text_stations_low",
-      "minzoom": 6,
+      "minzoom": 4,
       "maxzoom": 7,
       "filter": [
         "all",
@@ -7081,24 +7126,21 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            6
+          ],
+          [
+            "==",
             [
-              "==",
-              [
-                "get",
-                "station_size"
-              ],
-              "large"
-            ]
+              "get",
+              "station_size"
+            ],
+            "large"
           ]
         ]
       ],
@@ -7213,6 +7255,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -7272,6 +7316,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -7303,7 +7349,7 @@
       "type": "symbol",
       "source": "stationMed",
       "source-layer": "standard_railway_text_stations_med",
-      "minzoom": 7,
+      "minzoom": 6,
       "maxzoom": 8,
       "filter": [
         "all",
@@ -7390,23 +7436,28 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            7
+          ],
+          [
+            "!",
             [
-              "==",
+              "match",
               [
                 "get",
                 "station_size"
               ],
-              "large"
+              [
+                "large",
+                "normal"
+              ],
+              true,
+              false
             ]
           ]
         ]
@@ -7522,6 +7573,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -7581,6 +7634,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -7699,24 +7754,21 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            6
+          ],
+          [
+            "==",
             [
-              "==",
-              [
-                "get",
-                "station_size"
-              ],
-              "large"
-            ]
+              "get",
+              "station_size"
+            ],
+            "large"
           ]
         ],
         [
@@ -7920,6 +7972,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -7979,6 +8033,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -8010,7 +8066,7 @@
       "type": "symbol",
       "source": "stationLow",
       "source-layer": "standard_railway_text_stations_low",
-      "minzoom": 6,
+      "minzoom": 4,
       "maxzoom": 7,
       "filter": [
         "all",
@@ -8089,24 +8145,21 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            6
+          ],
+          [
+            "==",
             [
-              "==",
-              [
-                "get",
-                "station_size"
-              ],
-              "large"
-            ]
+              "get",
+              "station_size"
+            ],
+            "large"
           ]
         ]
       ],
@@ -8221,6 +8274,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -8280,6 +8335,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -8311,7 +8368,7 @@
       "type": "symbol",
       "source": "stationMed",
       "source-layer": "standard_railway_text_stations_med",
-      "minzoom": 7,
+      "minzoom": 6,
       "maxzoom": 8,
       "filter": [
         "all",
@@ -8390,23 +8447,28 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            7
+          ],
+          [
+            "!",
             [
-              "==",
+              "match",
               [
                 "get",
                 "station_size"
               ],
-              "large"
+              [
+                "large",
+                "normal"
+              ],
+              true,
+              false
             ]
           ]
         ]
@@ -8522,6 +8584,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -8581,6 +8645,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -8691,24 +8757,21 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            6
+          ],
+          [
+            "==",
             [
-              "==",
-              [
-                "get",
-                "station_size"
-              ],
-              "large"
-            ]
+              "get",
+              "station_size"
+            ],
+            "large"
           ]
         ],
         [
@@ -8912,6 +8975,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -8971,6 +9036,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -9002,7 +9069,7 @@
       "type": "symbol",
       "source": "stationLow",
       "source-layer": "standard_railway_text_stations_low",
-      "minzoom": 6,
+      "minzoom": 4,
       "maxzoom": 7,
       "filter": [
         "all",
@@ -9081,24 +9148,21 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            6
+          ],
+          [
+            "==",
             [
-              "==",
-              [
-                "get",
-                "station_size"
-              ],
-              "large"
-            ]
+              "get",
+              "station_size"
+            ],
+            "large"
           ]
         ]
       ],
@@ -9213,6 +9277,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -9272,6 +9338,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -9303,7 +9371,7 @@
       "type": "symbol",
       "source": "stationMed",
       "source-layer": "standard_railway_text_stations_med",
-      "minzoom": 7,
+      "minzoom": 6,
       "maxzoom": 8,
       "filter": [
         "all",
@@ -9382,23 +9450,28 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            7
+          ],
+          [
+            "!",
             [
-              "==",
+              "match",
               [
                 "get",
                 "station_size"
               ],
-              "large"
+              [
+                "large",
+                "normal"
+              ],
+              true,
+              false
             ]
           ]
         ]
@@ -9514,6 +9587,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -9573,6 +9648,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -9683,24 +9760,21 @@
           ]
         ],
         [
-          "all",
+          "any",
           [
-            "any",
+            ">=",
             [
-              ">=",
-              [
-                "zoom"
-              ],
-              7
+              "zoom"
             ],
+            6
+          ],
+          [
+            "==",
             [
-              "==",
-              [
-                "get",
-                "station_size"
-              ],
-              "large"
-            ]
+              "get",
+              "station_size"
+            ],
+            "large"
           ]
         ],
         [
@@ -9904,6 +9978,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -9963,6 +10039,8 @@
           [
             "zoom"
           ],
+          4,
+          0.8,
           6,
           0.95,
           11,
@@ -10435,6 +10513,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -10737,6 +10817,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -11039,6 +11121,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -11379,6 +11463,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -11736,6 +11822,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -12085,6 +12173,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,
@@ -12434,6 +12524,8 @@
           [
             "zoom"
           ],
+          4,
+          12,
           6,
           14,
           10,

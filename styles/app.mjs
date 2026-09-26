@@ -7,7 +7,11 @@ const $ = id => document.getElementById(id);
 // label code load in the background (index.html reports a failure to load
 // this module itself).
 document.body.dataset.appStarted = 'true';
-const settings = readSettings(location.search);
+// The label language is remembered in a cookie; a language in the URL wins.
+const LANGUAGE_COOKIE = 'atlas_language';
+const readCookie = name => { try { return decodeURIComponent(document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))?.[1] || ''); } catch { return ''; } };
+const rememberLanguage = code => { try { document.cookie = `${LANGUAGE_COOKIE}=${encodeURIComponent(code)}; max-age=31536000; path=/; SameSite=Lax`; } catch {} };
+const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE)});
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing;
 const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260926-9';
@@ -436,6 +440,7 @@ function reloadLanguage() {
   select.value=settings.language;
   select.addEventListener('change',()=>{
     settings.language=select.value;
+    rememberLanguage(settings.language);
     if(ready) reloadLanguage();
     saveSettings();
   });

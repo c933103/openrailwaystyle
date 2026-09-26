@@ -11,8 +11,9 @@ const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
 
-async function start({ failWebGL = false, delayLibraries = false, search = '' } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, search = '', cookie = '' } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
+  if (cookie) dom.window.document.cookie = cookie;
   const window = dom.window;
   const errors = [], maps = [];
   window.console.error = error => errors.push(error);
@@ -106,6 +107,7 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
     const language = window.document.getElementById('language');
     language.value='ko'; language.dispatchEvent(new window.Event('change'));
     assert.match(maps[0].options.style.sources.stations.url, /atlasstation:\/\/ko\//);
+    assert.match(window.document.cookie, /atlas_language=ko/, 'the language is remembered in a cookie');
     assert.match(window.location.search, /language=ko/);
     assert.equal(window.document.getElementById('region'),null);
     const former = window.document.getElementById('inactive');
@@ -168,6 +170,13 @@ test('more detail draws the next zoom level at half size', async () => {
     map.zoom = 2; detail.click();
     assert.equal(map.zoom,1);
   } finally {dom.window.close();}
+});
+test('a remembered label language applies unless the URL names one', async () => {
+  for (const [search, expected] of [['', 'ja'], ['?language=ru', 'ru']]) {
+    const {dom,maps} = await start({search, cookie:'atlas_language=ja'});
+    try { assert.match(maps[0].options.style.sources.stations.url, new RegExp(`atlasstation://${expected}/`)); }
+    finally {dom.window.close();}
+  }
 });
 test('real renderer initialization failures reach the visible error message', async () => {
   const {dom,window,errors} = await start({failWebGL:true});
