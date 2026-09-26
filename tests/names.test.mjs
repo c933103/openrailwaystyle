@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import encode from 'vt-pbf';
 import {readTile,localizeTile,installLabelProtocols,hanRegion} from '../styles/tile-labels.mjs';
-import {chooseName,readSettings,stationLanguages} from '../styles/map-model.mjs';
+import {chooseName,readSettings,stationLanguages,labelExpression} from '../styles/map-model.mjs';
 
 // Tiles give every feature its Han-name region; tests state it explicitly.
 const at=(p,zone='cjkv')=>({...p,atlas_han:zone});
@@ -72,6 +72,17 @@ test('Han regions: Chinese and Japanese in CJKV; Chinese only in Singapore, Mala
   assert.equal(chooseName(at({...vladivostok,'name:ja':'ウラジオストク'},'zh'),'ja'),'ウラジオストク');
   assert.deepEqual(stationLanguages('zh-Hant',false),['zh-Hant','zh','zh-Hans','en']);
   assert.deepEqual(stationLanguages('ja',false),['ja','en']);
+});
+test('Chinese variants fall back to each other in every region, requested script first',()=>{
+  const berlin={name:'Berlin Hbf','name:en':'Berlin Central','name:zh':'柏林总站','name:zh-TW':'柏林總站'};
+  for(const zone of ['cjkv','zh','none',undefined]) {
+    assert.equal(chooseName(at(berlin,zone),'zh-Hant'),'柏林總站',`zh-Hant in ${zone}`);
+    assert.equal(chooseName(at(berlin,zone),'zh-Hans'),'柏林总站',`zh-Hans in ${zone}`);
+    assert.equal(chooseName(at({name:'Wien','name:en':'Vienna','name:zh-Hant':'維也納'},zone),'zh-Hans'),'維也納');
+    assert.equal(chooseName(at({name:'Wien','name:en':'Vienna','name:zh-HK':'維也納'},zone),'zh-Hans'),'維也納');
+  }
+  const keys=labelExpression('zh-Hant').filter(x=>Array.isArray(x)&&x[0]==='to-string').map(x=>x[1][1]);
+  assert.ok(keys.indexOf('name:zh-TW')<keys.indexOf('name:zh') && keys.indexOf('name:zh')<keys.indexOf('name:zh-Hans') && keys.indexOf('name:zh-Hans')<keys.indexOf('name:en'),'style fallback tries every Chinese variant before English');
 });
 test('Chinese labels show only the kanji of Japanese "kana (kanji)" and "kanji (kana)" names',()=>{
   assert.equal(chooseName(at({name:'つくば (筑波)','name:en':'Tsukuba'}),'zh-Hant'),'筑波');
