@@ -31,16 +31,13 @@ const han = value => /\p{Script=Han}/u.test(value || '');
 const cyrillic = value => /\p{Script=Cyrillic}/u.test(value || '');
 const nonempty = value => typeof value === 'string' && value.trim() !== '';
 const chinese = lang => lang.startsWith('zh');
-// Chinese written variants fall back to one another everywhere, independent
-// of the Han-name region: the requested script with its regional tags first,
-// then plain Chinese, then the other script.
-const traditional = ['zh-Hant','zh-TW','zh-HK','zh-MO','zh-Hant-TW','zh-Hant-HK','zh-Hant-MO'];
-const simplified = ['zh-Hans','zh-CN','zh-SG','zh-MY','zh-Hans-CN','zh-Hans-SG','zh-Hans-MY'];
+// Chinese labels always fall back to the other script before English, in
+// every region and independently of Han-character borrowing. name:zh holds
+// whichever script its editor chose, so it follows the requested tag.
+const chineseKeys = ['name:zh','name:zh-Hant','name:zh-Hans','name:zh-TW','name:zh-CN'];
 export function chineseVariantKeys(lang) {
-  const order = lang === 'zh-Hans' ? [...simplified, 'zh', ...traditional] : [...traditional, 'zh', ...simplified];
-  return order.map(tag => `name:${tag}`);
+  return [...new Set([`name:${lang}`, ...chineseKeys])];
 }
-const chineseKeys = chineseVariantKeys('zh-Hant');
 const ideographicKeys = ['name:ja','name:ja-Hani','name:ko-Hani','name:ko:hanja','name:vi-Hani','name:vi:nom',...chineseKeys];
 // Japanese names recorded as "kana (kanji)" or "kanji (kana)" show only the
 // kanji in Chinese.
