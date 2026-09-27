@@ -1,6 +1,7 @@
 import {build} from 'esbuild';
 import {mkdir,copyFile} from 'node:fs/promises';
 await mkdir('styles/vendor',{recursive:true});
+await build({entryPoints:['styles/track-worker.mjs'],outfile:'styles/vendor/track-worker.js',bundle:true,format:'iife',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await build({entryPoints:['styles/tile-labels.mjs'],outfile:'styles/vendor/tile-labels.js',bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await copyFile('node_modules/maplibre-contour/dist/index.min.js','styles/vendor/maplibre-contour.js');
 await copyFile('node_modules/maplibre-contour/LICENSE','styles/vendor/maplibre-contour-LICENSE.txt');

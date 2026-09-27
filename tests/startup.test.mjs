@@ -112,8 +112,11 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
     assert.equal(window.document.getElementById('region'),null);
     const former = window.document.getElementById('inactive');
     former.checked = false; former.dispatchEvent(new window.Event('change'));
-    assert.equal(maps[0].visibility['inactive-railways'],'none');
-    assert.equal(maps[0].visibility['inactive-regional'],'none');
+    for (const state of ['construction','proposed','former']) {
+      assert.equal(maps[0].visibility[`inactive-railways-${state}`],'none');
+      assert.equal(maps[0].visibility[`inactive-regional-${state}`],'none');
+    }
+    assert.equal(maps[0].visibility['inactive-bridge-edge'],'none');
   } finally {dom.window.close();}
 });
 test('controls work while the map is still loading, and settings take effect once it loads', async () => {
@@ -137,6 +140,7 @@ test('controls work while the map is still loading, and settings take effect onc
     assert.equal(errors.length,0);
     const map = maps[0];
     assert.match(map.options.style.sources.stations.url,/atlasstation:\/\/zh-Hans\//);
+    assert.equal(map.options.style.sources.railway.url,'atlasrail://https://openrailwaymap.app/railway_line_high','railway tiles gain track counts');
     assert.match(map.options.localIdeographFontFamily,/SC/,'Simplified Chinese labels use one Simplified Chinese font');
     assert.match(map.options.style.sources.contours.tiles[0],/\/ft\//);
     // Relief and every contour source share one elevation loader.
