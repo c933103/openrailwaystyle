@@ -1,6 +1,6 @@
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260926-11';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260927-3';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260926-11';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260927-3';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -16,7 +16,7 @@ const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_C
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260926-11';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260927-3';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -204,24 +204,26 @@ function unitStyle(style) {
   for (const layer of style.layers) {
     if (/^speed-(overview|tracks)$/.test(layer.id)) layer.paint['line-color'] = speedPaint(settings.units);
     if (layer.id === 'speed-labels') layer.layout['text-field'] = speedLabel(settings.units);
-    if (layer.id === 'terrain-contour-labels' || layer.id === 'terrain-seabed-contour-labels') layer.layout['text-field'] = ['concat', ['to-string', ['get','ele']], settings.units === 'imperial' ? ' ft' : ' m'];
+    if (/^terrain-(seabed-)?contour-labels/.test(layer.id)) layer.layout['text-field'] = ['concat', ['to-string', ['get','ele']], settings.units === 'imperial' ? ' ft' : ' m'];
   }
   if (dem) {
     style.sources.contours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units))];
-    style.sources.seabedContours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units, true))];
+    style.sources.seabedContours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units, 'shelf'))];
+    style.sources.seabedContoursClose.tiles = [dem.contourProtocolUrl(contourOptions(settings.units, 'close'))];
   }
 }
 function applyUnits() {
   scale?.setUnit(settings.units);
   if (!ready) return;
-  const style = {layers: map.getStyle().layers, sources: {contours: {}, seabedContours: {}}};
+  const style = {layers: map.getStyle().layers, sources: {contours: {}, seabedContours: {}, seabedContoursClose: {}}};
   unitStyle(style);
   for (const layer of style.layers) {
     if (/^speed-(overview|tracks)$/.test(layer.id)) map.setPaintProperty(layer.id, 'line-color', layer.paint['line-color']);
-    if (['speed-labels','terrain-contour-labels','terrain-seabed-contour-labels'].includes(layer.id)) map.setLayoutProperty(layer.id, 'text-field', layer.layout['text-field']);
+    if (layer.id === 'speed-labels' || /^terrain-(seabed-)?contour-labels/.test(layer.id)) map.setLayoutProperty(layer.id, 'text-field', layer.layout['text-field']);
   }
   map.getSource('contours')?.setTiles(style.sources.contours.tiles);
   map.getSource('seabedContours')?.setTiles(style.sources.seabedContours.tiles);
+  map.getSource('seabedContoursClose')?.setTiles(style.sources.seabedContoursClose.tiles);
 }
 function updateStatus() {
   if (errors.size) {
@@ -389,10 +391,10 @@ async function initialize() {
   }
   // Apply language before constructing the map, avoiding an initial duplicate
   // station-tile download in the wrong language.
+  // This also sets the contour sources (unitStyle). Relief and all contours
+  // share one elevation loader and tile cache.
   localizeStyle(style);
   style.sources.relief.tiles = [dem.sharedDemProtocolUrl];
-  style.sources.contours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units))];
-  style.sources.seabedContours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units, true))];
   map = new maplibregl.Map({
     container: 'map', style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / (settings.detail ? 2 : 1),
     center: [15,23], zoom: 1.8, hash: true, minZoom: MIN_ZOOM + (settings.detail ? 1 : 0), maxZoom: MAX_ZOOM + (settings.detail ? 1 : 0),
