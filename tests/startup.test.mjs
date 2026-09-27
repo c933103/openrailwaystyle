@@ -140,6 +140,7 @@ test('controls work while the map is still loading, and settings take effect onc
     assert.equal(errors.length,0);
     const map = maps[0];
     assert.match(map.options.style.sources.stations.url,/atlasstation:\/\/zh-Hans\//);
+    assert.equal(map.options.style.sources.railway.url,'atlasrail://https://openrailwaymap.app/railway_line_high','railway tiles gain track counts');
     assert.match(map.options.localIdeographFontFamily,/SC/,'Simplified Chinese labels use one Simplified Chinese font');
     assert.match(map.options.style.sources.contours.tiles[0],/\/ft\//);
     // Relief and every contour source share one elevation loader.

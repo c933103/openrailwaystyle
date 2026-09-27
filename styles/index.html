@@ -9,7 +9,7 @@
   <title>Open Railway Atlas · Worldwide rail map</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20260927-4" rel="stylesheet">
+  <link href="app.css?v=20260927-5" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -74,7 +74,7 @@
     <h3>Reading the map</h3><p>Regional views show a spaced-out selection of major stations. Smaller stations appear as you zoom in; individual station markers appear at local scale. Major stations receive priority according to the provider’s mapped route importance, which is not a passenger-volume ranking. Coverage and station ranking depend on OpenStreetMap completeness.</p>
     <p>Speed colours use the provider’s numeric limit in km/h. Where directions differ, this is the preferred-direction limit, or the larger directional limit when no preferred direction is mapped. Track labels retain original units: bare numbers are km/h; mph is written explicitly. “A / B” means forward / backward; “A (B)” means preferred / opposite direction. A dash means missing data. These directions refer to the underlying OSM way.</p>
     <p>Grey means no numeric speed is available. Railways under construction are drawn with long dashes, proposed ones with dots and former ones with short, faded dashes; they are not presented as operating lines. Construction shows at every zoom, proposals from zoom 5 and former lines from zoom 7. In the speed view they take the colour of their recorded (planned or former) limit where one is mapped. Bridges (dark edges) and tunnels (pale dashed core or faded line) are marked in every view from zoom 7. Recorded infrastructure limits are not train running speeds or a timetable.</p>
-    <p>The Power view separates DC by voltage and AC by frequency. The Train control view colours each line by its first recorded train protection or control system (for example ETCS, CTCS, LZB, PZB or PTC) and lists the systems in view. The Gauge view colours track gauge; dual gauge shows dashes in the second gauge’s colour. These views show only what is recorded in OpenStreetMap; many lines have no train protection tagged. The number of parallel tracks is not shown: the railway tiles used here do not carry that information, and tracks mapped individually already appear side by side when zoomed in.</p>
+    <p>The Power view separates DC by voltage and AC by frequency. The Train control view colours each line by its first recorded train protection or control system (for example ETCS, CTCS, LZB, PZB or PTC) and lists the systems in view. The Gauge view colours track gauge; dual gauge shows dashes in the second gauge’s colour. These views show only what is recorded in OpenStreetMap; many lines have no train protection tagged. When zoomed in, the Infrastructure view labels how many tracks run side by side. This is counted from the map itself, since OpenStreetMap maps each track separately: tracks running roughly parallel, each within 12 m of the next, count as one group (sidings and station tracks included; tracks in tunnels are counted apart from surface tracks). It reflects how completely the tracks are mapped, and parallel lines of different railways count together.</p>
     <p>Station labels give priority to heavy rail, then metro, light rail, people movers and trams, then former stations. The ⊞ button shows more detail by drawing the next zoom level at half size. The ✎ button opens drawing tools (points, lines, smooth curves and areas, in a chosen colour and line style); drawings stay in this browser and can be saved or opened as GeoJSON files. The 📏 button measures distances along several segments, or the radius of a curve from three or more points clicked along it.</p>
     <h3>Names and terrain</h3><p>One language setting applies to map, station and line labels. Only names recorded in the source data are shown; nothing is automatically translated or transliterated. When no name is recorded in the chosen language, a related recorded name is used where one exists, such as the other Chinese script or English, and otherwise the local name.</p>
     <p>Station translations are requested for the current view. Snapshot railways retain multilingual OSM tags; the current operating-line tile provider usually supplies only native names. The shared setting cannot recover translations omitted from a source. Search results use the names returned by the search service.</p>
@@ -95,6 +95,6 @@
       status.textContent = 'The map could not load. Check your connection and reload the page.';
     }, true);
   </script>
-  <script type="module" src="app.mjs?v=20260927-4"></script>
+  <script type="module" src="app.mjs?v=20260927-5"></script>
 </body>
 </html>

@@ -158,6 +158,14 @@ for (const [id,source,sourceLayer,minzoom,maxzoom,filter] of [
   layout:{'symbol-placement':'line','symbol-spacing':450,'text-field':labelExpression('local'), 'text-font':['Noto Sans Bold'], 'text-size':['interpolate',['linear'],['zoom'],9,11,14,13], 'text-offset':[0,-0.85], 'text-padding':8, 'text-max-angle':35},
   paint:{'text-color':'#4a453f','text-halo-color':'#fffef8','text-halo-width':2},
 });
+// Tracks side by side (counted from the mapped geometry by the atlasrail
+// protocol; see track-count.mjs), once per bundle, in the Infrastructure view.
+style.layers.push({
+  id: 'infrastructure-track-count', type: 'symbol', source: 'railway', 'source-layer': 'railway_line_high', minzoom: 12,
+  filter: ['all', present, notFerry, ['==', ['get', 'atlas_tracks_label'], true], ['>=', ['to-number', ['coalesce', ['get', 'atlas_tracks'], 0], 0], 1]],
+  layout: { 'symbol-placement': 'line', 'symbol-spacing': 450, 'text-field': ['concat', ['to-string', ['get', 'atlas_tracks']], ['case', ['==', ['get', 'atlas_tracks'], 1], ' track', ' tracks']], 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-padding': 6, 'text-max-angle': 30 },
+  paint: { 'text-color': '#173e47', 'text-halo-color': '#fffef8', 'text-halo-width': 2 },
+});
 style.layers.push({
   id: 'speed-labels', type: 'symbol', source: 'railway', 'source-layer': 'railway_line_high', minzoom: 10,
   filter: ['all', present, notFerry, ['has', 'speed_label']],

@@ -1,6 +1,6 @@
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, ELECTRIFICATION, TRAIN_PROTECTION, trainProtectionName, GAUGES, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260927-4';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, ELECTRIFICATION, TRAIN_PROTECTION, trainProtectionName, GAUGES, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260927-5';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260927-4';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260927-5';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -16,7 +16,7 @@ const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_C
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260927-4';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260927-5';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -124,7 +124,7 @@ function renderLegend() {
     electrification: 'Frequency 0 in the data means DC. Click a track for voltage and frequency. Grey means not recorded.',
     control: 'Colour shows the first recorded system; click a track for all of them. Grey means nothing is recorded.',
     gauge: 'Click a track for all recorded gauges. Grey means not recorded.',
-    infrastructure: 'Stations stay visible in every view.',
+    infrastructure: 'Zoomed in, labels give the number of tracks side by side, counted from the mapped tracks.',
   };
   let note = notes[settings.mode];
   if (settings.inactive && settings.mode === 'speed') note += ' Planned and former lines take the colour of their recorded limit, if any.';
@@ -197,6 +197,7 @@ function showDetails(feature) {
     row(dl, 'Usage', p.usage);
     row(dl, 'Service', p.service);
     row(dl, 'Track', p.track_ref);
+    row(dl, 'Tracks side by side', p.atlas_tracks > 0 ? `${p.atlas_tracks} (counted from mapped tracks)` : undefined);
     row(dl, 'Current', describeCurrent(p.voltage, p.frequency));
     row(dl, 'Electrification', p.electrification_state);
     row(dl, 'Planned current', p.electrification_state === 'present' ? undefined : describeCurrent(p.future_voltage, p.future_frequency));
@@ -281,7 +282,7 @@ function updateStatus() {
   status.dataset.renderedFormer = String(regional.filter(f => !['proposed','construction'].includes(f.properties.state)).length);
   status.dataset.numericSpeeds = String(tracks.filter(f => numericSpeed(f.properties.maxspeed) !== null).length);
 }
-const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'');
+const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlasrail:\/\//,'');
 function localizeStyle(style) {
   for (const layer of style.layers) {
     if (layer.type !== 'symbol' || layer.id === 'speed-labels' || layer.id.startsWith('terrain-')) continue;
@@ -290,6 +291,7 @@ function localizeStyle(style) {
   style.sources.openmaptiles.url = `atlasbase://${settings.language}/${unwrap(style.sources.openmaptiles.url).replace(/^pmtiles:\/\//,'')}`;
   for(const id of ['stationLow','stationMed','stations']) style.sources[id].url = `atlasstation://${settings.language}/${unwrap(style.sources[id].url)}`;
   style.sources.inactiveRegional.tiles = [`railtiles://{z}/{x}/{y}?lang=${settings.language}`];
+  style.sources.railway.url = `atlasrail://${unwrap(style.sources.railway.url)}`;
   unitStyle(style);
   styleLanguage = settings.language;
 }

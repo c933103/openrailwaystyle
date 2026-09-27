@@ -212,3 +212,29 @@ test('lifecycle snapshot keeps planned speed, bridges and tunnels', async () => 
   const [f] = toGeoJSON({elements:[{type:'way', id:1, tags:{railway:'construction', construction:'rail', maxspeed:'350', bridge:'viaduct', tunnel:'no'}, geometry:[{lon:0,lat:0},{lon:1,lat:1}]}]}).features;
   assert.deepEqual([f.properties.maxspeed, f.properties.bridge, f.properties.tunnel], [350, true, undefined]);
 });
+test('tracks side by side are counted from mapped geometry', async () => {
+  const {countTracks, trackLines} = await import('../styles/track-count.mjs');
+  // 1 tile unit = 1 m. Four tracks 4.5 m apart, a double track 100 m away,
+  // a crossing road-like line at right angles and a subway beneath.
+  const line = (y, extra = {}) => ({group:'rail', main:true, parts:[[[0, y], [1000, y + 20]]], ...extra});
+  const lines = [line(0), line(4.5), line(9), line(15, {main:false}), line(115), line(119.5),
+    {group:'rail', main:true, parts:[[[500, -300], [500, 300]]]}, line(6, {group:'rail-tunnel'})];
+  const result = countTracks(lines, 1);
+  assert.deepEqual(result.map(r => r.tracks), [4, 4, 4, 4, 2, 2, 1, 1]);
+  // One running line labelled per bundle; never the siding.
+  assert.equal(result.slice(0, 4).filter(r => r.label).length, 1);
+  assert.equal(result[3].label, false);
+  assert.equal(result.slice(4, 6).filter(r => r.label).length, 1);
+  // Only present, non-ferry lines are counted; tunnels and trams separately.
+  const feature = (properties, type = 2) => ({type, properties, loadGeometry: () => [[{x:0, y:0}, {x:1, y:1}]]});
+  const input = trackLines([feature({state:'construction'}), feature({feature:'ferry'}), feature({}, 1), feature({tunnel:true}), feature({feature:'tram', service:'siding'})]);
+  assert.deepEqual(input.map(l => l && [l.group, l.main]), [null, null, null, ['rail-tunnel', true], ['tram', false]]);
+});
+test('track counts label the Infrastructure view from zoom 12', () => {
+  const layer = style.layers.find(l => l.id === 'infrastructure-track-count');
+  assert.equal(layer.minzoom, 12);
+  assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:2, properties:{atlas_tracks:4, atlas_tracks_label:true}}), true);
+  assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:2, properties:{atlas_tracks:1, atlas_tracks_label:true}}), true);
+  assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:2, properties:{atlas_tracks_label:true}}), false);
+  assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:2, properties:{atlas_tracks:4, atlas_tracks_label:false}}), false);
+});
