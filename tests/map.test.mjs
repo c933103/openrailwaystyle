@@ -117,9 +117,9 @@ test('station labels rank heavy rail over metro, light rail, people movers and f
   const former = style.layers.find(l => l.id === 'station-former-names');
   assert.equal(featureFilter(former.filter).filter({zoom:14}, {type:1,properties:{state:'abandoned',feature:'station'}}), true);
 });
-test('seabed contours come from a finer source from zoom 9, without duplicates', async () => {
+test('seabed contours come from finer sources from zoom 5, without duplicates', async () => {
   const {contourOptions} = await import('../styles/map-model.mjs');
-  const shows = (id, zoom, ele) => { const l = style.layers.find(x => x.id === id); return zoom >= l.minzoom && featureFilter(l.filter).filter({zoom}, {type:2, properties:{ele, level:1}}); };
+  const shows = (id, zoom, ele) => { const l = style.layers.find(x => x.id === id); return zoom >= l.minzoom && zoom < (l.maxzoom ?? 24) && featureFilter(l.filter).filter({zoom}, {type:2, properties:{ele, level:1}}); };
   assert.equal(shows('terrain-contours', 8, -100), true);
   assert.equal(shows('terrain-contours', 9, -100), false);
   assert.equal(shows('terrain-contours', 9, 100), true);
@@ -129,7 +129,18 @@ test('seabed contours come from a finer source from zoom 9, without duplicates',
   assert.equal(shows('terrain-seabed-contours', 6, -100), true);
   assert.equal(shows('terrain-seabed-contours', 6, -400), false);
   assert.equal(shows('terrain-seabed-contours', 4, -100), false);
-  assert.equal(contourOptions('metric', true).thresholds[5][0], 20);
-  assert.deepEqual(contourOptions('metric', true).thresholds[11], [10, 50]);
-  assert.equal(contourOptions('imperial', true).multiplier, 3.28084);
+  // 50 m at zooms 5-8, 20 m at 9-10; 10 m from zoom-10 data at zoom 11, enlarged beyond.
+  // Seabed tiles use elevation one zoom coarser; land contours keep full detail.
+  assert.deepEqual(contourOptions('metric', 'shelf').thresholds, {5:[50,250],9:[20,100]});
+  assert.equal(contourOptions('metric', 'shelf').overzoom, 1);
+  assert.equal(contourOptions('metric').overzoom, undefined);
+  assert.deepEqual(contourOptions('metric', 'close'), {...contourOptions('metric'), thresholds:{11:[10,50]}, overzoom:1});
+  assert.equal(contourOptions('imperial', 'close').multiplier, 3.28084);
+  assert.equal(contourOptions('metric').multiplier, undefined);
+  assert.equal(style.sources.seabedContours.maxzoom, 10);
+  assert.deepEqual([style.sources.seabedContoursClose.minzoom, style.sources.seabedContoursClose.maxzoom], [11, 11]);
+  assert.equal(shows('terrain-seabed-contours', 11, -100), false);
+  assert.equal(shows('terrain-seabed-contours-close', 11, -100), true);
+  assert.equal(shows('terrain-seabed-contours-close', 11, 100), false);
+  assert.equal(style.layers.find(l => l.id === 'terrain-seabed-contours').maxzoom, 11);
 });

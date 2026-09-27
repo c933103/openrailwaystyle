@@ -239,12 +239,23 @@ export const CONTOUR_OPTIONS = {
   contourLayer:'contours',elevationKey:'ele',levelKey:'level',extent:4096,buffer:1,
 };
 // Imperial contours are drawn in feet at round intervals.
-// The seabed source is drawn only below sea level: 20 m from zoom 5 (down
-// to 200 m below zoom 9) and 10 m from zoom 11. The elevation data resolves
-// shallow coastal depths, but only up to zoom 10.
-export const contourOptions = (units, seabed = false) => units === 'imperial'
-  ? {...CONTOUR_OPTIONS, multiplier:3.28084, thresholds: seabed ? {5:[50,250],11:[25,100]} : {7:[500,2500],9:[250,1000],11:[100,500],13:[50,250],15:[25,100]}}
-  : seabed ? {...CONTOUR_OPTIONS, thresholds:{5:[20,100],11:[10,50]}} : CONTOUR_OPTIONS;
+const LAND_FEET = {7:[500,2500],9:[250,1000],11:[100,500],13:[50,250],15:[25,100]};
+// Seabed contours are drawn only below sea level. Most of each seabed tile is
+// land or deep ocean that the style filters out, so the tiles are built from
+// elevation one zoom coarser (overzoom 1): a quarter of the work and of the
+// extra downloads, and still finer than the ETOPO1 seabed data behind most
+// open water. The tiles hold seabed depths only up to zoom 10, so the 'close'
+// source is built once, at zoom 11 from zoom-10 tiles, and MapLibre enlarges
+// it beyond that. Metric: 50 m at zooms 5-8, 20 m at 9-10, 10 m from 11.
+const SEABED = {
+  metric:{shelf:{5:[50,250],9:[20,100]}, close:{11:[10,50]}},
+  imperial:{shelf:{5:[150,750],9:[50,250]}, close:{11:[25,100]}},
+};
+export const contourOptions = (units, seabed) => {
+  const imperial = units === 'imperial';
+  const thresholds = seabed ? SEABED[imperial ? 'imperial' : 'metric'][seabed] : imperial ? LAND_FEET : CONTOUR_OPTIONS.thresholds;
+  return {...CONTOUR_OPTIONS, ...(imperial && {multiplier:3.28084}), thresholds, ...(seabed && {overzoom:1})};
+};
 // Speed colours and track labels for the chosen units. maxspeed is km/h.
 export function speedPaint(units) {
   const speed = ['to-number', ['coalesce', ['get', 'maxspeed'], -1], -1];

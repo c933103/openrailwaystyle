@@ -9,7 +9,7 @@
   <title>Open Railway Atlas · Worldwide rail map</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20260927-2" rel="stylesheet">
+  <link href="app.css?v=20260927-3" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -74,7 +74,7 @@
     <p>Station labels give priority to heavy rail, then metro, light rail, people movers and trams, then former stations. The ⊞ button shows more detail by drawing the next zoom level at half size. The ✎ button opens drawing tools (points, lines, smooth curves and areas, in a chosen colour and line style); drawings stay in this browser and can be saved or opened as GeoJSON files. The 📏 button measures distances along several segments, or the radius of a curve from three or more points clicked along it.</p>
     <h3>Names and terrain</h3><p>One language setting applies to map, station and line labels. Only names recorded in the source data are shown; nothing is automatically translated or transliterated. When no name is recorded in the chosen language, a related recorded name is used where one exists, such as the other Chinese script or English, and otherwise the local name.</p>
     <p>Station translations are requested for the current view. Snapshot railways retain multilingual OSM tags; the current operating-line tile provider usually supplies only native names. The shared setting cannot recover translations omitted from a source. Search results use the names returned by the search service.</p>
-    <p>Brown contours show land elevation; blue contours show negative elevation below sea level. Labels are signed metres. Land intervals become finer as you zoom: 200 m at zoom 7, 100 m at 9, 50 m at 11, 20 m at 13, and 10 m at 15. Seabed contours are 20 m from zoom 5 (down to 200 m below zoom 9) and 10 m from zoom 11. Heavier index contours are labelled. The elevation data holds seabed depths only up to zoom 10, so closer seabed contours follow that coarser data; land detail continues to zoom 15.</p>
+    <p>Brown contours show land elevation; blue contours show negative elevation below sea level. Labels are signed metres. Land intervals become finer as you zoom: 200 m at zoom 7, 100 m at 9, 50 m at 11, 20 m at 13, and 10 m at 15. Seabed contours are 50 m at zooms 5–8 (down to 200 m), 20 m at 9–10 and 10 m from zoom 11. Heavier index contours are labelled. The elevation data holds seabed depths only up to zoom 10, so closer seabed contours follow that coarser data; land detail continues to zoom 15.</p>
     <h3>Sources</h3><p>Railway tiles: <a href="https://openrailwaymap.app/">OpenRailwayMap vector</a>. Station search: <a href="https://www.openrailwaymap.org/">OpenRailwayMap public API</a>. Regional planned, construction and former lines: <a href="data/manifest.json">published OSM snapshot</a>, extracted with <a href="https://overpass-api.de/">Overpass (FOSSGIS)</a>; <a href="data/lifecycle.geojson.gz">download the ODbL database</a>. Relief: <a href="terrain-credits.html">Mapzen Terrain Tiles / AWS, including NOAA ETOPO1 seabed data</a>. Base map: <a href="https://tuiles.enliberte.fr/">En Liberté</a>. Map data: <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>. Name regions: <a href="https://www.naturalearthdata.com/">Natural Earth</a>, <a href="https://github.com/evansiroky/timezone-boundary-builder">timezone-boundary-builder</a> (OSM, ODbL) and OSM boundary relations and <a href="https://www.geoboundaries.org/">geoBoundaries</a> (Myanmar Analytics Project, CC BY 4.0; Royal Thai Survey Department / OCHA ROAP, CC BY 3.0 IGO). Renderer: <a href="https://maplibre.org/">MapLibre</a>.</p>
     <p class="small">This public map uses community-hosted services. Data availability and updates follow those providers. No account or API key is required. Search terms are sent to OpenRailwayMap only when submitted. Panning loads planned and former railways from files published with this site; your viewport is not sent to Overpass. The snapshot date is recorded in its manifest. Detail tiles at zoom 12 and above follow OpenRailwayMap updates. Shading and contours are derived from elevation, including seabed where recorded; they are not a nautical chart.</p>
     <p><a href="https://github.com/c933103/openrailwaystyle">Source code & report a problem ↗</a></p>
@@ -91,6 +91,6 @@
       status.textContent = 'The map could not load. Check your connection and reload the page.';
     }, true);
   </script>
-  <script type="module" src="app.mjs?v=20260927-2"></script>
+  <script type="module" src="app.mjs?v=20260927-3"></script>
 </body>
 </html>

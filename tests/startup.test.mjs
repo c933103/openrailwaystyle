@@ -139,9 +139,10 @@ test('controls work while the map is still loading, and settings take effect onc
     assert.match(map.options.style.sources.stations.url,/atlasstation:\/\/zh-Hans\//);
     assert.match(map.options.localIdeographFontFamily,/SC/,'Simplified Chinese labels use one Simplified Chinese font');
     assert.match(map.options.style.sources.contours.tiles[0],/\/ft\//);
-    // Seabed contours use elevation data capped at zoom 10, where depths end.
-    assert.match(map.options.style.sources.seabedContours.tiles[0],/^atlas-seabed-contour:/);
-    assert.equal(maps.dems.find(d => d.id === 'atlas-seabed').maxzoom, 10);
+    // Relief and every contour source share one elevation loader.
+    assert.deepEqual(maps.dems.map(d => d.id), ['atlas']);
+    assert.match(map.options.style.sources.seabedContours.tiles[0],/^atlas-contour:\/\/ft\//);
+    assert.match(map.options.style.sources.seabedContoursClose.tiles[0],/^atlas-contour:\/\/ft\//);
     assert.equal(maps.scale.unit,'imperial');
     assert.deepEqual(maps.controls.slice(0,2).map(c=>[c.showZoom,c.showCompass]),[[false,true],[undefined,false]],'compass above the zoom buttons');
     map.handlers.load();
