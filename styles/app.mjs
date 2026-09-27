@@ -1,6 +1,6 @@
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260927-3';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, ELECTRIFICATION, TRAIN_PROTECTION, trainProtectionName, GAUGES, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260927-4';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260927-3';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260927-4';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -16,7 +16,7 @@ const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_C
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260927-3';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260927-4';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -73,34 +73,61 @@ const textNode = (tag, value, className) => {
   if (className) el.className = className;
   return el;
 };
+// Train protection systems are mostly national: the legend lists those in view.
+let controlCodes = [], controlTimer;
+// Waits for the view's control tiles rather than map idle, which any slow
+// tile (e.g. relief) can hold back.
+function scheduleControlLegend() {
+  clearTimeout(controlTimer);
+  if (settings.mode === 'control') controlTimer = setTimeout(updateControlLegend, 250);
+}
+function updateControlLegend() {
+  if (!ready || settings.mode !== 'control') return;
+  const layers = ['control-overview', 'control-tracks'].filter(id => map.getLayer(id));
+  const counts = new Map();
+  for (const f of map.queryRenderedFeatures({layers})) {
+    const code = f.properties.train_protection0 || '';
+    counts.set(code, (counts.get(code) || 0) + 1);
+  }
+  const codes = [...counts.keys()].filter(code => code && code !== 'none').sort((a, b) => counts.get(b) - counts.get(a));
+  if (codes.join() !== controlCodes.join()) { controlCodes = codes; renderLegend(); }
+}
 function renderLegend() {
   const box = $('legend'); box.replaceChildren();
+  const control = TRAIN_PROTECTION.filter(([code]) => controlCodes.includes(code)).sort((a, b) => controlCodes.indexOf(a[0]) - controlCodes.indexOf(b[0]));
   const legends = {
     speed: { title: `Mapped maximum speed · ${settings.units === 'imperial' ? 'mph' : 'km/h'}`, rows: speedBands(settings.units).map(b => [b.color, b.label]) },
     infrastructure: { title: 'Railway infrastructure', rows: INFRASTRUCTURE },
-    electrification: { title: 'Electrification · nominal voltage', rows: [['#d364a1','< 1 kV'],['#9d56b6','1–< 3 kV'],['#317cb9','3–< 15 kV'],['#42864a','15–< 25 kV'],['#c94831','≥ 25 kV'],['#525b62','Not electrified']] },
+    electrification: { title: 'Electrification · current and frequency', rows: ELECTRIFICATION },
+    control: { title: 'Train protection and control · in view', rows: [...control.map(([, label, color]) => [color, label]), ...TRAIN_PROTECTION.filter(([code]) => code === 'none').map(([, label, color]) => [color, label])] },
+    gauge: { title: 'Track gauge', rows: GAUGES.map(([, , color, label]) => [color, label]) },
   };
   const legend = legends[settings.mode];
   box.append(textNode('h2', legend.title));
   const grid = textNode('div', '', 'legend-grid');
   const rows = [...legend.rows];
-  if (settings.mode === 'infrastructure') rows.push(['#2356b6','Bridge','bridge','from zoom 7'], ['#2356b6','Tunnel','tunnel','from zoom 7']);
+  if (settings.mode === 'gauge') rows.push(['#1f5fbf', 'Dual gauge (dashes: second gauge)', 'dual']);
   if (settings.mode !== 'infrastructure') rows.push([UNKNOWN_COLOR, 'Unknown']);
-  if (settings.inactive) rows.push(['#ad7619', 'Construction', 'dashed', 'all zooms'], ['#896192', 'Proposed', 'dashed', 'from zoom 5'], ['#75675c', 'Former lines', 'dashed', 'from zoom 7']);
-  for (const [color, label, extra, zooms] of rows) {
+  rows.push(['#2356b6','Bridge','bridge'], ['#2356b6','Tunnel','tunnel']);
+  if (settings.inactive) rows.push(...INACTIVE_STATES.map(([state, color, label]) => [color, label, `inactive-${state}`]));
+  for (const [color, label, extra] of rows) {
     const row = textNode('div', '', 'legend-item');
     const swatch = textNode('span', '', `swatch ${extra || ''}`); swatch.style.setProperty('--swatch', color);
-    const text = textNode('span', label);
-    if (zooms) text.append(textNode('small', zooms, 'legend-zoom'));
-    row.append(swatch, text); grid.append(row);
+    row.append(swatch, textNode('span', label)); grid.append(row);
   }
   if (settings.stations) {
     const station = textNode('div', '', 'legend-item'); station.append(textNode('span', '', 'station-swatch'), textNode('span', 'Station')); grid.append(station);
   }
   box.append(grid);
-  const note = settings.mode === 'speed'
-    ? settings.units === 'imperial' ? 'Labels in mph; limits tagged in mph keep their directional values. Grey means no numeric limit is recorded.' : 'Labels keep tagged units: bare numbers are km/h, mph is written out. Grey means no numeric limit is recorded.'
-    : settings.mode === 'electrification' ? 'Click a track for voltage and frequency. Grey means unknown.' : 'Stations stay visible in every view.';
+  const notes = {
+    speed: settings.units === 'imperial' ? 'Labels in mph; limits tagged in mph keep their directional values. Grey means no numeric limit is recorded.' : 'Labels keep tagged units: bare numbers are km/h, mph is written out. Grey means no numeric limit is recorded.',
+    electrification: 'Frequency 0 in the data means DC. Click a track for voltage and frequency. Grey means not recorded.',
+    control: 'Colour shows the first recorded system; click a track for all of them. Grey means nothing is recorded.',
+    gauge: 'Click a track for all recorded gauges. Grey means not recorded.',
+    infrastructure: 'Stations stay visible in every view.',
+  };
+  let note = notes[settings.mode];
+  if (settings.inactive && settings.mode === 'speed') note += ' Planned and former lines take the colour of their recorded limit, if any.';
   box.append(textNode('p', note, 'legend-note'));
 }
 function saveSettings() {
@@ -132,12 +159,13 @@ function applySettings() {
     if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive);
     if (layer.id.startsWith('terrain-')) visible = settings.relief;
     if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
+    if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
     if ((visible ?? true) && isClickable(layer.id)) clickable.push(layer.id);
   }
   renderLegend();
-
+  if (ready) scheduleControlLegend();
 }
-const isClickable = id => id.startsWith('station-') || id.startsWith('inactive-') || /^(speed|infrastructure|electrification)-(tracks|overview)$/.test(id);
+const isClickable = id => id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge)-(tracks|overview)$/.test(id);
 function row(dl, label, value) {
   if (value === undefined || value === null || value === '') return;
   dl.append(textNode('dt', label), textNode('dd', String(value)));
@@ -162,15 +190,21 @@ function showDetails(feature) {
     if (!p.state || p.state === 'present') {
       panel.append(textNode('p', speed.mapped, 'speed-value'));
       row(dl, 'Speed label', speed.tagged);
+    } else if (typeof p.maxspeed === 'number') {
+      row(dl, ['construction', 'proposed'].includes(p.state) ? 'Planned speed' : 'Former speed', speed.mapped);
     }
     row(dl, 'Direction', p.preferred_direction);
     row(dl, 'Usage', p.usage);
     row(dl, 'Service', p.service);
     row(dl, 'Track', p.track_ref);
-    row(dl, 'Voltage', typeof p.voltage === 'number' ? `${p.voltage.toLocaleString()} V` : undefined);
-    row(dl, 'Frequency', typeof p.frequency === 'number' ? p.frequency === 0 ? 'DC' : `${p.frequency} Hz AC` : undefined);
+    row(dl, 'Current', describeCurrent(p.voltage, p.frequency));
     row(dl, 'Electrification', p.electrification_state);
-    row(dl, 'Gauge', p.gauges ? String(p.gauges).split(/[;,]\s*/).map(gauge).join(', ') : undefined);
+    row(dl, 'Planned current', p.electrification_state === 'present' ? undefined : describeCurrent(p.future_voltage, p.future_frequency));
+    const protection = [p.train_protection0, p.train_protection1, p.train_protection2].filter(Boolean);
+    row(dl, 'Train protection', protection.length ? protection.map(trainProtectionName).join(', ') : undefined);
+    row(dl, 'Protection being built', p.train_protection_construction ? trainProtectionName(p.train_protection_construction) : undefined);
+    const gauges = p.gauges ? String(p.gauges).split(/[;,]\s*/) : [p.gauge0, p.gauge1, p.gauge2].filter(Boolean);
+    row(dl, 'Gauge', gauges.length ? gauges.map(gauge).join(', ') : undefined);
     row(dl, 'Tunnel', p.tunnel === true ? 'Yes' : undefined);
     row(dl, 'Bridge', p.bridge === true ? 'Yes' : undefined);
     if (!p.state || p.state === 'present') panel.append(textNode('p', 'Colour uses the preferred-direction limit, or the larger directional limit if no preference is mapped. The source label above retains both directions. Bare numbers are km/h.', 'small'));
@@ -204,6 +238,7 @@ function unitStyle(style) {
   for (const layer of style.layers) {
     if (/^speed-(overview|tracks)$/.test(layer.id)) layer.paint['line-color'] = speedPaint(settings.units);
     if (layer.id === 'speed-labels') layer.layout['text-field'] = speedLabel(settings.units);
+    if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) layer.paint['line-color'] = inactivePaint(settings.mode, settings.units);
     if (/^terrain-(seabed-)?contour-labels/.test(layer.id)) layer.layout['text-field'] = ['concat', ['to-string', ['get','ele']], settings.units === 'imperial' ? ' ft' : ' m'];
   }
   if (dem) {
@@ -218,7 +253,7 @@ function applyUnits() {
   const style = {layers: map.getStyle().layers, sources: {contours: {}, seabedContours: {}, seabedContoursClose: {}}};
   unitStyle(style);
   for (const layer of style.layers) {
-    if (/^speed-(overview|tracks)$/.test(layer.id)) map.setPaintProperty(layer.id, 'line-color', layer.paint['line-color']);
+    if (/^speed-(overview|tracks)$/.test(layer.id) || (/^inactive-(regional|railways)-/.test(layer.id) && !layer.id.includes('bridge'))) map.setPaintProperty(layer.id, 'line-color', layer.paint['line-color']);
     if (layer.id === 'speed-labels' || /^terrain-(seabed-)?contour-labels/.test(layer.id)) map.setLayoutProperty(layer.id, 'text-field', layer.layout['text-field']);
   }
   map.getSource('contours')?.setTiles(style.sources.contours.tiles);
@@ -288,7 +323,9 @@ class ButtonControl {
 function updateDrawing() {
   drawButton.setAttribute('aria-pressed', String(!$('draw-toolbar').hidden));
   measureButton.setAttribute('aria-pressed', String(!$('measure-toolbar').hidden));
-  document.querySelectorAll('[data-draw]').forEach(b => b.setAttribute('aria-pressed', String(drawing?.mode === b.dataset.draw)));
+  document.querySelectorAll('[data-draw]').forEach(b => b.setAttribute('aria-pressed', String(drawing?.mode === b.dataset.draw && !drawing.paused)));
+  $('draw-pan').setAttribute('aria-pressed', String(Boolean(drawing?.paused)));
+  $('draw-pan').disabled = !drawing?.mode;
   document.querySelectorAll('[data-measure]').forEach(b => b.setAttribute('aria-pressed', String(measuring?.mode === b.dataset.measure)));
 }
 // Drawing and measuring are exclusive: opening one closes the other.
@@ -320,6 +357,7 @@ $('draw-color').addEventListener('input', () => drawStyle({color: $('draw-color'
 $('draw-dash').addEventListener('change', () => drawStyle({dash: $('draw-dash').value}));
 $('draw-width').addEventListener('change', () => drawStyle({width: Number($('draw-width').value)}));
 document.querySelectorAll('[data-draw]').forEach(b => b.addEventListener('click', () => whenMap(() => drawing.setMode(b.dataset.draw))));
+$('draw-pan').addEventListener('click', () => drawing?.setPaused(!drawing.paused));
 $('draw-undo').addEventListener('click', () => drawing?.undo());
 $('draw-finish').addEventListener('click', () => drawing?.finish());
 $('draw-clear').addEventListener('click', () => { if (drawing?.features.length && confirm('Delete all drawings?')) drawing.clear(); });
@@ -422,7 +460,7 @@ async function initialize() {
   map.on('style.load', installDrawing);
   map.on('dblclick', event => {
     if (measuring.mode === 'distance') { event.preventDefault(); measuring.end(); }
-    else if (drawing.multiPoint) { event.preventDefault(); drawing.finish(); }
+    else if (drawing.multiPoint && !drawing.paused) { event.preventDefault(); drawing.finish(); }
   });
   const action = pendingDraw; pendingDraw = undefined; action?.();
   map.on('error', e => {
@@ -445,6 +483,8 @@ async function initialize() {
     const action = pendingView; pendingView = undefined; action?.();
   });
   map.on('idle', updateStatus);
+  map.on('moveend', scheduleControlLegend);
+  map.on('sourcedata', e => { if ((e.sourceId === 'control' || e.sourceId === 'railway') && e.tile) scheduleControlLegend(); });
   map.on('click', event => {
     if (measuring.active) { measuring.click(event.lngLat); return; }
     if (drawing.active) { drawing.click(event.lngLat, event.point); return; }

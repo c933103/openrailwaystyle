@@ -1,5 +1,27 @@
 export const STATES = ['proposed', 'construction', 'disused', 'abandoned', 'razed', 'demolished', 'removed'];
 const TRACKS = ['rail', 'narrow_gauge', 'light_rail', 'subway', 'tram', 'monorail', 'funicular'];
+// Recorded limit in km/h: the lifecycle-prefixed tag first (e.g. a planned
+// construction:maxspeed), then maxspeed, then the larger directional one.
+// Values such as 'none' or 'signals' are not numeric and are left out.
+export function parseMaxspeed(tags, state) {
+  const kmh = value => {
+    const speeds = String(value ?? '').split(';').map(part => {
+      const m = /^\s*(\d+(?:\.\d+)?)\s*(mph|km\/h|kmh|kph|knots)?\s*$/i.exec(part);
+      if (!m) return NaN;
+      const n = Number(m[1]), unit = (m[2] || '').toLowerCase();
+      return unit === 'mph' ? n * 1.609344 : unit === 'knots' ? n * 1.852 : n;
+    }).filter(Number.isFinite);
+    return speeds.length ? Math.max(...speeds) : NaN;
+  };
+  for (const prefix of [`${state}:`, '']) {
+    const direct = kmh(tags[`${prefix}maxspeed`]);
+    if (Number.isFinite(direct)) return Math.round(direct);
+    const directional = Math.max(kmh(tags[`${prefix}maxspeed:forward`]), kmh(tags[`${prefix}maxspeed:backward`]));
+    if (Number.isFinite(directional)) return Math.round(directional);
+  }
+  return undefined;
+}
+const structure = value => value !== undefined && value !== 'no';
 export function toGeoJSON(json) {
   if (json.remark || !Array.isArray(json.elements)) throw new Error('Incomplete regional railway response');
   const features = [];
@@ -24,6 +46,8 @@ export function toGeoJSON(json) {
       name: tags.name || tags['name:en'] || '', ref: tags.ref || '',
       ...Object.fromEntries(Object.entries(tags).filter(([key]) => key.startsWith('name:'))),
       usage: tags.usage || '', service: tags.service || '', operator: tags.operator || '',
+      ...(parseMaxspeed(tags, state) !== undefined && {maxspeed: parseMaxspeed(tags, state)}),
+      ...(structure(tags.bridge) && {bridge: true}), ...(structure(tags.tunnel) && {tunnel: true}),
     }, geometry: lines.length === 1 ? { type: 'LineString', coordinates: lines[0] } : { type: 'MultiLineString', coordinates: lines } });
   }
   return { type: 'FeatureCollection', features };

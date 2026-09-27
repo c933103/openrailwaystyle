@@ -132,7 +132,7 @@ const HINTS = {point:'Click to place points.', line:'Click to add points; double
 export class Drawing {
   constructor(map, {units = () => 'metric', status = () => {}, changed = () => {}} = {}) {
     Object.assign(this, {map, units, status, changed});
-    this.features = []; this.draft = []; this.mode = null; this.cursor = null; this.next = 1;
+    this.features = []; this.draft = []; this.mode = null; this.paused = false; this.cursor = null; this.next = 1;
     this.style = {color: COLOR, dash: 'solid', width: 3};
     try { this.add(readDrawing(JSON.parse(localStorage.getItem(STORE) || 'null')), false); } catch {}
   }
@@ -187,7 +187,7 @@ export class Drawing {
     const points = this.shape(), units = this.units();
     this.status((this.mode === 'line' || this.mode === 'curve') && points.length >= 2 ? formatLength(lengthKm(points), units)
       : this.mode === 'area' && points.length >= 3 ? formatArea(areaKm2(points), units)
-      : HINTS[this.mode] || '');
+      : this.paused && this.mode ? 'Moving the map: drag, pinch or tap freely. Press Move map again to keep drawing.' : HINTS[this.mode] || '');
   }
   save() {
     try { localStorage.setItem(STORE, JSON.stringify(this.collection())); } catch {}
@@ -197,9 +197,19 @@ export class Drawing {
   setMode(mode) {
     this.finish();
     this.mode = this.mode === mode ? null : mode;
+    this.paused = false;
     // Double-click finishes a line, curve or area instead of zooming.
     if (this.multiPoint) this.map.doubleClickZoom.disable(); else this.map.doubleClickZoom.enable();
     this.map.getCanvas().style.cursor = this.mode ? 'crosshair' : '';
+    this.refresh(); this.changed();
+  }
+  // Pause input so the map can be moved without leaving the drawing tools or
+  // losing a shape in progress.
+  setPaused(paused) {
+    this.paused = paused;
+    this.cursor = null;
+    if (this.multiPoint && !paused) this.map.doubleClickZoom.disable(); else this.map.doubleClickZoom.enable();
+    this.map.getCanvas().style.cursor = this.mode && !paused ? 'crosshair' : '';
     this.refresh(); this.changed();
   }
   newFeature(geometry) {
@@ -207,6 +217,7 @@ export class Drawing {
     return {type:'Feature', properties: geometry.type === 'Point' ? {color, width} : {color, dash, width}, geometry};
   }
   click(lngLat, point) {
+    if (this.paused) return;
     const p = [Number(lngLat.lng.toFixed(6)), Number(lngLat.lat.toFixed(6))];
     if (this.mode === 'point') this.add([this.newFeature({type:'Point', coordinates:p})]);
     else if (this.multiPoint) {
@@ -223,7 +234,7 @@ export class Drawing {
     }
   }
   move(lngLat) {
-    if (!this.multiPoint) return;
+    if (!this.multiPoint || this.paused) return;
     this.cursor = [lngLat.lng, lngLat.lat]; this.refresh();
   }
   finish() {

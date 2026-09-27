@@ -83,7 +83,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') console.log('Browser resource:',msg.text());});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260927-3&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260927-4&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
@@ -138,12 +138,40 @@ try{
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     const features=map.queryRenderedFeatures();
-    return ['infrastructure-bridge-edge','infrastructure-tunnel'].every(id=>features.some(f=>f.layer.id===id));
+    return ['structure-bridge-edge','structure-tunnel'].every(id=>features.some(f=>f.layer.id===id));
   },undefined,{timeout:45000});
   console.log('PASS: bridge outlines and tunnel dashes render on real railway data');
   await finishFrame();
   const infrastructure=await page.screenshot({path:'browser-review/infrastructure.jpg',type:'jpeg',quality:55});
   console.log('STRUCTURE_IMAGE_START'+infrastructure.toString('base64')+'STRUCTURE_IMAGE_END');
+  // Bridges and tunnels are marked in every view, not only Infrastructure.
+  await page.locator('[data-mode="gauge"]').click();
+  await expectMap(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    const features=map.queryRenderedFeatures();
+    return map.getLayoutProperty('infrastructure-tracks','visibility')==='none' && features.some(f=>f.layer.id==='structure-bridge-edge') && features.some(f=>f.layer.id==='gauge-tracks' && f.properties.gaugeint0>0);
+  },'Gauge view must draw gauges with bridge outlines');
+  console.log('PASS: gauge view with bridges');
+  // Train control: central Germany mixes PZB, LZB and ETCS; the legend lists
+  // the systems in view.
+  await page.locator('[data-mode="control"]').click();
+  await moveTo(6,10,50.5);
+  await expectMap(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    const codes=new Set(map.queryRenderedFeatures({layers:['control-overview']}).map(f=>f.properties.train_protection0));
+    const legend=document.getElementById('legend').textContent;
+    return codes.has('pzb') && legend.includes('PZB') && legend.includes('LZB');
+  },'Train control view must colour PZB/LZB lines and list them in the legend');
+  console.log('PASS: train control view and in-view legend');
+  await page.locator('[data-mode="electrification"]').click();
+  await moveTo(6,4,47);
+  await expectMap(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    const hz=new Set(map.queryRenderedFeatures({layers:['electrification-overview']}).map(f=>f.properties.frequency));
+    return hz.has(0) && hz.has(50) && document.getElementById('legend').textContent.includes('AC 50 Hz');
+  },'Power view must show DC and 50 Hz AC lines in France');
+  console.log('PASS: power view separates AC and DC');
+  await page.locator('[data-mode="infrastructure"]').click();
   await moveTo(8,129.4,36.3);
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
@@ -185,7 +213,7 @@ try{
   await page.locator('#inactive').uncheck();
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
-    return map.getLayoutProperty('inactive-regional','visibility')==='none' && !map.queryRenderedFeatures().some(f=>f.source==='inactiveRegional');
+    return map.getLayoutProperty('inactive-regional-construction','visibility')==='none' && !map.queryRenderedFeatures().some(f=>f.source==='inactiveRegional');
   },undefined,{timeout:30000});
   await page.locator('#inactive').check();
   await page.locator('#relief').uncheck();
@@ -276,7 +304,15 @@ try{
   await page.locator('#collapse').click();
   await page.locator('button.atlas-ctrl[title="Drawing tools"]').click();
   await page.locator('[data-draw="line"]').click();
-  for (const [x,y] of [[700,500],[850,450],[950,520]]) await page.mouse.click(x,y);
+  for (const [x,y] of [[700,500],[850,450]]) await page.mouse.click(x,y);
+  // Move map pauses drawing: a click adds nothing and a drag pans, while the
+  // unfinished line and the toolbar stay.
+  await page.locator('#draw-pan').click();
+  await page.mouse.click(600,600);
+  await page.mouse.move(900,650); await page.mouse.down(); await page.mouse.move(880,640,{steps:5}); await page.mouse.up();
+  assert.equal(await page.locator('#draw-toolbar').isHidden(),false);
+  await page.locator('#draw-pan').click();
+  await page.mouse.click(950,520);
   await page.locator('#draw-finish').click();
   assert.match(await page.locator('#draw-status').textContent(),/./);
   // GeoJSON updates are tiled asynchronously; wait for the line and its length label.

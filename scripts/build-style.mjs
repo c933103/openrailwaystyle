@@ -1,5 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { ORM, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel } from '../styles/map-model.mjs';
+import { ORM, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
 
 // Keep the Hack4Rail base-map design and replace its Europe-only rail source.
 const original = JSON.parse(await readFile(new URL('../styles/default.style.json', import.meta.url)));
@@ -16,6 +16,8 @@ const style = {
     network: vector('standard_railway_line_low', 0, 6),
     speed: vector('speed_railway_line_low', 0, 6),
     electric: vector('electrification_railway_line_low', 0, 6),
+    control: vector('signals_railway_line_low', 0, 6),
+    gaugeLow: vector('track_railway_line_low', 0, 6),
     railway: vector('railway_line_high', 7, 16),
     stationLow: vector('standard_railway_text_stations_low', 4, 6),
     // The mid-zoom endpoint returns nothing below zoom 7, and the low-zoom
@@ -78,11 +80,7 @@ const infrastructurePaint = ['case',
   ['==', ['get', 'feature'], 'tram'], INFRASTRUCTURE[4][0],
   hasService, INFRASTRUCTURE[5][0],
   ['==', ['get', 'usage'], 'branch'], INFRASTRUCTURE[2][0], INFRASTRUCTURE[1][0]];
-const electricPaint = ['case',
-  ['match', ['get', 'electrification_state'], ['no', 'deelectrified'], true, false], '#525b62',
-  ['<', number('voltage'), 0], UNKNOWN_COLOR,
-  ['==', number('voltage'), 0], '#525b62',
-  ['step', number('voltage'), '#d364a1', 1000, '#9d56b6', 3000, '#317cb9', 15000, '#42864a', 25000, '#c94831']];
+const electricPaint = electrificationPaint();
 const width = ['interpolate', ['linear'], ['zoom'], 0, 0.6, 4, 1.15, 7, 1.8, 11, 2.6, 16, 4.5, 20, 7];
 const addLine = (id, source, sourceLayer, minzoom, maxzoom, paint, extra = {}) => style.layers.push({
   id, type: 'line', source, 'source-layer': sourceLayer, minzoom, ...(maxzoom === undefined ? {} : {maxzoom}),
@@ -93,6 +91,8 @@ for (const [mode, source, sourceLayer, color] of [
   ['infrastructure', 'network', 'standard_railway_line_low', infrastructurePaint],
   ['speed', 'speed', 'speed_railway_line_low', speedPaint],
   ['electrification', 'electric', 'electrification_railway_line_low', electricPaint],
+  ['control', 'control', 'signals_railway_line_low', controlPaint()],
+  ['gauge', 'gaugeLow', 'track_railway_line_low', gaugePaint()],
 ]) {
   addLine(`${mode}-overview`, source, sourceLayer, 0, 7, color);
   addLine(`${mode}-tracks`, 'railway', 'railway_line_high', 7, undefined, color, {
@@ -100,35 +100,55 @@ for (const [mode, source, sourceLayer, color] of [
     'line-width': ['interpolate', ['linear'], ['zoom'], 7, 1.6, 11, ['case', hasService, 1.1, 2.8], 16, ['case', hasService, 2, 4.8], 20, 7],
   });
 }
-// Structural cues use shape as well as colour. A bridge has dark parapets
-// outside the class-coloured track; tunnels use a pale dashed core. They start
+// Dual or multiple gauge: dashes in the second gauge's colour over the first.
+style.layers.push({id:'gauge-dual', type:'line', source:'railway', 'source-layer':'railway_line_high', minzoom:7,
+  filter:['all', present, notFerry, ['>', ['to-number', ['coalesce', ['get','gaugeint1'], 0], 0], 0]],
+  layout:{'line-cap':'butt','line-join':'round'},
+  paint:{'line-color':gaugePaint(1), 'line-width':['interpolate', ['linear'], ['zoom'], 7, 1.6, 11, 2.8, 16, 4.8, 20, 7], 'line-dasharray':[2,2]}});
+// Structural cues use shape as well as colour, in every view. A bridge has
+// dark parapets outside the track; tunnels use a pale dashed core. They start
 // with the detailed railway tiles: the z0–6 overview tiles carry no structure.
 const structure = {type:'line',source:'railway','source-layer':'railway_line_high',minzoom:7,layout:{'line-cap':'butt','line-join':'round'}};
 const bridge = {...structure,filter:['all',present,notFerry,['==',['get','bridge'],true]]};
 const bridgeWidth = ['interpolate',['linear'],['zoom'],7,3.4,10,5.4,14,8,18,12];
 const trackIndex = style.layers.findIndex(l=>l.id==='infrastructure-tracks');
 style.layers.splice(trackIndex,0,
-  {...bridge,id:'infrastructure-bridge-edge',paint:{'line-color':'#263b48','line-width':bridgeWidth}},
-  {...bridge,id:'infrastructure-bridge-deck',paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],7,2.2,10,3.8,14,6,18,10]}},
+  {...bridge,id:'structure-bridge-edge',paint:{'line-color':'#263b48','line-width':bridgeWidth}},
+  {...bridge,id:'structure-bridge-deck',paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],7,2.2,10,3.8,14,6,18,10]}},
 );
-style.layers.push({...structure,id:'infrastructure-tunnel',filter:['all',present,notFerry,['==',['get','tunnel'],true]],paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],7,0.7,10,1.1,14,2,18,3], 'line-dasharray':[3,2]}});
-const inactivePaint = {
-  'line-color': ['match', ['get', 'state'], 'construction', '#ad7619', 'proposed', '#896192', '#75675c'],
-  'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.6, 5, 1.2, 7, 1.7, 12, 2, 16, 2.8, 20, 4],
-  'line-dasharray': [3, 2], 'line-opacity': 0.9,
-};
-style.layers.push({
-  id: 'inactive-railways', type: 'line', source: 'railway', 'source-layer': 'railway_line_high', minzoom: 12,
-  filter: ['all', ['!', present], notFerry], paint: inactivePaint,
+style.layers.push({...structure,id:'structure-tunnel',filter:['all',present,notFerry,['==',['get','tunnel'],true]],paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],7,0.7,10,1.1,14,2,18,3], 'line-dasharray':[3,2]}});
+// Planned, construction and former lines. line-dasharray cannot vary by
+// feature, so each state has its own layers: long dashes with short gaps for
+// construction, round dots for proposals, short sparse faded dashes for
+// former lines. The patterns stay distinct when the speed view recolours the
+// lines by planned or former speed (inactivePaint in map-model.mjs).
+const INACTIVE_DASH = {construction:[4,1.2], proposed:[0.1,2], former:[1.6,2.4]};
+const stateFilter = state => state === 'former' ? ['!', ['match', ['get','state'], ['construction','proposed'], true, false]] : ['==', ['get','state'], state];
+const inactiveWidth = ['interpolate', ['linear'], ['zoom'], 0, 0.7, 5, 1.3, 7, 1.9, 12, 2.4, 16, 3.2, 20, 4.5];
+const inactiveLine = state => ({
+  'line-color': inactiveColours('speed'), 'line-width': inactiveWidth, 'line-dasharray': INACTIVE_DASH[state],
+  'line-opacity': ['case', ['==', ['get','tunnel'], true], 0.4, state === 'former' ? 0.75 : 0.95],
 });
+const inactiveLayout = state => ({'line-cap': state === 'proposed' ? 'round' : 'butt', 'line-join': 'round'});
 // The complete snapshot supplies every lifecycle at regional scales. The
 // ordinary detail tiles take over together at z12, avoiding duplicate lines.
 // Construction shows at every zoom, proposals from z5, former lines from z7.
-style.layers.push({
-  id:'inactive-regional', type:'line', source:'inactiveRegional', 'source-layer':'lifecycle', minzoom:0, maxzoom:12,
-  filter:['any', ['>=',['zoom'],7], ['==',['get','state'],'construction'], ['all', ['>=',['zoom'],5], ['==',['get','state'],'proposed']]],
-  paint:inactivePaint,
-});
+const regionalZoom = ['any', ['>=',['zoom'],7], ['==',['get','state'],'construction'], ['all', ['>=',['zoom'],5], ['==',['get','state'],'proposed']]];
+const inactiveBridge = {type:'line', layout:{'line-cap':'butt','line-join':'round'}};
+const inactiveBridgeEdge = {'line-color':'#5b5550','line-width':['interpolate',['linear'],['zoom'],7,3,12,4.6,16,6.5,20,8.5]};
+const inactiveBridgeDeck = {'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],7,1.8,12,3,16,4.6,20,6.2]};
+style.layers.push(
+  {...inactiveBridge, id:'inactive-regional-bridge-edge', source:'inactiveRegional', 'source-layer':'lifecycle', minzoom:7, maxzoom:12, filter:['==',['get','bridge'],true], paint:inactiveBridgeEdge},
+  {...inactiveBridge, id:'inactive-regional-bridge-deck', source:'inactiveRegional', 'source-layer':'lifecycle', minzoom:7, maxzoom:12, filter:['==',['get','bridge'],true], paint:inactiveBridgeDeck},
+  {...inactiveBridge, id:'inactive-bridge-edge', source:'railway', 'source-layer':'railway_line_high', minzoom:12, filter:['all', ['!', present], notFerry, ['==',['get','bridge'],true]], paint:inactiveBridgeEdge},
+  {...inactiveBridge, id:'inactive-bridge-deck', source:'railway', 'source-layer':'railway_line_high', minzoom:12, filter:['all', ['!', present], notFerry, ['==',['get','bridge'],true]], paint:inactiveBridgeDeck},
+);
+for (const state of ['former', 'proposed', 'construction']) style.layers.push(
+  {id:`inactive-regional-${state}`, type:'line', source:'inactiveRegional', 'source-layer':'lifecycle', minzoom:0, maxzoom:12,
+    filter:['all', regionalZoom, stateFilter(state)], layout:inactiveLayout(state), paint:inactiveLine(state)},
+  {id:`inactive-railways-${state}`, type:'line', source:'railway', 'source-layer':'railway_line_high', minzoom:12,
+    filter:['all', ['!', present], notFerry, stateFilter(state)], layout:inactiveLayout(state), paint:inactiveLine(state)},
+);
 for (const [id,source,sourceLayer,minzoom,maxzoom,filter] of [
   ['railway-names','railway','railway_line_high',9,undefined,['all',present,notFerry]],
   ['inactive-names','inactiveRegional','lifecycle',9,12,['literal',true]],
@@ -230,7 +250,7 @@ const stationNames = style.layers.filter(l => l.id.startsWith('station-') && l.t
 const railwayNames = style.layers.filter(l => l.type === 'symbol' && l.id.endsWith('-names') && !l.id.startsWith('station-'));
 style.layers = style.layers.filter(l => !stationNames.includes(l) && !railwayNames.includes(l)).concat(railwayNames, stationNames);
 for (const l of style.layers) {
-  if (/^(infrastructure|electrification)-/.test(l.id)) l.layout.visibility = 'none';
+  if (/^(infrastructure|electrification|control|gauge)-/.test(l.id)) l.layout.visibility = 'none';
 }
 await writeFile(new URL('../styles/world.style.json', import.meta.url), JSON.stringify(style, null, 2) + '\n');
 console.log(`Built world.style.json: ${style.layers.length} layers`);

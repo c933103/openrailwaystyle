@@ -36,6 +36,22 @@
       "promoteId": "id",
       "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
     },
+    "control": {
+      "type": "vector",
+      "url": "https://openrailwaymap.app/signals_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 6,
+      "promoteId": "id",
+      "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
+    },
+    "gaugeLow": {
+      "type": "vector",
+      "url": "https://openrailwaymap.app/track_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 6,
+      "promoteId": "id",
+      "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
+    },
     "railway": {
       "type": "vector",
       "url": "https://openrailwaymap.app/railway_line_high",
@@ -1762,8 +1778,7 @@
       "minzoom": 7,
       "layout": {
         "line-cap": "butt",
-        "line-join": "round",
-        "visibility": "none"
+        "line-join": "round"
       },
       "filter": [
         "all",
@@ -1796,7 +1811,7 @@
           true
         ]
       ],
-      "id": "infrastructure-bridge-edge",
+      "id": "structure-bridge-edge",
       "paint": {
         "line-color": "#263b48",
         "line-width": [
@@ -1825,8 +1840,7 @@
       "minzoom": 7,
       "layout": {
         "line-cap": "butt",
-        "line-join": "round",
-        "visibility": "none"
+        "line-join": "round"
       },
       "filter": [
         "all",
@@ -1859,7 +1873,7 @@
           true
         ]
       ],
-      "id": "infrastructure-bridge-deck",
+      "id": "structure-bridge-deck",
       "paint": {
         "line-color": "#fffef8",
         "line-width": [
@@ -2336,23 +2350,6 @@
           ],
           "#525b62",
           [
-            "<",
-            [
-              "to-number",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "voltage"
-                ],
-                -1
-              ],
-              -1
-            ],
-            0
-          ],
-          "#899197",
-          [
             "==",
             [
               "to-number",
@@ -2370,6 +2367,79 @@
           ],
           "#525b62",
           [
+            "==",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#899197",
+            [
+              "step",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              "#d364a1",
+              1000,
+              "#9d56b6",
+              2000,
+              "#5046c8"
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#899197",
+          [
             "step",
             [
               "to-number",
@@ -2377,21 +2447,19 @@
                 "coalesce",
                 [
                   "get",
-                  "voltage"
+                  "frequency"
                 ],
                 -1
               ],
               -1
             ],
-            "#d364a1",
-            1000,
-            "#9d56b6",
-            3000,
-            "#317cb9",
-            15000,
-            "#42864a",
-            25000,
-            "#c94831"
+            "#2e8b57",
+            20,
+            "#8a9a2a",
+            40,
+            "#c94831",
+            55,
+            "#e8912d"
           ]
         ],
         "line-width": [
@@ -2469,23 +2537,6 @@
           ],
           "#525b62",
           [
-            "<",
-            [
-              "to-number",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "voltage"
-                ],
-                -1
-              ],
-              -1
-            ],
-            0
-          ],
-          "#899197",
-          [
             "==",
             [
               "to-number",
@@ -2503,6 +2554,79 @@
           ],
           "#525b62",
           [
+            "==",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#899197",
+            [
+              "step",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "voltage"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              "#d364a1",
+              1000,
+              "#9d56b6",
+              2000,
+              "#5046c8"
+            ]
+          ],
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "frequency"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#899197",
+          [
             "step",
             [
               "to-number",
@@ -2510,21 +2634,19 @@
                 "coalesce",
                 [
                   "get",
-                  "voltage"
+                  "frequency"
                 ],
                 -1
               ],
               -1
             ],
-            "#d364a1",
-            1000,
-            "#9d56b6",
-            3000,
-            "#317cb9",
-            15000,
-            "#42864a",
-            25000,
-            "#c94831"
+            "#2e8b57",
+            20,
+            "#8a9a2a",
+            40,
+            "#c94831",
+            55,
+            "#e8912d"
           ]
         ],
         "line-width": [
@@ -2592,16 +2714,835 @@
       }
     },
     {
+      "id": "control-overview",
+      "type": "line",
+      "source": "control",
+      "source-layer": "signals_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 7,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "train_protection0"
+            ],
+            ""
+          ],
+          "etcs_2",
+          "#173f8a",
+          "etcs_1",
+          "#2f6fd0",
+          "etcs",
+          "#7fa7e0",
+          "ctcs_3",
+          "#0b5f6b",
+          "ctcs_2",
+          "#1a98a8",
+          "ctcs",
+          "#6cc3c9",
+          "ktcs",
+          "#3d6b8f",
+          "atacs",
+          "#4b3aa8",
+          "lzb",
+          "#c0392b",
+          "tvm",
+          "#8e2c6f",
+          "atc",
+          "#7a3fc0",
+          "eatc",
+          "#a05cd6",
+          "als",
+          "#6d2aa0",
+          "kcvb",
+          "#b04a86",
+          "kcvp",
+          "#d0667a",
+          "ls",
+          "#b3456e",
+          "sacem",
+          "#9b4f9b",
+          "ebicab",
+          "#c46bb0",
+          "zub",
+          "#8f5aa8",
+          "zsl90",
+          "#a3508c",
+          "cbtc",
+          "#e0529c",
+          "nexteo",
+          "#d93f8a",
+          "octys",
+          "#ef7ab6",
+          "ouragan",
+          "#c9307a",
+          "saet",
+          "#f09ac4",
+          "pzb",
+          "#e0a800",
+          "kvb",
+          "#7bb536",
+          "kvbp",
+          "#4f8a22",
+          "aws",
+          "#c9b200",
+          "tpws",
+          "#a89000",
+          "caws",
+          "#b8a23a",
+          "atb",
+          "#f08c1a",
+          "tbl",
+          "#d9731e",
+          "asfa",
+          "#e86a5a",
+          "scmt",
+          "#56a86a",
+          "ssc",
+          "#7cc08a",
+          "ats",
+          "#f26b2c",
+          "jkv",
+          "#69b3a0",
+          "shp",
+          "#9cbf2e",
+          "evm",
+          "#3fa35a",
+          "zbs",
+          "#5fb58f",
+          "zsi127",
+          "#8a7a2e",
+          "zst90",
+          "#b9c84a",
+          "satp",
+          "#4ca6b8",
+          "atp",
+          "#b8577a",
+          "ptc",
+          "#8b4513",
+          "etms",
+          "#a0622d",
+          "itcs",
+          "#c07a3a",
+          "acses",
+          "#6e3b1e",
+          "ases",
+          "#7d4a2a",
+          "atms",
+          "#9a6b4a",
+          "tmacs",
+          "#b08a5a",
+          "tcb",
+          "#8c8060",
+          "twc",
+          "#a39a80",
+          "none",
+          "#2b2f33",
+          "#899197"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          0.6,
+          4,
+          1.15,
+          7,
+          1.8,
+          11,
+          2.6,
+          16,
+          4.5,
+          20,
+          7
+        ]
+      }
+    },
+    {
+      "id": "control-tracks",
+      "type": "line",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 7,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "train_protection0"
+            ],
+            ""
+          ],
+          "etcs_2",
+          "#173f8a",
+          "etcs_1",
+          "#2f6fd0",
+          "etcs",
+          "#7fa7e0",
+          "ctcs_3",
+          "#0b5f6b",
+          "ctcs_2",
+          "#1a98a8",
+          "ctcs",
+          "#6cc3c9",
+          "ktcs",
+          "#3d6b8f",
+          "atacs",
+          "#4b3aa8",
+          "lzb",
+          "#c0392b",
+          "tvm",
+          "#8e2c6f",
+          "atc",
+          "#7a3fc0",
+          "eatc",
+          "#a05cd6",
+          "als",
+          "#6d2aa0",
+          "kcvb",
+          "#b04a86",
+          "kcvp",
+          "#d0667a",
+          "ls",
+          "#b3456e",
+          "sacem",
+          "#9b4f9b",
+          "ebicab",
+          "#c46bb0",
+          "zub",
+          "#8f5aa8",
+          "zsl90",
+          "#a3508c",
+          "cbtc",
+          "#e0529c",
+          "nexteo",
+          "#d93f8a",
+          "octys",
+          "#ef7ab6",
+          "ouragan",
+          "#c9307a",
+          "saet",
+          "#f09ac4",
+          "pzb",
+          "#e0a800",
+          "kvb",
+          "#7bb536",
+          "kvbp",
+          "#4f8a22",
+          "aws",
+          "#c9b200",
+          "tpws",
+          "#a89000",
+          "caws",
+          "#b8a23a",
+          "atb",
+          "#f08c1a",
+          "tbl",
+          "#d9731e",
+          "asfa",
+          "#e86a5a",
+          "scmt",
+          "#56a86a",
+          "ssc",
+          "#7cc08a",
+          "ats",
+          "#f26b2c",
+          "jkv",
+          "#69b3a0",
+          "shp",
+          "#9cbf2e",
+          "evm",
+          "#3fa35a",
+          "zbs",
+          "#5fb58f",
+          "zsi127",
+          "#8a7a2e",
+          "zst90",
+          "#b9c84a",
+          "satp",
+          "#4ca6b8",
+          "atp",
+          "#b8577a",
+          "ptc",
+          "#8b4513",
+          "etms",
+          "#a0622d",
+          "itcs",
+          "#c07a3a",
+          "acses",
+          "#6e3b1e",
+          "ases",
+          "#7d4a2a",
+          "atms",
+          "#9a6b4a",
+          "tmacs",
+          "#b08a5a",
+          "tcb",
+          "#8c8060",
+          "twc",
+          "#a39a80",
+          "none",
+          "#2b2f33",
+          "#899197"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1.6,
+          11,
+          [
+            "case",
+            [
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
+            ],
+            1.1,
+            2.8
+          ],
+          16,
+          [
+            "case",
+            [
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
+            ],
+            2,
+            4.8
+          ],
+          20,
+          7
+        ],
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "tunnel"
+            ],
+            true
+          ],
+          0.65,
+          1
+        ]
+      }
+    },
+    {
+      "id": "gauge-overview",
+      "type": "line",
+      "source": "gaugeLow",
+      "source-layer": "track_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 7,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "<=",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "gaugeint0"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#899197",
+          [
+            "step",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "gaugeint0"
+                ],
+                -1
+              ],
+              -1
+            ],
+            "#6b4f7a",
+            600,
+            "#9a6fb0",
+            750,
+            "#c38fd0",
+            800,
+            "#e377c2",
+            1000,
+            "#2ca02c",
+            1001,
+            "#98c46a",
+            1067,
+            "#17becf",
+            1068,
+            "#bcbd22",
+            1435,
+            "#1f5fbf",
+            1436,
+            "#7f9fd6",
+            1520,
+            "#d62728",
+            1525,
+            "#8c564b",
+            1668,
+            "#ff7f0e",
+            1669,
+            "#7a1f4a"
+          ]
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          0.6,
+          4,
+          1.15,
+          7,
+          1.8,
+          11,
+          2.6,
+          16,
+          4.5,
+          20,
+          7
+        ]
+      }
+    },
+    {
+      "id": "gauge-tracks",
+      "type": "line",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 7,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "<=",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "gaugeint0"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#899197",
+          [
+            "step",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "gaugeint0"
+                ],
+                -1
+              ],
+              -1
+            ],
+            "#6b4f7a",
+            600,
+            "#9a6fb0",
+            750,
+            "#c38fd0",
+            800,
+            "#e377c2",
+            1000,
+            "#2ca02c",
+            1001,
+            "#98c46a",
+            1067,
+            "#17becf",
+            1068,
+            "#bcbd22",
+            1435,
+            "#1f5fbf",
+            1436,
+            "#7f9fd6",
+            1520,
+            "#d62728",
+            1525,
+            "#8c564b",
+            1668,
+            "#ff7f0e",
+            1669,
+            "#7a1f4a"
+          ]
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1.6,
+          11,
+          [
+            "case",
+            [
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
+            ],
+            1.1,
+            2.8
+          ],
+          16,
+          [
+            "case",
+            [
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
+            ],
+            2,
+            4.8
+          ],
+          20,
+          7
+        ],
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "tunnel"
+            ],
+            true
+          ],
+          0.65,
+          1
+        ]
+      }
+    },
+    {
+      "id": "gauge-dual",
+      "type": "line",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 7,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ],
+        [
+          ">",
+          [
+            "to-number",
+            [
+              "coalesce",
+              [
+                "get",
+                "gaugeint1"
+              ],
+              0
+            ],
+            0
+          ],
+          0
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "<=",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "gaugeint1"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#899197",
+          [
+            "step",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "gaugeint1"
+                ],
+                -1
+              ],
+              -1
+            ],
+            "#6b4f7a",
+            600,
+            "#9a6fb0",
+            750,
+            "#c38fd0",
+            800,
+            "#e377c2",
+            1000,
+            "#2ca02c",
+            1001,
+            "#98c46a",
+            1067,
+            "#17becf",
+            1068,
+            "#bcbd22",
+            1435,
+            "#1f5fbf",
+            1436,
+            "#7f9fd6",
+            1520,
+            "#d62728",
+            1525,
+            "#8c564b",
+            1668,
+            "#ff7f0e",
+            1669,
+            "#7a1f4a"
+          ]
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1.6,
+          11,
+          2.8,
+          16,
+          4.8,
+          20,
+          7
+        ],
+        "line-dasharray": [
+          2,
+          2
+        ]
+      }
+    },
+    {
       "type": "line",
       "source": "railway",
       "source-layer": "railway_line_high",
       "minzoom": 7,
       "layout": {
         "line-cap": "butt",
-        "line-join": "round",
-        "visibility": "none"
+        "line-join": "round"
       },
-      "id": "infrastructure-tunnel",
+      "id": "structure-tunnel",
       "filter": [
         "all",
         [
@@ -2659,7 +3600,405 @@
       }
     },
     {
-      "id": "inactive-railways",
+      "type": "line",
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "id": "inactive-regional-bridge-edge",
+      "source": "inactiveRegional",
+      "source-layer": "lifecycle",
+      "minzoom": 7,
+      "maxzoom": 12,
+      "filter": [
+        "==",
+        [
+          "get",
+          "bridge"
+        ],
+        true
+      ],
+      "paint": {
+        "line-color": "#5b5550",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          3,
+          12,
+          4.6,
+          16,
+          6.5,
+          20,
+          8.5
+        ]
+      }
+    },
+    {
+      "type": "line",
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "id": "inactive-regional-bridge-deck",
+      "source": "inactiveRegional",
+      "source-layer": "lifecycle",
+      "minzoom": 7,
+      "maxzoom": 12,
+      "filter": [
+        "==",
+        [
+          "get",
+          "bridge"
+        ],
+        true
+      ],
+      "paint": {
+        "line-color": "#fffef8",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1.8,
+          12,
+          3,
+          16,
+          4.6,
+          20,
+          6.2
+        ]
+      }
+    },
+    {
+      "type": "line",
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "id": "inactive-bridge-edge",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "!",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "bridge"
+          ],
+          true
+        ]
+      ],
+      "paint": {
+        "line-color": "#5b5550",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          3,
+          12,
+          4.6,
+          16,
+          6.5,
+          20,
+          8.5
+        ]
+      }
+    },
+    {
+      "type": "line",
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "id": "inactive-bridge-deck",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "!",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "bridge"
+          ],
+          true
+        ]
+      ],
+      "paint": {
+        "line-color": "#fffef8",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1.8,
+          12,
+          3,
+          16,
+          4.6,
+          20,
+          6.2
+        ]
+      }
+    },
+    {
+      "id": "inactive-regional-former",
+      "type": "line",
+      "source": "inactiveRegional",
+      "source-layer": "lifecycle",
+      "minzoom": 0,
+      "maxzoom": 12,
+      "filter": [
+        "all",
+        [
+          "any",
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "==",
+            [
+              "get",
+              "state"
+            ],
+            "construction"
+          ],
+          [
+            "all",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              5
+            ],
+            [
+              "==",
+              [
+                "get",
+                "state"
+              ],
+              "proposed"
+            ]
+          ]
+        ],
+        [
+          "!",
+          [
+            "match",
+            [
+              "get",
+              "state"
+            ],
+            [
+              "construction",
+              "proposed"
+            ],
+            true,
+            false
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "maxspeed"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          [
+            "match",
+            [
+              "get",
+              "state"
+            ],
+            "construction",
+            "#ad7619",
+            "proposed",
+            "#896192",
+            "#75675c"
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "maxspeed"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#899197",
+            [
+              "step",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "maxspeed"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              "#536da8",
+              40,
+              "#218aab",
+              80,
+              "#278454",
+              120,
+              "#9a8500",
+              160,
+              "#d98213",
+              200,
+              "#d24c35",
+              250,
+              "#ad2463",
+              300,
+              "#742da0"
+            ]
+          ]
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          0.7,
+          5,
+          1.3,
+          7,
+          1.9,
+          12,
+          2.4,
+          16,
+          3.2,
+          20,
+          4.5
+        ],
+        "line-dasharray": [
+          1.6,
+          2.4
+        ],
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "tunnel"
+            ],
+            true
+          ],
+          0.4,
+          0.75
+        ]
+      }
+    },
+    {
+      "id": "inactive-railways-former",
       "type": "line",
       "source": "railway",
       "source-layer": "railway_line_high",
@@ -2688,20 +4027,109 @@
             "feature"
           ],
           "ferry"
+        ],
+        [
+          "!",
+          [
+            "match",
+            [
+              "get",
+              "state"
+            ],
+            [
+              "construction",
+              "proposed"
+            ],
+            true,
+            false
+          ]
         ]
       ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
       "paint": {
         "line-color": [
-          "match",
+          "case",
           [
-            "get",
-            "state"
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "maxspeed"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
           ],
-          "construction",
-          "#ad7619",
-          "proposed",
-          "#896192",
-          "#75675c"
+          [
+            "match",
+            [
+              "get",
+              "state"
+            ],
+            "construction",
+            "#ad7619",
+            "proposed",
+            "#896192",
+            "#75675c"
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "maxspeed"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#899197",
+            [
+              "step",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "maxspeed"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              "#536da8",
+              40,
+              "#218aab",
+              80,
+              "#278454",
+              120,
+              "#9a8500",
+              160,
+              "#d98213",
+              200,
+              "#d24c35",
+              250,
+              "#ad2463",
+              300,
+              "#742da0"
+            ]
+          ]
         ],
         "line-width": [
           "interpolate",
@@ -2712,40 +4140,427 @@
             "zoom"
           ],
           0,
-          0.6,
+          0.7,
           5,
-          1.2,
+          1.3,
           7,
-          1.7,
+          1.9,
           12,
-          2,
+          2.4,
           16,
-          2.8,
+          3.2,
           20,
-          4
+          4.5
         ],
         "line-dasharray": [
-          3,
-          2
+          1.6,
+          2.4
         ],
-        "line-opacity": 0.9
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "tunnel"
+            ],
+            true
+          ],
+          0.4,
+          0.75
+        ]
       }
     },
     {
-      "id": "inactive-regional",
+      "id": "inactive-regional-proposed",
       "type": "line",
       "source": "inactiveRegional",
       "source-layer": "lifecycle",
       "minzoom": 0,
       "maxzoom": 12,
       "filter": [
-        "any",
+        "all",
         [
-          ">=",
+          "any",
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "==",
+            [
+              "get",
+              "state"
+            ],
+            "construction"
+          ],
+          [
+            "all",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              5
+            ],
+            [
+              "==",
+              [
+                "get",
+                "state"
+              ],
+              "proposed"
+            ]
+          ]
+        ],
+        [
+          "==",
+          [
+            "get",
+            "state"
+          ],
+          "proposed"
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "maxspeed"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          [
+            "match",
+            [
+              "get",
+              "state"
+            ],
+            "construction",
+            "#ad7619",
+            "proposed",
+            "#896192",
+            "#75675c"
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "maxspeed"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#899197",
+            [
+              "step",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "maxspeed"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              "#536da8",
+              40,
+              "#218aab",
+              80,
+              "#278454",
+              120,
+              "#9a8500",
+              160,
+              "#d98213",
+              200,
+              "#d24c35",
+              250,
+              "#ad2463",
+              300,
+              "#742da0"
+            ]
+          ]
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
           [
             "zoom"
           ],
-          7
+          0,
+          0.7,
+          5,
+          1.3,
+          7,
+          1.9,
+          12,
+          2.4,
+          16,
+          3.2,
+          20,
+          4.5
+        ],
+        "line-dasharray": [
+          0.1,
+          2
+        ],
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "tunnel"
+            ],
+            true
+          ],
+          0.4,
+          0.95
+        ]
+      }
+    },
+    {
+      "id": "inactive-railways-proposed",
+      "type": "line",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "!",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "state"
+          ],
+          "proposed"
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "maxspeed"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          [
+            "match",
+            [
+              "get",
+              "state"
+            ],
+            "construction",
+            "#ad7619",
+            "proposed",
+            "#896192",
+            "#75675c"
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "maxspeed"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#899197",
+            [
+              "step",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "maxspeed"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              "#536da8",
+              40,
+              "#218aab",
+              80,
+              "#278454",
+              120,
+              "#9a8500",
+              160,
+              "#d98213",
+              200,
+              "#d24c35",
+              250,
+              "#ad2463",
+              300,
+              "#742da0"
+            ]
+          ]
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          0.7,
+          5,
+          1.3,
+          7,
+          1.9,
+          12,
+          2.4,
+          16,
+          3.2,
+          20,
+          4.5
+        ],
+        "line-dasharray": [
+          0.1,
+          2
+        ],
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "tunnel"
+            ],
+            true
+          ],
+          0.4,
+          0.95
+        ]
+      }
+    },
+    {
+      "id": "inactive-regional-construction",
+      "type": "line",
+      "source": "inactiveRegional",
+      "source-layer": "lifecycle",
+      "minzoom": 0,
+      "maxzoom": 12,
+      "filter": [
+        "all",
+        [
+          "any",
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "==",
+            [
+              "get",
+              "state"
+            ],
+            "construction"
+          ],
+          [
+            "all",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              5
+            ],
+            [
+              "==",
+              [
+                "get",
+                "state"
+              ],
+              "proposed"
+            ]
+          ]
         ],
         [
           "==",
@@ -2754,38 +4569,93 @@
             "state"
           ],
           "construction"
-        ],
-        [
-          "all",
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": [
+          "case",
           [
-            ">=",
+            "<",
             [
-              "zoom"
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "maxspeed"
+                ],
+                -1
+              ],
+              -1
             ],
-            5
+            0
           ],
           [
-            "==",
+            "match",
             [
               "get",
               "state"
             ],
-            "proposed"
-          ]
-        ]
-      ],
-      "paint": {
-        "line-color": [
-          "match",
-          [
-            "get",
-            "state"
+            "construction",
+            "#ad7619",
+            "proposed",
+            "#896192",
+            "#75675c"
           ],
-          "construction",
-          "#ad7619",
-          "proposed",
-          "#896192",
-          "#75675c"
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "maxspeed"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#899197",
+            [
+              "step",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "maxspeed"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              "#536da8",
+              40,
+              "#218aab",
+              80,
+              "#278454",
+              120,
+              "#9a8500",
+              160,
+              "#d98213",
+              200,
+              "#d24c35",
+              250,
+              "#ad2463",
+              300,
+              "#742da0"
+            ]
+          ]
         ],
         "line-width": [
           "interpolate",
@@ -2796,23 +4666,201 @@
             "zoom"
           ],
           0,
-          0.6,
+          0.7,
           5,
-          1.2,
+          1.3,
           7,
-          1.7,
+          1.9,
           12,
-          2,
+          2.4,
           16,
-          2.8,
+          3.2,
           20,
-          4
+          4.5
         ],
         "line-dasharray": [
-          3,
-          2
+          4,
+          1.2
         ],
-        "line-opacity": 0.9
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "tunnel"
+            ],
+            true
+          ],
+          0.4,
+          0.95
+        ]
+      }
+    },
+    {
+      "id": "inactive-railways-construction",
+      "type": "line",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "!",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "state"
+          ],
+          "construction"
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "maxspeed"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          [
+            "match",
+            [
+              "get",
+              "state"
+            ],
+            "construction",
+            "#ad7619",
+            "proposed",
+            "#896192",
+            "#75675c"
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "maxspeed"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#899197",
+            [
+              "step",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "maxspeed"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              "#536da8",
+              40,
+              "#218aab",
+              80,
+              "#278454",
+              120,
+              "#9a8500",
+              160,
+              "#d98213",
+              200,
+              "#d24c35",
+              250,
+              "#ad2463",
+              300,
+              "#742da0"
+            ]
+          ]
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          0.7,
+          5,
+          1.3,
+          7,
+          1.9,
+          12,
+          2.4,
+          16,
+          3.2,
+          20,
+          4.5
+        ],
+        "line-dasharray": [
+          4,
+          1.2
+        ],
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "tunnel"
+            ],
+            true
+          ],
+          0.4,
+          0.95
+        ]
       }
     },
     {

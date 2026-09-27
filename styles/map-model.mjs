@@ -22,7 +22,7 @@ export const ORM = 'https://openrailwaymap.app';
 // Public API explicitly supports cross-origin clients; the vector site's
 // same-origin /api/facility endpoint is not suitable for GitHub Pages.
 export const SEARCH_API = 'https://api.openrailwaymap.org/v2/facility';
-export const MODES = ['speed', 'infrastructure', 'electrification'];
+export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge'];
 export const LANGUAGES = [
   ['local','Local names'], ['en','English'], ['ko','한국어'], ['ja','日本語'],
   ['zh-Hant','繁體中文'], ['zh-Hans','简体中文'], ['de','Deutsch'], ['fr','Français'],
@@ -34,6 +34,74 @@ export const INFRASTRUCTURE = [
   ['#00865a', 'Branch line'], ['#8226b0', 'Metro / light rail'],
   ['#df7900', 'Tram'], ['#747d86', 'Service tracks'],
 ];
+// Electrification: current type, then frequency for AC or voltage for DC.
+// A frequency of 0 means DC in the provider's data.
+export const ELECTRIFICATION = [
+  ['#d364a1', 'DC < 1 kV'], ['#9d56b6', 'DC 1–< 2 kV'], ['#5046c8', 'DC ≥ 2 kV'],
+  ['#2e8b57', 'AC 16.7 Hz'], ['#8a9a2a', 'AC 25 Hz'], ['#c94831', 'AC 50 Hz'], ['#e8912d', 'AC 60 Hz'],
+  ['#525b62', 'Not electrified'],
+];
+export function electrificationPaint() {
+  const volts = ['to-number', ['coalesce', ['get', 'voltage'], -1], -1];
+  const hz = ['to-number', ['coalesce', ['get', 'frequency'], -1], -1];
+  const [dcLow, dcMid, dcHigh, ac16, ac25, ac50, ac60, none] = ELECTRIFICATION.map(([color]) => color);
+  return ['case',
+    ['match', ['get', 'electrification_state'], ['no', 'deelectrified'], true, false], none,
+    ['==', volts, 0], none,
+    ['==', hz, 0], ['case', ['<', volts, 0], UNKNOWN_COLOR, ['step', volts, dcLow, 1000, dcMid, 2000, dcHigh]],
+    ['<', hz, 0], UNKNOWN_COLOR,
+    ['step', hz, ac16, 20, ac25, 40, ac50, 55, ac60]];
+}
+export function describeCurrent(voltage, frequency) {
+  const v = typeof voltage === 'number' ? voltage >= 1000 ? `${Number((voltage/1000).toFixed(2))} kV` : `${voltage} V` : '';
+  if (typeof frequency !== 'number') return v ? `${v}, current type not recorded` : '';
+  return frequency === 0 ? `${v ? v + ' ' : ''}DC` : `${v ? v + ' ' : ''}AC ${Number(frequency.toFixed(2))} Hz`;
+}
+// Train protection and control, by OpenRailwayMap system code. Colours
+// follow families: ETCS blue, Chinese CTCS teal, continuous cab signalling
+// purple and red, intermittent (spot) systems yellow to green, North
+// American PTC brown, metro CBTC pink. Systems are mostly national, so the
+// legend lists those in view.
+export const TRAIN_PROTECTION = [
+  ['etcs_2', 'ETCS level 2', '#173f8a'], ['etcs_1', 'ETCS level 1', '#2f6fd0'], ['etcs', 'ETCS (level not recorded)', '#7fa7e0'],
+  ['ctcs_3', 'CTCS level 3', '#0b5f6b'], ['ctcs_2', 'CTCS level 2', '#1a98a8'], ['ctcs', 'CTCS level 0/1 (LKJ)', '#6cc3c9'],
+  ['ktcs', 'KTCS', '#3d6b8f'], ['atacs', 'ATACS', '#4b3aa8'],
+  ['lzb', 'LZB', '#c0392b'], ['tvm', 'TVM', '#8e2c6f'], ['atc', 'ATC', '#7a3fc0'], ['eatc', 'E-ATC', '#a05cd6'],
+  ['als', 'ALS (АЛС)', '#6d2aa0'], ['kcvb', 'KCVB', '#b04a86'], ['kcvp', 'KCVP', '#d0667a'], ['ls', 'LS', '#b3456e'],
+  ['sacem', 'SACEM', '#9b4f9b'], ['ebicab', 'EBICAB', '#c46bb0'], ['zub', 'ZUB', '#8f5aa8'], ['zsl90', 'ZSL 90', '#a3508c'],
+  ['cbtc', 'CBTC', '#e0529c'], ['nexteo', 'NExTEO', '#d93f8a'], ['octys', 'OCTYS', '#ef7ab6'], ['ouragan', 'OURAGAN', '#c9307a'], ['saet', 'SAET', '#f09ac4'],
+  ['pzb', 'PZB', '#e0a800'], ['kvb', 'KVB', '#7bb536'], ['kvbp', 'KVBP', '#4f8a22'], ['aws', 'AWS', '#c9b200'], ['tpws', 'TPWS', '#a89000'],
+  ['caws', 'CAWS', '#b8a23a'], ['atb', 'ATB', '#f08c1a'], ['tbl', 'TBL', '#d9731e'], ['asfa', 'ASFA', '#e86a5a'], ['scmt', 'SCMT', '#56a86a'],
+  ['ssc', 'SSC', '#7cc08a'], ['ats', 'ATS', '#f26b2c'], ['jkv', 'JKV', '#69b3a0'], ['shp', 'SHP', '#9cbf2e'], ['evm', 'EVM', '#3fa35a'],
+  ['zbs', 'ZBS', '#5fb58f'], ['zsi127', 'ZSI 127', '#8a7a2e'], ['zst90', 'ZST-90', '#b9c84a'], ['satp', 'SATP', '#4ca6b8'], ['atp', 'ATP', '#b8577a'],
+  ['ptc', 'PTC', '#8b4513'], ['etms', 'I-ETMS', '#a0622d'], ['itcs', 'ITCS', '#c07a3a'], ['acses', 'ACSES', '#6e3b1e'], ['ases', 'ASES', '#7d4a2a'],
+  ['atms', 'ATMS', '#9a6b4a'], ['tmacs', 'TMACS', '#b08a5a'], ['tcb', 'Track circuit block', '#8c8060'], ['twc', 'Track warrant control', '#a39a80'],
+  ['none', 'No train protection', '#2b2f33'],
+];
+export const trainProtectionName = code => TRAIN_PROTECTION.find(([c]) => c === code)?.[1] || code;
+export function controlPaint() {
+  return ['match', ['coalesce', ['get', 'train_protection0'], ''], ...TRAIN_PROTECTION.flatMap(([code, , color]) => [code, color]), UNKNOWN_COLOR];
+}
+// Track gauge in millimetres (provider's gaugeint0; later ones for dual gauge).
+export const GAUGES = [
+  [0, 600, '#6b4f7a', '< 600 mm'], [600, 750, '#9a6fb0', '600–749 mm'], [750, 800, '#c38fd0', '750–799 mm (e.g. 762)'],
+  [800, 1000, '#e377c2', '800–999 mm (3 ft: 914)'], [1000, 1001, '#2ca02c', '1000 mm (metre)'], [1001, 1067, '#98c46a', '1001–1066 mm'],
+  [1067, 1068, '#17becf', '1067 mm (3 ft 6 in)'], [1068, 1435, '#bcbd22', '1068–1434 mm (e.g. 1372)'], [1435, 1436, '#1f5fbf', '1435 mm standard'],
+  [1436, 1520, '#7f9fd6', '1436–1519 mm'], [1520, 1525, '#d62728', '1520 / 1524 mm'], [1525, 1668, '#8c564b', '1525–1667 mm (e.g. 1600)'],
+  [1668, 1669, '#ff7f0e', '1668 mm Iberian'], [1669, 9999, '#7a1f4a', '1676 mm and wider'],
+];
+export function gaugePaint(index = 0) {
+  const mm = ['to-number', ['coalesce', ['get', `gaugeint${index}`], -1], -1];
+  return ['case', ['<=', mm, 0], UNKNOWN_COLOR, ['step', mm, GAUGES[0][2], ...GAUGES.slice(1).flatMap(([min, , color]) => [min, color])]];
+}
+// Planned, construction and former lines: in the speed view coloured by the
+// recorded (planned or former) limit where one exists; otherwise by state.
+export const INACTIVE_STATES = [['construction', '#ad7619', 'Construction'], ['proposed', '#896192', 'Proposed'], ['former', '#75675c', 'Former lines']];
+export function inactivePaint(mode, units = 'metric') {
+  const byState = ['match', ['get', 'state'], 'construction', INACTIVE_STATES[0][1], 'proposed', INACTIVE_STATES[1][1], INACTIVE_STATES[2][1]];
+  if (mode !== 'speed') return byState;
+  return ['case', ['<', ['to-number', ['coalesce', ['get', 'maxspeed'], -1], -1], 0], byState, speedPaint(units)];
+}
 const han = value => /\p{Script=Han}/u.test(value || '');
 const cyrillic = value => /\p{Script=Cyrillic}/u.test(value || '');
 const nonempty = value => typeof value === 'string' && value.trim() !== '';

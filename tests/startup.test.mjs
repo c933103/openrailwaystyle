@@ -112,8 +112,11 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
     assert.equal(window.document.getElementById('region'),null);
     const former = window.document.getElementById('inactive');
     former.checked = false; former.dispatchEvent(new window.Event('change'));
-    assert.equal(maps[0].visibility['inactive-railways'],'none');
-    assert.equal(maps[0].visibility['inactive-regional'],'none');
+    for (const state of ['construction','proposed','former']) {
+      assert.equal(maps[0].visibility[`inactive-railways-${state}`],'none');
+      assert.equal(maps[0].visibility[`inactive-regional-${state}`],'none');
+    }
+    assert.equal(maps[0].visibility['inactive-bridge-edge'],'none');
   } finally {dom.window.close();}
 });
 test('controls work while the map is still loading, and settings take effect once it loads', async () => {
