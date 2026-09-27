@@ -1,5 +1,4 @@
-import {SEARCH_API} from './map-model.mjs?v=20260922-1';
-import {INACTIVE_API, GROUPS, inactiveQuery, toGeoJSON} from './inactive.mjs?v=20260922-1';
+import {SEARCH_API} from './map-model.mjs?v=20260922-3';
 const button = document.getElementById('check');
 button.addEventListener('click', async () => {
   button.disabled = true;
@@ -19,7 +18,7 @@ button.addEventListener('click', async () => {
   };
   try {
     const style = await (await get('./world.style.json')).json();
-    const vectorSources = Object.entries(style.sources).filter(([,s])=>s.type==='vector'&&!s.url.startsWith('pmtiles:'));
+    const vectorSources = Object.entries(style.sources).filter(([,s])=>s.type==='vector'&&s.url&&!s.url.startsWith('pmtiles:'));
     await Promise.all(vectorSources.map(([name,source]) => check(name, async () => {
       const json = await (await get(source.url)).json();
       if (!Array.isArray(json.tiles)||!json.tiles.length) throw new Error('TileJSON contains no tile URLs');
@@ -42,16 +41,14 @@ button.addEventListener('click', async () => {
       if(!b.byteLength) throw new Error('Empty glyph response');
       return 'OK · bold label glyphs available';
     });
-    for (const group of GROUPS) {
-      await check(`Regional ${group.label} railways (reported Japan–Korea view)`, async () => {
-        const response = await fetch(INACTIVE_API, {method:'POST',body:new URLSearchParams({data:inactiveQuery([33.06115,126.29708,35.38088,132.19293], group.states)}),signal:AbortSignal.timeout(65000)});
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = toGeoJSON(await response.json());
-        if (!data.features.length) throw new Error('No sample railway geometry');
-        return `OK · ${data.features.length} railway ways`;
-      });
-      await new Promise(resolve=>setTimeout(resolve,5000));
-    }
+    await check('Published worldwide lifecycle snapshot', async () => {
+      const manifest=await (await get('./data/manifest.json')).json();
+      if(manifest.coverage!=='world' || !manifest.regression?.ways) throw new Error('Incomplete snapshot');
+      const index=await (await get('./data/lifecycle/index.json')).json();
+      if(!index.tiles.includes('7/109/50')) throw new Error('Korean regression tile missing');
+      await get('./data/lifecycle/7/109/50.pbf.gz');
+      return `OK · ${manifest.features} ways · built ${manifest.built} · 남부내륙선 ${manifest.regression.ways} ways`;
+    });
     await check('Station search', async () => {
       const json = await (await get(`${SEARCH_API}?q=London&limit=1`)).json();
       if(!Array.isArray(json)||!json.length) throw new Error('No station result');

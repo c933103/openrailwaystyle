@@ -18,3 +18,12 @@ test('MapLibre evaluates unknown and mph-normalized speeds correctly', () => {
   assert.equal(evalColor({ maxspeed:160.9344 }), '#d98213');
   assert.equal(evalColor({ maxspeed:300 }), '#742da0');
 });
+
+test('network colours distinguish classes, including empty service fields', () => {
+  const expression=style.layers.find(l=>l.id==='infrastructure-tracks').paint['line-color'];
+  const compiled=createExpression(expression);assert.equal(compiled.result,'success');
+  const color=p=>compiled.value.evaluate({zoom:12},{type:2,properties:p});
+  const values=[{highspeed:true},{feature:'rail',service:null},{feature:'rail',usage:'branch',service:''},{feature:'subway'},{feature:'tram'},{service:'siding'}].map(color);
+  assert.equal(new Set(values).size,6);
+  assert.equal(color({feature:'rail'}),color({feature:'rail',service:''}));
+});

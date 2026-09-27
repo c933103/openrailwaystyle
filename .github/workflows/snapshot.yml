@@ -7,8 +7,19 @@ on:
       - scripts/lifecycle.mjs
       - scripts/pack-snapshot.py
   workflow_dispatch:
+    inputs:
+      refresh:
+        description: Re-download the oldest part of the world from Overpass
+        type: boolean
+        default: false
+  # Monthly: renew the oldest ~100 MB of Overpass responses, then redeploy.
+  # The Overpass API wiki asks regular applications to stay near 10 MB per
+  # day; this averages about 3 MB per day, renewing the world in roughly 6–10 months.
+  schedule:
+    - cron: '23 3 2 * *'
 permissions:
   contents: write
+  actions: write
 concurrency:
   group: lifecycle-snapshot
   cancel-in-progress: true
@@ -30,6 +41,24 @@ jobs:
           path: .snapshot-cache
           key: lifecycle-initial-20260922
           restore-keys: lifecycle-initial-20260922-
+      # The raw Overpass responses are also kept in a release, which unlike
+      # the Actions cache never expires and is reachable from any branch.
+      - name: Restore raw Overpass responses from the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ls .snapshot-cache/*.json >/dev/null 2>&1; then echo "Actions cache restored"; exit 0; fi
+          if gh release download overpass-cache --pattern 'overpass-cache.tar.zst' --dir /tmp; then
+            tar --zstd -xf /tmp/overpass-cache.tar.zst
+            echo "Restored $(ls .snapshot-cache | wc -l) cached files from the release"
+          else
+            echo "No stored Overpass responses; all regions will be queried"
+          fi
+      - name: Choose regions to refresh
+        if: github.event_name == 'schedule' || inputs.refresh
+        env:
+          REFRESH_BYTES: '100000000'
+        run: node scripts/refresh-snapshot-cache.mjs
       - name: Collect world region 1 of 20
         env:
           SNAPSHOT_REGION: '0'
@@ -119,18 +148,23 @@ jobs:
         with:
           path: .snapshot-cache
           key: lifecycle-initial-20260922-${{ github.run_id }}
+      - name: Store raw Overpass responses in the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tar --zstd --exclude='budget-*' -cf /tmp/overpass-cache.tar.zst .snapshot-cache
+          ls -l /tmp/overpass-cache.tar.zst
+          gh release view overpass-cache >/dev/null 2>&1 || gh release create overpass-cache --target "$GITHUB_SHA" --prerelease --title 'Raw Overpass responses for the lifecycle snapshot' --notes 'Cached Overpass API responses (© OpenStreetMap contributors, ODbL) used to rebuild the railway lifecycle snapshot without querying Overpass again. Replaced by each snapshot build.'
+          gh release upload overpass-cache /tmp/overpass-cache.tar.zst --clobber
       - run: python scripts/pack-snapshot.py
       - name: Publish validated snapshot branch
         run: |
           cp snapshot/manifest.json /tmp/rail-manifest.json
           cp snapshot/lifecycle.pmtiles /tmp/rail-lifecycle.pmtiles
           cp snapshot/lifecycle.geojson.gz /tmp/rail-lifecycle.geojson.gz
-          if git ls-remote --exit-code --heads origin rail-data; then
-            git fetch origin rail-data
-            git checkout -B rail-data FETCH_HEAD
-          else
-            git checkout --orphan rail-data
-          fi
+          # One commit replaces the previous snapshot, so the repository keeps
+          # only the current data instead of every past copy.
+          git checkout --orphan rail-data
           git rm -rf .
           git clean -fdx
           cp /tmp/rail-manifest.json manifest.json
@@ -142,4 +176,9 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add manifest.json lifecycle.pmtiles.part-* lifecycle.geojson.gz.part-*
           git commit -m "Publish complete worldwide railway lifecycle snapshot"
-          git push origin HEAD:refs/heads/rail-data
+          git push --force origin HEAD:refs/heads/rail-data
+      - name: Redeploy the site with the new snapshot
+        if: github.event_name == 'schedule' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/build/world-lifecycle'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site.yml --ref main

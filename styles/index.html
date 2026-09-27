@@ -9,10 +9,10 @@
   <title>Open Railway Atlas · Worldwide rail map</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20260922-1" rel="stylesheet">
+  <link href="app.css?v=20260927-5" rel="stylesheet">
 </head>
 <body>
-  <main id="map" aria-label="Interactive worldwide railway map"></main>
+  <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
   <aside class="panel" aria-label="Map controls">
     <header><span class="brand-mark" aria-hidden="true">Ⅱ</span><div><h1>Open Railway Atlas</h1><p>The world, by rail.</p></div><button id="collapse" aria-label="Collapse map controls" aria-expanded="true">−</button></header>
     <div id="controls">
@@ -25,36 +25,76 @@
       <div class="section-heading">MAP VIEW</div>
       <div class="mode-picker" role="group" aria-label="Railway colouring">
         <button data-mode="speed" aria-pressed="true">Max speed</button>
-        <button data-mode="infrastructure" aria-pressed="false">Network</button>
+        <button data-mode="infrastructure" aria-pressed="false">Infrastructure</button>
         <button data-mode="electrification" aria-pressed="false">Power</button>
+        <button data-mode="control" aria-pressed="false">Train control</button>
+        <button data-mode="gauge" aria-pressed="false">Gauge</button>
       </div>
       <div id="legend" aria-live="polite"></div>
       <details class="display-options"><summary>Display options</summary><div>
         <label><input type="checkbox" id="stations" checked> Station markers and names</label>
+        <label><input type="checkbox" id="names" checked> Railway names along tracks</label>
+        <label><input type="checkbox" id="relief" checked> Terrain, seabed and contours</label>
         <label><input type="checkbox" id="labels" checked> Speed labels along tracks</label>
         <label><input type="checkbox" id="inactive" checked> Planned, construction and former railways</label>
+        <div class="units-picker"><label for="units">Units</label><select id="units"><option value="metric">Metric (km/h, m)</option><option value="imperial">Imperial (mph, ft)</option></select></div>
       </div></details>
-      <label class="section-heading" for="region">EXPLORE</label>
-      <select id="region"><option value="">Choose a region</option><option value="world">Whole world</option><option value="europe">Europe</option><option value="asia">Asia</option><option value="northAmerica">North America</option><option value="southAmerica">South America</option><option value="africa">Africa</option><option value="oceania">Oceania</option></select>
+      <div class="section-heading">LABEL LANGUAGE</div>
+      <div class="language-picker"><label for="language">All labels</label><select id="language"></select></div>
       <p class="hint">Zoom in for stations and track detail.<br>Click a station or line to inspect it.</p>
       <div class="toolbar"><button id="share">Copy map link</button><button id="about-open">About & data</button></div>
       <p id="share-status" role="status" class="small" hidden></p>
     </div>
   </aside>
-  <div class="map-status"><span id="map-status" role="status">Loading the world’s railways…</span><button id="retry-inactive" hidden>Retry planned and former lines</button></div>
+  <div id="draw-toolbar" class="draw-toolbar" role="toolbar" aria-label="Drawing tools" hidden>
+    <div class="draw-group"><button data-draw="point" aria-pressed="false">Point</button><button data-draw="line" aria-pressed="false">Line</button><button data-draw="curve" aria-pressed="false">Curve</button><button data-draw="area" aria-pressed="false">Area</button><button data-draw="erase" aria-pressed="false">Erase</button></div>
+    <div class="draw-group"><button id="draw-pan" aria-pressed="false" title="Move the map without drawing; the tools and any unfinished shape stay">✋ Move map</button></div>
+    <div class="draw-group draw-style" role="group" aria-label="Drawing style">
+      <span class="swatches"><button class="swatch-button" data-color="#c2185b" aria-label="Magenta" aria-pressed="true"></button><button class="swatch-button" data-color="#1565c0" aria-label="Blue" aria-pressed="false"></button><button class="swatch-button" data-color="#2e7d32" aria-label="Green" aria-pressed="false"></button><button class="swatch-button" data-color="#ef6c00" aria-label="Orange" aria-pressed="false"></button><button class="swatch-button" data-color="#212121" aria-label="Black" aria-pressed="false"></button></span>
+      <label class="sr-only" for="draw-color">Custom colour</label><input type="color" id="draw-color" value="#c2185b" title="Custom colour">
+      <label class="sr-only" for="draw-dash">Line style</label><select id="draw-dash"><option value="solid">Solid</option><option value="dashed">Dashed</option><option value="dotted">Dotted</option></select>
+      <label class="sr-only" for="draw-width">Line width</label><select id="draw-width"><option value="2">Thin</option><option value="3" selected>Medium</option><option value="5">Thick</option></select>
+    </div>
+    <div class="draw-group"><button id="draw-undo">Undo</button><button id="draw-finish">Finish</button></div>
+    <div class="draw-group"><button id="draw-save">Save</button><button id="draw-open">Open</button><button id="draw-clear">Clear</button></div>
+    <input type="file" id="draw-file" accept=".geojson,.json,application/geo+json,application/json" hidden>
+    <button id="draw-close" class="draw-close" aria-label="Close drawing tools">×</button>
+    <p id="draw-status" class="draw-status" role="status"></p>
+  </div>
+  <div id="measure-toolbar" class="draw-toolbar" role="toolbar" aria-label="Measuring tools" hidden>
+    <div class="draw-group"><button data-measure="distance" aria-pressed="false">Distance</button><button data-measure="radius" aria-pressed="false">Curve radius</button></div>
+    <div class="draw-group"><button id="measure-undo">Undo</button><button id="measure-clear">Clear</button></div>
+    <button id="measure-close" class="draw-close" aria-label="Close measuring tools">×</button>
+    <p id="measure-status" class="draw-status" role="status"></p>
+  </div>
+  <div class="map-status"><span id="map-status" role="status">Loading the world’s railways…</span></div>
   <section class="detail-panel" id="details" aria-label="Railway details" hidden><button class="close" id="details-close" aria-label="Close railway details">×</button><div id="detail-content"></div></section>
   <dialog id="about"><button class="close" id="about-close" aria-label="Close about">×</button><h2>A world built around rail</h2>
     <p>A station-first adaptation of <a href="https://github.com/c933103/openrailwaystyle">Open Railway Styles</a>, started at Hack4Rail. The background keeps roads and settlements subdued so railway infrastructure stands out.</p>
     <h3>Reading the map</h3><p>Regional views show a spaced-out selection of major stations. Smaller stations appear as you zoom in; individual station markers appear at local scale. Major stations receive priority according to the provider’s mapped route importance, which is not a passenger-volume ranking. Coverage and station ranking depend on OpenStreetMap completeness.</p>
     <p>Speed colours use the provider’s numeric limit in km/h. Where directions differ, this is the preferred-direction limit, or the larger directional limit when no preferred direction is mapped. Track labels retain original units: bare numbers are km/h; mph is written explicitly. “A / B” means forward / backward; “A (B)” means preferred / opposite direction. A dash means missing data. These directions refer to the underlying OSM way.</p>
-    <p>Grey means no numeric speed is available. Dashed lines show proposed, construction or former infrastructure from regional zoom; they are not presented as operating lines. Recorded infrastructure limits are not train running speeds or a timetable.</p>
-    <h3>Sources</h3><p>Railway tiles: <a href="https://openrailwaymap.app/">OpenRailwayMap vector</a>. Station search: <a href="https://www.openrailwaymap.org/">OpenRailwayMap public API</a>. Regional former and planned lines: <a href="https://overpass-api.de/">Overpass API (FOSSGIS)</a>. Base map: <a href="https://tuiles.enliberte.fr/">En Liberté</a>. Map data: <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>. Renderer: <a href="https://maplibre.org/">MapLibre</a>.</p>
-    <p class="small">This public map uses community-hosted services. Data availability and updates follow those providers. No account or API key is required. Search terms are sent to OpenRailwayMap only when submitted. With former lines enabled, the visible region is sent to Overpass at regional zoom. Those lines may take a few seconds to load; availability depends on the provider.</p>
+    <p>Grey means no numeric speed is available. Railways under construction are drawn with long dashes, proposed ones with dots and former ones with short, faded dashes; they are not presented as operating lines. Construction shows at every zoom, proposals from zoom 5 and former lines from zoom 7. In the speed view they take the colour of their recorded (planned or former) limit where one is mapped. Bridges (dark edges) and tunnels (pale dashed core or faded line) are marked in every view from zoom 7. Recorded infrastructure limits are not train running speeds or a timetable.</p>
+    <p>The Power view separates DC by voltage and AC by frequency. The Train control view colours each line by its first recorded train protection or control system (for example ETCS, CTCS, LZB, PZB or PTC) and lists the systems in view. The Gauge view colours track gauge; dual gauge shows dashes in the second gauge’s colour. These views show only what is recorded in OpenStreetMap; many lines have no train protection tagged. When zoomed in, the Infrastructure view labels how many tracks run side by side. This is counted from the map itself, since OpenStreetMap maps each track separately: tracks running roughly parallel, each within 12 m of the next, count as one group (sidings and station tracks included; tracks in tunnels are counted apart from surface tracks). It reflects how completely the tracks are mapped, and parallel lines of different railways count together.</p>
+    <p>Station labels give priority to heavy rail, then metro, light rail, people movers and trams, then former stations. The ⊞ button shows more detail by drawing the next zoom level at half size. The ✎ button opens drawing tools (points, lines, smooth curves and areas, in a chosen colour and line style); drawings stay in this browser and can be saved or opened as GeoJSON files. The 📏 button measures distances along several segments, or the radius of a curve from three or more points clicked along it.</p>
+    <h3>Names and terrain</h3><p>One language setting applies to map, station and line labels. Only names recorded in the source data are shown; nothing is automatically translated or transliterated. When no name is recorded in the chosen language, a related recorded name is used where one exists, such as the other Chinese script or English, and otherwise the local name.</p>
+    <p>Station translations are requested for the current view. Snapshot railways retain multilingual OSM tags; the current operating-line tile provider usually supplies only native names. The shared setting cannot recover translations omitted from a source. Search results use the names returned by the search service.</p>
+    <p>Brown contours show land elevation; blue contours show negative elevation below sea level. Labels are signed metres. Land intervals become finer as you zoom: 200 m at zoom 7, 100 m at 9, 50 m at 11, 20 m at 13, and 10 m at 15. Seabed contours are 50 m at zooms 5–8 (down to 200 m), 20 m at 9–10 and 10 m from zoom 11. Heavier index contours are labelled. The elevation data holds seabed depths only up to zoom 10, so closer seabed contours follow that coarser data; land detail continues to zoom 15.</p>
+    <h3>Sources</h3><p>Railway tiles: <a href="https://openrailwaymap.app/">OpenRailwayMap vector</a>. Station search: <a href="https://www.openrailwaymap.org/">OpenRailwayMap public API</a>. Regional planned, construction and former lines: <a href="data/manifest.json">published OSM snapshot</a>, extracted with <a href="https://overpass-api.de/">Overpass (FOSSGIS)</a>; <a href="data/lifecycle.geojson.gz">download the ODbL database</a>. Relief: <a href="terrain-credits.html">Mapzen Terrain Tiles / AWS, including NOAA ETOPO1 seabed data</a>. Base map: <a href="https://tuiles.enliberte.fr/">En Liberté</a>. Map data: <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>. Name regions: <a href="https://www.naturalearthdata.com/">Natural Earth</a>, <a href="https://github.com/evansiroky/timezone-boundary-builder">timezone-boundary-builder</a> (OSM, ODbL) and OSM boundary relations and <a href="https://www.geoboundaries.org/">geoBoundaries</a> (Myanmar Analytics Project, CC BY 4.0; Royal Thai Survey Department / OCHA ROAP, CC BY 3.0 IGO). Renderer: <a href="https://maplibre.org/">MapLibre</a>.</p>
+    <p class="small">This public map uses community-hosted services. Data availability and updates follow those providers. No account or API key is required. Search terms are sent to OpenRailwayMap only when submitted. Panning loads planned and former railways from files published with this site; your viewport is not sent to Overpass. The snapshot date is recorded in its manifest. Detail tiles at zoom 12 and above follow OpenRailwayMap updates. Shading and contours are derived from elevation, including seabed where recorded; they are not a nautical chart.</p>
     <p><a href="https://github.com/c933103/openrailwaystyle">Source code & report a problem ↗</a></p>
   </dialog>
   <noscript><div class="no-script">Enable JavaScript to use the interactive railway map.</div></noscript>
-  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js"></script>
-  <script type="module" src="app.mjs?v=20260922-1"></script>
+  <script>
+    // Report app.mjs failing to download or start instead of leaving the
+    // loading message in place. app.mjs sets appStarted once it runs and then
+    // loads the map libraries itself.
+    addEventListener('error', event => {
+      if (document.body.dataset.appStarted || !(event instanceof ErrorEvent || event.target instanceof HTMLScriptElement)) return;
+      const status = document.getElementById('map-status');
+      status.classList.add('error');
+      status.textContent = 'The map could not load. Check your connection and reload the page.';
+    }, true);
+  </script>
+  <script type="module" src="app.mjs?v=20260927-5"></script>
 </body>
 </html>
