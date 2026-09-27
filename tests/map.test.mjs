@@ -157,41 +157,74 @@ test('planned and former lines take speed colours only in the speed view', async
   assert.notEqual(String(planned), String(colour('speed', {state:'construction'})));
   assert.equal(String(colour('infrastructure', {state:'construction', maxspeed:320})), String(colour('speed', {state:'construction'})));
 });
-test('power view separates AC by frequency and DC by voltage', async () => {
-  const {electrificationPaint, ELECTRIFICATION, describeCurrent} = await import('../styles/map-model.mjs');
+test('power view: hue by current type and frequency, shade by voltage', async () => {
+  const {electrificationPaint, CURRENT_SYSTEMS, currentStops, NOT_ELECTRIFIED, describeCurrent} = await import('../styles/map-model.mjs');
   const {expression} = await import('@maplibre/maplibre-gl-style-spec');
-  const e = expression.createExpression(electrificationPaint()).value;
-  const hex = c => typeof c === 'string' ? c : '#' + [c.r, c.g, c.b].map(v => Math.round(v*255).toString(16).padStart(2,'0')).join('');
-  const colour = properties => hex(e.evaluate({zoom:8}, {properties}));
-  const row = label => ELECTRIFICATION.find(([, l]) => l === label)[0];
-  assert.equal(colour({electrification_state:'present', voltage:25000, frequency:50}), row('AC 50 Hz'));
-  assert.equal(colour({electrification_state:'present', voltage:25000, frequency:60}), row('AC 60 Hz'));
-  assert.equal(colour({electrification_state:'present', voltage:15000, frequency:16.7}), row('AC 16.7 Hz'));
-  assert.equal(colour({electrification_state:'present', voltage:1500, frequency:0}), row('DC 1–< 2 kV'));
-  assert.equal(colour({electrification_state:'present', voltage:750, frequency:0}), row('DC < 1 kV'));
-  assert.equal(colour({electrification_state:'present', voltage:3000, frequency:0}), row('DC ≥ 2 kV'));
-  assert.equal(colour({electrification_state:'no'}), row('Not electrified'));
+  const e = expression.createExpression(electrificationPaint(), {type:'color'}).value;
+  const rgb = properties => { const c = e.evaluate({zoom:8}, {properties}); return typeof c === 'string' ? c : [c.r, c.g, c.b].map(v => Math.round(v*255)); };
+  const hex = c => '#' + c.map(v => v.toString(16).padStart(2,'0')).join('');
+  const stops = id => currentStops(CURRENT_SYSTEMS.find(s => s.id === id));
+  const ac = (v, hz) => hex(rgb({electrification_state:'present', voltage:v, frequency:hz}));
+  const dist = (a, b) => Math.hypot(...[1,3,5].map(i => parseInt(a.slice(i,i+2),16) - parseInt(b.slice(i,i+2),16)));
+  // Anchors: exact shades at the recorded voltages.
+  assert.equal(ac(25000, 50), stops('ac50').find(([v]) => v === 25000)[1]);
+  assert.equal(ac(15000, 16.7), stops('ac16').at(-1)[1]);
+  assert.equal(ac(1500, 0), stops('dc').find(([v]) => v === 1500)[1]);
+  // Same frequency, nearby voltage: close shades; different frequency: far apart.
+  assert.ok(dist(ac(20000, 50), ac(25000, 50)) < dist(ac(25000, 50), ac(25000, 60)));
+  assert.ok(dist(ac(25000, 50), ac(6250, 50)) > 40, 'voltage changes the shade');
+  assert.notEqual(ac(20000, 50), ac(25000, 50));
+  assert.equal(hex(rgb({electrification_state:'no'})), NOT_ELECTRIFIED);
   assert.equal(describeCurrent(25000, 50), '25 kV AC 50 Hz');
   assert.equal(describeCurrent(1500, 0), '1.5 kV DC');
   assert.equal(describeCurrent(750, 0), '750 V DC');
 });
-test('train control and gauge views have their own layers and colours', async () => {
-  const {controlPaint, gaugePaint, GAUGES, MODES} = await import('../styles/map-model.mjs');
+test('train control: hue by lineage, shade by level of advancement', async () => {
+  const {controlPaint, controlColor, TRAIN_PROTECTION, CONTROL_FAMILIES, trainProtection, MODES} = await import('../styles/map-model.mjs');
   const {expression} = await import('@maplibre/maplibre-gl-style-spec');
-  assert.ok(MODES.includes('control') && MODES.includes('gauge'));
-  for (const id of ['control-overview','control-tracks','gauge-overview','gauge-tracks','gauge-dual']) assert.ok(style.layers.find(l => l.id === id), id);
+  assert.ok(MODES.includes('control'));
+  for (const id of ['control-overview','control-tracks']) assert.ok(style.layers.find(l => l.id === id), id);
   assert.equal(style.sources.control.url, 'https://openrailwaymap.app/signals_railway_line_low');
-  assert.equal(style.sources.gaugeLow.url, 'https://openrailwaymap.app/track_railway_line_low');
+  for (const [code, , family, level] of TRAIN_PROTECTION) {
+    assert.ok(CONTROL_FAMILIES[family], `${code} has a family`);
+    assert.ok(level >= 0 && level <= 4, `${code} has a level`);
+  }
+  const hue = hex => { const [r,g,b] = [1,3,5].map(i => parseInt(hex.slice(i,i+2),16)/255), max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min;
+    const h = max === r ? ((g-b)/d) % 6 : max === g ? (b-r)/d + 2 : (r-g)/d + 4; return (h*60 + 360) % 360; };
+  const lightness = hex => { const [r,g,b] = [1,3,5].map(i => parseInt(hex.slice(i,i+2),16)); return (Math.max(r,g,b) + Math.min(r,g,b)) / 2; };
+  const color = code => { const [, , family, level] = trainProtection(code); return controlColor(family, level); };
+  // One lineage, one hue: ETCS level 1 and 2; China's CTCS close to ETCS.
+  assert.ok(Math.abs(hue(color('etcs_1')) - hue(color('etcs_2'))) < 3);
+  assert.ok(Math.abs(hue(color('ctcs_3')) - hue(color('etcs_2'))) < 35);
+  assert.ok(Math.abs(hue(color('pzb')) - hue(color('etcs_2'))) > 90);
+  // More advanced is darker, within and across lineages.
+  assert.ok(lightness(color('etcs_2')) < lightness(color('etcs_1')));
+  assert.ok(lightness(color('ctcs_3')) < lightness(color('ctcs_2')));
+  assert.ok(lightness(color('lzb')) < lightness(color('pzb')));
+  assert.ok(lightness(color('pzb')) < lightness(color('aws')));
+  assert.ok(lightness(color('cbtc')) < lightness(color('kvb')));
+  const paint = expression.createExpression(controlPaint(), {type:'color'}).value;
   const hex = c => typeof c === 'string' ? c : '#' + [c.r, c.g, c.b].map(v => Math.round(v*255).toString(16).padStart(2,'0')).join('');
-  const control = expression.createExpression(controlPaint()).value;
-  assert.equal(hex(control.evaluate({zoom:8}, {properties:{train_protection0:'etcs_2'}})), '#173f8a');
-  assert.equal(hex(control.evaluate({zoom:8}, {properties:{}})), UNKNOWN_COLOR);
-  const gauge = expression.createExpression(gaugePaint()).value;
-  const g = mm => hex(gauge.evaluate({zoom:8}, {properties:{gaugeint0:mm}}));
-  assert.equal(g(1435), GAUGES.find(r => r[3].startsWith('1435'))[2]);
-  assert.equal(g(1067), GAUGES.find(r => r[3].startsWith('1067'))[2]);
-  assert.equal(g(1520), g(1524));
-  assert.equal(g(-1), UNKNOWN_COLOR);
+  assert.equal(hex(paint.evaluate({zoom:8}, {properties:{train_protection0:'etcs_2'}})), color('etcs_2'));
+  assert.equal(hex(paint.evaluate({zoom:8}, {properties:{}})), UNKNOWN_COLOR);
+});
+test('gauge view: continuous scale, near-identical gauges share a colour', async () => {
+  const {gaugePaint, GAUGE_ANCHORS, MODES} = await import('../styles/map-model.mjs');
+  const {expression} = await import('@maplibre/maplibre-gl-style-spec');
+  assert.ok(MODES.includes('gauge'));
+  for (const id of ['gauge-overview','gauge-tracks','gauge-dual']) assert.ok(style.layers.find(l => l.id === id), id);
+  assert.equal(style.sources.gaugeLow.url, 'https://openrailwaymap.app/track_railway_line_low');
+  const e = expression.createExpression(gaugePaint(), {type:'color'}).value;
+  const rgb = mm => { const c = e.evaluate({zoom:8}, {properties:{gaugeint0:mm}}); return typeof c === 'string' ? c : [c.r, c.g, c.b].map(v => v*255); };
+  const dist = (a, b) => Math.hypot(...a.map((v, i) => v - b[i]));
+  assert.ok(dist(rgb(1432), rgb(1435)) < 8, '1432 and 1435 look alike');
+  assert.ok(dist(rgb(1520), rgb(1524)) < 8, '1520 and 1524 look alike');
+  assert.ok(dist(rgb(1435), rgb(1520)) > 100, 'standard and Russian gauge differ');
+  assert.ok(dist(rgb(1000), rgb(1067)) > 60, 'metre and Cape gauge differ');
+  const hex = c => '#' + c.map(v => Math.round(v).toString(16).padStart(2,'0')).join('');
+  assert.equal(hex(rgb(1435)), GAUGE_ANCHORS.find(([mm]) => mm === 1435)[1]);
+  assert.equal(hex(rgb(1432)), hex(rgb(1435)));
+  assert.equal(hex(rgb(-1)), UNKNOWN_COLOR, 'no gauge recorded');
 });
 test('bridges and tunnels show in every view, including planned and former lines', () => {
   for (const id of ['structure-bridge-edge','structure-bridge-deck','structure-tunnel','inactive-bridge-edge','inactive-regional-bridge-edge']) {

@@ -44,3 +44,7 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 .swatch.inactive-former{opacity:.8;background:repeating-linear-gradient(90deg,var(--swatch) 0 4px,transparent 4px 10px)}
 .swatch.dual{background:repeating-linear-gradient(90deg,var(--swatch) 0 5px,#d62728 5px 10px)}
 .draw-group button:disabled{opacity:.45;cursor:default}
+.swatch.family{height:8px;border-radius:2px}
+.gauge-scale{position:relative;height:10px;border-radius:3px;background:var(--scale);margin:18px 6px 20px}
+.gauge-scale span{position:absolute;top:13px;transform:translateX(-50%);font-size:9px;color:#5f6d66}
+.gauge-scale span.above{top:-14px}
