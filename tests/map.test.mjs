@@ -29,6 +29,11 @@ test('source mph and directional speed labels are preserved', () => {
 test('shared URLs keep display settings and reject invalid map modes', () => {
   assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',stations:false,labels:true,inactive:false,relief:true,names:true,units:'metric',detail:false,language:'local' });
   assert.equal(readSettings('?mode=invalid').mode, 'speed');
+  // A remembered language applies unless the URL names one.
+  assert.equal(readSettings('', {language:'ja'}).language, 'ja');
+  assert.equal(readSettings('?language=ko', {language:'ja'}).language, 'ko');
+  assert.equal(readSettings('', {language:'xx'}).language, 'local');
+  assert.deepEqual(readSettings('?relief=1', {relief:false, stations:false, mode:'bogus', units:'imperial'}), {mode:'speed',stations:false,labels:true,inactive:true,relief:true,names:true,units:'imperial',detail:false,language:'local'});
 });
 test('world map has no European rail source or geographic bounds', () => {
   assert.ok(!JSON.stringify(style).includes('europe-railway'));
@@ -41,9 +46,14 @@ test('regional stations have collision-aware markers and progressive size thresh
   const visible = (layer, zoom, properties) => zoom >= layer.minzoom && (layer.maxzoom === undefined || zoom < layer.maxzoom) && featureFilter(layer.filter).filter({zoom}, {type:1,properties});
   const layers = style.layers.filter(l => l.id.startsWith('station-'));
   const shown = (zoom, properties) => layers.some(layer => visible(layer, zoom, {state:'present',feature:'station', ...properties}));
-  assert.equal(shown(5.9, {station_size:'large'}),false);
-  assert.equal(shown(6, {station_size:'large'}),true);
-  assert.equal(shown(6.9, {station_size:'normal'}),false);
+  assert.equal(shown(3.9, {station_size:'large'}),false);
+  assert.equal(shown(4, {station_size:'large'}),true);
+  assert.equal(shown(5.9, {station_size:'normal'}),false);
+  assert.equal(shown(6, {station_size:'normal'}),true);
+  assert.equal(shown(6, {station_size:'small'}),true,'zoom-7 tiles supply small stations from zoom 6');
+  // MapLibre 5 rejects vector sources whose tileSize is not 512.
+  for (const [id, source] of Object.entries(style.sources)) if (source.type === 'vector') assert.equal(source.tileSize ?? 512, 512, id);
+  assert.match(style.sources.stationMed.url, /#minzoom=6&maxzoom=7&underzoom=7$/);
   assert.equal(shown(7, {station_size:'normal'}),true);
   assert.equal(shown(7, {station_size:'small'}),true);
   assert.equal(shown(9.9, {station_size:'small'}),true);
@@ -106,4 +116,15 @@ test('station labels rank heavy rail over metro, light rail, people movers and f
   assert.deepEqual(tier({state:'abandoned'}), []);
   const former = style.layers.find(l => l.id === 'station-former-names');
   assert.equal(featureFilter(former.filter).filter({zoom:14}, {type:1,properties:{state:'abandoned',feature:'station'}}), true);
+});
+test('seabed contours come from a finer source from zoom 9, without duplicates', async () => {
+  const {contourOptions} = await import('../styles/map-model.mjs');
+  const shows = (id, zoom, ele) => { const l = style.layers.find(x => x.id === id); return zoom >= l.minzoom && featureFilter(l.filter).filter({zoom}, {type:2, properties:{ele, level:1}}); };
+  assert.equal(shows('terrain-contours', 8, -100), true);
+  assert.equal(shows('terrain-contours', 9, -100), false);
+  assert.equal(shows('terrain-contours', 9, 100), true);
+  assert.equal(shows('terrain-seabed-contours', 9, -100), true);
+  assert.equal(shows('terrain-seabed-contours', 9, 100), false);
+  assert.deepEqual(contourOptions('metric', true).thresholds[11], [10, 50]);
+  assert.equal(contourOptions('imperial', true).multiplier, 3.28084);
 });

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
-import {lengthKm, areaKm2, formatLength, formatArea, readDrawing, Drawing} from '../styles/draw.mjs';
+import {lengthKm, areaKm2, formatLength, formatArea, formatRadius, readDrawing, Drawing, Measure, smoothCurve, fitCircle, circleArc, drawingStyle} from '../styles/draw.mjs';
 
 test('drawing measurements', () => {
   // One degree of latitude is about 111.2 km.
@@ -72,6 +72,62 @@ test('drawing layers are valid MapLibre style layers', () => {
   const sources = {}, layers = [];
   const map = {getSource: id => sources[id], addSource: (id, source) => { sources[id] = source; }, getLayer: () => undefined, addLayer: layer => layers.push(layer), getCanvas: () => ({style:{}})};
   new Drawing(map).install();
+  new Measure(map).install();
   const errors = validateStyleMin({version:8, glyphs:'https://example.org/{fontstack}/{range}.pbf', sources, layers});
   assert.deepEqual(errors.map(e => e.message), []);
+});
+// Points on a circle of the given radius (km) around a centre.
+const onCircle = (radiusKm, angles, [lng0, lat0] = [139.7, 35.7]) => angles.map(a => [lng0 + radiusKm*Math.cos(a*Math.PI/180)/(6371.0088*Math.cos(lat0*Math.PI/180))*180/Math.PI, lat0 + radiusKm*Math.sin(a*Math.PI/180)/6371.0088*180/Math.PI]);
+test('curve radius from points along a curve', () => {
+  const fit = fitCircle(onCircle(0.8, [10, 40, 70]));
+  assert.ok(Math.abs(fit.radiusKm - 0.8) < 0.002, `radius ${fit.radiusKm}`);
+  // Noisy points: the least-squares fit stays close.
+  const noisy = onCircle(1.2, [0, 15, 30, 45, 60]).map(([x, y], i) => [x + (i % 2 ? 1 : -1) * 0.00002, y]);
+  assert.ok(Math.abs(fitCircle(noisy).radiusKm - 1.2) < 0.03);
+  assert.equal(fitCircle([[0,0],[0.001,0.001],[0.002,0.002]]), null, 'points in a line have no radius');
+  assert.equal(fitCircle([[0,0],[1,1]]), null);
+  const points = onCircle(0.5, [0, 45, 90]);
+  const arc = circleArc(fitCircle(points), points);
+  assert.ok(lengthKm([arc[0], points[0]]) < 0.001 && lengthKm([arc.at(-1), points[2]]) < 0.001, 'the arc runs from the first to the last point');
+  assert.ok(Math.abs(lengthKm(arc) - 0.5*Math.PI/2) < 0.01, 'through the middle point: a quarter circle');
+  assert.equal(formatRadius(0.8), '800 m');
+  assert.equal(formatRadius(0.3048, 'imperial'), '1,000 ft');
+});
+test('smooth curves pass through the clicked points', () => {
+  const points = [[139.70,35.70],[139.71,35.705],[139.72,35.70],[139.73,35.71]];
+  const curve = smoothCurve(points);
+  for (const p of points) assert.ok(curve.some(q => Math.abs(q[0]-p[0]) < 1e-6 && Math.abs(q[1]-p[1]) < 1e-6));
+  assert.ok(curve.length > points.length * 5);
+  assert.deepEqual(smoothCurve(points.slice(0, 2)), points.slice(0, 2));
+});
+test('drawing style is kept on features and validated in files', () => {
+  assert.deepEqual(drawingStyle({color:'#1565C0', dash:'dotted', width:5}), {color:'#1565c0', dash:'dotted', width:5});
+  assert.deepEqual(drawingStyle({color:'red; x', dash:'wavy', width:99}), {});
+  const [f] = readDrawing({type:'Feature', properties:{color:'#212121', dash:'dashed', width:2, other:1}, geometry:{type:'LineString', coordinates:[[0,0],[1,1]]}});
+  assert.deepEqual(f.properties, {color:'#212121', dash:'dashed', width:2});
+});
+test('curve drawing and measuring', () => {
+  const sources = {};
+  globalThis.localStorage = {getItem: () => null, setItem() {}};
+  const map = {getSource: id => sources[id], addSource: id => { sources[id] = {setData(data) { this.data = data; }}; }, getLayer: () => undefined, addLayer() {}, getCanvas: () => ({style:{}}), doubleClickZoom: {enable() {}, disable() {}}, project: () => ({x:0, y:0})};
+  const d = new Drawing(map); d.install();
+  d.setStyle({color:'#1565c0', dash:'dashed', width:5});
+  d.setMode('curve');
+  for (const [lng, lat] of [[139.70,35.70],[139.71,35.705],[139.72,35.70]]) d.click({lng, lat}, {x:1000, y:1000});
+  d.finish();
+  assert.equal(d.features[0].geometry.type, 'LineString');
+  assert.ok(d.features[0].geometry.coordinates.length > 10, 'curves are stored as smooth lines');
+  assert.deepEqual(d.features[0].properties, {color:'#1565c0', dash:'dashed', width:5});
+  const statuses = [];
+  const m = new Measure(map, {status: s => statuses.push(s)}); m.install();
+  m.setMode('distance');
+  m.click({lng:0, lat:0}); m.click({lng:0, lat:1}); m.click({lng:0, lat:1}); m.end();
+  assert.match(statuses.at(-1), /111 km over 1 segment/);
+  m.click({lng:1, lat:1});
+  assert.equal(m.points.length, 1, 'after ending, a click starts a new measurement');
+  m.setMode('radius');
+  for (const [lng, lat] of onCircle(0.6, [0, 30, 60, 90])) m.click({lng, lat});
+  assert.match(statuses.at(-1), /Curve radius ≈ 600 m, fitted to 4 points/);
+  const labels = sources['atlas-measure'].data.features.map(f => f.properties.label).filter(Boolean);
+  assert.deepEqual(labels, ['R ≈ 600 m']);
 });

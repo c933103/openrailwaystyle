@@ -183,3 +183,37 @@ test('PMTiles wrapper localizes bytes and carries language through TileJSON temp
   const result=await protocols.atlasbase({url:'atlasbase://fr/https://example.org/world.pmtiles/7/1/1'},new AbortController());
   assert.equal(readTile(result.data).layers.stations.feature(0).properties.atlas_name,'Seoul');
 });
+test('station TileJSON can be capped by a URL fragment that is never requested',async()=>{
+  const protocols={},requests=[];
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},async url=>{requests.push(url);return {ok:true,json:async()=>({maxzoom:8,tiles:['https://example.org/med/{z}/{x}/{y}']})};});
+  const result=await protocols.atlasstation({url:'atlasstation://en/https://example.org/med#maxzoom=7',type:'json'},new AbortController());
+  assert.equal(result.data.maxzoom,7);
+  assert.deepEqual(requests,['https://example.org/med']);
+  assert.equal(result.data.tiles[0],'atlasstation://en/https://example.org/med/{z}/{x}/{y}');
+});
+test('tiles below the first zoom of the provider are made from their children',async()=>{
+  const protocols={},requests=[];
+  // Each zoom-7 child holds one station; the one at 7/2/2 also repeats a
+  // neighbour's station in its buffer.
+  const child=(id,x,y,extra=[])=>encode.fromGeojsonVt({stations:{features:[{id,type:1,geometry:[[x,y]],tags:{id,name:`S${id}`}},...extra]}},{version:2});
+  const tiles={'7/2/2':child(1,1000,1000,[{id:2,type:1,geometry:[[4100,1000]],tags:{id:2,name:'S2'}}]),'7/3/2':child(2,4,1000),'7/2/3':child(3,1000,3000),'7/3/3':child(4,3000,3000),'7/9/9':child(9,10,10)};
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},async url=>{
+    requests.push(url);
+    if(!/\/\d+\/\d+\/\d+/.test(new URL(url).pathname)) return {ok:true,json:async()=>({minzoom:7,maxzoom:8,tiles:['https://example.org/med/{z}/{x}/{y}']})};
+    const key=new URL(url).pathname.split('/').slice(-3).join('/');
+    return {ok:true,arrayBuffer:async()=>tiles[key]};
+  });
+  const json=await protocols.atlasstation({url:'atlasstation://local/https://example.org/med#minzoom=6&maxzoom=7&underzoom=7',type:'json'},new AbortController());
+  assert.deepEqual([json.data.minzoom,json.data.maxzoom],[6,7]);
+  const template=json.data.tiles[0];
+  assert.equal(template,'atlasstation://local/https://example.org/med/{z}/{x}/{y}#underzoom=7');
+  const result=await protocols.atlasstation({url:template.replace('{z}/{x}/{y}','6/1/1')},new AbortController());
+  const layer=readTile(result.data).layers.stations;
+  const stations=Array.from({length:layer.length},(_,i)=>layer.feature(i)).map(f=>[f.properties.name,f.loadGeometry()[0][0].x,f.loadGeometry()[0][0].y]).sort();
+  assert.deepEqual(stations,[['S1',500,500],['S2',2050,500],['S3',500,3548],['S4',3548,3548]]);
+  assert.equal(requests.filter(u=>/\/7\//.test(u)).length,4,'four children, no repeat');
+  // At the provider's own zoom the tile is fetched directly.
+  requests.length=0;
+  await protocols.atlasstation({url:template.replace('{z}/{x}/{y}','7/9/9')},new AbortController());
+  assert.deepEqual(requests,['https://example.org/med/7/9/9']);
+});

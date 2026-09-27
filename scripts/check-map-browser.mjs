@@ -50,8 +50,8 @@ async function finishFrame(){
 }
 // Rendered-feature queries only include placed symbols, so a single sample can
 // land between frames. Require the condition within 30 s instead.
-async function expectMap(condition,message){
-  try { await page.waitForFunction(condition,undefined,{timeout:30000}); }
+async function expectMap(condition,message,argument){
+  try { await page.waitForFunction(condition,argument,{timeout:30000}); }
   catch(error) { if(error.name==='TimeoutError') throw new assert.AssertionError({message}); throw error; }
 }
 async function moveTo(zoom,lng,lat){
@@ -83,7 +83,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') console.log('Browser resource:',msg.text());});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260926-9&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260926-11&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
@@ -241,6 +241,18 @@ try{
   await page.locator('button.atlas-ctrl[title^="More detail"]').click();
   assert.equal(await page.locator('#map.detail').count(),1);
   assert.ok(Math.abs(await zoomNow()-zoomBefore-1)<0.01,'More detail shows the next zoom level');
+  // The map must stay interactive in detail mode: drag, and the zoom button.
+  const beforeDrag=await centre();
+  await page.mouse.move(900,450); await page.mouse.down();
+  for(let i=1;i<=10;i++) await page.mouse.move(900-i*10,450);
+  await page.mouse.up(); await page.waitForTimeout(600);
+  assert.ok(Math.abs((await centre())[0]-beforeDrag[0])>0.0005,'A mouse drag must pan the map in detail mode');
+  const zoomed=await zoomNow();
+  // Zoom animations are time-based and slow in software rendering: wait for them.
+  await page.locator('.maplibregl-ctrl-zoom-in').click();
+  await expectMap(async z=>{const {map}=await import(document.querySelector('script[type="module"]').src);return !map.isMoving() && map.getZoom()>z+0.9;},'The zoom button must work in detail mode',zoomed);
+  await page.locator('.maplibregl-ctrl-zoom-out').click();
+  await expectMap(async z=>{const {map}=await import(document.querySelector('script[type="module"]').src);return !map.isMoving() && Math.abs(map.getZoom()-z)<0.1;},'The zoom-out button must work in detail mode',zoomed);
   const detailShot=await page.screenshot({path:'browser-review/more-detail.jpg',type:'jpeg',quality:55});
   console.log('DETAILVIEW_IMAGE_START'+detailShot.toString('base64')+'DETAILVIEW_IMAGE_END');
   await page.locator('button.atlas-ctrl[title^="More detail"]').click();
@@ -264,6 +276,16 @@ try{
   assert.equal(saved.features[0].geometry.coordinates.length,3);
   await page.locator('#draw-close').click();
   console.log('PASS: drawing tool draws a line and saves it as GeoJSON');
+  await page.locator('button.atlas-ctrl[title="Measure"]').click();
+  await page.locator('[data-measure="distance"]').click();
+  for (const [x,y] of [[700,500],[850,500],[850,600]]) await page.mouse.click(x,y);
+  await page.mouse.dblclick(850,600);
+  assert.match(await page.locator('#measure-status').textContent(),/Distance: .* over 2 segments/);
+  await page.locator('[data-measure="radius"]').click();
+  for (const [x,y] of [[700,600],[760,500],[860,470],[960,500]]) await page.mouse.click(x,y);
+  assert.match(await page.locator('#measure-status').textContent(),/Curve radius ≈ [\d,.]+ (m|km)/);
+  await page.locator('#measure-close').click();
+  console.log('PASS: measure tool gives distance and curve radius');
   assert.deepEqual(errors,[]);
   console.log('PASS: one shared language, name fallbacks, contours, structures and lifecycle controls; no JavaScript exceptions');
 } catch(error) {
