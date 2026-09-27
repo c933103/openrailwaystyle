@@ -34,65 +34,128 @@ export const INFRASTRUCTURE = [
   ['#00865a', 'Branch line'], ['#8226b0', 'Metro / light rail'],
   ['#df7900', 'Tram'], ['#747d86', 'Service tracks'],
 ];
-// Electrification: current type, then frequency for AC or voltage for DC.
-// A frequency of 0 means DC in the provider's data.
-export const ELECTRIFICATION = [
-  ['#d364a1', 'DC < 1 kV'], ['#9d56b6', 'DC 1–< 2 kV'], ['#5046c8', 'DC ≥ 2 kV'],
-  ['#2e8b57', 'AC 16.7 Hz'], ['#8a9a2a', 'AC 25 Hz'], ['#c94831', 'AC 50 Hz'], ['#e8912d', 'AC 60 Hz'],
-  ['#525b62', 'Not electrified'],
+// Colours from hue, saturation and lightness (percent).
+export function hsl(h, s, l) {
+  s /= 100; l /= 100;
+  const f = n => { const k = (n + h / 30) % 12; return l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+  return '#' + [f(0), f(8), f(4)].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('');
+}
+// Electrification. A train needs both the voltage and the frequency, so each
+// system is a hue (DC, or AC by frequency) and the voltage its shade: darker
+// is higher voltage, varying smoothly (e.g. 20 and 25 kV at 50 Hz are close
+// shades of one hue). Frequency 0 means DC in the provider's data.
+export const CURRENT_SYSTEMS = [
+  {id:'dc', label:'DC', hue:275, sat:55, volts:[[600, 70], [1500, 50], [3000, 32]]},
+  {id:'ac16', label:'AC 16.7 Hz', hue:145, sat:55, volts:[[11000, 55], [15000, 34]]},
+  {id:'ac25', label:'AC 25 Hz', hue:75, sat:65, volts:[[6600, 58], [12500, 34]]},
+  {id:'ac50', label:'AC 50 Hz', hue:8, sat:68, volts:[[6250, 70], [15000, 52], [25000, 38], [50000, 25]]},
+  {id:'ac60', label:'AC 60 Hz', hue:32, sat:85, volts:[[12500, 62], [20000, 48], [25000, 40], [50000, 28]]},
 ];
+export const NOT_ELECTRIFIED = '#525b62';
+const kv = v => v >= 1000 ? `${Number((v / 1000).toFixed(2))} kV` : `${v} V`;
+export const currentRange = system => `${kv(system.volts[0][0])} – ${kv(system.volts.at(-1)[0])}`;
+export const currentStops = system => system.volts.map(([v, l]) => [v, hsl(system.hue, system.sat, l)]);
 export function electrificationPaint() {
   const volts = ['to-number', ['coalesce', ['get', 'voltage'], -1], -1];
   const hz = ['to-number', ['coalesce', ['get', 'frequency'], -1], -1];
-  const [dcLow, dcMid, dcHigh, ac16, ac25, ac50, ac60, none] = ELECTRIFICATION.map(([color]) => color);
+  const shade = system => {
+    const stops = currentStops(system);
+    // Unknown voltage: the system's middle shade.
+    return ['case', ['<', volts, 0], stops[Math.floor(stops.length / 2)][1], ['interpolate', ['linear'], volts, ...stops.flat()]];
+  };
+  const [dc, ac16, ac25, ac50, ac60] = CURRENT_SYSTEMS;
   return ['case',
-    ['match', ['get', 'electrification_state'], ['no', 'deelectrified'], true, false], none,
-    ['==', volts, 0], none,
-    ['==', hz, 0], ['case', ['<', volts, 0], UNKNOWN_COLOR, ['step', volts, dcLow, 1000, dcMid, 2000, dcHigh]],
+    ['match', ['get', 'electrification_state'], ['no', 'deelectrified'], true, false], NOT_ELECTRIFIED,
+    ['==', volts, 0], NOT_ELECTRIFIED,
+    ['==', hz, 0], ['case', ['<', volts, 0], UNKNOWN_COLOR, shade(dc)],
     ['<', hz, 0], UNKNOWN_COLOR,
-    ['step', hz, ac16, 20, ac25, 40, ac50, 55, ac60]];
+    ['<', hz, 20], shade(ac16), ['<', hz, 40], shade(ac25), ['<', hz, 55], shade(ac50), shade(ac60)];
 }
 export function describeCurrent(voltage, frequency) {
-  const v = typeof voltage === 'number' ? voltage >= 1000 ? `${Number((voltage/1000).toFixed(2))} kV` : `${voltage} V` : '';
+  const v = typeof voltage === 'number' ? kv(voltage) : '';
   if (typeof frequency !== 'number') return v ? `${v}, current type not recorded` : '';
   return frequency === 0 ? `${v ? v + ' ' : ''}DC` : `${v ? v + ' ' : ''}AC ${Number(frequency.toFixed(2))} Hz`;
 }
-// Train protection and control, by OpenRailwayMap system code. Colours
-// follow families: ETCS blue, Chinese CTCS teal, continuous cab signalling
-// purple and red, intermittent (spot) systems yellow to green, North
-// American PTC brown, metro CBTC pink. Systems are mostly national, so the
-// legend lists those in view.
+// Train protection and control. Hue follows lineage (systems derived from or
+// compatible with one another share a hue); shade follows how advanced the
+// system is, darker being more advanced:
+//   1 warning or train stop only, no speed supervision
+//   2 spot transmission (balises, magnets, loops at points) with supervision
+//   3 continuous transmission to the cab (coded track circuits, cable loops)
+//   4 radio-based movement authority (incl. moving block)
+// Codes are OpenRailwayMap's. Some codes are used for different systems in
+// different countries (atc, ats, atp, ptc); they sit in the "various" family.
+export const CONTROL_LEVELS = ['No automatic protection', 'Warning or train stop only', 'Spot transmission with speed supervision', 'Continuous transmission to the cab', 'Radio-based movement authority'];
+export const CONTROL_FAMILIES = {
+  etcs: {label:'ETCS', hue:215, sat:75, note:'European standard. ETCS on-board units handle every level.'},
+  ctcs: {label:'CTCS (China, derived from ETCS)', hue:188, sat:80, note:'CTCS-2 adds balises to track circuits, compatible with ETCS level 1; CTCS-3 is functionally equivalent to ETCS level 2 (GSM-R). CTCS-3 trains can also run on CTCS-2 lines, though that compatibility has been reported as imperfect.'},
+  ktcs: {label:'KTCS (Korea, ETCS-based)', hue:238, sat:55, note:'Korean standard meeting ETCS level 1 and 2 standards.'},
+  etcsParts: {label:'National systems on ETCS hardware', hue:200, sat:35, note:'Built from ETCS components (Eurobalises) but not compatible with ETCS.'},
+  german: {label:'German and Swiss systems', hue:12, sat:75, note:'LZB lines in Germany also have PZB.'},
+  french: {label:'French and Paris (RATP) systems', hue:140, sat:60, note:'KVB on conventional lines; TVM cab signalling on high-speed lines (also on Korean KTX lines).'},
+  british: {label:'British and Irish systems', hue:46, sat:85, note:'TPWS adds train stops and overspeed checks to AWS.'},
+  ebicab: {label:'EBICAB (Sweden, Norway, Portugal, Finland…)', hue:295, sat:50, note:'EBICAB 700 is used in Sweden and Norway (as ATC) and Portugal (as CONVEL); EBICAB 900 in Finland (JKV) and Spain.'},
+  japan: {label:'Japanese systems', hue:335, sat:65, note:'ATACS is radio-based moving block.'},
+  soviet: {label:'Post-Soviet systems', hue:355, sat:45, note:'ALS continuous cab signalling over coded track circuits.'},
+  american: {label:'North American PTC', hue:25, sat:55, note:'PTC is the US umbrella requirement; I-ETMS, ACSES, ITCS and E-ATC are systems meeting it.'},
+  metro: {label:'CBTC (metro)', hue:318, sat:80, note:'Vendor-specific; trains generally work only with their own line’s system.'},
+  national: {label:'Other national systems', hue:58, sat:30, note:'Unrelated national systems; shade still shows how advanced each is.'},
+  various: {label:'Codes used for different systems by country', hue:250, sat:12, note:'OpenRailwayMap uses this code for different systems in different countries.'},
+};
 export const TRAIN_PROTECTION = [
-  ['etcs_2', 'ETCS level 2', '#173f8a'], ['etcs_1', 'ETCS level 1', '#2f6fd0'], ['etcs', 'ETCS (level not recorded)', '#7fa7e0'],
-  ['ctcs_3', 'CTCS level 3', '#0b5f6b'], ['ctcs_2', 'CTCS level 2', '#1a98a8'], ['ctcs', 'CTCS level 0/1 (LKJ)', '#6cc3c9'],
-  ['ktcs', 'KTCS', '#3d6b8f'], ['atacs', 'ATACS', '#4b3aa8'],
-  ['lzb', 'LZB', '#c0392b'], ['tvm', 'TVM', '#8e2c6f'], ['atc', 'ATC', '#7a3fc0'], ['eatc', 'E-ATC', '#a05cd6'],
-  ['als', 'ALS (АЛС)', '#6d2aa0'], ['kcvb', 'KCVB', '#b04a86'], ['kcvp', 'KCVP', '#d0667a'], ['ls', 'LS', '#b3456e'],
-  ['sacem', 'SACEM', '#9b4f9b'], ['ebicab', 'EBICAB', '#c46bb0'], ['zub', 'ZUB', '#8f5aa8'], ['zsl90', 'ZSL 90', '#a3508c'],
-  ['cbtc', 'CBTC', '#e0529c'], ['nexteo', 'NExTEO', '#d93f8a'], ['octys', 'OCTYS', '#ef7ab6'], ['ouragan', 'OURAGAN', '#c9307a'], ['saet', 'SAET', '#f09ac4'],
-  ['pzb', 'PZB', '#e0a800'], ['kvb', 'KVB', '#7bb536'], ['kvbp', 'KVBP', '#4f8a22'], ['aws', 'AWS', '#c9b200'], ['tpws', 'TPWS', '#a89000'],
-  ['caws', 'CAWS', '#b8a23a'], ['atb', 'ATB', '#f08c1a'], ['tbl', 'TBL', '#d9731e'], ['asfa', 'ASFA', '#e86a5a'], ['scmt', 'SCMT', '#56a86a'],
-  ['ssc', 'SSC', '#7cc08a'], ['ats', 'ATS', '#f26b2c'], ['jkv', 'JKV', '#69b3a0'], ['shp', 'SHP', '#9cbf2e'], ['evm', 'EVM', '#3fa35a'],
-  ['zbs', 'ZBS', '#5fb58f'], ['zsi127', 'ZSI 127', '#8a7a2e'], ['zst90', 'ZST-90', '#b9c84a'], ['satp', 'SATP', '#4ca6b8'], ['atp', 'ATP', '#b8577a'],
-  ['ptc', 'PTC', '#8b4513'], ['etms', 'I-ETMS', '#a0622d'], ['itcs', 'ITCS', '#c07a3a'], ['acses', 'ACSES', '#6e3b1e'], ['ases', 'ASES', '#7d4a2a'],
-  ['atms', 'ATMS', '#9a6b4a'], ['tmacs', 'TMACS', '#b08a5a'], ['tcb', 'Track circuit block', '#8c8060'], ['twc', 'Track warrant control', '#a39a80'],
-  ['none', 'No train protection', '#2b2f33'],
+  ['etcs_2', 'ETCS level 2', 'etcs', 4], ['etcs_1', 'ETCS level 1', 'etcs', 2], ['etcs', 'ETCS (level not recorded)', 'etcs', 2],
+  ['ctcs_3', 'CTCS-3', 'ctcs', 4], ['ctcs_2', 'CTCS-2', 'ctcs', 3], ['ctcs', 'CTCS-0/1 (LKJ)', 'ctcs', 2],
+  ['ktcs', 'KTCS', 'ktcs', 4],
+  ['zbs', 'ZBS (Berlin S-Bahn)', 'etcsParts', 2], ['zsi127', 'ZSI 127 (Swiss metre gauge)', 'etcsParts', 2],
+  ['lzb', 'LZB', 'german', 3], ['pzb', 'PZB (Indusi)', 'german', 2], ['zub', 'ZUB (Switzerland, Denmark)', 'german', 2],
+  ['zsl90', 'ZSL 90', 'german', 3], ['zst90', 'ZST-90 (Zugstop)', 'german', 1],
+  ['tvm', 'TVM', 'french', 3], ['kvb', 'KVB', 'french', 2], ['kvbp', 'KVBP', 'french', 2], ['kcvb', 'KCVB', 'french', 3],
+  ['kcvp', 'KCVP', 'french', 3], ['sacem', 'SACEM', 'french', 3], ['ouragan', 'OURAGAN', 'french', 3], ['octys', 'OCTYS', 'french', 3],
+  ['saet', 'SAET (automated lines)', 'french', 4], ['nexteo', 'NExTEO', 'french', 4],
+  ['tpws', 'TPWS', 'british', 2], ['aws', 'AWS', 'british', 1], ['caws', 'CAWS (Ireland)', 'british', 1],
+  ['ebicab', 'EBICAB / CONVEL', 'ebicab', 2], ['jkv', 'JKV (EBICAB 900)', 'ebicab', 2],
+  ['atacs', 'ATACS', 'japan', 4],
+  ['als', 'ALS (АЛС)', 'soviet', 3], ['satp', 'SATP', 'soviet', 2],
+  ['etms', 'I-ETMS', 'american', 4], ['itcs', 'ITCS', 'american', 4], ['eatc', 'E-ATC', 'american', 4],
+  ['acses', 'ACSES', 'american', 3], ['ases', 'ASES', 'american', 3],
+  ['cbtc', 'CBTC', 'metro', 4],
+  ['atb', 'ATB (Netherlands)', 'national', 3], ['tbl', 'TBL (Belgium)', 'national', 2], ['asfa', 'ASFA (Spain)', 'national', 2],
+  ['scmt', 'SCMT (Italy)', 'national', 2], ['ssc', 'SSC (Italy)', 'national', 2], ['ls', 'LS (Czechia, Slovakia)', 'national', 3],
+  ['evm', 'EVM (Hungary)', 'national', 3], ['shp', 'SHP (Poland)', 'national', 1],
+  ['atms', 'ATMS (Australia)', 'national', 4], ['tmacs', 'TMACS (Australia)', 'national', 4],
+  ['atc', 'ATC (Japanese ATC; EBICAB-based ATC in Scandinavia; others)', 'various', 3],
+  ['ats', 'ATS / train stops (Japan, Australia, others)', 'various', 1],
+  ['atp', 'ATP (generic)', 'various', 2], ['ptc', 'PTC (generic)', 'various', 4],
+  ['tcb', 'Track circuit block, no train protection', 'national', 0], ['twc', 'Track warrant control, no train protection', 'national', 0],
+  ['none', 'No train protection', 'national', 0],
 ];
-export const trainProtectionName = code => TRAIN_PROTECTION.find(([c]) => c === code)?.[1] || code;
+export const NO_PROTECTION = '#dcd0c2';
+const LEVEL_LIGHTNESS = [null, 68, 54, 41, 28];
+export const controlColor = (family, level) => level === 0 ? NO_PROTECTION : hsl(CONTROL_FAMILIES[family].hue, CONTROL_FAMILIES[family].sat, LEVEL_LIGHTNESS[level]);
+export const familyShades = family => [1, 2, 3, 4].map(level => controlColor(family, level));
+export const trainProtection = code => TRAIN_PROTECTION.find(([c]) => c === code);
+export const trainProtectionName = code => trainProtection(code)?.[1] || code;
 export function controlPaint() {
-  return ['match', ['coalesce', ['get', 'train_protection0'], ''], ...TRAIN_PROTECTION.flatMap(([code, , color]) => [code, color]), UNKNOWN_COLOR];
+  return ['match', ['coalesce', ['get', 'train_protection0'], ''], ...TRAIN_PROTECTION.flatMap(([code, , family, level]) => [code, controlColor(family, level)]), UNKNOWN_COLOR];
 }
-// Track gauge in millimetres (provider's gaugeint0; later ones for dual gauge).
-export const GAUGES = [
-  [0, 600, '#6b4f7a', '< 600 mm'], [600, 750, '#9a6fb0', '600–749 mm'], [750, 800, '#c38fd0', '750–799 mm (e.g. 762)'],
-  [800, 1000, '#e377c2', '800–999 mm (3 ft: 914)'], [1000, 1001, '#2ca02c', '1000 mm (metre)'], [1001, 1067, '#98c46a', '1001–1066 mm'],
-  [1067, 1068, '#17becf', '1067 mm (3 ft 6 in)'], [1068, 1435, '#bcbd22', '1068–1434 mm (e.g. 1372)'], [1435, 1436, '#1f5fbf', '1435 mm standard'],
-  [1436, 1520, '#7f9fd6', '1436–1519 mm'], [1520, 1525, '#d62728', '1520 / 1524 mm'], [1525, 1668, '#8c564b', '1525–1667 mm (e.g. 1600)'],
-  [1668, 1669, '#ff7f0e', '1668 mm Iberian'], [1669, 9999, '#7a1f4a', '1676 mm and wider'],
+// Track gauge on a continuous scale: gauges a few millimetres apart (1432 and
+// 1435, 1520 and 1524) get nearly the same colour, gauges far apart differ.
+// Anchors sit at common gauges and keep their colour within ±10 mm (the
+// usual tolerance between nominally different but compatible gauges);
+// colours blend only between those bands.
+export const GAUGE_ANCHORS = [
+  [381, '#5b3f86'], [600, '#8a5fb3'], [762, '#c26fbf'], [914, '#e2729b'], [1000, '#2f9e44'], [1067, '#17a2b8'],
+  [1372, '#8fb339'], [1435, '#1f5fbf'], [1520, '#d62728'], [1600, '#8c564b'], [1672, '#e07b00'], // 1668 Iberian and 1676 Indian share one band
 ];
+const GAUGE_BAND = 10;
+export const GAUGE_STOPS = GAUGE_ANCHORS.flatMap(([mm, color], i, all) => {
+  const low = i ? Math.max(mm - GAUGE_BAND, (all[i-1][0] + mm) / 2) : mm, high = i < all.length - 1 ? Math.min(mm + GAUGE_BAND, (mm + all[i+1][0]) / 2) : mm;
+  return low === high ? [[mm, color]] : [[low, color], [high, color]];
+});
+export const GAUGE_TICKS = [600, 762, 1000, 1067, 1435, 1520, 1672];
 export function gaugePaint(index = 0) {
   const mm = ['to-number', ['coalesce', ['get', `gaugeint${index}`], -1], -1];
-  return ['case', ['<=', mm, 0], UNKNOWN_COLOR, ['step', mm, GAUGES[0][2], ...GAUGES.slice(1).flatMap(([min, , color]) => [min, color])]];
+  return ['case', ['<=', mm, 0], UNKNOWN_COLOR, ['interpolate', ['linear'], mm, ...GAUGE_STOPS.flat()]];
 }
 // Planned, construction and former lines: in the speed view coloured by the
 // recorded (planned or former) limit where one exists; otherwise by state.
