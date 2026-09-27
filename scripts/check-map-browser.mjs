@@ -83,7 +83,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') console.log('Browser resource:',msg.text());});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260927-1&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260927-2&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
@@ -166,7 +166,12 @@ try{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return !map.isMoving() && map.queryRenderedFeatures().some(f=>f.layer.id==='terrain-seabed-contours' && f.properties.ele<0);
   },'Seabed contours must render at zoom 12 in the Taiwan Strait');
-  console.log('PASS: seabed contours at zoom 12');
+  await moveTo(6,119.8,24.3);
+  await expectMap(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    return !map.isMoving() && map.queryRenderedFeatures().some(f=>f.layer.id==='terrain-seabed-contours' && f.properties.ele===-40);
+  },'Shelf contours must render at zoom 6 over the Taiwan Strait');
+  console.log('PASS: seabed contours at zooms 6 and 12');
   await moveTo(8,129.4,36.3);
   await expectMap(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);

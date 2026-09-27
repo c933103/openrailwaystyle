@@ -125,6 +125,11 @@ test('seabed contours come from a finer source from zoom 9, without duplicates',
   assert.equal(shows('terrain-contours', 9, 100), true);
   assert.equal(shows('terrain-seabed-contours', 9, -100), true);
   assert.equal(shows('terrain-seabed-contours', 9, 100), false);
+  // Below zoom 9, seabed detail covers the shelf; the coarse source covers deeper water.
+  assert.equal(shows('terrain-seabed-contours', 6, -100), true);
+  assert.equal(shows('terrain-seabed-contours', 6, -400), false);
+  assert.equal(shows('terrain-seabed-contours', 4, -100), false);
+  assert.equal(contourOptions('metric', true).thresholds[5][0], 20);
   assert.deepEqual(contourOptions('metric', true).thresholds[11], [10, 50]);
   assert.equal(contourOptions('imperial', true).multiplier, 3.28084);
 });
