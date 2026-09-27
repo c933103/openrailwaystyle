@@ -83,7 +83,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') console.log('Browser resource:',msg.text());});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260926-11&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260927-1&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
@@ -158,6 +158,16 @@ try{
     return features.some(f=>f.layer.id==='terrain-contour-labels');
   },'Major contours should have visible elevation labels');
   console.log('PASS: labelled major contours');
+  // The elevation tiles hold seabed depths only up to zoom 10; seabed
+  // contours at zoom 12 over the Taiwan Strait (34–92 m deep) prove the
+  // zoom-10 data is used there.
+  await moveTo(12,119.5,24.5);
+  await expectMap(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    return !map.isMoving() && map.queryRenderedFeatures().some(f=>f.layer.id==='terrain-seabed-contours' && f.properties.ele<0);
+  },'Seabed contours must render at zoom 12 in the Taiwan Strait');
+  console.log('PASS: seabed contours at zoom 12');
+  await moveTo(8,129.4,36.3);
   await expectMap(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     const features=map.queryRenderedFeatures();

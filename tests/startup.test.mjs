@@ -52,7 +52,7 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
   libraries.maplibregl = {Map, addProtocol(){}, NavigationControl:class { constructor(options) { maps.controls.push(options); } }, ScaleControl:class { constructor(options) { this.unit = options.unit; maps.scale = this; } setUnit(unit) { this.unit = unit; } }};
   maps.controls = [];
   libraries.pmtiles = {Protocol:class { tile() {} }};
-  libraries.mlcontour = {DemSource:class {setupMaplibre(){} contourProtocolUrl(options){return `atlas-contour://${options.multiplier ? 'ft' : 'm'}/{z}/{x}/{y}`;} sharedDemProtocolUrl='atlas-shared://{z}/{x}/{y}';}};
+  libraries.mlcontour = {DemSource:class {constructor(options){this.options=options; (maps.dems ||= []).push(options);} setupMaplibre(){} contourProtocolUrl(options){return `${this.options.id}-contour://${options.multiplier ? 'ft' : 'm'}/{z}/{x}/{y}`;} sharedDemProtocolUrl='atlas-shared://{z}/{x}/{y}';}};
   // Delayed libraries are provided later by loadLibraries().
   const loadLibraries = () => {
     Object.assign(window, libraries);
@@ -139,6 +139,9 @@ test('controls work while the map is still loading, and settings take effect onc
     assert.match(map.options.style.sources.stations.url,/atlasstation:\/\/zh-Hans\//);
     assert.match(map.options.localIdeographFontFamily,/SC/,'Simplified Chinese labels use one Simplified Chinese font');
     assert.match(map.options.style.sources.contours.tiles[0],/\/ft\//);
+    // Seabed contours use elevation data capped at zoom 10, where depths end.
+    assert.match(map.options.style.sources.seabedContours.tiles[0],/^atlas-seabed-contour:/);
+    assert.equal(maps.dems.find(d => d.id === 'atlas-seabed').maxzoom, 10);
     assert.equal(maps.scale.unit,'imperial');
     assert.deepEqual(maps.controls.slice(0,2).map(c=>[c.showZoom,c.showCompass]),[[false,true],[undefined,false]],'compass above the zoom buttons');
     map.handlers.load();

@@ -1,6 +1,6 @@
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260926-11';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260927-1';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260926-11';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260927-1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -15,8 +15,8 @@ const writeCookie = (name, value) => { try { document.cookie = `${name}=${encode
 const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_COOKIE) || '{}'); return value && typeof value === 'object' ? value : {}; } catch { return {}; } })();
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
-let map, ready = false, currentFeature, searchController, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260926-11';
+let map, ready = false, currentFeature, searchController, dem, seabedDem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260927-1';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -208,7 +208,7 @@ function unitStyle(style) {
   }
   if (dem) {
     style.sources.contours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units))];
-    style.sources.seabedContours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units, true))];
+    style.sources.seabedContours.tiles = [seabedDem.contourProtocolUrl(contourOptions(settings.units, true))];
   }
 }
 function applyUnits() {
@@ -364,6 +364,10 @@ async function initialize() {
   installLabelProtocols(maplibregl,protocol);
   dem = new mlcontour.DemSource({url:DEM_URL,encoding:'terrarium',maxzoom:15,worker:true,cacheSize:200,timeoutMs:20000,id:'atlas'});
   dem.setupMaplibre(maplibregl);
+  // The elevation tiles keep seabed depths only up to zoom 10; from zoom 11
+  // open sea is stored as 0 m. Seabed contours use zoom-10 data, enlarged.
+  seabedDem = new mlcontour.DemSource({url:DEM_URL,encoding:'terrarium',maxzoom:10,worker:true,cacheSize:100,timeoutMs:20000,id:'atlas-seabed'});
+  seabedDem.setupMaplibre(maplibregl);
   const lifecycleRoot = new URL('./data/lifecycle/', import.meta.url);
   let tileIndex;
   maplibregl.addProtocol('railtiles', async (params, controller) => {
@@ -392,7 +396,7 @@ async function initialize() {
   localizeStyle(style);
   style.sources.relief.tiles = [dem.sharedDemProtocolUrl];
   style.sources.contours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units))];
-  style.sources.seabedContours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units, true))];
+  style.sources.seabedContours.tiles = [seabedDem.contourProtocolUrl(contourOptions(settings.units, true))];
   map = new maplibregl.Map({
     container: 'map', style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / (settings.detail ? 2 : 1),
     center: [15,23], zoom: 1.8, hash: true, minZoom: MIN_ZOOM + (settings.detail ? 1 : 0), maxZoom: MAX_ZOOM + (settings.detail ? 1 : 0),
