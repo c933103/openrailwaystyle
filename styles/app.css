@@ -53,3 +53,13 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 .mode-picker{display:grid;grid-template-columns:repeat(3,1fr)}.mode-picker button{white-space:normal;line-height:1.2}
 
 .polar-place{font:12px/1.2 'Noto Sans',system-ui,sans-serif;color:#74807d;text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff;white-space:nowrap;pointer-events:none}
+
+
+.context-key { margin-top: 12px; padding: 12px 0; border-bottom: 1px solid var(--line, #d5dfdb); }
+.context-key summary { cursor: pointer; font-size: 13px; }
+.context-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 11px; }
+.context-legend span::before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 6px; border: 1px solid var(--c); background: color-mix(in srgb, var(--c) 30%, white); vertical-align: middle; }
+.nearby-list { list-style: none; padding: 0; }
+.nearby-list li { margin: 10px 0; }
+.nearby-list button { padding: 0; border: 0; background: none; color: #007b83; text-align: left; text-decoration: underline; }
+.nearby-list span { display: block; margin-top: 3px; }

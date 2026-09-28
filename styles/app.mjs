@@ -1,7 +1,8 @@
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-12';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20260928-13';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-13';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-12';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260928-12';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-13';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260928-13';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -27,7 +28,7 @@ const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_C
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-12';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-13';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -193,7 +194,7 @@ function shareURL() {
 saveSettings();
 function applySettings() {
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
-  for (const key of ['stations', 'labels', 'inactive', 'relief', 'names', 'autoGlobe']) $(key).checked = settings[key];
+  for (const key of ['stations', 'labels', 'inactive', 'relief', 'names', 'autoGlobe', 'transport', 'destinations']) $(key).checked = settings[key];
   $('units').value = settings.units;
   if (ready) clickable = [];
   if (ready) for (const layer of map.getStyle().layers) {
@@ -203,6 +204,8 @@ function applySettings() {
     if (layer.id.startsWith('inactive-')) visible = settings.inactive;
     if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive);
     if (layer.id.startsWith('terrain-')) visible = settings.relief;
+    if (layer.id.startsWith('context-transport-')) visible = settings.transport;
+    if (layer.id.startsWith('context-destinations-')) visible = settings.destinations;
     if (layer.id === 'polar-caps') map.triggerRepaint();
     if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
@@ -213,16 +216,18 @@ function applySettings() {
   // would keep the old rows.
   inView = [];
   renderLegend();
-  if (ready) scheduleLegend();
+  if (ready) { scheduleLegend(); scheduleNearbyTransport(); }
 }
+const featurePickRank = f => f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading)-labels$/;
-const isClickable = id => id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading)-(tracks|overview)$/.test(id);
+const isClickable = id => id.startsWith('context-') || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading)-(tracks|overview)$/.test(id);
 function row(dl, label, value) {
   if (value === undefined || value === null || value === '') return;
   dl.append(textNode('dt', label), textNode('dd', String(value)));
 }
 function showDetails(feature) {
   currentFeature = feature;
+  if (feature.layer?.id.startsWith('context-')) { showContextDetails(feature); return; }
   const p = feature.properties;
   const isStation = feature.source?.startsWith('station') || feature.kind === 'station';
   const panel = $('detail-content'); panel.replaceChildren();
@@ -278,7 +283,60 @@ function showDetails(feature) {
     link.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`;
     link.target = '_blank'; link.rel = 'noopener'; panel.append(link);
   }
+  if (isStation) {
+    const nearby = document.createElement('section'); nearby.id = 'nearby-transport'; panel.append(nearby);
+    updateNearbyTransport();
+  }
   $('details').hidden = false;
+}
+function showContextDetails(feature) {
+  const p = feature.properties, category = contextDescription(p,feature.sourceLayer);
+  const panel = $('detail-content'); panel.replaceChildren();
+  panel.append(textNode('div',category?.group === 'transport' ? 'TRANSPORT FACILITY' : 'PASSENGER DESTINATION','eyebrow'));
+  panel.append(textNode('h2',displayName(p,settings.language) || category?.label || 'Mapped area'));
+  const dl = document.createElement('dl');
+  row(dl,'Type',category?.label || p.subclass || p.class);
+  row(dl,'Mapped as',p.subclass || p.class);
+  row(dl,'Airport code',p.iata || p.icao);
+  row(dl,'Reference',p.ref);
+  row(dl,'Access',p.access);
+  panel.append(dl);
+  panel.append(textNode('p','Mapped facilities and land use show potential trip destinations, not measured passenger demand.','small'));
+  if (feature.geometry?.type === 'Point') {
+    const [lng,lat] = feature.geometry.coordinates;
+    const link = textNode('a','View location on OpenStreetMap ↗');
+    link.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`;
+    link.target='_blank';link.rel='noopener';panel.append(link);
+  }
+  $('details').hidden = false;
+}
+function updateNearbyTransport() {
+  const target = $('nearby-transport');
+  if (!target || currentFeature?.geometry?.type !== 'Point') return;
+  target.replaceChildren(textNode('h3','Nearby transport'));
+  if (!settings.transport) { target.append(textNode('p','Enable “Other transport & interchanges” to see nearby facilities.','small')); return; }
+  if (!ready || map.getZoom() < 14) { target.append(textNode('p','Zoom to street detail (14+) for nearby bus, ferry and cable car facilities.','small')); return; }
+  const features = ['poi','aerodrome_label'].flatMap(sourceLayer=>map.querySourceFeatures('openmaptiles',{sourceLayer}).map(f=>({id:f.id,properties:f.properties,geometry:f.geometry,sourceLayer})));
+  const nearby = nearbyTransport(currentFeature.geometry.coordinates,features);
+  if (!nearby.length) {
+    target.append(textNode('p',map.isSourceLoaded('openmaptiles') ? 'No nearby interchange appears in the loaded map data.' : 'Loading nearby transport…','small')); return;
+  }
+  const list = document.createElement('ul');list.className='nearby-list';
+  for (const {feature,category,distance} of nearby) {
+    const item = document.createElement('li'), button = textNode('button',displayName(feature.properties,settings.language) || category.label);
+    button.type='button';button.addEventListener('click',()=>{
+      map.easeTo({center:feature.geometry.coordinates,zoom:Math.max(14,map.getZoom())});
+      showDetails({...feature,layer:{id:`context-transport-${category.id}-label`}});
+    });
+    item.append(button,textNode('span',`${category.label} · ${settings.units === 'imperial' ? Math.round(distance*3.28084/50)*50+' ft' : Math.round(distance/10)*10+' m'}`,'small'));
+    list.append(item);
+  }
+  target.append(list,textNode('p','Within 500 m in a straight line. Walking access and interchange connections are not verified.','small'));
+}
+let nearbyTimer;
+function scheduleNearbyTransport() {
+  clearTimeout(nearbyTimer);
+  if ($('nearby-transport')) nearbyTimer=setTimeout(updateNearbyTransport,250);
 }
 const EIGHTHS = ['','⅛','¼','⅜','½','⅝','¾','⅞'];
 function gauge(value) {
@@ -608,6 +666,11 @@ async function initialize() {
   const wanted = linked ? {center: [hashLng, hashLat], zoom: hashZoom} : validCenter ? {center: start.c, zoom: start.z} : null;
   if (wanted && Math.abs(wanted.center[1]) > 85 && wanted.center.every(Number.isFinite)) map.jumpTo(wanted);
   map.on('styleimagemissing', event => {
+    if (event.id.startsWith('context-')) {
+      const icon = contextIcon(event.id,document);
+      if (icon) map.addImage(event.id,icon,{pixelRatio:2});
+      return;
+    }
     if (event.id === 'track-badge') {
       // Track-count badge: a white rounded box with a dark edge, stretched
       // around its number.
@@ -682,6 +745,8 @@ async function initialize() {
   if (map.isStyleLoaded?.()) styleReady(); else map.once('style.load', styleReady);
   map.on('idle', updateStatus);
   map.on('moveend', scheduleLegend);
+  map.on('moveend', scheduleNearbyTransport);
+  map.on('sourcedata', e => { if (e.sourceId === 'openmaptiles' && e.isSourceLoaded) scheduleNearbyTransport(); });
   map.on('moveend', updatePolar);
   // Drag the globe as a globe, over the poles (globe-drag.mjs); editable
   // points keep their own dragging.
@@ -699,7 +764,7 @@ async function initialize() {
     if (drawing.active) { drawing.click(event.lngLat, event.point); return; }
     const p = event.point;
     const features = map.queryRenderedFeatures([[p.x - 7, p.y - 7], [p.x + 7, p.y + 7]], {layers: clickable})
-      .sort((a, b) => Number(!a.source.startsWith('station')) - Number(!b.source.startsWith('station')) || stationRank(a.properties) - stationRank(b.properties));
+      .sort((a,b) => featurePickRank(a)-featurePickRank(b) || stationRank(a.properties)-stationRank(b.properties));
     if (!features[0]) return;
     // Operating-line tiles are not relabelled; locate them by the click.
     const {properties} = features[0];
@@ -724,7 +789,7 @@ async function initialize() {
 document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
   settings.mode = button.dataset.mode; applySettings(); saveSettings();
 }));
-for (const key of ['stations', 'labels', 'inactive', 'relief', 'names', 'autoGlobe']) $(key).addEventListener('change', () => {
+for (const key of ['stations', 'labels', 'inactive', 'relief', 'names', 'autoGlobe', 'transport', 'destinations']) $(key).addEventListener('change', () => {
   settings[key] = $(key).checked; applySettings(); saveSettings();
   if (key === 'autoGlobe') { lastAutoProjection = undefined; updatePolar(); }
 });
@@ -841,3 +906,4 @@ initialize().catch(error => {
 // Named export lets integration tests inspect rendered features without
 // adding test controls or global variables to the map interface.
 export {map};
+
