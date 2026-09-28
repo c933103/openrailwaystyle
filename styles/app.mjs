@@ -1,6 +1,6 @@
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-4';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-1';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-4';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -15,8 +15,8 @@ const writeCookie = (name, value) => { try { document.cookie = `${name}=${encode
 const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_COOKIE) || '{}'); return value && typeof value === 'object' ? value : {}; } catch { return {}; } })();
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
-let map, ready = false, currentFeature, searchController, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-1';
+let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-4';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -93,10 +93,16 @@ const IN_VIEW = {
   },
   control: p => {
     const system = trainProtection(p.train_protection0);
-    return system && system[0] !== 'none' ? [controlColor(system[2], system[3]), `${system[1]} · ${LEVEL_SHORT[system[3]]}`] : null;
+    return system && system[0] !== 'none' ? [controlColor(system[2], system[3]), system[1], system[3], LEVEL_SHORT[system[3]]] : null;
   },
-  gauge: p => p.gaugeint0 > 0 ? [gaugeColor(p.gaugeint0), `${gauge(p.gaugeint0)}${GAUGE_NAMES[p.gaugeint0] && settings.units !== 'imperial' ? ` (${GAUGE_NAMES[p.gaugeint0]})` : ''}`, p.gaugeint0] : null,
-  loading: p => { const g = loadingGauge(p.loading_gauge); return g ? [g.color, `${g.name}${g.height ? ` · ${loadingDimensions(g)}` : ''}`, g.rank] : null; },
+  // Both halves of a dual-gauge track are drawn, so both gauges are listed
+  // (a third gauge is not drawn; clicking the track lists it).
+  gauge: p => {
+    const rows = [p.gaugeint0, p.gaugeint1].filter(mm => mm > 0)
+      .map(mm => [gaugeColor(mm), `${gauge(mm)}${GAUGE_NAMES[mm] && settings.units !== 'imperial' ? ` (${GAUGE_NAMES[mm]})` : ''}`, mm]);
+    return rows.length ? rows : null;
+  },
+  loading: p => { const g = loadingGauge(p.loading_gauge); return g ? [g.color, g.name, g.rank, loadingDimensions(g)] : null; },
 };
 function updateInView() {
   const describe = IN_VIEW[settings.mode];
@@ -104,14 +110,14 @@ function updateInView() {
   const layers = [`${settings.mode}-overview`, `${settings.mode}-tracks`].filter(id => map.getLayer(id));
   const counts = new Map();
   for (const f of map.queryRenderedFeatures({layers})) {
-    const row = describe(f.properties);
-    if (!row) continue;
-    const key = row.slice(0, 2).join('|'), entry = counts.get(key) || {row, n: 0};
-    entry.n++; counts.set(key, entry);
+    const described = describe(f.properties);
+    if (!described) continue;
+    for (const row of Array.isArray(described[0]) ? described : [described]) {
+      const key = row.slice(0, 2).join('|'), entry = counts.get(key) || {row, n: 0};
+      entry.n++; counts.set(key, entry);
+    }
   }
-  // The most common values, then in order of size where the value has one.
-  const rows = [...counts.values()].sort((a, b) => b.n - a.n).slice(0, 16)
-    .sort((a, b) => a.row[2] === undefined || b.row[2] === undefined ? 0 : a.row[2] - b.row[2]).map(e => e.row.slice(0, 2));
+  const rows = legendRows([...counts.values()]);
   if (rows.join() !== inView.join()) { inView = rows; renderLegend(); }
 }
 const LEVEL_SHORT = ['none', 'warning / stop only', 'spot', 'continuous', 'radio'];
@@ -125,13 +131,13 @@ function renderLegend() {
     electrification: { title: 'Electrification · in view', rows: [...listed(inView), [NOT_ELECTRIFIED, 'Not electrified']] },
     control: { title: 'Train protection · in view', rows: [...listed(inView), [NO_PROTECTION, 'No train protection']] },
     gauge: { title: 'Track gauge · in view', rows: listed(inView) },
-    loading: { title: 'Loading gauge · in view', rows: map?.getZoom() < 7 ? [['transparent', 'Zoom in to see loading gauges', 'empty']] : listed(inView) },
+    loading: { title: 'Loading gauge · in view', rows: listed(inView) },
   };
   const legend = legends[settings.mode];
   box.append(textNode('h2', legend.title));
   const grid = textNode('div', '', 'legend-grid');
   const rows = [...legend.rows];
-  if (settings.mode === 'gauge') rows.push(['#1f5fbf', 'Dual gauge (dashes: second gauge)', 'dual']);
+  if (settings.mode === 'gauge') rows.push(['#1f5fbf', 'Dual gauge (one half per gauge)', 'dual']);
   if (settings.mode !== 'infrastructure') rows.push([UNKNOWN_COLOR, 'Unknown']);
   rows.push(['#2356b6','Bridge','bridge'], ['#2356b6','Tunnel','tunnel']);
   if (settings.inactive) rows.push(...INACTIVE_STATES.map(([state, color, label]) => [color, label, `inactive-${state}`]));
@@ -312,7 +318,7 @@ function updateStatus() {
   status.dataset.renderedFormer = String(regional.filter(f => !['proposed','construction'].includes(f.properties.state)).length);
   status.dataset.numericSpeeds = String(tracks.filter(f => numericSpeed(f.properties.maxspeed) !== null).length);
 }
-const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlasrail:\/\//,'');
+const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg):\/\//,'');
 function localizeStyle(style) {
   for (const layer of style.layers) {
     if (layer.type !== 'symbol' || layer.id === 'speed-labels' || layer.id.startsWith('terrain-')) continue;
@@ -322,6 +328,7 @@ function localizeStyle(style) {
   for(const id of ['stationLow','stationMed','stations']) style.sources[id].url = `atlasstation://${settings.language}/${unwrap(style.sources[id].url)}`;
   style.sources.inactiveRegional.tiles = [`railtiles://{z}/{x}/{y}?lang=${settings.language}`];
   style.sources.railway.url = `atlasrail://${unwrap(style.sources.railway.url)}`;
+  style.sources.loadingLow.url = `atlaslg://${unwrap(style.sources.loadingLow.url)}`;
   unitStyle(style);
   styleLanguage = settings.language;
 }
@@ -330,6 +337,30 @@ function localizeStyle(style) {
 // the canvas keeps its pixel count. Controls are scaled back to normal size.
 const detailButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'⊞', title:'More detail: show the next zoom level at half size'});
 const drawButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'✎', title:'Drawing tools'});
+// Polar view: Web Mercator stretches high latitudes without limit, so when
+// most of the screen is beyond 60° N or S a button offers the globe
+// (MapLibre's vertical-perspective projection), which shows polar regions at
+// their true shape. On the globe the same button returns to the flat map.
+const polarButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'◎', hidden:true});
+function polarShare() {
+  // Layout size, not on-screen size: More detail draws the map scaled.
+  const {clientWidth: width, clientHeight: height} = map.getContainer();
+  let polar = 0, total = 0;
+  for (let i = 0; i <= 10; i++) for (let j = 0; j <= 10; j++) {
+    const {lat} = map.unproject([width * i / 10, height * j / 10]);
+    total++; if (Math.abs(lat) > 60) polar++;
+  }
+  return polar / total;
+}
+const onGlobe = () => map?.getProjection?.()?.type === 'globe';
+function updatePolar() {
+  if (!map) return;
+  const globe = onGlobe();
+  polarButton.hidden = !globe && polarShare() <= 0.5;
+  polarButton.setAttribute('aria-pressed', String(globe));
+  polarButton.title = globe ? 'Back to the flat map' : 'Polar view: show this area on the globe, without the flat map’s stretching';
+}
+polarButton.addEventListener('click', () => { map.setProjection({type: onGlobe() ? 'mercator' : 'globe'}); updatePolar(); });
 const measureButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'📏', title:'Measure'});
 const MIN_ZOOM = 1, MAX_ZOOM = 20;
 function applyDetail(changeZoom) {
@@ -433,7 +464,7 @@ async function initialize() {
   // WebGL itself; initialization errors are caught by the handler below.
   const protocol = new pmtiles.Protocol();
   maplibregl.addProtocol('pmtiles', protocol.tile);
-  installLabelProtocols(maplibregl,protocol);
+  installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url)});
   dem = new mlcontour.DemSource({url:DEM_URL,encoding:'terrarium',maxzoom:15,worker:true,cacheSize:200,timeoutMs:20000,id:'atlas'});
   dem.setupMaplibre(maplibregl);
   const lifecycleRoot = new URL('./data/lifecycle/', import.meta.url);
@@ -484,7 +515,7 @@ async function initialize() {
   // Compass above the zoom buttons: shows the heading; click to face north.
   map.addControl(new maplibregl.NavigationControl({ showZoom: false, showCompass: true, visualizePitch: true }), 'top-right');
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-  map.addControl(new ButtonControl([detailButton, drawButton, measureButton]), 'top-right');
+  map.addControl(new ButtonControl([detailButton, drawButton, measureButton, polarButton]), 'top-right');
   scale = new maplibregl.ScaleControl({ unit: settings.units });
   map.addControl(scale, 'bottom-left');
   drawing = new Drawing(map, {units: () => settings.units, status: text => { $('draw-status').textContent = text; }, changed: updateDrawing});
@@ -516,7 +547,8 @@ async function initialize() {
   });
   map.on('idle', updateStatus);
   map.on('moveend', scheduleLegend);
-  map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'railway'].includes(e.sourceId) && e.tile) scheduleLegend(); });
+  map.on('moveend', updatePolar);
+  map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'loadingLow', 'railway'].includes(e.sourceId) && e.tile) scheduleLegend(); });
   map.on('click', event => {
     if (measuring.active) { measuring.click(event.lngLat); return; }
     if (drawing.active) { drawing.click(event.lngLat, event.point); return; }
@@ -603,9 +635,16 @@ $('share').addEventListener('click', async () => {
 $('search-form').addEventListener('submit', async e => {
   e.preventDefault();
   const q = $('search-input').value.trim(); if (q.length < 2) return;
+  // The OpenRailwayMap API asks clients to stop after HTTP 429 and to give
+  // up on requests after about 5 seconds.
+  if (Date.now() < searchPausedUntil) {
+    $('search-status').hidden = false;
+    $('search-status').textContent = 'Station search is busy. Please try again in a few minutes.';
+    return;
+  }
   searchController?.abort(); searchController = new AbortController();
   const controller = searchController;
-  const timeout = setTimeout(() => controller.abort('timeout'), 15000);
+  const timeout = setTimeout(() => controller.abort('timeout'), 5000);
   $('search-results').hidden = true;
   $('search-status').hidden = false; $('search-status').textContent = 'Searching railway facilities…';
   try {
@@ -613,6 +652,7 @@ $('search-form').addEventListener('submit', async e => {
     await labels.catch(() => {});
     const url = new URL(SEARCH_API); url.searchParams.set('q', q); url.searchParams.set('limit', '8');
     const response = await fetch(url, { signal: controller.signal });
+    if (response.status === 429) searchPausedUntil = Date.now() + 10 * 60_000;
     if (!response.ok) throw new Error(`Search returned ${response.status}`);
     const items = await response.json(); if (!Array.isArray(items)) throw new Error('Unexpected search response');
     if (controller !== searchController) return;

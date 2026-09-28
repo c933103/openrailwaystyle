@@ -7,6 +7,8 @@ on:
       - scripts/lifecycle.mjs
       - scripts/snapshot-delta.mjs
       - scripts/refresh-snapshot-cache.mjs
+      - scripts/build-loading-gauge-list.mjs
+      - styles/loading-gauge-list.mjs
       - scripts/pack-snapshot.py
   workflow_dispatch:
     inputs:
@@ -14,14 +16,15 @@ on:
         description: Re-download the oldest part of the world from Overpass
         type: boolean
         default: false
-  # Weekly: fetch only ways changed since the previous run (typically a few
-  # MB), so openings, closures and new proposals appear within a week.
-  # Monthly (the first Monday of each month): also renew the oldest ~100 MB
-  # of full region responses, which catches what change queries miss (e.g.
-  # deleted ways). One schedule, so the two can never cancel each other. The
-  # Overpass API wiki asks regular applications to stay near 10 MB per day.
+  # Monday, Wednesday and Friday at 03:23 UTC, night across Europe, where
+  # most users of the public Overpass server (overpass-api.de, in Germany)
+  # are. Each run fetches the ways changed since the previous run (typically
+  # under 1 MB), the loading gauge list (about 4 MB) and renews about 5 MB of
+  # the oldest full region responses, which catches what change queries miss
+  # (e.g. deleted ways). That keeps each run day near the Overpass API wiki's
+  # guidance for regular applications (under 100 queries and 10 MB a day).
   schedule:
-    - cron: '23 3 * * 1'
+    - cron: '23 3 * * 1,3,5'
 permissions:
   contents: write
   actions: write
@@ -65,13 +68,8 @@ jobs:
       - name: Choose regions to refresh
         if: github.event_name == 'schedule' || inputs.refresh
         env:
-          REFRESH_BYTES: '100000000'
-        run: |
-          if [ "${{ github.event_name }}" = schedule ] && [ "$(date -u +%d)" -gt 7 ]; then
-            echo "Not the first Monday of the month; weekly changes only"
-          else
-            node scripts/refresh-snapshot-cache.mjs
-          fi
+          REFRESH_BYTES: '5000000'
+        run: node scripts/refresh-snapshot-cache.mjs
       # If Overpass is busy, the snapshot is built with the changes recorded
       # so far and the next run catches up from the same point.
       - name: Fetch ways changed since the previous run
@@ -79,6 +77,11 @@ jobs:
         env:
           SNAPSHOT_REGION: delta
         run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
+      # Loading gauge by way ID, for the zoom 0–6 overview. If Overpass is
+      # busy the previous list is published again.
+      - name: Fetch loading gauge list
+        continue-on-error: true
+        run: node scripts/build-loading-gauge-list.mjs
       - name: Collect world region 1 of 20
         env:
           SNAPSHOT_REGION: '0'
@@ -182,12 +185,14 @@ jobs:
           cp snapshot/manifest.json /tmp/rail-manifest.json
           cp snapshot/lifecycle.pmtiles /tmp/rail-lifecycle.pmtiles
           cp snapshot/lifecycle.geojson.gz /tmp/rail-lifecycle.geojson.gz
+          cp snapshot/loading-gauge.json /tmp/rail-loading-gauge.json 2>/dev/null || true
           # One commit replaces the previous snapshot, so the repository keeps
           # only the current data instead of every past copy.
           git checkout --orphan rail-data
           git rm -rf .
           git clean -fdx
           cp /tmp/rail-manifest.json manifest.json
+          cp /tmp/rail-loading-gauge.json loading-gauge.json 2>/dev/null || true
           # Keep individual Git blobs below the hosting limit. Pages receives
           # the reassembled archive; viewers still request just its needed bytes.
           split -b 80M -d -a 3 /tmp/rail-lifecycle.pmtiles lifecycle.pmtiles.part-
@@ -195,6 +200,7 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add manifest.json lifecycle.pmtiles.part-* lifecycle.geojson.gz.part-*
+          if [ -f loading-gauge.json ]; then git add loading-gauge.json; fi
           git commit -m "Publish complete worldwide railway lifecycle snapshot"
           git push --force origin HEAD:refs/heads/rail-data
       - name: Redeploy the site with the new snapshot

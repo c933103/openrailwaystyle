@@ -18,6 +18,9 @@ const style = {
     electric: vector('electrification_railway_line_low', 0, 6),
     control: vector('signals_railway_line_low', 0, 6),
     gaugeLow: vector('track_railway_line_low', 0, 6),
+    // The same overview tiles with loading gauges added by way ID (atlaslg
+    // protocol, tile-labels.mjs).
+    loadingLow: vector('standard_railway_line_low', 0, 6),
     railway: vector('railway_line_high', 7, 16),
     stationLow: vector('standard_railway_text_stations_low', 4, 6),
     // The mid-zoom endpoint returns nothing below zoom 7, and the low-zoom
@@ -87,26 +90,40 @@ const addLine = (id, source, sourceLayer, minzoom, maxzoom, paint, extra = {}) =
   filter: ['all', present, notFerry], layout: { 'line-cap': 'round', 'line-join': 'round' },
   paint: { 'line-color': paint, 'line-width': width, ...extra },
 });
+// Track width by zoom; scale multiplies each stop, so halves and offsets
+// follow the same curve (zoom expressions cannot be nested in arithmetic).
+const trackWidth = (scale = 1) => ['interpolate', ['linear'], ['zoom'],
+  7, 1.6 * scale, 11, ['case', hasService, 1.1 * scale, 2.8 * scale], 16, ['case', hasService, 2 * scale, 4.8 * scale], 20, 7 * scale];
+// Dual or multiple gauge: the track is split lengthwise, the first gauge's
+// colour on one half and the second's on the other. Dashes would clash with
+// the dashed tunnel core and the inactive-line patterns.
+const isDual = ['>', ['to-number', ['coalesce', ['get','gaugeint1'], 0], 0], 0];
+const halfWidth = ['interpolate', ['linear'], ['zoom'],
+  7, ['case', isDual, 0.8, 1.6], 11, ['case', hasService, ['case', isDual, 0.55, 1.1], ['case', isDual, 1.4, 2.8]],
+  16, ['case', hasService, ['case', isDual, 1, 2], ['case', isDual, 2.4, 4.8]], 20, ['case', isDual, 3.5, 7]];
+const dualOffset = sign => ['interpolate', ['linear'], ['zoom'],
+  7, ['case', isDual, 0.4 * sign, 0], 11, ['case', isDual, ['case', hasService, 0.275 * sign, 0.7 * sign], 0],
+  16, ['case', isDual, ['case', hasService, 0.5 * sign, 1.2 * sign], 0], 20, ['case', isDual, 1.75 * sign, 0]];
 for (const [mode, source, sourceLayer, color] of [
   ['infrastructure', 'network', 'standard_railway_line_low', infrastructurePaint],
   ['speed', 'speed', 'speed_railway_line_low', speedPaint],
   ['electrification', 'electric', 'electrification_railway_line_low', electricPaint],
   ['control', 'control', 'signals_railway_line_low', controlPaint()],
   ['gauge', 'gaugeLow', 'track_railway_line_low', gaugePaint()],
-  // No overview tiles carry the loading gauge: neutral lines until zoom 7.
-  ['loading', 'network', 'standard_railway_line_low', '#c3c7c2'],
+  ['loading', 'loadingLow', 'standard_railway_line_low', loadingPaint()],
 ]) {
   addLine(`${mode}-overview`, source, sourceLayer, 0, 7, color);
-  addLine(`${mode}-tracks`, 'railway', 'railway_line_high', 7, undefined, mode === 'loading' ? loadingPaint() : color, {
+  addLine(`${mode}-tracks`, 'railway', 'railway_line_high', 7, undefined, color, {
     'line-opacity': mode === 'infrastructure' ? 1 : ['case', ['==', ['get', 'tunnel'], true], 0.65, 1],
-    'line-width': ['interpolate', ['linear'], ['zoom'], 7, 1.6, 11, ['case', hasService, 1.1, 2.8], 16, ['case', hasService, 2, 4.8], 20, 7],
+    'line-width': mode === 'gauge' ? halfWidth : trackWidth(),
+    ...(mode === 'gauge' ? {'line-offset': dualOffset(-1)} : {}),
   });
 }
-// Dual or multiple gauge: dashes in the second gauge's colour over the first.
 style.layers.push({id:'gauge-dual', type:'line', source:'railway', 'source-layer':'railway_line_high', minzoom:7,
-  filter:['all', present, notFerry, ['>', ['to-number', ['coalesce', ['get','gaugeint1'], 0], 0], 0]],
+  filter:['all', present, notFerry, isDual],
   layout:{'line-cap':'butt','line-join':'round'},
-  paint:{'line-color':gaugePaint(1), 'line-width':['interpolate', ['linear'], ['zoom'], 7, 1.6, 11, 2.8, 16, 4.8, 20, 7], 'line-dasharray':[2,2]}});
+  paint:{'line-color':gaugePaint(1), 'line-width':trackWidth(0.5), 'line-offset':dualOffset(1),
+    'line-opacity':['case', ['==', ['get', 'tunnel'], true], 0.65, 1]}});
 // Structural cues use shape as well as colour, in every view. A bridge has
 // dark parapets outside the track; tunnels use a pale dashed core. They start
 // with the detailed railway tiles: the z0–6 overview tiles carry no structure.

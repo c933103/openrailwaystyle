@@ -117,7 +117,10 @@ export function readDrawing(json) {
     const line = c => (c || []).filter(finite).map(p => p.slice(0, 2));
     if (g?.type === 'Point' && finite(g.coordinates)) add({type:'Point', coordinates:g.coordinates.slice(0, 2)});
     else if (g?.type === 'MultiPoint') { for (const p of line(g.coordinates)) add({type:'Point', coordinates:p}); }
-    else if (g?.type === 'LineString') { const c = line(g.coordinates); if (c.length >= 2) add({type:'LineString', coordinates:c}); }
+    else if (g?.type === 'LineString') {
+      const c = line(g.coordinates), controls = line(f.properties?.curve_points);
+      if (c.length >= 2) { add({type:'LineString', coordinates:c}); if (controls.length >= 2) out.at(-1).properties.curve_points = controls; }
+    }
     else if (g?.type === 'MultiLineString') { for (const l of g.coordinates || []) { const c = line(l); if (c.length >= 2) add({type:'LineString', coordinates:c}); } }
     else if (g?.type === 'Polygon') { const c = line(g.coordinates?.[0]); if (c.length >= 4) add({type:'Polygon', coordinates:[c]}); }
     else if (g?.type === 'MultiPolygon') { for (const poly of g.coordinates || []) { const c = line(poly?.[0]); if (c.length >= 4) add({type:'Polygon', coordinates:[c]}); } }
@@ -125,16 +128,75 @@ export function readDrawing(json) {
   return out;
 }
 
+// Editable points of a drawing: a curve's control points, a line's
+// vertices, an area's corners (without the closing repeat), or the point.
+export function editablePoints(feature) {
+  const g = feature.geometry;
+  if (g.type === 'Point') return [g.coordinates];
+  if (g.type === 'Polygon') return g.coordinates[0].slice(0, -1);
+  return feature.properties?.curve_points || g.coordinates;
+}
+const MIN_POINTS = {Point: 1, LineString: 2, Polygon: 3};
+// A copy of the drawing with its editable points replaced, or null when too
+// few remain for its kind.
+export function withPoints(feature, points) {
+  const type = feature.geometry.type;
+  if (points.length < MIN_POINTS[type]) return null;
+  const properties = {...feature.properties};
+  let coordinates;
+  if (type === 'Point') coordinates = points[0];
+  else if (type === 'Polygon') coordinates = [[...points, points[0]]];
+  else if (properties.curve_points) { properties.curve_points = points; coordinates = smoothCurve(points); }
+  else coordinates = points;
+  return {...feature, properties, geometry: {type, coordinates}};
+}
+// Drag a point to move it; right-click it, or hold it on a touch screen, to
+// delete it. layer: the circle layer showing the points, whose features
+// carry what move/remove need. Registered once: MapLibre keeps layer-bound
+// listeners across style replacements.
+function editPoints(map, layer, {enabled, move, done, remove}) {
+  let drag = null, hold;
+  const start = (e, touch) => {
+    if (!enabled() || (touch ? e.originalEvent.touches?.length > 1 : e.originalEvent.button !== 0)) return;
+    const feature = e.features?.[0];
+    if (!feature) return;
+    e.preventDefault(); // no map panning for this gesture
+    drag = {properties: feature.properties, from: e.point, moved: false};
+    if (touch) hold = setTimeout(() => { if (drag && !drag.moved) { const {properties} = drag; drag = null; remove(properties); } }, 600);
+  };
+  const moving = e => {
+    if (!drag) return;
+    if (!drag.moved && Math.hypot(e.point.x - drag.from.x, e.point.y - drag.from.y) < 4) return;
+    drag.moved = true; clearTimeout(hold);
+    move(drag.properties, [Number(e.lngLat.lng.toFixed(6)), Number(e.lngLat.lat.toFixed(6))]);
+  };
+  const end = () => { clearTimeout(hold); if (drag?.moved) done(); drag = null; };
+  map.on('mousedown', layer, e => start(e, false));
+  map.on('touchstart', layer, e => start(e, true));
+  map.on('mousemove', moving); map.on('touchmove', moving);
+  map.on('mouseup', end); map.on('touchend', end); map.on('touchcancel', end);
+  map.on('contextmenu', layer, e => { if (enabled() && e.features?.[0]) { e.preventDefault(); remove(e.features[0].properties); } });
+  map.on('mouseenter', layer, () => { if (enabled()) map.getCanvas().style.cursor = 'move'; });
+  map.on('mouseleave', layer, () => { if (enabled()) map.getCanvas().style.cursor = 'crosshair'; });
+}
+const EDIT_HINT = ' Drag a point to move it; right-click or hold it to delete it.';
+
 const STORE = 'openrailwayatlas-drawing';
 const COLOR = '#c2185b';
 const colour = ['coalesce', ['get','color'], COLOR];
-const HINTS = {point:'Click to place points.', line:'Click to add points; double-click or Finish to end.', curve:'Click points along the curve; double-click or Finish to end.', area:'Click to add corners; double-click or Finish to close.', erase:'Click a drawing to delete it.'};
+const HINTS = {point:'Click to place points.' + EDIT_HINT, line:'Click to add points; double-click or Finish to end.' + EDIT_HINT, curve:'Click points along the curve; double-click or Finish to end.' + EDIT_HINT, area:'Click to add corners; double-click or Finish to close.' + EDIT_HINT, erase:'Click a point to delete just that point, or a line or area to delete the whole drawing.'};
 export class Drawing {
   constructor(map, {units = () => 'metric', status = () => {}, changed = () => {}} = {}) {
     Object.assign(this, {map, units, status, changed});
     this.features = []; this.draft = []; this.mode = null; this.paused = false; this.cursor = null; this.next = 1;
     this.style = {color: COLOR, dash: 'solid', width: 3};
     try { this.add(readDrawing(JSON.parse(localStorage.getItem(STORE) || 'null')), false); } catch {}
+    editPoints(map, 'drawing-handles', {
+      enabled: () => this.mode !== null && !this.paused,
+      move: ({drawing, index}, p) => this.movePoint(drawing, index, p),
+      done: () => this.save(),
+      remove: ({drawing, index}) => this.removePoint(drawing, index),
+    });
   }
   get active() { return this.mode !== null; }
   get multiPoint() { return this.mode === 'line' || this.mode === 'curve' || this.mode === 'area'; }
@@ -143,6 +205,7 @@ export class Drawing {
     const map = this.map;
     if (!map.getSource('atlas-drawing')) map.addSource('atlas-drawing', {type:'geojson', data:this.collection(true)});
     if (!map.getSource('atlas-drawing-draft')) map.addSource('atlas-drawing-draft', {type:'geojson', data:this.draftCollection()});
+    if (!map.getSource('atlas-drawing-handles')) map.addSource('atlas-drawing-handles', {type:'geojson', data:this.handleCollection()});
     const label = {'text-field':['get','measure'],'text-font':['Noto Sans Bold'],'text-size':12,'text-allow-overlap':true};
     const labelPaint = {'text-color':colour,'text-halo-color':'#fffef8','text-halo-width':2};
     // line-dasharray cannot vary by feature: one line layer per dash style.
@@ -159,6 +222,8 @@ export class Drawing {
       {id:'drawing-area-labels', type:'symbol', source:'atlas-drawing', filter:['==',['geometry-type'],'Polygon'], layout:label, paint:labelPaint},
       {id:'drawing-draft-line', type:'line', source:'atlas-drawing-draft', filter:['!=',['geometry-type'],'Point'], paint:{'line-color':colour,'line-width':2,'line-dasharray':[2,1.5]}},
       {id:'drawing-draft-vertices', type:'circle', source:'atlas-drawing-draft', filter:['==',['geometry-type'],'Point'], paint:{'circle-color':'#fffef8','circle-radius':4,'circle-stroke-color':colour,'circle-stroke-width':2}},
+      // Editable points, shown while a drawing tool is in use.
+      {id:'drawing-handles', type:'circle', source:'atlas-drawing-handles', paint:{'circle-color':'#fffef8','circle-radius':5,'circle-stroke-color':colour,'circle-stroke-width':2}},
     ];
     for (const layer of this.layers) if (!map.getLayer(layer.id)) map.addLayer(layer);
   }
@@ -181,9 +246,35 @@ export class Drawing {
       ? {type:'Polygon', coordinates:[[...points, points[0]]]} : {type:'LineString', coordinates:points}});
     return {type:'FeatureCollection', features};
   }
+  // Handles for every drawing's points and the shape in progress (drawing 0).
+  handleCollection() {
+    if (!this.mode || this.paused) return {type:'FeatureCollection', features:[]};
+    const handle = (coordinates, drawing, index, color) => ({type:'Feature', properties:{drawing, index, color}, geometry:{type:'Point', coordinates}});
+    return {type:'FeatureCollection', features:[
+      ...this.features.flatMap(f => editablePoints(f).map((p, i) => handle(p, f.id, i, f.properties.color))),
+      ...this.draft.map((p, i) => handle(p, 0, i, this.style.color)),
+    ]};
+  }
+  movePoint(drawing, index, p) {
+    if (drawing === 0) { if (this.draft[index]) this.draft[index] = p; this.refresh(); return; }
+    const at = this.features.findIndex(f => f.id === drawing);
+    if (at < 0) return;
+    const points = [...editablePoints(this.features[at])]; points[index] = p;
+    this.features[at] = withPoints(this.features[at], points); this.refresh();
+  }
+  // Delete one point; a drawing left with too few points is deleted.
+  removePoint(drawing, index) {
+    if (drawing === 0) { this.draft.splice(index, 1); this.refresh(); return; }
+    const at = this.features.findIndex(f => f.id === drawing);
+    if (at < 0) return;
+    const edited = withPoints(this.features[at], editablePoints(this.features[at]).filter((_, i) => i !== index));
+    if (edited) this.features[at] = edited; else this.features.splice(at, 1);
+    this.save();
+  }
   refresh() {
     this.map.getSource('atlas-drawing')?.setData(this.collection(true));
     this.map.getSource('atlas-drawing-draft')?.setData(this.draftCollection());
+    this.map.getSource('atlas-drawing-handles')?.setData(this.handleCollection());
     const points = this.shape(), units = this.units();
     this.status((this.mode === 'line' || this.mode === 'curve') && points.length >= 2 ? formatLength(lengthKm(points), units)
       : this.mode === 'area' && points.length >= 3 ? formatArea(areaKm2(points), units)
@@ -228,6 +319,9 @@ export class Drawing {
       }
       this.draft.push(p); this.refresh();
     } else if (this.mode === 'erase') {
+      const box = [[point.x-6, point.y-6], [point.x+6, point.y+6]];
+      const handle = this.map.getLayer('drawing-handles') && this.map.queryRenderedFeatures(box, {layers:['drawing-handles']})[0];
+      if (handle) { this.removePoint(handle.properties.drawing, handle.properties.index); return; }
       const hit = this.map.queryRenderedFeatures([[point.x-6, point.y-6], [point.x+6, point.y+6]], {layers:['drawing-points','drawing-line','drawing-line-dashed','drawing-line-dotted','drawing-fill']})[0];
       const index = hit ? this.features.findIndex(f => f.id === hit.properties.drawing) : -1;
       if (index >= 0) { this.features.splice(index, 1); this.save(); }
@@ -244,8 +338,13 @@ export class Drawing {
     const geometry = this.mode === 'line' && n >= 2 ? {type:'LineString', coordinates:this.draft}
       : this.mode === 'curve' && n >= 2 ? {type:'LineString', coordinates:smoothCurve(this.draft)}
       : this.mode === 'area' && n >= 3 ? {type:'Polygon', coordinates:[[...this.draft, this.draft[0]]]} : null;
+    const controls = this.draft;
     this.draft = []; this.cursor = null;
-    if (geometry) this.add([this.newFeature(geometry)]); else this.refresh();
+    if (!geometry) { this.refresh(); return; }
+    const feature = this.newFeature(geometry);
+    // Curves keep their control points, so they can be edited later.
+    if (this.mode === 'curve') feature.properties.curve_points = controls;
+    this.add([feature]);
   }
   cancel() { this.draft = []; this.cursor = null; this.refresh(); }
   undo() {
@@ -267,6 +366,12 @@ export class Measure {
   constructor(map, {units = () => 'metric', status = () => {}, changed = () => {}} = {}) {
     Object.assign(this, {map, units, status, changed});
     this.mode = null; this.points = []; this.cursor = null; this.ended = false;
+    editPoints(map, 'measure-points', {
+      enabled: () => this.mode !== null,
+      move: ({index}, p) => { if (this.points[index]) { this.points[index] = p; this.refresh(); } },
+      done: () => {},
+      remove: ({index}) => { this.points.splice(index, 1); if (this.points.length < 2) this.ended = false; this.refresh(); },
+    });
   }
   get active() { return this.mode !== null; }
   install() {
@@ -277,7 +382,7 @@ export class Measure {
     const layers = [
       {id:'measure-line', type:'line', source:'atlas-measure', filter:['==',['get','kind'],'segment'], layout:{'line-cap':'round'}, paint:{'line-color':INK,'line-width':2.5,'line-dasharray':[3,1.5]}},
       {id:'measure-arc', type:'line', source:'atlas-measure', filter:['==',['get','kind'],'arc'], layout:{'line-cap':'round'}, paint:{'line-color':'#e0701b','line-width':3}},
-      {id:'measure-points', type:'circle', source:'atlas-measure', filter:['==',['geometry-type'],'Point'], paint:{'circle-color':'#fffef8','circle-radius':4.5,'circle-stroke-color':INK,'circle-stroke-width':2}},
+      {id:'measure-points', type:'circle', source:'atlas-measure', filter:['has','index'], paint:{'circle-color':'#fffef8','circle-radius':4.5,'circle-stroke-color':INK,'circle-stroke-width':2}},
       {id:'measure-segment-labels', type:'symbol', source:'atlas-measure', filter:['all',['==',['get','kind'],'segment'],['has','label']], layout:{...text,'text-field':['get','label'],'symbol-placement':'line-center','text-size':11}, paint:halo},
       {id:'measure-labels', type:'symbol', source:'atlas-measure', filter:['all',['==',['geometry-type'],'Point'],['has','label']], layout:{...text,'text-field':['get','label'],'text-offset':[0,-1.3]}, paint:halo},
     ];
@@ -286,7 +391,7 @@ export class Measure {
   collection() {
     const units = this.units(), live = this.cursor && !this.ended && this.mode === 'distance' ? [...this.points, this.cursor] : this.points;
     const feature = (geometry, properties = {}) => ({type:'Feature', properties, geometry});
-    const features = this.points.map(p => feature({type:'Point', coordinates:p}));
+    const features = this.points.map((p, index) => feature({type:'Point', coordinates:p}, {index}));
     if (this.mode === 'distance') {
       for (let i = 1; i < live.length; i++) features.push(feature({type:'LineString', coordinates:[live[i-1], live[i]]}, {kind:'segment', ...(live.length > 2 ? {label: formatLength(lengthKm([live[i-1], live[i]]), units)} : {})}));
       if (live.length >= 2) features.push(feature({type:'Point', coordinates:live.at(-1)}, {kind:'total', label: formatLength(lengthKm(live), units)}));
@@ -302,14 +407,14 @@ export class Measure {
   }
   refresh() {
     this.map.getSource('atlas-measure')?.setData(this.collection());
-    const units = this.units();
+    const units = this.units(), hint = this.points.length ? EDIT_HINT : '';
     if (this.mode === 'distance') {
       const live = this.cursor && !this.ended ? [...this.points, this.cursor] : this.points;
-      this.status(live.length >= 2 ? `Distance: ${formatLength(lengthKm(live), units)} over ${live.length - 1} segment${live.length > 2 ? 's' : ''}${this.ended ? '' : ' · double-click to end'}` : 'Click points to measure; double-click to end.');
+      this.status(live.length >= 2 ? `Distance: ${formatLength(lengthKm(live), units)} over ${live.length - 1} segment${live.length > 2 ? 's' : ''}${this.ended ? '' : ' · double-click to end'}.${hint}` : `Click points to measure; double-click to end.${hint}`);
     } else if (this.mode === 'radius') {
       const fit = fitCircle(this.points);
-      this.status(fit ? `Curve radius ≈ ${formatRadius(fit.radiusKm, units)}, fitted to ${this.points.length} points. Add more points along the curve to refine it.`
-        : this.points.length >= 3 ? 'These points are in a line; click points around the curve.' : `Click ${3 - this.points.length} more point${this.points.length === 2 ? '' : 's'} along the curve.`);
+      this.status(fit ? `Curve radius ≈ ${formatRadius(fit.radiusKm, units)}, fitted to ${this.points.length} points. Add more points along the curve to refine it.${hint}`
+        : this.points.length >= 3 ? `These points are in a line; click points around the curve.${hint}` : `Click ${3 - this.points.length} more point${this.points.length === 2 ? '' : 's'} along the curve.${hint}`);
     } else this.status('');
   }
   setMode(mode) {

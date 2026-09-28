@@ -42,7 +42,7 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 .swatch.inactive-construction{background:repeating-linear-gradient(90deg,var(--swatch) 0 10px,transparent 10px 13px)}
 .swatch.inactive-proposed{height:4px;background:radial-gradient(circle,var(--swatch) 1.6px,transparent 2px) 0 50%/6px 4px repeat-x}
 .swatch.inactive-former{opacity:.8;background:repeating-linear-gradient(90deg,var(--swatch) 0 4px,transparent 4px 10px)}
-.swatch.dual{background:repeating-linear-gradient(90deg,var(--swatch) 0 5px,#d62728 5px 10px)}
+.swatch.dual{background:linear-gradient(180deg,var(--swatch) 0 50%,#d62728 50% 100%)}
 .draw-group button:disabled{opacity:.45;cursor:default}
 .swatch.family{height:8px;border-radius:2px}
 .gauge-scale{position:relative;height:10px;border-radius:3px;background:var(--scale);margin:18px 6px 20px}

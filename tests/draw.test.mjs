@@ -35,7 +35,7 @@ test('drawing lines and areas, undo, erase and saving', () => {
   let hit;
   const map = {
     getSource: id => sources[id], addSource: (id) => { sources[id] = {setData(data) { this.data = data; }}; },
-    getLayer: () => undefined, addLayer() {}, getCanvas: () => ({style:{}}),
+    getLayer: () => undefined, addLayer() {}, getCanvas: () => ({style:{}}), on() {},
     doubleClickZoom: {enable() { this.on = true; }, disable() { this.on = false; }},
     project: ([lng, lat]) => ({x:lng*100, y:-lat*100}),
     queryRenderedFeatures: () => hit ? [hit] : [],
@@ -70,7 +70,7 @@ test('drawing lines and areas, undo, erase and saving', () => {
 });
 test('drawing layers are valid MapLibre style layers', () => {
   const sources = {}, layers = [];
-  const map = {getSource: id => sources[id], addSource: (id, source) => { sources[id] = source; }, getLayer: () => undefined, addLayer: layer => layers.push(layer), getCanvas: () => ({style:{}})};
+  const map = {getSource: id => sources[id], addSource: (id, source) => { sources[id] = source; }, getLayer: () => undefined, addLayer: layer => layers.push(layer), getCanvas: () => ({style:{}}), on() {}};
   new Drawing(map).install();
   new Measure(map).install();
   const errors = validateStyleMin({version:8, glyphs:'https://example.org/{fontstack}/{range}.pbf', sources, layers});
@@ -109,7 +109,7 @@ test('drawing style is kept on features and validated in files', () => {
 test('curve drawing and measuring', () => {
   const sources = {};
   globalThis.localStorage = {getItem: () => null, setItem() {}};
-  const map = {getSource: id => sources[id], addSource: id => { sources[id] = {setData(data) { this.data = data; }}; }, getLayer: () => undefined, addLayer() {}, getCanvas: () => ({style:{}}), doubleClickZoom: {enable() {}, disable() {}}, project: () => ({x:0, y:0})};
+  const map = {getSource: id => sources[id], addSource: id => { sources[id] = {setData(data) { this.data = data; }}; }, getLayer: () => undefined, addLayer() {}, getCanvas: () => ({style:{}}), on() {}, doubleClickZoom: {enable() {}, disable() {}}, project: () => ({x:0, y:0})};
   const d = new Drawing(map); d.install();
   d.setStyle({color:'#1565c0', dash:'dashed', width:5});
   d.setMode('curve');
@@ -117,7 +117,7 @@ test('curve drawing and measuring', () => {
   d.finish();
   assert.equal(d.features[0].geometry.type, 'LineString');
   assert.ok(d.features[0].geometry.coordinates.length > 10, 'curves are stored as smooth lines');
-  assert.deepEqual(d.features[0].properties, {color:'#1565c0', dash:'dashed', width:5});
+  assert.deepEqual(d.features[0].properties, {color:'#1565c0', dash:'dashed', width:5, curve_points:[[139.7,35.7],[139.71,35.705],[139.72,35.7]]}, 'style and control points kept');
   const statuses = [];
   const m = new Measure(map, {status: s => statuses.push(s)}); m.install();
   m.setMode('distance');
@@ -130,4 +130,51 @@ test('curve drawing and measuring', () => {
   assert.match(statuses.at(-1), /Curve radius ≈ 600 m, fitted to 4 points/);
   const labels = sources['atlas-measure'].data.features.map(f => f.properties.label).filter(Boolean);
   assert.deepEqual(labels, ['R ≈ 600 m']);
+});
+
+test('drawing points can be moved and deleted one at a time', async () => {
+  const {Drawing, editablePoints, readDrawing} = await import('../styles/draw.mjs');
+  const sources = {}, handlers = {};
+  const map = {getSource: id => sources[id], addSource: id => { sources[id] = {setData(data) { this.data = data; }}; }, getLayer: () => undefined, addLayer() {},
+    getCanvas: () => ({style:{}}), on(type, layer, fn) { handlers[`${type} ${typeof layer === 'string' ? layer : ''}`] = fn || layer; },
+    doubleClickZoom: {enable() {}, disable() {}}, project: () => ({x:1e9, y:1e9})};
+  const d = new Drawing(map); d.clear(); d.install();
+  d.setMode('area');
+  for (const [lng, lat] of [[0,0],[1,0],[1,1],[0,1]]) d.click({lng, lat}, {x:lng, y:lat});
+  d.finish();
+  const area = d.features.at(-1);
+  assert.equal(editablePoints(area).length, 4);
+  // Handles are listed while a tool is in use.
+  assert.equal(sources['atlas-drawing-handles'].data.features.length, 4);
+  d.movePoint(area.id, 2, [2, 2]);
+  assert.deepEqual(d.features.at(-1).geometry.coordinates[0], [[0,0],[1,0],[2,2],[0,1],[0,0]]);
+  d.removePoint(area.id, 3);
+  assert.deepEqual(d.features.at(-1).geometry.coordinates[0], [[0,0],[1,0],[2,2],[0,0]]);
+  d.removePoint(area.id, 0); // an area needs three corners
+  assert.equal(d.features.length, 0);
+  // Curves keep their control points through editing and saving.
+  d.setMode('curve');
+  for (const [lng, lat] of [[0,0],[1,1],[2,0]]) d.click({lng, lat}, {x:lng, y:lat});
+  d.finish();
+  const curve = d.features.at(-1);
+  assert.deepEqual(editablePoints(curve), [[0,0],[1,1],[2,0]]);
+  d.movePoint(curve.id, 1, [1, 2]);
+  assert.ok(d.features.at(-1).geometry.coordinates.length > 3);
+  const saved = readDrawing(d.collection());
+  assert.deepEqual(saved[0].properties.curve_points, [[0,0],[1,2],[2,0]]);
+  // Right-clicking a handle deletes that point.
+  assert.equal(typeof handlers['contextmenu drawing-handles'], 'function');
+  d.clear();
+});
+
+test('measured points can be moved and deleted', async () => {
+  const {Measure} = await import('../styles/draw.mjs');
+  const sources = {}, handlers = {};
+  const map = {getSource: id => sources[id], addSource: id => { sources[id] = {setData(data) { this.data = data; }}; }, getLayer: () => undefined, addLayer() {},
+    getCanvas: () => ({style:{}}), on(type, layer, fn) { if (fn) handlers[`${type} ${layer}`] = fn; }, doubleClickZoom: {enable() {}, disable() {}}};
+  const m = new Measure(map); m.install(); m.setMode('distance');
+  for (const lng of [0, 1, 2]) m.click({lng, lat: 0});
+  handlers['contextmenu measure-points']({features: [{properties: {index: 1}}], preventDefault() {}});
+  assert.deepEqual(m.points, [[0,0],[2,0]]);
+  assert.ok(sources['atlas-measure'].data.features.filter(f => f.properties.index !== undefined).length === 2);
 });

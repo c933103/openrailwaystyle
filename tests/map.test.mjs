@@ -213,6 +213,12 @@ test('gauge view: continuous scale, near-identical gauges share a colour', async
   const {expression} = await import('@maplibre/maplibre-gl-style-spec');
   assert.ok(MODES.includes('gauge'));
   for (const id of ['gauge-overview','gauge-tracks','gauge-dual']) assert.ok(style.layers.find(l => l.id === id), id);
+  // Dual gauge is split lengthwise, not dashed: dashes would clash with the
+  // dashed tunnel core.
+  const dual = style.layers.find(l => l.id === 'gauge-dual'), tracks = style.layers.find(l => l.id === 'gauge-tracks');
+  assert.equal(dual.paint['line-dasharray'], undefined);
+  assert.ok(dual.paint['line-offset'] && tracks.paint['line-offset']);
+  assert.deepEqual(dual.paint['line-opacity'], tracks.paint['line-opacity']);
   assert.equal(style.sources.gaugeLow.url, 'https://openrailwaymap.app/track_railway_line_low');
   const e = expression.createExpression(gaugePaint(), {type:'color'}).value;
   const rgb = mm => { const c = e.evaluate({zoom:8}, {properties:{gaugeint0:mm}}); return typeof c === 'string' ? c : [c.r, c.g, c.b].map(v => v*255); };
@@ -333,4 +339,25 @@ test('weekly changes add, update and remove snapshot ways, newest data winning',
   const q = deltaQueries('2026-10-01T00:00:00Z', '50,0,51,1');
   assert.match(q.lifecycle, /changed:"2026-10-01T00:00:00Z"/);
   assert.match(q.opened, /out ids/);
+});
+
+test('loading gauge list round-trips and matches overview feature IDs', async () => {
+  const {encodeLoadingGauges, decodeLoadingGauges, wayId, parseCsv} = await import('../styles/loading-gauge-list.mjs');
+  const rows = parseCsv('273450997\tTSI_GC\n5\t"W6A, W7, W8"\n4000000000\tTSI_GC\n7\t\n');
+  assert.deepEqual(rows[1], [5, 'W6A, W7, W8']);
+  const lookup = decodeLoadingGauges(JSON.parse(JSON.stringify(encodeLoadingGauges(rows))));
+  assert.equal(lookup.get(273450997), 'TSI_GC');
+  assert.equal(lookup.get(4000000000), 'TSI_GC');
+  assert.equal(lookup.get(5), 'W6A, W7, W8');
+  assert.equal(lookup.has(7), false); // no value recorded
+  assert.equal(wayId('273450997-0'), 273450997);
+});
+
+test('legend groups values drawn in the same colour and summarises the rest', async () => {
+  const {legendRows} = await import('../styles/map-model.mjs');
+  const rows = legendRows([
+    {row: ['#a', 'GB1', 4.32, '4.32 m high'], n: 50}, {row: ['#a', 'GA', 4.32, '4.32 m high'], n: 20},
+    {row: ['#b', 'GC', 4.65, '4.65 m high'], n: 30}, {row: ['#c', 'PPI', 4.28, '4.28 m high'], n: 1},
+  ], 2);
+  assert.deepEqual(rows, [['#a', 'GB1, GA · 4.32 m high'], ['#b', 'GC · 4.65 m high'], ['transparent', '1 less common value in view; zoom in for them', 'empty']]);
 });

@@ -48,6 +48,8 @@ jobs:
         run: |
           mkdir -p styles/data
           cp lifecycle-data/manifest.json styles/data/
+          # Loading gauge by way ID for the zoom 0–6 overview (optional).
+          if [ -f lifecycle-data/loading-gauge.json ]; then cp lifecycle-data/loading-gauge.json styles/data/; fi
           cat lifecycle-data/lifecycle.pmtiles.part-* > /tmp/lifecycle.pmtiles
           pip install pmtiles==3.8.1
           python scripts/unpack-snapshot.py /tmp/lifecycle.pmtiles
