@@ -265,8 +265,10 @@ export class Drawing {
   collection(withMeasure = false) {
     const units = this.units();
     // Rendered copies carry an id for erasing and their measurement; saved
-    // files carry neither.
-    return {type:'FeatureCollection', features:this.features.map(({id, ...f}) => withMeasure ? {...f, properties:{...f.properties, drawing:id, measure:measure(f.geometry, units)}} : f)};
+    // files carry neither. A line being extended is saved as it was until
+    // the extension is finished.
+    const features = !withMeasure && this.extending ? [...this.features, this.extending.feature] : this.features;
+    return {type:'FeatureCollection', features:features.map(({id, ...f}) => withMeasure ? {...f, properties:{...f.properties, drawing:id, measure:measure(f.geometry, units)}} : f)};
   }
   // The shape being drawn, including the pointer position.
   shape() {
@@ -343,16 +345,17 @@ export class Drawing {
   }
   // Continue a finished line from the selected end: it becomes the shape in
   // progress again (reversed when extended from its start), keeping its
-  // style and name.
+  // style and name. The line as it was stays saved, and comes back if the
+  // extension is cancelled, until Finish replaces it.
   extendSelected() {
     const s = this.selection();
     if (!s?.canExtend) return;
     const at = this.features.findIndex(f => f.id === s.drawing), feature = this.features[at];
     let {points, curved} = editableNodes(feature);
     if (s.index === 0) { points = [...points].reverse(); curved = [...curved].reverse(); }
-    this.features.splice(at, 1); this.save();
+    this.features.splice(at, 1);
     const {line_points, curved: _, measure: __, drawing: ___, ...properties} = feature.properties;
-    this.extending = properties;
+    this.extending = {feature, at, properties};
     this.style = {...this.style, ...drawingStyle(properties)};
     this.mode = 'line'; this.paused = false; this.selected = null;
     this.draft = points.map(p => [...p]); this.draftCurved = [...curved];
@@ -407,8 +410,9 @@ export class Drawing {
       const first = this.map.project(this.draft[0]);
       if (Math.hypot(first.x - point.x, first.y - point.y) < 10) { this.finish(); return; }
     }
-    // A click on a point selects it. The click after a selection clears it.
-    const handle = this.map.getLayer('drawing-handle-targets') && this.map.queryRenderedFeatures(point, {layers:['drawing-handle-targets']})[0];
+    // A click on a point selects it (not in Erase, which deletes whole
+    // drawings). The click after a selection clears it.
+    const handle = this.mode !== 'erase' && this.map.getLayer('drawing-handle-targets') && this.map.queryRenderedFeatures(point, {layers:['drawing-handle-targets']})[0];
     if (handle) {
       const {drawing, index} = handle.properties;
       if (drawing === 0 && index === this.draft.length - 1 && Date.now() - this.lastAdd < DOUBLE_CLICK_MS) return;
@@ -440,17 +444,26 @@ export class Drawing {
     let feature = null;
     if (this.mode === 'line' && n >= 2) feature = withNodes(this.newFeature({type:'LineString', coordinates:points}), points, curved);
     else if (this.mode === 'area' && n >= 3) feature = this.newFeature({type:'Polygon', coordinates:[[...points, points[0]]]});
-    if (!feature) { this.refresh(); this.changed(); return; }
-    if (extending?.name) feature.properties.name = extending.name;
+    if (!feature) { if (extending) this.restore(extending); else { this.refresh(); this.changed(); } return; }
+    if (extending?.properties.name) feature.properties.name = extending.properties.name;
     this.add([feature]);
   }
-  cancel() { this.draft = []; this.draftCurved = []; this.cursor = null; this.selected = null; this.refresh(); }
+  // Put back a line whose extension was cancelled.
+  restore({feature, at}) {
+    this.features.splice(Math.min(at, this.features.length), 0, feature);
+    this.save();
+  }
+  cancel() {
+    const extending = this.extending;
+    this.draft = []; this.draftCurved = []; this.cursor = null; this.selected = null; this.extending = null;
+    if (extending) this.restore(extending); else this.refresh();
+  }
   undo() {
     this.selected = null;
     if (this.draft.length) { this.draft.pop(); this.draftCurved.pop(); this.refresh(); }
     else if (this.features.length) { this.features.pop(); this.save(); }
   }
-  clear() { this.features = []; this.draft = []; this.draftCurved = []; this.cursor = null; this.selected = null; this.save(); }
+  clear() { this.features = []; this.draft = []; this.draftCurved = []; this.cursor = null; this.selected = null; this.extending = null; this.save(); }
   add(features, store = true) {
     this.features.push(...features.map(f => ({...f, id:this.next++})));
     if (store) this.save();

@@ -220,3 +220,43 @@ test('measured points are selected, then moved or deleted', async () => {
   assert.deepEqual(m.points, [[0,0],[2,0]]);
   assert.equal(sources['atlas-measure'].data.features.filter(f => f.properties.index !== undefined).length, 2);
 });
+
+test('a line being extended stays saved until Finish, and returns if cancelled', async () => {
+  const {Drawing, editablePoints} = await import('../styles/draw.mjs');
+  const stored = {};
+  globalThis.localStorage = {getItem: key => stored[key] ?? null, setItem: (key, value) => { stored[key] = value; }};
+  const sources = {}, handlers = {};
+  let picked = null;
+  const d = new Drawing(editingMap(sources, handlers, () => picked)); d.clear(); d.install();
+  const at = (lng, lat) => d.click({lng, lat}, {x:lng, y:lat});
+  d.setMode('line'); at(0, 0); at(1, 0); d.finish();
+  const line = d.features[0];
+  picked = {drawing: line.id, index: 1}; at(1, 0); picked = null;
+  d.extendSelected();
+  const saved = () => JSON.parse(stored['openrailwayatlas-drawing']).features.map(f => f.geometry.coordinates);
+  assert.deepEqual(saved(), [[[0,0],[1,0]]], 'still saved while extending');
+  at(2, 0);
+  d.cancel();
+  assert.deepEqual(d.features.map(editablePoints), [[[0,0],[1,0]]], 'restored on cancel');
+  // Finishing replaces it.
+  picked = {drawing: d.features[0].id, index: 1}; at(1, 0); picked = null;
+  d.extendSelected(); at(2, 0); d.finish();
+  assert.deepEqual(saved(), [[[0,0],[1,0],[2,0]]]);
+  d.clear();
+});
+
+test('erase deletes a drawing even when clicked on one of its points', async () => {
+  const {Drawing} = await import('../styles/draw.mjs');
+  globalThis.localStorage = {getItem: () => null, setItem() {}};
+  const sources = {}, handlers = {};
+  let picked = null;
+  const map = editingMap(sources, handlers, () => picked);
+  const d = new Drawing(map); d.install();
+  d.setMode('point'); d.click({lng: 1, lat: 1}, {x: 1, y: 1});
+  const id = d.features[0].id;
+  d.setMode('erase');
+  // Both the handle and the drawing are under the pointer.
+  picked = {drawing: id, index: 0};
+  d.click({lng: 1, lat: 1}, {x: 1, y: 1});
+  assert.equal(d.features.length, 0);
+});
