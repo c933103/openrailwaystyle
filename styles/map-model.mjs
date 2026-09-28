@@ -233,13 +233,16 @@ export const LOADING_GAUGES = [
 const LOADING_HEIGHT_STOPS = [[4.28, '#a5d66b'], [4.32, '#43a047'], [4.5, '#00897b'], [4.65, '#1e88e5'], [4.72, '#3949ab'], [4.8, '#5e35b1'], [5.3, '#8e24aa'], [6.2, '#6a1b4d']];
 const BRITISH_LADDER = ['W5', 'W6', 'W6A', 'W7', 'W8', 'W8A', 'W9', 'W9Plus', 'W10', 'W10A', 'W11', 'W12'];
 export const LOADING_OTHER = '#a1887f', LOADING_METRO = '#b0a4c8';
+// "AAR F", "AAR-F", "aar_f" and "AARF" are all Plate F.
+const aarCode = value => value.replace(/^AAR[ _-]?([A-Z])$/i, (_, plate) => `AAR_${plate.toUpperCase()}`);
+const aarAliases = code => /^AAR_[A-Z]$/.test(code) ? ['_', ' ', '-', ''].map(sep => `AAR${sep}${code.at(-1)}`) : [code];
 export function loadingGauge(value) {
   if (!value) return null;
   // Lists (e.g. "W6A, W7, W8") mean the line clears all of them: take the largest.
   // Tags vary in case and separators: "W6a", "AAR F".
   const british = BRITISH_LADDER.filter(code => String(value).split(/,\s*/).some(v => v.replace('*', '').toUpperCase() === code.toUpperCase()));
-  const code = british.length ? british.at(-1) : String(value).trim().replace(/^AAR[ -](?=[A-Z]$)/i, 'AAR_');
-  const entry = LOADING_GAUGES.find(([codes]) => codes.includes(code));
+  const code = british.length ? british.at(-1) : aarCode(String(value).trim());
+  const entry = LOADING_GAUGES.find(([codes]) => codes.some(c => c.toUpperCase() === code.toUpperCase()));
   if (!entry && /^[A-E][1-5]?$/.test(code)) return {code, name: `${code} (EN 15528 line category, not a loading gauge)`, family: 'other', color: LOADING_OTHER, rank: 0};
   if (!entry) return {code, name: `${code} (as tagged)`, family: 'other', color: LOADING_OTHER, rank: 0};
   const [, name, height, width, family, note] = entry;
@@ -280,17 +283,23 @@ const metres = m => String(Number(m.toFixed(3)));
 const feetInches = m => { const inches = Math.round(m / 0.0254); return `${Math.floor(inches / 12)} ft ${inches % 12} in`; };
 export const loadingDimensions = (g, units = 'metric') => !g?.height ? ''
   : units === 'imperial' ? `${feetInches(g.height)} high × ${feetInches(g.width)} wide` : `${metres(g.height)} m high × ${metres(g.width)} m wide`;
+// Whether the upper-cased tag lists a British gauge: alone, in a list ('in'
+// on "W6A," tokens avoids W6 matching inside W6A) or starred.
+const britishTest = (upper, code) => { const c = code.toUpperCase(); return ['any', ['==', upper, c], ['in', `${c},`, ['concat', upper, ',']], ['in', `${c}*`, upper]]; };
 export function loadingPaint() {
   const lg = ['coalesce', ['get', 'loading_gauge'], ''], upper = ['upcase', lg];
   // Upper case: "W6a" is tagged as well as "W6A".
-  const britishCases = [...BRITISH_LADDER].reverse().flatMap(code => [['any', ['==', upper, code], ['in', `${code},`, ['concat', upper, ',']], ['in', `${code}*`, upper]], loadingGauge(code).color]);
-  // 'in' on "W6A," style tokens avoids W6 matching inside W6A.
-  const exact = LOADING_GAUGES.filter(([, , , , family]) => family !== 'british').flatMap(([codes]) => codes.map(code => [code, loadingGauge(code).color])).flat();
-  return ['case', ['==', lg, ''], UNKNOWN_COLOR, ...britishCases, ['match', lg, ...exact, LOADING_OTHER]];
+  const britishCases = [...BRITISH_LADDER].reverse().flatMap(code => [britishTest(upper, code), loadingGauge(code).color]);
+  // Other gauges by exact code, compared in upper case, with the separator
+  // variants loadingGauge() accepts for AAR plates.
+  const seen = new Set(), exact = [];
+  for (const [codes, , , , family] of LOADING_GAUGES) if (family !== 'british')
+    for (const alias of codes.flatMap(aarAliases).map(c => c.toUpperCase())) if (!seen.has(alias)) { seen.add(alias); exact.push(alias, loadingGauge(alias).color); }
+  return ['case', ['==', lg, ''], UNKNOWN_COLOR, ...britishCases, ['match', upper, ...exact, LOADING_OTHER]];
 }
 export const loadingLabel = () => {
   const lg = ['coalesce', ['get', 'loading_gauge'], ''], upper = ['upcase', lg];
-  return ['case', ...[...BRITISH_LADDER].reverse().flatMap(code => [['any', ['==', upper, code], ['in', `${code},`, ['concat', upper, ',']], ['in', `${code}*`, upper]], loadingGauge(code).name]), lg];
+  return ['case', ...[...BRITISH_LADDER].reverse().flatMap(code => [britishTest(upper, code), loadingGauge(code).name]), lg];
 };
 // Planned, construction and former lines: in the speed view coloured by the
 // recorded (planned or former) limit where one exists; otherwise by state.

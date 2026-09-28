@@ -4895,11 +4895,11 @@
                   ""
                 ]
               ],
-              "W9Plus"
+              "W9PLUS"
             ],
             [
               "in",
-              "W9Plus,",
+              "W9PLUS,",
               [
                 "concat",
                 [
@@ -4918,7 +4918,7 @@
             ],
             [
               "in",
-              "W9Plus*",
+              "W9PLUS*",
               [
                 "upcase",
                 [
@@ -5307,12 +5307,15 @@
           [
             "match",
             [
-              "coalesce",
+              "upcase",
               [
-                "get",
-                "loading_gauge"
-              ],
-              ""
+                "coalesce",
+                [
+                  "get",
+                  "loading_gauge"
+                ],
+                ""
+              ]
             ],
             "PPI",
             "#a5d66b",
@@ -5336,9 +5339,9 @@
             "#43a047",
             "GB2",
             "#43a047",
-            "CPb",
+            "CPB",
             "#00897b",
-            "CPb+",
+            "CPB+",
             "#00897b",
             "UIC_C",
             "#1e88e5",
@@ -5348,23 +5351,39 @@
             "#1e88e5",
             "GC",
             "#1e88e5",
-            "PT c",
+            "PT C",
             "#315bbc",
             "AAR_B",
             "#1388c0",
             "AAR B",
             "#1388c0",
+            "AAR-B",
+            "#1388c0",
+            "AARB",
+            "#1388c0",
             "AAR_C",
             "#3b48ab",
             "AAR C",
+            "#3b48ab",
+            "AAR-C",
+            "#3b48ab",
+            "AARC",
             "#3b48ab",
             "AAR_E",
             "#5e35b1",
             "AAR E",
             "#5e35b1",
+            "AAR-E",
+            "#5e35b1",
+            "AARE",
+            "#5e35b1",
             "AAR_F",
             "#8328ac",
             "AAR F",
+            "#8328ac",
+            "AAR-F",
+            "#8328ac",
+            "AARF",
             "#8328ac",
             "GOST_T",
             "#8e24aa",
@@ -5372,13 +5391,25 @@
             "#7a1f77",
             "AAR J",
             "#7a1f77",
+            "AAR-J",
+            "#7a1f77",
+            "AARJ",
+            "#7a1f77",
             "AAR_H",
             "#6c1c52",
             "AAR H",
             "#6c1c52",
+            "AAR-H",
+            "#6c1c52",
+            "AARH",
+            "#6c1c52",
             "AAR_K",
             "#6b1b50",
             "AAR K",
+            "#6b1b50",
+            "AAR-K",
+            "#6b1b50",
+            "AARK",
             "#6b1b50",
             "EBV 1",
             "#a1887f",
@@ -5390,13 +5421,13 @@
             "#a1887f",
             "FS",
             "#a1887f",
-            "deep-tube",
+            "DEEP-TUBE",
             "#b0a4c8",
-            "subsurface",
+            "SUBSURFACE",
             "#b0a4c8",
-            "Kleinprofil",
+            "KLEINPROFIL",
             "#b0a4c8",
-            "Großprofil",
+            "GROSSPROFIL",
             "#b0a4c8",
             "#a1887f"
           ]
@@ -5701,11 +5732,11 @@
                   ""
                 ]
               ],
-              "W9Plus"
+              "W9PLUS"
             ],
             [
               "in",
-              "W9Plus,",
+              "W9PLUS,",
               [
                 "concat",
                 [
@@ -5724,7 +5755,7 @@
             ],
             [
               "in",
-              "W9Plus*",
+              "W9PLUS*",
               [
                 "upcase",
                 [
@@ -6113,12 +6144,15 @@
           [
             "match",
             [
-              "coalesce",
+              "upcase",
               [
-                "get",
-                "loading_gauge"
-              ],
-              ""
+                "coalesce",
+                [
+                  "get",
+                  "loading_gauge"
+                ],
+                ""
+              ]
             ],
             "PPI",
             "#a5d66b",
@@ -6142,9 +6176,9 @@
             "#43a047",
             "GB2",
             "#43a047",
-            "CPb",
+            "CPB",
             "#00897b",
-            "CPb+",
+            "CPB+",
             "#00897b",
             "UIC_C",
             "#1e88e5",
@@ -6154,23 +6188,39 @@
             "#1e88e5",
             "GC",
             "#1e88e5",
-            "PT c",
+            "PT C",
             "#315bbc",
             "AAR_B",
             "#1388c0",
             "AAR B",
             "#1388c0",
+            "AAR-B",
+            "#1388c0",
+            "AARB",
+            "#1388c0",
             "AAR_C",
             "#3b48ab",
             "AAR C",
+            "#3b48ab",
+            "AAR-C",
+            "#3b48ab",
+            "AARC",
             "#3b48ab",
             "AAR_E",
             "#5e35b1",
             "AAR E",
             "#5e35b1",
+            "AAR-E",
+            "#5e35b1",
+            "AARE",
+            "#5e35b1",
             "AAR_F",
             "#8328ac",
             "AAR F",
+            "#8328ac",
+            "AAR-F",
+            "#8328ac",
+            "AARF",
             "#8328ac",
             "GOST_T",
             "#8e24aa",
@@ -6178,13 +6228,25 @@
             "#7a1f77",
             "AAR J",
             "#7a1f77",
+            "AAR-J",
+            "#7a1f77",
+            "AARJ",
+            "#7a1f77",
             "AAR_H",
             "#6c1c52",
             "AAR H",
             "#6c1c52",
+            "AAR-H",
+            "#6c1c52",
+            "AARH",
+            "#6c1c52",
             "AAR_K",
             "#6b1b50",
             "AAR K",
+            "#6b1b50",
+            "AAR-K",
+            "#6b1b50",
+            "AARK",
             "#6b1b50",
             "EBV 1",
             "#a1887f",
@@ -6196,13 +6258,13 @@
             "#a1887f",
             "FS",
             "#a1887f",
-            "deep-tube",
+            "DEEP-TUBE",
             "#b0a4c8",
-            "subsurface",
+            "SUBSURFACE",
             "#b0a4c8",
-            "Kleinprofil",
+            "KLEINPROFIL",
             "#b0a4c8",
-            "Großprofil",
+            "GROSSPROFIL",
             "#b0a4c8",
             "#a1887f"
           ]
@@ -9111,11 +9173,11 @@
                   ""
                 ]
               ],
-              "W9Plus"
+              "W9PLUS"
             ],
             [
               "in",
-              "W9Plus,",
+              "W9PLUS,",
               [
                 "concat",
                 [
@@ -9134,7 +9196,7 @@
             ],
             [
               "in",
-              "W9Plus*",
+              "W9PLUS*",
               [
                 "upcase",
                 [

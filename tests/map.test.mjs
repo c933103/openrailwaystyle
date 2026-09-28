@@ -429,6 +429,15 @@ test('loading gauge dimensions: British W gauges (GE/RT8073), AAR plates, tag va
   assert.equal(drawn('W6a'), drawn('W6A'));
   assert.equal(drawn('AAR F'), drawn('AAR_F'));
   assert.notEqual(drawn('W8A'), drawn('W8'));
+  for (const variant of ['AAR-F', 'aar f', 'AARF', 'aar_f']) {
+    assert.equal(loadingGauge(variant).code, 'AAR_F');
+    assert.equal(drawn(variant), drawn('AAR_F'), variant);
+  }
+  // Mixed-case ladder codes: W9Plus is drawn and labelled as itself.
+  const {loadingLabel} = await import('../styles/map-model.mjs');
+  assert.equal(drawn('W9Plus'), JSON.stringify(expression.createExpression(['to-color', loadingGauge('W9Plus').color], {type: 'color'}).value.evaluate({zoom: 10}, {properties: {}})));
+  const label = expression.createExpression(loadingLabel(), {type: 'string'}).value;
+  assert.equal(label.evaluate({zoom: 10}, {properties: {loading_gauge: 'W6A, W7, W8, W9, W9Plus'}}), 'W9Plus');
 });
 test('loading gauge list round-trips and matches overview feature IDs', async () => {
   const {encodeLoadingGauges, decodeLoadingGauges, wayId, parseCsv} = await import('../styles/loading-gauge-list.mjs');
