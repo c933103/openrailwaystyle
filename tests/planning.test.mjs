@@ -13,6 +13,8 @@ test('surface streets, cycling paths and walking trails survive as subdued conte
  assert.ok(!match('road-local',{class:'rail'},17));
 });
 test('local connection symbols appear at street zoom and retain their own categories',()=>{
+ const order=id=>style.layers.findIndex(l=>l.id===id);
+ assert.ok(order('context-transport-bus-label')>order('context-transport-bus-stop-label'),'terminals take collision priority over ordinary stops');
  for(const [id,subclass] of [['bus-stop','bus_stop'],['taxi','taxi'],['bike-rental','bicycle_rental']]) {
   assert.ok(!match('context-transport-'+id+'-label',{subclass},14,1));assert.ok(match('context-transport-'+id+'-label',{subclass},15,1));
   const f={id:1,properties:{subclass},sourceLayer:'poi',geometry:{type:'Point',coordinates:[0,0]}};
