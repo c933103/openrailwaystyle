@@ -213,6 +213,12 @@ test('gauge view: continuous scale, near-identical gauges share a colour', async
   const {expression} = await import('@maplibre/maplibre-gl-style-spec');
   assert.ok(MODES.includes('gauge'));
   for (const id of ['gauge-overview','gauge-tracks','gauge-dual']) assert.ok(style.layers.find(l => l.id === id), id);
+  // Dual gauge is split lengthwise, not dashed: dashes would clash with the
+  // dashed tunnel core.
+  const dual = style.layers.find(l => l.id === 'gauge-dual'), tracks = style.layers.find(l => l.id === 'gauge-tracks');
+  assert.equal(dual.paint['line-dasharray'], undefined);
+  assert.ok(dual.paint['line-offset'] && tracks.paint['line-offset']);
+  assert.deepEqual(dual.paint['line-opacity'], tracks.paint['line-opacity']);
   assert.equal(style.sources.gaugeLow.url, 'https://openrailwaymap.app/track_railway_line_low');
   const e = expression.createExpression(gaugePaint(), {type:'color'}).value;
   const rgb = mm => { const c = e.evaluate({zoom:8}, {properties:{gaugeint0:mm}}); return typeof c === 'string' ? c : [c.r, c.g, c.b].map(v => v*255); };

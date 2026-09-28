@@ -1,6 +1,6 @@
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-2';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-1';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-2';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -15,8 +15,8 @@ const writeCookie = (name, value) => { try { document.cookie = `${name}=${encode
 const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_COOKIE) || '{}'); return value && typeof value === 'object' ? value : {}; } catch { return {}; } })();
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
-let map, ready = false, currentFeature, searchController, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-1';
+let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-2';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -95,7 +95,9 @@ const IN_VIEW = {
     const system = trainProtection(p.train_protection0);
     return system && system[0] !== 'none' ? [controlColor(system[2], system[3]), `${system[1]} · ${LEVEL_SHORT[system[3]]}`] : null;
   },
-  gauge: p => p.gaugeint0 > 0 ? [gaugeColor(p.gaugeint0), `${gauge(p.gaugeint0)}${GAUGE_NAMES[p.gaugeint0] && settings.units !== 'imperial' ? ` (${GAUGE_NAMES[p.gaugeint0]})` : ''}`, p.gaugeint0] : null,
+  // Every gauge of a dual-gauge track is drawn, so each is listed.
+  gauge: p => [p.gaugeint0, p.gaugeint1, p.gaugeint2].filter(mm => mm > 0)
+    .map(mm => [gaugeColor(mm), `${gauge(mm)}${GAUGE_NAMES[mm] && settings.units !== 'imperial' ? ` (${GAUGE_NAMES[mm]})` : ''}`, mm]),
   loading: p => { const g = loadingGauge(p.loading_gauge); return g ? [g.color, `${g.name}${g.height ? ` · ${loadingDimensions(g)}` : ''}`, g.rank] : null; },
 };
 function updateInView() {
@@ -104,10 +106,12 @@ function updateInView() {
   const layers = [`${settings.mode}-overview`, `${settings.mode}-tracks`].filter(id => map.getLayer(id));
   const counts = new Map();
   for (const f of map.queryRenderedFeatures({layers})) {
-    const row = describe(f.properties);
-    if (!row) continue;
-    const key = row.slice(0, 2).join('|'), entry = counts.get(key) || {row, n: 0};
-    entry.n++; counts.set(key, entry);
+    const described = describe(f.properties);
+    if (!described) continue;
+    for (const row of Array.isArray(described[0]) ? described : [described]) {
+      const key = row.slice(0, 2).join('|'), entry = counts.get(key) || {row, n: 0};
+      entry.n++; counts.set(key, entry);
+    }
   }
   // The most common values, then in order of size where the value has one.
   const rows = [...counts.values()].sort((a, b) => b.n - a.n).slice(0, 16)
@@ -131,7 +135,7 @@ function renderLegend() {
   box.append(textNode('h2', legend.title));
   const grid = textNode('div', '', 'legend-grid');
   const rows = [...legend.rows];
-  if (settings.mode === 'gauge') rows.push(['#1f5fbf', 'Dual gauge (dashes: second gauge)', 'dual']);
+  if (settings.mode === 'gauge') rows.push(['#1f5fbf', 'Dual gauge (one half per gauge)', 'dual']);
   if (settings.mode !== 'infrastructure') rows.push([UNKNOWN_COLOR, 'Unknown']);
   rows.push(['#2356b6','Bridge','bridge'], ['#2356b6','Tunnel','tunnel']);
   if (settings.inactive) rows.push(...INACTIVE_STATES.map(([state, color, label]) => [color, label, `inactive-${state}`]));
@@ -603,9 +607,16 @@ $('share').addEventListener('click', async () => {
 $('search-form').addEventListener('submit', async e => {
   e.preventDefault();
   const q = $('search-input').value.trim(); if (q.length < 2) return;
+  // The OpenRailwayMap API asks clients to stop after HTTP 429 and to give
+  // up on requests after about 5 seconds.
+  if (Date.now() < searchPausedUntil) {
+    $('search-status').hidden = false;
+    $('search-status').textContent = 'Station search is busy. Please try again in a few minutes.';
+    return;
+  }
   searchController?.abort(); searchController = new AbortController();
   const controller = searchController;
-  const timeout = setTimeout(() => controller.abort('timeout'), 15000);
+  const timeout = setTimeout(() => controller.abort('timeout'), 5000);
   $('search-results').hidden = true;
   $('search-status').hidden = false; $('search-status').textContent = 'Searching railway facilities…';
   try {
@@ -613,6 +624,7 @@ $('search-form').addEventListener('submit', async e => {
     await labels.catch(() => {});
     const url = new URL(SEARCH_API); url.searchParams.set('q', q); url.searchParams.set('limit', '8');
     const response = await fetch(url, { signal: controller.signal });
+    if (response.status === 429) searchPausedUntil = Date.now() + 10 * 60_000;
     if (!response.ok) throw new Error(`Search returned ${response.status}`);
     const items = await response.json(); if (!Array.isArray(items)) throw new Error('Unexpected search response');
     if (controller !== searchController) return;
