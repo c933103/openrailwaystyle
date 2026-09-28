@@ -65,7 +65,7 @@ try {
   const stationPoint=await evaluate(async map=>{
     const {nearbyTransport}=await import(new URL('./context.mjs',document.querySelector('script[type="module"]').src));
     const facilities=map.querySourceFeatures('openmaptiles',{sourceLayer:'poi'}).map(f=>({id:f.id,properties:f.properties,geometry:f.geometry,sourceLayer:'poi'}));
-    const station=map.queryRenderedFeatures().find(f=>f.layer.id.startsWith('station-')&&f.geometry.type==='Point'&&map.project(f.geometry.coordinates).x>430&&nearbyTransport(f.geometry.coordinates,facilities).length);
+    const station=map.queryRenderedFeatures().find(f=>f.layer.id.startsWith('station-')&&f.geometry.type==='Point'&&map.project(f.geometry.coordinates).x>430&&nearbyTransport(f.geometry.coordinates,facilities,500,map.getZoom()).length);
     if(!station)return null;const p=map.project(station.geometry.coordinates);return [p.x,p.y];
   });
   assert.ok(stationPoint,'a rail station has a nearby mapped interchange');
