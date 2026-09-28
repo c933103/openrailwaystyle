@@ -407,6 +407,29 @@ test('weekly changes add, update and remove snapshot ways, newest data winning',
   assert.match(q.opened, /out ids/);
 });
 
+test('loading gauge dimensions: British W gauges (GE/RT8073), AAR plates, tag variants, imperial units', async () => {
+  const {loadingGauge, loadingDimensions, loadingPaint} = await import('../styles/map-model.mjs');
+  const {expression} = await import('@maplibre/maplibre-gl-style-spec');
+  assert.equal(loadingDimensions(loadingGauge('W6A')), '3.965 m high × 2.82 m wide');
+  assert.equal(loadingDimensions(loadingGauge('W6A, W7, W8, W9, W10')), '3.891 m high × 2.525 m wide');
+  assert.equal(loadingDimensions(loadingGauge('W6A, W7, W8, W9, W10, W12')), '3.965 m high × 2.6 m wide');
+  assert.match(loadingGauge('W10').note, /load gauges/);
+  // Withdrawn gauges keep no invented size.
+  assert.equal(loadingDimensions(loadingGauge('W11')), '');
+  assert.equal(loadingGauge('W6a').code, 'W6A');
+  assert.equal(loadingGauge('W8A').name, 'W8a');
+  assert.equal(loadingGauge('AAR F').code, 'AAR_F');
+  assert.equal(loadingDimensions(loadingGauge('AAR_E'), 'imperial'), '15 ft 9 in high × 10 ft 8 in wide');
+  assert.equal(loadingDimensions(loadingGauge('AAR_H'), 'imperial'), '20 ft 2 in high × 10 ft 8 in wide');
+  assert.equal(loadingDimensions(loadingGauge('AAR_K'), 'imperial'), '20 ft 3 in high × 10 ft 0 in wide');
+  assert.equal(loadingDimensions(loadingGauge('AAR_J')), '5.791 m high × 3.251 m wide');
+  // Drawn in the same colours whatever the tag's case or separator.
+  const paint = expression.createExpression(loadingPaint(), {type: 'color'}).value;
+  const drawn = value => JSON.stringify(paint.evaluate({zoom: 10}, {properties: {loading_gauge: value}}));
+  assert.equal(drawn('W6a'), drawn('W6A'));
+  assert.equal(drawn('AAR F'), drawn('AAR_F'));
+  assert.notEqual(drawn('W8A'), drawn('W8'));
+});
 test('loading gauge list round-trips and matches overview feature IDs', async () => {
   const {encodeLoadingGauges, decodeLoadingGauges, wayId, parseCsv} = await import('../styles/loading-gauge-list.mjs');
   const rows = parseCsv('273450997\tTSI_GC\n5\t"W6A, W7, W8"\n4000000000\tTSI_GC\n7\t\n');

@@ -6,7 +6,7 @@
 //   {cap}-relief.png           slopes for the relief shading (ETOPO 2022)
 // Elevation is fetched once and kept in .snapshot-cache; OpenStreetMap
 // data is re-fetched when older than POLAR_OSM_MAX_AGE_DAYS (default 28).
-import {readFile, writeFile, mkdir, stat} from 'node:fs/promises';
+import {readFile, writeFile, mkdir, stat, rm} from 'node:fs/promises';
 import {crc32, deflateSync} from 'node:zlib';
 import {createHash} from 'node:crypto';
 import polygonClipping from 'polygon-clipping';
@@ -19,10 +19,16 @@ const OVERPASS = 'https://overpass-api.de/api/interpreter';
 const LON_STRIDE = 10; // every 10th arc-minute of longitude (≤ 1.6 km at 85°)
 const STEP = 1.5;      // km between polar grid points
 const TOLERANCE = [1.2, 0.6, 0.25]; // km, per zoom band
+// Detail stops at the band for equatorial zoom 8 and below: the caps are
+// ice and sea, 550 km across, and finer contours there would add megabytes
+// for little. The map keeps drawing this band when zoomed further in.
+const BANDS = 1;
 // Contour tiles per side, per zoom band: the cap square is split so the
 // finer bands load only where viewed.
 export const TILES_PER_SIDE = [1, 2, 4];
 await mkdir('.snapshot-cache', {recursive: true});
+// Start afresh, so no tiles of bands no longer prepared are published.
+await rm('snapshot/polar', {recursive: true, force: true});
 await mkdir('snapshot/polar', {recursive: true});
 
 async function fetchText(url, options = {}) {
@@ -89,7 +95,7 @@ function contours(grid, units) {
   const scaled = {...grid, values: grid.values.map(v => v * scale)};
   let min = Infinity, max = -Infinity;
   for (const v of scaled.values) if (!Number.isNaN(v)) { min = Math.min(min, v); max = Math.max(max, v); }
-  return POLAR_BANDS[units].map((band, index) => {
+  return POLAR_BANDS[units].slice(0, BANDS).map((band, index) => {
     const wanted = [
       ...levels(Math.max(min, 0), max, band.land[0]).map(level => [level, band.land[1]]),
       ...levels(min, Math.min(max, 0), band.seabed[0]).filter(level => !band.shelfOnly || level > -200).map(level => [level, band.seabed[1]]),
