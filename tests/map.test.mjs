@@ -340,3 +340,24 @@ test('weekly changes add, update and remove snapshot ways, newest data winning',
   assert.match(q.lifecycle, /changed:"2026-10-01T00:00:00Z"/);
   assert.match(q.opened, /out ids/);
 });
+
+test('loading gauge list round-trips and matches overview feature IDs', async () => {
+  const {encodeLoadingGauges, decodeLoadingGauges, wayId, parseCsv} = await import('../styles/loading-gauge-list.mjs');
+  const rows = parseCsv('273450997\tTSI_GC\n5\t"W6A, W7, W8"\n4000000000\tTSI_GC\n7\t\n');
+  assert.deepEqual(rows[1], [5, 'W6A, W7, W8']);
+  const lookup = decodeLoadingGauges(JSON.parse(JSON.stringify(encodeLoadingGauges(rows))));
+  assert.equal(lookup.get(273450997), 'TSI_GC');
+  assert.equal(lookup.get(4000000000), 'TSI_GC');
+  assert.equal(lookup.get(5), 'W6A, W7, W8');
+  assert.equal(lookup.has(7), false); // no value recorded
+  assert.equal(wayId('273450997-0'), 273450997);
+});
+
+test('legend groups values drawn in the same colour and summarises the rest', async () => {
+  const {legendRows} = await import('../styles/map-model.mjs');
+  const rows = legendRows([
+    {row: ['#a', 'GB1', 4.32, '4.32 m high'], n: 50}, {row: ['#a', 'GA', 4.32, '4.32 m high'], n: 20},
+    {row: ['#b', 'GC', 4.65, '4.65 m high'], n: 30}, {row: ['#c', 'PPI', 4.28, '4.28 m high'], n: 1},
+  ], 2);
+  assert.deepEqual(rows, [['#a', 'GB1, GA · 4.32 m high'], ['#b', 'GC · 4.65 m high'], ['transparent', '1 less common value in view; zoom in for them', 'empty']]);
+});

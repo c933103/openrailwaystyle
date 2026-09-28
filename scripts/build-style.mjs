@@ -18,6 +18,9 @@ const style = {
     electric: vector('electrification_railway_line_low', 0, 6),
     control: vector('signals_railway_line_low', 0, 6),
     gaugeLow: vector('track_railway_line_low', 0, 6),
+    // The same overview tiles with loading gauges added by way ID (atlaslg
+    // protocol, tile-labels.mjs).
+    loadingLow: vector('standard_railway_line_low', 0, 6),
     railway: vector('railway_line_high', 7, 16),
     stationLow: vector('standard_railway_text_stations_low', 4, 6),
     // The mid-zoom endpoint returns nothing below zoom 7, and the low-zoom
@@ -107,11 +110,10 @@ for (const [mode, source, sourceLayer, color] of [
   ['electrification', 'electric', 'electrification_railway_line_low', electricPaint],
   ['control', 'control', 'signals_railway_line_low', controlPaint()],
   ['gauge', 'gaugeLow', 'track_railway_line_low', gaugePaint()],
-  // No overview tiles carry the loading gauge: neutral lines until zoom 7.
-  ['loading', 'network', 'standard_railway_line_low', '#c3c7c2'],
+  ['loading', 'loadingLow', 'standard_railway_line_low', loadingPaint()],
 ]) {
   addLine(`${mode}-overview`, source, sourceLayer, 0, 7, color);
-  addLine(`${mode}-tracks`, 'railway', 'railway_line_high', 7, undefined, mode === 'loading' ? loadingPaint() : color, {
+  addLine(`${mode}-tracks`, 'railway', 'railway_line_high', 7, undefined, color, {
     'line-opacity': mode === 'infrastructure' ? 1 : ['case', ['==', ['get', 'tunnel'], true], 0.65, 1],
     'line-width': mode === 'gauge' ? halfWidth : trackWidth(),
     ...(mode === 'gauge' ? {'line-offset': dualOffset(-1)} : {}),

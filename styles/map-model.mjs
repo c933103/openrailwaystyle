@@ -231,6 +231,32 @@ export function loadingGauge(value) {
   const rank = height || (family === 'british' ? 3 + BRITISH_LADDER.indexOf(code) / 100 : family === 'metro' ? 1 : 2);
   return {code, name, height, width, family, note: note || LOADING_GAUGES.find(([, , , , f, n]) => f === family && n)?.[5], color, rank};
 }
+// In-view legend rows from counted values ({row: [colour, name, sort key,
+// detail], n}). Values drawn in the same colour share a row (e.g. GA, GB,
+// GB1 and GB2, all 4.32 m high), named most common first, with their shared
+// detail. The most common groups are listed, in order of size; the rest are
+// summarised in a last row.
+export function legendRows(entries, limit = 12) {
+  const groups = new Map();
+  for (const {row: [color, name, sort, detail], n} of entries) {
+    const group = groups.get(color) || {color, names: new Map(), details: new Set(), sort, n: 0};
+    group.names.set(name, (group.names.get(name) || 0) + n);
+    group.details.add(detail || '');
+    if (sort !== undefined && (group.sort === undefined || sort < group.sort)) group.sort = sort;
+    group.n += n; groups.set(color, group);
+  }
+  const all = [...groups.values()].sort((a, b) => b.n - a.n);
+  const shown = all.slice(0, limit).sort((a, b) => a.sort === undefined || b.sort === undefined ? 0 : a.sort - b.sort);
+  const rows = shown.map(g => {
+    const names = [...g.names].sort((a, b) => b[1] - a[1]).map(([name]) => name);
+    const listed = names.length > 4 ? `${names.slice(0, 4).join(', ')} +${names.length - 4} more` : names.join(', ');
+    const detail = g.details.size === 1 ? [...g.details][0] : '';
+    return [g.color, detail ? `${listed} · ${detail}` : listed];
+  });
+  const hidden = all.length - shown.length;
+  if (hidden > 0) rows.push(['transparent', `${hidden} less common value${hidden > 1 ? 's' : ''} in view; zoom in for them`, 'empty']);
+  return rows;
+}
 export const loadingDimensions = g => g?.height ? `${g.height.toFixed(2)} m high × ${g.width.toFixed(2)} m wide` : '';
 export function loadingPaint() {
   const lg = ['coalesce', ['get', 'loading_gauge'], ''];

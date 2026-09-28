@@ -3,6 +3,7 @@ import Pbf from 'pbf';
 import encode from 'vt-pbf';
 import {chooseName, mergeStationTranslation, stationLanguages, stationPending} from './map-model.mjs';
 import {hanRegion, chineseArea} from './han-region.mjs';
+import {decodeLoadingGauges, wayId} from './loading-gauge-list.mjs';
 export {hanRegion, chineseArea};
 
 export function readTile(data) {
@@ -60,7 +61,7 @@ export function localizeTile(data, lang, coordinates) {
   }
 }
 
-export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch) {
+export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch, {dataRoot} = {}) {
   // Only current-view requests are made. Keep a bounded cache of successful
   // responses so language changes can reuse downloaded station tiles.
   const cache = new Map();
@@ -106,6 +107,36 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     if (!response.ok && response.status !== 204) throw new Error(`Railway tile returned ${response.status}`);
     const data = await response.arrayBuffer(), coordinates = tileCoordinates(url);
     return {data: coordinates ? await countTracks(data, coordinates.z, coordinates.y) : data};
+  });
+  // Overview tiles (zoom 0–6) carry way IDs but no loading gauge: add it
+  // from the published way ID list (data/loading-gauge.json, about 250 kB
+  // compressed, fetched once and only for this view). Without the list the
+  // tiles pass through and lines show as not recorded.
+  let loadingGauges;
+  function loadingGaugeList() {
+    loadingGauges ||= (dataRoot ? fetcher(new URL('loading-gauge.json', dataRoot)) : Promise.reject(new Error('no data location')))
+      .then(response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
+      .then(decodeLoadingGauges)
+      .catch(error => { console.warn('Loading gauge list unavailable:', error.message); loadingGauges = undefined; return new Map(); });
+    return loadingGauges;
+  }
+  maplibregl.addProtocol('atlaslg',async (params,controller)=>{
+    const url = params.url.replace(/^atlaslg:\/\//,'');
+    if (params.type === 'json') {
+      const data = await get(url,controller.signal,true);
+      return {data:{...data,tiles:data.tiles.map(t=>`atlaslg://${t}`)}};
+    }
+    const [response, list] = await Promise.all([fetcher(url,{signal:controller.signal}), loadingGaugeList()]);
+    if (!response.ok && response.status !== 204) throw new Error(`Railway tile returned ${response.status}`);
+    const data = await response.arrayBuffer();
+    if (!data.byteLength || !list.size) return {data};
+    const tile = readTile(data);
+    for (const f of features(tile)) {
+      const value = list.get(wayId(f.properties.id));
+      if (value) f.properties.loading_gauge = value;
+    }
+    const result = encode(tile);
+    return {data: result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength)};
   });
   maplibregl.addProtocol('atlasbase',async (params,controller)=>{
     const [,lang,url] = /^atlasbase:\/\/([^/]+)\/(.+)$/.exec(params.url) || [];
