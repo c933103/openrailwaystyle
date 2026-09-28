@@ -80,7 +80,7 @@ const basemap=url=>url.includes('.pmtiles') && !url.startsWith('http://127.0.0.1
 page.on('request',req=>{if(basemap(req.url()) && basemapLog++<40) console.log('Basemap request',req.headers().range||'(no range)',req.url().slice(0,120));});
 page.on('response',res=>{if(basemap(res.url()) && basemapLog++<40) {const h=res.headers();console.log('Basemap response',res.status(),'range',res.request().headers().range||'-','length',h['content-length'],'content-range',h['content-range'],'encoding',h['content-encoding']||'-');}});
 page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap request failed',req.failure()?.errorText,req.headers().range||'-');});
-page.on('console',msg=>{if(msg.type()==='error') console.log('Browser resource:',msg.text());});
+page.on('console',msg=>{if(msg.type()==='error') { console.log('Browser resource:',msg.text()); if(/DataCloneError|already detached/.test(msg.text())) errors.push(msg.text()); }});
 await mkdir('browser-review',{recursive:true});
 try{
   await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260928-13&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
@@ -406,4 +406,5 @@ try{
   console.log('FAIL_IMAGE_START'+failure.toString('base64')+'FAIL_IMAGE_END');
   throw error;
 } finally {await browser.close();}
+
 

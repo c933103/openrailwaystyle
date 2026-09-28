@@ -340,7 +340,9 @@ export function hanFallback(p, lang) {
 // Unicode scripts include supplementary-plane Han characters used by Nôm/Hanja.
 export function chooseName(p, lang = 'local') {
   const local = [p.name,p['name:nonlatin']].filter(nonempty);
-  const english = [p['name:en'],p.int_name,p['name:latin'],p['name:en-Latn']].filter(nonempty);
+  // The basemap can generate name:latin without knowing the source language
+  // (e.g. Mandarin readings of Japanese kanji). It is not an English name.
+  const english = [p['name:en'],p['name:en-Latn'],p.int_name].filter(nonempty);
   const selected = [p[`name:${lang}`]].filter(nonempty);
   const recorded = Object.entries(p).filter(([k,v])=>k.startsWith('name:') && nonempty(v)).map(([,v])=>v);
   const borrow = hanFallback(p, lang);
@@ -362,7 +364,7 @@ export function chooseName(p, lang = 'local') {
   else if (lang === 'ru') preferred = [...selected.filter(cyrillic), ...local.filter(cyrillic), ...recorded.filter(cyrillic), ...english];
   else if (lang === 'ko') preferred = [...selected, ...local.filter(v=>/\p{Script=Hangul}/u.test(v)), ...english];
   else preferred = [...selected, ...english];
-  const name = [...preferred, ...local, p.localized_name, p.label, p.ref].find(nonempty) || '';
+  const name = [...preferred, ...local, p.localized_name, p['name:latin'], p.label, p.ref].find(nonempty) || '';
   return chinese(lang) ? withoutKana(name) : name;
 }
 export function displayName(p, lang = 'local') {
@@ -371,7 +373,7 @@ export function displayName(p, lang = 'local') {
 export function labelExpression(lang = 'local') {
   // Styles cannot tell regions apart; use the order for places elsewhere.
   const requested = chinese(lang) ? chineseVariantKeys(lang) : [`name:${lang}`];
-  const keys = ['atlas_name', ...(lang !== 'local' ? [...new Set(requested),'name:en','name:latin'] : []), 'name','name:nonlatin','label','ref'];
+  const keys = ['atlas_name', ...(lang !== 'local' ? [...new Set(requested),'name:en'] : []), 'name','name:nonlatin','name:latin','label','ref'];
   return ['case', ...keys.flatMap(key=>[['!=',['coalesce',['get',key],''],''],['to-string',['get',key]]]), ''];
 }
 // The station service substitutes the native name for missing translations.

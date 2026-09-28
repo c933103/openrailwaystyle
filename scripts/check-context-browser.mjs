@@ -6,7 +6,7 @@ const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleF
 page.setDefaultTimeout(90000);
 const errors=[];
 page.on('pageerror',e=>errors.push(e.message));
-page.on('console',msg=>{if(msg.type()==='error') console.log('Browser resource:',msg.text());});
+page.on('console',msg=>{if(msg.type()==='error') { console.log('Browser resource:',msg.text()); if(/DataCloneError|already detached/.test(msg.text())) errors.push(msg.text()); }});
 await page.addInitScript(()=>{
   const original=HTMLCanvasElement.prototype.getContext;
   HTMLCanvasElement.prototype.getContext=function(kind,options){return original.call(this,kind,/^webgl2?$/.test(kind)?{...options,preserveDrawingBuffer:true}:options);};
