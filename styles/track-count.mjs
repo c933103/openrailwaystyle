@@ -10,8 +10,7 @@
 //   another, do not.
 // - Those tracks form a bundle while each lies within MAX_GAP of the next,
 //   or within LINE_GAP when both belong to the same named line: the two
-//   tracks of a metro line in twin tunnels, or either side of an island
-//   platform, can be well apart. Tunnels and trams are only compared with
+//   tracks of a metro line in twin tunnels can be well apart. Tunnels and trams are only compared with
 //   their own kind (group).
 // - The count is taken where it is measured, not for a whole way. Along
 //   each track it is the most common count over WINDOW probes around each
@@ -20,9 +19,12 @@
 //   bundle's middle one (one per bundle, the same for every member),
 //   stretches of equal count give label points, at the middle of the
 //   stretch and every LABEL_EVERY metres along it.
-export const MIN_ZOOM = 13; // below this, tile coordinates are too coarse (over 1 m) for tracks 4–5 m apart
-const MAX_GAP = 12;          // metres between neighbouring tracks of different or unnamed lines
-const LINE_GAP = {surface: 20, tunnel: 35}; // metres between neighbouring tracks of the same line
+// Metres between neighbouring tracks: of different or unnamed lines (on the
+// surface a corridor's track pairs are often 15–26 m apart, such as south
+// of Ōmiya; separate tunnels are separate structures), and of the same line
+// (twin-bore tunnels, island platforms).
+const MAX_GAP = {surface: 30, tunnel: 12};
+const LINE_GAP = {surface: 30, tunnel: 35};
 const PROBE = 120;           // metres each side of the track
 const STEP = 40;             // metres between probes
 const MAX_PROBES = 400;
@@ -61,9 +63,11 @@ function mode(values) {
 // length is the whole way's length in metres, if known. Returns
 // {lines, points}: per line {tracks} (the most common count along it, 0
 // when not measured, as for service tracks and connectors), and label
-// points [{x, y, tracks, group}] in tile units.
-export function countTracks(lines, metres, debug) {
-  const gap = MAX_GAP / metres, probe = PROBE / metres, step = STEP / metres, short = SHORT / metres, slack = SLACK, samePlace = SAME_PLACE / metres;
+// points [{x, y, tracks, group}] in tile units. Options: probe(i), whether
+// to measure line i (the others are only neighbours; default all); debug,
+// an object that receives each measured line's probes (for tuning).
+export function countTracks(lines, metres, {probe: measured = () => true, debug} = {}) {
+  const probe = PROBE / metres, step = STEP / metres, short = SHORT / metres, slack = SLACK, samePlace = SAME_PLACE / metres;
   const lengths = lines.map(line => line.length > 0 ? line.length / metres : lengthOf(line.parts));
   const segments = [], cell = probe, grid = new Map();
   lines.forEach((line, index) => {
@@ -109,7 +113,7 @@ export function countTracks(lines, metres, debug) {
   // The bundle around `index` among the offsets, its size and whether
   // `index` is its middle track.
   const bundle = (index, group, offsets) => {
-    const lineGap = LINE_GAP[group.endsWith('-tunnel') ? 'tunnel' : 'surface'] / metres;
+    const kind = group.endsWith('-tunnel') ? 'tunnel' : 'surface', gap = MAX_GAP[kind] / metres, lineGap = LINE_GAP[kind] / metres;
     const sorted = [...offsets].sort((a, b) => a[1] - b[1]);
     const joined = (a, b) => b[1] - a[1] <= gap || (b[1] - a[1] <= lineGap && sameLine(a[0], b[0]));
     let lo = sorted.findIndex(([i]) => i === index), hi = lo;
@@ -133,7 +137,7 @@ export function countTracks(lines, metres, debug) {
   };
   const points = [];
   const result = lines.map((line, index) => {
-    if (line.main === false) return {tracks: 0};
+    if (line.main === false || !measured(index)) return {tracks: 0};
     const pieces = [];
     let total = 0;
     for (const part of line.parts) for (let i = 1; i < part.length; i++) {

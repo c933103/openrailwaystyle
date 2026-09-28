@@ -68,6 +68,15 @@
       "promoteId": "id",
       "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
     },
+    "trackCounts": {
+      "type": "vector",
+      "tiles": [
+        "atlastracks://{z}/{x}/{y}"
+      ],
+      "minzoom": 14,
+      "maxzoom": 14,
+      "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
+    },
     "stationLow": {
       "type": "vector",
       "url": "https://openrailwaymap.app/standard_railway_text_stations_low",
@@ -9436,9 +9445,9 @@
     {
       "id": "infrastructure-track-count",
       "type": "symbol",
-      "source": "railway",
+      "source": "trackCounts",
       "source-layer": "atlas_track_counts",
-      "minzoom": 13,
+      "minzoom": 14,
       "filter": [
         ">=",
         [

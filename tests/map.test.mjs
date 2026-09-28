@@ -298,42 +298,50 @@ test('tracks side by side are counted from mapped geometry', async () => {
   const input = trackLines([feature({state:'construction'}), feature({feature:'ferry'}), feature({}, 1), feature({tunnel:true}), feature({feature:'tram', service:'siding'})]);
   assert.deepEqual(input.map(l => l && [l.group, l.main]), [null, null, null, ['rail-tunnel', true], ['tram', false]]);
 });
-test('track counts are badges on label points in the Infrastructure view from zoom 13', () => {
+test('track counts are badges on label points in the Infrastructure view from zoom 14', () => {
   const layer = style.layers.find(l => l.id === 'infrastructure-track-count');
-  assert.equal(layer.minzoom, 13);
+  assert.equal(layer.minzoom, 14);
+  assert.equal(layer.source, 'trackCounts');
+  assert.deepEqual([style.sources.trackCounts.minzoom, style.sources.trackCounts.maxzoom], [14, 14]);
   assert.equal(layer['source-layer'], 'atlas_track_counts');
   assert.equal(layer.layout['icon-image'], 'track-badge');
   assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:1, properties:{tracks:4}}), true);
   assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:1, properties:{tracks:1}}), true);
   assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:1, properties:{}}), false);
 });
-test('track-count tiles gain a point layer inside the tile only', async () => {
-  const {annotateTracks, COUNT_LAYER} = await import('../styles/track-tiles.mjs');
-  const {VectorTile} = await import('@mapbox/vector-tile');
-  const Pbf = (await import('pbf')).default;
+test('track-count tiles: neighbours joined by way, points inside, none in station areas or at bare stations', async () => {
+  const {countTile} = await import('../styles/track-tiles.mjs');
   const {fromGeojsonVt} = await import('vt-pbf');
-  // Zoom 16 at the equator: 4096 units ≈ 611 m, so 1 unit ≈ 0.15 m. A
-  // double track 30 units (≈ 4.5 m) apart across the tile.
-  const way = (id, y) => ({id, type: 2, tags: {feature: 'rail'}, geometry: [[[-50, y], [4150, y]]]});
-  const data = fromGeojsonVt({railway_line_high: {features: [way(1, 2000), way(2, 2030)]}}, {version: 2, extent: 4096});
-  const out = new VectorTile(new Pbf(annotateTracks(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength), 16, 2 ** 15)));
-  const lines = out.layers.railway_line_high;
-  assert.deepEqual([0, 1].map(i => lines.feature(i).properties.atlas_tracks), [2, 2]);
-  const points = out.layers[COUNT_LAYER];
-  assert.ok(points.length >= 1);
-  for (let i = 0; i < points.length; i++) {
-    const f = points.feature(i), [[p]] = f.loadGeometry();
-    assert.equal(f.type, 1); assert.equal(f.properties.tracks, 2);
-    assert.ok(p.x >= 0 && p.x < 4096 && p.y >= 1990 && p.y <= 2040);
-  }
-  // No labels within a station's radius; counts on the lines stay.
-  const buffer = () => data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-  const station = [{x: 0.5, y: 2015 / 4096, radius: 1000}];
-  const inStation = new VectorTile(new Pbf(annotateTracks(buffer(), 16, 2 ** 15, station)));
-  assert.equal(inStation.layers[COUNT_LAYER], undefined);
-  assert.equal(inStation.layers.railway_line_high.feature(0).properties.atlas_tracks, 2);
-  const small = new VectorTile(new Pbf(annotateTracks(buffer(), 16, 2 ** 15, [{...station[0], x: 0.02, radius: 50}])));
-  assert.ok(small.layers[COUNT_LAYER].length >= 1);
+  const tile = (layer, features) => { const out = fromGeojsonVt({[layer]: {features}}, {version: 2, extent: 4096}); return out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength); };
+  // Zoom 14 at the equator: 1 unit ≈ 0.6 m. A double track (7.5 units ≈
+  // 4.5 m apart) runs east across the tile into its eastern neighbour, where
+  // the same two ways continue; in the centre tile the second track only
+  // begins near the eastern edge, so its count there comes from the
+  // neighbour.
+  const way = (id, y, x0, x1) => ({type: 2, tags: {id, feature: 'rail'}, geometry: [[[x0, y], [x1, y]]]});
+  const tiles = [
+    {dx: 0, dy: 0, data: tile('railway_line_high', [way('a', 2000, -64, 4160), way('b', 2007.5, 3900, 4160)])},
+    {dx: 1, dy: 0, data: tile('railway_line_high', [way('a', 2000, -64, 4160), way('b', 2007.5, -64, 4160)])},
+  ];
+  const y = 2 ** 13;
+  const {extent, points} = countTile({tiles}, y);
+  assert.equal(extent, 4096);
+  assert.ok(points.length >= 1 && points.every(p => p.x >= 0 && p.x < 4096 && p.y >= 1995 && p.y <= 2010));
+  // West, one track; near the east edge, where both tracks run, two.
+  assert.ok(points.some(p => p.x < 3000 && p.tracks === 1), JSON.stringify(points));
+  // Station areas take away the labels in them, unless the area holds only
+  // subway stations (surface tracks above one stay labelled); stations
+  // without an area take away those within 100 m.
+  const square = [[[0, 1900], [4096, 1900], [4096, 2100], [0, 2100], [0, 1900]]];
+  const areas = tile('standard_railway_grouped_station_areas', [{type: 3, tags: {id: 1}, geometry: square}]);
+  const stationAt = (station, x = 2000, y0 = 2000) => tile('standard_railway_text_stations', [{type: 1, tags: {feature: 'station', station}, geometry: [[x, y0]]}]);
+  assert.equal(countTile({tiles, areas, stations: stationAt('train')}, y).points.length, 0);
+  assert.equal(countTile({tiles, areas}, y).points.length, 0);
+  assert.equal(countTile({tiles, areas, stations: stationAt('subway')}, y).points.length, points.length);
+  const station = tile('standard_railway_text_stations', points.map(p => ({type: 1, tags: {feature: 'station', station: 'train'}, geometry: [[Math.round(p.x), Math.round(p.y)]]})));
+  assert.equal(countTile({tiles, stations: station}, y).points.length, 0);
+  const tram = tile('standard_railway_text_stations', points.map(p => ({type: 1, tags: {feature: 'station', station: 'tram'}, geometry: [[Math.round(p.x), Math.round(p.y)]]})));
+  assert.equal(countTile({tiles, stations: tram}, y).points.length, points.length);
 });
 test('legend colours equal the drawn colours for power, gauge and loading gauge', async () => {
   const m = await import('../styles/map-model.mjs');

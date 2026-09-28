@@ -22,6 +22,10 @@ const style = {
     // protocol, tile-labels.mjs).
     loadingLow: vector('standard_railway_line_low', 0, 6),
     railway: vector('railway_line_high', 7, 16),
+    // Running tracks side by side, counted in the browser from the railway
+    // tiles (atlastracks protocol, tile-labels.mjs and track-tiles.mjs):
+    // always from zoom-14 tiles, so the same at every zoom.
+    trackCounts: {type: 'vector', tiles: ['atlastracks://{z}/{x}/{y}'], minzoom: 14, maxzoom: 14, attribution: '<a href="https://www.openrailwaymap.app/">OpenRailwayMap</a> · <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>'},
     stationLow: vector('standard_railway_text_stations_low', 4, 6),
     // The mid-zoom endpoint returns nothing below zoom 7, and the low-zoom
     // one keeps only stations OpenRailwayMap sizes large or normal, which
@@ -183,7 +187,7 @@ for (const [id,source,sourceLayer,minzoom,maxzoom,filter] of [
 // Infrastructure view. Where badges would collide, surface tracks win over
 // tunnels beneath them, then larger counts; tunnel badges are paler.
 style.layers.push({
-  id: 'infrastructure-track-count', type: 'symbol', source: 'railway', 'source-layer': 'atlas_track_counts', minzoom: 13,
+  id: 'infrastructure-track-count', type: 'symbol', source: 'trackCounts', 'source-layer': 'atlas_track_counts', minzoom: 14,
   filter: ['>=', ['to-number', ['get', 'tracks'], 0], 1],
   layout: { 'text-field': ['to-string', ['get', 'tracks']], 'text-font': ['Noto Sans Bold'], 'text-size': 11,
     'icon-image': 'track-badge', 'icon-text-fit': 'both', 'icon-text-fit-padding': [2, 5, 1, 5],
