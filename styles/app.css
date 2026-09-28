@@ -49,6 +49,7 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 .gauge-scale span{position:absolute;top:13px;transform:translateX(-50%);font-size:9px;color:#5f6d66}
 .gauge-scale span.above{top:-14px}
 .swatch.empty{visibility:hidden}
+.track-badge-swatch{display:inline-block;min-width:10px;padding:0 4px;border:1px solid #173e47;border-radius:4px;background:#fffef8;color:#173e47;font-weight:700;font-size:11px;line-height:14px;text-align:center}
 .mode-picker{display:grid;grid-template-columns:repeat(3,1fr)}.mode-picker button{white-space:normal;line-height:1.2}
 
 .polar-place{font:12px/1.2 'Noto Sans',system-ui,sans-serif;color:#74807d;text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff;white-space:nowrap;pointer-events:none}

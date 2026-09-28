@@ -1,7 +1,7 @@
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import encode from 'vt-pbf';
-import {chooseName, mergeStationTranslation, stationLanguages, stationPending} from './map-model.mjs';
+import {chooseName, mergeStationTranslation, stationLanguages, stationPending, ORM} from './map-model.mjs';
 import {hanRegion, chineseArea} from './han-region.mjs';
 import {decodeLoadingGauges, wayId} from './loading-gauge-list.mjs';
 export {hanRegion, chineseArea};
@@ -73,40 +73,78 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     if (!response.ok) throw new Error(`Map names returned ${response.status}`);
     const data = json ? await response.json() : await response.arrayBuffer();
     cache.set(url,data);
-    while(cache.size>160) cache.delete(cache.keys().next().value);
+    while(cache.size>240) cache.delete(cache.keys().next().value);
     return data;
   }
-  // Railway tiles: tracks side by side are counted from zoom 12 in a worker,
-  // off the page's main thread (track-worker.mjs). Other zooms pass through.
+  // Track counts: a vector source of their own (atlastracks://14/x/y; see
+  // track-tiles.mjs), counted in a worker off the page's main thread
+  // (track-worker.mjs) from the provider's zoom-14 railway tiles (the ones
+  // the map shows at zoom 14) with their neighbours, station areas and
+  // stations, all through the shared cache. MapLibre enlarges zoom-14 tiles
+  // beyond, so a place has the same count at every zoom.
   let trackWorker, nextJob = 0;
-  const trackJobs = new Map();
-  function countTracks(data, z, y) {
-    if (z < 12 || !data?.byteLength || typeof Worker === 'undefined') return data;
-    if (!trackWorker) {
-      trackWorker = new Worker(new URL(`track-worker.js${new URL(import.meta.url).search}`, import.meta.url));
-      trackWorker.onmessage = ({data:{id,data:result,error}}) => {
-        const job = trackJobs.get(id); trackJobs.delete(id);
-        if (!job) return;
-        if (error) { console.warn('Track counts unavailable:', error); job(job.data); } else job(result);
-      };
-      trackWorker.onerror = () => { for (const job of trackJobs.values()) job(job.data); trackJobs.clear(); };
-    }
-    return new Promise(resolve => {
-      const id = nextJob++, copy = data.slice(0);
-      resolve.data = data; trackJobs.set(id, resolve);
-      trackWorker.postMessage({id, data:copy, z, y}, [copy]);
-    });
+  const trackJobs = new Map(), counted = new Map();
+  const orm = path => `${ORM}/${path}`;
+  const optional = promise => promise.catch(error => { if (error?.name === 'AbortError') throw error; return null; });
+  // Shared by the zoom-13 and zoom-14 tiles that need it, so not cancelled
+  // with any one request (get's own timeout still applies).
+  const never = new AbortController().signal;
+  function countZoom14(x, y) {
+    const signal = never, key = `${x}/${y}`;
+    if (counted.has(key)) return counted.get(key);
+    const job = (async () => {
+      const around = [];
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const n = 2 ** 14, tx = (x + dx + n) % n, ty = y + dy;
+        if (ty >= 0 && ty < n) around.push(optional(get(orm(`railway_line_high/14/${tx}/${ty}`), signal)).then(data => data && {dx, dy, data}));
+      }
+      const [tiles, areas, stations] = await Promise.all([Promise.all(around),
+        optional(get(orm(`standard_railway_grouped_station_areas/14/${x}/${y}`), signal)), optional(get(orm(`standard_railway_text_stations/14/${x}/${y}`), signal))]);
+      if (!tiles.some(t => t && !t.dx && !t.dy)) throw new Error('Railway tile unavailable');
+      if (!trackWorker) {
+        trackWorker = new Worker(new URL(`track-worker.js${new URL(import.meta.url).search}`, import.meta.url));
+        trackWorker.onmessage = ({data:{id,result,error}}) => {
+          const done = trackJobs.get(id); trackJobs.delete(id);
+          if (done) done(error ? Promise.reject(new Error(error)) : result);
+        };
+        trackWorker.onerror = event => { for (const done of trackJobs.values()) done(Promise.reject(new Error(event.message || 'Track worker failed'))); trackJobs.clear(); };
+      }
+      // Copies go to the worker: the cache keeps the originals.
+      const copy = list => list.filter(Boolean).map(t => ({...t, data: t.data.slice(0)}));
+      const own = data => data && data.slice(0);
+      return new Promise(resolve => {
+        const id = nextJob++;
+        trackJobs.set(id, resolve);
+        trackWorker.postMessage({id, tiles: copy(tiles), areas: own(areas), stations: own(stations), y});
+      });
+    })();
+    counted.set(key, job);
+    job.catch(() => counted.delete(key));
+    while (counted.size > 64) counted.delete(counted.keys().next().value);
+    return job;
   }
+  maplibregl.addProtocol('atlastracks', async (params, controller) => {
+    const coordinates = tileCoordinates(params.url);
+    if (!coordinates || typeof Worker === 'undefined') return {data: new ArrayBuffer(0)};
+    const {z, x, y} = coordinates, features = [];
+    let extent = 4096;
+    if (z === 14) {
+      const result = await countZoom14(x, y);
+      extent = result.extent;
+      for (const p of result.points) features.push({x: p.x, y: p.y, p});
+    }
+    const layers = {atlas_track_counts: {features: features.map(({x: px, y: py, p}) => ({type: 1, geometry: [[Math.round(px), Math.round(py)]], tags: {tracks: p.tracks, ...(p.tunnel && {tunnel: true})}}))}};
+    const out = encode.fromGeojsonVt(layers, {version: 2, extent});
+    return {data: out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength)};
+  });
   maplibregl.addProtocol('atlasrail',async (params,controller)=>{
     const url = params.url.replace(/^atlasrail:\/\//,'');
     if (params.type === 'json') {
       const data = await get(url,controller.signal,true);
       return {data:{...data,tiles:data.tiles.map(t=>`atlasrail://${t}`)}};
     }
-    const response = await fetcher(url,{signal:controller.signal});
-    if (!response.ok && response.status !== 204) throw new Error(`Railway tile returned ${response.status}`);
-    const data = await response.arrayBuffer(), coordinates = tileCoordinates(url);
-    return {data: coordinates ? await countTracks(data, coordinates.z, coordinates.y) : data};
+    // Through the shared cache: the track counts read the same tiles.
+    return {data: await get(url, controller.signal)};
   });
   // Overview tiles (zoom 0–6) carry way IDs but no loading gauge: add it
   // from the published way ID list (data/loading-gauge.json, about 250 kB
