@@ -271,3 +271,66 @@ test('track counts label the Infrastructure view from zoom 12', () => {
   assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:2, properties:{atlas_tracks_label:true}}), false);
   assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:2, properties:{atlas_tracks:4, atlas_tracks_label:false}}), false);
 });
+test('legend colours equal the drawn colours for power, gauge and loading gauge', async () => {
+  const m = await import('../styles/map-model.mjs');
+  const {expression} = await import('@maplibre/maplibre-gl-style-spec');
+  const hex = c => '#' + [c.r, c.g, c.b].map(v => Math.round(v*255).toString(16).padStart(2,'0')).join('');
+  const drawn = (expr, properties) => hex(expression.createExpression(expr, {type:'color'}).value.evaluate({zoom:10}, {properties}));
+  const close = (a, b) => Math.max(...[1,3,5].map(i => Math.abs(parseInt(a.slice(i,i+2),16) - parseInt(b.slice(i,i+2),16)))) <= 1;
+  for (const p of [{voltage:25000, frequency:50}, {voltage:20000, frequency:50}, {voltage:15000, frequency:16.7}, {voltage:1500, frequency:0}, {voltage:750, frequency:0}, {voltage:12500, frequency:60}, {electrification_state:'no'}])
+    assert.ok(close(drawn(m.electrificationPaint(), p), m.electrificationColor(p)), JSON.stringify(p));
+  for (const mm of [600, 762, 1000, 1067, 1372, 1432, 1435, 1520, 1524, 1668, 1676])
+    assert.ok(close(drawn(m.gaugePaint(), {gaugeint0:mm}), m.gaugeColor(mm)), String(mm));
+  for (const v of ['TSI_GC', 'TSI_GB', 'TSI_GA', 'PPI', 'GOST_T', 'AAR_C', 'CPb+', 'PT c', 'W6A', 'W6A, W7', 'W6A, W7, W8, W9, W10', 'W6A, W7, W8, W9, W9Plus, W10, W10A, W12', 'W6, W6A', 'W6A, W7*', 'deep-tube', '3200', 'EBV 4', 'FS'])
+    assert.equal(drawn(m.loadingPaint(), {loading_gauge:v}), m.loadingGauge(v).color, v);
+});
+test('loading gauge: colour by envelope height, largest of a list, British ladder', async () => {
+  const {loadingGauge} = await import('../styles/map-model.mjs');
+  assert.equal(loadingGauge('TSI_GC').height, 4.65);
+  assert.equal(loadingGauge('TSI_GC').color, loadingGauge('UIC_C').color, 'same height, same colour across naming systems');
+  assert.equal(loadingGauge('TSI_GA').color, loadingGauge('TSI_GB1').color);
+  assert.notEqual(loadingGauge('TSI_GB').color, loadingGauge('TSI_GC').color);
+  assert.equal(loadingGauge('W6A, W7, W8, W9, W10').code, 'W10');
+  assert.equal(loadingGauge('W6, W6A').code, 'W6A');
+  assert.equal(loadingGauge('W6A, W7*').code, 'W7');
+  assert.equal(loadingGauge('3200').family, 'other');
+  assert.equal(loadingGauge(undefined), null);
+});
+test('each view writes its values along the tracks from zoom 10', async () => {
+  const {expression} = await import('@maplibre/maplibre-gl-style-spec');
+  const text = (id, properties) => { const l = style.layers.find(x => x.id === id); return String(expression.createExpression(l.layout['text-field']).value.evaluate({zoom:12}, {properties})); };
+  for (const id of ['speed-labels','electrification-labels','control-labels','gauge-labels','loading-labels']) assert.equal(style.layers.find(l => l.id === id).minzoom, 10, id);
+  assert.equal(text('electrification-labels', {voltage:25000, frequency:50}), '25 kV 50 Hz');
+  assert.equal(text('electrification-labels', {voltage:15000, frequency:16.700000762939453}), '15 kV 16.7 Hz');
+  assert.equal(text('electrification-labels', {voltage:1500, frequency:0}), '1.5 kV DC');
+  assert.equal(text('electrification-labels', {voltage:750, frequency:0}), '750 V DC');
+  assert.equal(text('control-labels', {train_protection0:'lzb', train_protection1:'pzb'}), 'LZB + PZB');
+  assert.equal(text('control-labels', {train_protection0:'etcs_2'}), 'ETCS L2');
+  assert.equal(text('gauge-labels', {gauge0:'1435', gauge1:'1668'}), '1435 / 1668 mm');
+  assert.equal(text('loading-labels', {loading_gauge:'W6A, W7, W8, W9, W10'}), 'W10');
+  assert.equal(text('loading-labels', {loading_gauge:'TSI_GC'}), 'TSI_GC');
+});
+test('weekly changes add, update and remove snapshot ways, newest data winning', async () => {
+  const {mergeDelta, applyDelta, deltaQueries} = await import('../scripts/snapshot-delta.mjs');
+  const way = (id, tags) => ({type:'way', id, tags, geometry:[{lon:0,lat:0},{lon:1,lat:1}]});
+  const lifecycle = {osm3s:{timestamp_osm_base:'2026-10-05T03:00:00Z'}, elements:[way(1, {railway:'construction', construction:'rail', name:'New line'}), way(3, {railway:'proposed', proposed:'rail'})]};
+  const opened = {osm3s:{timestamp_osm_base:'2026-10-05T03:01:00Z'}, elements:[{type:'way', id:2}, {type:'way', id:9}]};
+  const delta = mergeDelta(null, lifecycle, opened);
+  assert.equal(delta.since, '2026-10-05T03:00:00Z');
+  const features = new Map([[1, {id:1, properties:{state:'proposed'}}], [2, {id:2, properties:{state:'construction'}}], [4, {id:4, properties:{state:'abandoned'}}]]);
+  const base = new Map([[1, '2026-09-22T12:00:00Z'], [2, '2026-09-22T12:00:00Z'], [4, '2026-10-10T00:00:00Z']]);
+  const result = applyDelta(features, base, delta);
+  assert.deepEqual([result.added, result.updated, result.removed], [1, 1, 1]);
+  assert.equal(features.get(1).properties.state, 'construction', 'proposal now under construction');
+  assert.ok(!features.has(2), 'line opened: no longer shown as construction');
+  assert.ok(features.has(3), 'new proposal added');
+  // Way 9 was never in the snapshot: its removal entry is pruned.
+  assert.deepEqual(Object.keys(result.delta.changes).sort(), ['1', '2', '3']);
+  // Region data newer than the change wins.
+  const newer = new Map([[1, {id:1, properties:{state:'disused'}}]]);
+  applyDelta(newer, new Map([[1, '2026-11-01T00:00:00Z']]), delta);
+  assert.equal(newer.get(1).properties.state, 'disused');
+  const q = deltaQueries('2026-10-01T00:00:00Z', '50,0,51,1');
+  assert.match(q.lifecycle, /changed:"2026-10-01T00:00:00Z"/);
+  assert.match(q.opened, /out ids/);
+});
