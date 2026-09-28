@@ -100,7 +100,7 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
     maps[0].handlers.styleimagemissing({id:'station-dot'});
     assert.equal(maps[0].image.id,'station-dot');
     assert.equal(maps[0].image.data.data.length,32*32*4);
-    maps[0].handlers.load();
+    maps[0].handlers['style.load']();
     assert.equal(window.document.body.dataset.mapReady,'true');
     assert.equal(maps[0].visibility['speed-tracks'],'visible');
     maps[0].handlers.error({error:{name:'AbortError',message:'AbortError'}});
@@ -155,7 +155,7 @@ test('controls work while the map is still loading, and settings take effect onc
     assert.match(map.options.style.sources.seabedContoursClose.tiles[0],/^atlas-contour:\/\/ft\//);
     assert.equal(maps.scale.unit,'imperial');
     assert.deepEqual(maps.controls.slice(0,2).map(c=>[c.showZoom,c.showCompass]),[[false,true],[undefined,false]],'compass above the zoom buttons');
-    map.handlers.load();
+    map.handlers['style.load']();
     assert.equal(map.visibility['electrification-tracks'],'visible');
     units.value = 'metric'; units.dispatchEvent(new window.Event('change'));
     assert.equal(maps.scale.unit,'metric');
@@ -169,7 +169,7 @@ test('more detail draws the next zoom level at half size', async () => {
   try {
     assert.equal(window.document.getElementById('map').classList.contains('detail'),true);
     assert.equal(maps[0].options.pixelRatio,(window.devicePixelRatio||1)/2,'the canvas keeps its pixel count');
-    maps[0].handlers.load();
+    maps[0].handlers['style.load']();
     assert.ok(maps[0].added.includes('drawing-line'),'drawing layers are installed with the map');
     // Toggling at the zoom limit keeps the viewport: the range shifts by one.
     const map = maps[0];

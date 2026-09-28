@@ -1,6 +1,6 @@
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-6';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-7';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-6';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-7';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -16,7 +16,7 @@ const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_C
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-6';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-7';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -547,9 +547,21 @@ async function initialize() {
     console.error('Map resource error:', e.sourceId || 'map', e.error?.message || String(e.error), e.error);
     errors.add(e.sourceId || 'resource');
     status.classList.add('error'); status.textContent = 'Some map data could not load. Check your connection or reload to retry.';
+    // A failed tile is requested again when next needed, but a source whose
+    // metadata request failed stays empty for good: retry it a few times.
+    const source = e.sourceId && !e.tile && map.getSource(e.sourceId), attempt = metadataRetries.get(e.sourceId) || 0;
+    if (source?.url && typeof source.setUrl === 'function' && !source.loaded?.() && attempt < 3) {
+      metadataRetries.set(e.sourceId, attempt + 1);
+      setTimeout(() => { const current = map.getSource(e.sourceId); if (current?.url && !current.loaded?.()) current.setUrl(current.url); }, [5000, 15000, 45000][attempt]);
+    }
   });
-  map.on('sourcedata', e => { if (e.isSourceLoaded && e.sourceId) errors.delete(e.sourceId); });
-  map.on('load', () => {
+  const metadataRetries = new Map();
+  map.on('sourcedata', e => { if (e.isSourceLoaded && e.sourceId) { errors.delete(e.sourceId); metadataRetries.delete(e.sourceId); } });
+  // Apply settings as soon as the style is in place, not at MapLibre's
+  // 'load', which waits for every initial tile: zoomed out that is dozens of
+  // large overview tiles, and a source whose metadata request fails never
+  // loads at all, which left view changes unapplied.
+  const styleReady = () => {
     ready = true;
     // Settings changed while the map was loading take effect now.
     if (styleLanguage !== settings.language) { reloadLanguage(); return; }
@@ -557,7 +569,8 @@ async function initialize() {
     applySettings(); applyUnits(); updateStatus(); updatePolar();
     document.body.dataset.mapReady = 'true';
     const action = pendingView; pendingView = undefined; action?.();
-  });
+  };
+  if (map.isStyleLoaded?.()) styleReady(); else map.once('style.load', styleReady);
   map.on('idle', updateStatus);
   map.on('moveend', scheduleLegend);
   map.on('moveend', updatePolar);
