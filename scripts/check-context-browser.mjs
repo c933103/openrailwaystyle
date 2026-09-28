@@ -77,8 +77,8 @@ try {
   await page.locator('#details-close').click();
   await page.locator('.display-options > summary').click();
   await page.locator('#transport').uncheck();await page.locator('#destinations').uncheck();
-  await page.waitForTimeout(500);
-  assert.equal(await evaluate(map=>map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('context-')).length),0,'context toggles hide all associated layers');
+  assert.ok(await evaluate(map=>map.getStyle().layers.filter(l=>l.id.startsWith('context-')).every(l=>l.layout?.visibility==='none')),'both context groups are disabled');
+  await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return !map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('context-'));});
   await page.locator('#transport').check();await page.locator('#destinations').check();
   await page.locator('#language').selectOption('zh-Hant');
   await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('context-')&&f.properties.atlas_language==='zh-Hant');});
@@ -89,6 +89,7 @@ try {
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return map.queryRenderedFeatures({layers:['context-transport-airport-label']}).some(f=>f.properties.iata==='LHR'||/Heathrow/.test(f.properties.name));
   });
+  await settleContext();
   await screenshot('airport');
   console.log('PASS: regional airport label');
   assert.deepEqual(errors,[]);
