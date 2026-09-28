@@ -22,7 +22,7 @@ export const ORM = 'https://openrailwaymap.app';
 // Public API explicitly supports cross-origin clients; the vector site's
 // same-origin /api/facility endpoint is not suitable for GitHub Pages.
 export const SEARCH_API = 'https://api.openrailwaymap.org/v2/facility';
-export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge'];
+export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge', 'loading'];
 export const LANGUAGES = [
   ['local','Local names'], ['en','English'], ['ko','한국어'], ['ja','日本語'],
   ['zh-Hant','繁體中文'], ['zh-Hans','简体中文'], ['de','Deutsch'], ['fr','Français'],
@@ -74,7 +74,8 @@ export function electrificationPaint() {
 export function describeCurrent(voltage, frequency) {
   const v = typeof voltage === 'number' ? kv(voltage) : '';
   if (typeof frequency !== 'number') return v ? `${v}, current type not recorded` : '';
-  return frequency === 0 ? `${v ? v + ' ' : ''}DC` : `${v ? v + ' ' : ''}AC ${Number(frequency.toFixed(2))} Hz`;
+  const current = frequency === 0 ? 'DC' : `AC ${Number(frequency.toFixed(2))} Hz`;
+  return v ? `${v} ${current}` : `${current}, voltage not recorded`;
 }
 // Train protection and control. Hue follows lineage (systems derived from or
 // compatible with one another share a hue); shade follows how advanced the
@@ -152,11 +153,96 @@ export const GAUGE_STOPS = GAUGE_ANCHORS.flatMap(([mm, color], i, all) => {
   const low = i ? Math.max(mm - GAUGE_BAND, (all[i-1][0] + mm) / 2) : mm, high = i < all.length - 1 ? Math.min(mm + GAUGE_BAND, (mm + all[i+1][0]) / 2) : mm;
   return low === high ? [[mm, color]] : [[low, color], [high, color]];
 });
-export const GAUGE_TICKS = [600, 762, 1000, 1067, 1435, 1520, 1672];
 export function gaugePaint(index = 0) {
   const mm = ['to-number', ['coalesce', ['get', `gaugeint${index}`], -1], -1];
   return ['case', ['<=', mm, 0], UNKNOWN_COLOR, ['interpolate', ['linear'], mm, ...GAUGE_STOPS.flat()]];
 }
+// Colour at a value on piecewise-linear colour stops, as MapLibre's
+// 'interpolate' does, so legends can show the exact colour of what is drawn.
+const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+export function interpolateColor(stops, value) {
+  if (value <= stops[0][0]) return stops[0][1];
+  for (let i = 1; i < stops.length; i++) {
+    const [v1, c1] = stops[i];
+    if (value > v1) continue;
+    const [v0, c0] = stops[i - 1], t = v1 === v0 ? 1 : (value - v0) / (v1 - v0), a = rgb(c0), b = rgb(c1);
+    return '#' + a.map((x, k) => Math.round(x + (b[k] - x) * t).toString(16).padStart(2, '0')).join('');
+  }
+  return stops.at(-1)[1];
+}
+export function electrificationColor(p) {
+  const volts = typeof p.voltage === 'number' ? p.voltage : -1, hz = typeof p.frequency === 'number' ? p.frequency : -1;
+  if (['no', 'deelectrified'].includes(p.electrification_state) || volts === 0) return NOT_ELECTRIFIED;
+  if (hz < 0 || (hz === 0 && volts < 0)) return UNKNOWN_COLOR;
+  const system = hz === 0 ? CURRENT_SYSTEMS[0] : CURRENT_SYSTEMS[hz < 20 ? 1 : hz < 40 ? 2 : hz < 55 ? 3 : 4];
+  const stops = currentStops(system);
+  return volts < 0 ? stops[Math.floor(stops.length / 2)][1] : interpolateColor(stops, volts);
+}
+export const gaugeColor = mm => mm > 0 ? interpolateColor(GAUGE_STOPS, mm) : UNKNOWN_COLOR;
+// Short system names for labels along the track.
+export const trainProtectionShort = code => ({etcs_2: 'ETCS L2', etcs_1: 'ETCS L1', etcs: 'ETCS', ctcs_3: 'CTCS-3', ctcs_2: 'CTCS-2', ctcs: 'CTCS-0/1',
+  tcb: 'TCB', twc: 'TWC', none: 'none', atc: 'ATC', ats: 'ATS', atp: 'ATP', ptc: 'PTC', etms: 'I-ETMS'})[code]
+  || (trainProtection(code)?.[1] || code || '').replace(/ \(.*\)$/, '');
+// Loading gauge. Names differ by region and are not comparable by name, so
+// colour follows the physical envelope: the maximum height above rail of
+// the static profile, where published (Wikipedia, Loading gauge; UIC 506 /
+// TSI, GOST 9238, AAR Plate C, Portuguese PT gauges). Gauges of equal height
+// share a colour: GA, GB, GB1 and GB2 all reach 4.32 m and differ only in
+// the upper corners. Britain's W gauges share one height and differ in the
+// containers they clear, so they form their own ladder. Other values are
+// shown as tagged.
+export const LOADING_GAUGES = [
+  // code(s), name, height m, width m, family, note
+  [['PPI', 'G1'], 'PPI (G1, Berne gauge)', 4.28, 3.15, 'height'],
+  [['TSI_GA'], 'GA', 4.32, 3.15, 'height', 'GA, GB, GB1 and GB2 reach the same height; each clears larger upper corners (containers, swap bodies, semi-trailers).'],
+  [['TSI_GB'], 'GB', 4.32, 3.15, 'height'], [['TSI_GB1'], 'GB1', 4.32, 3.15, 'height'], [['TSI_GB2'], 'GB2', 4.32, 3.15, 'height'],
+  [['CPb', 'CPb+'], 'CPb / CPb+ (Portugal)', 4.5, 3.44, 'height'],
+  [['UIC_C', 'G2'], 'G2 (formerly UIC C)', 4.65, 3.15, 'height'], [['TSI_GC'], 'GC', 4.65, 3.15, 'height'],
+  [['PT c'], 'PT c (Portugal)', 4.7, 3.44, 'height'],
+  [['AAR_C'], 'AAR Plate C', 4.72, 3.25, 'height'],
+  [['AAR_F'], 'AAR Plate F', 5.18, 3.25, 'height'],
+  [['GOST_T'], 'T (GOST 9238, 1520 mm network)', 5.3, 3.75, 'height'],
+  [['W5'], 'W5', null, null, 'british', 'Britain: W gauges share one height; higher numbers clear larger containers.'],
+  [['W6'], 'W6', null, null, 'british'], [['W6A', 'W6A*'], 'W6A', null, null, 'british', 'Available over most of the British network.'],
+  [['W7', 'W7*'], 'W7', null, null, 'british'], [['W8', 'W8*'], 'W8', null, null, 'british', '8 ft 6 in (2.6 m) containers on standard wagons.'],
+  [['W9'], 'W9', null, null, 'british', '9 ft 0 in containers on low wagons (Megafret).'], [['W9Plus'], 'W9Plus', null, null, 'british'],
+  [['W10'], 'W10', null, null, 'british', '9 ft 6 in high-cube containers on standard wagons; 2.5 m wide Euro containers.'], [['W10A'], 'W10A', null, null, 'british'],
+  [['W11'], 'W11', null, null, 'british'], [['W12'], 'W12', null, null, 'british', 'As W10, and 2.6 m wide refrigerated containers.'],
+  [['EBV 1', 'EBV 2', 'EBV 3', 'EBV 4'], 'EBV (Swiss profiles)', null, null, 'other', 'EBV 4 is the Gotthard corridor profile for 4.00 m corner-height road vehicles on suitable wagons.'],
+  [['FS'], 'FS (Italian profile)', null, null, 'other'],
+  [['deep-tube'], 'London deep tube', null, null, 'metro'], [['subsurface'], 'London sub-surface', null, null, 'metro'],
+  [['Kleinprofil'], 'Kleinprofil (Berlin U-Bahn)', null, null, 'metro'], [['Großprofil'], 'Großprofil (Berlin U-Bahn)', null, null, 'metro'],
+];
+const LOADING_HEIGHT_STOPS = [[4.28, '#a5d66b'], [4.32, '#43a047'], [4.5, '#00897b'], [4.65, '#1e88e5'], [4.72, '#3949ab'], [4.8, '#5e35b1'], [5.3, '#8e24aa']];
+const BRITISH_LADDER = ['W5', 'W6', 'W6A', 'W7', 'W8', 'W9', 'W9Plus', 'W10', 'W10A', 'W11', 'W12'];
+export const LOADING_OTHER = '#a1887f', LOADING_METRO = '#b0a4c8';
+export function loadingGauge(value) {
+  if (!value) return null;
+  // Lists (e.g. "W6A, W7, W8") mean the line clears all of them: take the largest.
+  const british = BRITISH_LADDER.filter(code => String(value).split(/,\s*/).some(v => v.replace('*', '') === code));
+  const code = british.length ? british.at(-1) : String(value).trim();
+  const entry = LOADING_GAUGES.find(([codes]) => codes.includes(code));
+  if (!entry && /^[A-E][1-5]?$/.test(code)) return {code, name: `${code} (EN 15528 line category, not a loading gauge)`, family: 'other', color: LOADING_OTHER, rank: 0};
+  if (!entry) return {code, name: `${code} (as tagged)`, family: 'other', color: LOADING_OTHER, rank: 0};
+  const [, name, height, width, family, note] = entry;
+  const color = family === 'height' ? interpolateColor(LOADING_HEIGHT_STOPS, height)
+    : family === 'british' ? hsl(18, 70, 72 - BRITISH_LADDER.indexOf(code) * 4.2) : family === 'metro' ? LOADING_METRO : LOADING_OTHER;
+  // Sort key for legends: height where published, else position on the ladder.
+  const rank = height || (family === 'british' ? 3 + BRITISH_LADDER.indexOf(code) / 100 : family === 'metro' ? 1 : 2);
+  return {code, name, height, width, family, note: note || LOADING_GAUGES.find(([, , , , f, n]) => f === family && n)?.[5], color, rank};
+}
+export const loadingDimensions = g => g?.height ? `${g.height.toFixed(2)} m high × ${g.width.toFixed(2)} m wide` : '';
+export function loadingPaint() {
+  const lg = ['coalesce', ['get', 'loading_gauge'], ''];
+  const britishCases = [...BRITISH_LADDER].reverse().flatMap(code => [['any', ['==', lg, code], ['in', `${code},`, ['concat', lg, ',']], ['in', `${code}*`, lg]], loadingGauge(code).color]);
+  // 'in' on "W6A," style tokens avoids W6 matching inside W6A.
+  const exact = LOADING_GAUGES.filter(([, , , , family]) => family !== 'british').flatMap(([codes]) => codes.map(code => [code, loadingGauge(code).color])).flat();
+  return ['case', ['==', lg, ''], UNKNOWN_COLOR, ...britishCases, ['match', lg, ...exact, LOADING_OTHER]];
+}
+export const loadingLabel = () => {
+  const lg = ['coalesce', ['get', 'loading_gauge'], ''];
+  return ['case', ...[...BRITISH_LADDER].reverse().flatMap(code => [['any', ['==', lg, code], ['in', `${code},`, ['concat', lg, ',']], ['in', `${code}*`, lg]], code]), lg];
+};
 // Planned, construction and former lines: in the speed view coloured by the
 // recorded (planned or former) limit where one exists; otherwise by state.
 export const INACTIVE_STATES = [['construction', '#ad7619', 'Construction'], ['proposed', '#896192', 'Proposed'], ['former', '#75675c', 'Former lines']];

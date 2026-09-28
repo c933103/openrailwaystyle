@@ -48,3 +48,5 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 .gauge-scale{position:relative;height:10px;border-radius:3px;background:var(--scale);margin:18px 6px 20px}
 .gauge-scale span{position:absolute;top:13px;transform:translateX(-50%);font-size:9px;color:#5f6d66}
 .gauge-scale span.above{top:-14px}
+.swatch.empty{visibility:hidden}
+.mode-picker{display:grid;grid-template-columns:repeat(3,1fr)}.mode-picker button{white-space:normal;line-height:1.2}

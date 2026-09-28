@@ -12,10 +12,13 @@ on:
         description: Re-download the oldest part of the world from Overpass
         type: boolean
         default: false
-  # Monthly: renew the oldest ~100 MB of Overpass responses, then redeploy.
-  # The Overpass API wiki asks regular applications to stay near 10 MB per
-  # day; this averages about 3 MB per day, renewing the world in roughly 6–10 months.
+  # Weekly: fetch only ways changed since the previous run (typically a few
+  # MB), so openings, closures and new proposals appear within a week.
+  # Monthly: also renew the oldest ~100 MB of full region responses, which
+  # catches what change queries miss (e.g. deleted ways). The Overpass API
+  # wiki asks regular applications to stay near 10 MB per day.
   schedule:
+    - cron: '23 3 * * 1'
     - cron: '23 3 2 * *'
 permissions:
   contents: write
@@ -58,10 +61,17 @@ jobs:
             echo "No stored Overpass responses in the release"
           fi
       - name: Choose regions to refresh
-        if: github.event_name == 'schedule' || inputs.refresh
+        if: github.event.schedule == '23 3 2 * *' || inputs.refresh
         env:
           REFRESH_BYTES: '100000000'
         run: node scripts/refresh-snapshot-cache.mjs
+      # If Overpass is busy, the snapshot is built with the changes recorded
+      # so far and the next run catches up from the same point.
+      - name: Fetch ways changed since the previous run
+        continue-on-error: true
+        env:
+          SNAPSHOT_REGION: delta
+        run: node --max-old-space-size=6144 scripts/build-snapshot.mjs
       - name: Collect world region 1 of 20
         env:
           SNAPSHOT_REGION: '0'

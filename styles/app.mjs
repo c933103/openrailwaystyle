@@ -1,6 +1,6 @@
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, CURRENT_SYSTEMS, NOT_ELECTRIFIED, currentRange, currentStops, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, familyShades, trainProtection, trainProtectionName, GAUGE_STOPS, GAUGE_TICKS, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260927-6';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-1';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260927-6';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -16,7 +16,7 @@ const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_C
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260927-6';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-1';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -73,50 +73,59 @@ const textNode = (tag, value, className) => {
   if (className) el.className = className;
   return el;
 };
-// Train protection systems are mostly national: the legend lists those in view.
-let controlCodes = [], controlTimer;
-// Waits for the view's control tiles rather than map idle, which any slow
-// tile (e.g. relief) can hold back.
-function scheduleControlLegend() {
-  clearTimeout(controlTimer);
-  if (settings.mode === 'control') controlTimer = setTimeout(updateControlLegend, 250);
+// Power, train control, gauge and loading gauge legends name exactly what
+// is drawn in the current view, most common first: systems are regional,
+// and a fixed list would be long and mostly irrelevant.
+let inView = [], legendTimer;
+// Waits for the view's tiles rather than map idle, which any slow tile
+// (e.g. relief) can hold back.
+function scheduleLegend() {
+  clearTimeout(legendTimer);
+  if (IN_VIEW[settings.mode]) legendTimer = setTimeout(updateInView, 250);
 }
-function updateControlLegend() {
-  if (!ready || settings.mode !== 'control') return;
-  const layers = ['control-overview', 'control-tracks'].filter(id => map.getLayer(id));
+const GAUGE_NAMES = {600:'', 762:'2 ft 6 in', 914:'3 ft', 1000:'metre', 1067:'3 ft 6 in', 1372:'Scotch', 1435:'standard', 1520:'Russian', 1524:'Finnish', 1600:'Irish', 1668:'Iberian', 1676:'Indian'};
+const IN_VIEW = {
+  electrification: p => {
+    if (['no', 'deelectrified'].includes(p.electrification_state) || p.voltage === 0) return null;
+    const label = describeCurrent(p.voltage, p.frequency);
+    // Sorted DC first, then AC by frequency, each by voltage.
+    return label && !/not recorded/.test(label) ? [electrificationColor(p), label, (p.frequency || 0) * 1e6 + (p.voltage || 0)] : null;
+  },
+  control: p => {
+    const system = trainProtection(p.train_protection0);
+    return system && system[0] !== 'none' ? [controlColor(system[2], system[3]), `${system[1]} · ${LEVEL_SHORT[system[3]]}`] : null;
+  },
+  gauge: p => p.gaugeint0 > 0 ? [gaugeColor(p.gaugeint0), `${gauge(p.gaugeint0)}${GAUGE_NAMES[p.gaugeint0] && settings.units !== 'imperial' ? ` (${GAUGE_NAMES[p.gaugeint0]})` : ''}`, p.gaugeint0] : null,
+  loading: p => { const g = loadingGauge(p.loading_gauge); return g ? [g.color, `${g.name}${g.height ? ` · ${loadingDimensions(g)}` : ''}`, g.rank] : null; },
+};
+function updateInView() {
+  const describe = IN_VIEW[settings.mode];
+  if (!ready || !describe) return;
+  const layers = [`${settings.mode}-overview`, `${settings.mode}-tracks`].filter(id => map.getLayer(id));
   const counts = new Map();
   for (const f of map.queryRenderedFeatures({layers})) {
-    const code = f.properties.train_protection0 || '';
-    counts.set(code, (counts.get(code) || 0) + 1);
+    const row = describe(f.properties);
+    if (!row) continue;
+    const key = row.slice(0, 2).join('|'), entry = counts.get(key) || {row, n: 0};
+    entry.n++; counts.set(key, entry);
   }
-  const codes = [...counts.keys()].filter(code => code && code !== 'none').sort((a, b) => counts.get(b) - counts.get(a));
-  if (codes.join() !== controlCodes.join()) { controlCodes = codes; renderLegend(); }
+  // The most common values, then in order of size where the value has one.
+  const rows = [...counts.values()].sort((a, b) => b.n - a.n).slice(0, 16)
+    .sort((a, b) => a.row[2] === undefined || b.row[2] === undefined ? 0 : a.row[2] - b.row[2]).map(e => e.row.slice(0, 2));
+  if (rows.join() !== inView.join()) { inView = rows; renderLegend(); }
 }
-const gradient = colors => `linear-gradient(90deg, ${colors.join(', ')})`;
 const LEVEL_SHORT = ['none', 'warning / stop only', 'spot', 'continuous', 'radio'];
-// Gauge scale: position along the bar proportional to millimetres.
-function gaugeScale() {
-  const [min, max] = [GAUGE_STOPS[0][0], GAUGE_STOPS.at(-1)[0]], at = mm => (mm - min) / (max - min) * 100;
-  const bar = textNode('div', '', 'gauge-scale');
-  bar.style.setProperty('--scale', `linear-gradient(90deg, ${GAUGE_STOPS.map(([mm, color]) => `${color} ${at(mm).toFixed(1)}%`).join(', ')})`);
-  // Alternate labels above and below: common gauges sit close together.
-  GAUGE_TICKS.forEach((mm, i) => { const tick = textNode('span', String(mm), i % 2 ? 'above' : ''); tick.style.left = `${at(mm)}%`; bar.append(tick); });
-  return bar;
-}
 function renderLegend() {
   const box = $('legend'); box.replaceChildren();
-  const control = controlCodes.map(trainProtection).filter(Boolean);
-  const families = [...new Set(control.map(([, , family]) => family))].filter(f => control.some(([, , g, level]) => g === f && level > 0));
+  const nothing = [['transparent', 'Nothing recorded in view', 'empty']];
+  const listed = rows => rows.length ? rows : nothing;
   const legends = {
     speed: { title: `Mapped maximum speed · ${settings.units === 'imperial' ? 'mph' : 'km/h'}`, rows: speedBands(settings.units).map(b => [b.color, b.label]) },
     infrastructure: { title: 'Railway infrastructure', rows: INFRASTRUCTURE },
-    electrification: { title: 'Electrification · shade = voltage', rows: [...CURRENT_SYSTEMS.map(system => [gradient(currentStops(system).map(([, color]) => color)), `${system.label} · ${currentRange(system)}`]), [NOT_ELECTRIFIED, 'Not electrified']] },
-    control: { title: 'Train protection · in view', rows: [
-      ...control.map(([, label, family, level]) => [controlColor(family, level), `${label} · ${LEVEL_SHORT[level]}`]),
-      ...families.map(family => [gradient(familyShades(family)), CONTROL_FAMILIES[family].label, 'family']),
-      [NO_PROTECTION, 'No train protection'],
-    ] },
-    gauge: { title: 'Track gauge · mm, continuous', rows: [] },
+    electrification: { title: 'Electrification · in view', rows: [...listed(inView), [NOT_ELECTRIFIED, 'Not electrified']] },
+    control: { title: 'Train protection · in view', rows: [...listed(inView), [NO_PROTECTION, 'No train protection']] },
+    gauge: { title: 'Track gauge · in view', rows: listed(inView) },
+    loading: { title: 'Loading gauge · in view', rows: map?.getZoom() < 7 ? [['transparent', 'Zoom in to see loading gauges', 'empty']] : listed(inView) },
   };
   const legend = legends[settings.mode];
   box.append(textNode('h2', legend.title));
@@ -134,13 +143,13 @@ function renderLegend() {
   if (settings.stations) {
     const station = textNode('div', '', 'legend-item'); station.append(textNode('span', '', 'station-swatch'), textNode('span', 'Station')); grid.append(station);
   }
-  if (settings.mode === 'gauge') box.append(gaugeScale());
   box.append(grid);
   const notes = {
     speed: settings.units === 'imperial' ? 'Labels in mph; limits tagged in mph keep their directional values. Grey means no numeric limit is recorded.' : 'Labels keep tagged units: bare numbers are km/h, mph is written out. Grey means no numeric limit is recorded.',
     electrification: 'Hue is the current type (DC, or AC by frequency); darker is higher voltage. A train needs both to match, unless built for several systems. Grey means not recorded.',
     control: 'Hue groups related systems (e.g. ETCS with China’s ETCS-derived CTCS); darker is more advanced: warning only, spot transmission, continuous, radio. Colour shows the first recorded system; click a track for all of them and their compatibility. Grey means nothing is recorded.',
-    gauge: 'Gauges a few millimetres apart (e.g. 1432 and 1435, 1520 and 1524) share nearly one colour and are generally compatible. Click a track for all recorded gauges. Grey means not recorded.',
+    gauge: 'Gauges a few millimetres apart (e.g. 1432 and 1435, 1520 and 1524) share one colour and are generally compatible. Click a track for all recorded gauges. Grey means not recorded.',
+    loading: 'Colour follows the envelope’s height above rail, so equal sizes match across regions; Britain’s W gauges share one height and form their own ladder. Click a track for dimensions. Grey means not recorded.',
     infrastructure: 'Zoomed in, labels give the number of tracks side by side, counted from the mapped tracks.',
   };
   let note = notes[settings.mode];
@@ -169,9 +178,8 @@ function applySettings() {
   if (ready) clickable = [];
   if (ready) for (const layer of map.getStyle().layers) {
     let visible;
-    if (MODES.some(mode => layer.id.startsWith(`${mode}-`)) && layer.id !== 'speed-labels') visible = layer.id.startsWith(`${settings.mode}-`);
+    if (MODES.some(mode => layer.id.startsWith(`${mode}-`))) visible = layer.id.startsWith(`${settings.mode}-`) && (!VALUE_LABELS.test(layer.id) || settings.labels);
     if (layer.id.startsWith('station-')) visible = settings.stations && (!layer.id.startsWith('station-former-') || settings.inactive);
-    if (layer.id === 'speed-labels') visible = settings.mode === 'speed' && settings.labels;
     if (layer.id.startsWith('inactive-')) visible = settings.inactive;
     if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive);
     if (layer.id.startsWith('terrain-')) visible = settings.relief;
@@ -180,9 +188,10 @@ function applySettings() {
     if ((visible ?? true) && isClickable(layer.id)) clickable.push(layer.id);
   }
   renderLegend();
-  if (ready) scheduleControlLegend();
+  if (ready) { inView = []; scheduleLegend(); }
 }
-const isClickable = id => id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge)-(tracks|overview)$/.test(id);
+const VALUE_LABELS = /^(speed|electrification|control|gauge|loading)-labels$/;
+const isClickable = id => id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading)-(tracks|overview)$/.test(id);
 function row(dl, label, value) {
   if (value === undefined || value === null || value === '') return;
   dl.append(textNode('dt', label), textNode('dd', String(value)));
@@ -225,6 +234,8 @@ function showDetails(feature) {
     row(dl, 'Protection being built', p.train_protection_construction ? trainProtectionName(p.train_protection_construction) : undefined);
     const gauges = p.gauges ? String(p.gauges).split(/[;,]\s*/) : [p.gauge0, p.gauge1, p.gauge2].filter(Boolean);
     row(dl, 'Gauge', gauges.length ? gauges.map(gauge).join(', ') : undefined);
+    const loading = loadingGauge(p.loading_gauge);
+    row(dl, 'Loading gauge', loading ? [loading.name, loadingDimensions(loading), loading.note].filter(Boolean).join(' · ') + (p.loading_gauge !== loading.code ? ` (tagged: ${p.loading_gauge})` : '') : undefined);
     row(dl, 'Tunnel', p.tunnel === true ? 'Yes' : undefined);
     row(dl, 'Bridge', p.bridge === true ? 'Yes' : undefined);
     if (!p.state || p.state === 'present') panel.append(textNode('p', 'Colour uses the preferred-direction limit, or the larger directional limit if no preference is mapped. The source label above retains both directions. Bare numbers are km/h.', 'small'));
@@ -504,8 +515,8 @@ async function initialize() {
     const action = pendingView; pendingView = undefined; action?.();
   });
   map.on('idle', updateStatus);
-  map.on('moveend', scheduleControlLegend);
-  map.on('sourcedata', e => { if ((e.sourceId === 'control' || e.sourceId === 'railway') && e.tile) scheduleControlLegend(); });
+  map.on('moveend', scheduleLegend);
+  map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'railway'].includes(e.sourceId) && e.tile) scheduleLegend(); });
   map.on('click', event => {
     if (measuring.active) { measuring.click(event.lngLat); return; }
     if (drawing.active) { drawing.click(event.lngLat, event.point); return; }

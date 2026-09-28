@@ -8,8 +8,9 @@ const budget = Number(process.env.REFRESH_BYTES || 100_000_000);
 const minAge = Number(process.env.REFRESH_MIN_AGE_DAYS || 6) * 86_400_000;
 const files = [];
 for (const name of await readdir(dir).catch(() => [])) {
-  // Region responses only: keep split decisions and download budgets.
-  if (!name.endsWith('.json') || name.startsWith('budget-')) continue;
+  // Region responses only: keep split decisions, download budgets and the
+  // weekly change log.
+  if (!name.endsWith('.json') || name.startsWith('budget-') || name === 'delta.json') continue;
   const info = await stat(`${dir}/${name}`);
   files.push({name, size: info.size, mtime: info.mtimeMs});
 }

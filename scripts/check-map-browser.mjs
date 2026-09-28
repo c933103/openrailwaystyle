@@ -83,7 +83,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') console.log('Browser resource:',msg.text());});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260927-6&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260928-1&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
@@ -180,6 +180,16 @@ try{
     return hz.has(0) && hz.has(50) && document.getElementById('legend').textContent.includes('AC 50 Hz');
   },'Power view must show DC and 50 Hz AC lines in France');
   console.log('PASS: power view separates AC and DC');
+  // Loading gauge: British W gauges and UIC GC near London; legend names them.
+  await page.locator('[data-mode="loading"]').click();
+  await moveTo(9,-0.5,51.6);
+  await expectMap(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    const values=new Set(map.queryRenderedFeatures({layers:['loading-tracks']}).map(f=>f.properties.loading_gauge).filter(Boolean));
+    const legend=document.getElementById('legend').textContent;
+    return values.size>1 && /W\d/.test(legend);
+  },'Loading gauge view must colour recorded gauges and name them in the legend');
+  console.log('PASS: loading gauge view');
   await page.locator('[data-mode="infrastructure"]').click();
   await moveTo(8,129.4,36.3);
   await page.waitForFunction(async()=>{

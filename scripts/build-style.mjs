@@ -1,5 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { ORM, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
+import { ORM, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, loadingLabel, trainProtectionShort, TRAIN_PROTECTION, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
 
 // Keep the Hack4Rail base-map design and replace its Europe-only rail source.
 const original = JSON.parse(await readFile(new URL('../styles/default.style.json', import.meta.url)));
@@ -93,9 +93,11 @@ for (const [mode, source, sourceLayer, color] of [
   ['electrification', 'electric', 'electrification_railway_line_low', electricPaint],
   ['control', 'control', 'signals_railway_line_low', controlPaint()],
   ['gauge', 'gaugeLow', 'track_railway_line_low', gaugePaint()],
+  // No overview tiles carry the loading gauge: neutral lines until zoom 7.
+  ['loading', 'network', 'standard_railway_line_low', '#c3c7c2'],
 ]) {
   addLine(`${mode}-overview`, source, sourceLayer, 0, 7, color);
-  addLine(`${mode}-tracks`, 'railway', 'railway_line_high', 7, undefined, color, {
+  addLine(`${mode}-tracks`, 'railway', 'railway_line_high', 7, undefined, mode === 'loading' ? loadingPaint() : color, {
     'line-opacity': mode === 'infrastructure' ? 1 : ['case', ['==', ['get', 'tunnel'], true], 0.65, 1],
     'line-width': ['interpolate', ['linear'], ['zoom'], 7, 1.6, 11, ['case', hasService, 1.1, 2.8], 16, ['case', hasService, 2, 4.8], 20, 7],
   });
@@ -166,12 +168,24 @@ style.layers.push({
   layout: { 'symbol-placement': 'line', 'symbol-spacing': 450, 'text-field': ['concat', ['to-string', ['get', 'atlas_tracks']], ['case', ['==', ['get', 'atlas_tracks'], 1], ' track', ' tracks']], 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-padding': 6, 'text-max-angle': 30 },
   paint: { 'text-color': '#173e47', 'text-halo-color': '#fffef8', 'text-halo-width': 2 },
 });
-style.layers.push({
-  id: 'speed-labels', type: 'symbol', source: 'railway', 'source-layer': 'railway_line_high', minzoom: 10,
-  filter: ['all', present, notFerry, ['has', 'speed_label']],
-  layout: { 'symbol-placement': 'line', 'symbol-spacing': 300, 'text-field': speedLabel('metric'), 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-padding': 5 },
+// Values written along the tracks, like speed limits, in each view.
+const valueLabel = (id, filter, text) => style.layers.push({
+  id, type: 'symbol', source: 'railway', 'source-layer': 'railway_line_high', minzoom: 10,
+  filter: ['all', present, notFerry, filter],
+  layout: { 'symbol-placement': 'line', 'symbol-spacing': 300, 'text-field': text, 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-padding': 5 },
   paint: { 'text-color': '#26363d', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
 });
+valueLabel('speed-labels', ['has', 'speed_label'], speedLabel('metric'));
+const volts = ['to-number', ['coalesce', ['get', 'voltage'], 0], 0], hz = ['to-number', ['coalesce', ['get', 'frequency'], -1], -1];
+const kv = ['case', ['>=', volts, 1000], ['concat', ['to-string', ['/', ['round', ['/', volts, 10]], 100]], ' kV'], ['concat', ['to-string', volts], ' V']];
+valueLabel('electrification-labels', ['>', volts, 0],
+  ['case', ['==', hz, 0], ['concat', kv, ' DC'], ['>', hz, 0], ['concat', kv, ' ', ['to-string', ['/', ['round', ['*', hz, 10]], 10]], ' Hz'], kv]);
+const shortName = key => ['match', ['coalesce', ['get', key], ''], ...TRAIN_PROTECTION.flatMap(([code]) => [code, trainProtectionShort(code)]), ['coalesce', ['get', key], '']];
+valueLabel('control-labels', ['has', 'train_protection0'],
+  ['case', ['has', 'train_protection1'], ['concat', shortName('train_protection0'), ' + ', shortName('train_protection1')], shortName('train_protection0')]);
+valueLabel('gauge-labels', ['>', ['to-number', ['coalesce', ['get', 'gaugeint0'], 0], 0], 0],
+  ['concat', ['get', 'gauge0'], ['case', ['has', 'gauge1'], ['concat', ' / ', ['get', 'gauge1']], ''], ' mm']);
+valueLabel('loading-labels', ['has', 'loading_gauge'], loadingLabel());
 // Keep distant views sparse. Marker and name form one collision-aware symbol
 // below zoom 12; individual circles appear only at local scale.
 // Zoom 4–5: large stations; 6: large and normal, plus small ones from the
@@ -258,7 +272,7 @@ const stationNames = style.layers.filter(l => l.id.startsWith('station-') && l.t
 const railwayNames = style.layers.filter(l => l.type === 'symbol' && l.id.endsWith('-names') && !l.id.startsWith('station-'));
 style.layers = style.layers.filter(l => !stationNames.includes(l) && !railwayNames.includes(l)).concat(railwayNames, stationNames);
 for (const l of style.layers) {
-  if (/^(infrastructure|electrification|control|gauge)-/.test(l.id)) l.layout.visibility = 'none';
+  if (/^(infrastructure|electrification|control|gauge|loading)-/.test(l.id)) l.layout.visibility = 'none';
 }
 await writeFile(new URL('../styles/world.style.json', import.meta.url), JSON.stringify(style, null, 2) + '\n');
 console.log(`Built world.style.json: ${style.layers.length} layers`);
