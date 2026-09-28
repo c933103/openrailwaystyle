@@ -36,3 +36,12 @@ test('only level crossings receive a crossing marker',()=>{
  assert.ok(!match('infrastructure-level-crossings',{type:'railway_crossing'},16,1));
  assert.ok(!match('infrastructure-level-crossings',{type:'level_crossing'},14,1));
 });
+
+test('shared roadway includes private vehicle access and explicit bus-only exceptions',()=>{
+ for(const tags of [
+  {railway:'rail',embedded:'yes',motor_vehicle:'private'},
+  {highway:'busway',embedded_rails:'tram',motor_vehicle:'no',bus:'yes'},
+  {highway:'residential',embedded_rails:'tram; rail',motor_vehicle:'no',psv:'designated'},
+ ]) assert.ok(streetRunning(tags),JSON.stringify(tags));
+ assert.equal(streetRunning({highway:'residential',embedded_rails:'tram',motor_vehicle:'no'}),null);
+});
