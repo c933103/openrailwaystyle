@@ -139,3 +139,14 @@ The Transport and Destinations display options are enabled by default, remembere
 Coverage and first appearance depend on the provider's source zooms (most detailed POIs are available at zoom 14). OpenMapTiles land-use polygons often contain only a class, without a name; available named POIs supply the labels. Government/community/historic facilities without polygon geometry receive point symbols. Absence in these tiles does not prove that no facility exists. These layers describe potential trip destinations, not measured passenger numbers.
 
 `tests/context.test.mjs` checks category distinctions, area coverage, rail placement priority, proximity/deduplication and settings. `scripts/check-context-browser.mjs` verifies real Hong Kong POIs/areas, Heathrow at regional scale, language switching, inspection and toggles in Chromium, before and after deployment.
+
+
+### Roads, planning context and rail-road interfaces
+
+The subdued base network includes ordinary roads, cycling paths and hiking / walking trails. Local bus stops, taxi stands and bicycle rentals enter at zoom 15, bicycle parking at 17. The station panel lists mapped nearby terminals first, then local facilities; straight-line proximity does not verify a walking connection.
+
+Protected areas, military grounds, religious institutions and heritage sites have a separate display control. Indigenous territories tagged `boundary=aboriginal_lands` are purple, separate from administrative borders and conservation boundaries. These are mapped planning context, not a determination of legal boundaries or permission to build. Coverage depends on the source tiles.
+
+Infrastructure view adds level crossings (`points_of_interest.type=level_crossing`, zoom 15+) and ochre roadbeds for explicitly mapped street-running tracks (zoom 13+). The latter uses a weekly, validated worldwide Overpass extract, published atomically to `street-data`; each website build copies the complete static vector tiles. Visitors do not make Overpass requests. Only `embedded=yes` or road `embedded_rails` tags qualify; trams and adjacent roads do not imply sharing. Its manifest and ODbL GeoJSON download are linked under About. Failed refreshes retain the last published snapshot.
+
+Lifecycle patterns are shared between style and SVG legend: construction uses long blocks; proposed uses spaced round dots; disused uses dash-dot; abandoned / removed uses sparse paired dashes. The same patterns apply to regional and detailed data, including the speed view.

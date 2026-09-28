@@ -4,7 +4,7 @@ import {gzipSync} from 'node:zlib';
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import {streetRunning} from '../styles/street-running.mjs';
-const query='[out:json][timeout:600][maxsize:536870912];(way[railway][embedded];way[highway][embedded_rails];way[highway][railway~"^(rail|tram|light_rail|narrow_gauge)$"];);out tags geom;';
+const query='[out:json][timeout:600][maxsize:536870912];(way[embedded=yes];way[embedded_rails];);out tags geom;';
 let data;
 for(let attempt=0;attempt<3;attempt++) {
   try {
@@ -40,7 +40,7 @@ for(const key of keys) {
  await mkdir(new URL(`${z}/${x}/`,root),{recursive:true});
  await writeFile(new URL(key+'.pbf.gz',root),gzipSync(vtpbf.fromGeojsonVt({street_running:tile},{extent}),{level:9}));tiles.push(key);
 }
-const manifest={generated:new Date().toISOString(),osmBase:data.osm3s?.timestamp_osm_base,features:features.length,tiles:tiles.length,source:'https://overpass-api.de/api/interpreter',query,license:'ODbL-1.0',description:'Explicit OSM embedded / embedded_rails tags and combined highway+railway ways. Not inferred from tram type or proximity. Missing tags imply unknown coverage.'};
+const manifest={generated:new Date().toISOString(),osmBase:data.osm3s?.timestamp_osm_base,features:features.length,tiles:tiles.length,source:'https://overpass-api.de/api/interpreter',query,license:'ODbL-1.0',description:'Explicit OSM embedded / embedded_rails tags. Not inferred from tram type or proximity. Missing tags imply unknown coverage.'};
 await writeFile(new URL('manifest.json',root),JSON.stringify(manifest,null,2));
 await writeFile(new URL('index.json',root),JSON.stringify({tiles:tiles.sort()}));
 console.log(JSON.stringify(manifest));

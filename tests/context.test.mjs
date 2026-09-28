@@ -10,7 +10,7 @@ test('transport distinguishes interchanges from ordinary stops and private airfi
   const bus=style.layers.find(l=>l.id==='context-transport-bus-label');
   assert.ok(visible(bus,{class:'bus',subclass:'bus_station'}));
   assert.ok(!visible(bus,{class:'bus',subclass:'bus_stop',agg_stop:1}));
-  assert.equal(contextCategory({class:'bus',subclass:'bus_stop'},'poi'),null);
+  assert.equal(contextCategory({class:'bus',subclass:'bus_stop'},'poi').id,'bus-stop');
   assert.equal(contextCategory({class:'ferry_terminal'},'poi').id,'ferry');
   assert.equal(contextCategory({class:'aerialway',subclass:'station'},'poi').id,'aerialway');
   const airport=style.layers.find(l=>l.id==='context-transport-airport-label');
@@ -20,7 +20,7 @@ test('transport distinguishes interchanges from ordinary stops and private airfi
 });
 test('requested destination types are selected without turning every shop or sports pitch into a magnet',()=>{
   const labels=style.layers.filter(l=>l.id.startsWith('context-destinations-')&&l.type==='symbol');
-  for (const subclass of ['mall','hospital','school','university','stadium','theme_park','government','community_centre','castle','attraction','museum']) {
+  for (const subclass of ['mall','hospital','school','university','stadium','theme_park','government','community_centre','attraction','museum']) {
     const p={class:'generic',subclass};
     assert.ok(labels.some(l=>visible(l,p)),subclass);
     assert.equal(contextCategory(p,'poi')?.group,'destinations');
@@ -32,11 +32,11 @@ test('requested destination types are selected without turning every shop or spo
   const lastContext=Math.max(...style.layers.map((l,i)=>l.id.startsWith('context-')&&l.type==='symbol'?i:-1));
   assert.ok(style.layers.findIndex(l=>l.id==='station-detail-large-names')>lastContext,'rail stations keep placement priority');
 });
-test('nearby transport deduplicates buffered tiles, respects distance and excludes ordinary stops and marinas',()=>{
+test('nearby transport deduplicates buffered tiles, respects distance and ranks terminals before local stops and excludes marinas',()=>{
   const point=(id,subclass,x=0,y=0,sourceLayer='poi')=>({id,sourceLayer,properties:{subclass},geometry:{type:'Point',coordinates:[x,y]}});
   const bus=point(1,'bus_station',0.001);
   const found=nearbyTransport([0,0],[bus,bus,point(2,'ferry_terminal',0.002),point(3,'bus_station',0.01),point(4,'bus_stop'),point(5,'marina')]);
-  assert.deepEqual(found.map(f=>f.category.id),['bus','ferry']);
+  assert.deepEqual(found.map(f=>f.category.id),['bus','ferry','bus-stop']);
   assert.ok(found[0].distance>110&&found[0].distance<112);
   assert.ok(distanceMetres([179.999,0],[-179.999,0])<225,'date line wrap');
   assert.equal(nearbyTransport([0,0],[{...bus,geometry:{type:'Polygon',coordinates:[]}}]).length,0);

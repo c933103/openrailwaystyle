@@ -63,3 +63,10 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 .nearby-list li { margin: 10px 0; }
 .nearby-list button { padding: 0; border: 0; background: none; color: #007b83; text-align: left; text-decoration: underline; }
 .nearby-list span { display: block; margin-top: 3px; }
+
+
+.swatch.pattern-swatch {width:62px;height:12px;background:none;border:0;flex-shrink:0;overflow:visible}
+.pattern-swatch svg {display:block;width:62px;height:12px}
+.swatch.street-running {height:9px;background:#b68f55;border-top:3px solid #d1ba94;border-bottom:3px solid #d1ba94}
+.swatch.level-crossing {background:none;height:18px;text-align:center}
+.swatch.level-crossing::after {content:'×';color:#63332c;font-size:22px;line-height:18px;font-weight:bold}

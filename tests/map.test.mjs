@@ -27,13 +27,13 @@ test('source mph and directional speed labels are preserved', () => {
   assert.equal(formatSpeed({ speed_label: '- / 80' }).tagged, '- / 80 (km/h)');
 });
 test('shared URLs keep display settings and reject invalid map modes', () => {
-  assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',stations:false,labels:true,inactive:false,relief:true,names:true,autoGlobe:true,transport:true,destinations:true,units:'metric',detail:false,language:'local' });
+  assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',stations:false,labels:true,inactive:false,relief:true,names:true,autoGlobe:true,transport:true,destinations:true,constraints:true,units:'metric',detail:false,language:'local' });
   assert.equal(readSettings('?mode=invalid').mode, 'speed');
   // A remembered language applies unless the URL names one.
   assert.equal(readSettings('', {language:'ja'}).language, 'ja');
   assert.equal(readSettings('?language=ko', {language:'ja'}).language, 'ko');
   assert.equal(readSettings('', {language:'xx'}).language, 'local');
-  assert.deepEqual(readSettings('?relief=1', {relief:false, stations:false, mode:'bogus', units:'imperial'}), {mode:'speed',stations:false,labels:true,inactive:true,relief:true,names:true,autoGlobe:true,transport:true,destinations:true,units:'imperial',detail:false,language:'local'});
+  assert.deepEqual(readSettings('?relief=1', {relief:false, stations:false, mode:'bogus', units:'imperial'}), {mode:'speed',stations:false,labels:true,inactive:true,relief:true,names:true,autoGlobe:true,transport:true,destinations:true,constraints:true,units:'imperial',detail:false,language:'local'});
 });
 test('world map has no European rail source or geographic bounds', () => {
   assert.ok(!JSON.stringify(style).includes('europe-railway'));
@@ -80,8 +80,8 @@ test('regional stations have collision-aware markers and progressive size thresh
   }
 });
 test('every lifecycle is shown at zoom 7 without a live query or a zoom-8 handoff', () => {
-  const layers=style.layers.filter(l=>/^inactive-regional-(construction|proposed|former)$/.test(l.id));
-  assert.equal(layers.length,3);
+  const layers=style.layers.filter(l=>/^inactive-regional-(construction|proposed|disused|former)$/.test(l.id));
+  assert.equal(layers.length,4);
   assert.equal(style.sources.inactiveRegional.type,'vector');
   assert.deepEqual(style.sources.inactiveRegional.tiles,['railtiles://{z}/{x}/{y}']);
   for(const layer of layers) {assert.equal(layer.minzoom,0);assert.equal(layer.maxzoom,12);}
@@ -95,15 +95,15 @@ test('every lifecycle is shown at zoom 7 without a live query or a zoom-8 handof
   for(const zoom of [7,7.83,8,9,10,11.99]) for(const state of ['proposed','construction','disused','abandoned','razed']) {
     assert.equal(filter.filter({zoom},{type:2,properties:{state,feature:'rail',usage:'main',service:''}}),true);
   }
-  for(const state of ['construction','proposed','former']) assert.equal(style.layers.find(l=>l.id===`inactive-railways-${state}`).minzoom,12);
+  for(const state of ['construction','proposed','disused','former']) assert.equal(style.layers.find(l=>l.id===`inactive-railways-${state}`).minzoom,12);
 });
 test('only present lines receive operating speed colours', () => {
   const layer = style.layers.find(l => l.id === 'speed-tracks');
   assert.ok(JSON.stringify(layer.filter).includes('present'));
   assert.ok(JSON.stringify(layer.paint['line-color']).includes('coalesce'));
   assert.ok(JSON.stringify(layer.paint['line-color']).includes(UNKNOWN_COLOR));
-  const dashes = ['construction','proposed','former'].map(state => JSON.stringify(style.layers.find(l => l.id === `inactive-railways-${state}`).paint['line-dasharray']));
-  assert.equal(new Set(dashes).size, 3, 'each lifecycle state has its own dash pattern');
+  const dashes = ['construction','proposed','disused','former'].map(state => JSON.stringify(style.layers.find(l => l.id === `inactive-railways-${state}`).paint['line-dasharray']));
+  assert.equal(new Set(dashes).size, 4, 'each lifecycle state has its own dash pattern');
 });
 test('station labels rank heavy rail over metro, light rail, people movers and former stations', () => {
   const order = id => style.layers.findIndex(l => l.id === id);
@@ -479,4 +479,5 @@ test('zooming around a point near a pole moves along the great circle towards it
   const out = frameView(zoomTowards(startFrame([20, 89], 0), [-160, 89], -1));
   assert.ok(Math.abs(out.center[0] - 20) < 1e-6 && Math.abs(out.center[1] - 87) < 1e-6, JSON.stringify(out));
 });
+
 

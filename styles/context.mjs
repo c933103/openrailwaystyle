@@ -1,9 +1,14 @@
-// Transport and destination context uses the same OpenMapTiles archive as
-// the basemap. Keep subclass distinctions: a bus stop is not an interchange,
-// a clinic is not a hospital, and a marina is not a passenger ferry terminal.
+// Facilities and planning context use the basemap archive. Local stops are
+// distinguished from interchanges and enter only at street zoom.
 export const CONTEXT_CATEGORIES = [
   {id:'airport', group:'transport', label:'Airport', color:'#52639a', icon:'plane'},
   {id:'bus', group:'transport', label:'Bus / coach interchange', color:'#007b83', icon:'bus', values:['bus_station']},
+  {id:'bus-stop', group:'transport', label:'Bus stop', color:'#438487', icon:'bus', values:['bus_stop'], zoom:15, local:true},
+  {id:'taxi', group:'transport', label:'Taxi stand', color:'#927326', icon:'taxi', values:['taxi'], zoom:15, local:true},
+  {id:'bike-rental', group:'transport', label:'Bicycle rental / bike share', color:'#54886d', icon:'bike', values:['bicycle_rental'], zoom:15, local:true},
+  {id:'bike-parking', group:'transport', label:'Bicycle parking', color:'#54886d', icon:'bike', values:['bicycle_parking'], zoom:17, local:true},
+  {id:'religious', group:'constraints', label:'Religious institution / place of worship', color:'#89705c', icon:'civic', classes:['place_of_worship'], values:['monastery','place_of_worship'], zoom:13},
+  {id:'heritage', group:'constraints', label:'Heritage / historic site', color:'#956837', icon:'castle', values:['castle','monument','ruins','archaeological_site','memorial','historic','battlefield'], zoom:12},
   {id:'ferry', group:'transport', label:'Ferry terminal', color:'#007b83', icon:'ferry', values:['ferry_terminal']},
   {id:'aerialway', group:'transport', label:'Cable car station', color:'#007b83', icon:'cable', classes:['aerialway']},
   {id:'port', group:'transport', label:'Port / harbour', color:'#397a8f', icon:'anchor', values:['port','harbour','harbor','marina','dock'], zoom:15},
@@ -12,7 +17,7 @@ export const CONTEXT_CATEGORIES = [
   {id:'school', group:'destinations', label:'School', color:'#61669a', icon:'school', values:['school','kindergarten'], zoom:14},
   {id:'shopping', group:'destinations', label:'Shopping centre / market', color:'#93651d', icon:'shop', values:['mall','department_store','marketplace']},
   {id:'sport', group:'destinations', label:'Stadium / sports centre', color:'#6c7730', icon:'stadium', values:['stadium','sports_centre']},
-  {id:'visitor', group:'destinations', label:'Visitor attraction / historic site', color:'#8a5a87', icon:'castle', values:['theme_park','water_park','zoo','aquarium','attraction','castle','monument','ruins','archaeological_site']},
+  {id:'visitor', group:'destinations', label:'Visitor attraction', color:'#8a5a87', icon:'castle', values:['theme_park','water_park','zoo','aquarium','attraction']},
   {id:'culture', group:'destinations', label:'Museum / culture', color:'#8a5a87', icon:'civic', values:['museum','gallery','theatre','arts_centre','library','cinema'], zoom:13},
   {id:'civic', group:'destinations', label:'Government / community facility', color:'#61669a', icon:'civic', values:['government','townhall','town_hall','courthouse','public_building','community_centre','conference_centre','exhibition_centre'], zoom:13},
 ];
@@ -33,7 +38,10 @@ export function contextCategory(properties, sourceLayer) {
 export function contextDescription(properties, sourceLayer) {
   const category = contextCategory(properties, sourceLayer);
   if (category) return category;
+  if (sourceLayer === 'boundary' && properties.class === 'aboriginal_lands') return {group:'constraints',label:'Indigenous territory / non-administrative jurisdiction'};
+  if (sourceLayer === 'park') return {group:'constraints',label:properties.class==='aboriginal_lands'?'Indigenous territory / non-administrative jurisdiction':['archaeological_site','battlefield','district','historic'].includes(properties.class)?'Protected historic area':'Nature reserve / protected area'};
   if (sourceLayer === 'landuse') {
+    if (['military','religious','cemetery'].includes(properties.class)) return {group:'constraints',label:{military:'Military area',religious:'Religious grounds',cemetery:'Cemetery'}[properties.class]};
     if (properties.class === 'bus_station') return categoryById.get('bus');
     if (properties.class === 'railway') return {group:'transport',label:'Railway grounds'};
     const area = AREA_CATEGORIES.find(c=>c.values.includes(properties.class));
@@ -48,11 +56,11 @@ export function distanceMetres(a,b) {
   const h = Math.sin(dLat/2)**2 + Math.cos(a[1]*rad)*Math.cos(b[1]*rad)*Math.sin(dLon/2)**2;
   return 12742000*Math.asin(Math.min(1,Math.sqrt(h)));
 }
-export function nearbyTransport(origin, features, radius=500) {
+export function nearbyTransport(origin, features, radius=500, zoom=20) {
   const result = [], seen = new Set();
   for (const f of features) {
     const category = contextCategory(f.properties, f.sourceLayer);
-    if (f.geometry?.type !== 'Point' || category?.group !== 'transport' || category.id === 'port') continue;
+    if (f.geometry?.type !== 'Point' || category?.group !== 'transport' || category.id === 'port' || (category.local && zoom < category.zoom)) continue;
     const distance = distanceMetres(origin,f.geometry.coordinates);
     if (distance > radius) continue;
     // Tile buffers repeat the same feature. Do not merge different terminals
@@ -61,13 +69,15 @@ export function nearbyTransport(origin, features, radius=500) {
     if (seen.has(key)) continue;
     seen.add(key); result.push({feature:f,category,distance});
   }
-  return result.sort((a,b)=>a.distance-b.distance).slice(0,8);
+  return result.sort((a,b)=>Number(!!a.category.local)-Number(!!b.category.local)||a.distance-b.distance).slice(0,8);
 }
 // Small, self-contained pictograms, drawn as vector paths on a 2× canvas.
 // No external sprite service or font glyphs are needed.
 const ICON_PATHS = {
   plane:'M12 3 L14 10 L21 14 L21 16 L14 14 L14 19 L17 21 L17 22 L12 20 L7 22 L7 21 L10 19 L10 14 L3 16 L3 14 L10 10 Z',
   bus:'M6 4 H18 V19 H6 Z M6 7 H18 M6 13 H18 M9 7 V13 M7 16 H9 M15 16 H17 M8 19 V21 M16 19 V21',
+  taxi:'M4 11 L7 6 H17 L20 11 V18 H4 Z M4 11 H20 M8 6 V3 H16 V6 M6 18 V21 M18 18 V21 M6 14 H8 M16 14 H18',
+  bike:'M8 16 A5 5 0 1 1 7.9 15 M22 16 A5 5 0 1 1 21.9 15 M3 16 L8 8 L15 16 H3 M8 8 H16 M15 4 L17 16 M12 4 H17 M6 6 H10',
   ferry:'M5 11 L12 8 L19 11 L17 17 H7 Z M8 9 V5 H16 V9 M5 20 Q8 17 12 20 Q16 23 20 20',
   cable:'M3 4 L21 2 M12 3 V8 M6 8 H18 V20 H6 Z M6 15 H18 M12 8 V15',
   anchor:'M12 3 V20 M8 8 H16 M4 13 Q4 20 12 20 Q20 20 20 13 M3 15 L4 12 L7 14 M17 14 L20 12 L21 15',
