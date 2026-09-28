@@ -1,6 +1,6 @@
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-2';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-3';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-2';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-3';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -15,8 +15,8 @@ const writeCookie = (name, value) => { try { document.cookie = `${name}=${encode
 const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_COOKIE) || '{}'); return value && typeof value === 'object' ? value : {}; } catch { return {}; } })();
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
-let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-2';
+let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, legendDetailed, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-3';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -120,7 +120,10 @@ function updateInView() {
   // The most common values, then in order of size where the value has one.
   const rows = [...counts.values()].sort((a, b) => b.n - a.n).slice(0, 16)
     .sort((a, b) => a.row[2] === undefined || b.row[2] === undefined ? 0 : a.row[2] - b.row[2]).map(e => e.row.slice(0, 2));
-  if (rows.join() !== inView.join()) { inView = rows; renderLegend(); }
+  // Also redraw when crossing zoom 7, where the loading-gauge legend switches
+  // between its zoom-in prompt and the values in view.
+  const detailed = map.getZoom() >= 7;
+  if (rows.join() !== inView.join() || detailed !== legendDetailed) { inView = rows; legendDetailed = detailed; renderLegend(); }
 }
 const LEVEL_SHORT = ['none', 'warning / stop only', 'spot', 'continuous', 'radio'];
 function renderLegend() {
