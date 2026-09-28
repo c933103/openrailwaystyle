@@ -255,27 +255,93 @@ test('tracks side by side are counted from mapped geometry', async () => {
   const {countTracks, trackLines} = await import('../styles/track-count.mjs');
   // 1 tile unit = 1 m. Four tracks 4.5 m apart, a double track 100 m away,
   // a crossing road-like line at right angles and a subway beneath.
+  // Three running tracks 4.5 m apart and a yard of sidings beside them, a
+  // double track 100 m away (its two ways drawn in opposite directions), a
+  // line at right angles, a subway beneath, and a crossover between the
+  // double track's two tracks.
   const line = (y, extra = {}) => ({group:'rail', main:true, parts:[[[0, y], [1000, y + 20]]], ...extra});
-  const lines = [line(0), line(4.5), line(9), line(15, {main:false}), line(115), line(119.5),
-    {group:'rail', main:true, parts:[[[500, -300], [500, 300]]]}, line(6, {group:'rail-tunnel'})];
-  const result = countTracks(lines, 1);
-  assert.deepEqual(result.map(r => r.tracks), [4, 4, 4, 4, 2, 2, 1, 1]);
-  // One running line labelled per bundle; never the siding.
-  assert.equal(result.slice(0, 4).filter(r => r.label).length, 1);
-  assert.equal(result[3].label, false);
-  assert.equal(result.slice(4, 6).filter(r => r.label).length, 1);
+  const reversed = y => ({group:'rail', main:true, parts:[[[1000, y + 20], [0, y]]]});
+  const lines = [line(0), line(4.5), line(9), line(14, {main:false}), line(19, {main:false}), line(24, {main:false}),
+    line(115), reversed(119.5), {group:'rail', main:true, parts:[[[500, -300], [500, 300]]]}, line(6, {group:'rail-tunnel'}),
+    {group:'rail', main:true, parts:[[[400, 123], [480, 128.5]]]}];
+  const {lines: result, points} = countTracks(lines, 1);
+  // Sidings are neither counted nor labelled; the crossover adds no track.
+  assert.deepEqual(result.map(r => r.tracks), [3, 3, 3, 0, 0, 0, 2, 2, 1, 1, 0]);
+  const on = (y0, within = 0.5) => points.filter(p => p.x < 900 && Math.abs(p.y - (y0 + p.x * 0.02)) < within);
+  // Labels sit on the middle track only; the subway beneath has its own.
+  assert.ok(on(4.5).length >= 1 && on(4.5).every(p => p.tracks === 3));
+  assert.equal(on(0).length + on(9).length, 0);
+  assert.ok(on(6).length >= 1 && on(6).every(p => p.tracks === 1));
+  // A double track: one of its two tracks is labelled, whichever way each
+  // was drawn, about once per 800 m.
+  const pair = [...on(115), ...on(119.5)];
+  assert.ok(pair.length >= 1 && pair.length <= 2 && pair.every(p => p.tracks === 2));
+  assert.ok(on(115).length === 0 || on(119.5).length === 0);
+  // A way that runs beside a double track only for its first half.
+  const partial = countTracks([
+    {group:'rail', main:true, parts:[[[0, 0], [2000, 0]]]},
+    {group:'rail', main:true, parts:[[[0, 4.5], [1000, 4.5]]]},
+  ], 1);
+  const along = partial.points.filter(p => Math.abs(p.y) < 5).map(p => [Math.round(p.x / 100), p.tracks]);
+  assert.ok(along.some(([x, n]) => x < 10 && n === 2), JSON.stringify(along));
+  assert.ok(along.some(([x, n]) => x > 10 && n === 1), JSON.stringify(along));
+  // A double track whose second track is split into 100 m ways (between
+  // switches): the short ways count, and the stretch is labelled.
+  const split = countTracks([
+    {group:'rail', main:true, parts:[[[0, 4.5], [1000, 4.5]]]},
+    ...Array.from({length: 10}, (_, i) => ({group:'rail', main:true, length:100, parts:[[[i * 100, 0], [i * 100 + 100, 0]]]})),
+  ], 1);
+  assert.deepEqual(split.lines.map(l => l.tracks), Array(11).fill(2));
+  assert.ok(split.points.length >= 1 && split.points.every(p => p.tracks === 2), JSON.stringify(split.points));
   // Only present, non-ferry lines are counted; tunnels and trams separately.
   const feature = (properties, type = 2) => ({type, properties, loadGeometry: () => [[{x:0, y:0}, {x:1, y:1}]]});
   const input = trackLines([feature({state:'construction'}), feature({feature:'ferry'}), feature({}, 1), feature({tunnel:true}), feature({feature:'tram', service:'siding'})]);
   assert.deepEqual(input.map(l => l && [l.group, l.main]), [null, null, null, ['rail-tunnel', true], ['tram', false]]);
 });
-test('track counts label the Infrastructure view from zoom 12', () => {
+test('track counts are badges on label points in the Infrastructure view from zoom 14', () => {
   const layer = style.layers.find(l => l.id === 'infrastructure-track-count');
-  assert.equal(layer.minzoom, 12);
-  assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:2, properties:{atlas_tracks:4, atlas_tracks_label:true}}), true);
-  assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:2, properties:{atlas_tracks:1, atlas_tracks_label:true}}), true);
-  assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:2, properties:{atlas_tracks_label:true}}), false);
-  assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:2, properties:{atlas_tracks:4, atlas_tracks_label:false}}), false);
+  assert.equal(layer.minzoom, 14);
+  assert.equal(layer.source, 'trackCounts');
+  assert.deepEqual([style.sources.trackCounts.minzoom, style.sources.trackCounts.maxzoom], [14, 14]);
+  assert.equal(layer['source-layer'], 'atlas_track_counts');
+  assert.equal(layer.layout['icon-image'], 'track-badge');
+  assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:1, properties:{tracks:4}}), true);
+  assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:1, properties:{tracks:1}}), true);
+  assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:1, properties:{}}), false);
+});
+test('track-count tiles: neighbours joined by way, points inside, none in station areas or at bare stations', async () => {
+  const {countTile} = await import('../styles/track-tiles.mjs');
+  const {fromGeojsonVt} = await import('vt-pbf');
+  const tile = (layer, features) => { const out = fromGeojsonVt({[layer]: {features}}, {version: 2, extent: 4096}); return out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength); };
+  // Zoom 14 at the equator: 1 unit ≈ 0.6 m. A double track (7.5 units ≈
+  // 4.5 m apart) runs east across the tile into its eastern neighbour, where
+  // the same two ways continue; in the centre tile the second track only
+  // begins near the eastern edge, so its count there comes from the
+  // neighbour.
+  const way = (id, y, x0, x1) => ({type: 2, tags: {id, feature: 'rail'}, geometry: [[[x0, y], [x1, y]]]});
+  const tiles = [
+    {dx: 0, dy: 0, data: tile('railway_line_high', [way('a', 2000, -64, 4160), way('b', 2007.5, 3900, 4160)])},
+    {dx: 1, dy: 0, data: tile('railway_line_high', [way('a', 2000, -64, 4160), way('b', 2007.5, -64, 4160)])},
+  ];
+  const y = 2 ** 13;
+  const {extent, points} = countTile({tiles}, y);
+  assert.equal(extent, 4096);
+  assert.ok(points.length >= 1 && points.every(p => p.x >= 0 && p.x < 4096 && p.y >= 1995 && p.y <= 2010));
+  // West, one track; near the east edge, where both tracks run, two.
+  assert.ok(points.some(p => p.x < 3000 && p.tracks === 1), JSON.stringify(points));
+  // Station areas take away the labels in them, unless the area holds only
+  // subway stations (surface tracks above one stay labelled); stations
+  // without an area take away those within 100 m.
+  const square = [[[0, 1900], [4096, 1900], [4096, 2100], [0, 2100], [0, 1900]]];
+  const areas = tile('standard_railway_grouped_station_areas', [{type: 3, tags: {id: 1}, geometry: square}]);
+  const stationAt = (station, x = 2000, y0 = 2000) => tile('standard_railway_text_stations', [{type: 1, tags: {feature: 'station', station}, geometry: [[x, y0]]}]);
+  assert.equal(countTile({tiles, areas, stations: stationAt('train')}, y).points.length, 0);
+  assert.equal(countTile({tiles, areas}, y).points.length, 0);
+  assert.equal(countTile({tiles, areas, stations: stationAt('subway')}, y).points.length, points.length);
+  const station = tile('standard_railway_text_stations', points.map(p => ({type: 1, tags: {feature: 'station', station: 'train'}, geometry: [[Math.round(p.x), Math.round(p.y)]]})));
+  assert.equal(countTile({tiles, stations: station}, y).points.length, 0);
+  const tram = tile('standard_railway_text_stations', points.map(p => ({type: 1, tags: {feature: 'station', station: 'tram'}, geometry: [[Math.round(p.x), Math.round(p.y)]]})));
+  assert.equal(countTile({tiles, stations: tram}, y).points.length, points.length);
 });
 test('legend colours equal the drawn colours for power, gauge and loading gauge', async () => {
   const m = await import('../styles/map-model.mjs');
