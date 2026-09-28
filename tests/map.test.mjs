@@ -285,6 +285,14 @@ test('tracks side by side are counted from mapped geometry', async () => {
   const along = partial.points.filter(p => Math.abs(p.y) < 5).map(p => [Math.round(p.x / 100), p.tracks]);
   assert.ok(along.some(([x, n]) => x < 10 && n === 2), JSON.stringify(along));
   assert.ok(along.some(([x, n]) => x > 10 && n === 1), JSON.stringify(along));
+  // A double track whose second track is split into 100 m ways (between
+  // switches): the short ways count, and the stretch is labelled.
+  const split = countTracks([
+    {group:'rail', main:true, parts:[[[0, 4.5], [1000, 4.5]]]},
+    ...Array.from({length: 10}, (_, i) => ({group:'rail', main:true, length:100, parts:[[[i * 100, 0], [i * 100 + 100, 0]]]})),
+  ], 1);
+  assert.deepEqual(split.lines.map(l => l.tracks), Array(11).fill(2));
+  assert.ok(split.points.length >= 1 && split.points.every(p => p.tracks === 2), JSON.stringify(split.points));
   // Only present, non-ferry lines are counted; tunnels and trams separately.
   const feature = (properties, type = 2) => ({type, properties, loadGeometry: () => [[{x:0, y:0}, {x:1, y:1}]]});
   const input = trackLines([feature({state:'construction'}), feature({feature:'ferry'}), feature({}, 1), feature({tunnel:true}), feature({feature:'tram', service:'siding'})]);

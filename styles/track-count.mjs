@@ -62,8 +62,9 @@ export function countTracks(lines, metres) {
     }
   });
   // One probe: the bundle size at point p on `index`, heading d, and
-  // whether `index` is the bundle's middle track.
-  const measure = (index, group, px, py, dx, dy) => {
+  // whether `index` is the bundle's middle track. strict: only neighbours
+  // within SHORT_ANGLE count.
+  const measure = (index, group, px, py, dx, dy, strict = false) => {
     const nx = -dy, ny = dx, offsets = new Map([[index, 0]]), seen = new Set();
     const x0 = px - nx * probe, x1 = px + nx * probe, y0 = py - ny * probe, y1 = py + ny * probe;
     for (let gx = Math.floor(Math.min(x0, x1) / cell); gx <= Math.floor(Math.max(x0, x1) / cell); gx++)
@@ -72,7 +73,7 @@ export function countTracks(lines, metres) {
           if (s.index === index || s.group !== group || seen.has(s)) continue;
           seen.add(s);
           const sine = Math.abs(s.dx * dy - s.dy * dx);
-          if (sine > (s.short ? SHORT_ANGLE : MAX_ANGLE)) continue; // not parallel, or a crossover
+          if (sine > (s.short || strict ? SHORT_ANGLE : MAX_ANGLE)) continue; // not parallel, or a crossover
           // Probe P + t·n meets segment A + u·(B − A).
           const ex = s.x2 - s.x1, ey = s.y2 - s.y1, det = ex * ny - ey * nx;
           if (!det) continue;
@@ -102,9 +103,8 @@ export function countTracks(lines, metres) {
   };
   const points = [];
   const result = lines.map((line, index) => {
-    // Service tracks are not counted; short ways (crossovers, pieces between
-    // switches) are neighbours only.
-    if (line.main === false || lengths[index] < short) return {tracks: 0};
+    // Service tracks are not counted.
+    if (line.main === false) return {tracks: 0};
     const pieces = [];
     let total = 0;
     for (const part of line.parts) for (let i = 1; i < part.length; i++) {
@@ -119,8 +119,14 @@ export function countTracks(lines, metres) {
       while (j < pieces.length - 1 && at > pieces[j][2] + pieces[j][3]) j++;
       const [[ax, ay], [bx, by], start, length] = pieces[j];
       const f = (at - start) / length, x = ax + (bx - ax) * f, y = ay + (by - ay) * f;
-      probes.push({x, y, at, ...measure(index, line.group, x, y, (bx - ax) / length, (by - ay) / length)});
+      const dx = (bx - ax) / length, dy = (by - ay) / length;
+      probes.push({x, y, at, ...measure(index, line.group, x, y, dx, dy), strict: lengths[index] < short ? measure(index, line.group, x, y, dx, dy, true).count : undefined});
     }
+    // A short way (a crossover, or a track piece between switches) is a
+    // connector, and not counted, when the tracks beside it run at an angle
+    // to it: at most probes, fewer neighbours are within SHORT_ANGLE than
+    // within MAX_ANGLE. Short ways running parallel count like any other.
+    if (lengths[index] < short && probes.filter(p => p.count > p.strict).length * 2 > probes.length) return {tracks: 0};
     // Smooth single-probe dips and spikes (a gap in a parallel track at a
     // bridge joint, a switch).
     const smooth = probes.map((p, k) => {
@@ -128,7 +134,7 @@ export function countTracks(lines, metres) {
       return window[Math.floor(window.length / 2)];
     });
     // Label points: stretches where this is the middle track and the count holds.
-    if (total >= short) {
+    {
       for (let k = 0; k < probes.length;) {
         if (!probes[k].central) { k++; continue; }
         let end = k;
