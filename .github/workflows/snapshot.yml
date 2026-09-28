@@ -9,6 +9,9 @@ on:
       - scripts/refresh-snapshot-cache.mjs
       - scripts/build-loading-gauge-list.mjs
       - styles/loading-gauge-list.mjs
+      - scripts/build-polar.mjs
+      - scripts/polar-contours.mjs
+      - styles/polar.mjs
       - scripts/pack-snapshot.py
   workflow_dispatch:
     inputs:
@@ -82,6 +85,14 @@ jobs:
       - name: Fetch loading gauge list
         continue-on-error: true
         run: node scripts/build-loading-gauge-list.mjs
+      # The two caps beyond 85.05° that Web Mercator tiles miss: contours and
+      # relief from ETOPO 2022 (fetched once, then cached) and OpenStreetMap
+      # water, ice shelves, runways and places (one small query per cap,
+      # renewed every 4 weeks). If a source is unreachable the cached copy is
+      # used; without any, the caps are left out of this snapshot.
+      - name: Prepare the polar caps
+        continue-on-error: true
+        run: node scripts/build-polar.mjs
       - name: Collect world region 1 of 20
         env:
           SNAPSHOT_REGION: '0'
@@ -186,6 +197,8 @@ jobs:
           cp snapshot/lifecycle.pmtiles /tmp/rail-lifecycle.pmtiles
           cp snapshot/lifecycle.geojson.gz /tmp/rail-lifecycle.geojson.gz
           cp snapshot/loading-gauge.json /tmp/rail-loading-gauge.json 2>/dev/null || true
+          rm -rf /tmp/rail-polar
+          if [ -f snapshot/polar/north-index.json ] && [ -f snapshot/polar/south-index.json ]; then cp -r snapshot/polar /tmp/rail-polar; fi
           # One commit replaces the previous snapshot, so the repository keeps
           # only the current data instead of every past copy.
           git checkout --orphan rail-data
@@ -193,6 +206,7 @@ jobs:
           git clean -fdx
           cp /tmp/rail-manifest.json manifest.json
           cp /tmp/rail-loading-gauge.json loading-gauge.json 2>/dev/null || true
+          if [ -d /tmp/rail-polar ]; then cp -r /tmp/rail-polar polar; fi
           # Keep individual Git blobs below the hosting limit. Pages receives
           # the reassembled archive; viewers still request just its needed bytes.
           split -b 80M -d -a 3 /tmp/rail-lifecycle.pmtiles lifecycle.pmtiles.part-
@@ -201,6 +215,7 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add manifest.json lifecycle.pmtiles.part-* lifecycle.geojson.gz.part-*
           if [ -f loading-gauge.json ]; then git add loading-gauge.json; fi
+          if [ -d polar ]; then git add polar; fi
           git commit -m "Publish complete worldwide railway lifecycle snapshot"
           git push --force origin HEAD:refs/heads/rail-data
       - name: Redeploy the site with the new snapshot

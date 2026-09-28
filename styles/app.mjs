@@ -1,7 +1,7 @@
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-9';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-10';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-9';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260928-9';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-10';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260928-10';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -27,7 +27,7 @@ const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_C
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-9';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-10';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -200,6 +200,7 @@ function applySettings() {
     if (layer.id.startsWith('inactive-')) visible = settings.inactive;
     if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive);
     if (layer.id.startsWith('terrain-')) visible = settings.relief;
+    if (layer.id === 'polar-caps') map.triggerRepaint();
     if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
     if ((visible ?? true) && isClickable(layer.id)) clickable.push(layer.id);
@@ -506,6 +507,40 @@ addEventListener('keydown', event => {
 // A drawing-layer failure must not stop the map from loading.
 function installDrawing() {
   try { drawing.install(); measuring.install(); } catch (error) { console.error('Drawing tools unavailable:', error?.message || String(error)); }
+  installPolar();
+}
+// The polar caps beyond 85.05°, which Web Mercator tiles do not reach, drawn
+// on the globe from data prepared in a polar projection (polar-layer.mjs).
+// Added below roads, borders, labels and railways; again after each style
+// replacement. Place names there are markers.
+let polarLayer, polarLoading, polarMarkers = new Map();
+function showPolarPlaces(places) {
+  const wanted = new Map(places.map(p => [`${p.lngLat[0]},${p.lngLat[1]},${settings.language}`, p]));
+  for (const [key, marker] of polarMarkers) if (!wanted.has(key)) { marker.remove(); polarMarkers.delete(key); }
+  for (const [key, place] of wanted) {
+    if (polarMarkers.has(key)) continue;
+    const element = textNode('span', displayName(place, settings.language) || place.name || '', 'polar-place');
+    polarMarkers.set(key, new maplibregl.Marker({element}).setLngLat(place.lngLat).addTo(map));
+  }
+  // Labels that would overlap give way, the larger kinds of place first.
+  const rank = place => {const k = POLAR_PLACE_ORDER.indexOf(place.place); return k < 0 ? POLAR_PLACE_ORDER.length : k;};
+  const taken = [];
+  for (const [key, place] of [...wanted].sort((a, b) => rank(a[1]) - rank(b[1]))) {
+    const element = polarMarkers.get(key).getElement(), at = map.project(place.lngLat);
+    const w = element.offsetWidth / 2 + 2, h = element.offsetHeight / 2 + 2;
+    const clash = taken.some(([x, y, tw, th]) => Math.abs(x - at.x) < w + tw && Math.abs(y - at.y) < h + th);
+    element.style.visibility = clash ? 'hidden' : '';
+    if (!clash) taken.push([at.x, at.y, w, h]);
+  }
+}
+const POLAR_PLACE_ORDER = ['continent', 'country', 'state', 'region', 'province', 'city', 'town', 'village', 'hamlet', 'locality', 'isolated_dwelling', 'island', 'islet'];
+function installPolar() {
+  if (!map) return;
+  if (polarLayer) { if (!map.getLayer(polarLayer.id)) map.addLayer(polarLayer, map.getLayer('waterway-tunnel') ? 'waterway-tunnel' : undefined); return; }
+  polarLoading ||= import(`./vendor/polar-layer.js?v=${assetVersion}`).then(({PolarLayer}) => {
+    polarLayer = new PolarLayer({data: new URL('./data/polar/', import.meta.url), units: () => settings.units, relief: () => settings.relief, places: showPolarPlaces});
+    installPolar();
+  }).catch(error => console.warn('Polar caps unavailable:', error?.message || error));
 }
 // Once the map object exists (drawing needs it; loading can still be under way).
 function whenMap(action) { if (drawing) action(); else pendingDraw = action; }
