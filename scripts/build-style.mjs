@@ -146,8 +146,8 @@ style.layers.splice(trackIndex,0,
 style.layers.push({...structure,id:'structure-tunnel',filter:['all',present,notFerry,['==',['get','tunnel'],true]],paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],7,0.7,10,1.1,14,2,18,3], 'line-dasharray':[3,2]}});
 // Planned, construction and former lines. line-dasharray cannot vary by
 // feature, so each state has its own layers: long dashes with short gaps for
-// construction, round dots for proposals, short sparse faded dashes for
-// former lines. The patterns stay distinct when the speed view recolours the
+// construction, spaced round dots for proposals, dash-dot for disused and
+// sparse paired short dashes for abandoned or removed lines. The patterns stay distinct when the speed view recolours the
 // lines by planned or former speed (inactivePaint in map-model.mjs).
 const INACTIVE_DASH = Object.fromEntries(Object.entries(LIFECYCLE_PATTERNS).map(([k,v])=>[k,v.dash]));
 const stateFilter = state => state === 'former' ? ['!', ['match', ['get','state'], ['construction','proposed','disused','present'], true, false]] : ['==', ['get','state'], state];
@@ -156,7 +156,7 @@ const inactiveLine = state => ({
   'line-color': inactiveColours('speed'), 'line-width': inactiveWidth, 'line-dasharray': INACTIVE_DASH[state],
   'line-opacity': ['case', ['==', ['get','tunnel'], true], 0.4, state === 'former' ? 0.75 : 0.95],
 });
-const inactiveLayout = state => ({'line-cap': state === 'proposed' ? 'round' : 'butt', 'line-join': 'round'});
+const inactiveLayout = state => ({'line-cap': LIFECYCLE_PATTERNS[state].cap, 'line-join': 'round'});
 // The complete snapshot supplies every lifecycle at regional scales. The
 // ordinary detail tiles take over together at z12, avoiding duplicate lines.
 // Construction shows at every zoom, proposals from z5, former lines from z7.

@@ -6,7 +6,7 @@ export const CONTEXT_CATEGORIES = [
   {id:'bus-stop', group:'transport', label:'Bus stop', color:'#438487', icon:'bus', values:['bus_stop'], zoom:15, local:true},
   {id:'taxi', group:'transport', label:'Taxi stand', color:'#927326', icon:'taxi', values:['taxi'], zoom:15, local:true},
   {id:'bike-rental', group:'transport', label:'Bicycle rental / bike share', color:'#54886d', icon:'bike', values:['bicycle_rental'], zoom:15, local:true},
-  {id:'bike-parking', group:'transport', label:'Bicycle parking', color:'#54886d', icon:'bike', values:['bicycle_parking'], zoom:17, local:true},
+  {id:'bike-parking', group:'transport', label:'Bicycle parking', color:'#54886d', icon:'parking', values:['bicycle_parking'], zoom:17, local:true},
   {id:'religious', group:'constraints', label:'Religious institution / place of worship', color:'#89705c', icon:'civic', classes:['place_of_worship'], values:['monastery','place_of_worship'], zoom:13},
   {id:'heritage', group:'constraints', label:'Heritage / historic site', color:'#956837', icon:'castle', values:['castle','monument','ruins','archaeological_site','memorial','historic','battlefield'], zoom:12},
   {id:'ferry', group:'transport', label:'Ferry terminal', color:'#007b83', icon:'ferry', values:['ferry_terminal']},
@@ -76,6 +76,7 @@ export function nearbyTransport(origin, features, radius=500, zoom=20) {
 const ICON_PATHS = {
   plane:'M12 3 L14 10 L21 14 L21 16 L14 14 L14 19 L17 21 L17 22 L12 20 L7 22 L7 21 L10 19 L10 14 L3 16 L3 14 L10 10 Z',
   bus:'M6 4 H18 V19 H6 Z M6 7 H18 M6 13 H18 M9 7 V13 M7 16 H9 M15 16 H17 M8 19 V21 M16 19 V21',
+  parking:'M7 21 V4 H13 Q21 4 21 10 Q21 16 13 16 H7',
   taxi:'M4 11 L7 6 H17 L20 11 V18 H4 Z M4 11 H20 M8 6 V3 H16 V6 M6 18 V21 M18 18 V21 M6 14 H8 M16 14 H18',
   bike:'M8 16 A5 5 0 1 1 7.9 15 M22 16 A5 5 0 1 1 21.9 15 M3 16 L8 8 L15 16 H3 M8 8 H16 M15 4 L17 16 M12 4 H17 M6 6 H10',
   ferry:'M5 11 L12 8 L19 11 L17 17 H7 Z M8 9 V5 H16 V9 M5 20 Q8 17 12 20 Q16 23 20 20',
