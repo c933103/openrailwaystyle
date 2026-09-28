@@ -1,0 +1,10 @@
+{
+  "generated": "2026-09-28T16:56:50.325Z",
+  "osmBase": "2026-09-28T16:54:56Z",
+  "features": 14569,
+  "tiles": 526,
+  "source": "https://overpass-api.de/api/interpreter",
+  "query": "[out:json][timeout:600][maxsize:536870912];(way[embedded=yes];way[embedded_rails];);out tags geom;",
+  "license": "ODbL-1.0",
+  "description": "Explicit OSM embedded / embedded_rails tags. Not inferred from tram type or proximity. Missing tags imply unknown coverage."
+}
