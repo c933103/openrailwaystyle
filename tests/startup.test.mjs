@@ -88,7 +88,7 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
   const drawing = new vm.SyntheticModule(Object.keys(draw), function() {
     for (const [key,value] of Object.entries(draw)) this.setExport(key,value);
   }, {context});
-  const globe = new vm.SyntheticModule(['installGlobeDrag'], function() { this.setExport('installGlobeDrag', () => () => {}); }, {context});
+  const globe = new vm.SyntheticModule(['installGlobeDrag','allowPolarCentres'], function() { this.setExport('installGlobeDrag', () => ({sync() {}, justDragged: () => false})); this.setExport('allowPolarCentres', () => ({refresh() {}})); }, {context});
   await app.link(specifier => specifier.includes('draw.mjs') ? drawing : specifier.includes('globe-drag.mjs') ? globe : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));

@@ -371,7 +371,7 @@ test('globe below zoom 4; flat map from zoom 4 unless the view is mostly polar',
 });
 
 test('dragging the globe carries the view over a pole, turning the heading', async () => {
-  const {startFrame, stepFrame, frameView} = await import('../styles/globe-drag.mjs');
+  const {startFrame, stepFrame, frameView, zoomForLatitude} = await import('../styles/globe-drag.mjs');
   const near = (a, b, tolerance = 1e-6) => Math.abs(a - b) < tolerance;
   const perDegree = Math.PI / 180; // 1 px = 1° for the test
   // No movement: no change.
@@ -382,18 +382,34 @@ test('dragging the globe carries the view over a pole, turning the heading', asy
   assert.ok(near(view.center[0], 10) && near(view.center[1], 5), JSON.stringify(view));
   view = frameView(stepFrame(startFrame([10, 0], 0), 5, 0, perDegree));
   assert.ok(near(view.center[0], 5) && near(view.center[1], 0), JSON.stringify(view));
-  // From 80° N heading north, dragging in small steps crosses the pole,
-  // skipping the cap beyond 85.05° that has no map: 10° of dragging reaches
-  // 80° N on the far meridian (about 10° more than LAT_LIMIT allows is
-  // crossed at once), now heading south.
-  let frame = startFrame([20, 80], 0), lats = [];
-  for (let i = 0; i < 10; i++) { frame = stepFrame(frame, 0, 1, perDegree); lats.push(frameView(frame).center[1]); }
+  // From 80° N heading north, 20° of dragging passes continuously over the
+  // pole: every step moves the same angle, and it ends at 80° N on the far
+  // meridian, heading south.
+  let frame = startFrame([20, 80], 0), previous = frame.c, steps = [];
+  for (let i = 0; i < 20; i++) {
+    frame = stepFrame(frame, 0, 1, perDegree);
+    steps.push(Math.acos(Math.min(1, previous.reduce((s, v, k) => s + v * frame.c[k], 0))) / perDegree);
+    previous = frame.c;
+  }
   view = frameView(frame);
-  assert.ok(near(view.center[0], -160, 1e-6) && near(view.center[1], 80, 0.2), JSON.stringify(view));
-  assert.ok(near(Math.abs(view.bearing), 180, 1e-6), JSON.stringify(view));
-  assert.ok(lats.every(lat => lat <= 85.06), 'the view never stops in the cap: ' + lats.map(l => l.toFixed(2)));
-  // Dragging back crosses back.
-  for (let i = 0; i < 10; i++) frame = stepFrame(frame, 0, -1, perDegree);
+  assert.ok(near(view.center[0], -160) && near(view.center[1], 80), JSON.stringify(view));
+  assert.ok(near(Math.abs(view.bearing), 180), JSON.stringify(view));
+  assert.ok(steps.every(step => near(step, 1, 1e-6)), 'even steps: ' + steps.map(s => s.toFixed(3)));
+  // And back.
+  for (let i = 0; i < 20; i++) frame = stepFrame(frame, 0, -1, perDegree);
   view = frameView(frame);
-  assert.ok(near(view.center[0], 20, 1e-6) && near(view.center[1], 80, 0.2) && near(view.bearing, 0, 1e-6), JSON.stringify(view));
+  assert.ok(near(view.center[0], 20) && near(view.center[1], 80) && near(view.bearing, 0), JSON.stringify(view));
+  // The planet keeps its size: zoom falls as the centre nears a pole.
+  assert.ok(near(zoomForLatitude(3, 0, 60), 2));
+  assert.ok(near(zoomForLatitude(2, 60, 0), 3));
+});
+
+test('zooming around a point near a pole moves along the great circle towards it', async () => {
+  const {startFrame, frameView, zoomTowards} = await import('../styles/globe-drag.mjs');
+  // One level in towards a point 4° away across the pole: the centre covers
+  // half the way, over the pole, and the heading follows.
+  const view = frameView(zoomTowards(startFrame([20, 89], 0), [-160, 89], 1));
+  assert.ok(Math.abs(view.center[1] - 90) < 1e-6 || Math.abs(view.center[1] - 89.99999) < 1e-3, JSON.stringify(view));
+  const out = frameView(zoomTowards(startFrame([20, 89], 0), [-160, 89], -1));
+  assert.ok(Math.abs(out.center[0] - 20) < 1e-6 && Math.abs(out.center[1] - 87) < 1e-6, JSON.stringify(out));
 });

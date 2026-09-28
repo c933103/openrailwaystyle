@@ -1,7 +1,7 @@
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-8';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-9';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-8';
-import { installGlobeDrag } from './globe-drag.mjs?v=20260928-8';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-9';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260928-9';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -27,7 +27,7 @@ const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_C
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-8';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-9';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -377,7 +377,7 @@ function wantedProjection() {
   const zoom = map.getZoom() - (settings.detail ? 1 : 0);
   return autoProjection(zoom, zoom < 4 ? 0 : polarShare());
 }
-let syncPanning = () => {};
+let syncPanning = () => {}, globeDragged = () => false, polarCentres;
 function updatePolar() {
   if (!map) return;
   if (settings.autoGlobe) {
@@ -406,6 +406,8 @@ function applyDetail(changeZoom) {
   // level and keeps the viewport, even at the zoom limits.
   if (settings.detail) { map.setMaxZoom(MAX_ZOOM + 1); if (changeZoom) map.jumpTo({zoom: map.getZoom() + 1}); map.setMinZoom(MIN_ZOOM + 1); }
   else { map.setMinZoom(MIN_ZOOM); if (changeZoom) map.jumpTo({zoom: map.getZoom() - 1}); map.setMaxZoom(MAX_ZOOM); }
+  // On the globe the smallest zoom follows the latitude (globe-drag.mjs).
+  polarCentres?.refresh();
 }
 detailButton.addEventListener('click', () => { settings.detail = !settings.detail; applyDetail(true); saveSettings(); });
 applyDetail(false);
@@ -552,7 +554,7 @@ async function initialize() {
   style.sources.relief.tiles = [dem.sharedDemProtocolUrl];
   // Reopen where the last visit ended, unless the link gives a position; start
   // on the globe (or as last left) so the first frame is not the flat map.
-  const linked = /^#[\d.]+\//.test(location.hash), start = linked ? {} : rememberedView;
+  const linked = /^#-?[\d.]+\//.test(location.hash), start = linked ? {} : rememberedView;
   const startZoom = linked ? Number(location.hash.slice(1).split('/')[0]) : Number.isFinite(start.z) ? start.z : 1.8;
   const startGlobe = typeof rememberedView.g === 'boolean' ? rememberedView.g : settings.autoGlobe && startZoom - (settings.detail ? 1 : 0) < 4;
   style.projection = {type: startGlobe ? 'globe' : 'mercator'};
@@ -562,6 +564,12 @@ async function initialize() {
     center: validCenter ? start.c : [15,23], zoom: Number.isFinite(start.z) ? start.z : 1.8, bearing: Number.isFinite(start.b) ? start.b : 0, pitch: Number.isFinite(start.p) ? start.p : 0, hash: true, minZoom: MIN_ZOOM + (settings.detail ? 1 : 0), maxZoom: MAX_ZOOM + (settings.detail ? 1 : 0),
     renderWorldCopies: true, attributionControl: { compact: true },
   });
+  // The globe may be centred beyond 85° (globe-drag.mjs); a view left or
+  // linked there is applied again once that is allowed.
+  polarCentres = allowPolarCentres(map, maplibregl.LngLat, () => MIN_ZOOM + (settings.detail ? 1 : 0));
+  const [hashZoom, hashLat, hashLng] = linked ? location.hash.slice(1).split('/').map(Number) : [];
+  const wanted = linked ? {center: [hashLng, hashLat], zoom: hashZoom} : validCenter ? {center: start.c, zoom: start.z} : null;
+  if (wanted && Math.abs(wanted.center[1]) > 85 && wanted.center.every(Number.isFinite)) map.jumpTo(wanted);
   map.on('styleimagemissing', event => {
     if (event.id !== 'station-dot') return;
     const width = 32, data = new Uint8Array(width * width * 4);
@@ -626,13 +634,16 @@ async function initialize() {
   map.on('moveend', updatePolar);
   // Drag the globe as a globe, over the poles (globe-drag.mjs); editable
   // points keep their own dragging.
-  syncPanning = installGlobeDrag(map, {active: onGlobe, ignore: point => {
+  const globeDrag = installGlobeDrag(map, {active: onGlobe, ignore: point => {
     const layers = ['drawing-handle-targets', 'measure-point-targets'].filter(id => map.getLayer(id));
     return layers.length > 0 && map.queryRenderedFeatures([point.x, point.y], {layers}).length > 0;
   }});
+  syncPanning = globeDrag.sync; globeDragged = globeDrag.justDragged;
   syncPanning();
   map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'loadingLow', 'railway'].includes(e.sourceId) && e.tile) scheduleLegend(); });
   map.on('click', event => {
+    // The release that ends a globe drag is not a click.
+    if (globeDragged()) return;
     if (measuring.active) { measuring.click(event.lngLat, event.point); return; }
     if (drawing.active) { drawing.click(event.lngLat, event.point); return; }
     const p = event.point;
