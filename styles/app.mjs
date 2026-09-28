@@ -1,6 +1,7 @@
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-7';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-8';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-7';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-8';
+import { installGlobeDrag } from './globe-drag.mjs?v=20260928-8';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -10,13 +11,23 @@ document.body.dataset.appStarted = 'true';
 // Display settings are remembered in a cookie, not the address; settings in a
 // shared link apply once and are then saved and removed from the address.
 const SETTINGS_COOKIE = 'atlas_settings', LANGUAGE_COOKIE = 'atlas_language';
+// The last position, heading and globe/flat choice, reopened next time.
+// Kept in this browser's local storage (not a cookie, so it is never sent
+// with page requests). A link with a position (#zoom/lat/lng) still wins.
+const VIEW_STORE = 'atlas_view';
+const rememberedView = (() => { try { const v = JSON.parse(localStorage.getItem(VIEW_STORE) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; } })();
+function saveView() {
+  if (!map) return;
+  const c = map.getCenter();
+  try { localStorage.setItem(VIEW_STORE, JSON.stringify({c: [+c.lng.toFixed(5), +c.lat.toFixed(5)], z: +map.getZoom().toFixed(2), b: +map.getBearing().toFixed(1), p: +map.getPitch().toFixed(1), g: onGlobe()})); } catch {}
+}
 const readCookie = name => { try { return decodeURIComponent(document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))?.[1] || ''); } catch { return ''; } };
 const writeCookie = (name, value) => { try { document.cookie = `${name}=${encodeURIComponent(value)}; max-age=31536000; path=/; SameSite=Lax`; } catch {} };
 const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_COOKIE) || '{}'); return value && typeof value === 'object' ? value : {}; } catch { return {}; } })();
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-7';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-8';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -193,8 +204,12 @@ function applySettings() {
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
     if ((visible ?? true) && isClickable(layer.id)) clickable.push(layer.id);
   }
+  // Clear the previous view's values before drawing the legend: if the new
+  // view has nothing in view, the in-view list never changes and the legend
+  // would keep the old rows.
+  inView = [];
   renderLegend();
-  if (ready) { inView = []; scheduleLegend(); }
+  if (ready) scheduleLegend();
 }
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading)-labels$/;
 const isClickable = id => id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading)-(tracks|overview)$/.test(id);
@@ -357,12 +372,16 @@ function polarShare() {
   return polar / total;
 }
 const onGlobe = () => map?.getProjection?.()?.type === 'globe';
+function wantedProjection() {
+  // More detail draws one zoom level further in.
+  const zoom = map.getZoom() - (settings.detail ? 1 : 0);
+  return autoProjection(zoom, zoom < 4 ? 0 : polarShare());
+}
+let syncPanning = () => {};
 function updatePolar() {
   if (!map) return;
   if (settings.autoGlobe) {
-    // More detail draws one zoom level further in.
-    const zoom = map.getZoom() - (settings.detail ? 1 : 0);
-    const wanted = autoProjection(zoom, zoom < 4 ? 0 : polarShare());
+    const wanted = wantedProjection();
     if (wanted !== lastAutoProjection) {
       lastAutoProjection = wanted;
       if (wanted && wanted !== (onGlobe() ? 'globe' : 'mercator')) map.setProjection({type: wanted});
@@ -372,6 +391,7 @@ function updatePolar() {
   polarButton.textContent = globe ? '🗺️' : '🌍';
   polarButton.title = globe ? 'Switch to the flat map' : 'Switch to the globe: every region at its true shape, without the flat map’s stretching near the poles';
   polarButton.setAttribute('aria-label', polarButton.title);
+  syncPanning(); saveView();
 }
 polarButton.addEventListener('click', () => { map.setProjection({type: onGlobe() ? 'mercator' : 'globe'}); updatePolar(); });
 const measureButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'📏', title:'Measure'});
@@ -402,6 +422,17 @@ function updateDrawing() {
   document.querySelectorAll('[data-draw]').forEach(b => b.setAttribute('aria-pressed', String(drawing?.mode === b.dataset.draw && !drawing.paused)));
   $('draw-pan').setAttribute('aria-pressed', String(Boolean(drawing?.paused)));
   $('draw-pan').disabled = !drawing?.mode;
+  // Curve points apply to lines; the selected point's actions.
+  $('draw-curved').disabled = drawing?.mode !== 'line';
+  $('draw-curved').setAttribute('aria-pressed', String(Boolean(drawing?.curved)));
+  const selected = drawing?.selection();
+  $('draw-node').hidden = !selected;
+  if (selected) {
+    $('node-curve').hidden = !selected.canCurve;
+    $('node-curve').textContent = selected.curved ? 'Make corner' : 'Make curved';
+    $('node-extend').hidden = !selected.canExtend;
+  }
+  $('measure-delete').hidden = measuring?.selected === null || measuring?.selected === undefined;
   document.querySelectorAll('[data-measure]').forEach(b => b.setAttribute('aria-pressed', String(measuring?.mode === b.dataset.measure)));
 }
 // Drawing and measuring are exclusive: opening one closes the other.
@@ -420,6 +451,16 @@ $('measure-close').addEventListener('click', () => openTools(null));
 document.querySelectorAll('[data-measure]').forEach(b => b.addEventListener('click', () => whenMap(() => measuring.setMode(b.dataset.measure))));
 $('measure-undo').addEventListener('click', () => measuring?.undo());
 $('measure-clear').addEventListener('click', () => measuring?.clear());
+// Selected points: delete after confirmation.
+$('measure-delete').addEventListener('click', () => { if (confirm('Delete this point?')) measuring?.deleteSelected(); });
+$('node-delete').addEventListener('click', () => { if (confirm('Delete this point?')) drawing?.deleteSelected(); });
+$('node-curve').addEventListener('click', () => drawing?.toggleSelectedCurve());
+$('node-extend').addEventListener('click', () => {
+  drawing?.extendSelected();
+  // The extended line keeps its own style; show it in the style controls.
+  if (drawing) { drawStyle({color: drawing.style.color}); $('draw-dash').value = drawing.style.dash; $('draw-width').value = String(drawing.style.width); }
+});
+$('draw-curved').addEventListener('click', () => drawing?.setCurved(!drawing.curved));
 // Drawing style: colour, line style and width for new drawings.
 function drawStyle(style) {
   whenMap(() => drawing.setStyle(style));
@@ -509,9 +550,16 @@ async function initialize() {
   // share one elevation loader and tile cache.
   localizeStyle(style);
   style.sources.relief.tiles = [dem.sharedDemProtocolUrl];
+  // Reopen where the last visit ended, unless the link gives a position; start
+  // on the globe (or as last left) so the first frame is not the flat map.
+  const linked = /^#[\d.]+\//.test(location.hash), start = linked ? {} : rememberedView;
+  const startZoom = linked ? Number(location.hash.slice(1).split('/')[0]) : Number.isFinite(start.z) ? start.z : 1.8;
+  const startGlobe = typeof rememberedView.g === 'boolean' ? rememberedView.g : settings.autoGlobe && startZoom - (settings.detail ? 1 : 0) < 4;
+  style.projection = {type: startGlobe ? 'globe' : 'mercator'};
+  const validCenter = Array.isArray(start.c) && start.c.length === 2 && start.c.every(Number.isFinite);
   map = new maplibregl.Map({
     container: 'map', style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / (settings.detail ? 2 : 1),
-    center: [15,23], zoom: 1.8, hash: true, minZoom: MIN_ZOOM + (settings.detail ? 1 : 0), maxZoom: MAX_ZOOM + (settings.detail ? 1 : 0),
+    center: validCenter ? start.c : [15,23], zoom: Number.isFinite(start.z) ? start.z : 1.8, bearing: Number.isFinite(start.b) ? start.b : 0, pitch: Number.isFinite(start.p) ? start.p : 0, hash: true, minZoom: MIN_ZOOM + (settings.detail ? 1 : 0), maxZoom: MAX_ZOOM + (settings.detail ? 1 : 0),
     renderWorldCopies: true, attributionControl: { compact: true },
   });
   map.on('styleimagemissing', event => {
@@ -566,6 +614,8 @@ async function initialize() {
     // Settings changed while the map was loading take effect now.
     if (styleLanguage !== settings.language) { reloadLanguage(); return; }
     installDrawing();
+    // A remembered globe/flat choice holds until the automatic choice changes.
+    if (typeof rememberedView.g === 'boolean') lastAutoProjection = wantedProjection();
     applySettings(); applyUnits(); updateStatus(); updatePolar();
     document.body.dataset.mapReady = 'true';
     const action = pendingView; pendingView = undefined; action?.();
@@ -574,9 +624,16 @@ async function initialize() {
   map.on('idle', updateStatus);
   map.on('moveend', scheduleLegend);
   map.on('moveend', updatePolar);
+  // Drag the globe as a globe, over the poles (globe-drag.mjs); editable
+  // points keep their own dragging.
+  syncPanning = installGlobeDrag(map, {active: onGlobe, ignore: point => {
+    const layers = ['drawing-handle-targets', 'measure-point-targets'].filter(id => map.getLayer(id));
+    return layers.length > 0 && map.queryRenderedFeatures([point.x, point.y], {layers}).length > 0;
+  }});
+  syncPanning();
   map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'loadingLow', 'railway'].includes(e.sourceId) && e.tile) scheduleLegend(); });
   map.on('click', event => {
-    if (measuring.active) { measuring.click(event.lngLat); return; }
+    if (measuring.active) { measuring.click(event.lngLat, event.point); return; }
     if (drawing.active) { drawing.click(event.lngLat, event.point); return; }
     const p = event.point;
     const features = map.queryRenderedFeatures([[p.x - 7, p.y - 7], [p.x + 7, p.y + 7]], {layers: clickable})

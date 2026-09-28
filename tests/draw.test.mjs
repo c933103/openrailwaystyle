@@ -117,7 +117,7 @@ test('curve drawing and measuring', () => {
   d.finish();
   assert.equal(d.features[0].geometry.type, 'LineString');
   assert.ok(d.features[0].geometry.coordinates.length > 10, 'curves are stored as smooth lines');
-  assert.deepEqual(d.features[0].properties, {color:'#1565c0', dash:'dashed', width:5, curve_points:[[139.7,35.7],[139.71,35.705],[139.72,35.7]]}, 'style and control points kept');
+  assert.deepEqual(d.features[0].properties, {color:'#1565c0', dash:'dashed', width:5, line_points:[[139.7,35.7],[139.71,35.705],[139.72,35.7]], curved:[1,1,1]}, 'style and curve points kept');
   const statuses = [];
   const m = new Measure(map, {status: s => statuses.push(s)}); m.install();
   m.setMode('distance');
@@ -132,49 +132,91 @@ test('curve drawing and measuring', () => {
   assert.deepEqual(labels, ['R ≈ 600 m']);
 });
 
-test('drawing points can be moved and deleted one at a time', async () => {
+test('one line can join straight track and curves', async () => {
+  const {buildLine} = await import('../styles/draw.mjs');
+  const points = [[0,0],[1,0],[2,0.5],[3,0],[4,0]], curved = [0,0,1,0,0];
+  const line = buildLine(points, curved);
+  // Corners are kept exactly; the curve between them passes through the
+  // curve point.
+  assert.deepEqual(line[0], [0,0]);
+  assert.ok(line.some(p => p[0] === 1 && p[1] === 0));
+  assert.ok(line.some(p => Math.abs(p[0] - 2) < 1e-6 && Math.abs(p[1] - 0.5) < 1e-6));
+  assert.deepEqual(line.at(-1), [4,0]);
+  // The last straight stretch stays straight: [3,0] then [4,0].
+  assert.deepEqual(line.slice(-2), [[3,0],[4,0]]);
+  assert.ok(line.length > points.length, 'the curved part is smoothed');
+  assert.deepEqual(buildLine(points, [0,0,0,0,0]), points);
+});
+
+function editingMap(sources, handlers, pick) {
+  return {getSource: id => sources[id], addSource: id => { sources[id] = {setData(data) { this.data = data; }}; }, getLayer: id => id.endsWith('targets') ? {} : undefined, addLayer() {},
+    getCanvas: () => ({style:{}}), on(type, layer, fn) { handlers[`${type} ${typeof layer === 'string' ? layer : ''}`] = fn || layer; },
+    doubleClickZoom: {enable() {}, disable() {}}, project: () => ({x:1e9, y:1e9}), queryRenderedFeatures: () => pick() ? [{properties: pick()}] : []};
+}
+
+test('drawing points are selected, then moved, deleted, curved or extended', async () => {
   const {Drawing, editablePoints, readDrawing} = await import('../styles/draw.mjs');
   const sources = {}, handlers = {};
-  const map = {getSource: id => sources[id], addSource: id => { sources[id] = {setData(data) { this.data = data; }}; }, getLayer: () => undefined, addLayer() {},
-    getCanvas: () => ({style:{}}), on(type, layer, fn) { handlers[`${type} ${typeof layer === 'string' ? layer : ''}`] = fn || layer; },
-    doubleClickZoom: {enable() {}, disable() {}}, project: () => ({x:1e9, y:1e9})};
-  const d = new Drawing(map); d.clear(); d.install();
+  let picked = null;
+  const d = new Drawing(editingMap(sources, handlers, () => picked)); d.clear(); d.install();
+  const at = (lng, lat) => d.click({lng, lat}, {x:lng, y:lat});
   d.setMode('area');
-  for (const [lng, lat] of [[0,0],[1,0],[1,1],[0,1]]) d.click({lng, lat}, {x:lng, y:lat});
+  for (const [lng, lat] of [[0,0],[1,0],[1,1],[0,1]]) at(lng, lat);
   d.finish();
   const area = d.features.at(-1);
-  assert.equal(editablePoints(area).length, 4);
-  // Handles are listed while a tool is in use.
-  assert.equal(sources['atlas-drawing-handles'].data.features.length, 4);
+  assert.equal(sources['atlas-drawing-handles'].data.features.length, 4, 'handles while a tool is in use');
   d.movePoint(area.id, 2, [2, 2]);
   assert.deepEqual(d.features.at(-1).geometry.coordinates[0], [[0,0],[1,0],[2,2],[0,1],[0,0]]);
-  d.removePoint(area.id, 3);
+  // Clicking a point selects it; delete removes just that point.
+  picked = {drawing: area.id, index: 3}; at(0, 1); picked = null;
+  assert.deepEqual(d.selection().index, 3);
+  d.deleteSelected();
   assert.deepEqual(d.features.at(-1).geometry.coordinates[0], [[0,0],[1,0],[2,2],[0,0]]);
+  assert.equal(d.selected, null);
   d.removePoint(area.id, 0); // an area needs three corners
   assert.equal(d.features.length, 0);
-  // Curves keep their control points through editing and saving.
-  d.setMode('curve');
-  for (const [lng, lat] of [[0,0],[1,1],[2,0]]) d.click({lng, lat}, {x:lng, y:lat});
+  // A line with straight and curved parts; the middle point becomes a curve point.
+  d.setMode('line');
+  for (const [lng, lat] of [[0,0],[1,0],[2,1]]) at(lng, lat);
+  d.setCurved(true); at(3, 1); d.setCurved(false); at(4, 1);
   d.finish();
-  const curve = d.features.at(-1);
-  assert.deepEqual(editablePoints(curve), [[0,0],[1,1],[2,0]]);
-  d.movePoint(curve.id, 1, [1, 2]);
-  assert.ok(d.features.at(-1).geometry.coordinates.length > 3);
+  let line = d.features.at(-1);
+  assert.deepEqual(line.properties.curved, [0,0,0,1,0]);
+  picked = {drawing: line.id, index: 1}; at(1, 0); picked = null;
+  assert.equal(d.selection().canCurve, true);
+  assert.equal(d.selection().canExtend, false);
+  d.toggleSelectedCurve();
+  assert.deepEqual(d.features.at(-1).properties.curved, [0,1,0,1,0]);
+  // Extend from the start: the line becomes the shape in progress, reversed.
+  line = d.features.at(-1);
+  at(9, 9); // clears the selection
+  picked = {drawing: line.id, index: 0}; at(0, 0); picked = null;
+  assert.equal(d.selection().canExtend, true);
+  d.extendSelected();
+  assert.equal(d.features.length, 0);
+  assert.deepEqual(d.draft[0], [4, 1]);
+  at(-1, 0); d.finish();
+  assert.deepEqual(editablePoints(d.features.at(-1)), [[4,1],[3,1],[2,1],[1,0],[0,0],[-1,0]]);
+  assert.deepEqual(d.features.at(-1).properties.curved, [0,1,0,1,0,0]);
+  // Kept through saving and opening.
   const saved = readDrawing(d.collection());
-  assert.deepEqual(saved[0].properties.curve_points, [[0,0],[1,2],[2,0]]);
-  // Right-clicking a handle deletes that point.
-  assert.equal(typeof handlers['contextmenu drawing-handle-targets'], 'function');
+  assert.deepEqual(saved[0].properties.curved, [0,1,0,1,0,0]);
+  // Files from before keep curves: curve_points are all curve points.
+  const old = readDrawing({type:'Feature', properties:{curve_points:[[0,0],[1,1],[2,0]]}, geometry:{type:'LineString', coordinates:[[0,0],[1,1],[2,0]]}});
+  assert.deepEqual(old[0].properties.curved, [1,1,1]);
   d.clear();
 });
 
-test('measured points can be moved and deleted', async () => {
+test('measured points are selected, then moved or deleted', async () => {
   const {Measure} = await import('../styles/draw.mjs');
   const sources = {}, handlers = {};
-  const map = {getSource: id => sources[id], addSource: id => { sources[id] = {setData(data) { this.data = data; }}; }, getLayer: () => undefined, addLayer() {},
-    getCanvas: () => ({style:{}}), on(type, layer, fn) { if (fn) handlers[`${type} ${layer}`] = fn; }, doubleClickZoom: {enable() {}, disable() {}}};
-  const m = new Measure(map); m.install(); m.setMode('distance');
-  for (const lng of [0, 1, 2]) m.click({lng, lat: 0});
-  handlers['contextmenu measure-point-targets']({features: [{properties: {index: 1}}], preventDefault() {}});
+  let picked = null;
+  const m = new Measure(editingMap(sources, handlers, () => picked)); m.install(); m.setMode('distance');
+  for (const lng of [0, 1, 2]) m.click({lng, lat: 0}, {x: lng, y: 0});
+  m.lastAdd = 0; // not part of a double-click
+  picked = {index: 1}; m.click({lng: 1, lat: 0}, {x: 1, y: 0}); picked = null;
+  assert.equal(m.selected, 1);
+  m.deleteSelected();
   assert.deepEqual(m.points, [[0,0],[2,0]]);
-  assert.ok(sources['atlas-measure'].data.features.filter(f => f.properties.index !== undefined).length === 2);
+  assert.equal(sources['atlas-measure'].data.features.filter(f => f.properties.index !== undefined).length, 2);
 });

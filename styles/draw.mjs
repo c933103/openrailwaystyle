@@ -118,8 +118,16 @@ export function readDrawing(json) {
     if (g?.type === 'Point' && finite(g.coordinates)) add({type:'Point', coordinates:g.coordinates.slice(0, 2)});
     else if (g?.type === 'MultiPoint') { for (const p of line(g.coordinates)) add({type:'Point', coordinates:p}); }
     else if (g?.type === 'LineString') {
-      const c = line(g.coordinates), controls = line(f.properties?.curve_points);
-      if (c.length >= 2) { add({type:'LineString', coordinates:c}); if (controls.length >= 2) out.at(-1).properties.curve_points = controls; }
+      // Lines drawn here keep their points and which of them are curve
+      // points (line_points, curved); curve_points is the older form, all
+      // curved.
+      const c = line(g.coordinates), legacy = line(f.properties?.curve_points), points = line(f.properties?.line_points);
+      const nodes = points.length >= 2 ? points : legacy;
+      const curved = points.length >= 2 ? f.properties?.curved : legacy.map(() => 1);
+      if (c.length >= 2) {
+        add({type:'LineString', coordinates:c});
+        if (nodes.length >= 2 && Array.isArray(curved) && curved.length === nodes.length) Object.assign(out.at(-1).properties, {line_points: nodes, curved: curved.map(v => v ? 1 : 0)});
+      }
     }
     else if (g?.type === 'MultiLineString') { for (const l of g.coordinates || []) { const c = line(l); if (c.length >= 2) add({type:'LineString', coordinates:c}); } }
     else if (g?.type === 'Polygon') { const c = line(g.coordinates?.[0]); if (c.length >= 4) add({type:'Polygon', coordinates:[c]}); }
@@ -128,87 +136,101 @@ export function readDrawing(json) {
   return out;
 }
 
-// Editable points of a drawing: a curve's control points, a line's
-// vertices, an area's corners (without the closing repeat), or the point.
-export function editablePoints(feature) {
-  const g = feature.geometry;
-  if (g.type === 'Point') return [g.coordinates];
-  if (g.type === 'Polygon') return g.coordinates[0].slice(0, -1);
-  return feature.properties?.curve_points || g.coordinates;
+// A line through points where each point is a corner (0) or a curve point
+// (1): runs of curve points are drawn as a smooth curve, and the line turns
+// sharply at corners, so one line can join straight track and curves. The
+// ends are always corners.
+export function buildLine(points, curved) {
+  if (points.length < 2) return points.map(p => [...p]);
+  const breaks = points.map((_, i) => i === 0 || i === points.length - 1 || !curved[i]).flatMap((b, i) => b ? [i] : []);
+  const out = [];
+  for (let k = 1; k < breaks.length; k++) {
+    const run = points.slice(breaks[k-1], breaks[k] + 1);
+    const part = run.length > 2 ? smoothCurve(run) : run.map(p => [...p]);
+    out.push(...(out.length ? part.slice(1) : part));
+  }
+  return out;
 }
+// Editable points of a drawing (with their corner/curve flags for lines):
+// a line's points, an area's corners (without the closing repeat), or the
+// point.
+export function editableNodes(feature) {
+  const g = feature.geometry, p = feature.properties || {};
+  if (g.type === 'Point') return {points: [g.coordinates], curved: [0]};
+  if (g.type === 'Polygon') { const ring = g.coordinates[0].slice(0, -1); return {points: ring, curved: ring.map(() => 0)}; }
+  if (p.line_points) return {points: p.line_points, curved: p.curved};
+  return {points: g.coordinates, curved: g.coordinates.map(() => 0)};
+}
+export const editablePoints = feature => editableNodes(feature).points;
 const MIN_POINTS = {Point: 1, LineString: 2, Polygon: 3};
-// A copy of the drawing with its editable points replaced, or null when too
-// few remain for its kind.
-export function withPoints(feature, points) {
+// A copy of the drawing with its editable points (and, for lines, flags)
+// replaced, or null when too few remain for its kind.
+export function withNodes(feature, points, curved = editableNodes(feature).curved) {
   const type = feature.geometry.type;
   if (points.length < MIN_POINTS[type]) return null;
-  const properties = {...feature.properties};
+  const {line_points, curved: _, ...properties} = feature.properties || {};
   let coordinates;
   if (type === 'Point') coordinates = points[0];
   else if (type === 'Polygon') coordinates = [[...points, points[0]]];
-  else if (properties.curve_points) { properties.curve_points = points; coordinates = smoothCurve(points); }
+  else if (curved.some(Boolean)) { Object.assign(properties, {line_points: points, curved}); coordinates = buildLine(points, curved); }
   else coordinates = points;
   return {...feature, properties, geometry: {type, coordinates}};
 }
-// Drag a point to move it; right-click it, or hold it on a touch screen, to
-// delete it. layer: an invisible circle layer, larger than the visible
-// points so a fingertip finds them, whose features carry what move/remove
-// need. Registered once: MapLibre keeps layer-bound listeners across style
-// replacements.
-const TOUCH_SLOP = 10; // px a finger may wander while holding still
+export const withPoints = (feature, points) => withNodes(feature, points);
+// Drag a point to move it. layer: an invisible circle layer, larger than the
+// visible points so a fingertip finds them, whose features carry what move
+// needs. Registered once: MapLibre keeps layer-bound listeners across style
+// replacements. Returns a check for the click that ends a drag, which must
+// not also act.
 export const pointTarget = (id, source, filter) => ({id, type:'circle', source, ...(filter ? {filter} : {}),
   paint:{'circle-radius':18, 'circle-color':'#000', 'circle-opacity':0.01}});
-// Returns a check for the tap or click that follows a hold or drag, which
-// must not also add a point.
-function editPoints(map, layer, {enabled, move, done, remove}) {
-  let drag = null, hold, quietUntil = 0;
-  const quiet = () => { quietUntil = Date.now() + 700; };
+function dragPoints(map, layer, {enabled, move, done}) {
+  let drag = null, quietUntil = 0;
   const start = (e, touch) => {
     if (!enabled() || (touch ? e.originalEvent.touches?.length > 1 : e.originalEvent.button !== 0)) return;
     const feature = e.features?.[0];
     if (!feature) return;
     e.preventDefault(); // no map panning for this gesture
-    drag = {properties: feature.properties, from: e.point, moved: false, slop: touch ? TOUCH_SLOP : 4};
-    if (touch) hold = setTimeout(() => { if (drag && !drag.moved) { const {properties} = drag; drag = null; quiet(); remove(properties); } }, 600);
+    drag = {properties: feature.properties, from: e.point, moved: false, slop: touch ? 10 : 4};
   };
   const moving = e => {
     if (!drag) return;
     if (!drag.moved && Math.hypot(e.point.x - drag.from.x, e.point.y - drag.from.y) < drag.slop) return;
-    drag.moved = true; clearTimeout(hold);
+    drag.moved = true;
     move(drag.properties, [Number(e.lngLat.lng.toFixed(6)), Number(e.lngLat.lat.toFixed(6))]);
   };
-  const end = () => { clearTimeout(hold); if (drag?.moved) { quiet(); done(); } drag = null; };
+  const end = () => { if (drag?.moved) { quietUntil = Date.now() + 700; done(); } drag = null; };
   map.on('mousedown', layer, e => start(e, false));
   map.on('touchstart', layer, e => start(e, true));
   map.on('mousemove', moving); map.on('touchmove', moving);
   map.on('mouseup', end); map.on('touchend', end); map.on('touchcancel', end);
-  map.on('contextmenu', layer, e => { if (enabled() && e.features?.[0]) { e.preventDefault(); remove(e.features[0].properties); } });
   map.on('mouseenter', layer, () => { if (enabled()) map.getCanvas().style.cursor = 'move'; });
   map.on('mouseleave', layer, () => { if (enabled()) map.getCanvas().style.cursor = 'crosshair'; });
   return () => Date.now() < quietUntil;
 }
-const touchScreen = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
-const editHint = () => touchScreen() ? ' Drag a point to move it; hold it to delete it.' : ' Drag a point to move it; right-click it to delete it.';
+const EDIT_HINT = ' Click a point to select it; drag a point to move it.';
+// A click on a point just added belongs to a double-click, not a selection.
+const DOUBLE_CLICK_MS = 500;
 
 const STORE = 'openrailwayatlas-drawing';
 const COLOR = '#c2185b';
 const colour = ['coalesce', ['get','color'], COLOR];
-const HINTS = {point:'Click to place points.', line:'Click to add points; double-click or Finish to end.', curve:'Click points along the curve; double-click or Finish to end.', area:'Click to add corners; double-click or Finish to close.', erase:'Click a point to delete just that point, or a line or area to delete the whole drawing.'};
+const HINTS = {point:'Click to place points.', line:'Click to add points; double-click or Finish to end. Turn on Curved for curve points (smooth), off for corners (straight).', area:'Click to add corners; double-click or Finish to close.', erase:'Click a drawing to delete it.'};
 export class Drawing {
   constructor(map, {units = () => 'metric', status = () => {}, changed = () => {}} = {}) {
     Object.assign(this, {map, units, status, changed});
-    this.features = []; this.draft = []; this.mode = null; this.paused = false; this.cursor = null; this.next = 1;
+    this.features = []; this.draft = []; this.draftCurved = []; this.mode = null; this.paused = false; this.cursor = null; this.next = 1;
+    this.curved = false; this.selected = null; this.extending = null; this.lastAdd = 0;
     this.style = {color: COLOR, dash: 'solid', width: 3};
     try { this.add(readDrawing(JSON.parse(localStorage.getItem(STORE) || 'null')), false); } catch {}
-    this.editing = editPoints(map, 'drawing-handle-targets', {
+    this.dragging = dragPoints(map, 'drawing-handle-targets', {
       enabled: () => this.mode !== null && !this.paused,
       move: ({drawing, index}, p) => this.movePoint(drawing, index, p),
       done: () => this.save(),
-      remove: ({drawing, index}) => this.removePoint(drawing, index),
     });
   }
   get active() { return this.mode !== null; }
-  get multiPoint() { return this.mode === 'line' || this.mode === 'curve' || this.mode === 'area'; }
+  get multiPoint() { return this.mode === 'line' || this.mode === 'area'; }
   // Sources and layers are re-added after every style replacement.
   install() {
     const map = this.map;
@@ -222,6 +244,7 @@ export class Drawing {
       filter:['all', ['!=',['geometry-type'],'Point'], ['==', ['coalesce',['get','dash'],'solid'], dash]],
       layout:{'line-join':'round','line-cap':'round'},
       paint:{'line-color':colour, 'line-width':['coalesce',['get','width'],3], ...(dasharray ? {'line-dasharray':dasharray} : {})}});
+    const selected = ['boolean', ['get','selected'], false];
     this.layers = [
       {id:'drawing-fill', type:'fill', source:'atlas-drawing', filter:['==',['geometry-type'],'Polygon'], paint:{'fill-color':colour,'fill-opacity':0.14}},
       line('drawing-line', 'solid'), line('drawing-line-dashed', 'dashed', [2.5, 1.8]), line('drawing-line-dotted', 'dotted', [0.1, 2]),
@@ -230,9 +253,11 @@ export class Drawing {
       {id:'drawing-line-labels', type:'symbol', source:'atlas-drawing', filter:['==',['geometry-type'],'LineString'], layout:{...label, 'symbol-placement':'line-center'}, paint:labelPaint},
       {id:'drawing-area-labels', type:'symbol', source:'atlas-drawing', filter:['==',['geometry-type'],'Polygon'], layout:label, paint:labelPaint},
       {id:'drawing-draft-line', type:'line', source:'atlas-drawing-draft', filter:['!=',['geometry-type'],'Point'], paint:{'line-color':colour,'line-width':2,'line-dasharray':[2,1.5]}},
-      {id:'drawing-draft-vertices', type:'circle', source:'atlas-drawing-draft', filter:['==',['geometry-type'],'Point'], paint:{'circle-color':'#fffef8','circle-radius':4,'circle-stroke-color':colour,'circle-stroke-width':2}},
-      // Editable points, shown while a drawing tool is in use.
-      {id:'drawing-handles', type:'circle', source:'atlas-drawing-handles', paint:{'circle-color':'#fffef8','circle-radius':5,'circle-stroke-color':colour,'circle-stroke-width':2}},
+      // Editable points, shown while a drawing tool is in use: curve points
+      // round, corners square-ish (thicker ring); the selected one filled.
+      {id:'drawing-handles', type:'circle', source:'atlas-drawing-handles', paint:{
+        'circle-color':['case', selected, colour, '#fffef8'], 'circle-radius':['case', selected, 7, 5],
+        'circle-stroke-color':['case', selected, '#fffef8', colour], 'circle-stroke-width':['case', ['==', ['get','curved'], 1], 1.5, 2.5]}},
       pointTarget('drawing-handle-targets', 'atlas-drawing-handles'),
     ];
     for (const layer of this.layers) if (!map.getLayer(layer.id)) map.addLayer(layer);
@@ -246,12 +271,13 @@ export class Drawing {
   // The shape being drawn, including the pointer position.
   shape() {
     const points = this.cursor ? [...this.draft, this.cursor] : this.draft;
-    return this.mode === 'curve' ? smoothCurve(points) : points;
+    const curved = this.cursor ? [...this.draftCurved, this.curved ? 1 : 0] : this.draftCurved;
+    return this.mode === 'line' ? buildLine(points, curved) : points;
   }
   draftCollection() {
     const points = this.shape();
     const properties = {color: this.style.color};
-    const features = this.draft.map(coordinates => ({type:'Feature', properties, geometry:{type:'Point', coordinates}}));
+    const features = [];
     if (points.length >= 2) features.push({type:'Feature', properties, geometry: this.mode === 'area' && points.length >= 3
       ? {type:'Polygon', coordinates:[[...points, points[0]]]} : {type:'LineString', coordinates:points}});
     return {type:'FeatureCollection', features};
@@ -259,48 +285,103 @@ export class Drawing {
   // Handles for every drawing's points and the shape in progress (drawing 0).
   handleCollection() {
     if (!this.mode || this.paused) return {type:'FeatureCollection', features:[]};
-    const handle = (coordinates, drawing, index, color) => ({type:'Feature', properties:{drawing, index, color}, geometry:{type:'Point', coordinates}});
+    const handle = (coordinates, drawing, index, color, curved) => ({type:'Feature', geometry:{type:'Point', coordinates},
+      properties:{drawing, index, color, curved: curved ? 1 : 0, selected: this.selected?.drawing === drawing && this.selected?.index === index}});
     return {type:'FeatureCollection', features:[
-      ...this.features.flatMap(f => editablePoints(f).map((p, i) => handle(p, f.id, i, f.properties.color))),
-      ...this.draft.map((p, i) => handle(p, 0, i, this.style.color)),
+      ...this.features.flatMap(f => { const {points, curved} = editableNodes(f); return points.map((p, i) => handle(p, f.id, i, f.properties.color, curved[i])); }),
+      ...this.draft.map((p, i) => handle(p, 0, i, this.style.color, this.draftCurved[i])),
     ]};
   }
+  nodesOf(drawing) {
+    if (drawing === 0) return {points: this.draft, curved: this.draftCurved, type: this.mode === 'area' ? 'Polygon' : 'LineString'};
+    const f = this.features.find(f => f.id === drawing);
+    return f && {...editableNodes(f), type: f.geometry.type};
+  }
+  // What can be done with the selected point: delete it always; switch
+  // between corner and curve point for a line's middle points; extend a
+  // finished line from either end.
+  selection() {
+    if (!this.selected) return null;
+    const nodes = this.nodesOf(this.selected.drawing);
+    if (!nodes || !nodes.points[this.selected.index]) return null;
+    const {index, drawing} = this.selected, last = nodes.points.length - 1, end = index === 0 || index === last;
+    return {...this.selected, curved: Boolean(nodes.curved[index]),
+      canCurve: nodes.type === 'LineString' && !end, canExtend: drawing !== 0 && nodes.type === 'LineString' && end};
+  }
+  select(selected) { this.selected = selected; this.refresh(); this.changed(); }
   movePoint(drawing, index, p) {
     if (drawing === 0) { if (this.draft[index]) this.draft[index] = p; this.refresh(); return; }
     const at = this.features.findIndex(f => f.id === drawing);
     if (at < 0) return;
-    const points = [...editablePoints(this.features[at])]; points[index] = p;
-    this.features[at] = withPoints(this.features[at], points); this.refresh();
+    const {points, curved} = editableNodes(this.features[at]);
+    const moved = [...points]; moved[index] = p;
+    this.features[at] = withNodes(this.features[at], moved, curved); this.refresh();
   }
   // Delete one point; a drawing left with too few points is deleted.
   removePoint(drawing, index) {
-    if (drawing === 0) { this.draft.splice(index, 1); this.refresh(); return; }
+    this.selected = null;
+    if (drawing === 0) { this.draft.splice(index, 1); this.draftCurved.splice(index, 1); this.refresh(); this.changed(); return; }
     const at = this.features.findIndex(f => f.id === drawing);
     if (at < 0) return;
-    const edited = withPoints(this.features[at], editablePoints(this.features[at]).filter((_, i) => i !== index));
+    const {points, curved} = editableNodes(this.features[at]);
+    const keep = (_, i) => i !== index;
+    const edited = withNodes(this.features[at], points.filter(keep), curved.filter(keep));
     if (edited) this.features[at] = edited; else this.features.splice(at, 1);
     this.save();
+  }
+  deleteSelected() { const s = this.selection(); if (s) this.removePoint(s.drawing, s.index); }
+  // Switch the selected point between corner and curve point.
+  toggleSelectedCurve() {
+    const s = this.selection();
+    if (!s?.canCurve) return;
+    if (s.drawing === 0) { this.draftCurved[s.index] = s.curved ? 0 : 1; this.refresh(); this.changed(); return; }
+    const at = this.features.findIndex(f => f.id === s.drawing);
+    const {points, curved} = editableNodes(this.features[at]);
+    const flags = [...curved]; flags[s.index] = s.curved ? 0 : 1;
+    this.features[at] = withNodes(this.features[at], points, flags);
+    this.save();
+  }
+  // Continue a finished line from the selected end: it becomes the shape in
+  // progress again (reversed when extended from its start), keeping its
+  // style and name.
+  extendSelected() {
+    const s = this.selection();
+    if (!s?.canExtend) return;
+    const at = this.features.findIndex(f => f.id === s.drawing), feature = this.features[at];
+    let {points, curved} = editableNodes(feature);
+    if (s.index === 0) { points = [...points].reverse(); curved = [...curved].reverse(); }
+    this.features.splice(at, 1); this.save();
+    const {line_points, curved: _, measure: __, drawing: ___, ...properties} = feature.properties;
+    this.extending = properties;
+    this.style = {...this.style, ...drawingStyle(properties)};
+    this.mode = 'line'; this.paused = false; this.selected = null;
+    this.draft = points.map(p => [...p]); this.draftCurved = [...curved];
+    this.map.doubleClickZoom.disable(); this.map.getCanvas().style.cursor = 'crosshair';
+    this.refresh(); this.changed();
   }
   refresh() {
     this.map.getSource('atlas-drawing')?.setData(this.collection(true));
     this.map.getSource('atlas-drawing-draft')?.setData(this.draftCollection());
     this.map.getSource('atlas-drawing-handles')?.setData(this.handleCollection());
     const points = this.shape(), units = this.units();
-    this.status((this.mode === 'line' || this.mode === 'curve') && points.length >= 2 ? formatLength(lengthKm(points), units)
+    this.status(this.mode === 'line' && points.length >= 2 ? formatLength(lengthKm(points), units)
       : this.mode === 'area' && points.length >= 3 ? formatArea(areaKm2(points), units)
       : this.paused && this.mode ? 'Moving the map: drag, pinch or tap freely. Press Move map again to keep drawing.'
-      : this.mode ? HINTS[this.mode] + (this.mode === 'erase' ? '' : editHint()) : '');
+      : this.mode ? HINTS[this.mode] + (this.mode === 'erase' ? '' : EDIT_HINT) : '');
   }
   save() {
     try { localStorage.setItem(STORE, JSON.stringify(this.collection())); } catch {}
     this.refresh(); this.changed();
   }
   setStyle(style) { this.style = {...this.style, ...drawingStyle({...this.style, ...style})}; this.refresh(); }
+  setCurved(curved) { this.curved = Boolean(curved); this.refresh(); this.changed(); }
   setMode(mode) {
     this.finish();
+    // Curve is the line tool starting with curve points on.
+    if (mode === 'curve') { this.curved = true; mode = 'line'; }
     this.mode = this.mode === mode ? null : mode;
-    this.paused = false;
-    // Double-click finishes a line, curve or area instead of zooming.
+    this.paused = false; this.selected = null;
+    // Double-click finishes a line or area instead of zooming.
     if (this.multiPoint) this.map.doubleClickZoom.disable(); else this.map.doubleClickZoom.enable();
     this.map.getCanvas().style.cursor = this.mode ? 'crosshair' : '';
     this.refresh(); this.changed();
@@ -309,7 +390,7 @@ export class Drawing {
   // losing a shape in progress.
   setPaused(paused) {
     this.paused = paused;
-    this.cursor = null;
+    this.cursor = null; this.selected = null;
     if (this.multiPoint && !paused) this.map.doubleClickZoom.disable(); else this.map.doubleClickZoom.enable();
     this.map.getCanvas().style.cursor = this.mode && !paused ? 'crosshair' : '';
     this.refresh(); this.changed();
@@ -319,21 +400,29 @@ export class Drawing {
     return {type:'Feature', properties: geometry.type === 'Point' ? {color, width} : {color, dash, width}, geometry};
   }
   click(lngLat, point) {
-    if (this.paused || this.editing?.()) return;
+    if (this.paused || this.dragging?.()) return;
     const p = [Number(lngLat.lng.toFixed(6)), Number(lngLat.lat.toFixed(6))];
+    // Clicking the first corner closes an area.
+    if (this.mode === 'area' && this.draft.length >= 3) {
+      const first = this.map.project(this.draft[0]);
+      if (Math.hypot(first.x - point.x, first.y - point.y) < 10) { this.finish(); return; }
+    }
+    // A click on a point selects it. The click after a selection clears it.
+    const handle = this.map.getLayer('drawing-handle-targets') && this.map.queryRenderedFeatures(point, {layers:['drawing-handle-targets']})[0];
+    if (handle) {
+      const {drawing, index} = handle.properties;
+      if (drawing === 0 && index === this.draft.length - 1 && Date.now() - this.lastAdd < DOUBLE_CLICK_MS) return;
+      this.select({drawing, index});
+      return;
+    }
+    if (this.selected) { this.select(null); return; }
     if (this.mode === 'point') this.add([this.newFeature({type:'Point', coordinates:p})]);
     else if (this.multiPoint) {
-      // Clicking the first corner closes an area.
-      if (this.mode === 'area' && this.draft.length >= 3) {
-        const first = this.map.project(this.draft[0]);
-        if (Math.hypot(first.x - point.x, first.y - point.y) < 10) { this.finish(); return; }
-      }
-      this.draft.push(p); this.refresh();
+      this.draft.push(p); this.draftCurved.push(this.mode === 'line' && this.curved ? 1 : 0);
+      this.lastAdd = Date.now(); this.refresh();
     } else if (this.mode === 'erase') {
       const box = [[point.x-6, point.y-6], [point.x+6, point.y+6]];
-      const handle = this.map.getLayer('drawing-handle-targets') && this.map.queryRenderedFeatures(point, {layers:['drawing-handle-targets']})[0];
-      if (handle) { this.removePoint(handle.properties.drawing, handle.properties.index); return; }
-      const hit = this.map.queryRenderedFeatures([[point.x-6, point.y-6], [point.x+6, point.y+6]], {layers:['drawing-points','drawing-line','drawing-line-dashed','drawing-line-dotted','drawing-fill']})[0];
+      const hit = this.map.queryRenderedFeatures(box, {layers:['drawing-points','drawing-line','drawing-line-dashed','drawing-line-dotted','drawing-fill']})[0];
       const index = hit ? this.features.findIndex(f => f.id === hit.properties.drawing) : -1;
       if (index >= 0) { this.features.splice(index, 1); this.save(); }
     }
@@ -343,26 +432,25 @@ export class Drawing {
     this.cursor = [lngLat.lng, lngLat.lat]; this.refresh();
   }
   finish() {
-    // A double-click adds its point twice before finishing.
-    this.draft = this.draft.filter((p, i, all) => !i || p[0] !== all[i-1][0] || p[1] !== all[i-1][1]);
-    const n = this.draft.length;
-    const geometry = this.mode === 'line' && n >= 2 ? {type:'LineString', coordinates:this.draft}
-      : this.mode === 'curve' && n >= 2 ? {type:'LineString', coordinates:smoothCurve(this.draft)}
-      : this.mode === 'area' && n >= 3 ? {type:'Polygon', coordinates:[[...this.draft, this.draft[0]]]} : null;
-    const controls = this.draft;
-    this.draft = []; this.cursor = null;
-    if (!geometry) { this.refresh(); return; }
-    const feature = this.newFeature(geometry);
-    // Curves keep their control points, so they can be edited later.
-    if (this.mode === 'curve') feature.properties.curve_points = controls;
+    // A double-click may add its point twice before finishing.
+    const keep = this.draft.map((p, i, all) => !i || p[0] !== all[i-1][0] || p[1] !== all[i-1][1]);
+    const points = this.draft.filter((_, i) => keep[i]), curved = this.draftCurved.filter((_, i) => keep[i]);
+    const n = points.length, extending = this.extending;
+    this.draft = []; this.draftCurved = []; this.cursor = null; this.selected = null; this.extending = null;
+    let feature = null;
+    if (this.mode === 'line' && n >= 2) feature = withNodes(this.newFeature({type:'LineString', coordinates:points}), points, curved);
+    else if (this.mode === 'area' && n >= 3) feature = this.newFeature({type:'Polygon', coordinates:[[...points, points[0]]]});
+    if (!feature) { this.refresh(); this.changed(); return; }
+    if (extending?.name) feature.properties.name = extending.name;
     this.add([feature]);
   }
-  cancel() { this.draft = []; this.cursor = null; this.refresh(); }
+  cancel() { this.draft = []; this.draftCurved = []; this.cursor = null; this.selected = null; this.refresh(); }
   undo() {
-    if (this.draft.length) { this.draft.pop(); this.refresh(); }
+    this.selected = null;
+    if (this.draft.length) { this.draft.pop(); this.draftCurved.pop(); this.refresh(); }
     else if (this.features.length) { this.features.pop(); this.save(); }
   }
-  clear() { this.features = []; this.draft = []; this.cursor = null; this.save(); }
+  clear() { this.features = []; this.draft = []; this.draftCurved = []; this.cursor = null; this.selected = null; this.save(); }
   add(features, store = true) {
     this.features.push(...features.map(f => ({...f, id:this.next++})));
     if (store) this.save();
@@ -376,12 +464,11 @@ const INK = '#16414d';
 export class Measure {
   constructor(map, {units = () => 'metric', status = () => {}, changed = () => {}} = {}) {
     Object.assign(this, {map, units, status, changed});
-    this.mode = null; this.points = []; this.cursor = null; this.ended = false;
-    this.editing = editPoints(map, 'measure-point-targets', {
+    this.mode = null; this.points = []; this.cursor = null; this.ended = false; this.selected = null; this.lastAdd = 0;
+    this.dragging = dragPoints(map, 'measure-point-targets', {
       enabled: () => this.mode !== null,
       move: ({index}, p) => { if (this.points[index]) { this.points[index] = p; this.refresh(); } },
       done: () => {},
-      remove: ({index}) => { this.points.splice(index, 1); if (this.points.length < 2) this.ended = false; this.refresh(); },
     });
   }
   get active() { return this.mode !== null; }
@@ -390,11 +477,12 @@ export class Measure {
     if (!map.getSource('atlas-measure')) map.addSource('atlas-measure', {type:'geojson', data:this.collection()});
     const text = {'text-font':['Noto Sans Bold'],'text-size':12,'text-allow-overlap':true,'text-ignore-placement':true};
     const halo = {'text-color':INK,'text-halo-color':'#fffef8','text-halo-width':2.5};
+    const selected = ['boolean', ['get','selected'], false];
     const layers = [
       {id:'measure-line', type:'line', source:'atlas-measure', filter:['==',['get','kind'],'segment'], layout:{'line-cap':'round'}, paint:{'line-color':INK,'line-width':2.5,'line-dasharray':[3,1.5]}},
       {id:'measure-arc', type:'line', source:'atlas-measure', filter:['==',['get','kind'],'arc'], layout:{'line-cap':'round'}, paint:{'line-color':'#e0701b','line-width':3}},
       pointTarget('measure-point-targets', 'atlas-measure', ['has','index']),
-      {id:'measure-points', type:'circle', source:'atlas-measure', filter:['has','index'], paint:{'circle-color':'#fffef8','circle-radius':4.5,'circle-stroke-color':INK,'circle-stroke-width':2}},
+      {id:'measure-points', type:'circle', source:'atlas-measure', filter:['has','index'], paint:{'circle-color':['case', selected, INK, '#fffef8'],'circle-radius':['case', selected, 6.5, 4.5],'circle-stroke-color':['case', selected, '#fffef8', INK],'circle-stroke-width':2}},
       {id:'measure-segment-labels', type:'symbol', source:'atlas-measure', filter:['all',['==',['get','kind'],'segment'],['has','label']], layout:{...text,'text-field':['get','label'],'symbol-placement':'line-center','text-size':11}, paint:halo},
       {id:'measure-labels', type:'symbol', source:'atlas-measure', filter:['all',['==',['geometry-type'],'Point'],['has','label']], layout:{...text,'text-field':['get','label'],'text-offset':[0,-1.3]}, paint:halo},
     ];
@@ -403,7 +491,7 @@ export class Measure {
   collection() {
     const units = this.units(), live = this.cursor && !this.ended && this.mode === 'distance' ? [...this.points, this.cursor] : this.points;
     const feature = (geometry, properties = {}) => ({type:'Feature', properties, geometry});
-    const features = this.points.map((p, index) => feature({type:'Point', coordinates:p}, {index}));
+    const features = this.points.map((p, index) => feature({type:'Point', coordinates:p}, {index, selected: this.selected === index}));
     if (this.mode === 'distance') {
       for (let i = 1; i < live.length; i++) features.push(feature({type:'LineString', coordinates:[live[i-1], live[i]]}, {kind:'segment', ...(live.length > 2 ? {label: formatLength(lengthKm([live[i-1], live[i]]), units)} : {})}));
       if (live.length >= 2) features.push(feature({type:'Point', coordinates:live.at(-1)}, {kind:'total', label: formatLength(lengthKm(live), units)}));
@@ -419,7 +507,7 @@ export class Measure {
   }
   refresh() {
     this.map.getSource('atlas-measure')?.setData(this.collection());
-    const units = this.units(), hint = this.points.length ? editHint() : '';
+    const units = this.units(), hint = this.points.length ? EDIT_HINT : '';
     if (this.mode === 'distance') {
       const live = this.cursor && !this.ended ? [...this.points, this.cursor] : this.points;
       this.status(live.length >= 2 ? `Distance: ${formatLength(lengthKm(live), units)} over ${live.length - 1} segment${live.length > 2 ? 's' : ''}${this.ended ? '' : ' · double-click to end'}.${hint}` : `Click points to measure; double-click to end.${hint}`);
@@ -431,22 +519,37 @@ export class Measure {
   }
   setMode(mode) {
     this.mode = this.mode === mode ? null : mode;
-    this.points = []; this.cursor = null; this.ended = false;
+    this.points = []; this.cursor = null; this.ended = false; this.selected = null;
     if (this.mode === 'distance') this.map.doubleClickZoom.disable(); else this.map.doubleClickZoom.enable();
     this.map.getCanvas().style.cursor = this.mode ? 'crosshair' : '';
     this.refresh(); this.changed();
   }
-  click(lngLat) {
-    if (!this.mode || this.editing?.()) return;
+  select(index) { this.selected = index; this.refresh(); this.changed(); }
+  deleteSelected() {
+    if (this.selected === null || !this.points[this.selected]) return;
+    this.points.splice(this.selected, 1); this.selected = null;
+    if (this.points.length < 2) this.ended = false;
+    this.refresh(); this.changed();
+  }
+  click(lngLat, point) {
+    if (!this.mode || this.dragging?.()) return;
+    // A click on a point selects it; the click after a selection clears it.
+    const handle = point && this.map.getLayer?.('measure-point-targets') && this.map.queryRenderedFeatures(point, {layers:['measure-point-targets']})[0];
+    if (handle) {
+      const {index} = handle.properties;
+      if (index === this.points.length - 1 && Date.now() - this.lastAdd < DOUBLE_CLICK_MS) return;
+      this.select(index); return;
+    }
+    if (this.selected !== null) { this.select(null); return; }
     // After a finished distance, the next click starts a new one.
     if (this.ended) { this.points = []; this.ended = false; }
     const p = [Number(lngLat.lng.toFixed(6)), Number(lngLat.lat.toFixed(6))];
     const last = this.points.at(-1);
-    if (!last || last[0] !== p[0] || last[1] !== p[1]) this.points.push(p);
+    if (!last || last[0] !== p[0] || last[1] !== p[1]) { this.points.push(p); this.lastAdd = Date.now(); }
     this.refresh();
   }
   move(lngLat) { if (this.mode === 'distance' && !this.ended) { this.cursor = [lngLat.lng, lngLat.lat]; this.refresh(); } }
   end() { if (this.mode === 'distance' && this.points.length >= 2) { this.ended = true; this.cursor = null; this.refresh(); } }
-  undo() { this.ended = false; this.points.pop(); this.refresh(); }
-  clear() { this.points = []; this.cursor = null; this.ended = false; this.refresh(); }
+  undo() { this.ended = false; this.selected = null; this.points.pop(); this.refresh(); this.changed(); }
+  clear() { this.points = []; this.cursor = null; this.ended = false; this.selected = null; this.refresh(); this.changed(); }
 }

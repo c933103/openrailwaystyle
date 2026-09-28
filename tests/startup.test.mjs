@@ -49,6 +49,9 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
     getProjection() { return this.projection; }
     setProjection(projection) { this.projection = projection; }
     getContainer() { return {clientWidth:1000, clientHeight:700}; }
+    getCenter() { return {lng:0, lat:0}; }
+    getBearing() { return 0; }
+    getPitch() { return 0; }
     unproject() { return {lng:0, lat:0}; }
   }
   // This is the MapLibre 5 public surface used by the app. In particular,
@@ -85,7 +88,8 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
   const drawing = new vm.SyntheticModule(Object.keys(draw), function() {
     for (const [key,value] of Object.entries(draw)) this.setExport(key,value);
   }, {context});
-  await app.link(specifier => specifier.includes('draw.mjs') ? drawing : dependency);
+  const globe = new vm.SyntheticModule(['installGlobeDrag'], function() { this.setExport('installGlobeDrag', () => () => {}); }, {context});
+  await app.link(specifier => specifier.includes('draw.mjs') ? drawing : specifier.includes('globe-drag.mjs') ? globe : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries};

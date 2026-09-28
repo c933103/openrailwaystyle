@@ -9,7 +9,7 @@
   <title>Open Railway Atlas · Worldwide rail map</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20260928-7" rel="stylesheet">
+  <link href="app.css?v=20260928-8" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -49,7 +49,8 @@
     </div>
   </aside>
   <div id="draw-toolbar" class="draw-toolbar" role="toolbar" aria-label="Drawing tools" hidden>
-    <div class="draw-group"><button data-draw="point" aria-pressed="false">Point</button><button data-draw="line" aria-pressed="false">Line</button><button data-draw="curve" aria-pressed="false">Curve</button><button data-draw="area" aria-pressed="false">Area</button><button data-draw="erase" aria-pressed="false">Erase</button></div>
+    <div class="draw-group"><button data-draw="point" aria-pressed="false">Point</button><button data-draw="line" aria-pressed="false">Line</button><button data-draw="area" aria-pressed="false">Area</button><button data-draw="erase" aria-pressed="false">Erase</button><button id="draw-curved" aria-pressed="false" title="Line points added while on are curve points (smooth); off, corners (straight)">〰 Curved</button></div>
+    <div id="draw-node" class="draw-group" role="group" aria-label="Selected point" hidden><button id="node-delete">🗑 Delete point</button><button id="node-curve">Make curved</button><button id="node-extend">↪ Extend line</button></div>
     <div class="draw-group"><button id="draw-pan" aria-pressed="false" title="Move the map without drawing; the tools and any unfinished shape stay">✋ Move map</button></div>
     <div class="draw-group draw-style" role="group" aria-label="Drawing style">
       <span class="swatches"><button class="swatch-button" data-color="#c2185b" aria-label="Magenta" aria-pressed="true"></button><button class="swatch-button" data-color="#1565c0" aria-label="Blue" aria-pressed="false"></button><button class="swatch-button" data-color="#2e7d32" aria-label="Green" aria-pressed="false"></button><button class="swatch-button" data-color="#ef6c00" aria-label="Orange" aria-pressed="false"></button><button class="swatch-button" data-color="#212121" aria-label="Black" aria-pressed="false"></button></span>
@@ -65,7 +66,7 @@
   </div>
   <div id="measure-toolbar" class="draw-toolbar" role="toolbar" aria-label="Measuring tools" hidden>
     <div class="draw-group"><button data-measure="distance" aria-pressed="false">Distance</button><button data-measure="radius" aria-pressed="false">Curve radius</button></div>
-    <div class="draw-group"><button id="measure-undo">Undo</button><button id="measure-clear">Clear</button></div>
+    <div class="draw-group"><button id="measure-undo">Undo</button><button id="measure-clear">Clear</button><button id="measure-delete" hidden>🗑 Delete point</button></div>
     <button id="measure-close" class="draw-close" aria-label="Close measuring tools">×</button>
     <p id="measure-status" class="draw-status" role="status"></p>
   </div>
@@ -97,6 +98,6 @@
       status.textContent = 'The map could not load. Check your connection and reload the page.';
     }, true);
   </script>
-  <script type="module" src="app.mjs?v=20260928-7"></script>
+  <script type="module" src="app.mjs?v=20260928-8"></script>
 </body>
 </html>

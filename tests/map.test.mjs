@@ -369,3 +369,31 @@ test('globe below zoom 4; flat map from zoom 4 unless the view is mostly polar',
   assert.equal(autoProjection(4, 0.2), 'mercator');
   assert.equal(autoProjection(6, 0.7), null); // leave as is near the poles
 });
+
+test('dragging the globe carries the view over a pole, turning the heading', async () => {
+  const {startFrame, stepFrame, frameView} = await import('../styles/globe-drag.mjs');
+  const near = (a, b, tolerance = 1e-6) => Math.abs(a - b) < tolerance;
+  const perDegree = Math.PI / 180; // 1 px = 1° for the test
+  // No movement: no change.
+  let view = frameView(stepFrame(startFrame([10, 50], 30), 0, 0, perDegree));
+  assert.ok(near(view.center[0], 10) && near(view.center[1], 50) && near(view.bearing, 30), JSON.stringify(view));
+  // Dragging down moves the view north; dragging right moves it west.
+  view = frameView(stepFrame(startFrame([10, 0], 0), 0, 5, perDegree));
+  assert.ok(near(view.center[0], 10) && near(view.center[1], 5), JSON.stringify(view));
+  view = frameView(stepFrame(startFrame([10, 0], 0), 5, 0, perDegree));
+  assert.ok(near(view.center[0], 5) && near(view.center[1], 0), JSON.stringify(view));
+  // From 80° N heading north, dragging in small steps crosses the pole,
+  // skipping the cap beyond 85.05° that has no map: 10° of dragging reaches
+  // 80° N on the far meridian (about 10° more than LAT_LIMIT allows is
+  // crossed at once), now heading south.
+  let frame = startFrame([20, 80], 0), lats = [];
+  for (let i = 0; i < 10; i++) { frame = stepFrame(frame, 0, 1, perDegree); lats.push(frameView(frame).center[1]); }
+  view = frameView(frame);
+  assert.ok(near(view.center[0], -160, 1e-6) && near(view.center[1], 80, 0.2), JSON.stringify(view));
+  assert.ok(near(Math.abs(view.bearing), 180, 1e-6), JSON.stringify(view));
+  assert.ok(lats.every(lat => lat <= 85.06), 'the view never stops in the cap: ' + lats.map(l => l.toFixed(2)));
+  // Dragging back crosses back.
+  for (let i = 0; i < 10; i++) frame = stepFrame(frame, 0, -1, perDegree);
+  view = frameView(frame);
+  assert.ok(near(view.center[0], 20, 1e-6) && near(view.center[1], 80, 0.2) && near(view.bearing, 0, 1e-6), JSON.stringify(view));
+});
