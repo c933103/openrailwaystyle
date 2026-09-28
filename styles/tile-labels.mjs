@@ -76,12 +76,12 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     while(cache.size>160) cache.delete(cache.keys().next().value);
     return data;
   }
-  // Railway tiles: tracks side by side are counted from zoom 12 in a worker,
+  // Railway tiles: tracks side by side are counted from zoom 13 in a worker,
   // off the page's main thread (track-worker.mjs). Other zooms pass through.
   let trackWorker, nextJob = 0;
   const trackJobs = new Map();
   function countTracks(data, z, y) {
-    if (z < 12 || !data?.byteLength || typeof Worker === 'undefined') return data;
+    if (z < 13 || !data?.byteLength || typeof Worker === 'undefined') return data;
     if (!trackWorker) {
       trackWorker = new Worker(new URL(`track-worker.js${new URL(import.meta.url).search}`, import.meta.url));
       trackWorker.onmessage = ({data:{id,data:result,error}}) => {
@@ -101,7 +101,10 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     const url = params.url.replace(/^atlasrail:\/\//,'');
     if (params.type === 'json') {
       const data = await get(url,controller.signal,true);
-      return {data:{...data,tiles:data.tiles.map(t=>`atlasrail://${t}`)}};
+      // The track-count label points are a layer of their own; declared so
+      // MapLibre accepts style layers that use it.
+      const vectorLayers = Array.isArray(data.vector_layers) ? [...data.vector_layers.filter(l => l.id !== 'atlas_track_counts'), {id:'atlas_track_counts', fields:{tracks:'Number'}, minzoom:13}] : data.vector_layers;
+      return {data:{...data,tiles:data.tiles.map(t=>`atlasrail://${t}`),...(vectorLayers && {vector_layers:vectorLayers})}};
     }
     const response = await fetcher(url,{signal:controller.signal});
     if (!response.ok && response.status !== 204) throw new Error(`Railway tile returned ${response.status}`);

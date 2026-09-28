@@ -177,13 +177,18 @@ for (const [id,source,sourceLayer,minzoom,maxzoom,filter] of [
   layout:{'symbol-placement':'line','symbol-spacing':450,'text-field':labelExpression('local'), 'text-font':['Noto Sans Bold'], 'text-size':['interpolate',['linear'],['zoom'],9,11,14,13], 'text-offset':[0,-0.85], 'text-padding':8, 'text-max-angle':35},
   paint:{'text-color':'#4a453f','text-halo-color':'#fffef8','text-halo-width':2},
 });
-// Tracks side by side (counted from the mapped geometry by the atlasrail
-// protocol; see track-count.mjs), once per bundle, in the Infrastructure view.
+// Running tracks side by side (counted from the mapped geometry by the
+// atlasrail protocol; see track-count.mjs): a small numbered badge on the
+// middle track of each bundle, kept apart from each other, in the
+// Infrastructure view. Where badges would collide, surface tracks win over
+// tunnels beneath them, then larger counts; tunnel badges are paler.
 style.layers.push({
-  id: 'infrastructure-track-count', type: 'symbol', source: 'railway', 'source-layer': 'railway_line_high', minzoom: 12,
-  filter: ['all', present, notFerry, ['==', ['get', 'atlas_tracks_label'], true], ['>=', ['to-number', ['coalesce', ['get', 'atlas_tracks'], 0], 0], 1]],
-  layout: { 'symbol-placement': 'line', 'symbol-spacing': 450, 'text-field': ['concat', ['to-string', ['get', 'atlas_tracks']], ['case', ['==', ['get', 'atlas_tracks'], 1], ' track', ' tracks']], 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-padding': 6, 'text-max-angle': 30 },
-  paint: { 'text-color': '#173e47', 'text-halo-color': '#fffef8', 'text-halo-width': 2 },
+  id: 'infrastructure-track-count', type: 'symbol', source: 'railway', 'source-layer': 'atlas_track_counts', minzoom: 13,
+  filter: ['>=', ['to-number', ['get', 'tracks'], 0], 1],
+  layout: { 'text-field': ['to-string', ['get', 'tracks']], 'text-font': ['Noto Sans Bold'], 'text-size': 11,
+    'icon-image': 'track-badge', 'icon-text-fit': 'both', 'icon-text-fit-padding': [2, 5, 1, 5],
+    'symbol-sort-key': ['+', ['case', ['==', ['get', 'tunnel'], true], 100, 0], ['-', ['to-number', ['get', 'tracks'], 0]]], 'text-padding': 24, 'icon-padding': 24 },
+  paint: { 'text-color': ['case', ['==', ['get', 'tunnel'], true], '#6a7f86', '#173e47'], 'icon-opacity': ['case', ['==', ['get', 'tunnel'], true], 0.75, 1] },
 });
 // Values written along the tracks, like speed limits, in each view.
 const valueLabel = (id, filter, text) => style.layers.push({
@@ -287,7 +292,10 @@ for (const l of places) {
 }
 const stationNames = style.layers.filter(l => l.id.startsWith('station-') && l.type === 'symbol');
 const railwayNames = style.layers.filter(l => l.type === 'symbol' && l.id.endsWith('-names') && !l.id.startsWith('station-'));
-style.layers = style.layers.filter(l => !stationNames.includes(l) && !railwayNames.includes(l)).concat(railwayNames, stationNames);
+// Track-count badges above railway names, so a line's name never hides
+// how many tracks it has; station names keep priority over both.
+const trackBadges = style.layers.filter(l => l.id === 'infrastructure-track-count');
+style.layers = style.layers.filter(l => !stationNames.includes(l) && !railwayNames.includes(l) && !trackBadges.includes(l)).concat(railwayNames, trackBadges, stationNames);
 for (const l of style.layers) {
   if (/^(infrastructure|electrification|control|gauge|loading)-/.test(l.id)) l.layout.visibility = 'none';
 }

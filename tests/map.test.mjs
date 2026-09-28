@@ -255,27 +255,69 @@ test('tracks side by side are counted from mapped geometry', async () => {
   const {countTracks, trackLines} = await import('../styles/track-count.mjs');
   // 1 tile unit = 1 m. Four tracks 4.5 m apart, a double track 100 m away,
   // a crossing road-like line at right angles and a subway beneath.
+  // Three running tracks 4.5 m apart and a yard of sidings beside them, a
+  // double track 100 m away (its two ways drawn in opposite directions), a
+  // line at right angles, a subway beneath, and a crossover between the
+  // double track's two tracks.
   const line = (y, extra = {}) => ({group:'rail', main:true, parts:[[[0, y], [1000, y + 20]]], ...extra});
-  const lines = [line(0), line(4.5), line(9), line(15, {main:false}), line(115), line(119.5),
-    {group:'rail', main:true, parts:[[[500, -300], [500, 300]]]}, line(6, {group:'rail-tunnel'})];
-  const result = countTracks(lines, 1);
-  assert.deepEqual(result.map(r => r.tracks), [4, 4, 4, 4, 2, 2, 1, 1]);
-  // One running line labelled per bundle; never the siding.
-  assert.equal(result.slice(0, 4).filter(r => r.label).length, 1);
-  assert.equal(result[3].label, false);
-  assert.equal(result.slice(4, 6).filter(r => r.label).length, 1);
+  const reversed = y => ({group:'rail', main:true, parts:[[[1000, y + 20], [0, y]]]});
+  const lines = [line(0), line(4.5), line(9), line(14, {main:false}), line(19, {main:false}), line(24, {main:false}),
+    line(115), reversed(119.5), {group:'rail', main:true, parts:[[[500, -300], [500, 300]]]}, line(6, {group:'rail-tunnel'}),
+    {group:'rail', main:true, parts:[[[400, 123], [480, 128.5]]]}];
+  const {lines: result, points} = countTracks(lines, 1);
+  // Sidings are neither counted nor labelled; the crossover adds no track.
+  assert.deepEqual(result.map(r => r.tracks), [3, 3, 3, 0, 0, 0, 2, 2, 1, 1, 0]);
+  const on = (y0, within = 0.5) => points.filter(p => p.x < 900 && Math.abs(p.y - (y0 + p.x * 0.02)) < within);
+  // Labels sit on the middle track only; the subway beneath has its own.
+  assert.ok(on(4.5).length >= 1 && on(4.5).every(p => p.tracks === 3));
+  assert.equal(on(0).length + on(9).length, 0);
+  assert.ok(on(6).length >= 1 && on(6).every(p => p.tracks === 1));
+  // A double track: one of its two tracks is labelled, whichever way each
+  // was drawn, about once per 800 m.
+  const pair = [...on(115), ...on(119.5)];
+  assert.ok(pair.length >= 1 && pair.length <= 2 && pair.every(p => p.tracks === 2));
+  assert.ok(on(115).length === 0 || on(119.5).length === 0);
+  // A way that runs beside a double track only for its first half.
+  const partial = countTracks([
+    {group:'rail', main:true, parts:[[[0, 0], [2000, 0]]]},
+    {group:'rail', main:true, parts:[[[0, 4.5], [1000, 4.5]]]},
+  ], 1);
+  const along = partial.points.filter(p => Math.abs(p.y) < 5).map(p => [Math.round(p.x / 100), p.tracks]);
+  assert.ok(along.some(([x, n]) => x < 10 && n === 2), JSON.stringify(along));
+  assert.ok(along.some(([x, n]) => x > 10 && n === 1), JSON.stringify(along));
   // Only present, non-ferry lines are counted; tunnels and trams separately.
   const feature = (properties, type = 2) => ({type, properties, loadGeometry: () => [[{x:0, y:0}, {x:1, y:1}]]});
   const input = trackLines([feature({state:'construction'}), feature({feature:'ferry'}), feature({}, 1), feature({tunnel:true}), feature({feature:'tram', service:'siding'})]);
   assert.deepEqual(input.map(l => l && [l.group, l.main]), [null, null, null, ['rail-tunnel', true], ['tram', false]]);
 });
-test('track counts label the Infrastructure view from zoom 12', () => {
+test('track counts are badges on label points in the Infrastructure view from zoom 13', () => {
   const layer = style.layers.find(l => l.id === 'infrastructure-track-count');
-  assert.equal(layer.minzoom, 12);
-  assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:2, properties:{atlas_tracks:4, atlas_tracks_label:true}}), true);
-  assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:2, properties:{atlas_tracks:1, atlas_tracks_label:true}}), true);
-  assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:2, properties:{atlas_tracks_label:true}}), false);
-  assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:2, properties:{atlas_tracks:4, atlas_tracks_label:false}}), false);
+  assert.equal(layer.minzoom, 13);
+  assert.equal(layer['source-layer'], 'atlas_track_counts');
+  assert.equal(layer.layout['icon-image'], 'track-badge');
+  assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:1, properties:{tracks:4}}), true);
+  assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:1, properties:{tracks:1}}), true);
+  assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:1, properties:{}}), false);
+});
+test('track-count tiles gain a point layer inside the tile only', async () => {
+  const {annotateTracks, COUNT_LAYER} = await import('../styles/track-tiles.mjs');
+  const {VectorTile} = await import('@mapbox/vector-tile');
+  const Pbf = (await import('pbf')).default;
+  const {fromGeojsonVt} = await import('vt-pbf');
+  // Zoom 16 at the equator: 4096 units ≈ 611 m, so 1 unit ≈ 0.15 m. A
+  // double track 30 units (≈ 4.5 m) apart across the tile.
+  const way = (id, y) => ({id, type: 2, tags: {feature: 'rail'}, geometry: [[[-50, y], [4150, y]]]});
+  const data = fromGeojsonVt({railway_line_high: {features: [way(1, 2000), way(2, 2030)]}}, {version: 2, extent: 4096});
+  const out = new VectorTile(new Pbf(annotateTracks(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength), 16, 2 ** 15)));
+  const lines = out.layers.railway_line_high;
+  assert.deepEqual([0, 1].map(i => lines.feature(i).properties.atlas_tracks), [2, 2]);
+  const points = out.layers[COUNT_LAYER];
+  assert.ok(points.length >= 1);
+  for (let i = 0; i < points.length; i++) {
+    const f = points.feature(i), [[p]] = f.loadGeometry();
+    assert.equal(f.type, 1); assert.equal(f.properties.tracks, 2);
+    assert.ok(p.x >= 0 && p.x < 4096 && p.y >= 1990 && p.y <= 2040);
+  }
 });
 test('legend colours equal the drawn colours for power, gauge and loading gauge', async () => {
   const m = await import('../styles/map-model.mjs');

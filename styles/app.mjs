@@ -1,7 +1,7 @@
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-10';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-11';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-10';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260928-10';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-11';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260928-11';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -27,7 +27,7 @@ const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_C
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-10';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-11';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -160,6 +160,9 @@ function renderLegend() {
   if (settings.stations) {
     const station = textNode('div', '', 'legend-item'); station.append(textNode('span', '', 'station-swatch'), textNode('span', 'Station')); grid.append(station);
   }
+  if (settings.mode === 'infrastructure') {
+    const tracks = textNode('div', '', 'legend-item'); tracks.append(textNode('span', '2', 'track-badge-swatch'), textNode('span', 'Tracks side by side')); grid.append(tracks);
+  }
   box.append(grid);
   const notes = {
     speed: settings.units === 'imperial' ? 'Labels in mph; limits tagged in mph keep their directional values. Grey means no numeric limit is recorded.' : 'Labels keep tagged units: bare numbers are km/h, mph is written out. Grey means no numeric limit is recorded.',
@@ -167,7 +170,7 @@ function renderLegend() {
     control: 'Hue groups related systems (e.g. ETCS with China’s ETCS-derived CTCS); darker is more advanced: warning only, spot transmission, continuous, radio. Colour shows the first recorded system; click a track for all of them and their compatibility. Grey means nothing is recorded.',
     gauge: 'Gauges a few millimetres apart (e.g. 1432 and 1435, 1520 and 1524) share one colour and are generally compatible. Click a track for all recorded gauges. Grey means not recorded.',
     loading: 'Colour follows the envelope’s height above rail, so equal sizes match across regions; Britain’s W gauges share one height and form their own ladder. Click a track for dimensions. Grey means not recorded.',
-    infrastructure: 'Zoomed in, labels give the number of tracks side by side, counted from the mapped tracks.',
+    infrastructure: 'Zoomed in (zoom 13+), a boxed number gives the running tracks side by side, counted from the mapped tracks; sidings, yards and crossovers are not counted.',
   };
   let note = notes[settings.mode];
   if (settings.inactive && settings.mode === 'speed') note += ' Planned and former lines take the colour of their recorded limit, if any.';
@@ -245,7 +248,7 @@ function showDetails(feature) {
     row(dl, 'Usage', p.usage);
     row(dl, 'Service', p.service);
     row(dl, 'Track', p.track_ref);
-    row(dl, 'Tracks side by side', p.atlas_tracks > 0 ? `${p.atlas_tracks} (counted from mapped tracks)` : undefined);
+    row(dl, 'Running tracks side by side', p.atlas_tracks > 0 ? `${p.atlas_tracks} (mostly, counted from mapped tracks)` : undefined);
     row(dl, 'Current', describeCurrent(p.voltage, p.frequency));
     row(dl, 'Electrification', p.electrification_state);
     row(dl, 'Planned current', p.electrification_state === 'present' ? undefined : describeCurrent(p.future_voltage, p.future_frequency));
@@ -606,6 +609,20 @@ async function initialize() {
   const wanted = linked ? {center: [hashLng, hashLat], zoom: hashZoom} : validCenter ? {center: start.c, zoom: start.z} : null;
   if (wanted && Math.abs(wanted.center[1]) > 85 && wanted.center.every(Number.isFinite)) map.jumpTo(wanted);
   map.on('styleimagemissing', event => {
+    if (event.id === 'track-badge') {
+      // Track-count badge: a white rounded box with a dark edge, stretched
+      // around its number.
+      const size = 24, radius = 7, edge = 2, data = new Uint8Array(size * size * 4);
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+        const qx = Math.max(radius - x - 0.5, x + 0.5 - (size - radius), 0), qy = Math.max(radius - y - 0.5, y + 0.5 - (size - radius), 0);
+        const d = radius - Math.hypot(qx, qy); // distance inside the outline
+        const alpha = Math.max(0, Math.min(1, d)), fill = Math.max(0, Math.min(1, d - edge));
+        const c = [23 + (255 - 23) * fill, 62 + (254 - 62) * fill, 71 + (248 - 71) * fill];
+        data.set([...c.map(Math.round), Math.round(alpha * 255)], (y * size + x) * 4);
+      }
+      map.addImage('track-badge', {width: size, height: size, data}, {pixelRatio: 2, stretchX: [[8, 16]], stretchY: [[8, 16]], content: [6, 5, 18, 19]});
+      return;
+    }
     if (event.id !== 'station-dot') return;
     const width = 32, data = new Uint8Array(width * width * 4);
     for (let y = 0; y < width; y++) for (let x = 0; x < width; x++) {

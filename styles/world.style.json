@@ -7081,99 +7081,6 @@
       }
     },
     {
-      "id": "infrastructure-track-count",
-      "type": "symbol",
-      "source": "railway",
-      "source-layer": "railway_line_high",
-      "minzoom": 12,
-      "filter": [
-        "all",
-        [
-          "==",
-          [
-            "coalesce",
-            [
-              "get",
-              "state"
-            ],
-            "present"
-          ],
-          "present"
-        ],
-        [
-          "!=",
-          [
-            "get",
-            "feature"
-          ],
-          "ferry"
-        ],
-        [
-          "==",
-          [
-            "get",
-            "atlas_tracks_label"
-          ],
-          true
-        ],
-        [
-          ">=",
-          [
-            "to-number",
-            [
-              "coalesce",
-              [
-                "get",
-                "atlas_tracks"
-              ],
-              0
-            ],
-            0
-          ],
-          1
-        ]
-      ],
-      "layout": {
-        "symbol-placement": "line",
-        "symbol-spacing": 450,
-        "text-field": [
-          "concat",
-          [
-            "to-string",
-            [
-              "get",
-              "atlas_tracks"
-            ]
-          ],
-          [
-            "case",
-            [
-              "==",
-              [
-                "get",
-                "atlas_tracks"
-              ],
-              1
-            ],
-            " track",
-            " tracks"
-          ]
-        ],
-        "text-font": [
-          "Noto Sans Bold"
-        ],
-        "text-size": 11,
-        "text-padding": 6,
-        "text-max-angle": 30,
-        "visibility": "none"
-      },
-      "paint": {
-        "text-color": "#173e47",
-        "text-halo-color": "#fffef8",
-        "text-halo-width": 2
-      }
-    },
-    {
       "id": "speed-labels",
       "type": "symbol",
       "source": "railway",
@@ -9524,6 +9431,104 @@
         "text-color": "#4a453f",
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      }
+    },
+    {
+      "id": "infrastructure-track-count",
+      "type": "symbol",
+      "source": "railway",
+      "source-layer": "atlas_track_counts",
+      "minzoom": 13,
+      "filter": [
+        ">=",
+        [
+          "to-number",
+          [
+            "get",
+            "tracks"
+          ],
+          0
+        ],
+        1
+      ],
+      "layout": {
+        "text-field": [
+          "to-string",
+          [
+            "get",
+            "tracks"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 11,
+        "icon-image": "track-badge",
+        "icon-text-fit": "both",
+        "icon-text-fit-padding": [
+          2,
+          5,
+          1,
+          5
+        ],
+        "symbol-sort-key": [
+          "+",
+          [
+            "case",
+            [
+              "==",
+              [
+                "get",
+                "tunnel"
+              ],
+              true
+            ],
+            100,
+            0
+          ],
+          [
+            "-",
+            [
+              "to-number",
+              [
+                "get",
+                "tracks"
+              ],
+              0
+            ]
+          ]
+        ],
+        "text-padding": 24,
+        "icon-padding": 24,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "tunnel"
+            ],
+            true
+          ],
+          "#6a7f86",
+          "#173e47"
+        ],
+        "icon-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "tunnel"
+            ],
+            true
+          ],
+          0.75,
+          1
+        ]
       }
     },
     {
