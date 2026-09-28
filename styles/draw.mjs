@@ -151,26 +151,33 @@ export function withPoints(feature, points) {
   return {...feature, properties, geometry: {type, coordinates}};
 }
 // Drag a point to move it; right-click it, or hold it on a touch screen, to
-// delete it. layer: the circle layer showing the points, whose features
-// carry what move/remove need. Registered once: MapLibre keeps layer-bound
-// listeners across style replacements.
+// delete it. layer: an invisible circle layer, larger than the visible
+// points so a fingertip finds them, whose features carry what move/remove
+// need. Registered once: MapLibre keeps layer-bound listeners across style
+// replacements.
+const TOUCH_SLOP = 10; // px a finger may wander while holding still
+export const pointTarget = (id, source, filter) => ({id, type:'circle', source, ...(filter ? {filter} : {}),
+  paint:{'circle-radius':18, 'circle-color':'#000', 'circle-opacity':0.01}});
+// Returns a check for the tap or click that follows a hold or drag, which
+// must not also add a point.
 function editPoints(map, layer, {enabled, move, done, remove}) {
-  let drag = null, hold;
+  let drag = null, hold, quietUntil = 0;
+  const quiet = () => { quietUntil = Date.now() + 700; };
   const start = (e, touch) => {
     if (!enabled() || (touch ? e.originalEvent.touches?.length > 1 : e.originalEvent.button !== 0)) return;
     const feature = e.features?.[0];
     if (!feature) return;
     e.preventDefault(); // no map panning for this gesture
-    drag = {properties: feature.properties, from: e.point, moved: false};
-    if (touch) hold = setTimeout(() => { if (drag && !drag.moved) { const {properties} = drag; drag = null; remove(properties); } }, 600);
+    drag = {properties: feature.properties, from: e.point, moved: false, slop: touch ? TOUCH_SLOP : 4};
+    if (touch) hold = setTimeout(() => { if (drag && !drag.moved) { const {properties} = drag; drag = null; quiet(); remove(properties); } }, 600);
   };
   const moving = e => {
     if (!drag) return;
-    if (!drag.moved && Math.hypot(e.point.x - drag.from.x, e.point.y - drag.from.y) < 4) return;
+    if (!drag.moved && Math.hypot(e.point.x - drag.from.x, e.point.y - drag.from.y) < drag.slop) return;
     drag.moved = true; clearTimeout(hold);
     move(drag.properties, [Number(e.lngLat.lng.toFixed(6)), Number(e.lngLat.lat.toFixed(6))]);
   };
-  const end = () => { clearTimeout(hold); if (drag?.moved) done(); drag = null; };
+  const end = () => { clearTimeout(hold); if (drag?.moved) { quiet(); done(); } drag = null; };
   map.on('mousedown', layer, e => start(e, false));
   map.on('touchstart', layer, e => start(e, true));
   map.on('mousemove', moving); map.on('touchmove', moving);
@@ -178,20 +185,22 @@ function editPoints(map, layer, {enabled, move, done, remove}) {
   map.on('contextmenu', layer, e => { if (enabled() && e.features?.[0]) { e.preventDefault(); remove(e.features[0].properties); } });
   map.on('mouseenter', layer, () => { if (enabled()) map.getCanvas().style.cursor = 'move'; });
   map.on('mouseleave', layer, () => { if (enabled()) map.getCanvas().style.cursor = 'crosshair'; });
+  return () => Date.now() < quietUntil;
 }
-const EDIT_HINT = ' Drag a point to move it; right-click or hold it to delete it.';
+const touchScreen = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+const editHint = () => touchScreen() ? ' Drag a point to move it; hold it to delete it.' : ' Drag a point to move it; right-click it to delete it.';
 
 const STORE = 'openrailwayatlas-drawing';
 const COLOR = '#c2185b';
 const colour = ['coalesce', ['get','color'], COLOR];
-const HINTS = {point:'Click to place points.' + EDIT_HINT, line:'Click to add points; double-click or Finish to end.' + EDIT_HINT, curve:'Click points along the curve; double-click or Finish to end.' + EDIT_HINT, area:'Click to add corners; double-click or Finish to close.' + EDIT_HINT, erase:'Click a point to delete just that point, or a line or area to delete the whole drawing.'};
+const HINTS = {point:'Click to place points.', line:'Click to add points; double-click or Finish to end.', curve:'Click points along the curve; double-click or Finish to end.', area:'Click to add corners; double-click or Finish to close.', erase:'Click a point to delete just that point, or a line or area to delete the whole drawing.'};
 export class Drawing {
   constructor(map, {units = () => 'metric', status = () => {}, changed = () => {}} = {}) {
     Object.assign(this, {map, units, status, changed});
     this.features = []; this.draft = []; this.mode = null; this.paused = false; this.cursor = null; this.next = 1;
     this.style = {color: COLOR, dash: 'solid', width: 3};
     try { this.add(readDrawing(JSON.parse(localStorage.getItem(STORE) || 'null')), false); } catch {}
-    editPoints(map, 'drawing-handles', {
+    this.editing = editPoints(map, 'drawing-handle-targets', {
       enabled: () => this.mode !== null && !this.paused,
       move: ({drawing, index}, p) => this.movePoint(drawing, index, p),
       done: () => this.save(),
@@ -224,6 +233,7 @@ export class Drawing {
       {id:'drawing-draft-vertices', type:'circle', source:'atlas-drawing-draft', filter:['==',['geometry-type'],'Point'], paint:{'circle-color':'#fffef8','circle-radius':4,'circle-stroke-color':colour,'circle-stroke-width':2}},
       // Editable points, shown while a drawing tool is in use.
       {id:'drawing-handles', type:'circle', source:'atlas-drawing-handles', paint:{'circle-color':'#fffef8','circle-radius':5,'circle-stroke-color':colour,'circle-stroke-width':2}},
+      pointTarget('drawing-handle-targets', 'atlas-drawing-handles'),
     ];
     for (const layer of this.layers) if (!map.getLayer(layer.id)) map.addLayer(layer);
   }
@@ -278,7 +288,8 @@ export class Drawing {
     const points = this.shape(), units = this.units();
     this.status((this.mode === 'line' || this.mode === 'curve') && points.length >= 2 ? formatLength(lengthKm(points), units)
       : this.mode === 'area' && points.length >= 3 ? formatArea(areaKm2(points), units)
-      : this.paused && this.mode ? 'Moving the map: drag, pinch or tap freely. Press Move map again to keep drawing.' : HINTS[this.mode] || '');
+      : this.paused && this.mode ? 'Moving the map: drag, pinch or tap freely. Press Move map again to keep drawing.'
+      : this.mode ? HINTS[this.mode] + (this.mode === 'erase' ? '' : editHint()) : '');
   }
   save() {
     try { localStorage.setItem(STORE, JSON.stringify(this.collection())); } catch {}
@@ -308,7 +319,7 @@ export class Drawing {
     return {type:'Feature', properties: geometry.type === 'Point' ? {color, width} : {color, dash, width}, geometry};
   }
   click(lngLat, point) {
-    if (this.paused) return;
+    if (this.paused || this.editing?.()) return;
     const p = [Number(lngLat.lng.toFixed(6)), Number(lngLat.lat.toFixed(6))];
     if (this.mode === 'point') this.add([this.newFeature({type:'Point', coordinates:p})]);
     else if (this.multiPoint) {
@@ -320,7 +331,7 @@ export class Drawing {
       this.draft.push(p); this.refresh();
     } else if (this.mode === 'erase') {
       const box = [[point.x-6, point.y-6], [point.x+6, point.y+6]];
-      const handle = this.map.getLayer('drawing-handles') && this.map.queryRenderedFeatures(box, {layers:['drawing-handles']})[0];
+      const handle = this.map.getLayer('drawing-handle-targets') && this.map.queryRenderedFeatures(point, {layers:['drawing-handle-targets']})[0];
       if (handle) { this.removePoint(handle.properties.drawing, handle.properties.index); return; }
       const hit = this.map.queryRenderedFeatures([[point.x-6, point.y-6], [point.x+6, point.y+6]], {layers:['drawing-points','drawing-line','drawing-line-dashed','drawing-line-dotted','drawing-fill']})[0];
       const index = hit ? this.features.findIndex(f => f.id === hit.properties.drawing) : -1;
@@ -366,7 +377,7 @@ export class Measure {
   constructor(map, {units = () => 'metric', status = () => {}, changed = () => {}} = {}) {
     Object.assign(this, {map, units, status, changed});
     this.mode = null; this.points = []; this.cursor = null; this.ended = false;
-    editPoints(map, 'measure-points', {
+    this.editing = editPoints(map, 'measure-point-targets', {
       enabled: () => this.mode !== null,
       move: ({index}, p) => { if (this.points[index]) { this.points[index] = p; this.refresh(); } },
       done: () => {},
@@ -382,6 +393,7 @@ export class Measure {
     const layers = [
       {id:'measure-line', type:'line', source:'atlas-measure', filter:['==',['get','kind'],'segment'], layout:{'line-cap':'round'}, paint:{'line-color':INK,'line-width':2.5,'line-dasharray':[3,1.5]}},
       {id:'measure-arc', type:'line', source:'atlas-measure', filter:['==',['get','kind'],'arc'], layout:{'line-cap':'round'}, paint:{'line-color':'#e0701b','line-width':3}},
+      pointTarget('measure-point-targets', 'atlas-measure', ['has','index']),
       {id:'measure-points', type:'circle', source:'atlas-measure', filter:['has','index'], paint:{'circle-color':'#fffef8','circle-radius':4.5,'circle-stroke-color':INK,'circle-stroke-width':2}},
       {id:'measure-segment-labels', type:'symbol', source:'atlas-measure', filter:['all',['==',['get','kind'],'segment'],['has','label']], layout:{...text,'text-field':['get','label'],'symbol-placement':'line-center','text-size':11}, paint:halo},
       {id:'measure-labels', type:'symbol', source:'atlas-measure', filter:['all',['==',['geometry-type'],'Point'],['has','label']], layout:{...text,'text-field':['get','label'],'text-offset':[0,-1.3]}, paint:halo},
@@ -407,7 +419,7 @@ export class Measure {
   }
   refresh() {
     this.map.getSource('atlas-measure')?.setData(this.collection());
-    const units = this.units(), hint = this.points.length ? EDIT_HINT : '';
+    const units = this.units(), hint = this.points.length ? editHint() : '';
     if (this.mode === 'distance') {
       const live = this.cursor && !this.ended ? [...this.points, this.cursor] : this.points;
       this.status(live.length >= 2 ? `Distance: ${formatLength(lengthKm(live), units)} over ${live.length - 1} segment${live.length > 2 ? 's' : ''}${this.ended ? '' : ' · double-click to end'}.${hint}` : `Click points to measure; double-click to end.${hint}`);
@@ -425,7 +437,7 @@ export class Measure {
     this.refresh(); this.changed();
   }
   click(lngLat) {
-    if (!this.mode) return;
+    if (!this.mode || this.editing?.()) return;
     // After a finished distance, the next click starts a new one.
     if (this.ended) { this.points = []; this.ended = false; }
     const p = [Number(lngLat.lng.toFixed(6)), Number(lngLat.lat.toFixed(6))];

@@ -442,7 +442,7 @@ export function formatSpeed(properties, units = 'metric') {
 // Display settings live in a cookie; a link can still carry them (the app
 // then saves them and removes them from the address). remembered: settings
 // kept in this browser, used for anything the URL does not name.
-export const SETTING_KEYS = ['mode','stations','labels','inactive','relief','names','units','detail','language'];
+export const SETTING_KEYS = ['mode','stations','labels','inactive','relief','names','autoGlobe','units','detail','language'];
 const LEGACY_LANGUAGE_KEYS = ['stationLanguage','mapLanguage','lineLanguage'];
 export const SETTING_PARAMS = [...SETTING_KEYS, ...LEGACY_LANGUAGE_KEYS];
 export function readSettings(search, remembered = {}) {
@@ -452,11 +452,19 @@ export function readSettings(search, remembered = {}) {
   return {
     mode: pick('mode', v => MODES.includes(v), 'speed'),
     stations: flag('stations', true), labels: flag('labels', true), inactive: flag('inactive', true),
-    relief: flag('relief', true), names: flag('names', true),
+    relief: flag('relief', true), names: flag('names', true), autoGlobe: flag('autoGlobe', true),
     units: pick('units', v => v === 'metric' || v === 'imperial', 'metric'),
     detail: flag('detail', false),
     language: language(params.get('language') || LEGACY_LANGUAGE_KEYS.map(k => params.get(k)).find(Boolean) || remembered.language),
   };
+}
+// Automatic globe/flat map choice: the globe below zoom 4 everywhere; from
+// zoom 4 the flat map, except where most of the view is beyond 60° N or S
+// (null: leave the current choice).
+export const GLOBE_BELOW_ZOOM = 4;
+export function autoProjection(zoom, polarShare) {
+  if (zoom < GLOBE_BELOW_ZOOM) return 'globe';
+  return polarShare > 0.5 ? null : 'mercator';
 }
 // Settings as link parameters, for sharing a view.
 export function settingsQuery(settings) {

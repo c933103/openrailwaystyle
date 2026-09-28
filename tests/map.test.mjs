@@ -27,13 +27,13 @@ test('source mph and directional speed labels are preserved', () => {
   assert.equal(formatSpeed({ speed_label: '- / 80' }).tagged, '- / 80 (km/h)');
 });
 test('shared URLs keep display settings and reject invalid map modes', () => {
-  assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',stations:false,labels:true,inactive:false,relief:true,names:true,units:'metric',detail:false,language:'local' });
+  assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',stations:false,labels:true,inactive:false,relief:true,names:true,autoGlobe:true,units:'metric',detail:false,language:'local' });
   assert.equal(readSettings('?mode=invalid').mode, 'speed');
   // A remembered language applies unless the URL names one.
   assert.equal(readSettings('', {language:'ja'}).language, 'ja');
   assert.equal(readSettings('?language=ko', {language:'ja'}).language, 'ko');
   assert.equal(readSettings('', {language:'xx'}).language, 'local');
-  assert.deepEqual(readSettings('?relief=1', {relief:false, stations:false, mode:'bogus', units:'imperial'}), {mode:'speed',stations:false,labels:true,inactive:true,relief:true,names:true,units:'imperial',detail:false,language:'local'});
+  assert.deepEqual(readSettings('?relief=1', {relief:false, stations:false, mode:'bogus', units:'imperial'}), {mode:'speed',stations:false,labels:true,inactive:true,relief:true,names:true,autoGlobe:true,units:'imperial',detail:false,language:'local'});
 });
 test('world map has no European rail source or geographic bounds', () => {
   assert.ok(!JSON.stringify(style).includes('europe-railway'));
@@ -360,4 +360,12 @@ test('legend groups values drawn in the same colour and summarises the rest', as
     {row: ['#b', 'GC', 4.65, '4.65 m high'], n: 30}, {row: ['#c', 'PPI', 4.28, '4.28 m high'], n: 1},
   ], 2);
   assert.deepEqual(rows, [['#a', 'GB1, GA · 4.32 m high'], ['#b', 'GC · 4.65 m high'], ['transparent', '1 less common value in view; zoom in for them', 'empty']]);
+});
+
+test('globe below zoom 4; flat map from zoom 4 unless the view is mostly polar', async () => {
+  const {autoProjection} = await import('../styles/map-model.mjs');
+  assert.equal(autoProjection(1.8, 0), 'globe');
+  assert.equal(autoProjection(3.99, 0.9), 'globe');
+  assert.equal(autoProjection(4, 0.2), 'mercator');
+  assert.equal(autoProjection(6, 0.7), null); // leave as is near the poles
 });

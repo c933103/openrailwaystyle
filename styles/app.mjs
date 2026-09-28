@@ -1,6 +1,6 @@
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-4';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260928-6';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-4';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260928-6';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -16,7 +16,7 @@ const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_C
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-4';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260928-6';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -179,7 +179,7 @@ function shareURL() {
 saveSettings();
 function applySettings() {
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
-  for (const key of ['stations', 'labels', 'inactive', 'relief', 'names']) $(key).checked = settings[key];
+  for (const key of ['stations', 'labels', 'inactive', 'relief', 'names', 'autoGlobe']) $(key).checked = settings[key];
   $('units').value = settings.units;
   if (ready) clickable = [];
   if (ready) for (const layer of map.getStyle().layers) {
@@ -337,11 +337,15 @@ function localizeStyle(style) {
 // the canvas keeps its pixel count. Controls are scaled back to normal size.
 const detailButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'⊞', title:'More detail: show the next zoom level at half size'});
 const drawButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'✎', title:'Drawing tools'});
-// Polar view: Web Mercator stretches high latitudes without limit, so when
-// most of the screen is beyond 60° N or S a button offers the globe
-// (MapLibre's vertical-perspective projection), which shows polar regions at
-// their true shape. On the globe the same button returns to the flat map.
-const polarButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'◎', hidden:true});
+// Globe or flat map. Web Mercator stretches high latitudes without limit;
+// the globe (MapLibre's vertical-perspective projection) shows every region
+// at its true shape. The button switches either way; automatically (unless
+// turned off in Display options) the map becomes the globe below zoom 4 and
+// the flat map from zoom 4, except where most of the view is beyond 60° N or
+// S (autoProjection). It acts only when that choice changes, so a manual
+// switch holds until then.
+const polarButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl'});
+let lastAutoProjection;
 function polarShare() {
   // Layout size, not on-screen size: More detail draws the map scaled.
   const {clientWidth: width, clientHeight: height} = map.getContainer();
@@ -355,10 +359,19 @@ function polarShare() {
 const onGlobe = () => map?.getProjection?.()?.type === 'globe';
 function updatePolar() {
   if (!map) return;
+  if (settings.autoGlobe) {
+    // More detail draws one zoom level further in.
+    const zoom = map.getZoom() - (settings.detail ? 1 : 0);
+    const wanted = autoProjection(zoom, zoom < 4 ? 0 : polarShare());
+    if (wanted !== lastAutoProjection) {
+      lastAutoProjection = wanted;
+      if (wanted && wanted !== (onGlobe() ? 'globe' : 'mercator')) map.setProjection({type: wanted});
+    }
+  }
   const globe = onGlobe();
-  polarButton.hidden = !globe && polarShare() <= 0.5;
-  polarButton.setAttribute('aria-pressed', String(globe));
-  polarButton.title = globe ? 'Back to the flat map' : 'Polar view: show this area on the globe, without the flat map’s stretching';
+  polarButton.textContent = globe ? '🗺️' : '🌍';
+  polarButton.title = globe ? 'Switch to the flat map' : 'Switch to the globe: every region at its true shape, without the flat map’s stretching near the poles';
+  polarButton.setAttribute('aria-label', polarButton.title);
 }
 polarButton.addEventListener('click', () => { map.setProjection({type: onGlobe() ? 'mercator' : 'globe'}); updatePolar(); });
 const measureButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'📏', title:'Measure'});
@@ -541,7 +554,7 @@ async function initialize() {
     // Settings changed while the map was loading take effect now.
     if (styleLanguage !== settings.language) { reloadLanguage(); return; }
     installDrawing();
-    applySettings(); applyUnits(); updateStatus();
+    applySettings(); applyUnits(); updateStatus(); updatePolar();
     document.body.dataset.mapReady = 'true';
     const action = pendingView; pendingView = undefined; action?.();
   });
@@ -579,8 +592,9 @@ async function initialize() {
 document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
   settings.mode = button.dataset.mode; applySettings(); saveSettings();
 }));
-for (const key of ['stations', 'labels', 'inactive', 'relief', 'names']) $(key).addEventListener('change', () => {
+for (const key of ['stations', 'labels', 'inactive', 'relief', 'names', 'autoGlobe']) $(key).addEventListener('change', () => {
   settings[key] = $(key).checked; applySettings(); saveSettings();
+  if (key === 'autoGlobe') { lastAutoProjection = undefined; updatePolar(); }
 });
 function reloadLanguage() {
   const appliedLanguage=settings.language;
@@ -621,6 +635,9 @@ $('collapse').addEventListener('click', () => {
   $('collapse').setAttribute('aria-expanded', String(!$('controls').hidden));
   $('collapse').setAttribute('aria-label', `${$('controls').hidden ? 'Expand' : 'Collapse'} map controls`);
 });
+// On phones and other small screens start with the controls folded away, so
+// the map is visible at launch.
+if (matchMedia('(max-width: 650px), (max-height: 500px)').matches) $('collapse').click();
 function closeDetails() { $('details').hidden = true; currentFeature = null; }
 $('details-close').addEventListener('click', closeDetails);
 addEventListener('keydown', event => { if (event.key === 'Escape' && !$('details').hidden && !drawing?.active && !measuring?.active && !document.querySelector('dialog[open]')) closeDetails(); });
