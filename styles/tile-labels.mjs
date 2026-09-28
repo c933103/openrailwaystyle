@@ -80,7 +80,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   // off the page's main thread (track-worker.mjs). Other zooms pass through.
   let trackWorker, nextJob = 0;
   const trackJobs = new Map();
-  function countTracks(data, z, y) {
+  function countTracks(data, z, y, stations = []) {
     if (z < 13 || !data?.byteLength || typeof Worker === 'undefined') return data;
     if (!trackWorker) {
       trackWorker = new Worker(new URL(`track-worker.js${new URL(import.meta.url).search}`, import.meta.url));
@@ -94,7 +94,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     return new Promise(resolve => {
       const id = nextJob++, copy = data.slice(0);
       resolve.data = data; trackJobs.set(id, resolve);
-      trackWorker.postMessage({id, data:copy, z, y}, [copy]);
+      trackWorker.postMessage({id, data:copy, z, y, stations}, [copy]);
     });
   }
   maplibregl.addProtocol('atlasrail',async (params,controller)=>{
@@ -109,8 +109,34 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     const response = await fetcher(url,{signal:controller.signal});
     if (!response.ok && response.status !== 204) throw new Error(`Railway tile returned ${response.status}`);
     const data = await response.arrayBuffer(), coordinates = tileCoordinates(url);
-    return {data: coordinates ? await countTracks(data, coordinates.z, coordinates.y) : data};
+    if (!coordinates) return {data};
+    const stations = coordinates.z >= 13 ? await trackStations(url, coordinates, controller.signal) : [];
+    return {data: await countTracks(data, coordinates.z, coordinates.y, stations)};
   });
+  // Stations near a railway tile, for leaving track counts out of stations:
+  // from the provider's station tile one zoom up (shared by four railway
+  // tiles, and kept in the cache), as fractions of the railway tile, with a
+  // radius by station size. Without them, counts are still given.
+  const STATION_RADIUS = {large: 400, normal: 250};
+  async function trackStations(url, {z, x, y}, signal) {
+    const address = url.replace(/\/railway_line_high\/\d+\/\d+\/\d+/, `/standard_railway_text_stations/${z - 1}/${x >> 1}/${y >> 1}`);
+    if (address === url) return [];
+    try {
+      const tile = readTile(await get(address, signal)), stations = [];
+      for (const layer of Object.values(tile.layers)) for (let i = 0; i < layer.length; i++) {
+        const f = layer.feature(i), p = f.properties;
+        if (f.type !== 1 || p.state && p.state !== 'present' || /tram/.test(`${p.feature} ${p.station}`)) continue;
+        for (const ring of f.loadGeometry()) for (const q of ring) stations.push({
+          x: ((x >> 1) + q.x / layer.extent) * 2 - x, y: ((y >> 1) + q.y / layer.extent) * 2 - y,
+          radius: STATION_RADIUS[p.station_size] || 150,
+        });
+      }
+      return stations;
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      return [];
+    }
+  }
   // Overview tiles (zoom 0–6) carry way IDs but no loading gauge: add it
   // from the published way ID list (data/loading-gauge.json, about 250 kB
   // compressed, fetched once and only for this view). Without the list the

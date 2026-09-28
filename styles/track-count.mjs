@@ -2,27 +2,37 @@
 // OpenStreetMap maps each track as its own way, and the railway tiles carry
 // no track-count tag.
 // - Only running tracks count: sidings, yards, spurs and other service
-//   tracks (tagged service=*) are left out, as are short ways at an angle
-//   (crossovers and turnouts), which would otherwise add a track between
-//   the two they join.
-// - Along each running track a short probe is cast at right angles every
-//   STEP metres; running tracks it crosses that run parallel form a bundle
-//   while each lies within MAX_GAP of the next. Tunnels and trams are only
-//   compared with their own kind (group).
-// - The count is taken where it is measured, not for a whole way: one way
-//   can run beside a double track for a while and alone after. Along each
-//   track the counts are smoothed (median of three probes), and where the
-//   track is its bundle's middle one (one per bundle, the same for every
-//   member), stretches of equal count give label points, at the middle of
-//   the stretch and every LABEL_EVERY metres along it.
+//   tracks (tagged service=*) are left out.
+// - Along each running track a probe is cast at right angles every STEP
+//   metres. Tracks it crosses count only if they keep their distance from
+//   one probe to the next (they run alongside, within SLOPE): crossovers,
+//   switchover tracks and turnouts, which cut across from one track to
+//   another, do not.
+// - Those tracks form a bundle while each lies within MAX_GAP of the next,
+//   or within LINE_GAP when both belong to the same named line: the two
+//   tracks of a metro line in twin tunnels, or either side of an island
+//   platform, can be well apart. Tunnels and trams are only compared with
+//   their own kind (group).
+// - The count is taken where it is measured, not for a whole way. Along
+//   each track it is the most common count over WINDOW probes around each
+//   point, so a brief extra (a crossover) or a brief gap (a track bending
+//   away for a few metres) does not change it. Where the track is its
+//   bundle's middle one (one per bundle, the same for every member),
+//   stretches of equal count give label points, at the middle of the
+//   stretch and every LABEL_EVERY metres along it.
 export const MIN_ZOOM = 13; // below this, tile coordinates are too coarse (over 1 m) for tracks 4–5 m apart
-const MAX_GAP = 12;          // metres between neighbouring tracks (island platforms included)
+const MAX_GAP = 12;          // metres between neighbouring tracks of different or unnamed lines
+const LINE_GAP = {surface: 20, tunnel: 35}; // metres between neighbouring tracks of the same line
 const PROBE = 120;           // metres each side of the track
 const STEP = 40;             // metres between probes
 const MAX_PROBES = 400;
-const MAX_ANGLE = Math.sin(15 * Math.PI / 180);
-const SHORT = 150;           // metres: shorter ways count only if nearly parallel (crossovers are short and angled)
-const SHORT_ANGLE = Math.sin(2 * Math.PI / 180);
+const MAX_ANGLE = Math.sin(15 * Math.PI / 180); // first sieve: roughly parallel at the probe
+const SLOPE = Math.tan(2.5 * Math.PI / 180);    // alongside: change of distance per metre along
+const SAME_PLACE = 1;        // metres: another track this close to where one was is taken as its continuation
+const SLACK = 0.6;           // tile units of that allowed for coordinate rounding
+const SINGLE_ANGLE = Math.sin(2.5 * Math.PI / 180); // for a way too short for two probes
+const WINDOW = 7;            // probes (about 280 m) over which the count is taken
+const SHORT = 150;           // metres: shorter ways may be connectors
 const LABEL_EVERY = 800;     // metres between labels on one stretch
 const EARTH = 40075016.686;
 
@@ -36,14 +46,24 @@ export function unitMetres(z, y, extent) {
 // else of its part in the tile.
 const lengthOf = parts => parts.reduce((sum, part) => sum + part.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - part[i][0], p[1] - part[i][1]), 0), 0);
 
-// lines: [{group, main, length?, parts:[[[x,y],...], ...]}] in tile units;
-// main is false for sidings, yards and other service tracks; length is the
-// whole way's length in metres, if known. Returns {lines, points}:
-// per line {tracks} (the most common count along it, 0 when not measured,
-// as for service tracks), and label points [{x, y, tracks, group}] in tile
-// units.
-export function countTracks(lines, metres) {
-  const gap = MAX_GAP / metres, probe = PROBE / metres, step = STEP / metres, short = SHORT / metres;
+// The most common value; between equally common ones, the one nearest the
+// middle value.
+function mode(values) {
+  const tally = new Map();
+  for (const v of values) tally.set(v, (tally.get(v) || 0) + 1);
+  const sorted = [...values].sort((a, b) => a - b), middle = sorted[Math.floor(sorted.length / 2)];
+  return [...tally].sort((a, b) => b[1] - a[1] || Math.abs(a[0] - middle) - Math.abs(b[0] - middle) || a[0] - b[0])[0][0];
+}
+
+// lines: [{group, main, line?, length?, parts:[[[x,y],...], ...]}] in tile
+// units; main is false for sidings, yards and other service tracks; line
+// names the railway line (tracks with the same name may be further apart);
+// length is the whole way's length in metres, if known. Returns
+// {lines, points}: per line {tracks} (the most common count along it, 0
+// when not measured, as for service tracks and connectors), and label
+// points [{x, y, tracks, group}] in tile units.
+export function countTracks(lines, metres, debug) {
+  const gap = MAX_GAP / metres, probe = PROBE / metres, step = STEP / metres, short = SHORT / metres, slack = SLACK, samePlace = SAME_PLACE / metres;
   const lengths = lines.map(line => line.length > 0 ? line.length / metres : lengthOf(line.parts));
   const segments = [], cell = probe, grid = new Map();
   lines.forEach((line, index) => {
@@ -51,7 +71,7 @@ export function countTracks(lines, metres) {
     for (const part of line.parts) for (let i = 1; i < part.length; i++) {
       const [x1, y1] = part[i-1], [x2, y2] = part[i], length = Math.hypot(x2 - x1, y2 - y1);
       if (!length) continue;
-      const s = {index, group: line.group, short: lengths[index] < short, x1, y1, x2, y2, dx: (x2 - x1) / length, dy: (y2 - y1) / length};
+      const s = {index, group: line.group, x1, y1, x2, y2, dx: (x2 - x1) / length, dy: (y2 - y1) / length};
       segments.push(s);
       for (let gx = Math.floor(Math.min(x1, x2) / cell); gx <= Math.floor(Math.max(x1, x2) / cell); gx++)
         for (let gy = Math.floor(Math.min(y1, y2) / cell); gy <= Math.floor(Math.max(y1, y2) / cell); gy++) {
@@ -61,11 +81,11 @@ export function countTracks(lines, metres) {
         }
     }
   });
-  // One probe: the bundle size at point p on `index`, heading d, and
-  // whether `index` is the bundle's middle track. strict: only neighbours
-  // within SHORT_ANGLE count.
-  const measure = (index, group, px, py, dx, dy, strict = false) => {
-    const nx = -dy, ny = dx, offsets = new Map([[index, 0]]), seen = new Set();
+  // Tracks a probe at p on `index`, heading d, crosses: line index → offset
+  // along the probe (the nearest crossing of each line), and line index →
+  // sine of the angle between them there.
+  const cross = (index, group, px, py, dx, dy) => {
+    const nx = -dy, ny = dx, offsets = new Map([[index, 0]]), sines = new Map([[index, 0]]), seen = new Set();
     const x0 = px - nx * probe, x1 = px + nx * probe, y0 = py - ny * probe, y1 = py + ny * probe;
     for (let gx = Math.floor(Math.min(x0, x1) / cell); gx <= Math.floor(Math.max(x0, x1) / cell); gx++)
       for (let gy = Math.floor(Math.min(y0, y1) / cell); gy <= Math.floor(Math.max(y0, y1) / cell); gy++) {
@@ -73,37 +93,46 @@ export function countTracks(lines, metres) {
           if (s.index === index || s.group !== group || seen.has(s)) continue;
           seen.add(s);
           const sine = Math.abs(s.dx * dy - s.dy * dx);
-          if (sine > (s.short || strict ? SHORT_ANGLE : MAX_ANGLE)) continue; // not parallel, or a crossover
+          if (sine > MAX_ANGLE) continue;
           // Probe P + t·n meets segment A + u·(B − A).
           const ex = s.x2 - s.x1, ey = s.y2 - s.y1, det = ex * ny - ey * nx;
           if (!det) continue;
           const qx = s.x1 - px, qy = s.y1 - py;
           const t = (ex * qy - ey * qx) / det, u = (nx * qy - ny * qx) / det;
           if (u < 0 || u > 1 || Math.abs(t) > probe) continue;
-          if (!offsets.has(s.index) || Math.abs(t) < Math.abs(offsets.get(s.index))) offsets.set(s.index, t);
+          if (!offsets.has(s.index) || Math.abs(t) < Math.abs(offsets.get(s.index))) { offsets.set(s.index, t); sines.set(s.index, sine); }
         }
       }
-    // Grow the bundle outwards from this track while neighbours are close.
+    return {offsets, sines};
+  };
+  const sameLine = (a, b) => Boolean(lines[a].line) && lines[a].line === lines[b].line;
+  // The bundle around `index` among the offsets, its size and whether
+  // `index` is its middle track.
+  const bundle = (index, group, offsets) => {
+    const lineGap = LINE_GAP[group.endsWith('-tunnel') ? 'tunnel' : 'surface'] / metres;
     const sorted = [...offsets].sort((a, b) => a[1] - b[1]);
+    const joined = (a, b) => b[1] - a[1] <= gap || (b[1] - a[1] <= lineGap && sameLine(a[0], b[0]));
     let lo = sorted.findIndex(([i]) => i === index), hi = lo;
-    while (lo > 0 && sorted[lo][1] - sorted[lo-1][1] <= gap) lo--;
-    while (hi < sorted.length - 1 && sorted[hi+1][1] - sorted[hi][1] <= gap) hi++;
+    while (lo > 0 && joined(sorted[lo-1], sorted[lo])) lo--;
+    while (hi < sorted.length - 1 && joined(sorted[hi], sorted[hi+1])) hi++;
     // Ways meeting end to end cross the probe at the same place: one track.
-    const bundle = sorted.slice(lo, hi + 1).filter(([, t], i, all) => !i || t - all[i-1][1] > 0.8 / metres);
+    // Tracks of two different named lines there cross each other (one
+    // passes over the other) and both count.
+    const one = (a, b) => b[1] - a[1] <= 0.8 / metres && (!lines[a[0]].line || !lines[b[0]].line || sameLine(a[0], b[0]));
+    const members = sorted.slice(lo, hi + 1).filter((entry, i, all) => !i || !one(all[i-1], entry));
     // The middle track: nearest the bundle's centre; between two equally
     // near, the lower index, so every member picks the same one whichever
     // way it was drawn.
-    const middle = (bundle[0][1] + bundle.at(-1)[1]) / 2, tie = 0.5 / metres;
-    let best = bundle[0];
-    for (const entry of bundle.slice(1)) {
+    const middle = (members[0][1] + members.at(-1)[1]) / 2, tie = 0.5 / metres;
+    let best = members[0];
+    for (const entry of members.slice(1)) {
       const d = Math.abs(entry[1] - middle), b = Math.abs(best[1] - middle);
       if (d < b - tie || (Math.abs(d - b) <= tie && entry[0] < best[0])) best = entry;
     }
-    return {count: bundle.length, central: best[0] === index};
+    return {count: members.length, central: best[0] === index};
   };
   const points = [];
   const result = lines.map((line, index) => {
-    // Service tracks are not counted.
     if (line.main === false) return {tracks: 0};
     const pieces = [];
     let total = 0;
@@ -113,45 +142,54 @@ export function countTracks(lines, metres) {
     }
     if (!total) return {tracks: 0};
     const count = Math.min(MAX_PROBES, Math.max(1, Math.round(total / step)));
-    const probes = [];
+    const spacing = total / count, probes = [];
     for (let k = 0, j = 0; k < count; k++) {
       const at = total * (k + 0.5) / count;
       while (j < pieces.length - 1 && at > pieces[j][2] + pieces[j][3]) j++;
       const [[ax, ay], [bx, by], start, length] = pieces[j];
       const f = (at - start) / length, x = ax + (bx - ax) * f, y = ay + (by - ay) * f;
-      const dx = (bx - ax) / length, dy = (by - ay) / length;
-      probes.push({x, y, at, ...measure(index, line.group, x, y, dx, dy), strict: lengths[index] < short ? measure(index, line.group, x, y, dx, dy, true).count : undefined});
+      const {offsets, sines} = cross(index, line.group, x, y, (bx - ax) / length, (by - ay) / length);
+      probes.push({x, y, at, crossed: offsets, sines});
     }
-    // A short way (a crossover, or a track piece between switches) is a
-    // connector, and not counted, when the tracks beside it run at an angle
-    // to it: at most probes, fewer neighbours are within SHORT_ANGLE than
-    // within MAX_ANGLE. Short ways running parallel count like any other.
-    if (lengths[index] < short && probes.filter(p => p.count > p.strict).length * 2 > probes.length) return {tracks: 0};
-    // Smooth single-probe dips and spikes (a gap in a parallel track at a
-    // bridge joint, a switch).
-    const smooth = probes.map((p, k) => {
-      const window = [probes[k-1], p, probes[k+1]].filter(Boolean).map(q => q.count).sort((a, b) => a - b);
-      return window[Math.floor(window.length / 2)];
-    });
+    // Keep the tracks that run alongside: at nearly the same distance two
+    // probes (about 80 m) away, or at the next probe if also nearly parallel
+    // here (over 40 m, rounding hides a gentle crossover). A short way keeps
+    // only tracks nearly parallel to it.
+    const isShort = lengths[index] < short;
+    for (const [k, p] of probes.entries()) {
+      // The same way further along, or (tracks are often split into many
+      // short ways) any track at the same distance there.
+      const steady = (i, t, q, apart) => q && ((q.crossed.has(i) && Math.abs(q.crossed.get(i) - t) <= SLOPE * spacing * apart + slack) ||
+        [...q.crossed].some(([j, u]) => j !== index && Math.abs(u - t) <= samePlace + slack));
+      p.alongside = new Map([...p.crossed].filter(([i, t]) => i === index || (
+        (!isShort || p.sines.get(i) <= SINGLE_ANGLE) && (probes.length === 1 ||
+          steady(i, t, probes[k-2], 2) || steady(i, t, probes[k+2], 2) ||
+          (p.sines.get(i) <= SINGLE_ANGLE && (steady(i, t, probes[k-1], 1) || steady(i, t, probes[k+1], 1)))))));
+      Object.assign(p, bundle(index, line.group, p.alongside));
+      p.near = bundle(index, line.group, p.crossed).count;
+    }
+    // A short way whose neighbours mostly cut across it (it links two
+    // tracks: a crossover) is not a track of its own here.
+    if (isShort && probes.filter(p => p.near > p.count).length * 2 > probes.length) return {tracks: 0};
+    if (debug) debug[index] = probes;
+    const half = Math.floor(WINDOW / 2);
+    const smooth = probes.map((p, k) => mode(probes.slice(Math.max(0, k - half), k + half + 1).map(q => q.count)));
+    if (debug) probes.forEach((p, k) => { p.smooth = smooth[k]; });
     // Label points: stretches where this is the middle track and the count holds.
-    {
-      for (let k = 0; k < probes.length;) {
-        if (!probes[k].central) { k++; continue; }
-        let end = k;
-        while (end + 1 < probes.length && probes[end + 1].central && smooth[end + 1] === smooth[k]) end++;
-        const from = probes[k].at, to = probes[end].at, labels = Math.max(1, Math.floor((to - from) * metres / LABEL_EVERY));
-        if (end > k || probes.length === 1) for (let n = 0; n < labels; n++) {
-          const target = from + (to - from) * (n + 0.5) / labels;
-          const p = probes.slice(k, end + 1).reduce((a, b) => Math.abs(b.at - target) < Math.abs(a.at - target) ? b : a);
-          points.push({x: p.x, y: p.y, tracks: smooth[k], group: line.group});
-        }
-        k = end + 1;
+    for (let k = 0; k < probes.length;) {
+      if (!probes[k].central) { k++; continue; }
+      let end = k;
+      while (end + 1 < probes.length && probes[end + 1].central && smooth[end + 1] === smooth[k]) end++;
+      const from = probes[k].at, to = probes[end].at, labels = Math.max(1, Math.floor((to - from) * metres / LABEL_EVERY));
+      if (end > k || probes.length === 1) for (let n = 0; n < labels; n++) {
+        const target = from + (to - from) * (n + 0.5) / labels;
+        const p = probes.slice(k, end + 1).reduce((a, b) => Math.abs(b.at - target) < Math.abs(a.at - target) ? b : a);
+        points.push({x: p.x, y: p.y, tracks: smooth[k], group: line.group});
       }
+      k = end + 1;
     }
     // For the details panel: the most common count along the way.
-    const tally = new Map();
-    for (const c of smooth) tally.set(c, (tally.get(c) || 0) + 1);
-    return {tracks: [...tally].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0]};
+    return {tracks: mode(smooth)};
   });
   return {lines: result, points};
 }
@@ -162,6 +200,7 @@ export function trackLines(features) {
     const p = f.properties;
     if (f.type !== 2 || (p.state || 'present') !== 'present' || p.feature === 'ferry') return null;
     return {group: `${p.feature === 'tram' ? 'tram' : 'rail'}${p.tunnel === true ? '-tunnel' : ''}`, main: !p.service,
-      length: Number(p.way_length) || undefined, parts: f.loadGeometry().map(ring => ring.map(q => [q.x, q.y]))};
+      line: p.name || p.ref || undefined, length: Number(p.way_length) || undefined,
+      parts: f.loadGeometry().map(ring => ring.map(q => [q.x, q.y]))};
   });
 }

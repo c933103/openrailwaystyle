@@ -326,6 +326,14 @@ test('track-count tiles gain a point layer inside the tile only', async () => {
     assert.equal(f.type, 1); assert.equal(f.properties.tracks, 2);
     assert.ok(p.x >= 0 && p.x < 4096 && p.y >= 1990 && p.y <= 2040);
   }
+  // No labels within a station's radius; counts on the lines stay.
+  const buffer = () => data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+  const station = [{x: 0.5, y: 2015 / 4096, radius: 1000}];
+  const inStation = new VectorTile(new Pbf(annotateTracks(buffer(), 16, 2 ** 15, station)));
+  assert.equal(inStation.layers[COUNT_LAYER], undefined);
+  assert.equal(inStation.layers.railway_line_high.feature(0).properties.atlas_tracks, 2);
+  const small = new VectorTile(new Pbf(annotateTracks(buffer(), 16, 2 ** 15, [{...station[0], x: 0.02, radius: 50}])));
+  assert.ok(small.layers[COUNT_LAYER].length >= 1);
 });
 test('legend colours equal the drawn colours for power, gauge and loading gauge', async () => {
   const m = await import('../styles/map-model.mjs');
