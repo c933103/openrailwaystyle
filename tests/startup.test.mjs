@@ -45,7 +45,9 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
     addSource() {}
     getCanvas() { return {style:{}}; }
     doubleClickZoom = {enable(){}, disable(){}};
-    queryRenderedFeatures() { return []; }
+    queryRenderedFeatures() { return this.rendered || []; }
+    querySourceFeatures(id,{sourceLayer}) { return (this.sourceFeatures || []).filter(f=>f.sourceLayer===sourceLayer); }
+    isSourceLoaded() { return true; }
     projection = {type:'mercator'};
     getProjection() { return this.projection; }
     setProjection(projection) { this.projection = projection; }
@@ -230,3 +232,24 @@ test('real renderer initialization failures reach the visible error message', as
   } finally {dom.window.close();}
 });
 
+
+test('station inspection finds nearby interchanges and facility inspection avoids railway fields', async () => {
+  const {dom,window,maps,errors}=await start();
+  try {
+    const map=maps[0];map.handlers['style.load']();map.zoom=14;
+    const station={source:'stations',sourceLayer:'standard_railway_text_stations',layer:{id:'station-detail-large-names'},properties:{name:'Central',station_size:'large',state:'present'},geometry:{type:'Point',coordinates:[0,0]}};
+    const bus={id:123,source:'openmaptiles',sourceLayer:'poi',layer:{id:'context-transport-bus-label'},properties:{name:'Central Bus Interchange',class:'bus',subclass:'bus_station'},geometry:{type:'Point',coordinates:[0.001,0]}};
+    map.sourceFeatures=[bus,bus];map.rendered=[station];
+    map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+    const nearby=window.document.getElementById('nearby-transport');
+    assert.match(nearby.textContent,/Central Bus Interchange/);
+    assert.match(nearby.textContent,/110 m/);
+    assert.match(nearby.textContent,/not verified/);
+    assert.equal(nearby.querySelectorAll('li').length,1);
+    map.rendered=[bus];map.handlers.click({point:{x:500,y:400},lngLat:{lng:0.001,lat:0}});
+    const detail=window.document.getElementById('detail-content');
+    assert.match(detail.textContent,/TRANSPORT FACILITY/);
+    assert.doesNotMatch(detail.textContent,/Speed|Not recorded|RAILWAY INFRASTRUCTURE/);
+    assert.equal(errors.length,0);
+  } finally {dom.window.close();}
+});

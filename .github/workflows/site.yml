@@ -59,12 +59,12 @@ jobs:
           cat lifecycle-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
       - name: Install test browser
         run: npx playwright install --with-deps chromium
-      - name: Verify actual WebGL rendering and zoom-7 panning
-        run: |
-          node scripts/serve.mjs &
-          node scripts/check-map-browser.mjs
+      - name: Start test server
+        run: node scripts/serve.mjs &
       - name: Verify transport and destination context
         run: node scripts/check-context-browser.mjs
+      - name: Verify actual WebGL rendering and zoom-7 panning
+        run: node scripts/check-map-browser.mjs
       - name: Save browser review
         if: always()
         uses: actions/upload-artifact@v4
