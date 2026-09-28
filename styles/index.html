@@ -9,7 +9,7 @@
   <title>Open Railway Atlas · Worldwide rail map</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20260928-7" rel="stylesheet">
+  <link href="app.css?v=20260928-10" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -49,7 +49,8 @@
     </div>
   </aside>
   <div id="draw-toolbar" class="draw-toolbar" role="toolbar" aria-label="Drawing tools" hidden>
-    <div class="draw-group"><button data-draw="point" aria-pressed="false">Point</button><button data-draw="line" aria-pressed="false">Line</button><button data-draw="curve" aria-pressed="false">Curve</button><button data-draw="area" aria-pressed="false">Area</button><button data-draw="erase" aria-pressed="false">Erase</button></div>
+    <div class="draw-group"><button data-draw="point" aria-pressed="false">Point</button><button data-draw="line" aria-pressed="false">Line</button><button data-draw="area" aria-pressed="false">Area</button><button data-draw="erase" aria-pressed="false">Erase</button><button id="draw-curved" aria-pressed="false" title="Line points added while on are curve points (smooth); off, corners (straight)">〰 Curved</button></div>
+    <div id="draw-node" class="draw-group" role="group" aria-label="Selected point" hidden><button id="node-delete">🗑 Delete point</button><button id="node-curve">Make curved</button><button id="node-extend">↪ Extend line</button></div>
     <div class="draw-group"><button id="draw-pan" aria-pressed="false" title="Move the map without drawing; the tools and any unfinished shape stay">✋ Move map</button></div>
     <div class="draw-group draw-style" role="group" aria-label="Drawing style">
       <span class="swatches"><button class="swatch-button" data-color="#c2185b" aria-label="Magenta" aria-pressed="true"></button><button class="swatch-button" data-color="#1565c0" aria-label="Blue" aria-pressed="false"></button><button class="swatch-button" data-color="#2e7d32" aria-label="Green" aria-pressed="false"></button><button class="swatch-button" data-color="#ef6c00" aria-label="Orange" aria-pressed="false"></button><button class="swatch-button" data-color="#212121" aria-label="Black" aria-pressed="false"></button></span>
@@ -65,7 +66,7 @@
   </div>
   <div id="measure-toolbar" class="draw-toolbar" role="toolbar" aria-label="Measuring tools" hidden>
     <div class="draw-group"><button data-measure="distance" aria-pressed="false">Distance</button><button data-measure="radius" aria-pressed="false">Curve radius</button></div>
-    <div class="draw-group"><button id="measure-undo">Undo</button><button id="measure-clear">Clear</button></div>
+    <div class="draw-group"><button id="measure-undo">Undo</button><button id="measure-clear">Clear</button><button id="measure-delete" hidden>🗑 Delete point</button></div>
     <button id="measure-close" class="draw-close" aria-label="Close measuring tools">×</button>
     <p id="measure-status" class="draw-status" role="status"></p>
   </div>
@@ -80,7 +81,7 @@
     <p>Station labels give priority to heavy rail, then metro, light rail, people movers and trams, then former stations. The ⊞ button shows more detail by drawing the next zoom level at half size. The ✎ button opens drawing tools (points, lines, smooth curves and areas, in a chosen colour and line style); drawings stay in this browser and can be saved or opened as GeoJSON files. The 📏 button measures distances along several segments, or the radius of a curve from three or more points clicked along it.</p>
     <h3>Names and terrain</h3><p>One language setting applies to map, station and line labels. Only names recorded in the source data are shown; nothing is automatically translated or transliterated. When no name is recorded in the chosen language, a related recorded name is used where one exists, such as the other Chinese script or English, and otherwise the local name.</p>
     <p>Station translations are requested for the current view. Snapshot railways retain multilingual OSM tags; the current operating-line tile provider usually supplies only native names. The shared setting cannot recover translations omitted from a source. Search results use the names returned by the search service.</p>
-    <p>Brown contours show land elevation; blue contours show negative elevation below sea level. Labels are signed metres. Land intervals become finer as you zoom: 200 m at zoom 7, 100 m at 9, 50 m at 11, 20 m at 13, and 10 m at 15. Seabed contours are 50 m at zooms 5–8 (down to 200 m), 20 m at 9–10 and 10 m from zoom 11. Heavier index contours are labelled. The elevation data holds seabed depths only up to zoom 10, so closer seabed contours follow that coarser data; land detail continues to zoom 15.</p>
+    <p>Brown contours show land elevation; blue contours show negative elevation below sea level. Labels are signed metres. Land intervals become finer as you zoom: 200 m at zoom 7, 100 m at 9, 50 m at 11, 20 m at 13, and 10 m at 15. Seabed contours are 50 m at zooms 5–8 (down to 200 m), 20 m at 9–10 and 10 m from zoom 11. Heavier index contours are labelled. The elevation data holds seabed depths only up to zoom 10, so closer seabed contours follow that coarser data; land detail continues to zoom 15. On the globe, beyond 85.05° N and S where the map's tiles end, relief and contours come from NOAA ETOPO 2022 (about 1.85 km resolution).</p>
     <h3>Sources</h3><p>Railway tiles: <a href="https://openrailwaymap.app/">OpenRailwayMap vector</a>. Station search: <a href="https://www.openrailwaymap.org/">OpenRailwayMap public API</a>. Regional planned, construction and former lines: <a href="data/manifest.json">published OSM snapshot</a>, extracted with <a href="https://overpass-api.de/">Overpass (FOSSGIS)</a>; <a href="data/lifecycle.geojson.gz">download the ODbL database</a>. Relief: <a href="terrain-credits.html">Mapzen Terrain Tiles / AWS, including NOAA ETOPO1 seabed data</a>. Base map: <a href="https://tuiles.enliberte.fr/">En Liberté</a>. Map data: <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>. Name regions: <a href="https://www.naturalearthdata.com/">Natural Earth</a>, <a href="https://github.com/evansiroky/timezone-boundary-builder">timezone-boundary-builder</a> (OSM, ODbL) and OSM boundary relations and <a href="https://www.geoboundaries.org/">geoBoundaries</a> (Myanmar Analytics Project, CC BY 4.0; Royal Thai Survey Department / OCHA ROAP, CC BY 3.0 IGO). Renderer: <a href="https://maplibre.org/">MapLibre</a>.</p>
     <p class="small">This public map uses community-hosted services. Data availability and updates follow those providers. No account or API key is required. Search terms are sent to OpenRailwayMap only when submitted. Panning loads planned and former railways from files published with this site; your viewport is not sent to Overpass. The snapshot date is recorded in its manifest. Detail tiles at zoom 12 and above follow OpenRailwayMap updates. Shading and contours are derived from elevation, including seabed where recorded; they are not a nautical chart.</p>
     <p><a href="https://github.com/c933103/openrailwaystyle">Source code & report a problem ↗</a></p>
@@ -97,6 +98,6 @@
       status.textContent = 'The map could not load. Check your connection and reload the page.';
     }, true);
   </script>
-  <script type="module" src="app.mjs?v=20260928-7"></script>
+  <script type="module" src="app.mjs?v=20260928-10"></script>
 </body>
 </html>

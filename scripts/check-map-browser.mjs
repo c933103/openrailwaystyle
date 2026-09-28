@@ -83,7 +83,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') console.log('Browser resource:',msg.text());});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260928-7&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260928-10&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
@@ -356,6 +356,21 @@ try{
   assert.match(await page.locator('#measure-status').textContent(),/Curve radius ≈ [\d,.]+ (m|km)/);
   await page.locator('#measure-close').click();
   console.log('PASS: measure tool gives distance and curve radius');
+  // The polar caps, when the snapshot provides them: on the globe, centred
+  // on the South Pole, the cap's own data is drawn.
+  if (await page.evaluate(async()=>(await fetch('data/polar/south-index.json')).ok)) {
+    await page.evaluate(async()=>{
+      const {map}=await import(document.querySelector('script[type="module"]').src);
+      map.setProjection({type:'globe'});
+      map.jumpTo({center:[0,-89.5],zoom:6+Math.log2(Math.cos(89.5*Math.PI/180)),bearing:0});
+    });
+    await expectMap(async()=>{
+      const {map}=await import(document.querySelector('script[type="module"]').src);
+      const cap=map.getLayer('polar-caps')?.implementation?.caps?.south;
+      return Boolean(cap?.index && cap?.relief && [...(map.getLayer('polar-caps').implementation.tiles.values())].some(t=>t.loading===false));
+    },'The South Pole cap must load its index, relief and contour tiles on the globe');
+    console.log('PASS: polar cap drawn beyond 85° on the globe');
+  } else console.log('SKIP: no polar cap data in this snapshot');
   assert.deepEqual(errors,[]);
   console.log('PASS: one shared language, name fallbacks, contours, structures and lifecycle controls; no JavaScript exceptions');
 } catch(error) {
