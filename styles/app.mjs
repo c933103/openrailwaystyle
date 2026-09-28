@@ -95,9 +95,13 @@ const IN_VIEW = {
     const system = trainProtection(p.train_protection0);
     return system && system[0] !== 'none' ? [controlColor(system[2], system[3]), `${system[1]} · ${LEVEL_SHORT[system[3]]}`] : null;
   },
-  // Every gauge of a dual-gauge track is drawn, so each is listed.
-  gauge: p => [p.gaugeint0, p.gaugeint1, p.gaugeint2].filter(mm => mm > 0)
-    .map(mm => [gaugeColor(mm), `${gauge(mm)}${GAUGE_NAMES[mm] && settings.units !== 'imperial' ? ` (${GAUGE_NAMES[mm]})` : ''}`, mm]),
+  // Both halves of a dual-gauge track are drawn, so both gauges are listed
+  // (a third gauge is not drawn; clicking the track lists it).
+  gauge: p => {
+    const rows = [p.gaugeint0, p.gaugeint1].filter(mm => mm > 0)
+      .map(mm => [gaugeColor(mm), `${gauge(mm)}${GAUGE_NAMES[mm] && settings.units !== 'imperial' ? ` (${GAUGE_NAMES[mm]})` : ''}`, mm]);
+    return rows.length ? rows : null;
+  },
   loading: p => { const g = loadingGauge(p.loading_gauge); return g ? [g.color, `${g.name}${g.height ? ` · ${loadingDimensions(g)}` : ''}`, g.rank] : null; },
 };
 function updateInView() {
