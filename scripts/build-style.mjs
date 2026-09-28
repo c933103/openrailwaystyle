@@ -1,4 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
+import {contextLayers} from './context-style.mjs';
 import { ORM, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, loadingLabel, trainProtectionShort, TRAIN_PROTECTION, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
 
 // Keep the Hack4Rail base-map design and replace its Europe-only rail source.
@@ -285,6 +286,12 @@ for (const l of places) {
   if (l.id.startsWith('place_')) l.layout['text-size'] = ['interpolate', ['linear'], ['zoom'], 5, 10, 14, 12];
   style.layers.push(l);
 }
+// Context fills sit above the base fills/shading, below contours and all
+// transport linework. Context labels outrank towns but yield to railways.
+const context = contextLayers();
+const contextIndex = style.layers.findIndex(l => l.id === 'terrain-contours');
+style.layers.splice(contextIndex, 0, ...context.areas, ...context.lines);
+style.layers.push(...context.labels);
 const stationNames = style.layers.filter(l => l.id.startsWith('station-') && l.type === 'symbol');
 const railwayNames = style.layers.filter(l => l.type === 'symbol' && l.id.endsWith('-names') && !l.id.startsWith('station-'));
 style.layers = style.layers.filter(l => !stationNames.includes(l) && !railwayNames.includes(l)).concat(railwayNames, stationNames);
@@ -293,3 +300,4 @@ for (const l of style.layers) {
 }
 await writeFile(new URL('../styles/world.style.json', import.meta.url), JSON.stringify(style, null, 2) + '\n');
 console.log(`Built world.style.json: ${style.layers.length} layers`);
+

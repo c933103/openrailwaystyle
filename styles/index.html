@@ -9,7 +9,7 @@
   <title>Open Railway Atlas · Worldwide rail map</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20260928-10" rel="stylesheet">
+  <link href="app.css?v=20260928-context1" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -34,6 +34,8 @@
       <div id="legend" aria-live="polite"></div>
       <details class="display-options"><summary>Display options</summary><div>
         <label><input type="checkbox" id="stations" checked> Station markers and names</label>
+        <label><input type="checkbox" id="transport" checked> Other transport &amp; interchanges</label>
+        <label><input type="checkbox" id="destinations" checked> Major destinations &amp; employment areas</label>
         <label><input type="checkbox" id="names" checked> Railway names along tracks</label>
         <label><input type="checkbox" id="relief" checked> Terrain, seabed and contours</label>
         <label><input type="checkbox" id="labels" checked> Values along tracks (speed, power, train control, gauges)</label>
@@ -41,9 +43,14 @@
         <label><input type="checkbox" id="autoGlobe" checked> Switch to the globe when zoomed out (and near the poles)</label>
         <div class="units-picker"><label for="units">Units</label><select id="units"><option value="metric">Metric (km/h, m)</option><option value="imperial">Imperial (mph, ft)</option></select></div>
       </div></details>
+      <details class="context-key"><summary>Transport &amp; destination key</summary>
+        <p class="small">Airports, bus/coach interchanges, ferry terminals and cable cars have framed symbols. Harbours appear at street detail; ordinary bus stops stay subdued.</p>
+        <div class="context-legend"><span style="--c:#007b83">Transport grounds</span><span style="--c:#937ca2">Industrial / commercial</span><span style="--c:#bf985c">Retail</span><span style="--c:#c18188">Hospitals</span><span style="--c:#909ec5">Education / civic</span><span style="--c:#a1ad73">Stadiums / attractions</span></div>
+        <p class="small">Zoom in for named destinations and station transfer context. Coverage follows the available map tiles; these are potential destinations, not passenger counts.</p>
+      </details>
       <div class="section-heading">LABEL LANGUAGE</div>
       <div class="language-picker"><label for="language">All labels</label><select id="language"></select></div>
-      <p class="hint">Zoom in for stations and track detail.<br>Click a station or line to inspect it.</p>
+      <p class="hint">Zoom in for stations and track detail.<br>Click a station, line or facility to inspect it.</p>
       <div class="toolbar"><button id="share">Copy map link</button><button id="about-open">About & data</button></div>
       <p id="share-status" role="status" class="small" hidden></p>
     </div>
@@ -84,6 +91,7 @@
     <p>Brown contours show land elevation; blue contours show negative elevation below sea level. Labels are signed metres. Land intervals become finer as you zoom: 200 m at zoom 7, 100 m at 9, 50 m at 11, 20 m at 13, and 10 m at 15. Seabed contours are 50 m at zooms 5–8 (down to 200 m), 20 m at 9–10 and 10 m from zoom 11. Heavier index contours are labelled. The elevation data holds seabed depths only up to zoom 10, so closer seabed contours follow that coarser data; land detail continues to zoom 15. On the globe, beyond 85.05° N and S where the map's tiles end, relief and contours come from NOAA ETOPO 2022 (about 1.85 km resolution).</p>
     <h3>Sources</h3><p>Railway tiles: <a href="https://openrailwaymap.app/">OpenRailwayMap vector</a>. Station search: <a href="https://www.openrailwaymap.org/">OpenRailwayMap public API</a>. Regional planned, construction and former lines: <a href="data/manifest.json">published OSM snapshot</a>, extracted with <a href="https://overpass-api.de/">Overpass (FOSSGIS)</a>; <a href="data/lifecycle.geojson.gz">download the ODbL database</a>. Relief: <a href="terrain-credits.html">Mapzen Terrain Tiles / AWS, including NOAA ETOPO1 seabed data</a>. Base map: <a href="https://tuiles.enliberte.fr/">En Liberté</a>. Map data: <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>. Name regions: <a href="https://www.naturalearthdata.com/">Natural Earth</a>, <a href="https://github.com/evansiroky/timezone-boundary-builder">timezone-boundary-builder</a> (OSM, ODbL) and OSM boundary relations and <a href="https://www.geoboundaries.org/">geoBoundaries</a> (Myanmar Analytics Project, CC BY 4.0; Royal Thai Survey Department / OCHA ROAP, CC BY 3.0 IGO). Renderer: <a href="https://maplibre.org/">MapLibre</a>.</p>
     <p class="small">This public map uses community-hosted services. Data availability and updates follow those providers. No account or API key is required. Search terms are sent to OpenRailwayMap only when submitted. Panning loads planned and former railways from files published with this site; your viewport is not sent to Overpass. The snapshot date is recorded in its manifest. Detail tiles at zoom 12 and above follow OpenRailwayMap updates. Shading and contours are derived from elevation, including seabed where recorded; they are not a nautical chart.</p>
+    <p>Other transport and major destinations use the existing OpenMapTiles basemap: airports, bus/coach and ferry terminals, cable car stations, hospitals, campuses, shopping centres, government/community facilities and visitor attractions. Shaded industrial, commercial and other facility grounds show potential trip destinations, not passenger volumes. At street detail, station panels list nearby transport within 500 m straight-line distance; this does not confirm a walkable interchange.</p>
     <p><a href="https://github.com/c933103/openrailwaystyle">Source code & report a problem ↗</a></p>
   </dialog>
   <noscript><div class="no-script">Enable JavaScript to use the interactive railway map.</div></noscript>
@@ -98,6 +106,7 @@
       status.textContent = 'The map could not load. Check your connection and reload the page.';
     }, true);
   </script>
-  <script type="module" src="app.mjs?v=20260928-10"></script>
+  <script type="module" src="app.mjs?v=20260928-context1"></script>
 </body>
 </html>
+

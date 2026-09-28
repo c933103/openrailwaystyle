@@ -1,7 +1,7 @@
 name: Validate and deploy world railway map
 on:
   push:
-    branches: [main, fix/atlas-relief, fix/atlas-contours-languages]
+    branches: [main, fix/atlas-relief, fix/atlas-contours-languages, fix/transport-destinations]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -63,6 +63,8 @@ jobs:
         run: |
           node scripts/serve.mjs &
           node scripts/check-map-browser.mjs
+      - name: Verify transport and destination context
+        run: node scripts/check-context-browser.mjs
       - name: Save browser review
         if: always()
         uses: actions/upload-artifact@v4
@@ -133,9 +135,14 @@ jobs:
         env:
           MAP_BASE_URL: ${{ steps.deployment.outputs.page_url }}
         run: node scripts/check-map-browser.mjs
+      - name: Verify published transport and destinations
+        env:
+          MAP_BASE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: node scripts/check-context-browser.mjs
       - name: Save published map screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: published-map-review
           path: browser-review
+

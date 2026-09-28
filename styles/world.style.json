@@ -379,6 +379,468 @@
       }
     },
     {
+      "id": "context-destinations-employment-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 10,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "industrial",
+          "commercial"
+        ],
+        true,
+        false
+      ],
+      "paint": {
+        "fill-color": "#937ca2",
+        "fill-opacity": 0.24
+      }
+    },
+    {
+      "id": "context-destinations-shopping-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 10,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "retail"
+        ],
+        true,
+        false
+      ],
+      "paint": {
+        "fill-color": "#bf985c",
+        "fill-opacity": 0.24
+      }
+    },
+    {
+      "id": "context-destinations-hospital-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 10,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "hospital"
+        ],
+        true,
+        false
+      ],
+      "paint": {
+        "fill-color": "#c18188",
+        "fill-opacity": 0.24
+      }
+    },
+    {
+      "id": "context-destinations-education-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 10,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "school",
+          "university",
+          "college",
+          "kindergarten",
+          "library"
+        ],
+        true,
+        false
+      ],
+      "paint": {
+        "fill-color": "#909ec5",
+        "fill-opacity": 0.24
+      }
+    },
+    {
+      "id": "context-destinations-visitor-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 10,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "stadium",
+          "sports_centre",
+          "theme_park",
+          "zoo"
+        ],
+        true,
+        false
+      ],
+      "paint": {
+        "fill-color": "#a1ad73",
+        "fill-opacity": 0.24
+      }
+    },
+    {
+      "id": "context-transport-grounds",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 12,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "bus_station",
+          "railway"
+        ],
+        true,
+        false
+      ],
+      "paint": {
+        "fill-color": "#6ca6a8",
+        "fill-opacity": 0.2
+      }
+    },
+    {
+      "id": "context-transport-airport-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "aeroway",
+      "minzoom": 10,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ],
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "aerodrome",
+            "apron",
+            "terminal",
+            "runway",
+            "taxiway"
+          ],
+          true,
+          false
+        ]
+      ],
+      "paint": {
+        "fill-color": "#929bc2",
+        "fill-opacity": 0.25
+      }
+    },
+    {
+      "id": "context-destinations-employment-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 12,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "industrial",
+          "commercial"
+        ],
+        true,
+        false
+      ],
+      "paint": {
+        "line-color": "#937ca2",
+        "line-width": 0.8,
+        "line-opacity": 0.7
+      }
+    },
+    {
+      "id": "context-destinations-shopping-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 12,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "retail"
+        ],
+        true,
+        false
+      ],
+      "paint": {
+        "line-color": "#bf985c",
+        "line-width": 0.8,
+        "line-opacity": 0.7
+      }
+    },
+    {
+      "id": "context-destinations-hospital-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 12,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "hospital"
+        ],
+        true,
+        false
+      ],
+      "paint": {
+        "line-color": "#c18188",
+        "line-width": 0.8,
+        "line-opacity": 0.7
+      }
+    },
+    {
+      "id": "context-destinations-education-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 12,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "school",
+          "university",
+          "college",
+          "kindergarten",
+          "library"
+        ],
+        true,
+        false
+      ],
+      "paint": {
+        "line-color": "#909ec5",
+        "line-width": 0.8,
+        "line-opacity": 0.7
+      }
+    },
+    {
+      "id": "context-destinations-visitor-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 12,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "stadium",
+          "sports_centre",
+          "theme_park",
+          "zoo"
+        ],
+        true,
+        false
+      ],
+      "paint": {
+        "line-color": "#a1ad73",
+        "line-width": 0.8,
+        "line-opacity": 0.7
+      }
+    },
+    {
+      "id": "context-transport-grounds-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 12,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "bus_station",
+          "railway"
+        ],
+        true,
+        false
+      ],
+      "paint": {
+        "line-color": "#4d8d91",
+        "line-width": 1,
+        "line-opacity": 0.65
+      }
+    },
+    {
+      "id": "context-transport-airport-runways",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "aeroway",
+      "minzoom": 10,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "runway",
+          "taxiway"
+        ],
+        true,
+        false
+      ],
+      "paint": {
+        "line-color": "#7982a1",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          1.5,
+          16,
+          5
+        ],
+        "line-opacity": 0.7
+      }
+    },
+    {
+      "id": "context-transport-ferry-routes",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 9,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "ferry"
+        ],
+        true,
+        false
+      ],
+      "paint": {
+        "line-color": "#388b9b",
+        "line-width": 1.2,
+        "line-opacity": 0.65,
+        "line-dasharray": [
+          4,
+          3
+        ]
+      }
+    },
+    {
       "type": "line",
       "source": "contours",
       "source-layer": "contours",
@@ -9059,6 +9521,2396 @@
             ]
           ]
         }
+      }
+    },
+    {
+      "id": "context-destinations-hospital-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 12,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "hospital"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.7,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-hospital"
+      },
+      "paint": {
+        "text-color": "#b04a59",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
+      }
+    },
+    {
+      "id": "context-destinations-university-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 12,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "university",
+            "college"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.7,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-university"
+      },
+      "paint": {
+        "text-color": "#61669a",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
+      }
+    },
+    {
+      "id": "context-destinations-school-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 14,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "school",
+            "kindergarten"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.7,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-school"
+      },
+      "paint": {
+        "text-color": "#61669a",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
+      }
+    },
+    {
+      "id": "context-destinations-shopping-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 12,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "mall",
+            "department_store",
+            "marketplace"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.7,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-shopping"
+      },
+      "paint": {
+        "text-color": "#93651d",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
+      }
+    },
+    {
+      "id": "context-destinations-sport-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 12,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "stadium",
+            "sports_centre"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.7,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-sport"
+      },
+      "paint": {
+        "text-color": "#6c7730",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
+      }
+    },
+    {
+      "id": "context-destinations-visitor-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 12,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "theme_park",
+            "water_park",
+            "zoo",
+            "aquarium",
+            "attraction",
+            "castle",
+            "monument",
+            "ruins",
+            "archaeological_site"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.7,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-visitor"
+      },
+      "paint": {
+        "text-color": "#8a5a87",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
+      }
+    },
+    {
+      "id": "context-destinations-culture-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 13,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "museum",
+            "gallery",
+            "theatre",
+            "arts_centre",
+            "library",
+            "cinema"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.7,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-culture"
+      },
+      "paint": {
+        "text-color": "#8a5a87",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
+      }
+    },
+    {
+      "id": "context-destinations-civic-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 13,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "government",
+            "townhall",
+            "town_hall",
+            "courthouse",
+            "public_building",
+            "community_centre",
+            "conference_centre",
+            "exhibition_centre"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.7,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-civic"
+      },
+      "paint": {
+        "text-color": "#61669a",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
+      }
+    },
+    {
+      "id": "context-transport-airport-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "aerodrome_label",
+      "minzoom": 8,
+      "filter": [
+        "all",
+        [
+          "!",
+          [
+            "match",
+            [
+              "coalesce",
+              [
+                "get",
+                "class"
+              ],
+              ""
+            ],
+            [
+              "military",
+              "private"
+            ],
+            true,
+            false
+          ]
+        ],
+        [
+          "any",
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            12
+          ],
+          [
+            "match",
+            [
+              "coalesce",
+              [
+                "get",
+                "class"
+              ],
+              ""
+            ],
+            [
+              "international"
+            ],
+            true,
+            false
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "iata"
+              ],
+              ""
+            ],
+            ""
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.85,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-airport"
+      },
+      "paint": {
+        "text-color": "#52639a",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
+      }
+    },
+    {
+      "id": "context-transport-bus-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 12,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "bus_station"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.85,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-bus"
+      },
+      "paint": {
+        "text-color": "#007b83",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
+      }
+    },
+    {
+      "id": "context-transport-ferry-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 12,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "ferry_terminal"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.85,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-ferry"
+      },
+      "paint": {
+        "text-color": "#007b83",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
+      }
+    },
+    {
+      "id": "context-transport-aerialway-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 12,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "aerialway"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.85,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-aerialway"
+      },
+      "paint": {
+        "text-color": "#007b83",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
+      }
+    },
+    {
+      "id": "context-transport-port-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 15,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "port",
+            "harbour",
+            "harbor",
+            "marina",
+            "dock"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.85,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-port"
+      },
+      "paint": {
+        "text-color": "#397a8f",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
       }
     },
     {

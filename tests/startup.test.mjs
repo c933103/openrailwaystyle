@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 import * as model from '../styles/map-model.mjs';
 import * as draw from '../styles/draw.mjs';
+import * as contextFeatures from '../styles/context.mjs';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
 const appURL = new URL('../styles/app.mjs', import.meta.url);
@@ -89,7 +90,10 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
     for (const [key,value] of Object.entries(draw)) this.setExport(key,value);
   }, {context});
   const globe = new vm.SyntheticModule(['installGlobeDrag','allowPolarCentres'], function() { this.setExport('installGlobeDrag', () => ({sync() {}, justDragged: () => false})); this.setExport('allowPolarCentres', () => ({refresh() {}})); }, {context});
-  await app.link(specifier => specifier.includes('draw.mjs') ? drawing : specifier.includes('globe-drag.mjs') ? globe : dependency);
+  const contextModule = new vm.SyntheticModule(Object.keys(contextFeatures),function() {
+    for (const [key,value] of Object.entries(contextFeatures)) this.setExport(key,value);
+  },{context});
+  await app.link(specifier => specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('globe-drag.mjs') ? globe : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries};
@@ -225,3 +229,4 @@ test('real renderer initialization failures reach the visible error message', as
     assert.equal(window.document.body.dataset.mapReady,undefined);
   } finally {dom.window.close();}
 });
+

@@ -442,7 +442,7 @@ export function formatSpeed(properties, units = 'metric') {
 // Display settings live in a cookie; a link can still carry them (the app
 // then saves them and removes them from the address). remembered: settings
 // kept in this browser, used for anything the URL does not name.
-export const SETTING_KEYS = ['mode','stations','labels','inactive','relief','names','autoGlobe','units','detail','language'];
+export const SETTING_KEYS = ['mode','stations','labels','inactive','relief','names','autoGlobe','transport','destinations','units','detail','language'];
 const LEGACY_LANGUAGE_KEYS = ['stationLanguage','mapLanguage','lineLanguage'];
 export const SETTING_PARAMS = [...SETTING_KEYS, ...LEGACY_LANGUAGE_KEYS];
 export function readSettings(search, remembered = {}) {
@@ -452,6 +452,7 @@ export function readSettings(search, remembered = {}) {
   return {
     mode: pick('mode', v => MODES.includes(v), 'speed'),
     stations: flag('stations', true), labels: flag('labels', true), inactive: flag('inactive', true),
+    transport: flag('transport', true), destinations: flag('destinations', true),
     relief: flag('relief', true), names: flag('names', true), autoGlobe: flag('autoGlobe', true),
     units: pick('units', v => v === 'metric' || v === 'imperial', 'metric'),
     detail: flag('detail', false),
@@ -522,3 +523,4 @@ export function speedLabel(units) {
   const speed = ['to-number', ['coalesce', ['get', 'maxspeed'], -1], -1];
   return ['case', ['in', 'mph', label], label, ['>=', speed, 0], ['concat', ['to-string', ['round', ['/', speed, MPH]]], ' mph'], label];
 }
+
