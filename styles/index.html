@@ -9,7 +9,7 @@
   <title>Open Railway Atlas · Worldwide rail map</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20260928-4" rel="stylesheet">
+  <link href="app.css?v=20260928-6" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -38,6 +38,7 @@
         <label><input type="checkbox" id="relief" checked> Terrain, seabed and contours</label>
         <label><input type="checkbox" id="labels" checked> Values along tracks (speed, power, train control, gauges)</label>
         <label><input type="checkbox" id="inactive" checked> Planned, construction and former railways</label>
+        <label><input type="checkbox" id="autoGlobe" checked> Switch to the globe when zoomed out (and near the poles)</label>
         <div class="units-picker"><label for="units">Units</label><select id="units"><option value="metric">Metric (km/h, m)</option><option value="imperial">Imperial (mph, ft)</option></select></div>
       </div></details>
       <div class="section-heading">LABEL LANGUAGE</div>
@@ -96,6 +97,6 @@
       status.textContent = 'The map could not load. Check your connection and reload the page.';
     }, true);
   </script>
-  <script type="module" src="app.mjs?v=20260928-4"></script>
+  <script type="module" src="app.mjs?v=20260928-6"></script>
 </body>
 </html>

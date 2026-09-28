@@ -163,7 +163,7 @@ test('drawing points can be moved and deleted one at a time', async () => {
   const saved = readDrawing(d.collection());
   assert.deepEqual(saved[0].properties.curve_points, [[0,0],[1,2],[2,0]]);
   // Right-clicking a handle deletes that point.
-  assert.equal(typeof handlers['contextmenu drawing-handles'], 'function');
+  assert.equal(typeof handlers['contextmenu drawing-handle-targets'], 'function');
   d.clear();
 });
 
@@ -174,7 +174,7 @@ test('measured points can be moved and deleted', async () => {
     getCanvas: () => ({style:{}}), on(type, layer, fn) { if (fn) handlers[`${type} ${layer}`] = fn; }, doubleClickZoom: {enable() {}, disable() {}}};
   const m = new Measure(map); m.install(); m.setMode('distance');
   for (const lng of [0, 1, 2]) m.click({lng, lat: 0});
-  handlers['contextmenu measure-points']({features: [{properties: {index: 1}}], preventDefault() {}});
+  handlers['contextmenu measure-point-targets']({features: [{properties: {index: 1}}], preventDefault() {}});
   assert.deepEqual(m.points, [[0,0],[2,0]]);
   assert.ok(sources['atlas-measure'].data.features.filter(f => f.properties.index !== undefined).length === 2);
 });

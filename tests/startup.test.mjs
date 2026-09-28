@@ -45,6 +45,11 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
     getCanvas() { return {style:{}}; }
     doubleClickZoom = {enable(){}, disable(){}};
     queryRenderedFeatures() { return []; }
+    projection = {type:'mercator'};
+    getProjection() { return this.projection; }
+    setProjection(projection) { this.projection = projection; }
+    getContainer() { return {clientWidth:1000, clientHeight:700}; }
+    unproject() { return {lng:0, lat:0}; }
   }
   // This is the MapLibre 5 public surface used by the app. In particular,
   // supported() is absent: older Mapbox examples must not gate startup.
@@ -60,6 +65,7 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
   };
   if (!delayLibraries) Object.assign(window, libraries);
   window.fetch = async () => ({ok:true,json:async()=>structuredClone(style)});
+  window.matchMedia = () => ({matches:false});
   const context = dom.getInternalVMContext();
   const dependency = new vm.SyntheticModule(Object.keys(model), function() {
     for (const [key,value] of Object.entries(model)) this.setExport(key,value);
