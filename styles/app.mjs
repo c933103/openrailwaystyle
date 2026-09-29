@@ -1,8 +1,8 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20260929-6';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260929-6';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20260929-7';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260929-7';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260929-6';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260929-6';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260929-7';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260929-7';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -28,7 +28,7 @@ const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_C
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260929-6';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260929-7';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -179,7 +179,7 @@ function renderLegend() {
     control: 'Hue groups related systems (e.g. ETCS with China’s ETCS-derived CTCS); darker is more advanced: warning only, spot transmission, continuous, radio. Colour shows the first recorded system; click a track for all of them and their compatibility. Grey means nothing is recorded.',
     gauge: 'Gauges a few millimetres apart (e.g. 1432 and 1435, 1520 and 1524) share one colour and are generally compatible. Click a track for all recorded gauges. Grey means not recorded.',
     loading: 'Colour follows the envelope’s height above rail, so equal sizes match across regions; Britain’s W gauges share one height and form their own ladder. Click a track for dimensions. Grey means not recorded.',
-    infrastructure: 'Zoomed in (zoom 14+), a boxed number gives the running tracks side by side, counted from the mapped tracks; sidings, yards and crossovers are not counted, and station areas are left unlabelled. Ochre roadbeds mark explicitly tagged street-running tracks (13+); × marks level crossings (15+).',
+    infrastructure: 'Zoomed in (zoom 14+), a boxed number gives the running tracks side by side, counted from the mapped tracks; sidings, yards and crossovers are not counted, and station areas are left unlabelled. Ochre roadbeds mark explicitly tagged street-running tracks (13+); level crossings are dots from zoom 5 (light brown: pedestrian), × with equipment from 15.',
   };
   let note = notes[settings.mode];
   if (settings.inactive && settings.mode === 'speed') note += ' Planned and former lines take the colour of their recorded limit, if any.';
@@ -229,14 +229,15 @@ function applySettings() {
 }
 const featurePickRank = f => f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading)-labels$/;
-const isClickable = id => ['infrastructure-level-crossings','infrastructure-street-running'].includes(id) || id.startsWith('context-') || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading)-(tracks|overview)$/.test(id);
+const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-crossing-dots','infrastructure-street-running'];
+const isClickable = id => INFRASTRUCTURE_POINTS.includes(id) || id.startsWith('context-') || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading)-(tracks|overview)$/.test(id);
 function row(dl, label, value) {
   if (value === undefined || value === null || value === '') return;
   dl.append(textNode('dt', label), textNode('dd', String(value)));
 }
 function showDetails(feature) {
   currentFeature = feature;
-  if (['infrastructure-level-crossings','infrastructure-street-running'].includes(feature.layer?.id)) { showInfrastructureContext(feature); return; }
+  if (INFRASTRUCTURE_POINTS.includes(feature.layer?.id)) { showInfrastructureContext(feature); return; }
   if (feature.layer?.id.startsWith('context-')) { showContextDetails(feature); return; }
   const p = feature.properties;
   const isStation = feature.source?.startsWith('station') || feature.kind === 'station';
@@ -302,6 +303,17 @@ function showDetails(feature) {
 function showInfrastructureContext(feature) {
   const p=feature.properties,crossing=feature.sourceLayer==='points_of_interest';
   const panel=$('detail-content');panel.replaceChildren(textNode('div','RAILWAY INFRASTRUCTURE','eyebrow'));
+  // A dot from the worldwide crossing tiles: its kind and OSM node only.
+  if(feature.sourceLayer==='level_crossings') {
+    panel.append(textNode('h2',p.kind==='foot'?'Pedestrian level crossing':'Road level crossing'));
+    if(Number.isInteger(feature.id)) {
+      const link=textNode('a','View this crossing on OpenStreetMap ↗');
+      link.href=`https://www.openstreetmap.org/node/${feature.id}`;link.target='_blank';link.rel='noopener';
+      panel.append(link);
+    }
+    panel.append(textNode('p','Zoom to 15 for the mapped equipment (lights, barriers).','small'));
+    $('details').hidden=false;return;
+  }
   panel.append(textNode('h2',crossing ? (p.feature==='general/crossing'?'Pedestrian level crossing':'Road level crossing') : 'Track in shared roadway'));
   const dl=document.createElement('dl');row(dl,'Name',displayName(p,settings.language));row(dl,'Reference',p.ref);
   if(crossing) {
@@ -658,7 +670,8 @@ async function initialize() {
   installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url)});
   dem = new mlcontour.DemSource({url:DEM_URL,encoding:'terrarium',maxzoom:15,worker:true,cacheSize:200,timeoutMs:20000,id:'atlas'});
   dem.setupMaplibre(maplibregl);
-  for (const [scheme,folder] of [['railtiles','lifecycle'],['streettiles','street-running']]) {
+  // Level crossings carry no names: their tiles are served as stored.
+  for (const [scheme,folder,names = true] of [['railtiles','lifecycle'],['streettiles','street-running'],['crossingtiles','level-crossings',false]]) {
   const lifecycleRoot = new URL(`./data/${folder}/`, import.meta.url);
   let tileIndex;
   maplibregl.addProtocol(scheme, async (params, controller) => {
@@ -673,7 +686,8 @@ async function initialize() {
     const response = await fetch(new URL(`${key}.pbf.gz`, lifecycleRoot), {signal: controller.signal});
     if (!response.ok) throw new Error(`Railway tile returned ${response.status}`);
     const [z,x,y] = key.split('/').map(Number);
-    return {data: localizeTile(await decodeLifecycleTile(await response.arrayBuffer()),lang,{z,x,y})};
+    const data = await decodeLifecycleTile(await response.arrayBuffer());
+    return {data: names ? localizeTile(data,lang,{z,x,y}) : data};
   });
   }
   const styleURL = new URL(`world.style.json?v=${encodeURIComponent(assetVersion)}`, import.meta.url);

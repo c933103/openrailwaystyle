@@ -70,4 +70,6 @@ Protected areas, military grounds, religious institutions and heritage sites hav
 
 ## Rail-road interfaces
 
-Infrastructure view adds level crossings (`points_of_interest.type=level_crossing`, zoom 15+) and ochre roadbeds for explicitly mapped street-running tracks (zoom 13+). Only `embedded=yes` or road `embedded_rails` tags qualify; trams and adjacent roads do not imply sharing. See [street-running snapshots](data-maintenance.md#street-running-snapshot) for publication and refresh behaviour.
+Infrastructure view adds level crossings and ochre roadbeds for explicitly mapped street-running tracks (zoom 13+). Only `embedded=yes` or road `embedded_rails` tags qualify; trams and adjacent roads do not imply sharing. See [street-running snapshots](data-maintenance.md#street-running-snapshot) for publication and refresh behaviour.
+
+Level crossings are dots from zoom 5, so they can be seen across a region hundreds of kilometres wide: dark brown for road crossings (`railway=level_crossing`), light brown for pedestrian ones (`railway=crossing`). They come from the project's own [worldwide crossing tiles](data-maintenance.md#level-crossing-snapshot): an overview set (zoom-5 tiles, each crossing placed within about 150 m, crossings on the same spot drawn once) up to zoom 8, then one clickable point per crossing, linking to its OpenStreetMap node, to zoom 14. From zoom 15 the provider's `points_of_interest` tiles draw × symbols whose details give the mapped equipment.

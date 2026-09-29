@@ -74,6 +74,19 @@ jobs:
         run: |
           mkdir -p styles/data/street-running
           cp -r street-snapshot/12 street-snapshot/index.json street-snapshot/manifest.json street-snapshot/street-running.geojson.gz styles/data/street-running/
+      # Worldwide level crossings (crossings.yml). Until its first snapshot is
+      # published the site deploys without them; the map then shows crossings
+      # from zoom 15 only.
+      - name: Load level crossings
+        run: |
+          mkdir -p styles/data/level-crossings
+          if git ls-remote --exit-code --heads origin crossing-data; then
+            git fetch --depth=1 origin crossing-data
+            # Tiles, index, manifest and the ODbL table (crossings.tsv.gz).
+            git archive FETCH_HEAD | tar -x -C styles/data/level-crossings --exclude=regions.json
+          else
+            echo '{"tiles":[]}' > styles/data/level-crossings/index.json
+          fi
       - name: Install test browser
         run: npx playwright install --with-deps chromium
       - name: Start test server

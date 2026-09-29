@@ -1,0 +1,63 @@
+name: Refresh worldwide level crossings
+on:
+  workflow_dispatch:
+  # Sunday at 04:17 UTC: the crossings changed in the week, plus a full
+  # refresh of the longest-unchecked regions (about 5 MB).
+  schedule:
+    - cron: '17 4 * * 0'
+  push:
+    branches: [main, claude/vigilant-hamilton-hmk1xn]
+    paths: ['scripts/build-crossings.mjs', 'scripts/crossing-data.mjs', '.github/workflows/crossings.yml']
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: crossing-data
+  cancel-in-progress: false
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    # The first run fetches the whole world one region at a time.
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Load the previous table
+        run: |
+          if git ls-remote --exit-code --heads origin crossing-data; then
+            git fetch --depth=1 origin crossing-data
+            mkdir -p /tmp/previous-crossings
+            git --work-tree=/tmp/previous-crossings checkout FETCH_HEAD -- crossings.tsv.gz regions.json
+          fi
+      - name: Update level crossings from OpenStreetMap
+        run: |
+          if [ -f /tmp/previous-crossings/crossings.tsv.gz ]; then export PREVIOUS_DATA=/tmp/previous-crossings; fi
+          node scripts/build-crossings.mjs
+      - name: Publish complete data snapshot
+        run: |
+          mkdir /tmp/crossing-publish
+          cd /tmp/crossing-publish
+          git init
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # One commit, replaced each time: the tiles change every week and
+          # their history is not needed.
+          git checkout --orphan crossing-data
+          cp -r "$GITHUB_WORKSPACE/crossing-data/." .
+          git add .
+          git commit -q -m "Worldwide level crossings $(date -u +%Y-%m-%d)"
+          if ! git push --force origin HEAD:crossing-data; then
+            # The server may have accepted the update before the connection
+            # reported failure. Accept only this exact published commit.
+            test "$(git ls-remote origin refs/heads/crossing-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
+      - name: Redeploy the site with refreshed data
+        if: github.event_name == 'schedule' || github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site.yml --ref main
