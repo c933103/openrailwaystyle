@@ -14,8 +14,8 @@ export function contextLayers() {
   const areas = [], lines = [], labels = [];
   for (const c of AREA_CATEGORIES) {
     const b=base(`context-destinations-${c.id}-area`,'fill','landuse',10,values('class',c.values));
-    areas.push({...b,paint:{'fill-color':c.color,'fill-opacity':0.24}});
-    lines.push({...b,id:`context-destinations-${c.id}-edge`,type:'line',minzoom:12,paint:{'line-color':c.color,'line-width':0.8,'line-opacity':0.7}});
+    areas.push({...b,paint:{'fill-color':c.color,'fill-opacity':0.12}});
+    lines.push({...b,id:`context-destinations-${c.id}-edge`,type:'line',minzoom:12,paint:{'line-color':c.color,'line-width':0.65,'line-opacity':0.35}});
   }
   areas.push({...base('context-transport-grounds','fill','landuse',12,values('class',['bus_station','railway'])),paint:{'fill-color':'#6ca6a8','fill-opacity':0.2}});
   lines.push({...base('context-transport-grounds-edge','line','landuse',12,values('class',['bus_station','railway'])),paint:{'line-color':'#4d8d91','line-width':1,'line-opacity':0.65}});
@@ -27,11 +27,14 @@ export function contextLayers() {
   const priority=c=>c.group==='transport'?(c.local?(c.id==='bike-parking'?0.5:1):2):0;
   for (const c of [...CONTEXT_CATEGORIES].sort((a,b)=>priority(a)-priority(b))) {
     const airport=c.id==='airport';
+    const destination=c.group==='destinations';
     const filter=airport ? ['all',['!',values('class',['military','private'])],['any',['>=',['zoom'],12],values('class',['international']),['!=',['coalesce',['get','iata'],''],'']]]
       : ['any',...(c.values ? [['match',['coalesce',['get','subclass'],['get','class'],''],c.values,true,false]]:[]),...(c.classes ? [values('class',c.classes)]:[])];
     labels.push({...base(`context-${c.group}-${c.id}-label`,'symbol',airport?'aerodrome_label':'poi',airport?8:(c.zoom||12),filter),
-      layout:{...text,'icon-image':`context-${c.id}`,'icon-size':c.local?0.62:c.group==='transport'?0.85:0.7},
-      paint:{'text-color':c.color,'text-halo-color':'#fffef8','text-halo-width':1.8}});
+      layout:{...text,'icon-image':`context-${c.id}`,'icon-size':c.local?0.62:c.group==='transport'?0.85:destination?0.55:0.7,
+        ...(destination?{'text-size':['interpolate',['linear'],['zoom'],12,10,16,11,19,12],'text-padding':8,'text-radial-offset':0.9}: {})},
+      paint:{'text-color':destination?'#707973':c.color,'text-halo-color':'#fffef8','text-halo-width':destination?1:1.8,
+        ...(destination?{'icon-opacity':0.7,'text-opacity':0.85}: {})}});
   }
   return {areas,lines,labels};
 }

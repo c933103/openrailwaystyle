@@ -79,6 +79,7 @@ try {
   await page.locator('#transport').uncheck();await page.locator('#destinations').uncheck();await page.locator('#constraints').uncheck();
   assert.ok(await evaluate(map=>map.getStyle().layers.filter(l=>l.id.startsWith('context-')).every(l=>l.layout?.visibility==='none')),'both context groups are disabled');
   await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return !map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('context-'));});
+  assert.ok(await evaluate(map=>map.queryRenderedFeatures({layers:['building-footprints']}).length>0),'ordinary buildings remain visible with destinations disabled');
   await page.locator('#transport').check();await page.locator('#destinations').check();await page.locator('#constraints').check();
   await page.locator('#language').selectOption('zh-Hant');
   await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('context-')&&f.properties.atlas_language==='zh-Hant');});
@@ -97,4 +98,3 @@ try {
   console.log('CONTEXT_FAILURE',await evaluate(map=>({zoom:map.getZoom(),layers:Object.keys(map.getStyle().sources),poi:map.querySourceFeatures('openmaptiles',{sourceLayer:'poi'}).slice(0,25).map(f=>f.properties),rendered:map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('context-')).slice(0,20).map(f=>({layer:f.layer.id,p:f.properties}))})).catch(e=>String(e)));
   await screenshot('failure');throw error;
 } finally {await browser.close();}
-
