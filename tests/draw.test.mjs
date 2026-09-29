@@ -147,6 +147,25 @@ test('one line can join straight track and curves', async () => {
   assert.ok(line.length > points.length, 'the curved part is smoothed');
   assert.deepEqual(buildLine(points, [0,0,0,0,0]), points);
 });
+test('a curve leaves and joins a straight stretch along it, without a corner; a corner between two curves stays', async () => {
+  const {buildLine} = await import('../styles/draw.mjs');
+  // Small offsets around 0° N, where degrees are nearly square.
+  const points = [[0,0],[0.01,0],[0.02,0.005],[0.03,0],[0.04,0]];
+  const line = buildLine(points, [0,0,1,0,0]);
+  const heading = (a, b) => Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI;
+  const at = p => line.findIndex(q => Math.abs(q[0] - p[0]) < 1e-9 && Math.abs(q[1] - p[1]) < 1e-9);
+  const i = at([0.01,0]), j = at([0.03,0]);
+  assert.ok(Math.abs(heading(line[i], line[i+1])) < 5, `leaves the straight at ${heading(line[i], line[i+1])}°`);
+  assert.ok(Math.abs(heading(line[j-1], line[j])) < 5, `joins the straight at ${heading(line[j-1], line[j])}°`);
+  // A transition: leaving the straight, the bend grows step by step (no
+  // sudden full curvature at the join).
+  const turns = [0, 1, 2, 3, 4, 5].map(n => Math.abs(heading(line[i+n+1], line[i+n+2]) - heading(line[i+n], line[i+n+1])));
+  assert.ok(turns[0] < turns[1] && turns[1] < turns[2] && turns[0] < Math.max(...turns) / 2, `the bend builds up: ${turns.map(t => t.toFixed(2)).join(' ')}`);
+  // Curve, corner, curve: the corner is kept.
+  const bent = buildLine([[0,0],[0.01,0.005],[0.02,0],[0.03,0.005],[0.04,0]], [0,1,0,1,0]);
+  const k = bent.findIndex(q => Math.abs(q[0] - 0.02) < 1e-9 && Math.abs(q[1]) < 1e-9);
+  assert.ok(Math.abs(heading(bent[k-1], bent[k]) - heading(bent[k], bent[k+1])) > 30, 'a sharp turn at the corner');
+});
 
 function editingMap(sources, handlers, pick) {
   return {getSource: id => sources[id], addSource: id => { sources[id] = {setData(data) { this.data = data; }}; }, getLayer: id => id.endsWith('targets') ? {} : undefined, addLayer() {},
@@ -164,7 +183,9 @@ test('drawing points are selected, then moved, deleted, curved or extended', asy
   for (const [lng, lat] of [[0,0],[1,0],[1,1],[0,1]]) at(lng, lat);
   d.finish();
   const area = d.features.at(-1);
-  assert.equal(sources['atlas-drawing-handles'].data.features.length, 4, 'handles while a tool is in use');
+  const handles = sources['atlas-drawing-handles'].data.features;
+  assert.equal(handles.filter(f => !f.properties.mid).length, 4, 'handles while a tool is in use');
+  assert.deepEqual(handles.filter(f => f.properties.mid).map(f => [f.properties.after, f.geometry.coordinates]), [[0,[0.5,0]],[1,[1,0.5]],[2,[0.5,1]],[3,[0,0.5]]], 'and one in the middle of each side, closing side included');
   d.movePoint(area.id, 2, [2, 2]);
   assert.deepEqual(d.features.at(-1).geometry.coordinates[0], [[0,0],[1,0],[2,2],[0,1],[0,0]]);
   // Clicking a point selects it; delete removes just that point.
@@ -198,9 +219,32 @@ test('drawing points are selected, then moved, deleted, curved or extended', asy
   at(-1, 0); d.finish();
   assert.deepEqual(editablePoints(d.features.at(-1)), [[4,1],[3,1],[2,1],[1,0],[0,0],[-1,0]]);
   assert.deepEqual(d.features.at(-1).properties.curved, [0,1,0,1,0,0]);
+  // On a curve, the middle handle sits on the drawn curve, not on the chord.
+  const curvedLine = d.features.at(-1), drawnCoords = curvedLine.geometry.coordinates;
+  const middles = sources['atlas-drawing-handles'].data.features.filter(f => f.properties.mid && f.properties.drawing === curvedLine.id);
+  assert.ok(middles.every(f => drawnCoords.some(c => c[0] === f.geometry.coordinates[0] && c[1] === f.geometry.coordinates[1])), 'each middle handle is a point of the drawn line');
+  // Clicking a segment's middle handle inserts a point there and selects it:
+  // a curve point inside a curve, a corner on a straight.
+  line = d.features.at(-1);
+  picked = {drawing: line.id, after: 4, mid: 1}; at(-0.5, 0); picked = null;
+  assert.deepEqual(editablePoints(d.features.at(-1)), [[4,1],[3,1],[2,1],[1,0],[0,0],[-0.5,0],[-1,0]]);
+  assert.deepEqual(d.features.at(-1).properties.curved, [0,1,0,1,0,0,0]);
+  assert.deepEqual(d.selection().index, 5);
+  at(9, 9);
+  picked = {drawing: line.id, after: 0, mid: 1}; at(3.5, 1); picked = null;
+  assert.deepEqual(d.features.at(-1).properties.curved, [0,1,1,0,1,0,0,0], 'between an end and a curve point: part of the curve');
+  // Dragging a middle handle inserts the point, then moves it.
+  at(9, 9);
+  const target = {drawing: line.id, after: 6, mid: 1};
+  handlers['mousedown drawing-handle-targets']({features: [{properties: target}], point: {x: 0, y: 0}, originalEvent: {button: 0}, preventDefault() {}});
+  handlers['mousemove ']({point: {x: 50, y: 0}, lngLat: {lng: -0.8, lat: 0.2}});
+  handlers['mousemove ']({point: {x: 60, y: 0}, lngLat: {lng: -0.8, lat: 0.3}});
+  handlers['mouseup ']({});
+  assert.deepEqual(editablePoints(d.features.at(-1)).slice(-3), [[-0.5,0],[-0.8,0.3],[-1,0]], 'one point inserted, then moved');
   // Kept through saving and opening.
   const saved = readDrawing(d.collection());
-  assert.deepEqual(saved[0].properties.curved, [0,1,0,1,0,0]);
+  assert.deepEqual(saved[0].properties.curved, [0,1,1,0,1,0,0,0,0]);
+  assert.deepEqual(saved[0].properties.line_points, editablePoints(d.features.at(-1)));
   // Files from before keep curves: curve_points are all curve points.
   const old = readDrawing({type:'Feature', properties:{curve_points:[[0,0],[1,1],[2,0]]}, geometry:{type:'LineString', coordinates:[[0,0],[1,1],[2,0]]}});
   assert.deepEqual(old[0].properties.curved, [1,1,1]);

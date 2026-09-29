@@ -44,22 +44,43 @@ export function formatRadius(km, units = 'metric') {
 // kilometres a curve or a sketch spans.
 const toPlane = ([lng0, lat0]) => { const k = Math.cos(rad(lat0)); return ([lng, lat]) => [rad(((lng - lng0) % 360 + 540) % 360 - 180)*R*k, rad(lat - lat0)*R]; };
 const fromPlane = ([lng0, lat0]) => { const k = Math.cos(rad(lat0)); return ([x, y]) => [lng0 + x/(R*k)*180/Math.PI, lat0 + y/R*180/Math.PI]; };
-// Smooth curve through the given points (centripetal Catmull–Rom).
-export function smoothCurve(points, steps = 12) {
+// Smooth curve through the given points, one quintic Hermite span between
+// each pair, so both direction and curvature run on without a break. At each
+// point the direction bisects the chords either side and the curvature is
+// that of the circle through it and its neighbours. Where the curve meets a
+// straight stretch (before, after: the point before the first, after the
+// last), it starts along the straight with no curvature, which then builds
+// up over the first span, like a railway transition curve; a free end keeps
+// its neighbour's curvature and mirrors its direction.
+export function smoothCurve(points, steps = 24, {before, after} = {}) {
   if (points.length < 3) return points.map(p => [...p]);
   const [to, from] = [toPlane(points[0]), fromPlane(points[0])];
-  const q = points.map(to), out = [];
-  const pts = [[2*q[0][0]-q[1][0], 2*q[0][1]-q[1][1]], ...q, [2*q.at(-1)[0]-q.at(-2)[0], 2*q.at(-1)[1]-q.at(-2)[1]]];
-  const knot = (t, a, b) => t + Math.max(1e-9, Math.hypot(b[0]-a[0], b[1]-a[1])**0.5);
-  for (let i = 1; i < pts.length - 2; i++) {
-    const [p0, p1, p2, p3] = [pts[i-1], pts[i], pts[i+1], pts[i+2]];
-    const t0 = 0, t1 = knot(t0, p0, p1), t2 = knot(t1, p1, p2), t3 = knot(t2, p2, p3);
-    for (let s = 0; s < steps; s++) {
-      const t = t1 + (t2 - t1) * s / steps;
-      const lerp = (a, b, ta, tb) => [0, 1].map(k => ((tb - t)*a[k] + (t - ta)*b[k]) / (tb - ta));
-      const a1 = lerp(p0, p1, t0, t1), a2 = lerp(p1, p2, t1, t2), a3 = lerp(p2, p3, t2, t3);
-      const b1 = lerp(a1, a2, t0, t2), b2 = lerp(a2, a3, t1, t3);
-      out.push(from(lerp(b1, b2, t1, t2)));
+  const q = points.map(to), n = q.length, unit = ([x, y]) => { const l = Math.hypot(x, y) || 1; return [x / l, y / l]; };
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1]], cross = (a, b) => a[0] * b[1] - a[1] * b[0];
+  const chord = i => unit(sub(q[i+1], q[i]));
+  const tangents = q.map((_, i) => i === 0 || i === n - 1 ? null : unit([chord(i-1)[0] + chord(i)[0], chord(i-1)[1] + chord(i)[1]]));
+  const mirror = (c, t) => unit([2 * c[0] - t[0], 2 * c[1] - t[1]]);
+  const along = (a, b) => unit(sub(to(b), to(a)));
+  tangents[0] = before ? along(before, points[0]) : mirror(chord(0), tangents[1]);
+  tangents[n - 1] = after ? along(points.at(-1), after) : mirror(chord(n - 2), tangents[n - 2]);
+  // Curvature (signed, per km) through three points, as a vector along the
+  // left normal of the direction there.
+  const bend = i => {
+    const a = sub(q[i], q[i-1]), b = sub(q[i+1], q[i]), c = sub(q[i+1], q[i-1]);
+    const k = 2 * cross(a, b) / ((Math.hypot(...a) * Math.hypot(...b) * Math.hypot(...c)) || Infinity);
+    return [-tangents[i][1] * k, tangents[i][0] * k];
+  };
+  const curvature = q.map((_, i) => i === 0 || i === n - 1 ? null : bend(i));
+  curvature[0] = before ? [0, 0] : curvature[1];
+  curvature[n - 1] = after ? [0, 0] : curvature[n - 2];
+  const out = [];
+  for (let i = 0; i < n - 1; i++) {
+    const L = Math.hypot(...sub(q[i+1], q[i]));
+    const v0 = tangents[i].map(c => c * L), v1 = tangents[i+1].map(c => c * L), a0 = curvature[i].map(c => c * L * L), a1 = curvature[i+1].map(c => c * L * L);
+    for (let k = 0; k < steps; k++) {
+      const t = k / steps, t2 = t*t, t3 = t2*t, t4 = t3*t, t5 = t4*t;
+      const h = [1 - 10*t3 + 15*t4 - 6*t5, t - 6*t3 + 8*t4 - 3*t5, 0.5*t2 - 1.5*t3 + 1.5*t4 - 0.5*t5, 0.5*t3 - t4 + 0.5*t5, -4*t3 + 7*t4 - 3*t5, 10*t3 - 15*t4 + 6*t5];
+      out.push(from([0, 1].map(c => h[0]*q[i][c] + h[1]*v0[c] + h[2]*a0[c] + h[3]*a1[c] + h[4]*v1[c] + h[5]*q[i+1][c])));
     }
   }
   out.push([...points.at(-1)]);
@@ -139,14 +160,17 @@ export function readDrawing(json) {
 // A line through points where each point is a corner (0) or a curve point
 // (1): runs of curve points are drawn as a smooth curve, and the line turns
 // sharply at corners, so one line can join straight track and curves. The
-// ends are always corners.
+// ends are always corners. Where a curve meets a straight stretch, it
+// leaves (or joins) it along the straight, without a corner; a corner
+// between two curves stays a corner.
 export function buildLine(points, curved) {
   if (points.length < 2) return points.map(p => [...p]);
   const breaks = points.map((_, i) => i === 0 || i === points.length - 1 || !curved[i]).flatMap((b, i) => b ? [i] : []);
+  const straight = k => k >= 1 && k < breaks.length && breaks[k] - breaks[k-1] === 1;
   const out = [];
   for (let k = 1; k < breaks.length; k++) {
-    const run = points.slice(breaks[k-1], breaks[k] + 1);
-    const part = run.length > 2 ? smoothCurve(run) : run.map(p => [...p]);
+    const [a, b] = [breaks[k-1], breaks[k]], run = points.slice(a, b + 1);
+    const part = run.length > 2 ? smoothCurve(run, 24, {before: straight(k - 1) ? points[a - 1] : undefined, after: straight(k + 1) ? points[b + 1] : undefined}) : run.map(p => [...p]);
     out.push(...(out.length ? part.slice(1) : part));
   }
   return out;
@@ -209,13 +233,14 @@ function dragPoints(map, layer, {enabled, move, done}) {
   return () => Date.now() < quietUntil;
 }
 const EDIT_HINT = ' Click a point to select it; drag a point to move it.';
+const DRAW_EDIT_HINT = EDIT_HINT.slice(0, -1) + '; click or drag the small dot in the middle of a segment to add a point there.';
 // A click on a point just added belongs to a double-click, not a selection.
 const DOUBLE_CLICK_MS = 500;
 
 const STORE = 'openrailwayatlas-drawing';
 const COLOR = '#c2185b';
 const colour = ['coalesce', ['get','color'], COLOR];
-const HINTS = {point:'Click to place points.', line:'Click to add points; double-click or Finish to end. Turn on Curved for curve points (smooth), off for corners (straight).', area:'Click to add corners; double-click or Finish to close.', erase:'Click a drawing to delete it.'};
+const HINTS = {point:'Click to place points.', line:'Click to add points; double-click or Finish to end. Turn on Curved for curve points (smooth), off for corners (straight). With the drawing tools closed, click a line for its elevation profile.', area:'Click to add corners; double-click or Finish to close.', erase:'Click a drawing to delete it.'};
 export class Drawing {
   constructor(map, {units = () => 'metric', status = () => {}, changed = () => {}} = {}) {
     Object.assign(this, {map, units, status, changed});
@@ -225,7 +250,12 @@ export class Drawing {
     try { this.add(readDrawing(JSON.parse(localStorage.getItem(STORE) || 'null')), false); } catch {}
     this.dragging = dragPoints(map, 'drawing-handle-targets', {
       enabled: () => this.mode !== null && !this.paused,
-      move: ({drawing, index}, p) => this.movePoint(drawing, index, p),
+      move: (handle, p) => {
+        // Dragging a segment's middle handle inserts a point there, then
+        // moves it.
+        if (handle.mid) { this.insertPoint(handle.drawing, handle.after + 1, p); Object.assign(handle, {mid: undefined, index: handle.after + 1}); return; }
+        this.movePoint(handle.drawing, handle.index, p);
+      },
       done: () => this.save(),
     });
   }
@@ -256,8 +286,9 @@ export class Drawing {
       // Editable points, shown while a drawing tool is in use: curve points
       // round, corners square-ish (thicker ring); the selected one filled.
       {id:'drawing-handles', type:'circle', source:'atlas-drawing-handles', paint:{
-        'circle-color':['case', selected, colour, '#fffef8'], 'circle-radius':['case', selected, 7, 5],
-        'circle-stroke-color':['case', selected, '#fffef8', colour], 'circle-stroke-width':['case', ['==', ['get','curved'], 1], 1.5, 2.5]}},
+        'circle-color':['case', selected, colour, '#fffef8'], 'circle-radius':['case', ['has','mid'], 3.5, selected, 7, 5],
+        'circle-stroke-color':['case', selected, '#fffef8', colour], 'circle-stroke-width':['case', ['has','mid'], 1.2, ['==', ['get','curved'], 1], 1.5, 2.5],
+        'circle-opacity':['case', ['has','mid'], 0.75, 1], 'circle-stroke-opacity':['case', ['has','mid'], 0.6, 1]}},
       pointTarget('drawing-handle-targets', 'atlas-drawing-handles'),
     ];
     for (const layer of this.layers) if (!map.getLayer(layer.id)) map.addLayer(layer);
@@ -284,15 +315,44 @@ export class Drawing {
       ? {type:'Polygon', coordinates:[[...points, points[0]]]} : {type:'LineString', coordinates:points}});
     return {type:'FeatureCollection', features};
   }
-  // Handles for every drawing's points and the shape in progress (drawing 0).
+  // Handles for every drawing's points and the shape in progress (drawing
+  // 0), and a fainter one in the middle of each segment for inserting a
+  // point there (not in Erase).
   handleCollection() {
     if (!this.mode || this.paused) return {type:'FeatureCollection', features:[]};
     const handle = (coordinates, drawing, index, color, curved) => ({type:'Feature', geometry:{type:'Point', coordinates},
       properties:{drawing, index, color, curved: curved ? 1 : 0, selected: this.selected?.drawing === drawing && this.selected?.index === index}});
+    const middles = (drawing, color, points, closed, drawn) => this.mode === 'erase' ? [] : points.slice(0, closed ? points.length : -1).map((p, i) => {
+      const q = points[(i + 1) % points.length], chord = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+      // On a curve, the drawn line's point nearest the chord's middle.
+      const near = (a, b) => (b[0]-chord[0])**2 + (b[1]-chord[1])**2 < (a[0]-chord[0])**2 + (a[1]-chord[1])**2 ? b : a;
+      const at = drawn.length ? drawn.reduce(near) : chord;
+      return {type:'Feature', geometry:{type:'Point', coordinates: at}, properties:{drawing, after: i, mid: 1, color}};
+    });
     return {type:'FeatureCollection', features:[
-      ...this.features.flatMap(f => { const {points, curved} = editableNodes(f); return points.map((p, i) => handle(p, f.id, i, f.properties.color, curved[i])); }),
+      ...this.features.flatMap(f => {
+        const {points, curved} = editableNodes(f), polygon = f.geometry.type === 'Polygon';
+        if (f.geometry.type === 'Point') return points.map((p, i) => handle(p, f.id, i, f.properties.color, 0));
+        return [...middles(f.id, f.properties.color, points, polygon, polygon ? [] : f.geometry.coordinates), ...points.map((p, i) => handle(p, f.id, i, f.properties.color, curved[i]))];
+      }),
+      ...middles(0, this.style.color, this.draft, false, this.mode === 'line' ? buildLine(this.draft, this.draftCurved) : []),
       ...this.draft.map((p, i) => handle(p, 0, i, this.style.color, this.draftCurved[i])),
     ]};
+  }
+  // Insert a point before `index`: a curve point where either neighbour is
+  // one (inside a curve), else a corner.
+  insertPoint(drawing, index, p) {
+    if (drawing === 0) {
+      this.draft.splice(index, 0, p);
+      this.draftCurved.splice(index, 0, this.mode === 'line' && (this.draftCurved[index - 1] || this.draftCurved[index]) ? 1 : 0);
+      this.refresh(); return;
+    }
+    const at = this.features.findIndex(f => f.id === drawing);
+    if (at < 0) return;
+    const {points, curved} = editableNodes(this.features[at]), line = this.features[at].geometry.type === 'LineString';
+    const flag = line && (curved[index - 1] || curved[index % curved.length]) ? 1 : 0;
+    this.features[at] = withNodes(this.features[at], [...points.slice(0, index), p, ...points.slice(index)], [...curved.slice(0, index), flag, ...curved.slice(index)]);
+    this.refresh();
   }
   nodesOf(drawing) {
     if (drawing === 0) return {points: this.draft, curved: this.draftCurved, type: this.mode === 'area' ? 'Polygon' : 'LineString'};
@@ -370,7 +430,7 @@ export class Drawing {
     this.status(this.mode === 'line' && points.length >= 2 ? formatLength(lengthKm(points), units)
       : this.mode === 'area' && points.length >= 3 ? formatArea(areaKm2(points), units)
       : this.paused && this.mode ? 'Moving the map: drag, pinch or tap freely. Press Move map again to keep drawing.'
-      : this.mode ? HINTS[this.mode] + (this.mode === 'erase' ? '' : EDIT_HINT) : '');
+      : this.mode ? HINTS[this.mode] + (this.mode === 'erase' ? '' : DRAW_EDIT_HINT) : '');
   }
   save() {
     try { localStorage.setItem(STORE, JSON.stringify(this.collection())); } catch {}
@@ -414,7 +474,14 @@ export class Drawing {
     // drawings). The click after a selection clears it.
     const handle = this.mode !== 'erase' && this.map.getLayer('drawing-handle-targets') && this.map.queryRenderedFeatures(point, {layers:['drawing-handle-targets']})[0];
     if (handle) {
-      const {drawing, index} = handle.properties;
+      const {drawing, index, mid, after} = handle.properties;
+      // A segment's middle handle: a new point there, selected.
+      if (mid) {
+        this.insertPoint(drawing, after + 1, handle.geometry?.coordinates ?? p);
+        if (drawing !== 0) this.save();
+        this.select({drawing, index: after + 1});
+        return;
+      }
       if (drawing === 0 && index === this.draft.length - 1 && Date.now() - this.lastAdd < DOUBLE_CLICK_MS) return;
       this.select({drawing, index});
       return;
@@ -474,9 +541,24 @@ export class Drawing {
 // Measuring: a multi-segment distance, or the radius of a curve fitted to
 // three or more points on it. Measurements are not kept.
 const INK = '#16414d';
+// Height difference and gradient between the ends of a route of `km`.
+export function climb(start, end, km) {
+  if (start === null || end === null || !(km > 0)) return null;
+  const rise = end - start;
+  return {rise, gradient: rise / (km * 1000)};
+}
+// A height difference and gradient: "+12 m · 1.20% (12.0‰)".
+export function formatClimb({rise, gradient}, units = 'metric') {
+  const value = units === 'imperial' ? rise * 3.28084 : rise, unit = units === 'imperial' ? 'ft' : 'm';
+  const sign = n => (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(n);
+  return `${sign(Math.round(value))} ${unit} · ${sign(Number((gradient * 100).toFixed(2)))}% (${Math.abs(gradient * 1000).toFixed(1)}‰)`;
+}
 export class Measure {
-  constructor(map, {units = () => 'metric', status = () => {}, changed = () => {}} = {}) {
-    Object.assign(this, {map, units, status, changed});
+  // heights(points): a promise of the height at each point, for the rise
+  // and gradient between a distance's ends (none when not given).
+  constructor(map, {units = () => 'metric', status = () => {}, changed = () => {}, heights = null} = {}) {
+    Object.assign(this, {map, units, status, changed, heights});
+    this.climb = null;
     this.mode = null; this.points = []; this.cursor = null; this.ended = false; this.selected = null; this.lastAdd = 0;
     this.dragging = dragPoints(map, 'measure-point-targets', {
       enabled: () => this.mode !== null,
@@ -507,7 +589,8 @@ export class Measure {
     const features = this.points.map((p, index) => feature({type:'Point', coordinates:p}, {index, selected: this.selected === index}));
     if (this.mode === 'distance') {
       for (let i = 1; i < live.length; i++) features.push(feature({type:'LineString', coordinates:[live[i-1], live[i]]}, {kind:'segment', ...(live.length > 2 ? {label: formatLength(lengthKm([live[i-1], live[i]]), units)} : {})}));
-      if (live.length >= 2) features.push(feature({type:'Point', coordinates:live.at(-1)}, {kind:'total', label: formatLength(lengthKm(live), units)}));
+      const climbed = this.ended && this.climbFor() && this.climb?.key === this.climbFor() ? this.climb.value : null;
+      if (live.length >= 2) features.push(feature({type:'Point', coordinates:live.at(-1)}, {kind:'total', label: formatLength(lengthKm(live), units) + (climbed ? `\n${formatClimb(climbed, units)}` : '')}));
     } else if (this.mode === 'radius') {
       const fit = fitCircle(this.points);
       if (fit) {
@@ -518,12 +601,29 @@ export class Measure {
     }
     return {type:'FeatureCollection', features};
   }
+  // The finished distance's ends, as a key for its heights.
+  climbFor() { return this.mode === 'distance' && this.points.length >= 2 ? JSON.stringify([this.points[0], this.points.at(-1), lengthKm(this.points)]) : null; }
+  // Heights of a finished distance's ends, fetched once per pair of ends.
+  updateClimb() {
+    const key = this.ended ? this.climbFor() : null;
+    if (!key || !this.heights || this.climb?.key === key) return;
+    this.climb = {key, value: null};
+    const km = lengthKm(this.points);
+    this.heights([this.points[0], this.points.at(-1)]).then(([a, b]) => {
+      if (this.climb?.key !== key) return;
+      this.climb.value = climb(a, b, km);
+      this.refresh();
+    }).catch(() => {});
+  }
   refresh() {
+    this.updateClimb();
     this.map.getSource('atlas-measure')?.setData(this.collection());
     const units = this.units(), hint = this.points.length ? EDIT_HINT : '';
     if (this.mode === 'distance') {
       const live = this.cursor && !this.ended ? [...this.points, this.cursor] : this.points;
-      this.status(live.length >= 2 ? `Distance: ${formatLength(lengthKm(live), units)} over ${live.length - 1} segment${live.length > 2 ? 's' : ''}${this.ended ? '' : ' · double-click to end'}.${hint}` : `Click points to measure; double-click to end.${hint}`);
+      const climbed = this.ended && this.climb?.key === this.climbFor() ? this.climb.value : null;
+      const heights = !this.ended || !this.heights ? '' : climbed ? ` End to end: ${formatClimb(climbed, units)}.` : this.climb?.key === this.climbFor() && this.climb.value === null ? ' Finding heights…' : '';
+      this.status(live.length >= 2 ? `Distance: ${formatLength(lengthKm(live), units)} over ${live.length - 1} segment${live.length > 2 ? 's' : ''}${this.ended ? '' : ' · double-click to end'}.${heights}${hint}` : `Click points to measure; double-click to end.${hint}`);
     } else if (this.mode === 'radius') {
       const fit = fitCircle(this.points);
       this.status(fit ? `Curve radius ≈ ${formatRadius(fit.radiusKm, units)}, fitted to ${this.points.length} points. Add more points along the curve to refine it.${hint}`

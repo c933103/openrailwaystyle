@@ -16918,16 +16918,27 @@
       "source-layer": "atlas_track_counts",
       "minzoom": 14,
       "filter": [
-        ">=",
+        "all",
         [
-          "to-number",
+          ">=",
+          [
+            "to-number",
+            [
+              "get",
+              "tracks"
+            ],
+            0
+          ],
+          1
+        ],
+        [
+          "!=",
           [
             "get",
-            "tracks"
+            "station"
           ],
-          0
-        ],
-        1
+          true
+        ]
       ],
       "layout": {
         "text-field": [
@@ -16941,13 +16952,25 @@
           "Noto Sans Bold"
         ],
         "text-size": 11,
-        "icon-image": "track-badge",
         "icon-text-fit": "both",
         "icon-text-fit-padding": [
           2,
           5,
           1,
           5
+        ],
+        "icon-image": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "tunnel"
+            ],
+            true
+          ],
+          "track-badge-tunnel",
+          "track-badge"
         ],
         "symbol-sort-key": [
           "+",
@@ -16991,22 +17014,68 @@
             ],
             true
           ],
-          "#6a7f86",
+          "#4b626a",
           "#173e47"
-        ],
-        "icon-opacity": [
-          "case",
+        ]
+      }
+    },
+    {
+      "id": "infrastructure-station-tracks",
+      "type": "symbol",
+      "source": "trackCounts",
+      "source-layer": "atlas_track_counts",
+      "minzoom": 14,
+      "filter": [
+        "all",
+        [
+          ">=",
           [
-            "==",
+            "to-number",
             [
               "get",
-              "tunnel"
+              "tracks"
             ],
-            true
+            0
           ],
-          0.75,
           1
+        ],
+        [
+          "==",
+          [
+            "get",
+            "station"
+          ],
+          true
         ]
+      ],
+      "layout": {
+        "text-field": [
+          "to-string",
+          [
+            "get",
+            "tracks"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 11,
+        "icon-text-fit": "both",
+        "icon-text-fit-padding": [
+          2,
+          5,
+          1,
+          5
+        ],
+        "icon-image": "track-badge-station",
+        "icon-allow-overlap": true,
+        "text-allow-overlap": true,
+        "icon-ignore-placement": true,
+        "text-ignore-placement": true,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "#7a4a08"
       }
     },
     {

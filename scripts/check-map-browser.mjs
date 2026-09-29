@@ -83,7 +83,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') { console.log('Browser resource:',msg.text()); if(/DataCloneError|already detached/.test(msg.text())) errors.push(msg.text()); }});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260929-7&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260929-8&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
@@ -149,9 +149,10 @@ try{
   await expectMap(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     const labels=map.queryRenderedFeatures({layers:['infrastructure-track-count']});
-    return labels.some(f=>f.properties.tracks>=4) && labels.some(f=>f.properties.tracks===2);
-  },'Track-count labels must render near Tokyo station');
-  console.log('PASS: tracks side by side are labelled');
+    const stations=map.queryRenderedFeatures({layers:['infrastructure-station-tracks']});
+    return labels.some(f=>f.properties.tracks>=4) && labels.some(f=>f.properties.tracks===2) && stations.some(f=>f.properties.tracks>=15);
+  },'Track-count labels, and Tokyo station\'s own count, must render near Tokyo station');
+  console.log('PASS: tracks side by side and at stations are labelled');
   await moveTo(10,128.12,35.17);
   // Bridges and tunnels are marked in every view, not only Infrastructure.
   await page.locator('[data-mode="gauge"]').click();

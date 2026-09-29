@@ -21,19 +21,30 @@ test('all speed bands have correct inclusive boundaries', () => {
   assert.equal(speedColor(500), SPEED_BANDS.at(-1).color);
 });
 test('source mph and directional speed labels are preserved', () => {
+  // Brackets only for a converted value.
   assert.deepEqual(formatSpeed({ maxspeed: 160.9344, speed_label: '100 mph' }), { mapped: '160.9 km/h (100 mph)', tagged: '100 mph' });
-  assert.equal(formatSpeed({ maxspeed: 160, speed_label: '160 / 120' }).tagged, '160 / 120 (km/h)');
+  assert.equal(formatSpeed({ maxspeed: 160.9344, speed_label: '100 mph' }, 'imperial').mapped, '100 mph');
+  assert.equal(formatSpeed({ maxspeed: 160, speed_label: '160' }).mapped, '160 km/h');
+  assert.equal(formatSpeed({ maxspeed: 160, speed_label: '160' }, 'imperial').mapped, '99.4 mph (160 km/h)');
+  assert.equal(formatSpeed({ maxspeed: 160, speed_label: '160 / 120' }).tagged, '160 / 120 km/h');
   assert.equal(formatSpeed({ maxspeed: 80.4672, speed_label: '50 mph (30 mph)' }).tagged, '50 mph (30 mph)');
-  assert.equal(formatSpeed({ speed_label: '- / 80' }).tagged, '- / 80 (km/h)');
+  assert.equal(formatSpeed({ speed_label: '- / 80' }).tagged, '- / 80 km/h');
 });
 test('shared URLs keep display settings and reject invalid map modes', () => {
-  assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',stations:false,labels:true,inactive:false,relief:true,names:true,autoGlobe:true,transport:true,destinations:true,constraints:true,units:'metric',detail:0,language:'local' });
+  assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',stations:false,labels:true,inactive:false,relief:true,names:true,autoGlobe:true,readout:true,transport:true,destinations:true,constraints:true,units:'metric',detail:0,language:'local' });
   assert.equal(readSettings('?mode=invalid').mode, 'speed');
   // A remembered language applies unless the URL names one.
   assert.equal(readSettings('', {language:'ja'}).language, 'ja');
   assert.equal(readSettings('?language=ko', {language:'ja'}).language, 'ko');
   assert.equal(readSettings('', {language:'xx'}).language, 'local');
-  assert.deepEqual(readSettings('?relief=1', {relief:false, stations:false, mode:'bogus', units:'imperial'}), {mode:'speed',stations:false,labels:true,inactive:true,relief:true,names:true,autoGlobe:true,transport:true,destinations:true,constraints:true,units:'imperial',detail:0,language:'local'});
+  assert.deepEqual(readSettings('?relief=1', {relief:false, stations:false, mode:'bogus', units:'imperial'}), {mode:'speed',stations:false,labels:true,inactive:true,relief:true,names:true,autoGlobe:true,readout:true,transport:true,destinations:true,constraints:true,units:'imperial',detail:0,language:'local'});
+});
+test('cursor readout: hemispheres, longitude wrapped, zoom and the More detail scale', async () => {
+  const {formatReadout} = await import('../styles/map-model.mjs');
+  assert.equal(formatReadout({lng: 139.7742639, lat: 35.7045903}, 19.11), '35.70459° N, 139.77426° E · zoom 19.1');
+  assert.equal(formatReadout({lng: -43.2, lat: -22.9}, 12), '22.90000° S, 43.20000° W · zoom 12.0');
+  assert.equal(formatReadout({lng: 190, lat: 0}, 3, 2), '0.00000° N, 170.00000° W · zoom 3.0 (drawn at 25%)');
+  assert.equal(formatReadout({lng: -540, lat: 10}, 3), '10.00000° N, 180.00000° W · zoom 3.0');
 });
 test('more detail has three levels; older links and cookies hold true or 1 for the first', () => {
   assert.equal(readSettings('?detail=2').detail, 2);
@@ -271,16 +282,23 @@ test('tracks side by side are counted from mapped geometry', async () => {
   const line = (y, extra = {}) => ({group:'rail', main:true, parts:[[[0, y], [1000, y + 20]]], ...extra});
   const reversed = y => ({group:'rail', main:true, parts:[[[1000, y + 20], [0, y]]]});
   const lines = [line(0), line(4.5), line(9), line(14, {main:false}), line(19, {main:false}), line(24, {main:false}),
-    line(115), reversed(119.5), {group:'rail', main:true, parts:[[[500, -300], [500, 300]]]}, line(6, {group:'rail-tunnel'}),
+    line(115), reversed(119.5), {group:'rail', main:true, parts:[[[500, -300], [500, 300]]]}, line(6, {tunnel:true}),
     {group:'rail', main:true, parts:[[[400, 123], [480, 128.5]]]}];
   const {lines: result, points} = countTracks(lines, 1);
-  // Sidings are neither counted nor labelled; the crossover adds no track.
-  assert.deepEqual(result.map(r => r.tracks), [3, 3, 3, 0, 0, 0, 2, 2, 1, 1, 0]);
+  // Sidings are neither counted nor labelled; the crossover adds no track;
+  // the subway beneath counts with the tracks above it.
+  assert.deepEqual(result.map(r => r.tracks), [4, 4, 4, 0, 0, 0, 2, 2, 1, 4, 0]);
   const on = (y0, within = 0.5) => points.filter(p => p.x < 900 && Math.abs(p.y - (y0 + p.x * 0.02)) < within);
-  // Labels sit on the middle track only; the subway beneath has its own.
-  assert.ok(on(4.5).length >= 1 && on(4.5).every(p => p.tracks === 3));
-  assert.equal(on(0).length + on(9).length, 0);
-  assert.ok(on(6).length >= 1 && on(6).every(p => p.tracks === 1));
+  // Labels sit on the middle track only.
+  assert.ok(on(4.5).length >= 1 && on(4.5).every(p => p.tracks === 4 && !p.tunnel));
+  assert.equal(on(0).length + on(9).length + on(6).length, 0);
+  // A line quadrupled with one pair underground 10 m beside the surface
+  // pair: one group of four, not in tunnel; a pair wholly underground is.
+  const quad = countTracks([line(0), line(4.5), line(14.5, {tunnel:true}), line(19, {tunnel:true})], 1);
+  assert.deepEqual(quad.lines.map(l => l.tracks), [4, 4, 4, 4]);
+  assert.ok(quad.points.length && quad.points.every(p => p.tracks === 4 && !p.tunnel));
+  const underground = countTracks([line(0, {tunnel:true}), line(4.5, {tunnel:true})], 1);
+  assert.ok(underground.points.length && underground.points.every(p => p.tracks === 2 && p.tunnel));
   // A double track: one of its two tracks is labelled, whichever way each
   // was drawn, about once per 800 m.
   const pair = [...on(115), ...on(119.5)];
@@ -302,18 +320,26 @@ test('tracks side by side are counted from mapped geometry', async () => {
   ], 1);
   assert.deepEqual(split.lines.map(l => l.tracks), Array(11).fill(2));
   assert.ok(split.points.length >= 1 && split.points.every(p => p.tracks === 2), JSON.stringify(split.points));
-  // Only present, non-ferry lines are counted; tunnels and trams separately.
+  // Only present, non-ferry lines are counted; trams separately.
   const feature = (properties, type = 2) => ({type, properties, loadGeometry: () => [[{x:0, y:0}, {x:1, y:1}]]});
   const input = trackLines([feature({state:'construction'}), feature({feature:'ferry'}), feature({}, 1), feature({tunnel:true}), feature({feature:'tram', service:'siding'})]);
-  assert.deepEqual(input.map(l => l && [l.group, l.main]), [null, null, null, ['rail-tunnel', true], ['tram', false]]);
+  assert.deepEqual(input.map(l => l && [l.group, l.main, l.tunnel]), [null, null, null, ['rail', true, true], ['tram', false, false]]);
 });
-test('track counts are badges on label points in the Infrastructure view from zoom 14', () => {
+test('track counts are badges on label points in the Infrastructure view from zoom 14', async () => {
   const layer = style.layers.find(l => l.id === 'infrastructure-track-count');
   assert.equal(layer.minzoom, 14);
   assert.equal(layer.source, 'trackCounts');
   assert.deepEqual([style.sources.trackCounts.minzoom, style.sources.trackCounts.maxzoom], [14, 14]);
   assert.equal(layer['source-layer'], 'atlas_track_counts');
-  assert.equal(layer.layout['icon-image'], 'track-badge');
+  // Each kind has its own badge; stations a layer of their own, always drawn.
+  const {expression} = await import('@maplibre/maplibre-gl-style-spec');
+  const image = expression.createExpression(layer.layout['icon-image']).value;
+  assert.deepEqual([{}, {tunnel: true}].map(properties => image.evaluate({zoom: 14}, {properties})), ['track-badge', 'track-badge-tunnel']);
+  const stations = style.layers.find(l => l.id === 'infrastructure-station-tracks');
+  assert.equal(stations.layout['icon-image'], 'track-badge-station');
+  assert.equal(stations.layout['icon-allow-overlap'], true);
+  assert.equal(featureFilter(layer.filter).filter({zoom:14}, {type:1, properties:{tracks:8, station:true}}), false);
+  assert.equal(featureFilter(stations.filter).filter({zoom:14}, {type:1, properties:{tracks:8, station:true}}), true);
   assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:1, properties:{tracks:4}}), true);
   assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:1, properties:{tracks:1}}), true);
   assert.equal(featureFilter(layer.filter).filter({zoom:13}, {type:1, properties:{}}), false);
@@ -344,13 +370,32 @@ test('track-count tiles: neighbours joined by way, points inside, none in statio
   const square = [[[0, 1900], [4096, 1900], [4096, 2100], [0, 2100], [0, 1900]]];
   const areas = tile('standard_railway_grouped_station_areas', [{type: 3, tags: {id: 1}, geometry: square}]);
   const stationAt = (station, x = 2000, y0 = 2000) => tile('standard_railway_text_stations', [{type: 1, tags: {feature: 'station', station}, geometry: [[x, y0]]}]);
-  assert.equal(countTile({tiles, areas, stations: stationAt('train')}, y).points.length, 0);
+  const running = result => result.points.filter(p => !p.station), atStations = result => result.points.filter(p => p.station);
+  assert.equal(running(countTile({tiles, areas, stations: stationAt('train')}, y)).length, 0);
   assert.equal(countTile({tiles, areas}, y).points.length, 0);
-  assert.equal(countTile({tiles, areas, stations: stationAt('subway')}, y).points.length, points.length);
+  assert.equal(running(countTile({tiles, areas, stations: stationAt('subway')}, y)).length, points.length);
   const station = tile('standard_railway_text_stations', points.map(p => ({type: 1, tags: {feature: 'station', station: 'train'}, geometry: [[Math.round(p.x), Math.round(p.y)]]})));
-  assert.equal(countTile({tiles, stations: station}, y).points.length, 0);
+  assert.equal(running(countTile({tiles, stations: station}, y)).length, 0);
   const tram = tile('standard_railway_text_stations', points.map(p => ({type: 1, tags: {feature: 'station', station: 'tram'}, geometry: [[Math.round(p.x), Math.round(p.y)]]})));
-  assert.equal(countTile({tiles, stations: tram}, y).points.length, points.length);
+  assert.deepEqual(countTile({tiles, stations: tram}, y).points, points);
+  // A station has its own count instead: every track across its area at the
+  // widest point (here both, near the east edge), once, from the tile
+  // holding its point; without the point (it lies in another tile), none.
+  assert.deepEqual(atStations(countTile({tiles, areas, stations: stationAt('train')}, y)).map(p => [p.tracks, p.station]), [[2, true]]);
+  assert.equal(atStations(countTile({tiles, areas}, y)).length, 0);
+});
+test('station track counts include sidings, not yards; a station with no area counts within 100 m of its point', async () => {
+  const {stationTracks} = await import('../styles/track-count.mjs');
+  // 1 unit = 1 m. Two running tracks, a siding (platform loop) and a yard
+  // track, 5 m apart, along x.
+  const track = (y, service) => ({group: 'rail', main: !service, service, parts: [[[0, y], [400, y]]]});
+  const lines = [track(0), track(5), track(10, 'siding'), track(15, 'yard')];
+  const zone = {inside: (x, y) => x >= 100 && x <= 300 && y >= -20 && y <= 40, surface: true};
+  assert.deepEqual(stationTracks(lines, [zone], 1).map(p => p.tracks), [3]);
+  // Every level counts: platforms under a building or underground too.
+  const covered = lines.map((l, i) => ({...l, tunnel: i % 2 === 0}));
+  assert.deepEqual(stationTracks(covered, [zone], 1).map(p => p.tracks), [3]);
+  assert.deepEqual(stationTracks(lines, [{inside: () => false, surface: true}], 1), [null]);
 });
 test('legend colours equal the drawn colours for power, gauge and loading gauge', async () => {
   const m = await import('../styles/map-model.mjs');

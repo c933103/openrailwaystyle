@@ -7,7 +7,10 @@
 // - The tile's eight neighbours are read too, so tracks near its edges are
 //   counted with the tracks beside them; each way's pieces from the nine
 //   tiles are joined by its ID.
-// - No labels in stations: inside the provider's station areas (the extent
+// - Stations get their own count instead (stationTracks: every track at the
+//   station, sidings included), written once, by the tile holding the
+//   station's point.
+// - No running-track labels in stations: inside the provider's station areas (the extent
 //   of each group of station elements, whatever the station's size), as
 //   tracks there spread around platforms, and the count either side tells
 //   more. An area holding only subway stations leaves surface tracks
@@ -15,7 +18,7 @@
 //   station has no area, BARE_STATION metres around its point are left.
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
-import {countTracks, trackLines, unitMetres} from './track-count.mjs';
+import {countTracks, stationTracks, trackLines, unitMetres} from './track-count.mjs';
 export const COUNT_LAYER = 'atlas_track_counts';
 export const COUNT_ZOOM = 14;
 const BARE_STATION = 100;   // metres around a station point with no area
@@ -57,7 +60,7 @@ function stationZones(areas, stations, extent) {
       const held = points.filter(p => inside(p.x, p.y));
       for (const p of held) p.inArea = true;
       // Without a station point in this tile, taken as holding a surface one.
-      zones.push({inside, surface: !held.length || held.some(p => !p.subway)});
+      zones.push({inside, surface: !held.length || held.some(p => !p.subway), stations: held.length});
     }
   }
   return {zones, bare: points.filter(p => !p.inArea)};
@@ -66,7 +69,7 @@ function stationZones(areas, stations, extent) {
 // tiles: [{dx, dy, data}], the railway tile at (x, y) of COUNT_ZOOM (dx = dy
 // = 0) and those around it; y: its row (for the scale); areas, stations:
 // its station-area and station tiles. Returns {extent, points: [{x, y,
-// tracks, tunnel}]} in the tile's units.
+// tracks, tunnel, station}]} in the tile's units.
 export function countTile({tiles, areas = null, stations = null}, y) {
   const centre = tiles.find(t => !t.dx && !t.dy);
   const extent = layersOf(read(centre?.data))[0]?.extent || 4096;
@@ -88,18 +91,25 @@ export function countTile({tiles, areas = null, stations = null}, y) {
   const metres = unitMetres(COUNT_ZOOM, y, extent);
   const {points} = countTracks(lines, metres, {probe: i => lines[i].inside});
   const {zones, bare} = stationZones(areas, stations, extent), radius = BARE_STATION / metres, dominated = DOMINATED / metres, repeat = REPEAT / metres;
+  // A station with no area: the tracks within BARE_STATION of its point.
+  const circles = bare.map(st => ({inside: (x, y) => Math.hypot(x - st.x, y - st.y) <= radius}));
+  const atStations = stationTracks(lines, [...zones.filter(zone => zone.stations), ...circles], metres)
+    .filter(p => p && p.x >= 0 && p.y >= 0 && p.x < extent && p.y < extent)
+    .map(p => ({...p, tunnel: false, station: true}))
+    // Areas mapped twice over give the same count twice: kept once.
+    .filter((p, k, all) => !all.slice(0, k).some(q => q.tracks === p.tracks && Math.hypot(q.x - p.x, q.y - p.y) <= repeat));
   return {extent, points: points.filter(p => {
     if (p.x < 0 || p.y < 0 || p.x >= extent || p.y >= extent) return false;
-    const tunnel = p.group.endsWith('-tunnel');
-    return !zones.some(zone => (tunnel || zone.surface) && zone.inside(p.x, p.y)) &&
-      !bare.some(st => (tunnel || !st.subway) && Math.hypot(p.x - st.x, p.y - st.y) <= radius);
+    return !zones.some(zone => (p.tunnel || zone.surface) && zone.inside(p.x, p.y)) &&
+      !bare.some(st => (p.tunnel || !st.subway) && Math.hypot(p.x - st.x, p.y - st.y) <= radius);
   })
-    .map(p => ({x: p.x, y: p.y, tracks: p.tracks, tunnel: p.group.endsWith('-tunnel')}))
+    .map(p => ({x: p.x, y: p.y, tracks: p.tracks, tunnel: Boolean(p.tunnel)}))
     // Where two groups run close by (a track a little further off than the
     // gap allows), the smaller one's label would read as a separate line:
     // only the larger is labelled there.
     .filter((p, _, all) => !all.some(q => q.tunnel === p.tunnel && q.tracks > p.tracks && Math.hypot(q.x - p.x, q.y - p.y) <= dominated))
     // The same count again close by (short ways in loops and junctions each
     // give one) adds nothing: the first is kept.
-    .filter((p, k, all) => !all.slice(0, k).some(q => q.tunnel === p.tunnel && q.tracks === p.tracks && Math.hypot(q.x - p.x, q.y - p.y) <= repeat))};
+    .filter((p, k, all) => !all.slice(0, k).some(q => q.tunnel === p.tunnel && q.tracks === p.tracks && Math.hypot(q.x - p.x, q.y - p.y) <= repeat))
+    .concat(atStations)};
 }

@@ -469,15 +469,18 @@ export function formatSpeed(properties, units = 'metric') {
   const n = numericSpeed(properties.maxspeed);
   const raw = properties.speed_label;
   const kmh = n === null ? '' : `${Number(n.toFixed(1))} km/h`, mph = n === null ? '' : `${Number((n / MPH).toFixed(1))} mph`;
+  // In the chosen units; the mapped value follows in brackets only when it
+  // was in the other unit (converted), as a label in mph is.
+  const inMph = /mph/.test(raw || ''), shown = units === 'imperial' ? mph : kmh, source = inMph ? mph : kmh;
   return {
-    mapped: n === null ? 'Not recorded / not numeric' : units === 'imperial' ? `${mph} (${kmh})` : `${kmh} (${mph})`,
-    tagged: raw ? `${raw}${/mph|km\/h/.test(raw) ? '' : ' (km/h)'}` : 'Not recorded',
+    mapped: n === null ? 'Not recorded / not numeric' : shown === source ? shown : `${shown} (${source})`,
+    tagged: raw ? `${raw}${/mph|km\/h/.test(raw) ? '' : ' km/h'}` : 'Not recorded',
   };
 }
 // Display settings live in a cookie; a link can still carry them (the app
 // then saves them and removes them from the address). remembered: settings
 // kept in this browser, used for anything the URL does not name.
-export const SETTING_KEYS = ['mode','stations','labels','inactive','relief','names','autoGlobe','transport','destinations','constraints','units','detail','language'];
+export const SETTING_KEYS = ['mode','stations','labels','inactive','relief','names','autoGlobe','readout','transport','destinations','constraints','units','detail','language'];
 const LEGACY_LANGUAGE_KEYS = ['stationLanguage','mapLanguage','lineLanguage'];
 export const SETTING_PARAMS = [...SETTING_KEYS, ...LEGACY_LANGUAGE_KEYS];
 // More detail: 0 (normal), 1 (the next zoom level at half size) or 2 (two
@@ -489,6 +492,13 @@ export function detailLevel(value) {
   if (!/^\d$/.test(String(value ?? ''))) return 0;
   return Math.min(Number(value), DETAIL_LEVELS);
 }
+// The readout under the scale bar: coordinates (longitude wrapped to
+// ±180°, as a globe or a panned map can go beyond) and zoom.
+export function formatReadout({lng, lat}, zoom, detail = 0) {
+  const lon = ((lng + 540) % 360 + 360) % 360 - 180;
+  const coords = `${Math.abs(lat).toFixed(5)}° ${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(5)}° ${lon >= 0 ? 'E' : 'W'}`;
+  return `${coords} · zoom ${zoom.toFixed(1)}${detail ? ` (drawn at ${100 / 2 ** detail}%)` : ''}`;
+}
 export function readSettings(search, remembered = {}) {
   const params = new URLSearchParams(search);
   const flag = (key, fallback) => params.has(key) ? params.get(key) !== '0' && (fallback || params.get(key) === '1') : typeof remembered[key] === 'boolean' ? remembered[key] : fallback;
@@ -497,7 +507,7 @@ export function readSettings(search, remembered = {}) {
     mode: pick('mode', v => MODES.includes(v), 'speed'),
     stations: flag('stations', true), labels: flag('labels', true), inactive: flag('inactive', true),
     transport: flag('transport', true), destinations: flag('destinations', true), constraints: flag('constraints', true),
-    relief: flag('relief', true), names: flag('names', true), autoGlobe: flag('autoGlobe', true),
+    relief: flag('relief', true), names: flag('names', true), autoGlobe: flag('autoGlobe', true), readout: flag('readout', true),
     units: pick('units', v => v === 'metric' || v === 'imperial', 'metric'),
     detail: detailLevel(params.has('detail') ? params.get('detail') : remembered.detail),
     language: language(params.get('language') || LEGACY_LANGUAGE_KEYS.map(k => params.get(k)).find(Boolean) || remembered.language),
