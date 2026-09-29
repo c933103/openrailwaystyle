@@ -309,7 +309,15 @@ const streetIndex=style.layers.findIndex(l=>l.id==='infrastructure-tracks');
 style.layers.splice(streetIndex,0,{id:'infrastructure-street-running',type:'line',source:'streetRunning','source-layer':'street_running',minzoom:13,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#b68f55','line-width':['interpolate',['linear'],['zoom'],13,7,18,14],'line-opacity':0.65}});
 style.layers.push({id:'infrastructure-level-crossings',type:'symbol',source:'crossings','source-layer':'points_of_interest',minzoom:15,filter:['==',['get','type'],'level_crossing'],layout:{'text-field':'×','text-font':['Noto Sans Bold'],'text-size':23,'text-allow-overlap':false,'text-padding':2},paint:{'text-color':'#63332c','text-halo-color':'#fffef8','text-halo-width':2}});
 const contextIndex = style.layers.findIndex(l => l.id === 'terrain-contours');
-style.layers.splice(contextIndex, 0, ...context.areas, ...constraints.areas, ...context.lines, ...constraints.lines);
+// Ordinary buildings provide faint street-scale context independently of the
+// destination toggle. Keep footprints flat and below roads, rails and labels.
+const buildings = [
+  {id:'building-footprints',type:'fill',source:'openmaptiles','source-layer':'building',minzoom:13,
+    paint:{'fill-color':'#a8aca4','fill-opacity':['interpolate',['linear'],['zoom'],13,0.12,15,0.24,17,0.34]}},
+  {id:'building-outlines',type:'line',source:'openmaptiles','source-layer':'building',minzoom:15,
+    paint:{'line-color':'#879187','line-width':0.55,'line-opacity':['interpolate',['linear'],['zoom'],15,0.05,18,0.22]}},
+];
+style.layers.splice(contextIndex, 0, ...context.areas, ...constraints.areas, ...buildings, ...context.lines, ...constraints.lines);
 style.layers.push(...roads.names, ...constraints.labels, ...context.labels);
 const stationNames = style.layers.filter(l => l.id.startsWith('station-') && l.type === 'symbol');
 const railwayNames = style.layers.filter(l => l.type === 'symbol' && l.id.endsWith('-names') && !l.id.startsWith('station-'));
@@ -322,5 +330,4 @@ for (const l of style.layers) {
 }
 await writeFile(new URL('../styles/world.style.json', import.meta.url), JSON.stringify(style, null, 2) + '\n');
 console.log(`Built world.style.json: ${style.layers.length} layers`);
-
 

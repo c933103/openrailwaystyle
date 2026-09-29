@@ -43,8 +43,8 @@ try {
  const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
  await page.goto(base+'?language=en&relief=0&inactive=1#16/48.853/2.348',{waitUntil:'domcontentloaded'});
  await page.waitForSelector('body[data-map-ready="true"]',{state:'attached'});
- for(const id of ['road-local','road-walk','context-transport-bus-stop-label','context-transport-bike-rental-label','context-transport-taxi-label','context-constraints-religious-label'])await waitLayer(id);
- console.log('PASS: Paris surface roads, paths, bus stops, taxi stands, bike rental and religious sites');
+ for(const id of ['building-footprints','building-outlines','road-local','road-walk','context-transport-bus-stop-label','context-transport-bike-rental-label','context-transport-taxi-label','context-constraints-religious-label'])await waitLayer(id);
+ console.log('PASS: Paris building footprints, surface roads, paths, bus stops, taxi stands, bike rental and religious sites');
  await screenshot('STREET');
  await page.locator('#language').selectOption('fr');
  await waitLayer('speed-tracks');
