@@ -1,6 +1,6 @@
 # Open Railway Styles (upstream project)
 
-*The rest of this file is the upstream project's original description.*
+*This file is the upstream project's original description. `ProcessRailway.java` and the `justfile` at the repository root, and the three Hack4Rail example pages and styles in `styles/`, belong to it; the worldwide site does not use them.*
 
 Design a style for railways using [OpenStreetMap](https://www.openstreetmap.org/) data.
 

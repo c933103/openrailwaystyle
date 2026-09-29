@@ -2,7 +2,11 @@
 
 ## Maximum speed
 
-The railway provider’s `maxspeed` field is normalized to km/h. Where directions differ it represents the preferred direction, or the larger directional limit if no preference is recorded. Its `speed_label` preserves the original units and both directions. Bare numbers mean km/h; `mph` is explicit. `A / B` means OSM-way forward/backward, `A (B)` means preferred/opposite, and `-` means missing. Unknown/non-numeric values stay grey; a high-speed classification is never used to invent a speed limit. These are mapped infrastructure limits, not train operating speeds, temporary restrictions or timetable information. Display options switch between metric and imperial units: imperial colours speeds by round mph bands (< 25 … ≥ 185), shows track labels in mph (labels already tagged in mph are kept as tagged, others are converted from the numeric limit), draws contours at foot intervals and switches the scale bar and detail values.
+The railway provider’s `maxspeed` field is normalized to km/h. Where directions differ it represents the preferred direction, or the larger directional limit if no preference is recorded. Its `speed_label` preserves the original units and both directions. Bare numbers mean km/h; `mph` is explicit. `A / B` means OSM-way forward/backward, `A (B)` means preferred/opposite, and `-` means missing. Unknown/non-numeric values stay grey; a high-speed classification is never used to invent a speed limit. These are mapped infrastructure limits, not train operating speeds, temporary restrictions or timetable information.
+
+### Units
+
+Display options switch between metric and imperial units: imperial colours speeds by round mph bands (< 25 … ≥ 185), shows track labels in mph (labels already tagged in mph are kept as tagged, others are converted from the numeric limit), draws contours at foot intervals and switches the scale bar and detail values.
 
 ## Stations
 

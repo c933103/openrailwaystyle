@@ -32,6 +32,7 @@ Serving the site needs the published railway snapshot; see [docs/development.md]
 | Full feature list | [docs/features.md](docs/features.md) |
 | Local setup, style build, tests | [docs/development.md](docs/development.md) |
 | GitHub Pages deployment | [docs/deployment.md](docs/deployment.md) |
+| GitHub Actions workflows and data branches | [docs/workflows.md](docs/workflows.md) |
 | Data sources, attribution, external services | [docs/data-sources.md](docs/data-sources.md) |
 | Speed and station data | [docs/railway-data.md](docs/railway-data.md) |
 | Lifecycle snapshot pipeline | [docs/lifecycle-snapshot.md](docs/lifecycle-snapshot.md) |
