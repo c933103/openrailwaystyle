@@ -212,6 +212,21 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     const result = encode.fromGeojsonVt(layers, {version:2, extent:4096});
     return result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength);
   }
+  // Point tiles a provider only fills from some zoom (its level crossings
+  // start at zoom 15): a fragment on the source URL (never requested) sets
+  // the zoom range, and tiles below underzoom=N are made from their zoom-N
+  // children, as for stations.
+  maplibregl.addProtocol('atlaspoints',async (params,controller)=>{
+    const [address, fragment = ''] = params.url.replace(/^atlaspoints:\/\//,'').split('#'), options = new URLSearchParams(fragment);
+    const zoom = key => { const value = Number(options.get(key)); return Number.isInteger(value) && value >= 0 ? {[key]:value} : {}; };
+    if (params.type === 'json') {
+      const data = await get(address,controller.signal,true);
+      return {data:{...data,...zoom('minzoom'),...zoom('maxzoom'),tiles:data.tiles.map(t=>`atlaspoints://${t}${fragment ? `#${fragment}` : ''}`)}};
+    }
+    const coordinates = tileCoordinates(address), target = zoom('underzoom').underzoom;
+    if (coordinates && target > coordinates.z) return {data: await childTiles(new URL(address), target, controller.signal)};
+    return {data: (await get(address, controller.signal)).slice(0)};
+  });
   maplibregl.addProtocol('atlasstation',async (params,controller)=>{
     let [,lang,url] = /^atlasstation:\/\/([^/]+)\/(.+)$/.exec(params.url) || [];
     if (!url) throw new Error('Invalid station request');

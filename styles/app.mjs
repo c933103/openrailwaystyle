@@ -1,8 +1,8 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20260929-3';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260929-3';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20260929-4';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260929-4';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260929-3';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260929-3';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260929-4';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260929-4';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -28,7 +28,7 @@ const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_C
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260929-3';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260929-4';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -179,7 +179,7 @@ function renderLegend() {
     control: 'Hue groups related systems (e.g. ETCS with China’s ETCS-derived CTCS); darker is more advanced: warning only, spot transmission, continuous, radio. Colour shows the first recorded system; click a track for all of them and their compatibility. Grey means nothing is recorded.',
     gauge: 'Gauges a few millimetres apart (e.g. 1432 and 1435, 1520 and 1524) share one colour and are generally compatible. Click a track for all recorded gauges. Grey means not recorded.',
     loading: 'Colour follows the envelope’s height above rail, so equal sizes match across regions; Britain’s W gauges share one height and form their own ladder. Click a track for dimensions. Grey means not recorded.',
-    infrastructure: 'Zoomed in (zoom 14+), a boxed number gives the running tracks side by side, counted from the mapped tracks; sidings, yards and crossovers are not counted, and station areas are left unlabelled. Ochre roadbeds mark explicitly tagged street-running tracks (13+); × marks level crossings (15+).',
+    infrastructure: 'Zoomed in (zoom 14+), a boxed number gives the running tracks side by side, counted from the mapped tracks; sidings, yards and crossovers are not counted, and station areas are left unlabelled. Ochre roadbeds mark explicitly tagged street-running tracks (13+); × marks level crossings (14+).',
   };
   let note = notes[settings.mode];
   if (settings.inactive && settings.mode === 'speed') note += ' Planned and former lines take the colour of their recorded limit, if any.';
@@ -415,7 +415,7 @@ function updateStatus() {
   status.dataset.renderedFormer = String(regional.filter(f => !['proposed','construction'].includes(f.properties.state)).length);
   status.dataset.numericSpeeds = String(tracks.filter(f => numericSpeed(f.properties.maxspeed) !== null).length);
 }
-const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg):\/\//,'');
+const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg|points):\/\//,'');
 function localizeStyle(style) {
   for (const layer of style.layers) {
     if (layer.type !== 'symbol' || layer.id === 'speed-labels' || layer.id.startsWith('terrain-')) continue;
@@ -426,6 +426,7 @@ function localizeStyle(style) {
   style.sources.streetRunning.tiles = [`streettiles://{z}/{x}/{y}?lang=${settings.language}`];
   style.sources.inactiveRegional.tiles = [`railtiles://{z}/{x}/{y}?lang=${settings.language}`];
   style.sources.railway.url = `atlasrail://${unwrap(style.sources.railway.url)}`;
+  style.sources.crossings.url = `atlaspoints://${unwrap(style.sources.crossings.url)}`;
   style.sources.loadingLow.url = `atlaslg://${unwrap(style.sources.loadingLow.url)}`;
   unitStyle(style);
   styleLanguage = settings.language;
