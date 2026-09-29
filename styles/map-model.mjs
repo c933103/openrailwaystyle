@@ -480,6 +480,15 @@ export function formatSpeed(properties, units = 'metric') {
 export const SETTING_KEYS = ['mode','stations','labels','inactive','relief','names','autoGlobe','transport','destinations','constraints','units','detail','language'];
 const LEGACY_LANGUAGE_KEYS = ['stationLanguage','mapLanguage','lineLanguage'];
 export const SETTING_PARAMS = [...SETTING_KEYS, ...LEGACY_LANGUAGE_KEYS];
+// More detail: 0 (normal), 1 (the next zoom level at half size) or 2 (two
+// levels further in at a quarter). Links and cookies from before the levels
+// hold true or 1 for the first level.
+export const DETAIL_LEVELS = 2;
+export function detailLevel(value) {
+  if (value === true) return 1;
+  if (!/^\d$/.test(String(value ?? ''))) return 0;
+  return Math.min(Number(value), DETAIL_LEVELS);
+}
 export function readSettings(search, remembered = {}) {
   const params = new URLSearchParams(search);
   const flag = (key, fallback) => params.has(key) ? params.get(key) !== '0' && (fallback || params.get(key) === '1') : typeof remembered[key] === 'boolean' ? remembered[key] : fallback;
@@ -490,7 +499,7 @@ export function readSettings(search, remembered = {}) {
     transport: flag('transport', true), destinations: flag('destinations', true), constraints: flag('constraints', true),
     relief: flag('relief', true), names: flag('names', true), autoGlobe: flag('autoGlobe', true),
     units: pick('units', v => v === 'metric' || v === 'imperial', 'metric'),
-    detail: flag('detail', false),
+    detail: detailLevel(params.has('detail') ? params.get('detail') : remembered.detail),
     language: language(params.get('language') || LEGACY_LANGUAGE_KEYS.map(k => params.get(k)).find(Boolean) || remembered.language),
   };
 }

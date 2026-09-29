@@ -113,8 +113,8 @@
     },
     "crossings": {
       "type": "vector",
-      "url": "https://openrailwaymap.app/points_of_interest#minzoom=14&maxzoom=18&underzoom=15",
-      "minzoom": 14,
+      "url": "https://openrailwaymap.app/points_of_interest",
+      "minzoom": 15,
       "maxzoom": 18,
       "promoteId": "id",
       "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
@@ -11182,7 +11182,7 @@
       "type": "symbol",
       "source": "crossings",
       "source-layer": "points_of_interest",
-      "minzoom": 14,
+      "minzoom": 15,
       "filter": [
         "==",
         [

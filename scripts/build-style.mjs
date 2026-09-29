@@ -37,9 +37,7 @@ const style = {
     stationMed: {...vector('standard_railway_text_stations_med', 6, 7), url: `${ORM}/standard_railway_text_stations_med#minzoom=6&maxzoom=7&underzoom=7`},
     stations: vector('standard_railway_text_stations', 8, 16),
     inactiveRegional: { type: 'vector', tiles: ['railtiles://{z}/{x}/{y}'], minzoom: 0, maxzoom: 10, promoteId: 'osm_id', attribution: '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>' },
-    // Level crossings: the provider's tiles hold them from zoom 15; zoom-14
-    // tiles are made from their four zoom-15 children (atlaspoints protocol).
-    crossings: {...vector('points_of_interest',14,18), url: `${ORM}/points_of_interest#minzoom=14&maxzoom=18&underzoom=15`},
+    crossings: vector('points_of_interest',15,18),
     streetRunning: {type:'vector',tiles:['streettiles://{z}/{x}/{y}'],minzoom:12,maxzoom:12,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     contours: {type:'vector',tiles:['atlas-contour://{z}/{x}/{y}'],minzoom:7,maxzoom:15},
     // Seabed contours (see contourOptions in map-model.mjs). The elevation
@@ -309,7 +307,7 @@ style.layers.splice(roadIndex,0,...roads.roads);
 // class colours on top. Separate from bridge parapets and lifecycle dashes.
 const streetIndex=style.layers.findIndex(l=>l.id==='infrastructure-tracks');
 style.layers.splice(streetIndex,0,{id:'infrastructure-street-running',type:'line',source:'streetRunning','source-layer':'street_running',minzoom:13,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#b68f55','line-width':['interpolate',['linear'],['zoom'],13,7,18,14],'line-opacity':0.65}});
-style.layers.push({id:'infrastructure-level-crossings',type:'symbol',source:'crossings','source-layer':'points_of_interest',minzoom:14,filter:['==',['get','type'],'level_crossing'],layout:{'text-field':'×','text-font':['Noto Sans Bold'],'text-size':23,'text-allow-overlap':false,'text-padding':2},paint:{'text-color':'#63332c','text-halo-color':'#fffef8','text-halo-width':2}});
+style.layers.push({id:'infrastructure-level-crossings',type:'symbol',source:'crossings','source-layer':'points_of_interest',minzoom:15,filter:['==',['get','type'],'level_crossing'],layout:{'text-field':'×','text-font':['Noto Sans Bold'],'text-size':23,'text-allow-overlap':false,'text-padding':2},paint:{'text-color':'#63332c','text-halo-color':'#fffef8','text-halo-width':2}});
 const contextIndex = style.layers.findIndex(l => l.id === 'terrain-contours');
 style.layers.splice(contextIndex, 0, ...context.areas, ...constraints.areas, ...context.lines, ...constraints.lines);
 style.layers.push(...roads.names, ...constraints.labels, ...context.labels);

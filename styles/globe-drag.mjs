@@ -128,7 +128,9 @@ export function zoomTowards({c, u}, at, zoomed) {
 export function installGlobeDrag(map, {active, ignore = () => false}) {
   const canvas = map.getCanvasContainer(), pointers = new Set();
   let drag = null, quietUntil = 0;
-  const at = e => { const r = canvas.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; };
+  // In layout pixels, as the map measures them: More detail draws the map
+  // scaled down, so on-screen pixels are larger.
+  const at = e => { const r = canvas.getBoundingClientRect(), k = r.width ? canvas.clientWidth / r.width : 1; return {x: (e.clientX - r.left) * k, y: (e.clientY - r.top) * k}; };
   // The globe's scale at the centre of the view, measured from the map.
   function radiansPerPixel() {
     const {clientWidth: w, clientHeight: h} = map.getContainer();
