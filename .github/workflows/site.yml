@@ -1,7 +1,7 @@
 name: Validate and deploy world railway map
 on:
   push:
-    branches: [main, fix/atlas-relief, fix/atlas-contours-languages, fix/transport-destinations]
+    branches: [main, fix/atlas-relief]
   pull_request:
   workflow_dispatch:
 permissions:
