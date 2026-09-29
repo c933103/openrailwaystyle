@@ -44,4 +44,8 @@ test('shared roadway includes private vehicle access and explicit bus-only excep
   {highway:'residential',embedded_rails:'tram; rail',motor_vehicle:'no',psv:'designated'},
  ]) assert.ok(streetRunning(tags),JSON.stringify(tags));
  assert.equal(streetRunning({highway:'residential',embedded_rails:'tram',motor_vehicle:'no'}),null);
+ // Access inherits: access=no or vehicle=no bars road vehicles unless a more
+ // specific tag allows them.
+ for(const tags of [{access:'no'},{vehicle:'no'},{access:'no',vehicle:'no'}]) assert.equal(streetRunning({highway:'residential',embedded_rails:'tram',...tags}),null,JSON.stringify(tags));
+ for(const tags of [{access:'no',motor_vehicle:'yes'},{vehicle:'no',bus:'yes'},{access:'no',psv:'designated'}]) assert.ok(streetRunning({highway:'residential',embedded_rails:'tram',...tags}),JSON.stringify(tags));
 });

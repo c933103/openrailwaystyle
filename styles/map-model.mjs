@@ -186,42 +186,63 @@ export const trainProtectionShort = code => ({etcs_2: 'ETCS L2', etcs_1: 'ETCS L
 // Loading gauge. Names differ by region and are not comparable by name, so
 // colour follows the physical envelope: the maximum height above rail of
 // the static profile, where published (Wikipedia, Loading gauge; UIC 506 /
-// TSI, GOST 9238, AAR Plate C, Portuguese PT gauges). Gauges of equal height
-// share a colour: GA, GB, GB1 and GB2 all reach 4.32 m and differ only in
-// the upper corners. Britain's W gauges share one height and differ in the
-// containers they clear, so they form their own ladder. Other values are
-// shown as tagged.
+// TSI, GOST 9238, AAR clearance plates, Portuguese PT gauges). Gauges of
+// equal height share a colour: GA, GB, GB1 and GB2 all reach 4.32 m and
+// differ only in the upper corners. Britain's W gauges form their own
+// ladder: W6A is the standard wagon envelope, and W7 to W12 are load gauges
+// (the containers and swap bodies a W6A wagon may carry), with height and
+// width from the co-ordinate tables of RSSB GE/RT8073 (issue 4.1, 2022).
+// Other values are shown as tagged.
+const FT = (ft, inch = 0) => Math.round((ft * 12 + inch) * 25.4) / 1000;
+const W_NOTE = 'W7 to W12 are load gauges: the envelope of containers or swap bodies on W6A wagons (RSSB GE/RT8073).';
 export const LOADING_GAUGES = [
   // code(s), name, height m, width m, family, note
-  [['PPI', 'G1'], 'PPI (G1, Berne gauge)', 4.28, 3.15, 'height'],
-  [['TSI_GA'], 'GA', 4.32, 3.15, 'height', 'GA, GB, GB1 and GB2 reach the same height; each clears larger upper corners (containers, swap bodies, semi-trailers).'],
-  [['TSI_GB'], 'GB', 4.32, 3.15, 'height'], [['TSI_GB1'], 'GB1', 4.32, 3.15, 'height'], [['TSI_GB2'], 'GB2', 4.32, 3.15, 'height'],
+  [['PPI', 'G1', 'TSI_G1'], 'PPI (G1, Berne gauge)', 4.28, 3.15, 'height'],
+  [['TSI_GA', 'GA'], 'GA', 4.32, 3.15, 'height', 'GA, GB, GB1 and GB2 reach the same height; each clears larger upper corners (containers, swap bodies, semi-trailers).'],
+  [['TSI_GB', 'GB'], 'GB', 4.32, 3.15, 'height'], [['TSI_GB1', 'GB1'], 'GB1', 4.32, 3.15, 'height'], [['TSI_GB2', 'GB2'], 'GB2', 4.32, 3.15, 'height'],
   [['CPb', 'CPb+'], 'CPb / CPb+ (Portugal)', 4.5, 3.44, 'height'],
-  [['UIC_C', 'G2'], 'G2 (formerly UIC C)', 4.65, 3.15, 'height'], [['TSI_GC'], 'GC', 4.65, 3.15, 'height'],
+  [['UIC_C', 'G2'], 'G2 (formerly UIC C)', 4.65, 3.15, 'height'], [['TSI_GC', 'GC'], 'GC', 4.65, 3.15, 'height'],
   [['PT c'], 'PT c (Portugal)', 4.7, 3.44, 'height'],
-  [['AAR_C'], 'AAR Plate C', 4.72, 3.25, 'height'],
-  [['AAR_F'], 'AAR Plate F', 5.18, 3.25, 'height'],
+  // AAR clearance plates (North America): 10 ft 8 in wide unless noted.
+  [['AAR_B', 'AAR B'], 'AAR Plate B', FT(15, 1), FT(10, 8), 'height'],
+  [['AAR_C', 'AAR C'], 'AAR Plate C', FT(15, 6), FT(10, 8), 'height'],
+  [['AAR_E', 'AAR E'], 'AAR Plate E', FT(15, 9), FT(10, 8), 'height'],
+  [['AAR_F', 'AAR F'], 'AAR Plate F', FT(17), FT(10, 8), 'height'],
   [['GOST_T'], 'T (GOST 9238, 1520 mm network)', 5.3, 3.75, 'height'],
-  [['W5'], 'W5', null, null, 'british', 'Britain: W gauges share one height; higher numbers clear larger containers.'],
-  [['W6'], 'W6', null, null, 'british'], [['W6A', 'W6A*'], 'W6A', null, null, 'british', 'Available over most of the British network.'],
-  [['W7', 'W7*'], 'W7', null, null, 'british'], [['W8', 'W8*'], 'W8', null, null, 'british', '8 ft 6 in (2.6 m) containers on standard wagons.'],
-  [['W9'], 'W9', null, null, 'british', '9 ft 0 in containers on low wagons (Megafret).'], [['W9Plus'], 'W9Plus', null, null, 'british'],
-  [['W10'], 'W10', null, null, 'british', '9 ft 6 in high-cube containers on standard wagons; 2.5 m wide Euro containers.'], [['W10A'], 'W10A', null, null, 'british'],
-  [['W11'], 'W11', null, null, 'british'], [['W12'], 'W12', null, null, 'british', 'As W10, and 2.6 m wide refrigerated containers.'],
+  [['AAR_J', 'AAR J'], 'AAR Plate J', FT(19), FT(10, 8), 'height'],
+  [['AAR_H', 'AAR H'], 'AAR Plate H', FT(20, 2), FT(10, 8), 'height', 'Double-stack container cars.'],
+  [['AAR_K', 'AAR K'], 'AAR Plate K', FT(20, 3), FT(10), 'height', 'Autoracks and double-stack cars.'],
+  [['W5'], 'W5', null, null, 'british', 'British standard freight gauge of 1951, refined as W6 and W6A.'],
+  [['W6'], 'W6', null, null, 'british'],
+  [['W6A', 'W6A*'], 'W6A', 3.965, 2.82, 'british', 'Standard British wagon envelope, available over most of the network.'],
+  [['W7', 'W7*'], 'W7', 3.965, 2.82, 'british', '8 ft 0 in (2.44 m) high containers on W6A wagons. ' + W_NOTE],
+  [['W8', 'W8*'], 'W8', 3.965, 2.82, 'british', '8 ft 6 in (2.59 m) high containers on W6A wagons. ' + W_NOTE],
+  [['W8A'], 'W8a', 3.635, 2.643, 'british', 'Introduced in 2020 (RSSB research T1132). ' + W_NOTE],
+  [['W9'], 'W9', 3.965, 2.796, 'british', 'Swap bodies; 9 ft 0 in containers on low wagons. ' + W_NOTE],
+  [['W9Plus'], 'W9Plus', null, null, 'british', 'Withdrawn from GE/RT8073 in 2020.'],
+  [['W10'], 'W10', 3.891, 2.525, 'british', '9 ft 6 in high-cube containers on standard wagons; 2.5 m wide Euro containers. ' + W_NOTE],
+  [['W10A'], 'W10a', 3.891, 2.525, 'british', W_NOTE],
+  [['W11'], 'W11', null, null, 'british', 'Withdrawn from GE/RT8073 in 2015.'],
+  [['W12'], 'W12', 3.965, 2.6, 'british', 'As W10, and 2.6 m wide refrigerated containers; recommended for new structures. ' + W_NOTE],
   [['EBV 1', 'EBV 2', 'EBV 3', 'EBV 4'], 'EBV (Swiss profiles)', null, null, 'other', 'EBV 4 is the Gotthard corridor profile for 4.00 m corner-height road vehicles on suitable wagons.'],
   [['FS'], 'FS (Italian profile)', null, null, 'other'],
-  [['deep-tube'], 'London deep tube', null, null, 'metro'], [['subsurface'], 'London sub-surface', null, null, 'metro'],
+  [['deep-tube'], 'London deep tube', null, null, 'metro', 'Tube tunnels are 11 ft 6 in to 12 ft 6 in (3.51 to 3.81 m) across.'],
+  [['subsurface'], 'London sub-surface', null, null, 'metro'],
   [['Kleinprofil'], 'Kleinprofil (Berlin U-Bahn)', null, null, 'metro'], [['Großprofil'], 'Großprofil (Berlin U-Bahn)', null, null, 'metro'],
 ];
-const LOADING_HEIGHT_STOPS = [[4.28, '#a5d66b'], [4.32, '#43a047'], [4.5, '#00897b'], [4.65, '#1e88e5'], [4.72, '#3949ab'], [4.8, '#5e35b1'], [5.3, '#8e24aa']];
-const BRITISH_LADDER = ['W5', 'W6', 'W6A', 'W7', 'W8', 'W9', 'W9Plus', 'W10', 'W10A', 'W11', 'W12'];
+const LOADING_HEIGHT_STOPS = [[4.28, '#a5d66b'], [4.32, '#43a047'], [4.5, '#00897b'], [4.65, '#1e88e5'], [4.72, '#3949ab'], [4.8, '#5e35b1'], [5.3, '#8e24aa'], [6.2, '#6a1b4d']];
+const BRITISH_LADDER = ['W5', 'W6', 'W6A', 'W7', 'W8', 'W8A', 'W9', 'W9Plus', 'W10', 'W10A', 'W11', 'W12'];
 export const LOADING_OTHER = '#a1887f', LOADING_METRO = '#b0a4c8';
+// "AAR F", "AAR-F", "aar_f" and "AARF" are all Plate F.
+const aarCode = value => value.replace(/^AAR[ _-]?([A-Z])$/i, (_, plate) => `AAR_${plate.toUpperCase()}`);
+const aarAliases = code => /^AAR_[A-Z]$/.test(code) ? ['_', ' ', '-', ''].map(sep => `AAR${sep}${code.at(-1)}`) : [code];
 export function loadingGauge(value) {
   if (!value) return null;
   // Lists (e.g. "W6A, W7, W8") mean the line clears all of them: take the largest.
-  const british = BRITISH_LADDER.filter(code => String(value).split(/,\s*/).some(v => v.replace('*', '') === code));
-  const code = british.length ? british.at(-1) : String(value).trim();
-  const entry = LOADING_GAUGES.find(([codes]) => codes.includes(code));
+  // Tags vary in case and separators: "W6a", "AAR F".
+  const british = BRITISH_LADDER.filter(code => String(value).split(/,\s*/).some(v => v.replace('*', '').toUpperCase() === code.toUpperCase()));
+  const code = british.length ? british.at(-1) : aarCode(String(value).trim());
+  const entry = LOADING_GAUGES.find(([codes]) => codes.some(c => c.toUpperCase() === code.toUpperCase()));
   if (!entry && /^[A-E][1-5]?$/.test(code)) return {code, name: `${code} (EN 15528 line category, not a loading gauge)`, family: 'other', color: LOADING_OTHER, rank: 0};
   if (!entry) return {code, name: `${code} (as tagged)`, family: 'other', color: LOADING_OTHER, rank: 0};
   const [, name, height, width, family, note] = entry;
@@ -257,17 +278,28 @@ export function legendRows(entries, limit = 12) {
   if (hidden > 0) rows.push(['transparent', `${hidden} less common value${hidden > 1 ? 's' : ''} in view; zoom in for them`, 'empty']);
   return rows;
 }
-export const loadingDimensions = g => g?.height ? `${g.height.toFixed(2)} m high × ${g.width.toFixed(2)} m wide` : '';
+// To the millimetre, as the sources give them (3.965, 2.82).
+const metres = m => String(Number(m.toFixed(3)));
+const feetInches = m => { const inches = Math.round(m / 0.0254); return `${Math.floor(inches / 12)} ft ${inches % 12} in`; };
+export const loadingDimensions = (g, units = 'metric') => !g?.height ? ''
+  : units === 'imperial' ? `${feetInches(g.height)} high × ${feetInches(g.width)} wide` : `${metres(g.height)} m high × ${metres(g.width)} m wide`;
+// Whether the upper-cased tag lists a British gauge: alone, in a list ('in'
+// on "W6A," tokens avoids W6 matching inside W6A) or starred.
+const britishTest = (upper, code) => { const c = code.toUpperCase(); return ['any', ['==', upper, c], ['in', `${c},`, ['concat', upper, ',']], ['in', `${c}*`, upper]]; };
 export function loadingPaint() {
-  const lg = ['coalesce', ['get', 'loading_gauge'], ''];
-  const britishCases = [...BRITISH_LADDER].reverse().flatMap(code => [['any', ['==', lg, code], ['in', `${code},`, ['concat', lg, ',']], ['in', `${code}*`, lg]], loadingGauge(code).color]);
-  // 'in' on "W6A," style tokens avoids W6 matching inside W6A.
-  const exact = LOADING_GAUGES.filter(([, , , , family]) => family !== 'british').flatMap(([codes]) => codes.map(code => [code, loadingGauge(code).color])).flat();
-  return ['case', ['==', lg, ''], UNKNOWN_COLOR, ...britishCases, ['match', lg, ...exact, LOADING_OTHER]];
+  const lg = ['coalesce', ['get', 'loading_gauge'], ''], upper = ['upcase', lg];
+  // Upper case: "W6a" is tagged as well as "W6A".
+  const britishCases = [...BRITISH_LADDER].reverse().flatMap(code => [britishTest(upper, code), loadingGauge(code).color]);
+  // Other gauges by exact code, compared in upper case, with the separator
+  // variants loadingGauge() accepts for AAR plates.
+  const seen = new Set(), exact = [];
+  for (const [codes, , , , family] of LOADING_GAUGES) if (family !== 'british')
+    for (const alias of codes.flatMap(aarAliases).map(c => c.toUpperCase())) if (!seen.has(alias)) { seen.add(alias); exact.push(alias, loadingGauge(alias).color); }
+  return ['case', ['==', lg, ''], UNKNOWN_COLOR, ...britishCases, ['match', upper, ...exact, LOADING_OTHER]];
 }
 export const loadingLabel = () => {
-  const lg = ['coalesce', ['get', 'loading_gauge'], ''];
-  return ['case', ...[...BRITISH_LADDER].reverse().flatMap(code => [['any', ['==', lg, code], ['in', `${code},`, ['concat', lg, ',']], ['in', `${code}*`, lg]], code]), lg];
+  const lg = ['coalesce', ['get', 'loading_gauge'], ''], upper = ['upcase', lg];
+  return ['case', ...[...BRITISH_LADDER].reverse().flatMap(code => [britishTest(upper, code), loadingGauge(code).name]), lg];
 };
 // Planned, construction and former lines: in the speed view coloured by the
 // recorded (planned or former) limit where one exists; otherwise by state.
