@@ -1,152 +1,48 @@
 # Open Railway Atlas — worldwide GitHub Pages map
 
 A worldwide, station-first railway map built with MapLibre and published at
-**https://c933103.github.io/openrailwaystyle/**. It is a fork of **Open Railway
-Styles** (described at the end of this file); the original Hack4Rail example
-styles and Europe extractor remain in the repository but are not used by the site.
+**https://c933103.github.io/openrailwaystyle/**. It is a fork of
+[Open Railway Styles](docs/upstream.md); the original Hack4Rail example styles and
+Europe extractor remain in the repository but are not used by the site.
 
-- Worldwide railway vectors from OpenRailwayMap, replacing the demo’s Europe-only railway extract.
-- Spaced, collision-aware station symbols at regional zoom, with major stations first and smaller stops appearing progressively.
-- Maximum-speed colouring with eight bands, original directional speed labels and an explicit unknown category; track-type and electrification views.
-- Bridge outlines and tunnel dashes from zoom 7 (the upstream zoom 0–6 overview tiles carry no bridge or tunnel data); click a railway for recorded speed, voltage, frequency, gauge and operator.
-- Railways under construction at every zoom, proposed railways from zoom 5 and former lines from zoom 7, from a published worldwide OSM lifecycle snapshot, drawn dashed and apart from operating lines.
-- One label-language selector for map, station and line names (local names or 12 languages), choosing only recorded names: Traditional and Simplified Chinese read OSM’s Chinese tags by area (mainland China, Taiwan, Hong Kong, Macau, elsewhere) and always fall back to each other; Han-character names are borrowed from other languages only in the CJKV region and Chinese-speaking areas nearby.
-- Station search and responsive controls. Display settings and the label language are remembered in a cookie; the address carries only the map position, and “Copy map link” adds the display settings so a shared link opens the same view (they are then saved and removed from the address).
-- A compass that resets north, metric or imperial units, a “more detail” button that cycles through two denser views (the next zoom level drawn at half size, then two levels further in at a quarter size, so the same area shows more tiles and features; its tooltip gives the scale, 100%, 50% or 25%), drawing tools for points, lines, smooth curves and areas in a chosen colour, line style and width, with length and area, kept in the browser and saved or opened as GeoJSON, and a measure tool for multi-segment distances and curve radius (a least-squares circle through three or more points clicked along a curve). A line can mix straight track and curves: with Curved on, the points added are curve points, drawn as a smooth curve, and with it off they are corners. In both tools a point can be dragged to move it, or clicked to select it; a selected point can be deleted (after confirmation), switched between corner and curve point, or, at either end of a finished line, used to extend the line. The map reopens where it was left, on the globe or flat map as last used. A button (🌍/🗺️) switches between the flat map and the globe, which can be dragged and zoomed over the poles like a real globe, the planet keeping its size as the view moves (MapLibre itself stops the view short of the poles); it shows every region, polar ones included, without the flat map's stretching. Web Mercator tiles, which every map source here uses, end at 85.05° N and S; on the globe the two caps beyond (about 550 km across from each pole) are drawn from data prepared for them in a polar projection (`scripts/build-polar.mjs`, published with the railway snapshot): water, ice shelves, runways and place names from OpenStreetMap, and relief shading and contours from NOAA ETOPO 2022 (60 arc-second), in the same colours as the rest of the map, with the detail of equatorial zoom 8 (the rest of the map's coarsest contour step) kept when zoomed further in. The map switches to the globe by itself below zoom 4, and back to the flat map from zoom 4 unless most of the view is beyond 60° N or S; this can be turned off in Display options. On small screens the controls start folded away.
-- Running tracks side by side, counted from the mapped geometry in the browser (`styles/track-count.mjs`, `styles/track-tiles.mjs`; OpenStreetMap maps each track separately and the railway tiles carry no count): from zoom 14 the Infrastructure view puts a boxed number on the middle track of each group of running tracks that keep alongside each other (each within 30 m of the next; in tunnels 12 m, or 35 m for tracks of the same named line). Sidings, yards, spurs and crossovers are not counted; the count is the most common one over about 300 m along the line; counts are always made on zoom-14 railway tiles with their eight neighbours (a separate `atlastracks` source), so they are the same at every zoom; the provider's station areas are left unlabelled (areas holding only subway stations leave surface tracks labelled); tunnels are counted apart from the surface. Checked against known track counts in Tokyo, Ōmiya, Takasaki, Nagoya, Hong Kong, Hualien, Berlin, Paris, London, New York, Zürich and on single-track lines; results follow how completely and consistently tracks are tagged in OpenStreetMap.
-- Shaded land and seabed relief with signed elevation contours, prominent first-level regional boundaries, and railway names along tracks from zoom 9.
-- Static site: no server, account, API key or paid hosting; deployed by GitHub Actions after a real Chromium/WebGL check.
+## Highlights
 
-## Run locally
+- Worldwide railway vectors from OpenRailwayMap, with spaced, collision-aware station symbols.
+- Maximum-speed, track-type, electrification and infrastructure views; bridges, tunnels, track counts.
+- Construction, proposed and former railways from a published OSM lifecycle snapshot.
+- One label-language selector (local names or 12 languages), station search, drawing and measuring tools, flat map and globe including the polar caps.
+- Static site: no server, account, API key or paid hosting.
+
+See [docs/features.md](docs/features.md) for the full list.
+
+## Quick start
 
 ```sh
 npm install --ignore-scripts
 npm run build
 npm test
-git clone --depth 1 --branch rail-data https://github.com/c933103/openrailwaystyle /tmp/rail-data
-mkdir -p styles/data
-cp /tmp/rail-data/manifest.json styles/data/
-cat /tmp/rail-data/lifecycle.pmtiles.part-* > /tmp/lifecycle.pmtiles
-pip install pmtiles==3.8.1
-python scripts/unpack-snapshot.py /tmp/lifecycle.pmtiles
-node scripts/build-overview-tiles.mjs
-cat /tmp/rail-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
-node scripts/serve.mjs
 ```
 
-Open `http://localhost:4173`. An internet connection and WebGL are required. The application itself is static, with no server, database, account, API key or paid hosting requirement.
+Serving the site needs the published railway snapshot; see [docs/development.md](docs/development.md).
 
-## GitHub Pages
+## Documentation
 
-The workflow in `.github/workflows/site.yml` builds and validates the style before publishing the `styles/` directory. In a new fork, enable Actions if GitHub has disabled inherited workflows, then choose **Settings → Pages → Build and deployment → Source → GitHub Actions**. Run **Validate and deploy world railway map** if the initial push occurred before Pages was enabled.
+| Topic | File |
+| --- | --- |
+| Full feature list | [docs/features.md](docs/features.md) |
+| Local setup, style build, tests | [docs/development.md](docs/development.md) |
+| GitHub Pages deployment | [docs/deployment.md](docs/deployment.md) |
+| Data sources, attribution, external services | [docs/data-sources.md](docs/data-sources.md) |
+| Speed and station data | [docs/railway-data.md](docs/railway-data.md) |
+| Lifecycle snapshot pipeline | [docs/lifecycle-snapshot.md](docs/lifecycle-snapshot.md) |
+| Basemap, terrain, contours | [docs/basemap-terrain.md](docs/basemap-terrain.md) |
+| Label languages and fallbacks | [docs/languages.md](docs/languages.md) |
+| Transport, destinations, planning context | [docs/context-layers.md](docs/context-layers.md) |
+| Street-running tracks | [docs/street-running.md](docs/street-running.md) |
+| Upstream Open Railway Styles | [docs/upstream.md](docs/upstream.md) |
 
-All deployment URLs are relative, so the repository subpath works correctly. The workflow also uploads the website as a reviewable artifact. Existing Hack4Rail example styles remain in the repository.
-
-## Style and data
-
-`styles/world.style.json` is generated by `scripts/build-style.mjs` from the original `styles/default.style.json`. Edit the builder and `styles/map-model.mjs`, run `npm run build`, and commit the resulting style. The original Europe-specific extractor and demo styles remain available for people building their own tiles; the worldwide site does not run that extractor.
-
-The quiet base-map layers, colours and design originate in this repository. Its global base source is `https://tuiles.enliberte.fr/planet.pmtiles`. Railway data comes from the independently hosted [OpenRailwayMap vector service](https://openrailwaymap.app/), whose [usage policy](https://github.com/hiddewie/OpenRailwayMap-vector/blob/master/USAGE.md) permits clearly attributed public applications without registration. The site loads only the current view and has no offline downloader or tile prefetcher. Attribution remains visible on the map and in About & data. The site does not copy the provider’s GPL rendering code; its new railway styling is independently authored against the documented tile fields.
-
-The railway provider’s `maxspeed` field is normalized to km/h. Where directions differ it represents the preferred direction, or the larger directional limit if no preference is recorded. Its `speed_label` preserves the original units and both directions. Bare numbers mean km/h; `mph` is explicit. `A / B` means OSM-way forward/backward, `A (B)` means preferred/opposite, and `-` means missing. Unknown/non-numeric values stay grey; a high-speed classification is never used to invent a speed limit. These are mapped infrastructure limits, not train operating speeds, temporary restrictions or timetable information. Display options switch between metric and imperial units: imperial colours speeds by round mph bands (< 25 … ≥ 185), shows track labels in mph (labels already tagged in mph are kept as tagged, others are converted from the numeric limit), draws contours at foot intervals and switches the scale bar and detail values.
-
-The provider’s station size is based on OSM route importance, not passenger numbers. Major stations have larger markers and first choice of label placement: each importance tier is its own map layer — heavy rail (large, normal, small, then halts), metro, light rail, people movers, monorail, funicular and tram, then former and planned stations from zoom 12 — because MapLibre orders labels by sort key only within a tile, but places layers top-down across all tiles; less complete route mapping can understate station importance. Major stations appear from zoom 6. From zoom 7, regional stations use the provider’s spaced selection without discarding stations classified as small; closer views add more stations with collision spacing. Halts and urban stations appear from zoom 11, and tram stops from zoom 13. Before zoom 12 a marker and its name are placed together with collision detection. From zoom 12 individual markers remain visible when labels collide. Worldwide coverage means global source coverage, not a guarantee that every railway, station or speed is mapped.
-
-The upstream railway tiles exclude planned/construction lines at zoom 7 and former infrastructure until still higher zooms. A **published worldwide lifecycle snapshot** fills that gap without sending viewer requests to Overpass. Railways under construction appear at every zoom, proposed railways from zoom 5, and former (disused, abandoned, razed) lines from zoom 7. The snapshot tiles start at zoom 5; `scripts/build-overview-tiles.mjs` derives zoom 0–4 tiles holding only construction from them during the site build. The snapshot continues unchanged through zoom 11, and the ordinary detail tiles take over at zoom 12. Full way geometries cross viewport and extraction boundaries without clipping gaps.
-
-The maintenance build (`.github/workflows/snapshot.yml`) extracts disjoint world regions sequentially, subdivides dense regions when necessary, deduplicates OSM way IDs, retains name translations, and produces a PMTiles archive plus an ODbL GeoJSON database. It refuses to publish an incomplete extraction and checks the north–south extent of 남부내륙선. The manifest records each region’s OSM timestamp and feature count. The `rail-data` branch stores the published files; ordinary site builds unpack the archive into compressed static vector tiles without rerunning extraction. A compact tile index skips empty areas. This avoids GitHub Pages’ unreliable compressed archive range responses; the browser decodes whole tile files instead. The raw Overpass responses are kept in the `overpass-cache` release (the Actions cache expires after a week unused), so a rebuild after a change to `scripts/lifecycle.mjs` needs no Overpass queries. A scheduled run on Monday, Wednesday and Friday at 03:23 UTC (night across Europe, where most users of the public Overpass server are) asks Overpass only for ways changed since the previous run (`scripts/snapshot-delta.mjs`): changed planned, construction and former ways with geometry, and the IDs of changed operating ways, so a line that opens disappears from the snapshot within a few days. It also re-downloads the oldest ~5 MB of full region responses (`scripts/refresh-snapshot-cache.mjs`), catching what change queries miss, such as deleted ways (the whole world is renewed about every eight weeks), and fetches the loading gauge of every railway way as a CSV list of way IDs (`scripts/build-loading-gauge-list.mjs`, about 4 MB), which colours the zoom 0–6 overview of the Loading gauge view, since no overview tiles carry loading gauge. A run is about 40 queries and 10 MB, within the Overpass API wiki's guidance for regular applications (under 100 queries and 10 MB a day); a region file larger than 5 MB still goes whole, so an occasional run is larger. Map visitors never query Overpass. Each run publishes the snapshot and redeploys the site; the manifest records each region's OSM date and the time changes were applied up to. `rail-data` is replaced by a single commit on each publish, so the repository keeps only the current snapshot. For faster global refreshes, use planet/regional dumps or your own Overpass instance rather than querying public servers more often.
-
-Station symbols use orange markers and bold names with halos, while retaining collision spacing. First-level regional boundaries use OSM admin levels 3/4 where supplied by the basemap; subdivision conventions and coverage differ by country. Land and seabed shading comes from [Mapzen Terrain Tiles hosted by AWS](https://registry.opendata.aws/terrain-tiles/), including NOAA ETOPO1 bathymetry. See `styles/terrain-credits.html` for source credits. Contours are calculated in the browser using the pinned maplibre-contour library, reusing the DEM cache with hillshade. Brown lines show land elevation and blue lines show negative seabed elevation, labelled in signed metres. Fine / index intervals are 200 / 1,000 m at zoom 7, 100 / 500 m at 9, 50 / 250 m at 11, 20 / 100 m at 13, and 10 / 50 m at 15. Ocean bathymetry is generally much coarser than land elevation; extra zoom does not create survey detail. Beyond 85.05° N and S, where the terrain tiles end, the globe's relief and contours come from NOAA ETOPO 2022 at 60 arc-seconds (about 1.85 km), prepared in advance rather than in the browser. This is not a navigation chart.
-
-One shared language selector controls map, station and railway labels. Western languages fall back to English and recorded Latin names before native names. Russian prefers recorded Cyrillic names, then English. Chinese tries Chinese variants and available ideographic names, including ordinary Japanese, Korean Hanja (`name:ko-Hani`) and Vietnamese Chữ Nôm (`name:vi-Hani`), before English; a Japanese name recorded as “kana (kanji)” or “kanji (kana)” shows only the kanji. Japanese prioritizes ideographic names over kana-only names. Chinese keys are read by area, and the script of a name is never guessed from its characters. `name:zh-Hant`/`name:zh-Hans` state a script; untagged `name:zh` is in whichever script its editor chose; `name:zh-TW`, `name:zh-HK` and `name:zh-CN` carry regional wording; `name` is the local Chinese name in mainland China and Taiwan but multilingual in Hong Kong and Macau, where `name:zh` holds the local Chinese name. Traditional reads: in Taiwan `name`; in Hong Kong and Macau zh, zh-Hant, zh-HK, zh-TW, `name`; in mainland China zh-Hant, zh-TW, zh-HK, zh, `name`; elsewhere zh-Hant, zh, zh-TW, zh-HK, then Simplified zh-Hans, zh-CN. Simplified reads: in mainland China `name`; in Hong Kong and Macau zh-Hans, zh-CN, zh, zh-Hant, zh-HK, zh-TW, `name`; in Taiwan zh-Hans, zh-CN, zh, `name`; elsewhere zh-Hans, zh, zh-CN, then Traditional zh-Hant, zh-TW, zh-HK. In those four areas the local `name` is used as recorded, even when it is not Chinese (KFC, K11), and ends the list; elsewhere the other script always comes before borrowed names and English, so a name recorded only in the other script is shown. Taiwan wording ranks before Hong Kong wording; `zh-SG`, `zh-MY` and `zh-MO` are too rare to consult. Operating-line names come from OpenRailwayMap's line tiles, which carry only the `name` tag, so they show the recorded name in every language. The four areas are the time zones Asia/Shanghai with Asia/Urumqi, Asia/Taipei, Asia/Hong_Kong and Asia/Macau from [timezone-boundary-builder](https://github.com/evansiroky/timezone-boundary-builder) (as packaged by the geo-tz npm module; © OpenStreetMap contributors, ODbL), which follow OSM land and territorial-sea boundaries and include every outlying island, such as Matsu, Kinmen, Pratas and Taiping. Their outlines keep about 30 m of detail around Hong Kong and Macau, 200 m along the Vietnam and North Korea borders and 1 km elsewhere; islands far from Natural Earth's land, such as Pratas, Taiping and the Paracels, join the Han-character region with their territorial sea. Borrowing Han-character names from other languages is separate and applies by location: for Chinese within China, Taiwan, Hong Kong, Macau, Japan, the Koreas, Vietnam, Singapore, Malaysia, the Russian Far East (the Far Eastern Federal District as constituted since 2018, including Buryatia and Zabaykalsky Krai) and the Chinese-speaking areas of Myanmar and Thailand: Wa State as it is governed, both its northern part and its southern region along the Thai border (Mandarin is its working language), Mong La (Special Region 4), Kokang (Laukkaing and Konkyan townships) and Thailand's Mae Fa Luang district (Santikhiri/Mae Salong, Thoet Thai). Scattered Chinese-speaking villages and town communities elsewhere in northern Thailand, eastern Myanmar and northern Laos are not covered; their recorded `name:zh` names show anyway, since Chinese tags are read everywhere; for Japanese only within the first seven. Elsewhere Chinese uses its recorded Chinese variants and Japanese its recorded Japanese name, then English, then the native name, so no place outside those areas is given a borrowed Han name. Each label tile records the region and Chinese area at every feature's centre (`atlas_han`, `atlas_zh`); clicked operating lines and search results use their own coordinates. Regions come from Natural Earth 1:10m admin-0 and admin-1 de facto boundaries, plus OpenStreetMap boundary relations for Wa State and Mong La (ODbL), geoBoundaries Myanmar townships for Kokang (Myanmar Analytics Project, CC BY 4.0) and Thai districts (Royal Thai Survey Department / OCHA ROAP, CC BY 3.0 IGO) (`scripts/build-han-region.mjs`); these finer outlines take precedence over Natural Earth's borders, bundled with the label code rather than fetched separately. Coasts are simplified to about 1 km. Sea within 12 nautical miles goes to the nearest land, so piers, bridges and undersea tunnels such as Seikan count with the coast they leave, while land in another country never counts; land borders keep about 200 m detail, but Natural Earth itself can be a kilometre or more off in places (for example at Padang Besar on the Malaysia–Thailand border), so a place that close to a border can be assigned to the neighbouring area. Unicode script checks include supplementary-plane Han characters; names are never automatically translated, transliterated or converted between character standards. If no preferred name exists, the native name remains visible.
-
-`styles/tile-labels.mjs` preserves vector tile geometry and attaches the selected display name. The station provider exposes one translation per request, so the client requests fallback languages only while current-view stations remain unresolved and retains a bounded cache. Missing translations are distinguished from the provider's native-name substitution. Failed optional translation lookups retain already loaded stations. Snapshot line names retain OSM `name:*` tags. The operating-line provider generally exposes **only local names**, so translations omitted from those tiles cannot be recovered by the selector. Search results depend on the separate search API. Railway names appear along tracks from zoom 9; speed labels retain source units.
-
-`npm run build` also creates the browser localization bundle and copies the pinned contour library with its license into `styles/vendor/`; generated vendor files are not committed.
-
-The deployment gate runs a real Chromium/WebGL test: start at the reported Japan–Korea view at zoom 7, pan northwest without zooming to 8, assert 남부내륙선 is rendered, then check line names and controls. It also verifies that no Overpass request was made. Screenshots are uploaded with the workflow for review. These checks do not guarantee that every real-world railway is correctly mapped in OSM.
-
-Community-hosted external services can be unavailable or change schema. The application shows loading failures rather than replacing missing speeds with guessed values. Station search uses the cross-origin-enabled `https://api.openrailwaymap.org/v2/facility` endpoint; railway vectors continue to use `openrailwaymap.app`. Search requests are submitted only on demand and have cancellation and timeout handling. No personal location is requested automatically.
-
----
-
-# Open Railway Styles (upstream project)
-
-*The rest of this file is the upstream project's original description.*
-
-Design a style for railways using [OpenStreetMap](https://www.openstreetmap.org/) data.
-
-Most maps favour only roads. We want to display railway information as a base map.
-
-Too many railway services use a general purpose OpenStreetMap base layer (or even worse, a proprietary map from a GAFAM company) and this project aims to change that.
-
-As the [OpenRailwayMap](https://www.openrailwaymap.org/) project shows, OpenStreetMap has a lot of information that can be used to design a nice looking general purpose railway base map.
-
-In this project we provide:
-- a style that focuses on showing railway infrastructure,
-- a script that extracts the needed railway data from OpenStreetMap (with certain specific tags) and generates a [PMTiles](https://github.com/protomaps/PMTiles),
-- a demonstration webpage to explore the style.
-
-## Background
-
-This project has been initiated during the [Hack4Rail 2025](https://hack4rail.event.sbb.ch/en/), a joint hackathon organized by the railway companies SBB, ÖBB, and DB in partnership with the OpenRail Association.
-
-Three teams tackled the challenge under different angles (focus on a specific zoom level, different use cases…). Their results can be found here:
-
-* [Infra Viewers](https://openrail-playground.github.io/openrailwaystyle/infra_viewers.html)
-* [European Train Spotter](https://openrail-playground.github.io/openrailwaystyle/european_train_spotter.html)
-* [Openstreet Trainsformer](https://openrail-playground.github.io/openrailwaystyle/openstreet_trainsformer.html)
-
-<p align="center">
-  <img alt="Hack4Rail Logo" src="img/hack4rail-logo.jpg" width="220"/>
-</p>
-
-## How does it work?
-
-Maps on the web are nowadays generally rendered on the browser with a library such as [MapLibre](https://github.com/maplibre/maplibre-gl-js).
-
-The data is pre-processed into [Vector Tiles](https://wiki.openstreetmap.org/wiki/Vector_tiles) to only access to the needed data at a given coordinate and zoom level (when displaying Europe, we don’t need the position of every three).
-
-Similarly, only some tags from OpenStreetMap are used. There are conventions such as [OpenMapTiles](https://openmaptiles.org/schema/) that define what tags are included.
-
-However, for this project, the usual data schemes doesn’t have enough details for railway specific rendering and we
-
-For this preprocessing, we use the tool [planetiler](https://github.com/onthegomap/planetiler). The file [ProcessRailway.java](ProcessRailway.java) contains all the specific configuration.
-
-Read the [justfile](justfile) to see how to run the processing different steps.
-
-## Going further
-
-The project focuses on the physical representation of rail networks. However, travelers often need information about commercial lines.
-The [publication of Patrick Brosi and Hannah Bast](https://ad-publications.informatik.uni-freiburg.de/Large-Scale_Generation_of_Transit_Maps_from_OpenStreetMap_Data.pdf) could be considered to transform the physical layer to have more information.
-
+Contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-The content of this repository is licensed under the [Apache 2.0 license](LICENSE).
-
-
-
-### Transport interchanges and passenger destinations
-
-The Transport and Destinations display options are enabled by default, remembered with the other settings, and included in shared links. They use the existing worldwide OpenMapTiles archive; no live Overpass calls or additional tile service are introduced.
-
-- Civil airports with IATA codes and international airports are labelled from zoom 8 where supplied by the tiles. Other civil airfields enter at zoom 12; private and military airfields are omitted. Airport grounds/runways and mapped ferry routes provide alignment context.
-- Bus/coach stations, ferry terminals and cable-car stations have distinct framed icons and names from zoom 12 where available; local bus stops, taxi stands and bicycle rentals appear from zoom 15, with bicycle parking from zoom 17. Harbours/marinas appear from zoom 15 and are not treated as passenger interchanges.
-- Hospitals, universities, malls/markets, stadiums, theme parks and visitor attractions receive labels; schools and smaller civic/cultural destinations enter later. Industrial/commercial, retail, education, hospital and major recreation grounds have light coloured fills and outlines. Generic commercial polygons are not asserted to be office parks.
-- Railway station names retain placement priority. All context names use the existing shared language selection and fallback rules. Click a facility or area for its mapped type. At zoom 14+, station panels list transport facilities within 500 m straight-line distance from loaded tiles, deduplicating tile buffers. This shows possible transfer context, not a verified walking route or timetable connection.
-
-Coverage and first appearance depend on the provider's source zooms (most detailed POIs are available at zoom 14). OpenMapTiles land-use polygons often contain only a class, without a name; available named POIs supply the labels. Government/community/historic facilities without polygon geometry receive point symbols. Absence in these tiles does not prove that no facility exists. These layers describe potential trip destinations, not measured passenger numbers.
-
-`tests/context.test.mjs` checks category distinctions, area coverage, rail placement priority, proximity/deduplication and settings. `scripts/check-context-browser.mjs` verifies real Hong Kong POIs/areas, Heathrow at regional scale, language switching, inspection and toggles in Chromium, before and after deployment.
-
-
-### Roads, planning context and rail-road interfaces
-
-The subdued base network includes ordinary roads, cycling paths and hiking / walking trails. Local bus stops, taxi stands and bicycle rentals enter at zoom 15, bicycle parking at 17. The station panel lists mapped nearby terminals first, then local facilities; straight-line proximity does not verify a walking connection.
-
-Protected areas, military grounds, religious institutions and heritage sites have a separate display control. Indigenous territories tagged `boundary=aboriginal_lands` are purple, separate from administrative borders and conservation boundaries. These are mapped planning context, not a determination of legal boundaries or permission to build. Coverage depends on the source tiles.
-
-Infrastructure view adds level crossings (`points_of_interest.type=level_crossing`, zoom 15+) and ochre roadbeds for explicitly mapped street-running tracks (zoom 13+). The latter uses a weekly, validated worldwide Overpass extract, published atomically to `street-data`; each website build copies the complete static vector tiles. Visitors do not make Overpass requests. Only `embedded=yes` or road `embedded_rails` tags qualify; trams and adjacent roads do not imply sharing. Its manifest and ODbL GeoJSON download are linked under About. Failed refreshes retain the last published snapshot.
-
-Lifecycle patterns are shared between style and SVG legend: construction uses long blocks; proposed uses spaced round dots; disused uses dash-dot; abandoned / removed uses sparse paired dashes. The same patterns apply to regional and detailed data, including the speed view.
+Apache 2.0, see [LICENSE](LICENSE).
