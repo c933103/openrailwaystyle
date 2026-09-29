@@ -65,16 +65,41 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   // Only current-view requests are made. Keep a bounded cache of successful
   // responses so language changes can reuse downloaded station tiles.
   const cache = new Map();
-  async function get(url, signal, json = false) {
+  // Downloads still under way, shared by everyone asking for the same URL
+  // (neighbouring track-count tiles ask for the same railway tiles at once).
+  // A download is cancelled only when every request waiting on it is.
+  const loading = new Map();
+  function get(url, signal, json = false) {
     if (cache.has(url)) {
-      const data = cache.get(url); cache.delete(url); cache.set(url,data); return data;
+      const data = cache.get(url); cache.delete(url); cache.set(url,data); return Promise.resolve(data);
     }
-    const response = await fetcher(url,{signal:AbortSignal.any([signal,AbortSignal.timeout(12000)])});
-    if (!response.ok) throw new Error(`Map names returned ${response.status}`);
-    const data = json ? await response.json() : await response.arrayBuffer();
-    cache.set(url,data);
-    while(cache.size>240) cache.delete(cache.keys().next().value);
-    return data;
+    let entry = loading.get(url);
+    if (!entry) {
+      const controller = new AbortController();
+      entry = {controller, waiting: 0, promise: (async () => {
+        const response = await fetcher(url,{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(12000)])});
+        if (!response.ok) throw new Error(`Map names returned ${response.status}`);
+        const data = json ? await response.json() : await response.arrayBuffer();
+        cache.set(url,data);
+        while(cache.size>240) cache.delete(cache.keys().next().value);
+        return data;
+      })()};
+      loading.set(url, entry);
+      const current = entry;
+      entry.promise.then(() => {}, () => {}).then(() => { if (loading.get(url) === current) loading.delete(url); });
+    }
+    const current = entry;
+    current.waiting++;
+    return new Promise((resolve, reject) => {
+      const cancel = () => {
+        if (--current.waiting === 0) { if (loading.get(url) === current) loading.delete(url); current.controller.abort(signal.reason); }
+        reject(signal.reason ?? new DOMException('Aborted', 'AbortError'));
+      };
+      if (signal.aborted) { cancel(); return; }
+      signal.addEventListener('abort', cancel, {once: true});
+      current.promise.then(data => { signal.removeEventListener('abort', cancel); resolve(data); },
+        error => { signal.removeEventListener('abort', cancel); reject(error); });
+    });
   }
   // Track counts: a vector source of their own (atlastracks://14/x/y; see
   // track-tiles.mjs), counted in a worker off the page's main thread
