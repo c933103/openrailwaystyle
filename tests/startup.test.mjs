@@ -174,25 +174,38 @@ test('controls work while the map is still loading, and settings take effect onc
     assert.match(map.styleOptions.localIdeographFontFamily,/TC/);
   } finally {dom.window.close();}
 });
-test('more detail draws the next zoom level at half size', async () => {
+test('more detail cycles: the next zoom level at half size, two levels at a quarter, then normal', async () => {
   const {dom,window,maps} = await start({search:'?detail=1'});
   try {
-    assert.equal(window.document.getElementById('map').classList.contains('detail'),true);
+    const frame = window.document.getElementById('map');
+    assert.equal(frame.classList.contains('detail'),true);
     assert.equal(maps[0].options.pixelRatio,(window.devicePixelRatio||1)/2,'the canvas keeps its pixel count');
     maps[0].handlers['style.load']();
     assert.ok(maps[0].added.includes('drawing-line'),'drawing layers are installed with the map');
-    // Toggling at the zoom limit keeps the viewport: the range shifts by one.
+    // Changing level at the zoom limit keeps the viewport: the range shifts.
     const map = maps[0];
     assert.deepEqual([map.options.minZoom,map.options.maxZoom],[2,21]);
     const detail = map.controls.find(c => c.onAdd && c.buttons).onAdd().querySelector('button[title^="More detail"]');
+    assert.match(detail.title,/drawn at 50%\. Click for 25%/,'the title gives the scale now and next');
     map.zoom = 21;
     detail.click();
-    assert.equal(window.document.getElementById('map').classList.contains('detail'),false);
+    assert.deepEqual([frame.classList.contains('detail'),frame.classList.contains('detail-2')],[true,true]);
+    assert.deepEqual([map.zoom,map.minZoom,map.maxZoom],[22,3,22]);
+    assert.equal(map.pixelRatio,(window.devicePixelRatio||1)/4);
+    assert.match(detail.title,/drawn at 25%\. Click for 100%/);
+    detail.click();
+    assert.equal(frame.classList.contains('detail'),false);
     assert.deepEqual([map.zoom,map.minZoom,map.maxZoom],[20,1,20]);
+    assert.match(detail.title,/drawn at 100%\. Click for 50%/);
     detail.click();
     assert.deepEqual([map.zoom,map.minZoom,map.maxZoom],[21,2,21]);
-    map.zoom = 2; detail.click();
-    assert.equal(map.zoom,1);
+    detail.click(); detail.click();
+    map.zoom = 1; detail.click();
+    assert.deepEqual([map.zoom,map.minZoom],[2,2]);
+    detail.click();
+    assert.equal(map.zoom,3);
+    detail.click();
+    assert.equal(map.zoom,1,'back to normal from the lowest zoom');
   } finally {dom.window.close();}
 });
 test('settings are remembered in a cookie; a shared link applies once and leaves the address', async () => {

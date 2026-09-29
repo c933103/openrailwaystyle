@@ -1,8 +1,8 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20260929-5';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260929-5';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20260929-6';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260929-6';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260929-5';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260929-5';
+import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260929-6';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260929-6';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -28,7 +28,7 @@ const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_C
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260929-5';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260929-6';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -179,7 +179,7 @@ function renderLegend() {
     control: 'Hue groups related systems (e.g. ETCS with China’s ETCS-derived CTCS); darker is more advanced: warning only, spot transmission, continuous, radio. Colour shows the first recorded system; click a track for all of them and their compatibility. Grey means nothing is recorded.',
     gauge: 'Gauges a few millimetres apart (e.g. 1432 and 1435, 1520 and 1524) share one colour and are generally compatible. Click a track for all recorded gauges. Grey means not recorded.',
     loading: 'Colour follows the envelope’s height above rail, so equal sizes match across regions; Britain’s W gauges share one height and form their own ladder. Click a track for dimensions. Grey means not recorded.',
-    infrastructure: 'Zoomed in (zoom 14+), a boxed number gives the running tracks side by side, counted from the mapped tracks; sidings, yards and crossovers are not counted, and station areas are left unlabelled. Ochre roadbeds mark explicitly tagged street-running tracks (13+); × marks level crossings (14+).',
+    infrastructure: 'Zoomed in (zoom 14+), a boxed number gives the running tracks side by side, counted from the mapped tracks; sidings, yards and crossovers are not counted, and station areas are left unlabelled. Ochre roadbeds mark explicitly tagged street-running tracks (13+); × marks level crossings (15+).',
   };
   let note = notes[settings.mode];
   if (settings.inactive && settings.mode === 'speed') note += ' Planned and former lines take the colour of their recorded limit, if any.';
@@ -381,8 +381,18 @@ function unitStyle(style) {
     style.sources.seabedContoursClose.tiles = [dem.contourProtocolUrl(contourOptions(settings.units, 'close'))];
   }
 }
+// The scale bar measures the map in layout pixels, but More detail draws the
+// map at 1/k of its size while the controls keep their normal size. Measure
+// across k times the width, then draw the bar at 1/k of MapLibre's length.
+function fitScale() {
+  if (!scale) return;
+  const k = 2 ** settings.detail, bar = map?.getContainer().querySelector?.('.maplibregl-ctrl-scale');
+  if (scale.options) scale.options.maxWidth = 100 * k;
+  scale.setUnit(settings.units);
+  if (bar) bar.style.width = `${parseFloat(bar.style.width) / k}px`;
+}
 function applyUnits() {
-  scale?.setUnit(settings.units);
+  fitScale();
   if (!ready) return;
   const style = {layers: map.getStyle().layers, sources: {contours: {}, seabedContours: {}, seabedContoursClose: {}}};
   unitStyle(style);
@@ -415,7 +425,7 @@ function updateStatus() {
   status.dataset.renderedFormer = String(regional.filter(f => !['proposed','construction'].includes(f.properties.state)).length);
   status.dataset.numericSpeeds = String(tracks.filter(f => numericSpeed(f.properties.maxspeed) !== null).length);
 }
-const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg|points):\/\//,'');
+const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg):\/\//,'');
 function localizeStyle(style) {
   for (const layer of style.layers) {
     if (layer.type !== 'symbol' || layer.id === 'speed-labels' || layer.id.startsWith('terrain-')) continue;
@@ -426,15 +436,17 @@ function localizeStyle(style) {
   style.sources.streetRunning.tiles = [`streettiles://{z}/{x}/{y}?lang=${settings.language}`];
   style.sources.inactiveRegional.tiles = [`railtiles://{z}/{x}/{y}?lang=${settings.language}`];
   style.sources.railway.url = `atlasrail://${unwrap(style.sources.railway.url)}`;
-  style.sources.crossings.url = `atlaspoints://${unwrap(style.sources.crossings.url)}`;
   style.sources.loadingLow.url = `atlaslg://${unwrap(style.sources.loadingLow.url)}`;
   unitStyle(style);
   styleLanguage = settings.language;
 }
-// More detail: draw the map at twice the size, scaled to half, one zoom level
-// further in. The same area shows more tiles, features and smaller labels;
-// the canvas keeps its pixel count. Controls are scaled back to normal size.
-const detailButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'⊞', title:'More detail: show the next zoom level at half size'});
+// More detail: draw the map at twice (four times) the size, scaled to half
+// (a quarter), one (two) zoom levels further in. The same area shows more
+// tiles, features and smaller labels; the canvas keeps its pixel count.
+// Controls are scaled back to normal size. The button cycles through the
+// levels; its title gives the scale the map is drawn at.
+const detailButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'⊞'});
+const detailScale = level => 100 / 2 ** level;
 const drawButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'✎', title:'Drawing tools'});
 // Globe or flat map. Web Mercator stretches high latitudes without limit;
 // the globe (MapLibre's vertical-perspective projection) shows every region
@@ -458,7 +470,7 @@ function polarShare() {
 const onGlobe = () => map?.getProjection?.()?.type === 'globe';
 function wantedProjection() {
   // More detail draws one zoom level further in.
-  const zoom = map.getZoom() - (settings.detail ? 1 : 0);
+  const zoom = map.getZoom() - settings.detail;
   return autoProjection(zoom, zoom < 4 ? 0 : polarShare());
 }
 let syncPanning = () => {}, globeDragged = () => false, polarCentres;
@@ -480,21 +492,26 @@ function updatePolar() {
 polarButton.addEventListener('click', () => { map.setProjection({type: onGlobe() ? 'mercator' : 'globe'}); updatePolar(); });
 const measureButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'📏', title:'Measure'});
 const MIN_ZOOM = 1, MAX_ZOOM = 20;
-function applyDetail(changeZoom) {
-  $('map').classList.toggle('detail', settings.detail);
-  detailButton.setAttribute('aria-pressed', String(settings.detail));
-  detailButton.setAttribute('aria-label', settings.detail ? 'Show normal detail' : 'Show more detail');
+function applyDetail(from = settings.detail) {
+  const level = settings.detail, next = (level + 1) % (DETAIL_LEVELS + 1);
+  $('map').classList.toggle('detail', level > 0);
+  $('map').classList.toggle('detail-2', level === 2);
+  detailButton.setAttribute('aria-pressed', String(level > 0));
+  detailButton.title = `More detail: map drawn at ${detailScale(level)}%. Click for ${next ? `${detailScale(next)}% (${next === 1 ? 'the next zoom level at half size' : 'two zoom levels further in at a quarter size'})` : '100% (normal)'}.`;
+  detailButton.setAttribute('aria-label', detailButton.title);
   if (!map) return;
-  map.setPixelRatio(devicePixelRatio / (settings.detail ? 2 : 1));
-  // The zoom range shifts with the mode, so toggling always moves exactly one
-  // level and keeps the viewport, even at the zoom limits.
-  if (settings.detail) { map.setMaxZoom(MAX_ZOOM + 1); if (changeZoom) map.jumpTo({zoom: map.getZoom() + 1}); map.setMinZoom(MIN_ZOOM + 1); }
-  else { map.setMinZoom(MIN_ZOOM); if (changeZoom) map.jumpTo({zoom: map.getZoom() - 1}); map.setMaxZoom(MAX_ZOOM); }
+  map.setPixelRatio(devicePixelRatio / 2 ** level);
+  // The zoom range shifts with the level, so a change always moves exactly
+  // that many levels and keeps the viewport, even at the zoom limits.
+  const shift = level - from;
+  if (shift > 0) { map.setMaxZoom(MAX_ZOOM + level); map.jumpTo({zoom: map.getZoom() + shift}); map.setMinZoom(MIN_ZOOM + level); }
+  else { map.setMinZoom(MIN_ZOOM + level); if (shift) map.jumpTo({zoom: map.getZoom() + shift}); map.setMaxZoom(MAX_ZOOM + level); }
   // On the globe the smallest zoom follows the latitude (globe-drag.mjs).
   polarCentres?.refresh();
+  fitScale();
 }
-detailButton.addEventListener('click', () => { settings.detail = !settings.detail; applyDetail(true); saveSettings(); });
-applyDetail(false);
+detailButton.addEventListener('click', () => { const from = settings.detail; settings.detail = (from + 1) % (DETAIL_LEVELS + 1); applyDetail(from); saveSettings(); });
+applyDetail();
 class ButtonControl {
   constructor(buttons) { this.buttons = buttons; }
   onAdd() { this.container = Object.assign(document.createElement('div'), {className:'maplibregl-ctrl maplibregl-ctrl-group'}); this.container.append(...this.buttons); return this.container; }
@@ -676,17 +693,17 @@ async function initialize() {
   // on the globe (or as last left) so the first frame is not the flat map.
   const linked = /^#-?[\d.]+\//.test(location.hash), start = linked ? {} : rememberedView;
   const startZoom = linked ? Number(location.hash.slice(1).split('/')[0]) : Number.isFinite(start.z) ? start.z : 1.8;
-  const startGlobe = typeof rememberedView.g === 'boolean' ? rememberedView.g : settings.autoGlobe && startZoom - (settings.detail ? 1 : 0) < 4;
+  const startGlobe = typeof rememberedView.g === 'boolean' ? rememberedView.g : settings.autoGlobe && startZoom - settings.detail < 4;
   style.projection = {type: startGlobe ? 'globe' : 'mercator'};
   const validCenter = Array.isArray(start.c) && start.c.length === 2 && start.c.every(Number.isFinite);
   map = new maplibregl.Map({
-    container: 'map', style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / (settings.detail ? 2 : 1),
-    center: validCenter ? start.c : [15,23], zoom: Number.isFinite(start.z) ? start.z : 1.8, bearing: Number.isFinite(start.b) ? start.b : 0, pitch: Number.isFinite(start.p) ? start.p : 0, hash: true, minZoom: MIN_ZOOM + (settings.detail ? 1 : 0), maxZoom: MAX_ZOOM + (settings.detail ? 1 : 0),
+    container: 'map', style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / 2 ** settings.detail,
+    center: validCenter ? start.c : [15,23], zoom: Number.isFinite(start.z) ? start.z : 1.8, bearing: Number.isFinite(start.b) ? start.b : 0, pitch: Number.isFinite(start.p) ? start.p : 0, hash: true, minZoom: MIN_ZOOM + settings.detail, maxZoom: MAX_ZOOM + settings.detail,
     renderWorldCopies: true, attributionControl: { compact: true },
   });
   // The globe may be centred beyond 85° (globe-drag.mjs); a view left or
   // linked there is applied again once that is allowed.
-  polarCentres = allowPolarCentres(map, maplibregl.LngLat, () => MIN_ZOOM + (settings.detail ? 1 : 0));
+  polarCentres = allowPolarCentres(map, maplibregl.LngLat, () => MIN_ZOOM + settings.detail);
   const [hashZoom, hashLat, hashLng] = linked ? location.hash.slice(1).split('/').map(Number) : [];
   const wanted = linked ? {center: [hashLng, hashLat], zoom: hashZoom} : validCenter ? {center: start.c, zoom: start.z} : null;
   if (wanted && Math.abs(wanted.center[1]) > 85 && wanted.center.every(Number.isFinite)) map.jumpTo(wanted);
@@ -726,6 +743,7 @@ async function initialize() {
   map.addControl(new ButtonControl([detailButton, drawButton, measureButton, polarButton]), 'top-right');
   scale = new maplibregl.ScaleControl({ unit: settings.units });
   map.addControl(scale, 'bottom-left');
+  map.on('move', fitScale); fitScale();
   drawing = new Drawing(map, {units: () => settings.units, status: text => { $('draw-status').textContent = text; }, changed: updateDrawing});
   measuring = new Measure(map, {units: () => settings.units, status: text => { $('measure-status').textContent = text; }, changed: updateDrawing});
   map.on('style.load', installDrawing);

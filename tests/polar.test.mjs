@@ -63,3 +63,32 @@ test('simplification keeps ends and drops points within tolerance', () => {
   assert.deepEqual(out[0], [0, 0]); assert.deepEqual(out.at(-1), [3, 3]);
   assert.ok(out.length === 3 && out.some(p => p[0] === 3 && p[1] === 0));
 });
+
+test('globe drag: a press becomes a drag after 3 on-screen pixels at every More detail scale', async () => {
+  const {installGlobeDrag} = await import('../styles/globe-drag.mjs');
+  const windowListeners = {}, saved = globalThis.addEventListener;
+  globalThis.addEventListener = (type, fn) => { windowListeners[type] = fn; };
+  try {
+    for (const k of [1, 4]) {
+      // The map is drawn at 1/k: its layout is k times its on-screen size.
+      const canvas = new EventTarget();
+      Object.assign(canvas, {clientWidth: 400 * k, getBoundingClientRect: () => ({left: 0, top: 0, width: 400})});
+      let jumps = 0;
+      const map = {getCanvasContainer: () => canvas, getContainer: () => ({clientWidth: 400 * k, clientHeight: 300 * k}),
+        unproject: ([x, y]) => ({lng: x / 100, lat: -y / 100}), getCenter: () => ({lng: 0, lat: 0}), getBearing: () => 0, getZoom: () => 3,
+        jumpTo: () => { jumps++; }, dragPan: {enable() {}, disable() {}}};
+      const drag = installGlobeDrag(map, {active: () => true});
+      const event = (type, x) => Object.assign(new Event(type), {pointerId: 1, button: 0, clientX: x, clientY: 100});
+      canvas.dispatchEvent(event('pointerdown', 100));
+      windowListeners.pointermove(event('pointermove', 102));
+      windowListeners.pointerup(event('pointerup', 102));
+      assert.equal(drag.justDragged(), false, `2 screen pixels of jitter is still a click (scale 1/${k})`);
+      assert.equal(jumps, 0);
+      canvas.dispatchEvent(event('pointerdown', 100));
+      windowListeners.pointermove(event('pointermove', 104));
+      windowListeners.pointerup(event('pointerup', 104));
+      assert.equal(drag.justDragged(), true, `4 screen pixels is a drag (scale 1/${k})`);
+      assert.equal(jumps, 1);
+    }
+  } finally { globalThis.addEventListener = saved; }
+});

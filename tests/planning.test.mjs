@@ -34,10 +34,7 @@ test('street running needs explicit active shared-road evidence, never tram clas
 test('only level crossings receive a crossing marker',()=>{
  assert.ok(match('infrastructure-level-crossings',{type:'level_crossing',feature:'general/crossing'},15,1));
  assert.ok(!match('infrastructure-level-crossings',{type:'railway_crossing'},16,1));
- assert.ok(match('infrastructure-level-crossings',{type:'level_crossing'},14,1));
- assert.ok(!match('infrastructure-level-crossings',{type:'level_crossing'},13,1));
- // The provider fills its tiles from zoom 15: zoom 14 is made from children.
- assert.match(style.sources.crossings.url,/#minzoom=14&maxzoom=18&underzoom=15$/);
+ assert.ok(!match('infrastructure-level-crossings',{type:'level_crossing'},14,1));
 });
 
 test('shared roadway includes private vehicle access and explicit bus-only exceptions',()=>{

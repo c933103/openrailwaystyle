@@ -83,7 +83,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') { console.log('Browser resource:',msg.text()); if(/DataCloneError|already detached/.test(msg.text())) errors.push(msg.text()); }});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260929-5&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260929-6&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
@@ -317,9 +317,28 @@ try{
   await expectMap(async z=>{const {map}=await import(document.querySelector('script[type="module"]').src);return !map.isMoving() && Math.abs(map.getZoom()-z)<0.1;},'The zoom-out button must work in detail mode',zoomed);
   const detailShot=await page.screenshot({path:'browser-review/more-detail.jpg',type:'jpeg',quality:55});
   console.log('DETAILVIEW_IMAGE_START'+detailShot.toString('base64')+'DETAILVIEW_IMAGE_END');
+  // Next level: two zoom levels further in, drawn at a quarter.
+  const atFirst=await zoomNow();
+  await page.locator('button.atlas-ctrl[title^="More detail"]').click();
+  assert.equal(await page.locator('#map.detail.detail-2').count(),1);
+  assert.ok(Math.abs(await zoomNow()-atFirst-1)<0.01,'The second level shows two zoom levels further in');
+  assert.match(await page.locator('button.atlas-ctrl[title^="More detail"]').getAttribute('title'),/drawn at 25%/);
+  // The scale bar keeps its normal size, so it must measure on-screen pixels.
+  const scaleError=await page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);
+    const bar=document.querySelector('.maplibregl-ctrl-scale'),m=bar.textContent.match(/([\d.]+)\s*(km|m)\b/);if(!m)return null;
+    const c=map.getContainer(),k=c.getBoundingClientRect().width/c.clientWidth,x=c.clientWidth/2,y=c.clientHeight/2;
+    const perPx=map.unproject([x,y]).distanceTo(map.unproject([x+100/k,y]))/100;
+    return Math.abs(+m[1]*(m[2]==='km'?1000:1)/bar.getBoundingClientRect().width/perPx-1);});
+  assert.ok(scaleError!==null && scaleError<0.05,'The scale bar must match the map at the second level: error '+scaleError);
+  const beforeQuarterDrag=await centre();
+  await page.mouse.move(900,450); await page.mouse.down();
+  for(let i=1;i<=10;i++) await page.mouse.move(900-i*10,450);
+  await page.mouse.up(); await page.waitForTimeout(600);
+  assert.ok(Math.abs((await centre())[0]-beforeQuarterDrag[0])>0.0005,'A mouse drag must pan the map at the second level');
   await page.locator('button.atlas-ctrl[title^="More detail"]').click();
   assert.equal(await page.locator('#map.detail').count(),0);
-  console.log('PASS: more detail view toggles');
+  assert.ok(Math.abs(await zoomNow()-(atFirst-1))<0.01,'The cycle returns to normal detail');
+  console.log('PASS: more detail cycles through two levels');
   await page.locator('#collapse').click();
   await page.locator('button.atlas-ctrl[title="Drawing tools"]').click();
   await page.locator('[data-draw="line"]').click();

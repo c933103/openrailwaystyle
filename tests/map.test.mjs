@@ -27,13 +27,22 @@ test('source mph and directional speed labels are preserved', () => {
   assert.equal(formatSpeed({ speed_label: '- / 80' }).tagged, '- / 80 (km/h)');
 });
 test('shared URLs keep display settings and reject invalid map modes', () => {
-  assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',stations:false,labels:true,inactive:false,relief:true,names:true,autoGlobe:true,transport:true,destinations:true,constraints:true,units:'metric',detail:false,language:'local' });
+  assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',stations:false,labels:true,inactive:false,relief:true,names:true,autoGlobe:true,transport:true,destinations:true,constraints:true,units:'metric',detail:0,language:'local' });
   assert.equal(readSettings('?mode=invalid').mode, 'speed');
   // A remembered language applies unless the URL names one.
   assert.equal(readSettings('', {language:'ja'}).language, 'ja');
   assert.equal(readSettings('?language=ko', {language:'ja'}).language, 'ko');
   assert.equal(readSettings('', {language:'xx'}).language, 'local');
-  assert.deepEqual(readSettings('?relief=1', {relief:false, stations:false, mode:'bogus', units:'imperial'}), {mode:'speed',stations:false,labels:true,inactive:true,relief:true,names:true,autoGlobe:true,transport:true,destinations:true,constraints:true,units:'imperial',detail:false,language:'local'});
+  assert.deepEqual(readSettings('?relief=1', {relief:false, stations:false, mode:'bogus', units:'imperial'}), {mode:'speed',stations:false,labels:true,inactive:true,relief:true,names:true,autoGlobe:true,transport:true,destinations:true,constraints:true,units:'imperial',detail:0,language:'local'});
+});
+test('more detail has three levels; older links and cookies hold true or 1 for the first', () => {
+  assert.equal(readSettings('?detail=2').detail, 2);
+  assert.equal(readSettings('?detail=1').detail, 1);
+  assert.equal(readSettings('?detail=0', {detail:2}).detail, 0);
+  assert.equal(readSettings('', {detail:true}).detail, 1);
+  assert.equal(readSettings('', {detail:2}).detail, 2);
+  assert.equal(readSettings('?detail=yes').detail, 0);
+  assert.equal(readSettings('?detail=9').detail, 2);
 });
 test('world map has no European rail source or geographic bounds', () => {
   assert.ok(!JSON.stringify(style).includes('europe-railway'));
