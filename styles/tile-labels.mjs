@@ -61,7 +61,7 @@ export function localizeTile(data, lang, coordinates) {
   }
 }
 
-export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch, {dataRoot} = {}) {
+export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch, {dataRoot, timeout = 12000} = {}) {
   // Only current-view requests are made. Keep a bounded cache of successful
   // responses so language changes can reuse downloaded station tiles.
   const cache = new Map();
@@ -69,15 +69,17 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   // (neighbouring track-count tiles ask for the same railway tiles at once).
   // Each request has its own 12-second limit; a download is cancelled only
   // when every request waiting on it has been cancelled or run out of time.
+  // One running longer than that limit counts as stuck: a new request starts
+  // a fresh download rather than join it.
   const loading = new Map();
   function get(url, request, json = false) {
     if (cache.has(url)) {
       const data = cache.get(url); cache.delete(url); cache.set(url,data); return Promise.resolve(data);
     }
     let entry = loading.get(url);
-    if (!entry) {
+    if (!entry || Date.now() - entry.started >= timeout) {
       const controller = new AbortController();
-      entry = {controller, waiting: 0, promise: (async () => {
+      entry = {controller, waiting: 0, started: Date.now(), promise: (async () => {
         const response = await fetcher(url,{signal:controller.signal});
         if (!response.ok) throw new Error(`Map names returned ${response.status}`);
         const data = json ? await response.json() : await response.arrayBuffer();
@@ -89,7 +91,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       const current = entry;
       entry.promise.then(() => {}, () => {}).then(() => { if (loading.get(url) === current) loading.delete(url); });
     }
-    const current = entry, signal = AbortSignal.any([request, AbortSignal.timeout(12000)]);
+    const current = entry, signal = AbortSignal.any([request, AbortSignal.timeout(timeout)]);
     current.waiting++;
     return new Promise((resolve, reject) => {
       const cancel = () => {
