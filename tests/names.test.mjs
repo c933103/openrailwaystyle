@@ -236,6 +236,25 @@ test('a transferred railway tile cannot detach the reusable cache entry',async()
   assert.equal(readTile(third.data).layers.stations.feature(0).properties.tracks,2);
   assert.equal(requests,1,'language changes and return visits reuse intact cached bytes');
 });
+test('level crossings: zoom-14 tiles are made from the provider\'s zoom-15 children',async()=>{
+  const protocols={},requests=[];
+  const child=(id,x,y)=>encode.fromGeojsonVt({points_of_interest:{features:[{id,type:1,geometry:[[x,y]],tags:{id:`n${id}`,type:'level_crossing'}}]}},{version:2});
+  const tiles={'15/20/20':child(1,1000,1000),'15/21/20':child(2,1000,1000),'15/20/21':child(3,1000,1000),'15/21/21':child(4,1000,1000),'15/40/40':child(9,5,5)};
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},async url=>{
+    requests.push(url);
+    if(!/\/\d+\/\d+\/\d+/.test(new URL(url).pathname)) return {ok:true,json:async()=>({minzoom:10,maxzoom:18,tiles:['https://example.org/poi/{z}/{x}/{y}']})};
+    return {ok:true,arrayBuffer:async()=>tiles[new URL(url).pathname.split('/').slice(-3).join('/')]};
+  });
+  const json=await protocols.atlaspoints({url:'atlaspoints://https://example.org/poi#minzoom=14&maxzoom=18&underzoom=15',type:'json'},new AbortController());
+  assert.deepEqual([json.data.minzoom,json.data.maxzoom],[14,18]);
+  const template=json.data.tiles[0];
+  const layer=readTile((await protocols.atlaspoints({url:template.replace('{z}/{x}/{y}','14/10/10')},new AbortController())).data).layers.points_of_interest;
+  assert.deepEqual(Array.from({length:layer.length},(_,i)=>layer.feature(i).properties.id).sort(),['n1','n2','n3','n4']);
+  // From zoom 15 the provider's tile is used as it is.
+  requests.length=0;
+  await protocols.atlaspoints({url:template.replace('{z}/{x}/{y}','15/40/40')},new AbortController());
+  assert.deepEqual(requests,['https://example.org/poi/15/40/40']);
+});
 test('generated Latin transliteration cannot replace a local name as English fallback',()=>{
   const japanese=at({name:'腰越三丁目','name:latin':'yao yue3ding mu'});
   for(const lang of ['en','fr','de','ru']) {
