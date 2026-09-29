@@ -322,7 +322,8 @@ export class PolarLayer {
       this.fill(state.iceShelves, options.shaderData, projection, rgba(COLOURS.iceShelf, 0.8 * fade));
       const terrain = this.relief();
       if (terrain && state.relief && state.index?.relief) this.drawRelief(cap, state, options.shaderData, projection, zoom, fade);
-      const bandIndex = bandFor(zoom), band = state.index?.units?.[units]?.[bandIndex];
+      // The finest band prepared for this zoom (only the coarsest may exist).
+      const bands = state.index?.units?.[units] || [], bandIndex = Math.min(bandFor(zoom), bands.length - 1), band = bands[bandIndex];
       if (band && terrain) {
         const size = 2 * CAP_RADIUS / band.n, [x0, y0, x1, y1] = view[cap];
         for (const key of band.tiles) {

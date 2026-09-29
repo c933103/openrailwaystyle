@@ -4673,12 +4673,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W12"
             ],
@@ -4688,12 +4691,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -4702,27 +4708,33 @@
               "in",
               "W12*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
-          "#823717",
+          "#702f14",
           [
             "any",
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W11"
             ],
@@ -4732,12 +4744,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -4746,27 +4761,33 @@
               "in",
               "W11*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
-          "#943f1a",
+          "#823717",
           [
             "any",
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W10A"
             ],
@@ -4776,12 +4797,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -4790,27 +4814,33 @@
               "in",
               "W10A*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
-          "#a6471d",
+          "#943f1a",
           [
             "any",
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W10"
             ],
@@ -4820,12 +4850,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -4834,12 +4867,68 @@
               "in",
               "W10*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
+              ]
+            ]
+          ],
+          "#a6471d",
+          [
+            "any",
+            [
+              "==",
+              [
+                "upcase",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
+              ],
+              "W9PLUS"
+            ],
+            [
+              "in",
+              "W9PLUS,",
+              [
+                "concat",
+                [
+                  "upcase",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
-                ""
+                ","
+              ]
+            ],
+            [
+              "in",
+              "W9PLUS*",
+              [
+                "upcase",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -4849,20 +4938,7 @@
             [
               "==",
               [
-                "coalesce",
-                [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
-              ],
-              "W9Plus"
-            ],
-            [
-              "in",
-              "W9Plus,",
-              [
-                "concat",
+                "upcase",
                 [
                   "coalesce",
                   [
@@ -4870,35 +4946,7 @@
                     "loading_gauge"
                   ],
                   ""
-                ],
-                ","
-              ]
-            ],
-            [
-              "in",
-              "W9Plus*",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
-              ]
-            ]
-          ],
-          "#cb5624",
-          [
-            "any",
-            [
-              "==",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                ]
               ],
               "W9"
             ],
@@ -4908,12 +4956,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -4922,12 +4973,68 @@
               "in",
               "W9*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
+              ]
+            ]
+          ],
+          "#cb5624",
+          [
+            "any",
+            [
+              "==",
+              [
+                "upcase",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
+              ],
+              "W8A"
+            ],
+            [
+              "in",
+              "W8A,",
+              [
+                "concat",
+                [
+                  "upcase",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
-                ""
+                ","
+              ]
+            ],
+            [
+              "in",
+              "W8A*",
+              [
+                "upcase",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -4937,12 +5044,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W8"
             ],
@@ -4952,12 +5062,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -4966,12 +5079,15 @@
               "in",
               "W8*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -4981,12 +5097,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W7"
             ],
@@ -4996,12 +5115,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -5010,12 +5132,15 @@
               "in",
               "W7*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -5025,12 +5150,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W6A"
             ],
@@ -5040,12 +5168,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -5054,12 +5185,15 @@
               "in",
               "W6A*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -5069,12 +5203,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W6"
             ],
@@ -5084,12 +5221,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -5098,12 +5238,15 @@
               "in",
               "W6*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -5113,12 +5256,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W5"
             ],
@@ -5128,12 +5274,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -5142,12 +5291,15 @@
               "in",
               "W5*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -5155,28 +5307,41 @@
           [
             "match",
             [
-              "coalesce",
+              "upcase",
               [
-                "get",
-                "loading_gauge"
-              ],
-              ""
+                "coalesce",
+                [
+                  "get",
+                  "loading_gauge"
+                ],
+                ""
+              ]
             ],
             "PPI",
             "#a5d66b",
             "G1",
             "#a5d66b",
+            "TSI_G1",
+            "#a5d66b",
             "TSI_GA",
+            "#43a047",
+            "GA",
             "#43a047",
             "TSI_GB",
             "#43a047",
+            "GB",
+            "#43a047",
             "TSI_GB1",
+            "#43a047",
+            "GB1",
             "#43a047",
             "TSI_GB2",
             "#43a047",
-            "CPb",
+            "GB2",
+            "#43a047",
+            "CPB",
             "#00897b",
-            "CPb+",
+            "CPB+",
             "#00897b",
             "UIC_C",
             "#1e88e5",
@@ -5184,14 +5349,68 @@
             "#1e88e5",
             "TSI_GC",
             "#1e88e5",
-            "PT c",
+            "GC",
+            "#1e88e5",
+            "PT C",
             "#315bbc",
+            "AAR_B",
+            "#1388c0",
+            "AAR B",
+            "#1388c0",
+            "AAR-B",
+            "#1388c0",
+            "AARB",
+            "#1388c0",
             "AAR_C",
-            "#3949ab",
+            "#3b48ab",
+            "AAR C",
+            "#3b48ab",
+            "AAR-C",
+            "#3b48ab",
+            "AARC",
+            "#3b48ab",
+            "AAR_E",
+            "#5e35b1",
+            "AAR E",
+            "#5e35b1",
+            "AAR-E",
+            "#5e35b1",
+            "AARE",
+            "#5e35b1",
             "AAR_F",
-            "#8228ac",
+            "#8328ac",
+            "AAR F",
+            "#8328ac",
+            "AAR-F",
+            "#8328ac",
+            "AARF",
+            "#8328ac",
             "GOST_T",
             "#8e24aa",
+            "AAR_J",
+            "#7a1f77",
+            "AAR J",
+            "#7a1f77",
+            "AAR-J",
+            "#7a1f77",
+            "AARJ",
+            "#7a1f77",
+            "AAR_H",
+            "#6c1c52",
+            "AAR H",
+            "#6c1c52",
+            "AAR-H",
+            "#6c1c52",
+            "AARH",
+            "#6c1c52",
+            "AAR_K",
+            "#6b1b50",
+            "AAR K",
+            "#6b1b50",
+            "AAR-K",
+            "#6b1b50",
+            "AARK",
+            "#6b1b50",
             "EBV 1",
             "#a1887f",
             "EBV 2",
@@ -5202,13 +5421,13 @@
             "#a1887f",
             "FS",
             "#a1887f",
-            "deep-tube",
+            "DEEP-TUBE",
             "#b0a4c8",
-            "subsurface",
+            "SUBSURFACE",
             "#b0a4c8",
-            "Kleinprofil",
+            "KLEINPROFIL",
             "#b0a4c8",
-            "Großprofil",
+            "GROSSPROFIL",
             "#b0a4c8",
             "#a1887f"
           ]
@@ -5291,12 +5510,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W12"
             ],
@@ -5306,12 +5528,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -5320,27 +5545,33 @@
               "in",
               "W12*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
-          "#823717",
+          "#702f14",
           [
             "any",
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W11"
             ],
@@ -5350,12 +5581,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -5364,27 +5598,33 @@
               "in",
               "W11*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
-          "#943f1a",
+          "#823717",
           [
             "any",
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W10A"
             ],
@@ -5394,12 +5634,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -5408,27 +5651,33 @@
               "in",
               "W10A*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
-          "#a6471d",
+          "#943f1a",
           [
             "any",
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W10"
             ],
@@ -5438,12 +5687,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -5452,12 +5704,68 @@
               "in",
               "W10*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
+              ]
+            ]
+          ],
+          "#a6471d",
+          [
+            "any",
+            [
+              "==",
+              [
+                "upcase",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
+              ],
+              "W9PLUS"
+            ],
+            [
+              "in",
+              "W9PLUS,",
+              [
+                "concat",
+                [
+                  "upcase",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
-                ""
+                ","
+              ]
+            ],
+            [
+              "in",
+              "W9PLUS*",
+              [
+                "upcase",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -5467,20 +5775,7 @@
             [
               "==",
               [
-                "coalesce",
-                [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
-              ],
-              "W9Plus"
-            ],
-            [
-              "in",
-              "W9Plus,",
-              [
-                "concat",
+                "upcase",
                 [
                   "coalesce",
                   [
@@ -5488,35 +5783,7 @@
                     "loading_gauge"
                   ],
                   ""
-                ],
-                ","
-              ]
-            ],
-            [
-              "in",
-              "W9Plus*",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
-              ]
-            ]
-          ],
-          "#cb5624",
-          [
-            "any",
-            [
-              "==",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                ]
               ],
               "W9"
             ],
@@ -5526,12 +5793,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -5540,12 +5810,68 @@
               "in",
               "W9*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
+              ]
+            ]
+          ],
+          "#cb5624",
+          [
+            "any",
+            [
+              "==",
+              [
+                "upcase",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
+              ],
+              "W8A"
+            ],
+            [
+              "in",
+              "W8A,",
+              [
+                "concat",
+                [
+                  "upcase",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
-                ""
+                ","
+              ]
+            ],
+            [
+              "in",
+              "W8A*",
+              [
+                "upcase",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -5555,12 +5881,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W8"
             ],
@@ -5570,12 +5899,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -5584,12 +5916,15 @@
               "in",
               "W8*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -5599,12 +5934,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W7"
             ],
@@ -5614,12 +5952,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -5628,12 +5969,15 @@
               "in",
               "W7*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -5643,12 +5987,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W6A"
             ],
@@ -5658,12 +6005,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -5672,12 +6022,15 @@
               "in",
               "W6A*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -5687,12 +6040,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W6"
             ],
@@ -5702,12 +6058,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -5716,12 +6075,15 @@
               "in",
               "W6*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -5731,12 +6093,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W5"
             ],
@@ -5746,12 +6111,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -5760,12 +6128,15 @@
               "in",
               "W5*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -5773,28 +6144,41 @@
           [
             "match",
             [
-              "coalesce",
+              "upcase",
               [
-                "get",
-                "loading_gauge"
-              ],
-              ""
+                "coalesce",
+                [
+                  "get",
+                  "loading_gauge"
+                ],
+                ""
+              ]
             ],
             "PPI",
             "#a5d66b",
             "G1",
             "#a5d66b",
+            "TSI_G1",
+            "#a5d66b",
             "TSI_GA",
+            "#43a047",
+            "GA",
             "#43a047",
             "TSI_GB",
             "#43a047",
+            "GB",
+            "#43a047",
             "TSI_GB1",
+            "#43a047",
+            "GB1",
             "#43a047",
             "TSI_GB2",
             "#43a047",
-            "CPb",
+            "GB2",
+            "#43a047",
+            "CPB",
             "#00897b",
-            "CPb+",
+            "CPB+",
             "#00897b",
             "UIC_C",
             "#1e88e5",
@@ -5802,14 +6186,68 @@
             "#1e88e5",
             "TSI_GC",
             "#1e88e5",
-            "PT c",
+            "GC",
+            "#1e88e5",
+            "PT C",
             "#315bbc",
+            "AAR_B",
+            "#1388c0",
+            "AAR B",
+            "#1388c0",
+            "AAR-B",
+            "#1388c0",
+            "AARB",
+            "#1388c0",
             "AAR_C",
-            "#3949ab",
+            "#3b48ab",
+            "AAR C",
+            "#3b48ab",
+            "AAR-C",
+            "#3b48ab",
+            "AARC",
+            "#3b48ab",
+            "AAR_E",
+            "#5e35b1",
+            "AAR E",
+            "#5e35b1",
+            "AAR-E",
+            "#5e35b1",
+            "AARE",
+            "#5e35b1",
             "AAR_F",
-            "#8228ac",
+            "#8328ac",
+            "AAR F",
+            "#8328ac",
+            "AAR-F",
+            "#8328ac",
+            "AARF",
+            "#8328ac",
             "GOST_T",
             "#8e24aa",
+            "AAR_J",
+            "#7a1f77",
+            "AAR J",
+            "#7a1f77",
+            "AAR-J",
+            "#7a1f77",
+            "AARJ",
+            "#7a1f77",
+            "AAR_H",
+            "#6c1c52",
+            "AAR H",
+            "#6c1c52",
+            "AAR-H",
+            "#6c1c52",
+            "AARH",
+            "#6c1c52",
+            "AAR_K",
+            "#6b1b50",
+            "AAR K",
+            "#6b1b50",
+            "AAR-K",
+            "#6b1b50",
+            "AARK",
+            "#6b1b50",
             "EBV 1",
             "#a1887f",
             "EBV 2",
@@ -5820,13 +6258,13 @@
             "#a1887f",
             "FS",
             "#a1887f",
-            "deep-tube",
+            "DEEP-TUBE",
             "#b0a4c8",
-            "subsurface",
+            "SUBSURFACE",
             "#b0a4c8",
-            "Kleinprofil",
+            "KLEINPROFIL",
             "#b0a4c8",
-            "Großprofil",
+            "GROSSPROFIL",
             "#b0a4c8",
             "#a1887f"
           ]
@@ -8513,12 +8951,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W12"
             ],
@@ -8528,12 +8969,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -8542,12 +8986,15 @@
               "in",
               "W12*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -8557,12 +9004,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W11"
             ],
@@ -8572,12 +9022,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -8586,12 +9039,15 @@
               "in",
               "W11*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -8601,12 +9057,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W10A"
             ],
@@ -8616,12 +9075,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -8630,27 +9092,33 @@
               "in",
               "W10A*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
-          "W10A",
+          "W10a",
           [
             "any",
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W10"
             ],
@@ -8660,12 +9128,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -8674,12 +9145,15 @@
               "in",
               "W10*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -8689,20 +9163,7 @@
             [
               "==",
               [
-                "coalesce",
-                [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
-              ],
-              "W9Plus"
-            ],
-            [
-              "in",
-              "W9Plus,",
-              [
-                "concat",
+                "upcase",
                 [
                   "coalesce",
                   [
@@ -8710,20 +9171,42 @@
                     "loading_gauge"
                   ],
                   ""
+                ]
+              ],
+              "W9PLUS"
+            ],
+            [
+              "in",
+              "W9PLUS,",
+              [
+                "concat",
+                [
+                  "upcase",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
             ],
             [
               "in",
-              "W9Plus*",
+              "W9PLUS*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -8733,12 +9216,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W9"
             ],
@@ -8748,12 +9234,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -8762,12 +9251,15 @@
               "in",
               "W9*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -8777,12 +9269,68 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
+              ],
+              "W8A"
+            ],
+            [
+              "in",
+              "W8A,",
+              [
+                "concat",
+                [
+                  "upcase",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
-                ""
+                ","
+              ]
+            ],
+            [
+              "in",
+              "W8A*",
+              [
+                "upcase",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
+              ]
+            ]
+          ],
+          "W8a",
+          [
+            "any",
+            [
+              "==",
+              [
+                "upcase",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W8"
             ],
@@ -8792,12 +9340,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -8806,12 +9357,15 @@
               "in",
               "W8*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -8821,12 +9375,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W7"
             ],
@@ -8836,12 +9393,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -8850,12 +9410,15 @@
               "in",
               "W7*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -8865,12 +9428,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W6A"
             ],
@@ -8880,12 +9446,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -8894,12 +9463,15 @@
               "in",
               "W6A*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -8909,12 +9481,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W6"
             ],
@@ -8924,12 +9499,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -8938,12 +9516,15 @@
               "in",
               "W6*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
@@ -8953,12 +9534,15 @@
             [
               "==",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ],
               "W5"
             ],
@@ -8968,12 +9552,15 @@
               [
                 "concat",
                 [
-                  "coalesce",
+                  "upcase",
                   [
-                    "get",
-                    "loading_gauge"
-                  ],
-                  ""
+                    "coalesce",
+                    [
+                      "get",
+                      "loading_gauge"
+                    ],
+                    ""
+                  ]
                 ],
                 ","
               ]
@@ -8982,12 +9569,15 @@
               "in",
               "W5*",
               [
-                "coalesce",
+                "upcase",
                 [
-                  "get",
-                  "loading_gauge"
-                ],
-                ""
+                  "coalesce",
+                  [
+                    "get",
+                    "loading_gauge"
+                  ],
+                  ""
+                ]
               ]
             ]
           ],
