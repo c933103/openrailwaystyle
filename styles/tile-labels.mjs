@@ -67,9 +67,10 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   const cache = new Map();
   // Downloads still under way, shared by everyone asking for the same URL
   // (neighbouring track-count tiles ask for the same railway tiles at once).
-  // A download is cancelled only when every request waiting on it is.
+  // Each request has its own 12-second limit; a download is cancelled only
+  // when every request waiting on it has been cancelled or run out of time.
   const loading = new Map();
-  function get(url, signal, json = false) {
+  function get(url, request, json = false) {
     if (cache.has(url)) {
       const data = cache.get(url); cache.delete(url); cache.set(url,data); return Promise.resolve(data);
     }
@@ -77,7 +78,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     if (!entry) {
       const controller = new AbortController();
       entry = {controller, waiting: 0, promise: (async () => {
-        const response = await fetcher(url,{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(12000)])});
+        const response = await fetcher(url,{signal:controller.signal});
         if (!response.ok) throw new Error(`Map names returned ${response.status}`);
         const data = json ? await response.json() : await response.arrayBuffer();
         cache.set(url,data);
@@ -88,7 +89,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       const current = entry;
       entry.promise.then(() => {}, () => {}).then(() => { if (loading.get(url) === current) loading.delete(url); });
     }
-    const current = entry;
+    const current = entry, signal = AbortSignal.any([request, AbortSignal.timeout(12000)]);
     current.waiting++;
     return new Promise((resolve, reject) => {
       const cancel = () => {
