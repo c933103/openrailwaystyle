@@ -236,6 +236,53 @@ test('a transferred railway tile cannot detach the reusable cache entry',async()
   assert.equal(readTile(third.data).layers.stations.feature(0).properties.tracks,2);
   assert.equal(requests,1,'language changes and return visits reuse intact cached bytes');
 });
+test('simultaneous requests for one tile share a single download; it stops only when all are cancelled',async()=>{
+  const protocols={},bytes=Uint8Array.from(tile({name:'Track',tracks:2})).buffer,fetches=[];
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},(url,{signal})=>new Promise((resolve,reject)=>{
+    const fetch={url,signal,finish:()=>resolve({ok:true,arrayBuffer:async()=>bytes.slice(0)})};fetches.push(fetch);
+    signal.addEventListener('abort',()=>reject(signal.reason),{once:true});
+  }));
+  const request={url:'atlasrail://https://example.org/railway/14/10/10'};
+  const cancelled=new AbortController(),kept=new AbortController();
+  const first=protocols.atlasrail(request,cancelled),second=protocols.atlasrail(request,kept);
+  await new Promise(resolve=>setTimeout(resolve));
+  assert.equal(fetches.length,1,'the second request waits on the first download');
+  cancelled.abort();
+  await assert.rejects(first,{name:'AbortError'});
+  assert.equal(fetches[0].signal.aborted,false,'another request still wants the tile');
+  fetches[0].finish();
+  assert.equal(readTile((await second).data).layers.stations.feature(0).properties.tracks,2);
+  const other={url:'atlasrail://https://example.org/railway/14/11/10'},gone=new AbortController();
+  const lost=protocols.atlasrail(other,gone);
+  await new Promise(resolve=>setTimeout(resolve));
+  gone.abort();
+  await assert.rejects(lost,{name:'AbortError'});
+  assert.equal(fetches[1].signal.aborted,true,'nobody wants it any more');
+  protocols.atlasrail(other,new AbortController());
+  await new Promise(resolve=>setTimeout(resolve));
+  assert.equal(fetches.length,3,'a cancelled download is started afresh');
+  fetches[2].finish();
+});
+test('each request waiting on a shared download has its own time limit; a stuck download is not joined',async()=>{
+  const protocols={},fetches=[],wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},(url,{signal})=>new Promise((resolve,reject)=>{
+    fetches.push({signal,finish:()=>resolve({ok:true,arrayBuffer:async()=>Uint8Array.from(tile({name:'Track',tracks:2})).buffer})});
+    signal.addEventListener('abort',()=>reject(signal.reason),{once:true});
+  }),{timeout:300});
+  const request={url:'atlasrail://https://example.org/railway/14/10/10'};
+  const first=assert.rejects(protocols.atlasrail(request,new AbortController()),{name:'TimeoutError'});
+  await wait(100);
+  const second=protocols.atlasrail(request,new AbortController());
+  await wait(250);
+  await first;
+  assert.equal(fetches.length,1,'the second request joined the first download');
+  assert.equal(fetches[0].signal.aborted,false,'the second request still has time left');
+  const third=protocols.atlasrail(request,new AbortController());
+  await wait(0);
+  assert.equal(fetches.length,2,'a download older than the limit is treated as stuck');
+  fetches[0].finish();fetches[1].finish();
+  for(const result of [await second,await third]) assert.equal(readTile(result.data).layers.stations.feature(0).properties.tracks,2);
+});
 test('level crossings: zoom-14 tiles are made from the provider\'s zoom-15 children',async()=>{
   const protocols={},requests=[];
   const child=(id,x,y)=>encode.fromGeojsonVt({points_of_interest:{features:[{id,type:1,geometry:[[x,y]],tags:{id:`n${id}`,type:'level_crossing'}}]}},{version:2});
