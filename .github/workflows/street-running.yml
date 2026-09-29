@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: '27 3 * * 0'
   push:
-    branches: [main]
+    branches: [main, fix/planning-context]
     paths: ['scripts/build-street-running.mjs', 'styles/street-running.mjs']
 permissions:
   contents: write

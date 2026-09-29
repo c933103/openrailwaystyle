@@ -1,5 +1,5 @@
-// Incremental update of the lifecycle snapshot (each scheduled run). Instead
-// of waiting for a region's turn in the rotation of full refreshes, each run asks Overpass only for
+// Weekly incremental update of the lifecycle snapshot. Instead of waiting for
+// a region's turn in the monthly rotation, each run asks Overpass only for
 // ways changed since the previous run:
 //   1. lifecycle ways (planned, construction, former) changed since then,
 //      with geometry: added or updated;
