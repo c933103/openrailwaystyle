@@ -1,6 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
+import {roadLayers, constraintLayers} from './planning-style.mjs';
 import {contextLayers} from './context-style.mjs';
-import { ORM, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, loadingLabel, trainProtectionShort, TRAIN_PROTECTION, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
+import { ORM, LIFECYCLE_PATTERNS, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, loadingLabel, trainProtectionShort, TRAIN_PROTECTION, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
 
 // Keep the Hack4Rail base-map design and replace its Europe-only rail source.
 const original = JSON.parse(await readFile(new URL('../styles/default.style.json', import.meta.url)));
@@ -36,6 +37,8 @@ const style = {
     stationMed: {...vector('standard_railway_text_stations_med', 6, 7), url: `${ORM}/standard_railway_text_stations_med#minzoom=6&maxzoom=7&underzoom=7`},
     stations: vector('standard_railway_text_stations', 8, 16),
     inactiveRegional: { type: 'vector', tiles: ['railtiles://{z}/{x}/{y}'], minzoom: 0, maxzoom: 10, promoteId: 'osm_id', attribution: '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>' },
+    crossings: vector('points_of_interest',15,18),
+    streetRunning: {type:'vector',tiles:['streettiles://{z}/{x}/{y}'],minzoom:12,maxzoom:12,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     contours: {type:'vector',tiles:['atlas-contour://{z}/{x}/{y}'],minzoom:7,maxzoom:15},
     // Seabed contours (see contourOptions in map-model.mjs). The elevation
     // tiles hold depths only to zoom 10, so the close source stops at zoom 11
@@ -44,7 +47,7 @@ const style = {
     seabedContoursClose: {type:'vector',tiles:['atlas-contour://{z}/{x}/{y}'],minzoom:11,maxzoom:11},
     relief: {type:'raster-dem', tiles:[DEM_URL], tileSize:256, encoding:'terrarium', maxzoom:15, attribution:'<a href="terrain-credits.html">Terrain: Mapzen / AWS and data contributors</a>'},
   },
-  layers: original.layers.filter(l => (!l.source || l.source === 'openmaptiles') && !l.id.startsWith('airport_')).map(l => structuredClone(l)),
+  layers: original.layers.filter(l => (!l.source || l.source === 'openmaptiles') && !l.id.startsWith('airport_') && l['source-layer'] !== 'transportation').map(l => structuredClone(l)),
 };
 const places = style.layers.filter(l => l.type === 'symbol');
 style.layers = style.layers.filter(l => l.type !== 'symbol');
@@ -143,17 +146,17 @@ style.layers.splice(trackIndex,0,
 style.layers.push({...structure,id:'structure-tunnel',filter:['all',present,notFerry,['==',['get','tunnel'],true]],paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],7,0.7,10,1.1,14,2,18,3], 'line-dasharray':[3,2]}});
 // Planned, construction and former lines. line-dasharray cannot vary by
 // feature, so each state has its own layers: long dashes with short gaps for
-// construction, round dots for proposals, short sparse faded dashes for
-// former lines. The patterns stay distinct when the speed view recolours the
+// construction, spaced round dots for proposals, dash-dot for disused and
+// sparse paired short dashes for abandoned or removed lines. The patterns stay distinct when the speed view recolours the
 // lines by planned or former speed (inactivePaint in map-model.mjs).
-const INACTIVE_DASH = {construction:[4,1.2], proposed:[0.1,2], former:[1.6,2.4]};
-const stateFilter = state => state === 'former' ? ['!', ['match', ['get','state'], ['construction','proposed'], true, false]] : ['==', ['get','state'], state];
+const INACTIVE_DASH = Object.fromEntries(Object.entries(LIFECYCLE_PATTERNS).map(([k,v])=>[k,v.dash]));
+const stateFilter = state => state === 'former' ? ['!', ['match', ['get','state'], ['construction','proposed','disused','present'], true, false]] : ['==', ['get','state'], state];
 const inactiveWidth = ['interpolate', ['linear'], ['zoom'], 0, 0.7, 5, 1.3, 7, 1.9, 12, 2.4, 16, 3.2, 20, 4.5];
 const inactiveLine = state => ({
   'line-color': inactiveColours('speed'), 'line-width': inactiveWidth, 'line-dasharray': INACTIVE_DASH[state],
   'line-opacity': ['case', ['==', ['get','tunnel'], true], 0.4, state === 'former' ? 0.75 : 0.95],
 });
-const inactiveLayout = state => ({'line-cap': state === 'proposed' ? 'round' : 'butt', 'line-join': 'round'});
+const inactiveLayout = state => ({'line-cap': LIFECYCLE_PATTERNS[state].cap, 'line-join': 'round'});
 // The complete snapshot supplies every lifecycle at regional scales. The
 // ordinary detail tiles take over together at z12, avoiding duplicate lines.
 // Construction shows at every zoom, proposals from z5, former lines from z7.
@@ -167,7 +170,7 @@ style.layers.push(
   {...inactiveBridge, id:'inactive-bridge-edge', source:'railway', 'source-layer':'railway_line_high', minzoom:12, filter:['all', ['!', present], notFerry, ['==',['get','bridge'],true]], paint:inactiveBridgeEdge},
   {...inactiveBridge, id:'inactive-bridge-deck', source:'railway', 'source-layer':'railway_line_high', minzoom:12, filter:['all', ['!', present], notFerry, ['==',['get','bridge'],true]], paint:inactiveBridgeDeck},
 );
-for (const state of ['former', 'proposed', 'construction']) style.layers.push(
+for (const state of ['former', 'disused', 'proposed', 'construction']) style.layers.push(
   {id:`inactive-regional-${state}`, type:'line', source:'inactiveRegional', 'source-layer':'lifecycle', minzoom:0, maxzoom:12,
     filter:['all', regionalZoom, stateFilter(state)], layout:inactiveLayout(state), paint:inactiveLine(state)},
   {id:`inactive-railways-${state}`, type:'line', source:'railway', 'source-layer':'railway_line_high', minzoom:12,
@@ -297,10 +300,17 @@ for (const l of places) {
 }
 // Context fills sit above the base fills/shading, below contours and all
 // transport linework. Context labels outrank towns but yield to railways.
-const context = contextLayers();
+const context = contextLayers(), constraints = constraintLayers(), roads = roadLayers();
+const roadIndex=style.layers.findIndex(l=>l.id==='infrastructure-overview');
+style.layers.splice(roadIndex,0,...roads.roads);
+// A broad roadbed casing marks explicit shared roadway while keeping rail
+// class colours on top. Separate from bridge parapets and lifecycle dashes.
+const streetIndex=style.layers.findIndex(l=>l.id==='infrastructure-tracks');
+style.layers.splice(streetIndex,0,{id:'infrastructure-street-running',type:'line',source:'streetRunning','source-layer':'street_running',minzoom:13,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#b68f55','line-width':['interpolate',['linear'],['zoom'],13,7,18,14],'line-opacity':0.65}});
+style.layers.push({id:'infrastructure-level-crossings',type:'symbol',source:'crossings','source-layer':'points_of_interest',minzoom:15,filter:['==',['get','type'],'level_crossing'],layout:{'text-field':'×','text-font':['Noto Sans Bold'],'text-size':23,'text-allow-overlap':false,'text-padding':2},paint:{'text-color':'#63332c','text-halo-color':'#fffef8','text-halo-width':2}});
 const contextIndex = style.layers.findIndex(l => l.id === 'terrain-contours');
-style.layers.splice(contextIndex, 0, ...context.areas, ...context.lines);
-style.layers.push(...context.labels);
+style.layers.splice(contextIndex, 0, ...context.areas, ...constraints.areas, ...context.lines, ...constraints.lines);
+style.layers.push(...roads.names, ...constraints.labels, ...context.labels);
 const stationNames = style.layers.filter(l => l.id.startsWith('station-') && l.type === 'symbol');
 const railwayNames = style.layers.filter(l => l.type === 'symbol' && l.id.endsWith('-names') && !l.id.startsWith('station-'));
 // Track-count badges above railway names, so a line's name never hides
@@ -312,4 +322,5 @@ for (const l of style.layers) {
 }
 await writeFile(new URL('../styles/world.style.json', import.meta.url), JSON.stringify(style, null, 2) + '\n');
 console.log(`Built world.style.json: ${style.layers.length} layers`);
+
 

@@ -128,7 +128,7 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
     assert.equal(window.document.getElementById('region'),null);
     const former = window.document.getElementById('inactive');
     former.checked = false; former.dispatchEvent(new window.Event('change'));
-    for (const state of ['construction','proposed','former']) {
+    for (const state of ['construction','proposed','disused','former']) {
       assert.equal(maps[0].visibility[`inactive-railways-${state}`],'none');
       assert.equal(maps[0].visibility[`inactive-regional-${state}`],'none');
     }

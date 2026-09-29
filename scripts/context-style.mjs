@@ -24,12 +24,13 @@ export function contextLayers() {
   lines.push({...base('context-transport-ferry-routes','line','transportation',9,values('class',['ferry'])),paint:{'line-color':'#388b9b','line-width':1.2,'line-opacity':0.65,'line-dasharray':[4,3]}});
   // Destinations are placed below transport and all rail labels. Named major
   // facilities lead; ordinary schools/cultural sites enter a little later.
-  for (const c of [...CONTEXT_CATEGORIES].sort((a,b)=>Number(a.group==='transport')-Number(b.group==='transport'))) {
+  const priority=c=>c.group==='transport'?(c.local?(c.id==='bike-parking'?0.5:1):2):0;
+  for (const c of [...CONTEXT_CATEGORIES].sort((a,b)=>priority(a)-priority(b))) {
     const airport=c.id==='airport';
     const filter=airport ? ['all',['!',values('class',['military','private'])],['any',['>=',['zoom'],12],values('class',['international']),['!=',['coalesce',['get','iata'],''],'']]]
       : ['any',...(c.values ? [['match',['coalesce',['get','subclass'],['get','class'],''],c.values,true,false]]:[]),...(c.classes ? [values('class',c.classes)]:[])];
     labels.push({...base(`context-${c.group}-${c.id}-label`,'symbol',airport?'aerodrome_label':'poi',airport?8:(c.zoom||12),filter),
-      layout:{...text,'icon-image':`context-${c.id}`,'icon-size':c.group==='transport'?0.85:0.7},
+      layout:{...text,'icon-image':`context-${c.id}`,'icon-size':c.local?0.62:c.group==='transport'?0.85:0.7},
       paint:{'text-color':c.color,'text-halo-color':'#fffef8','text-halo-width':1.8}});
   }
   return {areas,lines,labels};

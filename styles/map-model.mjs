@@ -303,9 +303,10 @@ export const loadingLabel = () => {
 };
 // Planned, construction and former lines: in the speed view coloured by the
 // recorded (planned or former) limit where one exists; otherwise by state.
-export const INACTIVE_STATES = [['construction', '#ad7619', 'Construction'], ['proposed', '#896192', 'Proposed'], ['former', '#75675c', 'Former lines']];
+export const INACTIVE_STATES = [['construction', '#ad7619', 'Construction'], ['proposed', '#896192', 'Proposed'], ['disused', '#75675c', 'Disused'], ['former', '#9a8b80', 'Abandoned / removed']];
+export const LIFECYCLE_PATTERNS = {construction:{dash:[8,2],cap:'butt'},proposed:{dash:[0.01,3.5],cap:'round'},disused:{dash:[5,2,0.6,2],cap:'butt'},former:{dash:[1,1.5,1,5],cap:'butt'}};
 export function inactivePaint(mode, units = 'metric') {
-  const byState = ['match', ['get', 'state'], 'construction', INACTIVE_STATES[0][1], 'proposed', INACTIVE_STATES[1][1], INACTIVE_STATES[2][1]];
+  const byState = ['match', ['get', 'state'], 'construction', INACTIVE_STATES[0][1], 'proposed', INACTIVE_STATES[1][1], 'disused', INACTIVE_STATES[2][1], INACTIVE_STATES[3][1]];
   if (mode !== 'speed') return byState;
   return ['case', ['<', ['to-number', ['coalesce', ['get', 'maxspeed'], -1], -1], 0], byState, speedPaint(units)];
 }
@@ -371,7 +372,9 @@ export function hanFallback(p, lang) {
 // Unicode scripts include supplementary-plane Han characters used by Nôm/Hanja.
 export function chooseName(p, lang = 'local') {
   const local = [p.name,p['name:nonlatin']].filter(nonempty);
-  const english = [p['name:en'],p.int_name,p['name:latin'],p['name:en-Latn']].filter(nonempty);
+  // The basemap can generate name:latin without knowing the source language
+  // (e.g. Mandarin readings of Japanese kanji). It is not an English name.
+  const english = [p['name:en'],p['name:en-Latn'],p.int_name].filter(nonempty);
   const selected = [p[`name:${lang}`]].filter(nonempty);
   const recorded = Object.entries(p).filter(([k,v])=>k.startsWith('name:') && nonempty(v)).map(([,v])=>v);
   const borrow = hanFallback(p, lang);
@@ -393,7 +396,7 @@ export function chooseName(p, lang = 'local') {
   else if (lang === 'ru') preferred = [...selected.filter(cyrillic), ...local.filter(cyrillic), ...recorded.filter(cyrillic), ...english];
   else if (lang === 'ko') preferred = [...selected, ...local.filter(v=>/\p{Script=Hangul}/u.test(v)), ...english];
   else preferred = [...selected, ...english];
-  const name = [...preferred, ...local, p.localized_name, p.label, p.ref].find(nonempty) || '';
+  const name = [...preferred, ...local, p.localized_name, p['name:latin'], p.label, p.ref].find(nonempty) || '';
   return chinese(lang) ? withoutKana(name) : name;
 }
 export function displayName(p, lang = 'local') {
@@ -402,7 +405,7 @@ export function displayName(p, lang = 'local') {
 export function labelExpression(lang = 'local') {
   // Styles cannot tell regions apart; use the order for places elsewhere.
   const requested = chinese(lang) ? chineseVariantKeys(lang) : [`name:${lang}`];
-  const keys = ['atlas_name', ...(lang !== 'local' ? [...new Set(requested),'name:en','name:latin'] : []), 'name','name:nonlatin','label','ref'];
+  const keys = ['atlas_name', ...(lang !== 'local' ? [...new Set(requested),'name:en'] : []), 'name','name:nonlatin','name:latin','label','ref'];
   return ['case', ...keys.flatMap(key=>[['!=',['coalesce',['get',key],''],''],['to-string',['get',key]]]), ''];
 }
 // The station service substitutes the native name for missing translations.
@@ -474,7 +477,7 @@ export function formatSpeed(properties, units = 'metric') {
 // Display settings live in a cookie; a link can still carry them (the app
 // then saves them and removes them from the address). remembered: settings
 // kept in this browser, used for anything the URL does not name.
-export const SETTING_KEYS = ['mode','stations','labels','inactive','relief','names','autoGlobe','transport','destinations','units','detail','language'];
+export const SETTING_KEYS = ['mode','stations','labels','inactive','relief','names','autoGlobe','transport','destinations','constraints','units','detail','language'];
 const LEGACY_LANGUAGE_KEYS = ['stationLanguage','mapLanguage','lineLanguage'];
 export const SETTING_PARAMS = [...SETTING_KEYS, ...LEGACY_LANGUAGE_KEYS];
 export function readSettings(search, remembered = {}) {
@@ -484,7 +487,7 @@ export function readSettings(search, remembered = {}) {
   return {
     mode: pick('mode', v => MODES.includes(v), 'speed'),
     stations: flag('stations', true), labels: flag('labels', true), inactive: flag('inactive', true),
-    transport: flag('transport', true), destinations: flag('destinations', true),
+    transport: flag('transport', true), destinations: flag('destinations', true), constraints: flag('constraints', true),
     relief: flag('relief', true), names: flag('names', true), autoGlobe: flag('autoGlobe', true),
     units: pick('units', v => v === 'metric' || v === 'imperial', 'metric'),
     detail: flag('detail', false),

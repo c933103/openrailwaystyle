@@ -111,6 +111,23 @@
       "promoteId": "osm_id",
       "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
     },
+    "crossings": {
+      "type": "vector",
+      "url": "https://openrailwaymap.app/points_of_interest",
+      "minzoom": 15,
+      "maxzoom": 18,
+      "promoteId": "id",
+      "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
+    },
+    "streetRunning": {
+      "type": "vector",
+      "tiles": [
+        "streettiles://{z}/{x}/{y}"
+      ],
+      "minzoom": 12,
+      "maxzoom": 12,
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
+    },
     "contours": {
       "type": "vector",
       "tiles": [
@@ -600,6 +617,260 @@
       }
     },
     {
+      "id": "context-constraints-protected-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "park",
+      "minzoom": 6,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "!",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "class"
+                ],
+                ""
+              ],
+              [
+                "aboriginal_lands"
+              ],
+              true,
+              false
+            ]
+          ],
+          [
+            "!",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "class"
+                ],
+                ""
+              ],
+              [
+                "archaeological_site",
+                "battlefield",
+                "district",
+                "historic"
+              ],
+              true,
+              false
+            ]
+          ]
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ]
+      ],
+      "paint": {
+        "fill-color": "#59845b",
+        "fill-opacity": 0.1
+      }
+    },
+    {
+      "id": "context-constraints-heritage-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "park",
+      "minzoom": 10,
+      "filter": [
+        "all",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "archaeological_site",
+            "battlefield",
+            "district",
+            "historic"
+          ],
+          true,
+          false
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ]
+      ],
+      "paint": {
+        "fill-color": "#956837",
+        "fill-opacity": 0.1
+      }
+    },
+    {
+      "id": "context-constraints-indigenous-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "boundary",
+      "minzoom": 4,
+      "filter": [
+        "all",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "aboriginal_lands"
+          ],
+          true,
+          false
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ]
+      ],
+      "paint": {
+        "fill-color": "#91689b",
+        "fill-opacity": 0.045
+      }
+    },
+    {
+      "id": "context-constraints-indigenous-park-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "park",
+      "minzoom": 6,
+      "filter": [
+        "all",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "aboriginal_lands"
+          ],
+          true,
+          false
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ]
+      ],
+      "paint": {
+        "fill-color": "#91689b",
+        "fill-opacity": 0.045
+      }
+    },
+    {
+      "id": "context-constraints-military-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 8,
+      "filter": [
+        "all",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "military"
+          ],
+          true,
+          false
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ]
+      ],
+      "paint": {
+        "fill-color": "#b36765",
+        "fill-opacity": 0.1
+      }
+    },
+    {
+      "id": "context-constraints-religious-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "religious",
+            "cemetery"
+          ],
+          true,
+          false
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ]
+      ],
+      "paint": {
+        "fill-color": "#968575",
+        "fill-opacity": 0.1
+      }
+    },
+    {
       "id": "context-destinations-employment-edge",
       "type": "line",
       "source": "openmaptiles",
@@ -846,6 +1117,366 @@
         "line-dasharray": [
           4,
           3
+        ]
+      }
+    },
+    {
+      "id": "context-constraints-protected-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "park",
+      "minzoom": 6,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "!",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "class"
+                ],
+                ""
+              ],
+              [
+                "aboriginal_lands"
+              ],
+              true,
+              false
+            ]
+          ],
+          [
+            "!",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "class"
+                ],
+                ""
+              ],
+              [
+                "archaeological_site",
+                "battlefield",
+                "district",
+                "historic"
+              ],
+              true,
+              false
+            ]
+          ]
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ]
+      ],
+      "paint": {
+        "line-color": "#59845b",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.8,
+          14,
+          1.5
+        ],
+        "line-opacity": 0.8,
+        "line-dasharray": [
+          6,
+          2
+        ]
+      }
+    },
+    {
+      "id": "context-constraints-heritage-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "park",
+      "minzoom": 10,
+      "filter": [
+        "all",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "archaeological_site",
+            "battlefield",
+            "district",
+            "historic"
+          ],
+          true,
+          false
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ]
+      ],
+      "paint": {
+        "line-color": "#956837",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0.8,
+          14,
+          1.5
+        ],
+        "line-opacity": 0.8,
+        "line-dasharray": [
+          6,
+          2
+        ]
+      }
+    },
+    {
+      "id": "context-constraints-indigenous-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "boundary",
+      "minzoom": 4,
+      "filter": [
+        "all",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "aboriginal_lands"
+          ],
+          true,
+          false
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ]
+      ],
+      "paint": {
+        "line-color": "#91689b",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          4,
+          0.8,
+          14,
+          1.5
+        ],
+        "line-opacity": 0.8,
+        "line-dasharray": [
+          8,
+          2,
+          1,
+          2
+        ]
+      }
+    },
+    {
+      "id": "context-constraints-indigenous-park-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "park",
+      "minzoom": 6,
+      "filter": [
+        "all",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "aboriginal_lands"
+          ],
+          true,
+          false
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ]
+      ],
+      "paint": {
+        "line-color": "#91689b",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.8,
+          14,
+          1.5
+        ],
+        "line-opacity": 0.8,
+        "line-dasharray": [
+          8,
+          2,
+          1,
+          2
+        ]
+      }
+    },
+    {
+      "id": "context-constraints-military-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 8,
+      "filter": [
+        "all",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "military"
+          ],
+          true,
+          false
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ]
+      ],
+      "paint": {
+        "line-color": "#b36765",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          0.8,
+          14,
+          1.5
+        ],
+        "line-opacity": 0.8,
+        "line-dasharray": [
+          2,
+          2
+        ]
+      }
+    },
+    {
+      "id": "context-constraints-religious-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "religious",
+            "cemetery"
+          ],
+          true,
+          false
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ]
+      ],
+      "paint": {
+        "line-color": "#968575",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0.8,
+          14,
+          1.5
+        ],
+        "line-opacity": 0.8,
+        "line-dasharray": [
+          6,
+          2
         ]
       }
     },
@@ -1220,108 +1851,6 @@
       }
     },
     {
-      "id": "tunnel_minor",
-      "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "transportation",
-      "filter": [
-        "all",
-        [
-          "==",
-          "$type",
-          "LineString"
-        ],
-        [
-          "==",
-          "brunnel",
-          "tunnel"
-        ],
-        [
-          "==",
-          "class",
-          "minor_road"
-        ]
-      ],
-      "layout": {
-        "line-cap": "butt",
-        "line-join": "miter"
-      },
-      "paint": {
-        "line-color": "#efefef",
-        "line-dasharray": [
-          0.36,
-          0.18
-        ],
-        "line-width": {
-          "base": 1.55,
-          "stops": [
-            [
-              4,
-              0.25
-            ],
-            [
-              20,
-              30
-            ]
-          ]
-        },
-        "line-opacity": 0.35
-      }
-    },
-    {
-      "id": "tunnel_major",
-      "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "transportation",
-      "minzoom": 12,
-      "filter": [
-        "all",
-        [
-          "==",
-          "$type",
-          "LineString"
-        ],
-        [
-          "==",
-          "brunnel",
-          "tunnel"
-        ],
-        [
-          "in",
-          "class",
-          "primary",
-          "secondary",
-          "tertiary",
-          "trunk"
-        ]
-      ],
-      "layout": {
-        "line-cap": "butt",
-        "line-join": "miter"
-      },
-      "paint": {
-        "line-color": "#fff",
-        "line-dasharray": [
-          0.28,
-          0.14
-        ],
-        "line-width": {
-          "base": 1.4,
-          "stops": [
-            [
-              6,
-              0.5
-            ],
-            [
-              20,
-              30
-            ]
-          ]
-        },
-        "line-opacity": 0.35
-      }
-    },
-    {
       "id": "aeroway-runway",
       "type": "line",
       "metadata": {
@@ -1466,218 +1995,6 @@
             ]
           ]
         }
-      }
-    },
-    {
-      "id": "bridge_minor case",
-      "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "transportation",
-      "filter": [
-        "all",
-        [
-          "==",
-          "$type",
-          "LineString"
-        ],
-        [
-          "==",
-          "brunnel",
-          "bridge"
-        ],
-        [
-          "==",
-          "class",
-          "minor_road"
-        ]
-      ],
-      "layout": {
-        "line-cap": "butt",
-        "line-join": "miter"
-      },
-      "paint": {
-        "line-color": "#dedede",
-        "line-gap-width": {
-          "base": 1.55,
-          "stops": [
-            [
-              4,
-              0.25
-            ],
-            [
-              20,
-              30
-            ]
-          ]
-        },
-        "line-width": {
-          "base": 1.6,
-          "stops": [
-            [
-              12,
-              0.5
-            ],
-            [
-              20,
-              10
-            ]
-          ]
-        },
-        "line-opacity": 0.35
-      }
-    },
-    {
-      "id": "bridge_major case",
-      "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "transportation",
-      "filter": [
-        "all",
-        [
-          "==",
-          "$type",
-          "LineString"
-        ],
-        [
-          "==",
-          "brunnel",
-          "bridge"
-        ],
-        [
-          "in",
-          "class",
-          "primary",
-          "secondary",
-          "tertiary",
-          "trunk"
-        ]
-      ],
-      "layout": {
-        "line-cap": "butt",
-        "line-join": "miter"
-      },
-      "paint": {
-        "line-color": "#dedede",
-        "line-gap-width": {
-          "base": 1.55,
-          "stops": [
-            [
-              4,
-              0.25
-            ],
-            [
-              20,
-              30
-            ]
-          ]
-        },
-        "line-width": {
-          "base": 1.6,
-          "stops": [
-            [
-              12,
-              0.5
-            ],
-            [
-              20,
-              10
-            ]
-          ]
-        },
-        "line-opacity": 0.35
-      }
-    },
-    {
-      "id": "bridge_minor",
-      "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "transportation",
-      "filter": [
-        "all",
-        [
-          "==",
-          "$type",
-          "LineString"
-        ],
-        [
-          "==",
-          "brunnel",
-          "bridge"
-        ],
-        [
-          "==",
-          "class",
-          "minor_road"
-        ]
-      ],
-      "layout": {
-        "line-cap": "round",
-        "line-join": "round"
-      },
-      "paint": {
-        "line-color": "#efefef",
-        "line-width": {
-          "base": 1.55,
-          "stops": [
-            [
-              4,
-              0.25
-            ],
-            [
-              20,
-              30
-            ]
-          ]
-        },
-        "line-opacity": 0.35
-      }
-    },
-    {
-      "id": "bridge_major",
-      "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "transportation",
-      "filter": [
-        "all",
-        [
-          "==",
-          "$type",
-          "LineString"
-        ],
-        [
-          "==",
-          "brunnel",
-          "bridge"
-        ],
-        [
-          "in",
-          "class",
-          "primary",
-          "secondary",
-          "tertiary",
-          "trunk"
-        ]
-      ],
-      "layout": {
-        "line-cap": "round",
-        "line-join": "round"
-      },
-      "paint": {
-        "line-color": "#fff",
-        "line-width": {
-          "base": 1.4,
-          "stops": [
-            [
-              6,
-              0.5
-            ],
-            [
-              20,
-              30
-            ]
-          ]
-        },
-        "line-opacity": 0.35
       }
     },
     {
@@ -2133,6 +2450,434 @@
       }
     },
     {
+      "id": "road-major",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 5,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "motorway",
+          "trunk",
+          "primary",
+          "motorway_construction",
+          "trunk_construction",
+          "primary_construction"
+        ],
+        true,
+        false
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#b5afa0",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          5,
+          0.65,
+          18,
+          4.5
+        ],
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "brunnel"
+            ],
+            "tunnel"
+          ],
+          0.4,
+          0.8
+        ]
+      }
+    },
+    {
+      "id": "road-secondary",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 9,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "secondary",
+          "tertiary",
+          "secondary_construction",
+          "tertiary_construction"
+        ],
+        true,
+        false
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#bbb6aa",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          0.6,
+          18,
+          3.5
+        ],
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "brunnel"
+            ],
+            "tunnel"
+          ],
+          0.4,
+          0.8
+        ]
+      }
+    },
+    {
+      "id": "road-local",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "minor",
+          "service",
+          "busway",
+          "bus_guideway",
+          "minor_construction",
+          "service_construction"
+        ],
+        true,
+        false
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#c2bdb2",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0.6,
+          18,
+          2.5
+        ],
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "brunnel"
+            ],
+            "tunnel"
+          ],
+          0.4,
+          0.8
+        ]
+      }
+    },
+    {
+      "id": "road-track",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 13,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "track"
+        ],
+        true,
+        false
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#a99b7e",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          0.65,
+          18,
+          1.5
+        ],
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "brunnel"
+            ],
+            "tunnel"
+          ],
+          0.4,
+          0.8
+        ]
+      }
+    },
+    {
+      "id": "road-cycle",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 13,
+      "filter": [
+        "all",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "path"
+          ],
+          true,
+          false
+        ],
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            ""
+          ],
+          [
+            "cycleway"
+          ],
+          true,
+          false
+        ]
+      ],
+      "paint": {
+        "line-color": "#829b9b",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          0.7,
+          18,
+          1.6
+        ],
+        "line-dasharray": [
+          3,
+          2
+        ],
+        "line-opacity": 0.85
+      }
+    },
+    {
+      "id": "road-walk",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 13,
+      "filter": [
+        "all",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "path"
+          ],
+          true,
+          false
+        ],
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            ""
+          ],
+          [
+            "pedestrian",
+            "path",
+            "footway",
+            "steps",
+            "bridleway",
+            "corridor"
+          ],
+          true,
+          false
+        ]
+      ],
+      "paint": {
+        "line-color": "#a89a80",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          0.7,
+          18,
+          1.6
+        ],
+        "line-dasharray": [
+          1,
+          2
+        ],
+        "line-opacity": 0.85
+      }
+    },
+    {
+      "id": "road-other-path",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 13,
+      "filter": [
+        "all",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "path"
+          ],
+          true,
+          false
+        ],
+        [
+          "!",
+          [
+            "match",
+            [
+              "coalesce",
+              [
+                "get",
+                "subclass"
+              ],
+              ""
+            ],
+            [
+              "cycleway",
+              "pedestrian",
+              "path",
+              "footway",
+              "steps",
+              "bridleway",
+              "corridor",
+              "platform"
+            ],
+            true,
+            false
+          ]
+        ]
+      ],
+      "paint": {
+        "line-color": "#a89a80",
+        "line-width": 1,
+        "line-dasharray": [
+          1,
+          2
+        ]
+      }
+    },
+    {
       "id": "infrastructure-overview",
       "type": "line",
       "source": "network",
@@ -2372,6 +3117,35 @@
           18,
           10
         ]
+      }
+    },
+    {
+      "id": "infrastructure-street-running",
+      "type": "line",
+      "source": "streetRunning",
+      "source-layer": "street_running",
+      "minzoom": 13,
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#b68f55",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          7,
+          18,
+          14
+        ],
+        "line-opacity": 0.65
       }
     },
     {
@@ -6990,7 +7764,9 @@
             ],
             [
               "construction",
-              "proposed"
+              "proposed",
+              "disused",
+              "present"
             ],
             true,
             false
@@ -7030,7 +7806,9 @@
             "#ad7619",
             "proposed",
             "#896192",
-            "#75675c"
+            "disused",
+            "#75675c",
+            "#9a8b80"
           ],
           [
             "case",
@@ -7105,8 +7883,10 @@
           4.5
         ],
         "line-dasharray": [
-          1.6,
-          2.4
+          1,
+          1.5,
+          1,
+          5
         ],
         "line-opacity": [
           "case",
@@ -7164,7 +7944,9 @@
             ],
             [
               "construction",
-              "proposed"
+              "proposed",
+              "disused",
+              "present"
             ],
             true,
             false
@@ -7204,7 +7986,9 @@
             "#ad7619",
             "proposed",
             "#896192",
-            "#75675c"
+            "disused",
+            "#75675c",
+            "#9a8b80"
           ],
           [
             "case",
@@ -7279,8 +8063,10 @@
           4.5
         ],
         "line-dasharray": [
-          1.6,
-          2.4
+          1,
+          1.5,
+          1,
+          5
         ],
         "line-opacity": [
           "case",
@@ -7294,6 +8080,360 @@
           ],
           0.4,
           0.75
+        ]
+      }
+    },
+    {
+      "id": "inactive-regional-disused",
+      "type": "line",
+      "source": "inactiveRegional",
+      "source-layer": "lifecycle",
+      "minzoom": 0,
+      "maxzoom": 12,
+      "filter": [
+        "all",
+        [
+          "any",
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "==",
+            [
+              "get",
+              "state"
+            ],
+            "construction"
+          ],
+          [
+            "all",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              5
+            ],
+            [
+              "==",
+              [
+                "get",
+                "state"
+              ],
+              "proposed"
+            ]
+          ]
+        ],
+        [
+          "==",
+          [
+            "get",
+            "state"
+          ],
+          "disused"
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "maxspeed"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          [
+            "match",
+            [
+              "get",
+              "state"
+            ],
+            "construction",
+            "#ad7619",
+            "proposed",
+            "#896192",
+            "disused",
+            "#75675c",
+            "#9a8b80"
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "maxspeed"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#899197",
+            [
+              "step",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "maxspeed"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              "#536da8",
+              40,
+              "#218aab",
+              80,
+              "#278454",
+              120,
+              "#9a8500",
+              160,
+              "#d98213",
+              200,
+              "#d24c35",
+              250,
+              "#ad2463",
+              300,
+              "#742da0"
+            ]
+          ]
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          0.7,
+          5,
+          1.3,
+          7,
+          1.9,
+          12,
+          2.4,
+          16,
+          3.2,
+          20,
+          4.5
+        ],
+        "line-dasharray": [
+          5,
+          2,
+          0.6,
+          2
+        ],
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "tunnel"
+            ],
+            true
+          ],
+          0.4,
+          0.95
+        ]
+      }
+    },
+    {
+      "id": "inactive-railways-disused",
+      "type": "line",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "!",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ]
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "state"
+          ],
+          "disused"
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "<",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "maxspeed"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          [
+            "match",
+            [
+              "get",
+              "state"
+            ],
+            "construction",
+            "#ad7619",
+            "proposed",
+            "#896192",
+            "disused",
+            "#75675c",
+            "#9a8b80"
+          ],
+          [
+            "case",
+            [
+              "<",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "maxspeed"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              0
+            ],
+            "#899197",
+            [
+              "step",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "maxspeed"
+                  ],
+                  -1
+                ],
+                -1
+              ],
+              "#536da8",
+              40,
+              "#218aab",
+              80,
+              "#278454",
+              120,
+              "#9a8500",
+              160,
+              "#d98213",
+              200,
+              "#d24c35",
+              250,
+              "#ad2463",
+              300,
+              "#742da0"
+            ]
+          ]
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          0.7,
+          5,
+          1.3,
+          7,
+          1.9,
+          12,
+          2.4,
+          16,
+          3.2,
+          20,
+          4.5
+        ],
+        "line-dasharray": [
+          5,
+          2,
+          0.6,
+          2
+        ],
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "tunnel"
+            ],
+            true
+          ],
+          0.4,
+          0.95
         ]
       }
     },
@@ -7384,7 +8524,9 @@
             "#ad7619",
             "proposed",
             "#896192",
-            "#75675c"
+            "disused",
+            "#75675c",
+            "#9a8b80"
           ],
           [
             "case",
@@ -7459,8 +8601,8 @@
           4.5
         ],
         "line-dasharray": [
-          0.1,
-          2
+          0.01,
+          3.5
         ],
         "line-opacity": [
           "case",
@@ -7550,7 +8692,9 @@
             "#ad7619",
             "proposed",
             "#896192",
-            "#75675c"
+            "disused",
+            "#75675c",
+            "#9a8b80"
           ],
           [
             "case",
@@ -7625,8 +8769,8 @@
           4.5
         ],
         "line-dasharray": [
-          0.1,
-          2
+          0.01,
+          3.5
         ],
         "line-opacity": [
           "case",
@@ -7730,7 +8874,9 @@
             "#ad7619",
             "proposed",
             "#896192",
-            "#75675c"
+            "disused",
+            "#75675c",
+            "#9a8b80"
           ],
           [
             "case",
@@ -7805,8 +8951,8 @@
           4.5
         ],
         "line-dasharray": [
-          4,
-          1.2
+          8,
+          2
         ],
         "line-opacity": [
           "case",
@@ -7896,7 +9042,9 @@
             "#ad7619",
             "proposed",
             "#896192",
-            "#75675c"
+            "disused",
+            "#75675c",
+            "#9a8b80"
           ],
           [
             "case",
@@ -7971,8 +9119,8 @@
           4.5
         ],
         "line-dasharray": [
-          4,
-          1.2
+          8,
+          2
         ],
         "line-opacity": [
           "case",
@@ -10030,6 +11178,1584 @@
       }
     },
     {
+      "id": "infrastructure-level-crossings",
+      "type": "symbol",
+      "source": "crossings",
+      "source-layer": "points_of_interest",
+      "minzoom": 15,
+      "filter": [
+        "==",
+        [
+          "get",
+          "type"
+        ],
+        "level_crossing"
+      ],
+      "layout": {
+        "text-field": "×",
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 23,
+        "text-allow-overlap": false,
+        "text-padding": 2,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "#63332c",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "road-labels",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 15,
+      "filter": [
+        "!",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "rail",
+            "transit",
+            "ferry"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 10,
+        "text-padding": 8,
+        "text-max-width": 12,
+        "symbol-placement": "line",
+        "symbol-spacing": 350
+      },
+      "paint": {
+        "text-color": "#827e74",
+        "text-halo-color": "#f5f3eb",
+        "text-halo-width": 1.4
+      }
+    },
+    {
+      "id": "context-constraints-protected-area-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "park",
+      "minzoom": 7,
+      "filter": [
+        "all",
+        [
+          "!",
+          [
+            "match",
+            [
+              "coalesce",
+              [
+                "get",
+                "class"
+              ],
+              ""
+            ],
+            [
+              "aboriginal_lands"
+            ],
+            true,
+            false
+          ]
+        ],
+        [
+          "!",
+          [
+            "match",
+            [
+              "coalesce",
+              [
+                "get",
+                "class"
+              ],
+              ""
+            ],
+            [
+              "archaeological_site",
+              "battlefield",
+              "district",
+              "historic"
+            ],
+            true,
+            false
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-padding": 8,
+        "text-max-width": 12,
+        "symbol-placement": "point",
+        "symbol-spacing": 500
+      },
+      "paint": {
+        "text-color": "#59845b",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "id": "context-constraints-heritage-area-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "park",
+      "minzoom": 11,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "archaeological_site",
+          "battlefield",
+          "district",
+          "historic"
+        ],
+        true,
+        false
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-padding": 8,
+        "text-max-width": 12,
+        "symbol-placement": "point",
+        "symbol-spacing": 500
+      },
+      "paint": {
+        "text-color": "#956837",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "id": "context-constraints-indigenous-area-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "boundary",
+      "minzoom": 5,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "aboriginal_lands"
+        ],
+        true,
+        false
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-padding": 8,
+        "text-max-width": 12,
+        "symbol-placement": "line",
+        "symbol-spacing": 500
+      },
+      "paint": {
+        "text-color": "#91689b",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "id": "context-constraints-indigenous-park-area-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "park",
+      "minzoom": 7,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "aboriginal_lands"
+        ],
+        true,
+        false
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-padding": 8,
+        "text-max-width": 12,
+        "symbol-placement": "point",
+        "symbol-spacing": 500
+      },
+      "paint": {
+        "text-color": "#91689b",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "id": "context-constraints-military-area-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 9,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "military"
+        ],
+        true,
+        false
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-padding": 8,
+        "text-max-width": 12,
+        "symbol-placement": "line",
+        "symbol-spacing": 500
+      },
+      "paint": {
+        "text-color": "#b36765",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "id": "context-constraints-religious-area-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "minzoom": 13,
+      "filter": [
+        "match",
+        [
+          "coalesce",
+          [
+            "get",
+            "class"
+          ],
+          ""
+        ],
+        [
+          "religious",
+          "cemetery"
+        ],
+        true,
+        false
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-padding": 8,
+        "text-max-width": 12,
+        "symbol-placement": "line",
+        "symbol-spacing": 500
+      },
+      "paint": {
+        "text-color": "#968575",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "id": "context-constraints-religious-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 13,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "monastery",
+            "place_of_worship"
+          ],
+          true,
+          false
+        ],
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "place_of_worship"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.7,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-religious"
+      },
+      "paint": {
+        "text-color": "#89705c",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
+      }
+    },
+    {
+      "id": "context-constraints-heritage-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 12,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "castle",
+            "monument",
+            "ruins",
+            "archaeological_site",
+            "memorial",
+            "historic",
+            "battlefield"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.7,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-heritage"
+      },
+      "paint": {
+        "text-color": "#956837",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
+      }
+    },
+    {
       "id": "context-destinations-hospital-label",
       "type": "symbol",
       "source": "openmaptiles",
@@ -10116,6 +12842,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -10304,6 +13049,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -10476,6 +13240,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -10665,6 +13448,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -10845,6 +13647,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -10956,11 +13777,7 @@
             "water_park",
             "zoo",
             "aquarium",
-            "attraction",
-            "castle",
-            "monument",
-            "ruins",
-            "archaeological_site"
+            "attraction"
           ],
           true,
           false
@@ -11024,6 +13841,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -11208,6 +14044,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -11402,6 +14257,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -11482,6 +14356,798 @@
       },
       "paint": {
         "text-color": "#61669a",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
+      }
+    },
+    {
+      "id": "context-transport-bike-parking-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 17,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "bicycle_parking"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.62,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-bike-parking"
+      },
+      "paint": {
+        "text-color": "#54886d",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
+      }
+    },
+    {
+      "id": "context-transport-bus-stop-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 15,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "bus_stop"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.62,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-bus-stop"
+      },
+      "paint": {
+        "text-color": "#438487",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
+      }
+    },
+    {
+      "id": "context-transport-taxi-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 15,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "taxi"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.62,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-taxi"
+      },
+      "paint": {
+        "text-color": "#927326",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.8
+      }
+    },
+    {
+      "id": "context-transport-bike-rental-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 15,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "bicycle_rental"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          11,
+          15,
+          12.5
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 1.1,
+        "text-max-width": 9,
+        "text-padding": 5,
+        "text-optional": true,
+        "icon-size": 0.62,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-bike-rental"
+      },
+      "paint": {
+        "text-color": "#54886d",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.8
       }
@@ -11611,6 +15277,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -11798,6 +15483,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -11977,6 +15681,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -12144,6 +15867,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -12335,6 +16077,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -12516,6 +16277,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -12650,6 +16430,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -12813,6 +16612,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -13121,6 +16939,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -13394,6 +17231,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -13764,6 +17620,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -14011,6 +17886,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -14274,6 +18168,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -14626,6 +18539,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -14873,6 +18805,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -15136,6 +19087,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -15488,6 +19458,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -15773,6 +19762,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -16074,6 +20082,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -16464,6 +20491,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -16766,6 +20812,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -17084,6 +21149,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -17491,6 +21575,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -17785,6 +21888,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -18095,6 +22217,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -18494,6 +22635,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -18788,6 +22948,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -19098,6 +23277,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -19497,6 +23695,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -19726,6 +23943,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -20024,6 +24260,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -20336,6 +24591,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -20632,6 +24906,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -20974,6 +25267,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [
@@ -21341,6 +25653,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -21692,6 +26023,25 @@
               "coalesce",
               [
                 "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
                 "label"
               ],
               ""
@@ -22035,6 +26385,25 @@
             [
               "get",
               "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
             ]
           ],
           [

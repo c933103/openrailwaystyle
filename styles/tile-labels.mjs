@@ -143,8 +143,9 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       const data = await get(url,controller.signal,true);
       return {data:{...data,tiles:data.tiles.map(t=>`atlasrail://${t}`)}};
     }
-    // Through the shared cache: the track counts read the same tiles.
-    return {data: await get(url, controller.signal)};
+    // MapLibre transfers this buffer to its worker, detaching it. Keep the
+    // cache's original for language changes, return visits and track counts.
+    return {data: (await get(url, controller.signal)).slice(0)};
   });
   // Overview tiles (zoom 0–6) carry way IDs but no loading gauge: add it
   // from the published way ID list (data/loading-gauge.json, about 250 kB
@@ -260,7 +261,8 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     try { return {data:writeLabels(primary,lang)}; }
     catch (error) {
       console.error('Station labels unavailable:', error?.message || String(error));
-      return {data:primaryData};
+      return {data:primaryData.slice(0)};
     }
   });
 }
+

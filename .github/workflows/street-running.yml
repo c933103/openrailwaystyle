@@ -1,0 +1,51 @@
+name: Refresh mapped street-running tracks
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '27 3 * * 0'
+  push:
+    branches: [main, fix/planning-context]
+    paths: ['scripts/build-street-running.mjs', 'styles/street-running.mjs']
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: street-running-data
+  cancel-in-progress: false
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Extract explicitly mapped shared roadway
+        run: node scripts/build-street-running.mjs
+      - name: Publish complete data snapshot
+        run: |
+          mkdir /tmp/street-publish
+          cd /tmp/street-publish
+          git init
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git fetch origin street-data; then git checkout -b street-data FETCH_HEAD; else git checkout --orphan street-data; fi
+          git rm -rf --ignore-unmatch .
+          cp -r "$GITHUB_WORKSPACE/street-data/." .
+          git add .
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Refresh explicitly mapped street-running tracks"
+          if ! git push origin HEAD:street-data; then
+            # The server may have accepted the update before the connection
+            # reported failure. Accept only this exact published commit.
+            test "$(git ls-remote origin refs/heads/street-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
+      - name: Redeploy the site with refreshed data
+        if: github.event_name == 'schedule' || github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site.yml --ref main

@@ -6,7 +6,7 @@ const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleF
 page.setDefaultTimeout(90000);
 const errors=[];
 page.on('pageerror',e=>errors.push(e.message));
-page.on('console',msg=>{if(msg.type()==='error') console.log('Browser resource:',msg.text());});
+page.on('console',msg=>{if(msg.type()==='error') { console.log('Browser resource:',msg.text()); if(/DataCloneError|already detached/.test(msg.text())) errors.push(msg.text()); }});
 await page.addInitScript(()=>{
   const original=HTMLCanvasElement.prototype.getContext;
   HTMLCanvasElement.prototype.getContext=function(kind,options){return original.call(this,kind,/^webgl2?$/.test(kind)?{...options,preserveDrawingBuffer:true}:options);};
@@ -43,7 +43,7 @@ async function screenshot(name) {
 await mkdir('browser-review',{recursive:true});
 try {
   const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
-  await page.goto(base+'?v=20260928-14&language=en&relief=0&inactive=0#14/22.299/114.172',{waitUntil:'domcontentloaded'});
+  await page.goto(base+'?v=20260929-3&language=en&relief=0&inactive=0#14/22.299/114.172',{waitUntil:'domcontentloaded'});
   await page.waitForSelector('body[data-map-ready="true"]',{state:'attached'});
   await waitContext('transport');await waitContext('destinations');await settleContext();
   console.log('CONTEXT_DATA',JSON.stringify(await evaluate(map=>({
@@ -65,7 +65,7 @@ try {
   const stationPoint=await evaluate(async map=>{
     const {nearbyTransport}=await import(new URL('./context.mjs',document.querySelector('script[type="module"]').src));
     const facilities=map.querySourceFeatures('openmaptiles',{sourceLayer:'poi'}).map(f=>({id:f.id,properties:f.properties,geometry:f.geometry,sourceLayer:'poi'}));
-    const station=map.queryRenderedFeatures().find(f=>f.layer.id.startsWith('station-')&&f.geometry.type==='Point'&&map.project(f.geometry.coordinates).x>430&&nearbyTransport(f.geometry.coordinates,facilities).length);
+    const station=map.queryRenderedFeatures().find(f=>f.layer.id.startsWith('station-')&&f.geometry.type==='Point'&&map.project(f.geometry.coordinates).x>430&&nearbyTransport(f.geometry.coordinates,facilities,500,map.getZoom()).length);
     if(!station)return null;const p=map.project(station.geometry.coordinates);return [p.x,p.y];
   });
   assert.ok(stationPoint,'a rail station has a nearby mapped interchange');
@@ -76,10 +76,10 @@ try {
   await screenshot('interchange');
   await page.locator('#details-close').click();
   await page.locator('.display-options > summary').click();
-  await page.locator('#transport').uncheck();await page.locator('#destinations').uncheck();
+  await page.locator('#transport').uncheck();await page.locator('#destinations').uncheck();await page.locator('#constraints').uncheck();
   assert.ok(await evaluate(map=>map.getStyle().layers.filter(l=>l.id.startsWith('context-')).every(l=>l.layout?.visibility==='none')),'both context groups are disabled');
   await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return !map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('context-'));});
-  await page.locator('#transport').check();await page.locator('#destinations').check();
+  await page.locator('#transport').check();await page.locator('#destinations').check();await page.locator('#constraints').check();
   await page.locator('#language').selectOption('zh-Hant');
   await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('context-')&&f.properties.atlas_language==='zh-Hant');});
   await waitContext('transport');await settleContext();
@@ -97,3 +97,4 @@ try {
   console.log('CONTEXT_FAILURE',await evaluate(map=>({zoom:map.getZoom(),layers:Object.keys(map.getStyle().sources),poi:map.querySourceFeatures('openmaptiles',{sourceLayer:'poi'}).slice(0,25).map(f=>f.properties),rendered:map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('context-')).slice(0,20).map(f=>({layer:f.layer.id,p:f.properties}))})).catch(e=>String(e)));
   await screenshot('failure');throw error;
 } finally {await browser.close();}
+

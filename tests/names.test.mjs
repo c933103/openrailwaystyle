@@ -217,3 +217,33 @@ test('tiles below the first zoom of the provider are made from their children',a
   await protocols.atlasstation({url:template.replace('{z}/{x}/{y}','7/9/9')},new AbortController());
   assert.deepEqual(requests,['https://example.org/med/7/9/9']);
 });
+
+
+
+test('a transferred railway tile cannot detach the reusable cache entry',async()=>{
+  const protocols={},bytes=Uint8Array.from(tile({name:'Track',tracks:2})).buffer;
+  let requests=0;
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},async()=>{
+    requests++;return {ok:true,arrayBuffer:async()=>bytes.slice(0)};
+  });
+  const request={url:'atlasrail://https://example.org/railway/14/10/10'};
+  const first=await protocols.atlasrail(request,new AbortController());
+  const received=structuredClone(first.data,{transfer:[first.data]});
+  assert.equal(first.data.byteLength,0,'simulate MapLibre transferring to its worker');
+  assert.equal(readTile(received).layers.stations.feature(0).properties.name,'Track');
+  const [second,third]=await Promise.all([protocols.atlasrail(request,new AbortController()),protocols.atlasrail(request,new AbortController())]);
+  structuredClone(second.data,{transfer:[second.data]});
+  assert.equal(readTile(third.data).layers.stations.feature(0).properties.tracks,2);
+  assert.equal(requests,1,'language changes and return visits reuse intact cached bytes');
+});
+test('generated Latin transliteration cannot replace a local name as English fallback',()=>{
+  const japanese=at({name:'腰越三丁目','name:latin':'yao yue3ding mu'});
+  for(const lang of ['en','fr','de','ru']) {
+    assert.equal(chooseName(japanese,lang),japanese.name);
+    assert.equal(chooseName({...japanese,'name:en':'Koshigoe 3-chome'},lang),'Koshigoe 3-chome');
+  }
+  assert.equal(chooseName(at({'name:latin':'Only available name'}),'en'),'Only available name');
+  const keys=labelExpression('en').filter(x=>Array.isArray(x)&&x[0]==='to-string').map(x=>x[1][1]);
+  assert.ok(keys.indexOf('name:en')<keys.indexOf('name'));
+  assert.ok(keys.indexOf('name')<keys.indexOf('name:latin'));
+});

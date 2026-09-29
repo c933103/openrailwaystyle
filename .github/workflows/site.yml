@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: pages-${{ github.ref }}
+  group: pages-${{ github.head_ref && format('refs/heads/{0}', github.head_ref) || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
   validate:
@@ -57,10 +57,29 @@ jobs:
           python scripts/unpack-snapshot.py /tmp/lifecycle.pmtiles
           node scripts/build-overview-tiles.mjs
           cat lifecycle-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
+      - name: Wait for first street-running snapshot
+        run: |
+          for attempt in $(seq 1 40); do
+            if git ls-remote --exit-code --heads origin street-data; then exit 0; fi
+            sleep 30
+          done
+          echo 'No complete street-running snapshot has been published.'
+          exit 1
+      - name: Load mapped street-running data
+        uses: actions/checkout@v4
+        with:
+          ref: street-data
+          path: street-snapshot
+      - name: Assemble street-running tiles
+        run: |
+          mkdir -p styles/data/street-running
+          cp -r street-snapshot/12 street-snapshot/index.json street-snapshot/manifest.json street-snapshot/street-running.geojson.gz styles/data/street-running/
       - name: Install test browser
         run: npx playwright install --with-deps chromium
       - name: Start test server
         run: node scripts/serve.mjs &
+      - name: Verify roads, planning boundaries and rail-road interfaces
+        run: node scripts/check-planning-browser.mjs
       - name: Verify transport and destination context
         run: node scripts/check-context-browser.mjs
       - name: Verify actual WebGL rendering and zoom-7 panning
@@ -135,6 +154,10 @@ jobs:
         env:
           MAP_BASE_URL: ${{ steps.deployment.outputs.page_url }}
         run: node scripts/check-map-browser.mjs
+      - name: Verify published planning context
+        env:
+          MAP_BASE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: node scripts/check-planning-browser.mjs
       - name: Verify published transport and destinations
         env:
           MAP_BASE_URL: ${{ steps.deployment.outputs.page_url }}
