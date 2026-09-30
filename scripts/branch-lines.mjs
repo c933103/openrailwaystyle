@@ -82,6 +82,15 @@ function electrification(tags) {
   return undefined;
 }
 
+// The mapped speed as written, as in OpenRailwayMap's speed_label: the
+// value with its unit (bare numbers are km/h), or "forward / backward" with a
+// dash for a direction not mapped.
+export function speedLabel(tags) {
+  const clean = value => String(value ?? '').trim().replace(/\s*km\/h$/i, '');
+  if (clean(tags.maxspeed)) return clean(tags.maxspeed);
+  const forward = clean(tags['maxspeed:forward']), backward = clean(tags['maxspeed:backward']);
+  return forward || backward ? `${forward || '-'} / ${backward || '-'}` : undefined;
+}
 // Douglas–Peucker in degrees (tolerance 0.0005°, about 50 m: finer than a
 // z6 tile's 150 m units), then five decimals.
 export function simplify(points, tolerance = 0.0005) {
@@ -113,13 +122,13 @@ export function toFeatures(json) {
     const tags = way.tags || {};
     const coordinates = simplify(way.geometry.filter(p => p && Number.isFinite(p.lon) && Number.isFinite(p.lat)).map(p => [p.lon, p.lat])).map(round);
     if (coordinates.length < 2) continue;
-    const [g0, g1] = gauges(tags.gauge), protection = trainProtection(tags), maxspeed = parseMaxspeed(tags, 'present');
+    const [g0, g1] = gauges(tags.gauge), protection = trainProtection(tags), maxspeed = parseMaxspeed(tags, 'present'), label = speedLabel(tags);
     const properties = {
       osm_id: way.id, feature: tags.railway, usage: 'branch', state: 'present',
       name: tags.name || tags['name:en'] || '',
       ...Object.fromEntries(Object.entries(tags).filter(([key]) => /^name:[a-z]{2,3}(-[A-Za-z]{2,4})?$/.test(key))),
       ...(tags.highspeed === 'yes' && {highspeed: true}),
-      ...(maxspeed !== undefined && {maxspeed}),
+      ...(maxspeed !== undefined && {maxspeed}), ...(label && {speed_label: label}),
       ...(electrification(tags) && {electrification_state: electrification(tags)}),
       ...(number(tags.voltage) !== undefined && {voltage: number(tags.voltage)}),
       ...(number(tags.frequency) !== undefined && {frequency: number(tags.frequency)}),

@@ -26,9 +26,9 @@ test('branch-line tags become the fields of the detailed railway tiles', () => {
     {type: 'way', id: 43, tags: {railway: 'narrow_gauge', usage: 'branch', 'maxspeed:forward': '40 mph', electrified: 'no', gauge: '762;1067', 'railway:etcs': '2'}, geometry: [{lat: 1, lon: 1}, {lat: 1.1, lon: 1.1}]}]};
   const [a, b] = toFeatures(json);
   assert.deepEqual(a.properties, {osm_id: 42, feature: 'rail', usage: 'branch', state: 'present', name: '磐越西線', 'name:en': 'Ban\'etsu West Line', 'name:ja-Latn': 'Ban\'etsu-sai-sen',
-    maxspeed: 95, electrification_state: 'present', voltage: 20000, frequency: 50, gauge0: '1067', gaugeint0: 1067, train_protection0: 'ats', operator: 'JR東日本'});
+    maxspeed: 95, speed_label: '95', electrification_state: 'present', voltage: 20000, frequency: 50, gauge0: '1067', gaugeint0: 1067, train_protection0: 'ats', operator: 'JR東日本'});
   assert.equal(a.geometry.coordinates.length, 3, 'a point within 50 m of the line is dropped');
-  assert.deepEqual(b.properties, {osm_id: 43, feature: 'narrow_gauge', usage: 'branch', state: 'present', name: '', maxspeed: 64, electrification_state: 'no',
+  assert.deepEqual(b.properties, {osm_id: 43, feature: 'narrow_gauge', usage: 'branch', state: 'present', name: '', maxspeed: 64, speed_label: '40 mph / -', electrification_state: 'no',
     gauge0: '762', gaugeint0: 762, gauge1: '1067', gaugeint1: 1067, train_protection0: 'etcs_2'});
   assert.throws(() => toFeatures({remark: 'runtime error: Query timed out', elements: []}), /timed out/);
   assert.equal(trainProtection({'railway:ctcs': '1'}), 'ctcs');

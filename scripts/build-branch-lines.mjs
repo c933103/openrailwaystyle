@@ -15,7 +15,9 @@ import {STAGES, MIN_ZOOM, MAX_ZOOM, buildTiles, partQuery, quarters, readTable, 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const previous = process.env.PREVIOUS_DATA ? new URL(`file://${process.env.PREVIOUS_DATA.replace(/\/?$/, '/')}`) : null;
 const out = new URL('../branch-data/', import.meta.url);
-const BUDGET_BYTES = Number(process.env.BUDGET_BYTES || 220_000_000);
+const RUN_BUDGET = Number(process.env.BUDGET_BYTES || 220_000_000);
+// Downloads over any 24 hours, scheduled and manual runs together.
+const DAY_BUDGET = Number(process.env.DAY_BUDGET_BYTES || 900_000_000);
 const REFRESH_DAYS = Number(process.env.REFRESH_DAYS || 14);
 const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
 let downloaded = 0, requests = 0;
@@ -28,6 +30,13 @@ if (previous) {
   } catch (error) { console.log('No usable previous data:', error.message); table = new Map(); state = {stages: {}}; }
 }
 
+state.runs = (state.runs || []).filter(run => Date.now() - Date.parse(run.at) < 86400_000);
+const lastDay = state.runs.reduce((sum, run) => sum + run.bytes, 0);
+const BUDGET_BYTES = Math.min(RUN_BUDGET, DAY_BUDGET - lastDay);
+if (BUDGET_BYTES < 10_000_000) {
+  console.log(`${lastDay} bytes downloaded in the last 24 hours; waiting for a later run.`);
+  process.exit(0);
+}
 // The stage to work on: one in progress, else the first never completed,
 // else the one completed longest ago if due for a refresh.
 const info = name => (state.stages[name] ||= {completed: null, pending: null, seen: []});
@@ -44,6 +53,7 @@ const current = info(stage.name);
 if (!current.pending?.length) { current.pending = stage.parts.map((part, index) => ({part: index, box: part.box})); current.seen = []; current.started = now; }
 console.log(`Stage ${stage.name} (${stage.label}): ${current.pending.length} region(s) to fetch`);
 
+const BUDGET = Symbol('budget');
 async function overpass(query) {
   for (let attempt = 0; attempt < 5; attempt++) {
     // A quiet interval between requests, growing after each failure.
@@ -52,8 +62,19 @@ async function overpass(query) {
     try {
       const response = await fetch(api, {method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(300000),
         headers: {'User-Agent': 'OpenRailwayAtlas-branch-lines/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
-      const text = await response.text();
-      downloaded += Buffer.byteLength(text);
+      // Read within the run's budget: a response that would pass it is cut
+      // off (its bytes still count). Cut off in a run's first request, the
+      // region is too large for any run and is split; later, the run stops
+      // and the region is fetched first in the next run.
+      const chunks = [], fresh = downloaded === 0;
+      let received = 0, over = false;
+      for await (const chunk of response.body) {
+        received += chunk.length; downloaded += chunk.length;
+        if (downloaded > BUDGET_BYTES) { over = true; break; }
+        chunks.push(chunk);
+      }
+      if (over) { await response.body.cancel().catch(() => {}); return fresh ? null : BUDGET; }
+      const text = Buffer.concat(chunks).toString();
       if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 200)}`);
       return toFeatures(JSON.parse(text));
     } catch (error) {
@@ -67,7 +88,7 @@ async function overpass(query) {
   throw new Error('Overpass stayed unavailable');
 }
 
-let fetchedBoxes = 0, stopped = null;
+let fetchedBoxes = 0, splitBoxes = 0, stopped = null;
 const seen = new Set(current.seen);
 while (current.pending.length) {
   if (downloaded >= BUDGET_BYTES) { stopped = `download budget reached (${downloaded} bytes)`; break; }
@@ -75,11 +96,13 @@ while (current.pending.length) {
   let features;
   try { features = await overpass(partQuery(part, item.box)); }
   catch (error) { stopped = error.message; break; }
+  if (features === BUDGET) { stopped = `download budget reached (${downloaded} bytes)`; break; }
   current.pending.shift();
   if (!features) {
     // Too large for one request: its quarters go first in the queue.
     if (item.depth >= 6) throw new Error(`Could not fetch region ${item.box}`);
     current.pending.unshift(...quarters(item.box).map(box => ({part: item.part, box, depth: (item.depth || 0) + 1})));
+    splitBoxes++;
     continue;
   }
   fetchedBoxes++;
@@ -101,10 +124,11 @@ if (!current.pending.length) {
   Object.assign(current, {completed: now, pending: null, seen: [], lines: before - stale.length});
   console.log(`Stage ${stage.name} complete: ${current.lines} lines (${stale.length} removed)`);
 } else console.log(`Stage ${stage.name} continues next run (${current.pending.length} region(s) left): ${stopped}`);
-if (!fetchedBoxes) {
-  if (stopped) throw new Error(`Nothing fetched: ${stopped}`);
-}
+// With nothing fetched and no region split, an unavailable server leaves the
+// published data as it was.
+if (!fetchedBoxes && !splitBoxes && stopped) throw new Error(`Nothing fetched: ${stopped}`);
 
+state.runs.push({at: now, bytes: downloaded});
 await rm(out, {recursive: true, force: true});
 await mkdir(out, {recursive: true});
 await writeFile(new URL('branch-lines.ndjson.gz', out), gzipSync(writeTable(table), {level: 9}));
