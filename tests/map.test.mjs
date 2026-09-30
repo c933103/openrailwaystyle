@@ -28,6 +28,7 @@ test('source mph and directional speed labels are preserved', () => {
   assert.equal(formatSpeed({ maxspeed: 160, speed_label: '160' }).mapped, '160 km/h');
   assert.equal(formatSpeed({ maxspeed: 160, speed_label: '160' }, 'imperial').mapped, '99.4 mph (160 km/h)');
   assert.equal(formatSpeed({ maxspeed: 160, speed_label: '160 / 120' }).tagged, '160 / 120 km/h');
+  assert.equal(formatSpeed({ maxspeed: 56, speed_label: '30 knots' }).tagged, '30 knots');
   assert.equal(formatSpeed({ maxspeed: 80.4672, speed_label: '50 mph (30 mph)' }).tagged, '50 mph (30 mph)');
   assert.equal(formatSpeed({ speed_label: '- / 80' }).tagged, '- / 80 km/h');
 });

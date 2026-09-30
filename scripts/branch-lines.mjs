@@ -90,9 +90,13 @@ function electrification(tags) {
 export function speedLabel(tags) {
   // Units spelled as the panel expects them (lower-case "mph").
   // A list ("80;100") stays a list when every part is a number.
+  // Every unit the speed parser accepts: km/h spellings become bare numbers,
+  // mph and knots keep their unit.
   const one = part => {
-    const m = /^(\d+(?:\.\d+)?)( ?mph)?$/i.exec(part.trim().replace(/\s*km\/h$/i, ''));
-    return m ? `${m[1]}${m[2] ? ' mph' : ''}` : '';
+    const m = /^(\d+(?:\.\d+)?)\s*(mph|knots|km\/h|kmh|kph)?$/i.exec(part.trim());
+    if (!m) return '';
+    const unit = (m[2] || '').toLowerCase();
+    return unit === 'mph' || unit === 'knots' ? `${m[1]} ${unit}` : m[1];
   };
   const clean = value => {
     const parts = String(value ?? '').split(';').map(one);

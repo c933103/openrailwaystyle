@@ -477,7 +477,7 @@ export function formatSpeed(properties, units = 'metric') {
   const inMph = /mph/.test(raw || ''), shown = units === 'imperial' ? mph : kmh, source = inMph ? mph : kmh;
   return {
     mapped: n === null ? 'Not recorded / not numeric' : shown === source ? shown : `${shown} (${source})`,
-    tagged: raw ? `${raw}${/mph|km\/h/.test(raw) ? '' : ' km/h'}` : 'Not recorded',
+    tagged: raw ? `${raw}${/mph|km\/h|knots/.test(raw) ? '' : ' km/h'}` : 'Not recorded',
   };
 }
 // Display settings live in a cookie; a link can still carry them (the app

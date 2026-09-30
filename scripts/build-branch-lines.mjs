@@ -103,8 +103,10 @@ while (current.pending.length) {
   if (features === BUDGET) { stopped = `download budget reached (${downloaded} bytes)`; break; }
   current.pending.shift();
   if (!features) {
-    // Too large for one request: its quarters go first in the queue.
-    if (item.depth >= 6) throw new Error(`Could not fetch region ${item.box}`);
+    // Too large for one request: its quarters go first in the queue. At the
+    // finest split the region stays queued and the run stops, still
+    // publishing its progress and the bytes it used.
+    if (item.depth >= 6) { current.pending.unshift(item); stopped = `could not fetch region ${item.box}`; break; }
     current.pending.unshift(...quarters(item.box).map(box => ({part: item.part, box, depth: (item.depth || 0) + 1})));
     splitBoxes++;
     continue;

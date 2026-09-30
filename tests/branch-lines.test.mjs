@@ -41,6 +41,7 @@ test('branch-line tags become the fields of the detailed railway tiles', () => {
   const way = tags => toFeatures({elements: [{type: 'way', id: 11, tags: {railway: 'rail', ...tags}, geometry: [{lat: 0, lon: 0}, {lat: 0, lon: 1}]}]})[0].properties;
   assert.deepEqual([way({maxspeed: '80;100'}).speed_label, way({maxspeed: '80;100'}).maxspeed], ['80;100', 100], 'a numeric list keeps its label');
   assert.equal(way({maxspeed: '80;signals'}).speed_label, undefined);
+  assert.deepEqual(['80 kmh', '80 kph', '80 km/h', '30 knots', '40MPH'].map(v => way({maxspeed: v}).speed_label), ['80', '80', '80', '30 knots', '40 mph'], 'every unit the parser accepts');
   assert.deepEqual(way({'maxspeed:forward': '120', 'maxspeed:backward': '60', 'railway:preferred_direction': 'backward'}),
     {osm_id: 11, feature: 'rail', usage: 'branch', state: 'present', name: '', maxspeed: 60, speed_label: '120 / 60', preferred_direction: 'backward'}, 'the preferred direction\'s speed');
   assert.equal(way({'maxspeed:forward': '120', 'maxspeed:backward': '60', 'railway:preferred_direction': 'both'}).maxspeed, 120, 'else the faster direction');
@@ -68,4 +69,8 @@ test('style: branch lines under the main overview lines in every view, from zoom
     assert.ok(ids.indexOf(layer.id) < ids.indexOf(main.id), `${mode}: drawn under the main lines`);
   }
   assert.deepEqual([style.sources.branchLines.minzoom, style.sources.branchLines.maxzoom], [4, 6]);
+  const dual = style.layers.find(l => l.id === 'gauge-branch-dual'), branch = style.layers.find(l => l.id === 'gauge-branch-overview');
+  assert.deepEqual([dual.source, dual['source-layer'], dual.minzoom, dual.maxzoom], ['branchLines', 'branch_lines', 4, 7], 'second gauge drawn on branch lines');
+  assert.ok(JSON.stringify(dual.filter).includes('gaugeint1') && ids.indexOf(dual.id) > ids.indexOf(branch.id));
+  assert.ok(branch.paint['line-offset'] && dual.paint['line-offset'], 'the two gauges side by side');
 });

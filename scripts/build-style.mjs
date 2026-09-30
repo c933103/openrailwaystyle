@@ -124,6 +124,9 @@ const halfWidth = ['interpolate', ['linear'], ['zoom'],
 const dualOffset = sign => ['interpolate', ['linear'], ['zoom'],
   7, ['case', isDual, 0.4 * sign, 0], 11, ['case', isDual, ['case', hasService, 0.275 * sign, 0.7 * sign], 0],
   16, ['case', isDual, ['case', hasService, 0.5 * sign, 1.2 * sign], 0], 20, ['case', isDual, 1.75 * sign, 0]];
+// Branch lines at zooms 4–7 are split the same way (the overview width).
+const branchHalfWidth = ['interpolate', ['linear'], ['zoom'], 4, ['case', isDual, 0.575, 1.15], 7, ['case', isDual, 0.9, 1.8]];
+const branchDualOffset = sign => ['interpolate', ['linear'], ['zoom'], 4, ['case', isDual, 0.2875 * sign, 0], 7, ['case', isDual, 0.45 * sign, 0]];
 for (const [mode, source, sourceLayer, color] of [
   ['infrastructure', 'network', 'standard_railway_line_low', infrastructurePaint],
   ['speed', 'speed', 'speed_railway_line_low', speedPaint],
@@ -134,7 +137,8 @@ for (const [mode, source, sourceLayer, color] of [
 ]) {
   // Branch lines from zoom 4, under the main lines, in the same colours
   // (their tiles carry the fields of the detailed railway tiles).
-  addLine(`${mode}-branch-overview`, 'branchLines', 'branch_lines', 4, 7, color);
+  addLine(`${mode}-branch-overview`, 'branchLines', 'branch_lines', 4, 7, color,
+    mode === 'gauge' ? {'line-width': branchHalfWidth, 'line-offset': branchDualOffset(-1)} : {});
   addLine(`${mode}-overview`, source, sourceLayer, 0, 7, color);
   addLine(`${mode}-tracks`, 'railway', 'railway_line_high', 7, undefined, color, {
     'line-opacity': mode === 'infrastructure' ? 1 : ['case', ['==', ['get', 'tunnel'], true], 0.65, 1],
@@ -142,6 +146,10 @@ for (const [mode, source, sourceLayer, color] of [
     ...(mode === 'gauge' ? {'line-offset': dualOffset(-1)} : {}),
   });
 }
+style.layers.push({id:'gauge-branch-dual', type:'line', source:'branchLines', 'source-layer':'branch_lines', minzoom:4, maxzoom:7,
+  filter:['all', present, notFerry, isDual],
+  layout:{'line-cap':'butt','line-join':'round'},
+  paint:{'line-color':gaugePaint(1), 'line-width':branchHalfWidth, 'line-offset':branchDualOffset(1)}});
 style.layers.push({id:'gauge-dual', type:'line', source:'railway', 'source-layer':'railway_line_high', minzoom:7,
   filter:['all', present, notFerry, isDual],
   layout:{'line-cap':'butt','line-join':'round'},
