@@ -119,6 +119,24 @@
       "promoteId": "id",
       "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
     },
+    "crossingsOverview": {
+      "type": "vector",
+      "tiles": [
+        "crossingtiles://{z}/{x}/{y}"
+      ],
+      "minzoom": 5,
+      "maxzoom": 5,
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
+    },
+    "crossingsDetail": {
+      "type": "vector",
+      "tiles": [
+        "crossingtiles://{z}/{x}/{y}"
+      ],
+      "minzoom": 9,
+      "maxzoom": 9,
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
+    },
     "streetRunning": {
       "type": "vector",
       "tiles": [
@@ -11224,6 +11242,116 @@
             ]
           ]
         }
+      }
+    },
+    {
+      "id": "infrastructure-crossing-overview",
+      "type": "circle",
+      "source": "crossingsOverview",
+      "source-layer": "level_crossings",
+      "minzoom": 5,
+      "maxzoom": 9,
+      "layout": {
+        "visibility": "none"
+      },
+      "paint": {
+        "circle-color": [
+          "match",
+          [
+            "get",
+            "kind"
+          ],
+          "foot",
+          "#a0704a",
+          "#63332c"
+        ],
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          5,
+          0.9,
+          8,
+          1.4,
+          11,
+          2.2,
+          14,
+          3.4
+        ],
+        "circle-stroke-color": "#fffef8",
+        "circle-stroke-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          0,
+          11,
+          0.8
+        ],
+        "circle-opacity": 0.9
+      }
+    },
+    {
+      "id": "infrastructure-crossing-dots",
+      "type": "circle",
+      "source": "crossingsDetail",
+      "source-layer": "level_crossings",
+      "minzoom": 9,
+      "maxzoom": 15,
+      "layout": {
+        "visibility": "none"
+      },
+      "paint": {
+        "circle-color": [
+          "match",
+          [
+            "get",
+            "kind"
+          ],
+          "foot",
+          "#a0704a",
+          "#63332c"
+        ],
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          5,
+          0.9,
+          8,
+          1.4,
+          11,
+          2.2,
+          14,
+          3.4
+        ],
+        "circle-stroke-color": "#fffef8",
+        "circle-stroke-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          0,
+          11,
+          0.8
+        ],
+        "circle-opacity": 0.9
       }
     },
     {

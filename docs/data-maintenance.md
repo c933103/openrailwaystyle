@@ -38,12 +38,23 @@ The workflow [street-running.yml](../.github/workflows/street-running.yml) runs 
 
 Each website build copies `12/`, `index.json`, `manifest.json` and `street-running.geojson.gz` into `styles/data/street-running/`. The manifest and ODbL GeoJSON download are linked under About. Visitors do not make Overpass requests. See [rail-road rendering](rendering.md#rail-road-interfaces) for qualifying tags and display zooms.
 
+## Level-crossing snapshot
+
+The workflow [crossings.yml](../.github/workflows/crossings.yml) keeps a worldwide table of OpenStreetMap level crossings (about 1.2 million `railway=level_crossing` and `railway=crossing` nodes) and publishes it with its tiles to `crossing-data`, one commit replaced each time. `scripts/build-crossings.mjs` queries Overpass one region at a time (45° squares, split into quarters where a query times out, with the split remembered), in CSV with an end marker so a truncated response is rejected.
+
+- The first run fetches every region (about 45 MB).
+- The weekly run (Sunday 04:17 UTC) fetches the crossings changed since the previous run, then refreshes in full the regions checked longest ago, about 5 MB, which removes deleted and retagged crossings.
+- A table under 900,000 crossings, or more than 5% smaller than the last, is not published; the last snapshot stays.
+
+Each website build copies the tiles (`5/` overview, `9/` detail), `index.json`, `manifest.json` and the ODbL table `crossings.tsv.gz` into `styles/data/level-crossings/`. Before the first snapshot exists the site deploys without them. See [rail-road rendering](rendering.md#rail-road-interfaces) for how they are drawn.
+
 ## Published data and caches
 
 | Location | Contents | Updated by |
 | --- | --- | --- |
 | `rail-data` branch | Lifecycle archive parts, manifest, loading-gauge list and optional polar assets | `snapshot.yml` |
 | `street-data` branch | Street-running static tiles, index, manifest and GeoJSON | `street-running.yml` |
+| `crossing-data` branch | Level-crossing table, region state, static tiles, index and manifest | `crossings.yml` |
 | `overpass-cache` release | Raw responses for rebuilding the lifecycle snapshot | `snapshot.yml` |
 | `styles/data/` in the built site | Assembled published snapshots | `site.yml` |
 

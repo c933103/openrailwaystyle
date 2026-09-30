@@ -32,6 +32,7 @@ this project's published data even when developing a new fork.
 snapshot_dir=$(mktemp -d)
 git clone --depth 1 --single-branch --branch rail-data https://github.com/c933103/openrailwaystyle.git "$snapshot_dir/rail-data"
 git clone --depth 1 --single-branch --branch street-data https://github.com/c933103/openrailwaystyle.git "$snapshot_dir/street-data"
+git clone --depth 1 --single-branch --branch crossing-data https://github.com/c933103/openrailwaystyle.git "$snapshot_dir/crossing-data"
 
 mkdir -p styles/data
 cp "$snapshot_dir/rail-data/manifest.json" styles/data/
@@ -51,6 +52,9 @@ fi
 
 mkdir -p styles/data/street-running
 cp -R "$snapshot_dir/street-data/12" "$snapshot_dir/street-data/index.json" "$snapshot_dir/street-data/manifest.json" "$snapshot_dir/street-data/street-running.geojson.gz" styles/data/street-running/
+
+mkdir -p styles/data/level-crossings
+cp -R "$snapshot_dir/crossing-data/5" "$snapshot_dir/crossing-data/9" "$snapshot_dir/crossing-data/index.json" "$snapshot_dir/crossing-data/manifest.json" styles/data/level-crossings/
 ```
 
 The temporary directory holds downloaded archives and a Python virtual environment;
