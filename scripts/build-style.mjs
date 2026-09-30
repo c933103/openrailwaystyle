@@ -316,6 +316,13 @@ for (const [tier, filter] of tiers) for (const [source, layer, minzoom, maxzoom]
     paint: stationInk,
   });
 }
+// Former, disused and planned stations rank last, from zoom 12, muted; their
+// dots lie under the operating stations' dots.
+style.layers.push({
+  id: 'station-former-dots', type: 'circle', source: 'stations', 'source-layer': 'standard_railway_text_stations', minzoom: 12,
+  filter: ['all', ['!', current], ['match', ['get','feature'], ['station','halt'], true, false]],
+  paint: { 'circle-color': '#fffef8', 'circle-stroke-color': '#8a8076', 'circle-stroke-width': 1.5, 'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 3, 17, 4.5] },
+});
 style.layers.push({
   id: 'station-stations-dots', type: 'circle', source: 'stations', 'source-layer': 'standard_railway_text_stations', minzoom: 12,
   filter: stationFeatures,
@@ -323,12 +330,6 @@ style.layers.push({
   layout: {'circle-sort-key': bySize(4, 3, 2, 1, 0)},
   paint: { 'circle-color': '#ffa323', 'circle-stroke-color': '#123e52', 'circle-stroke-width': 1.5,
     'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, bySize(5, 4, 3.2, 2.7, 2.3), 17, bySize(7, 5.5, 4.5, 3.8, 3.2)] },
-});
-// Former, disused and planned stations rank last, from zoom 12, muted.
-style.layers.push({
-  id: 'station-former-dots', type: 'circle', source: 'stations', 'source-layer': 'standard_railway_text_stations', minzoom: 12,
-  filter: ['all', ['!', current], ['match', ['get','feature'], ['station','halt'], true, false]],
-  paint: { 'circle-color': '#fffef8', 'circle-stroke-color': '#8a8076', 'circle-stroke-width': 1.5, 'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 3, 17, 4.5] },
 });
 style.layers.push({
   id: 'station-former-names', type: 'symbol', source: 'stations', 'source-layer': 'standard_railway_text_stations', minzoom: 12,

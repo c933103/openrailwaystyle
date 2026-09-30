@@ -21,7 +21,7 @@ test('all speed bands have correct inclusive boundaries', () => {
   }
   assert.equal(speedColor(500), SPEED_BANDS.at(-1).color);
 });
-test('source mph and directional speed labels are preserved', () => {
+test('source mph and directional speed labels are preserved', async () => {
   // Brackets only for a converted value.
   assert.deepEqual(formatSpeed({ maxspeed: 160.9344, speed_label: '100 mph' }), { mapped: '160.9 km/h (100 mph)', tagged: '100 mph' });
   assert.equal(formatSpeed({ maxspeed: 160.9344, speed_label: '100 mph' }, 'imperial').mapped, '100 mph');
@@ -32,6 +32,8 @@ test('source mph and directional speed labels are preserved', () => {
   assert.deepEqual([{station: 'subway', station_size: 'small'}, {station: 'tram', station_size: 'large'}, {feature: 'tram_stop'}, {station: 'light_rail', station_size: 'large'}, {station: 'train', station_size: 'large'}]
     .map(stationRank), [2, 4, 4, 3, 0], 'a clicked metro station is chosen over a large tram stop, as drawn');
   assert.ok(stationRank({station: 'train', station_size: 'large', state: 'abandoned'}) > stationRank({feature: 'tram_stop'}), 'former stations after every operating one');
+  const layerIds = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url))).layers.map(l => l.id);
+  assert.ok(layerIds.indexOf('station-former-dots') < layerIds.indexOf('station-stations-dots'), 'former station dots drawn under operating ones, as clicks pick them');
   assert.equal(formatSpeed({ maxspeed: 80.4672, speed_label: '50 mph (30 mph)' }).tagged, '50 mph (30 mph)');
   assert.equal(formatSpeed({ speed_label: '- / 80' }).tagged, '- / 80 km/h');
 });

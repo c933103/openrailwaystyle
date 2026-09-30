@@ -12976,6 +12976,62 @@
       }
     },
     {
+      "id": "station-former-dots",
+      "type": "circle",
+      "source": "stations",
+      "source-layer": "standard_railway_text_stations",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "!",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ]
+        ],
+        [
+          "match",
+          [
+            "get",
+            "feature"
+          ],
+          [
+            "station",
+            "halt"
+          ],
+          true,
+          false
+        ]
+      ],
+      "paint": {
+        "circle-color": "#fffef8",
+        "circle-stroke-color": "#8a8076",
+        "circle-stroke-width": 1.5,
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          3,
+          17,
+          4.5
+        ]
+      }
+    },
+    {
       "id": "station-stations-dots",
       "type": "circle",
       "source": "stations",
@@ -13338,62 +13394,6 @@
               4.5
             ]
           ]
-        ]
-      }
-    },
-    {
-      "id": "station-former-dots",
-      "type": "circle",
-      "source": "stations",
-      "source-layer": "standard_railway_text_stations",
-      "minzoom": 12,
-      "filter": [
-        "all",
-        [
-          "!",
-          [
-            "==",
-            [
-              "coalesce",
-              [
-                "get",
-                "state"
-              ],
-              "present"
-            ],
-            "present"
-          ]
-        ],
-        [
-          "match",
-          [
-            "get",
-            "feature"
-          ],
-          [
-            "station",
-            "halt"
-          ],
-          true,
-          false
-        ]
-      ],
-      "paint": {
-        "circle-color": "#fffef8",
-        "circle-stroke-color": "#8a8076",
-        "circle-stroke-width": 1.5,
-        "circle-radius": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          12,
-          3,
-          17,
-          4.5
         ]
       }
     },
