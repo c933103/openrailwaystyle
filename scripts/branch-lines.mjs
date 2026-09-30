@@ -74,12 +74,13 @@ function gauges(value) {
 }
 function electrification(tags) {
   const e = tags.electrified;
-  if (e === 'no') return 'no';
   if (e && e !== 'no') return 'present';
+  // A line not yet electrified (electrified=no) may be under construction or
+  // planned for it; that state comes first.
   if (tags['construction:electrified'] && tags['construction:electrified'] !== 'no') return 'construction';
   if (tags['proposed:electrified'] && tags['proposed:electrified'] !== 'no') return 'proposed';
   if (tags['deelectrified:electrified'] || tags.deelectrified) return 'deelectrified';
-  return undefined;
+  return e === 'no' ? 'no' : undefined;
 }
 
 // The mapped speed as written, as in OpenRailwayMap's speed_label: the
@@ -144,8 +145,15 @@ export function toFeatures(json) {
   for (const way of json.elements) {
     if (way.type !== 'way' || !Array.isArray(way.geometry)) continue;
     const tags = way.tags || {};
-    const coordinates = simplify(way.geometry.filter(p => p && Number.isFinite(p.lon) && Number.isFinite(p.lat)).map(p => [p.lon, p.lat])).map(round);
-    if (coordinates.length < 2) continue;
+    // A node without coordinates splits the way (joining its neighbours would
+    // draw a line that does not exist).
+    const parts = [[]];
+    for (const p of way.geometry) {
+      if (p && Number.isFinite(p.lon) && Number.isFinite(p.lat)) parts.at(-1).push([p.lon, p.lat]);
+      else if (parts.at(-1).length) parts.push([]);
+    }
+    const lines = parts.filter(part => part.length > 1).map(part => simplify(part).map(round));
+    if (!lines.length) continue;
     const [g0, g1] = gauges(tags.gauge), protection = trainProtection(tags), maxspeed = parseMaxspeed(speedTags(tags), 'present'), label = speedLabel(tags);
     const preferred = tags['railway:preferred_direction'];
     const properties = {
@@ -164,7 +172,7 @@ export function toFeatures(json) {
       ...(protection && {train_protection0: protection}),
       ...(tags.operator && {operator: tags.operator}),
     };
-    features.push({type: 'Feature', id: way.id, properties, geometry: {type: 'LineString', coordinates}});
+    features.push({type: 'Feature', id: way.id, properties, geometry: lines.length === 1 ? {type: 'LineString', coordinates: lines[0]} : {type: 'MultiLineString', coordinates: lines}});
   }
   return features;
 }

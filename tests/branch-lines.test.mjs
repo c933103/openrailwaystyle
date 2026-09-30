@@ -46,6 +46,10 @@ test('branch-line tags become the fields of the detailed railway tiles', () => {
     {osm_id: 11, feature: 'rail', usage: 'branch', state: 'present', name: '', maxspeed: 60, speed_label: '120 / 60', preferred_direction: 'backward'}, 'the preferred direction\'s speed');
   assert.equal(way({'maxspeed:forward': '120', 'maxspeed:backward': '60', 'railway:preferred_direction': 'both'}).maxspeed, 120, 'else the faster direction');
   assert.equal(way({'maxspeed:forward': '120', 'railway:preferred_direction': 'backward'}).maxspeed, 120, 'an unmapped preferred direction falls back');
+  assert.equal(way({electrified: 'no', 'construction:electrified': 'contact_line'}).electrification_state, 'construction', 'electrification under way before the current "no"');
+  assert.equal(way({electrified: 'no'}).electrification_state, 'no');
+  const [gap] = toFeatures({elements: [{type: 'way', id: 12, tags: {railway: 'rail'}, geometry: [{lat: 0, lon: 0}, {lat: 0, lon: 1}, null, {lat: 5, lon: 5}, {lat: 5, lon: 6}]}]});
+  assert.deepEqual(gap.geometry, {type: 'MultiLineString', coordinates: [[[0, 0], [1, 0]], [[5, 5], [6, 5]]]}, 'a missing node splits the way');
 });
 
 test('branch-line table and tiles: z4–6 only, the style\'s fields and the OSM way id', () => {
