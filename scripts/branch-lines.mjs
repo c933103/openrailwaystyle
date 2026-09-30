@@ -72,22 +72,23 @@ function gauges(value) {
   return String(value ?? '').split(';').map(s => s.trim()).filter(Boolean).slice(0, 2)
     .map(g => ({text: g, mm: /^\d+(\.\d+)?$/.test(g) ? Number(g) : GAUGE_WORDS[g]}));
 }
+// Electrification as OpenRailwayMap's importer derives it for the detailed
+// tiles (electrification_state in its openrailwaymap.lua): the state, the
+// current voltage and frequency only when electrified, and the planned ones
+// (future_*) for electrification under construction or proposed.
+const ELECTRIFIED = ['contact_line', 'yes', 'rail', 'ground-level_power_supply', '4th_rail', 'contact_line;rail', 'rail;contact_line'];
 function electrification(tags) {
-  const e = tags.electrified;
-  if (e && e !== 'no') return 'present';
-  // A line not yet electrified (electrified=no) may be under construction or
-  // planned for it; that state comes first.
-  if (tags['construction:electrified'] && tags['construction:electrified'] !== 'no') return 'construction';
-  if (tags['proposed:electrified'] && tags['proposed:electrified'] !== 'no') return 'proposed';
-  if (tags['deelectrified:electrified'] || tags.deelectrified) return 'deelectrified';
-  return e === 'no' ? 'no' : undefined;
-}
-
-function futureCurrent(tags) {
-  const state = electrification(tags);
-  if (state !== 'construction' && state !== 'proposed') return {};
-  const voltage = number(tags[`${state}:voltage`]), frequency = number(tags[`${state}:frequency`]);
-  return {...(voltage !== undefined && {future_voltage: voltage}), ...(frequency !== undefined && {future_frequency: frequency})};
+  const current = (state, prefix = '') => {
+    const voltage = number(tags[`${prefix}voltage`]), frequency = number(tags[`${prefix}frequency`]), future = prefix ? 'future_' : '';
+    return {electrification_state: state, ...(voltage !== undefined && {[`${future}voltage`]: voltage}), ...(frequency !== undefined && {[`${future}frequency`]: frequency})};
+  };
+  if (ELECTRIFIED.includes(tags.electrified)) return current('present');
+  if (ELECTRIFIED.includes(tags['construction:electrified'])) return current('construction', 'construction:');
+  if (ELECTRIFIED.includes(tags['proposed:electrified'])) return current('proposed', 'proposed:');
+  if (tags.electrified !== 'no') return {};
+  if (ELECTRIFIED.includes(tags.deelectrified)) return {electrification_state: 'deelectrified'};
+  if (ELECTRIFIED.includes(tags['abandoned:electrified'])) return {electrification_state: 'abandoned'};
+  return {electrification_state: 'no'};
 }
 
 // The mapped speed as written, as in OpenRailwayMap's speed_label: the
@@ -118,13 +119,14 @@ export function speedLabel(tags) {
 // direction's limit is its speed; otherwise the faster direction's.
 export function speedTags(tags) {
   const preferred = tags['railway:preferred_direction'];
-  if (tags.maxspeed || !['forward', 'backward'].includes(preferred) || parseMaxspeed({maxspeed: tags[`maxspeed:${preferred}`]}, 'present') === undefined) return tags;
+  if (tags.maxspeed || !['forward', 'backward'].includes(preferred) || parseMaxspeed({maxspeed: tags[`maxspeed:${preferred}`]}, 'present', true) === undefined) return tags;
   return {maxspeed: tags[`maxspeed:${preferred}`]};
 }
 // The unit of the value the speed comes from: a label can mix units
 // ("60 mph / 120"), and the panel must not guess from it.
 export function speedUnit(tags) {
-  const kmh = value => parseMaxspeed({maxspeed: value}, 'present');
+  // Unrounded, so near-equal limits in different units compare correctly.
+  const kmh = value => parseMaxspeed({maxspeed: value}, 'present', true);
   const chosen = speedTags(tags);
   let source = chosen.maxspeed;
   if (kmh(source) === undefined) {
@@ -185,12 +187,7 @@ export function toFeatures(json) {
       ...(tags.highspeed === 'yes' && {highspeed: true}),
       ...(maxspeed !== undefined && {maxspeed, speed_unit: speedUnit(tags)}), ...(label && {speed_label: label}),
       ...(['forward', 'backward', 'both'].includes(preferred) && {preferred_direction: preferred}),
-      ...(electrification(tags) && {electrification_state: electrification(tags)}),
-      ...(number(tags.voltage) !== undefined && {voltage: number(tags.voltage)}),
-      ...(number(tags.frequency) !== undefined && {frequency: number(tags.frequency)}),
-      // The planned current of electrification under construction or proposed
-      // (the panel's "Planned current", as in the detailed tiles).
-      ...futureCurrent(tags),
+      ...electrification(tags),
       ...(g0 && {gauge0: g0.text, ...(g0.mm && {gaugeint0: g0.mm})}),
       ...(g1 && {gauge1: g1.text, ...(g1.mm && {gaugeint1: g1.mm})}),
       ...(tags.loading_gauge && {loading_gauge: tags.loading_gauge}),

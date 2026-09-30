@@ -55,6 +55,10 @@ test('branch-line tags become the fields of the detailed railway tiles', () => {
   assert.equal(way({'maxspeed:forward': '80 mph', 'maxspeed:backward': '100'}).speed_unit, 'mph', 'the faster direction\'s unit');
   assert.deepEqual([way({maxspeed: '80 mph;140'}).maxspeed, way({maxspeed: '80 mph;140'}).speed_unit], [140, 'km/h'], 'the list member that gives the speed');
   assert.equal(way({maxspeed: '30 knots'}).speed_unit, 'knots');
+  assert.equal(way({'maxspeed:forward': '60 mph', 'maxspeed:backward': '97'}).speed_unit, 'km/h', 'units compared unrounded (96.56 < 97)');
+  assert.deepEqual(way({electrified: 'no', 'construction:electrified': 'contact_line', voltage: '1500', 'construction:voltage': '25000'}).voltage, undefined, 'no current voltage while under construction, as in OpenRailwayMap');
+  assert.equal(way({electrified: 'unknown'}).electrification_state, undefined);
+  assert.equal(way({electrified: 'no', 'abandoned:electrified': 'contact_line'}).electrification_state, 'abandoned');
   assert.equal(formatSpeed(way({maxspeed: '30 knots'})).mapped, '55.6 km/h (30 knots)');
   const planned = way({electrified: 'no', 'construction:electrified': 'contact_line', 'construction:voltage': '25000', 'construction:frequency': '50'});
   assert.deepEqual([planned.electrification_state, planned.future_voltage, planned.future_frequency, planned.voltage], ['construction', 25000, 50, undefined], 'the planned current');
