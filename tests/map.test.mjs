@@ -144,6 +144,9 @@ test('every lifecycle is shown at zoom 7 without a live query or a zoom-8 handof
     assert.equal(filter.filter({zoom},{type:2,properties:{state,feature:'rail',usage:'',service:''}}),zoom>=min,`${state} at z${zoom}`);
   }
   // Service tracks are not held back (only tram and urban kinds are).
+  // Metro under construction from zoom 7 (never held back to 10).
+  assert.equal(filter.filter({zoom:6.9},{type:2,properties:{state:'construction',feature:'subway'}}),false);
+  assert.equal(filter.filter({zoom:7},{type:2,properties:{state:'construction',feature:'subway'}}),true);
   assert.equal(filter.filter({zoom:7},{type:2,properties:{state:'construction',feature:'rail',service:'siding'}}),true);
   // Planned and former trams wait for zoom 10, like operating ones.
   assert.equal(filter.filter({zoom:9.9},{type:2,properties:{state:'construction',feature:'tram'}}),false);

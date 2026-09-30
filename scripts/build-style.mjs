@@ -99,10 +99,14 @@ const present = ['==', ['coalesce', ['get', 'state'], 'present'], 'present'];
 const notFerry = ['!=', ['get', 'feature'], 'ferry'];
 const speedPaint = speedColours('metric');
 const hasService = ['!=',['coalesce',['get','service'],''],''];
-// Light rail, monorail, metro, tram, funicular and miniature tracks from
-// zoom 10 (the detailed tiles hold light rail main and branch lines from 9).
-const URBAN_FEATURES = ['light_rail', 'monorail', 'subway', 'tram', 'funicular', 'miniature'];
-const byKindZoom = ['any', ['>=', ['zoom'], 10], ['!', ['match', ['get', 'feature'], URBAN_FEATURES, true, false]]];
+// Metro tracks from zoom 7; light rail, monorail, tram, funicular and
+// miniature tracks from zoom 10 (the detailed tiles hold light rail main and
+// branch lines from 9, metro from 10).
+const URBAN_FEATURES = ['light_rail', 'monorail', 'tram', 'funicular', 'miniature'];
+const byKindZoom = ['case',
+  ['==', ['get', 'feature'], 'subway'], ['>=', ['zoom'], 7],
+  ['match', ['get', 'feature'], URBAN_FEATURES, true, false], ['>=', ['zoom'], 10],
+  true];
 const infrastructurePaint = ['case',
   ['==', ['get', 'highspeed'], true], INFRASTRUCTURE[0][0],
   ['match', ['get', 'feature'], ['subway', 'light_rail', 'monorail'], true, false], INFRASTRUCTURE[3][0],
@@ -190,7 +194,8 @@ const inactiveLayout = state => ({'line-cap': LIFECYCLE_PATTERNS[state].cap, 'li
 // The complete snapshot supplies every lifecycle at regional scales. The
 // ordinary detail tiles take over together at z12, avoiding duplicate lines.
 // Construction shows at every zoom, proposals from z5, former lines from z7;
-// light rail, metro, tram and other urban kinds from z10 whatever their state.
+// metro from z7 and light rail, tram and other urban kinds from z10 whatever
+// their state.
 const regionalZoom = ['all', byKindZoom, ['any', ['>=',['zoom'],7], ['==',['get','state'],'construction'], ['all', ['>=',['zoom'],5], ['==',['get','state'],'proposed']]]];
 const inactiveBridge = {type:'line', layout:{'line-cap':'butt','line-join':'round'}};
 const inactiveBridgeEdge = {'line-color':'#5b5550','line-width':['interpolate',['linear'],['zoom'],7,3,12,4.6,16,6.5,20,8.5]};

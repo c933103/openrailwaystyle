@@ -20,7 +20,7 @@ Major stations appear from zoom 6. From zoom 7, regional stations use the provid
 
 By mode, metro stations appear from zoom 8 (the first station tiles that carry them), light rail, monorails, people movers, trams, funiculars and tram stops from 10, so a tram stop never shows before a metro station. The provider's size counts routes, so a busy people mover can be "large" and most metro stations "small"; names and markers are therefore sized by mode too: heavy rail and metro by station size, light rail and people movers a step smaller than any metro station, trams, funiculars and monorails smaller still. Where markers meet at street zoom, the higher-capacity station's is drawn on top.
 
-Light rail, monorail, metro, tram, funicular and miniature tracks are drawn from zoom 10 (the provider's tiles hold metro and tram tracks only from zoom 10 anyway).
+Metro tracks are drawn from zoom 7 where data exists (the provider's tiles hold them only from zoom 10); light rail, monorail, tram, funicular and miniature tracks from zoom 10.
 
 Before zoom 12 a marker and its name are placed together with collision detection. From zoom 12 individual markers remain visible when labels collide. Worldwide coverage means global source coverage, not a guarantee that every railway, station or speed is mapped.
 
@@ -30,7 +30,7 @@ Below zoom 7 the provider's tiles hold main lines only. From zoom 4 the atlas ad
 
 ## Railway structures and track counts
 
-Bridge outlines and tunnel dashes from zoom 7 (the upstream zoom 0–6 overview tiles carry no bridge or tunnel data), or with the track itself for urban kinds (zoom 10); click a railway for recorded speed, voltage, frequency, gauge and operator.
+Bridge outlines and tunnel dashes from zoom 7 (the upstream zoom 0–6 overview tiles carry no bridge or tunnel data), or with the track itself for light rail, tram and other urban kinds (zoom 10); click a railway for recorded speed, voltage, frequency, gauge and operator.
 
 Running tracks side by side, counted from the mapped geometry in the browser (`styles/track-count.mjs`, `styles/track-tiles.mjs`; OpenStreetMap maps each track separately and the railway tiles carry no count): from zoom 14 the Infrastructure view puts a boxed number on the middle track of each group of running tracks that keep alongside each other (each within 30 m of the next; between two tunnel tracks 12 m, or 35 m for tracks of the same named line). Sidings, yards, spurs and crossovers are not counted; the count is the most common one over about 300 m along the line; counts are always made on zoom-14 railway tiles with their eight neighbours (a separate `atlastracks` source), so they are the same at every zoom; inside the provider's station areas (areas holding only subway stations leave surface tracks labelled) running tracks are not labelled. Tracks in tunnels count with those beside them on the surface or on viaducts (a line quadrupled with one pair underground, like Keiō's or Odakyū's, or the Ueno–Tokyo Line above the Shinkansen, is one group); a group wholly in tunnels has a grey-blue badge.
 
@@ -40,7 +40,7 @@ Checked against known track counts in Tokyo, Ōmiya, Takasaki, Nagoya, Hong Kong
 
 ## Railway lifecycle
 
-The upstream railway tiles exclude planned/construction lines at zoom 7 and former infrastructure until still higher zooms. A **published worldwide lifecycle snapshot** fills that gap without sending viewer requests to Overpass. Railways under construction appear at every zoom, proposed railways from zoom 5, and former (disused, abandoned, razed) lines from zoom 7; light rail, monorail, metro, tram, funicular and miniature lines in any state from zoom 10, like operating ones. The snapshot tiles start at zoom 5; `scripts/build-overview-tiles.mjs` derives zoom 0–4 tiles holding only construction from them during the site build. The snapshot continues unchanged through zoom 11, and the ordinary detail tiles take over at zoom 12. Full way geometries cross viewport and extraction boundaries without clipping gaps.
+The upstream railway tiles exclude planned/construction lines at zoom 7 and former infrastructure until still higher zooms. A **published worldwide lifecycle snapshot** fills that gap without sending viewer requests to Overpass. Railways under construction appear at every zoom, proposed railways from zoom 5, and former (disused, abandoned, razed) lines from zoom 7; metro lines in any state from zoom 7, and light rail, monorail, tram, funicular and miniature lines from zoom 10, like operating ones. The snapshot tiles start at zoom 5; `scripts/build-overview-tiles.mjs` derives zoom 0–4 tiles holding only construction from them during the site build. The snapshot continues unchanged through zoom 11, and the ordinary detail tiles take over at zoom 12. Full way geometries cross viewport and extraction boundaries without clipping gaps.
 
 Lifecycle patterns are shared between style and SVG legend: construction uses long blocks; proposed uses spaced round dots; disused uses dash-dot; abandoned / removed uses sparse paired dashes. The same patterns apply to regional and detailed data, including the speed view.
 

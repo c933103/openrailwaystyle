@@ -20,6 +20,8 @@ test('crossing responses: rows parse, minor after the marker; a response without
   assert.match(regionQuery([0, 90, 45, 135]), /node\[railway=level_crossing\]\(0,90,45,135\);node\[railway=crossing\]\(0,90,45,135\);\)->\.c;way\(bn\.c\)\[railway\]->\.w;/);
   assert.match(regionQuery([0, 90, 45, 135]), /\.major out qt;make split railway="minor";out;\.minor out qt;make complete railway="end";out;$/);
   assert.match(regionQuery([0, 90, 45, 135], '2026-09-20T00:00:00Z'), /\[railway=crossing\]\(newer:"2026-09-20T00:00:00Z"\)\(0,90,45,135\)/);
+  assert.match(regionQuery([0, 90, 45, 135], '2026-09-20T00:00:00Z'), /\[timeout:180\];way\[railway\]\(newer:"2026-09-20T00:00:00Z"\)\(0,90,45,135\)->\.cw;\(node.*;node\(w\.cw\)\[railway~"\^\(level_crossing\|crossing\)\$"\];\)->\.c;/, 'crossings on retagged tracks are rechecked');
+  assert.doesNotMatch(regionQuery([0, 90, 45, 135]), /newer|\.cw/);
 });
 
 test('crossing regions: 45° squares cover the world; a quarter split covers its parent', () => {

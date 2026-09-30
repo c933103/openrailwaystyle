@@ -33,10 +33,14 @@ export const inBox = ([s, w, n, e], lat, lon) => lat >= s && lat < n && lon >= w
 export const MINOR_TRACKS = '(way.w[railway~"^(tram|light_rail|funicular|miniature)$"];way.w[service];way.w[embedded=yes];)';
 export function regionQuery(box, since) {
   const newer = since ? `(newer:"${since}")` : '';
+  // Changes also cover crossings on railway ways edited since (a retagged
+  // track can change a crossing's minor flag without touching the node).
+  const changedWays = since ? `way[railway]${newer}(${box.join(',')})->.cw;` : '';
+  const onChangedWays = since ? 'node(w.cw)[railway~"^(level_crossing|crossing)$"];' : '';
   // CSV output carries no error remarks: a final marker row, written only
   // when the query ran to the end, shows the response is complete. A marker
   // row (railway "minor") separates the major crossings from the minor ones.
-  return `[out:csv(::id,::lat,::lon,railway;false)][timeout:180];(node[railway=level_crossing]${newer}(${box.join(',')});node[railway=crossing]${newer}(${box.join(',')});)` +
+  return `[out:csv(::id,::lat,::lon,railway;false)][timeout:180];${changedWays}(node[railway=level_crossing]${newer}(${box.join(',')});node[railway=crossing]${newer}(${box.join(',')});${onChangedWays})` +
     `->.c;way(bn.c)[railway]->.w;${MINOR_TRACKS}->.mw;(.w; - .mw;)->.jw;node.c(w.mw)->.m;node.c(w.jw)->.j;(.m; - .j;)->.minor;(.c; - .minor;)->.major;` +
     `.major out qt;make split railway="minor";out;.minor out qt;make complete railway="end";out;`;
 }
