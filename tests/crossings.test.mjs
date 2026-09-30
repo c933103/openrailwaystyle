@@ -18,6 +18,7 @@ test('crossing responses: rows parse, minor after the marker; a response without
   assert.throws(() => parseCsv('<?xml version="1.0"?><html><p>runtime error: Query timed out</p></html>'), /error page.*timed out/);
   assert.throws(() => parseCsv(csv([[5, 'x', 113.9, 'level_crossing']])), /Unexpected/);
   assert.match(regionQuery([0, 90, 45, 135]), /node\[railway=level_crossing\]\(0,90,45,135\);node\[railway=crossing\]\(0,90,45,135\);\)->\.c;way\(bn\.c\)\[railway\]->\.w;/);
+  assert.ok(regionQuery([0, 90, 45, 135]).includes('way.w[railway!~"^(rail|narrow_gauge|light_rail|subway|tram|monorail|funicular|miniature)$"][~"^(proposed|construction|disused|abandoned|razed|demolished|removed)(:railway)?$"~"^(tram|light_rail|funicular|miniature)$"];'), 'planned and former trams count as minor tracks');
   assert.match(regionQuery([0, 90, 45, 135]), /\.major out qt;make split railway="minor";out;\.minor out qt;make complete railway="end";out;$/);
   assert.match(regionQuery([0, 90, 45, 135], '2026-09-20T00:00:00Z'), /\[railway=crossing\]\(newer:"2026-09-20T00:00:00Z"\)\(0,90,45,135\)/);
   assert.match(regionQuery([0, 90, 45, 135], '2026-09-20T00:00:00Z'), /\[timeout:180\];\(node\[railway=level_crossing\]\(0,90,45,135\);node\[railway=crossing\]\(0,90,45,135\);\)->\.all;way\(bn\.all\)\(newer:"2026-09-20T00:00:00Z"\)->\.cw;\(node.*;node\.all\(w\.cw\);\)->\.c;/, 'crossings on retagged tracks, railway or not any more, are rechecked');

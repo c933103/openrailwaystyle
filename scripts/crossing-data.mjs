@@ -29,8 +29,13 @@ export const inBox = ([s, w, n, e], lat, lon) => lat >= s && lat < n && lon >= w
 
 // Tracks whose crossings wait for street zooms: trams, light rail,
 // funiculars, miniature railways, service tracks (sidings, yards, spurs) and
-// street running. A crossing is minor when every railway through it is one.
-export const MINOR_TRACKS = '(way.w[railway~"^(tram|light_rail|funicular|miniature)$"];way.w[service];way.w[embedded=yes];)';
+// street running, operating or planned/former (lifecycle mode tags as
+// scripts/lifecycle.mjs reads them). A crossing is minor when every railway
+// through it is one.
+const MINOR_KINDS = '"^(tram|light_rail|funicular|miniature)$"';
+const LIFECYCLE_KEYS = '"^(proposed|construction|disused|abandoned|razed|demolished|removed)(:railway)?$"';
+const ACTIVE = '"^(rail|narrow_gauge|light_rail|subway|tram|monorail|funicular|miniature)$"';
+export const MINOR_TRACKS = `(way.w[railway~${MINOR_KINDS}];way.w[railway!~${ACTIVE}][~${LIFECYCLE_KEYS}~${MINOR_KINDS}];way.w[service];way.w[embedded=yes];)`;
 export function regionQuery(box, since) {
   const newer = since ? `(newer:"${since}")` : '';
   // Changes also cover crossings on any way through a crossing edited since
