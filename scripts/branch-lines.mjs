@@ -1,13 +1,15 @@
-// Operating branch lines (OSM railway=rail/narrow_gauge with usage=branch),
-// kept as a table and cut into static z4–6 vector tiles. OpenRailwayMap's
-// z0–6 overview tiles hold only main lines, so lines such as JR's local
-// lines vanished below zoom 7; its z7+ tiles hold main and branch lines.
+// Operating branch lines (OSM railway=rail/narrow_gauge with usage=branch)
+// and metro lines (railway=subway), kept as a table and cut into static
+// vector tiles: branch lines at z4–6, metro at z7–9. OpenRailwayMap's z0–6
+// overview tiles hold only main lines, so lines such as JR's local lines
+// vanished below zoom 7; its z7+ tiles hold main and branch lines, but metro
+// only from z10.
 // Pure functions; scripts/build-branch-lines.mjs does the I/O.
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import {parseMaxspeed} from './lifecycle.mjs';
 
-export const MIN_ZOOM = 4, MAX_ZOOM = 6, LAYER = 'branch_lines';
+export const MIN_ZOOM = 4, BRANCH_MAX_ZOOM = 6, METRO_MIN_ZOOM = 7, MAX_ZOOM = 9, LAYER = 'branch_lines';
 
 // Regions fetched one stage at a time, in this order. A part is a bounding
 // box [south, west, north, east], optionally limited to OSM country areas
@@ -38,14 +40,15 @@ export const quarters = ([s, w, n, e]) => {
 };
 
 const areaFilter = spec => { const [key, value] = spec.split('='); return `area["${key}"="${value}"]`; };
-const SELECT = 'way[railway~"^(rail|narrow_gauge)$"][usage=branch][!service]';
+const SELECTS = ['way[railway~"^(rail|narrow_gauge)$"][usage=branch][!service]', 'way[railway=subway][!service]'];
+const select = filters => SELECTS.map(s => `${s}${filters};`).join('');
 export function partQuery(part, box) {
   const bbox = `(${box.join(',')})`, specs = [part.area, ...(part.exclude || [])].filter(Boolean);
   const areas = specs.map((spec, i) => `${areaFilter(spec)}->.a${i};`).join('');
-  const main = `${SELECT}${part.area ? '(area.a0)' : ''}${bbox};`;
-  const excluded = (part.exclude || []).map((_, i) => `${SELECT}(area.a${i + (part.area ? 1 : 0)})${bbox};`).join('');
+  const main = select(`${part.area ? '(area.a0)' : ''}${bbox}`);
+  const excluded = (part.exclude || []).map((_, i) => select(`(area.a${i + (part.area ? 1 : 0)})${bbox}`)).join('');
   // Ways in countries fetched in earlier stages are left out of the download.
-  const set = excluded ? `(${main} - (${excluded});)` : `(${main})`;
+  const set = excluded ? `((${main}); - (${excluded});)` : `(${main})`;
   return `[out:json][timeout:180][maxsize:536870912];${areas}${set};out tags geom qt;`;
 }
 
@@ -183,7 +186,7 @@ export function toFeatures(json) {
     const [g0, g1] = gauges(tags.gauge), protection = trainProtection(tags), maxspeed = parseMaxspeed(speedTags(tags), 'present', true), label = speedLabel(tags);
     const preferred = tags['railway:preferred_direction'];
     const properties = {
-      osm_id: way.id, feature: tags.railway, usage: 'branch', state: 'present',
+      osm_id: way.id, feature: tags.railway, usage: tags.railway === 'subway' ? (tags.usage || '') : 'branch', state: 'present',
       name: tags.name || tags['name:en'] || '',
       ...Object.fromEntries(Object.entries(tags).filter(([key]) => /^name:[a-z]{2,3}(-[A-Za-z]{2,4})?$/.test(key))),
       ...(tags.highspeed === 'yes' && {highspeed: true}),
@@ -209,15 +212,17 @@ export function readTable(text) {
   return table;
 }
 
-// Tiles z4–6: Map 'z/x/y' → encoded bytes (layer branch_lines).
+// Tiles: Map 'z/x/y' → encoded bytes (layer branch_lines): branch lines at
+// z4–6, metro lines at z7–9.
 export function buildTiles(table) {
-  const index = geojsonvt({type: 'FeatureCollection', features: [...table.values()]},
-    {maxZoom: MAX_ZOOM, indexMaxZoom: MAX_ZOOM, indexMaxPoints: 0, tolerance: 2, extent: 4096, buffer: 64});
-  const out = new Map();
-  for (const {z, x, y} of index.tileCoords) {
-    if (z < MIN_ZOOM) continue;
-    const tile = index.getTile(z, x, y);
-    if (tile?.features.length) out.set(`${z}/${x}/${y}`, vtpbf.fromGeojsonVt({[LAYER]: tile}, {version: 2}));
+  const out = new Map(), all = [...table.values()];
+  for (const [features, minZoom, maxZoom] of [[all.filter(f => f.properties.feature !== 'subway'), MIN_ZOOM, BRANCH_MAX_ZOOM], [all.filter(f => f.properties.feature === 'subway'), METRO_MIN_ZOOM, MAX_ZOOM]]) {
+    const index = geojsonvt({type: 'FeatureCollection', features}, {maxZoom, indexMaxZoom: maxZoom, indexMaxPoints: 0, tolerance: 2, extent: 4096, buffer: 64});
+    for (const {z, x, y} of index.tileCoords) {
+      if (z < minZoom) continue;
+      const tile = index.getTile(z, x, y);
+      if (tile?.features.length) out.set(`${z}/${x}/${y}`, vtpbf.fromGeojsonVt({[LAYER]: tile}, {version: 2}));
+    }
   }
   return out;
 }

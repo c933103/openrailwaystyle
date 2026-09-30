@@ -43,7 +43,7 @@ const style = {
     crossingsDetail: {type:'vector',tiles:['crossingtiles://{z}/{x}/{y}'],minzoom:DETAIL_ZOOM,maxzoom:DETAIL_ZOOM,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     // Operating branch lines for the overview zooms (branch-lines.yml):
     // OpenRailwayMap's z0–6 tiles hold main lines only.
-    branchLines: {type:'vector',tiles:['branchtiles://{z}/{x}/{y}'],minzoom:4,maxzoom:6,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
+    branchLines: {type:'vector',tiles:['branchtiles://{z}/{x}/{y}'],minzoom:4,maxzoom:9,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     streetRunning: {type:'vector',tiles:['streettiles://{z}/{x}/{y}'],minzoom:12,maxzoom:12,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     contours: {type:'vector',tiles:['atlas-contour://{z}/{x}/{y}'],minzoom:7,maxzoom:15},
     // Seabed contours (see contourOptions in map-model.mjs). The elevation
@@ -145,11 +145,15 @@ for (const [mode, source, sourceLayer, color] of [
     layout:{'line-cap':'butt','line-join':'round'},
     paint:{'line-color':gaugePaint(1), 'line-width':branchHalfWidth, 'line-offset':branchDualOffset(1)}});
   addLine(`${mode}-overview`, source, sourceLayer, 0, 7, color);
-  addLine(`${mode}-tracks`, 'railway', 'railway_line_high', 7, undefined, color, {
+  const trackPaint = {
     'line-opacity': mode === 'infrastructure' ? 1 : ['case', ['==', ['get', 'tunnel'], true], 0.65, 1],
     'line-width': mode === 'gauge' ? halfWidth : trackWidth(),
     ...(mode === 'gauge' ? {'line-offset': dualOffset(-1)} : {}),
-  });
+  };
+  addLine(`${mode}-tracks`, 'railway', 'railway_line_high', 7, undefined, color, trackPaint);
+  // Metro lines at zooms 7–9 from the same snapshot (the detailed railway
+  // tiles hold them only from zoom 10).
+  addLine(`${mode}-metro-overview`, 'branchLines', 'branch_lines', 7, 10, color, trackPaint);
 }
 style.layers.push({id:'gauge-dual', type:'line', source:'railway', 'source-layer':'railway_line_high', minzoom:7,
   filter:['all', present, notFerry, isDual],

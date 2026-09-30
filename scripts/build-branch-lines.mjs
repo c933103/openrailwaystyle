@@ -39,6 +39,13 @@ if (previous) {
   }
 }
 
+// Format 2 adds metro lines: every stage of an older snapshot is fetched
+// again, in order, keeping its branch lines until then.
+const VERSION = 2;
+if (state.version !== VERSION) {
+  for (const s of Object.values(state.stages)) Object.assign(s, {completed: null, pending: null, seen: []});
+  state.version = VERSION;
+}
 state.runs = (state.runs || []).filter(run => Date.now() - Date.parse(run.at) < 86400_000);
 const lastDay = state.runs.reduce((sum, run) => sum + run.bytes, 0);
 const BUDGET_BYTES = Math.min(RUN_BUDGET, DAY_BUDGET - lastDay);
@@ -172,8 +179,8 @@ const manifest = {generated: new Date().toISOString(), lines: table.size, tiles:
   stages: STAGES.map(s => ({name: s.name, label: s.label, completed: info(s.name).completed, inProgress: Boolean(info(s.name).pending?.length),
     lines: [...table.values()].filter(f => f.stage === s.name).length})),
   run: {stage: stage.name, requests, downloadedBytes: downloaded}, source: api,
-  query: 'way[railway~"^(rail|narrow_gauge)$"][usage=branch][!service], by region', license: 'ODbL-1.0',
-  description: 'OpenStreetMap operating branch lines (usage=branch) for the overview zooms, where OpenRailwayMap shows main lines only.'};
+  query: 'way[railway~"^(rail|narrow_gauge)$"][usage=branch][!service] and way[railway=subway][!service], by region', license: 'ODbL-1.0',
+  description: 'OpenStreetMap operating branch lines (usage=branch) for zooms 4–6 and metro lines (railway=subway) for zooms 7–9, where OpenRailwayMap shows neither.'};
 await writeFile(new URL('manifest.json', out), JSON.stringify(manifest, null, 2));
 if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `publish=true\nredeploy=${fetchedBoxes > 0}\n`);
 console.log(JSON.stringify({...manifest, stages: undefined, progress: manifest.stages.map(s => `${s.name}:${s.completed ? 'done' : s.inProgress ? 'partial' : '-'}:${s.lines}`).join(' ')}));

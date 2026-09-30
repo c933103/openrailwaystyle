@@ -87,7 +87,7 @@ jobs:
           else
             echo '{"tiles":[]}' > styles/data/level-crossings/index.json
           fi
-      # Operating branch lines for zooms 4–6 (branch-lines.yml), filled in
+      # Operating branch lines for zooms 4–6 and metro lines for 7–9 (branch-lines.yml), filled in
       # region by region; without them the overview shows main lines only.
       - name: Load branch lines
         run: |
