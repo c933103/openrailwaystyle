@@ -88,7 +88,11 @@ function electrification(tags) {
 // Only numeric values: words such as "none" or "signals" are not speeds (the
 // panel would add km/h to them).
 export function speedLabel(tags) {
-  const clean = value => { const text = String(value ?? '').trim().replace(/\s*km\/h$/i, ''); return /^\d+(\.\d+)?( ?mph)?$/i.test(text) ? text : ''; };
+  // Units spelled as the panel expects them (lower-case "mph").
+  const clean = value => {
+    const text = String(value ?? '').trim().replace(/\s*km\/h$/i, ''), m = /^(\d+(?:\.\d+)?)( ?mph)?$/i.exec(text);
+    return m ? `${m[1]}${m[2] ? ' mph' : ''}` : '';
+  };
   if (clean(tags.maxspeed)) return clean(tags.maxspeed);
   const forward = clean(tags['maxspeed:forward']), backward = clean(tags['maxspeed:backward']);
   return forward || backward ? `${forward || '-'} / ${backward || '-'}` : undefined;

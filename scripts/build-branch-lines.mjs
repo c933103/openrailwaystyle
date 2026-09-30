@@ -27,7 +27,11 @@ if (previous) {
   try {
     table = readTable(gunzipSync(await readFile(new URL('branch-lines.ndjson.gz', previous))).toString());
     state = JSON.parse(await readFile(new URL('state.json', previous), 'utf8'));
-  } catch (error) { console.log('No usable previous data:', error.message); table = new Map(); state = {stages: {}}; }
+  } catch (error) {
+    // A published snapshot that cannot be read must not be replaced by a
+    // fresh first stage (which would drop every other region's lines).
+    throw new Error(`The previous snapshot could not be read: ${error.message}`);
+  }
 }
 
 state.runs = (state.runs || []).filter(run => Date.now() - Date.parse(run.at) < 86400_000);

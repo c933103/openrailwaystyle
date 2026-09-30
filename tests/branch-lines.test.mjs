@@ -36,6 +36,7 @@ test('branch-line tags become the fields of the detailed railway tiles', () => {
   assert.equal(trainProtection({}), undefined);
   assert.deepEqual(simplify([[0, 0], [1, 0.0001], [2, 0]]), [[0, 0], [2, 0]]);
   assert.deepEqual(simplify([[0, 0], [2, 0], [1, 0]]), [[0, 0], [2, 0], [1, 0]], 'a way that doubles back keeps its far end');
+  assert.equal(toFeatures({elements: [{type: 'way', id: 10, tags: {railway: 'rail', maxspeed: '40 MPH'}, geometry: [{lat: 0, lon: 0}, {lat: 0, lon: 1}]}]})[0].properties.speed_label, '40 mph');
   assert.equal(toFeatures({elements: [{type: 'way', id: 9, tags: {railway: 'rail', maxspeed: 'signals'}, geometry: [{lat: 0, lon: 0}, {lat: 0, lon: 1}]}]})[0].properties.speed_label, undefined, 'no label for a word');
 });
 
