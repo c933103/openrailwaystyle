@@ -18,6 +18,8 @@ The provider’s station size is based on OSM route importance, not passenger nu
 
 Major stations appear from zoom 6. From zoom 7, regional stations use the provider’s spaced selection without discarding stations classified as small; closer views add more stations with collision spacing. Halts and urban stations appear from zoom 11, and tram stops from zoom 13.
 
+By mode, metro stations appear from zoom 10, light rail and people movers from 11, and trams, funiculars and monorails from 12 (tram stops 13), so a tram stop never shows before a metro station. The provider's size counts routes, so a busy people mover can be "large" and most metro stations "small"; names and markers are therefore sized by mode too: heavy rail and metro by station size, light rail and people movers a step smaller than any metro station, trams, funiculars and monorails smaller still. Where markers meet at street zoom, the higher-capacity station's is drawn on top.
+
 Before zoom 12 a marker and its name are placed together with collision detection. From zoom 12 individual markers remain visible when labels collide. Worldwide coverage means global source coverage, not a guarantee that every railway, station or speed is mapped.
 
 ## Branch lines at overview zooms

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {featureFilter} from '@maplibre/maplibre-gl-style-spec';
+import * as styleSpec from '@maplibre/maplibre-gl-style-spec';
 import { SPEED_BANDS, UNKNOWN_COLOR, numericSpeed, speedColor, formatSpeed, readSettings, osmObject } from '../styles/map-model.mjs';
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
 
@@ -83,8 +84,27 @@ test('regional stations have collision-aware markers and progressive size thresh
   assert.equal(shown(10, {station_size:'small'}),true);
   assert.equal(shown(10, {station_size:'small',feature:'halt'}),false);
   assert.equal(shown(11, {station_size:'small',feature:'halt'}),true);
-  assert.equal(shown(10, {station_size:'large',station:'subway'}),false);
-  assert.equal(shown(11, {station_size:'large',station:'subway'}),true);
+  // Metro before light rail and people movers, before trams (never the reverse).
+  assert.equal(shown(9.9, {station_size:'large',station:'subway'}),false);
+  assert.equal(shown(10, {station_size:'small',station:'subway'}),true);
+  assert.equal(shown(10.9, {station_size:'large',station:'light_rail'}),false);
+  assert.equal(shown(11, {station_size:'large',station:'light_rail'}),true);
+  assert.equal(shown(11.9, {station_size:'normal',station:'tram'}),false);
+  assert.equal(shown(12, {station_size:'normal',station:'tram'}),true);
+  assert.equal(shown(11.9, {station_size:'small',station:'monorail'}),false);
+  // Sized by mode: the smallest metro station outranks a "large" people mover
+  // or tram station, in name size, label priority and marker size.
+  const names = style.layers.find(l => l.id === 'station-detail-metro-names');
+  const sizeAt = (layerId, key, zoom, properties) => {
+    const layer = style.layers.find(l => l.id === layerId), value = (layer.layout[key] ?? layer.paint[key]);
+    return styleSpec.expression.createPropertyExpression(value, styleSpec.latest[layer.type === 'circle' ? (key === 'circle-radius' ? 'paint_circle' : 'layout_circle') : 'layout_symbol'][key]).value.evaluate({zoom}, {type:1, properties});
+  };
+  const metroSmall = {state:'present', feature:'station', station:'subway', station_size:'small'};
+  const moverLarge = {state:'present', feature:'station', station:'light_rail', station_size:'large'};
+  const tramLarge = {state:'present', feature:'station', station:'tram', station_size:'large'};
+  for (const [id, key, better] of [['station-detail-metro-names','text-size',(a,b)=>a>b], ['station-detail-metro-names','symbol-sort-key',(a,b)=>a<b], ['station-stations-dots','circle-radius',(a,b)=>a>b], ['station-stations-dots','circle-sort-key',(a,b)=>a>b]])
+    for (const other of [moverLarge, tramLarge]) assert.ok(better(sizeAt(id, key, 14, metroSmall), sizeAt(id, key, 14, other)), `${key}: metro over ${other.station}`);
+  assert.ok(names);
   assert.equal(shown(12.9, {feature:'tram_stop'}),false);
   assert.equal(shown(13, {feature:'tram_stop'}),true);
   for (const layer of layers) {
