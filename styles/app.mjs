@@ -3,6 +3,7 @@ import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR,
 
 import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20260930-2';
 import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20260930-2';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20260930-2';
 import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260930-2';
 
 const $ = id => document.getElementById(id);
@@ -326,8 +327,60 @@ function showDetails(feature) {
   if (isStation) {
     const nearby = document.createElement('section'); nearby.id = 'nearby-transport'; panel.append(nearby);
     updateNearbyTransport();
+    if (feature.geometry?.type === 'Point') showDepartures(panel, feature);
   }
   $('details').hidden = false;
+}
+// Departures from Transitous, live where the operator publishes real-time
+// data, and journey links. Fetched once a minute at most per station (the
+// panel is redrawn when settings change).
+const departureBoards = new Map();
+function showDepartures(panel, feature) {
+  const p = feature.properties, [lon, lat] = feature.geometry.coordinates;
+  const names = [displayName(p, settings.language), p.name, p.localized_name, p['name:en'], p.full_name].filter(Boolean);
+  const section = document.createElement('section'); section.className = 'departures';
+  section.append(textNode('h3', 'Departures'), textNode('p', 'Loading departures…', 'small'));
+  panel.append(section);
+  const key = `${lat.toFixed(5)},${lon.toFixed(5)}`;
+  let board = departureBoards.get(key);
+  if (!board || Date.now() - board.at > 60_000) {
+    board = {at: Date.now(), promise: stationDepartures({lat, lon, names}, {signal: AbortSignal.timeout(15000)})};
+    departureBoards.set(key, board);
+    board.promise.catch(() => departureBoards.delete(key));
+  }
+  board.promise.then(({stops, rows}) => {
+    if (!section.isConnected) return;
+    section.replaceChildren(textNode('h3', 'Departures'));
+    if (!rows.length) section.append(textNode('p', stops.length ? 'No rail departures in the published timetable soon.' : 'No published timetable covers this station.', 'small'));
+    else {
+      const live = rows.filter(r => r.live).length;
+      section.append(textNode('p', live ? `Live times for ${live} of ${rows.length} departures; the rest are timetabled.` : 'Timetabled times: no live data for these departures.', 'small'));
+      const list = document.createElement('ol'); list.className = 'departure-list';
+      for (const r of rows) {
+        const item = document.createElement('li');
+        const time = textNode('span', clock(r.cancelled ? r.scheduled : r.departure, r.tz), 'departure-time');
+        if (r.cancelled) time.classList.add('cancelled');
+        const line = textNode('span', r.line || r.mode.toLowerCase().replace(/_/g, ' '), 'departure-line');
+        if (r.color) { line.style.background = r.color; line.style.color = r.textColor || '#fff'; }
+        const status = r.cancelled ? 'Cancelled' : r.live ? (r.delay > 0 ? `+${r.delay} min` : r.delay < 0 ? `${r.delay} min` : 'On time') : '';
+        item.append(time, line, textNode('span', r.headsign, 'departure-headsign'));
+        if (r.track) item.append(textNode('span', /^\w{1,4}$/.test(r.track) ? `Pl. ${r.track}` : r.track, 'departure-track'));
+        if (status) item.append(textNode('span', status, `departure-status${r.cancelled || r.delay > 0 ? ' late' : ''}`));
+        list.append(item);
+      }
+      section.append(list);
+    }
+    const place = stops[0]?.id || `${lat},${lon}`, name = names[0];
+    const links = textNode('p', '', 'departure-links');
+    for (const [direction, label] of [['from', 'Journey from here ↗'], ['to', 'Journey to here ↗']]) {
+      const a = textNode('a', label); a.href = plannerLink(direction, place, name); a.target = '_blank'; a.rel = 'noopener'; links.append(a, ' ');
+    }
+    const source = textNode('a', 'Transitous'); source.href = TRANSITOUS_SOURCES; source.target = '_blank'; source.rel = 'noopener';
+    const credit = textNode('p', 'Timetables and live data: ', 'small'); credit.append(source, ' (see its sources and licences).');
+    section.append(links, credit);
+  }).catch(() => {
+    if (section.isConnected) section.replaceChildren(textNode('h3', 'Departures'), textNode('p', 'Departures could not load. Try again later.', 'small'));
+  });
 }
 function showInfrastructureContext(feature) {
   const p=feature.properties,crossing=feature.sourceLayer==='points_of_interest';

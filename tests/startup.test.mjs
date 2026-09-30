@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 import * as model from '../styles/map-model.mjs';
 import * as draw from '../styles/draw.mjs';
+import * as departuresModule from '../styles/departures.mjs';
 import * as elevationModule from '../styles/elevation.mjs';
 import * as contextFeatures from '../styles/context.mjs';
 
@@ -96,11 +97,15 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
   const elevation = new vm.SyntheticModule(Object.keys(elevationModule), function() {
     for (const [key,value] of Object.entries(elevationModule)) this.setExport(key,value);
   }, {context});
+  // Departures without the network: no timetable covers any station here.
+  const departures = new vm.SyntheticModule(Object.keys(departuresModule), function() {
+    for (const [key,value] of Object.entries(departuresModule)) this.setExport(key, key === 'stationDepartures' ? async () => ({stops: [], rows: []}) : value);
+  }, {context});
   const globe = new vm.SyntheticModule(['installGlobeDrag','allowPolarCentres'], function() { this.setExport('installGlobeDrag', () => ({sync() {}, justDragged: () => false})); this.setExport('allowPolarCentres', () => ({refresh() {}})); }, {context});
   const contextModule = new vm.SyntheticModule(Object.keys(contextFeatures),function() {
     for (const [key,value] of Object.entries(contextFeatures)) this.setExport(key,value);
   },{context});
-  await app.link(specifier => specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('globe-drag.mjs') ? globe : dependency);
+  await app.link(specifier => specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries};
@@ -284,6 +289,11 @@ test('station inspection finds nearby interchanges and facility inspection avoid
     assert.match(nearby.textContent,/110 m/);
     assert.match(nearby.textContent,/not verified/);
     assert.equal(nearby.querySelectorAll('li').length,1);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const board = window.document.querySelector('#detail-content .departures');
+    assert.match(board.textContent, /No published timetable covers this station/);
+    assert.match(board.querySelector('.departure-links a').href, /^https:\/\/api\.transitous\.org\/\?fromPlace=/);
+    assert.equal([...board.querySelectorAll('a')].at(-1).href, 'https://transitous.org/sources/');
     map.rendered=[bus];map.handlers.click({point:{x:500,y:400},lngLat:{lng:0.001,lat:0}});
     const detail=window.document.getElementById('detail-content');
     assert.match(detail.textContent,/TRANSPORT FACILITY/);
