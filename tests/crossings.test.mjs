@@ -58,13 +58,14 @@ test('crossing tiles: a crossing near a tile edge is also drawn in the neighbour
   assert.ok(wrapped.x > 8192 && wrapped.x < 8192 + 128, 'drawn just beyond the right edge of the last tile');
 });
 
-test('style: crossing dots from zoom 5 in the Infrastructure view, small × from 11, detailed × from 15', async () => {
+test('style: level crossings from zoom 11 in the Infrastructure view (small ×), detailed × from 15', async () => {
   const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
   const byId = Object.fromEntries(style.layers.map(l => [l.id, l]));
-  assert.deepEqual([byId['infrastructure-crossing-overview'].minzoom, byId['infrastructure-crossing-overview'].maxzoom], [5, 9]);
-  assert.deepEqual([byId['infrastructure-crossing-dots'].minzoom, byId['infrastructure-crossing-dots'].maxzoom], [9, 11]);
+  assert.equal(byId['infrastructure-crossing-overview'], undefined, 'no crossings before zoom 11');
+  assert.equal(byId['infrastructure-crossing-dots'], undefined);
+  assert.equal(style.sources.crossingsOverview, undefined);
   assert.deepEqual([byId['infrastructure-crossing-marks'].minzoom, byId['infrastructure-crossing-marks'].maxzoom, byId['infrastructure-crossing-marks'].layout['icon-allow-overlap']], [11, 15, true]);
   assert.equal(byId['infrastructure-level-crossings'].minzoom, 15);
-  for (const id of ['infrastructure-crossing-overview', 'infrastructure-crossing-dots', 'infrastructure-crossing-marks']) assert.equal(byId[id].layout.visibility, 'none', 'shown only in the Infrastructure view');
-  assert.deepEqual([style.sources.crossingsOverview.minzoom, style.sources.crossingsOverview.maxzoom, style.sources.crossingsDetail.minzoom], [5, 5, 9]);
+  assert.equal(byId['infrastructure-crossing-marks'].layout.visibility, 'none', 'shown only in the Infrastructure view');
+  assert.equal(style.sources.crossingsDetail.minzoom, 9);
 });

@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import {roadLayers, constraintLayers} from './planning-style.mjs';
 import {contextLayers} from './context-style.mjs';
-import {OVERVIEW_ZOOM, DETAIL_ZOOM} from './crossing-data.mjs';
+import {DETAIL_ZOOM} from './crossing-data.mjs';
 import { ORM, LIGHT_MODES, MINOR_MODES, LIFECYCLE_PATTERNS, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, loadingLabel, trainProtectionShort, TRAIN_PROTECTION, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
 
 // Keep the Hack4Rail base-map design and replace its Europe-only rail source.
@@ -39,7 +39,6 @@ const style = {
     stations: vector('standard_railway_text_stations', 8, 16),
     inactiveRegional: { type: 'vector', tiles: ['railtiles://{z}/{x}/{y}'], minzoom: 0, maxzoom: 10, promoteId: 'osm_id', attribution: '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>' },
     crossings: vector('points_of_interest',15,18),
-    crossingsOverview: {type:'vector',tiles:['crossingtiles://{z}/{x}/{y}'],minzoom:OVERVIEW_ZOOM,maxzoom:OVERVIEW_ZOOM,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     crossingsDetail: {type:'vector',tiles:['crossingtiles://{z}/{x}/{y}'],minzoom:DETAIL_ZOOM,maxzoom:DETAIL_ZOOM,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     // Operating branch lines for the overview zooms (branch-lines.yml):
     // OpenRailwayMap's z0–6 tiles hold main lines only.
@@ -59,7 +58,9 @@ const style = {
       attribution:'<a href="https://cloudless.eox.at">EOxCloudless https://cloudless.eox.at</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2025), <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>'},
     relief: {type:'raster-dem', tiles:[DEM_URL], tileSize:256, encoding:'terrarium', maxzoom:15, attribution:'<a href="terrain-credits.html">Terrain: Mapzen / AWS and data contributors</a>'},
   },
-  layers: original.layers.filter(l => (!l.source || l.source === 'openmaptiles') && !l.id.startsWith('airport_') && l['source-layer'] !== 'transportation').map(l => structuredClone(l)),
+  // The base map's airport layers are replaced by the transport context
+  // layers (context-style.mjs), including its white runway stripe.
+  layers: original.layers.filter(l => (!l.source || l.source === 'openmaptiles') && !l.id.startsWith('airport_') && l['source-layer'] !== 'aeroway' && l['source-layer'] !== 'transportation').map(l => structuredClone(l)),
 };
 const places = style.layers.filter(l => l.type === 'symbol');
 style.layers = style.layers.filter(l => l.type !== 'symbol');
@@ -97,6 +98,15 @@ const present = ['==', ['coalesce', ['get', 'state'], 'present'], 'present'];
 const notFerry = ['!=', ['get', 'feature'], 'ferry'];
 const speedPaint = speedColours('metric');
 const hasService = ['!=',['coalesce',['get','service'],''],''];
+// Tracks by kind: light rail, monorail and metro from zoom 10; trams,
+// funiculars, miniature railways and service tracks (sidings, yards, spurs)
+// from zoom 11. The detailed tiles hold some of them earlier (light rail main
+// and branch lines from zoom 9).
+const LATE_FEATURES = ['tram', 'funicular', 'miniature'], URBAN_FEATURES = ['light_rail', 'monorail', 'subway'];
+const byKindZoom = ['case',
+  ['any', ['match', ['get', 'feature'], LATE_FEATURES, true, false], hasService], ['>=', ['zoom'], 11],
+  ['match', ['get', 'feature'], URBAN_FEATURES, true, false], ['>=', ['zoom'], 10],
+  true];
 const infrastructurePaint = ['case',
   ['==', ['get', 'highspeed'], true], INFRASTRUCTURE[0][0],
   ['match', ['get', 'feature'], ['subway', 'light_rail', 'monorail'], true, false], INFRASTRUCTURE[3][0],
@@ -107,7 +117,7 @@ const electricPaint = electrificationPaint();
 const width = ['interpolate', ['linear'], ['zoom'], 0, 0.6, 4, 1.15, 7, 1.8, 11, 2.6, 16, 4.5, 20, 7];
 const addLine = (id, source, sourceLayer, minzoom, maxzoom, paint, extra = {}) => style.layers.push({
   id, type: 'line', source, 'source-layer': sourceLayer, minzoom, ...(maxzoom === undefined ? {} : {maxzoom}),
-  filter: ['all', present, notFerry], layout: { 'line-cap': 'round', 'line-join': 'round' },
+  filter: ['all', present, notFerry, ...(source === 'railway' ? [byKindZoom] : [])], layout: { 'line-cap': 'round', 'line-join': 'round' },
   paint: { 'line-color': paint, 'line-width': width, ...extra },
 });
 // Track width by zoom; scale multiplies each stop, so halves and offsets
@@ -152,7 +162,7 @@ for (const [mode, source, sourceLayer, color] of [
   });
 }
 style.layers.push({id:'gauge-dual', type:'line', source:'railway', 'source-layer':'railway_line_high', minzoom:7,
-  filter:['all', present, notFerry, isDual],
+  filter:['all', present, notFerry, byKindZoom, isDual],
   layout:{'line-cap':'butt','line-join':'round'},
   paint:{'line-color':gaugePaint(1), 'line-width':trackWidth(0.5), 'line-offset':dualOffset(1),
     'line-opacity':['case', ['==', ['get', 'tunnel'], true], 0.65, 1]}});
@@ -160,14 +170,14 @@ style.layers.push({id:'gauge-dual', type:'line', source:'railway', 'source-layer
 // dark parapets outside the track; tunnels use a pale dashed core. They start
 // with the detailed railway tiles: the z0–6 overview tiles carry no structure.
 const structure = {type:'line',source:'railway','source-layer':'railway_line_high',minzoom:7,layout:{'line-cap':'butt','line-join':'round'}};
-const bridge = {...structure,filter:['all',present,notFerry,['==',['get','bridge'],true]]};
+const bridge = {...structure,filter:['all',present,notFerry,byKindZoom,['==',['get','bridge'],true]]};
 const bridgeWidth = ['interpolate',['linear'],['zoom'],7,3.4,10,5.4,14,8,18,12];
 const trackIndex = style.layers.findIndex(l=>l.id==='infrastructure-tracks');
 style.layers.splice(trackIndex,0,
   {...bridge,id:'structure-bridge-edge',paint:{'line-color':'#263b48','line-width':bridgeWidth}},
   {...bridge,id:'structure-bridge-deck',paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],7,2.2,10,3.8,14,6,18,10]}},
 );
-style.layers.push({...structure,id:'structure-tunnel',filter:['all',present,notFerry,['==',['get','tunnel'],true]],paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],7,0.7,10,1.1,14,2,18,3], 'line-dasharray':[3,2]}});
+style.layers.push({...structure,id:'structure-tunnel',filter:['all',present,notFerry,byKindZoom,['==',['get','tunnel'],true]],paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],7,0.7,10,1.1,14,2,18,3], 'line-dasharray':[3,2]}});
 // Planned, construction and former lines. line-dasharray cannot vary by
 // feature, so each state has its own layers: long dashes with short gaps for
 // construction, spaced round dots for proposals, dash-dot for disused and
@@ -184,7 +194,7 @@ const inactiveLayout = state => ({'line-cap': LIFECYCLE_PATTERNS[state].cap, 'li
 // The complete snapshot supplies every lifecycle at regional scales. The
 // ordinary detail tiles take over together at z12, avoiding duplicate lines.
 // Construction shows at every zoom, proposals from z5, former lines from z7.
-const regionalZoom = ['any', ['>=',['zoom'],7], ['==',['get','state'],'construction'], ['all', ['>=',['zoom'],5], ['==',['get','state'],'proposed']]];
+const regionalZoom = ['all', byKindZoom, ['any', ['>=',['zoom'],7], ['==',['get','state'],'construction'], ['all', ['>=',['zoom'],5], ['==',['get','state'],'proposed']]]];
 const inactiveBridge = {type:'line', layout:{'line-cap':'butt','line-join':'round'}};
 const inactiveBridgeEdge = {'line-color':'#5b5550','line-width':['interpolate',['linear'],['zoom'],7,3,12,4.6,16,6.5,20,8.5]};
 const inactiveBridgeDeck = {'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],7,1.8,12,3,16,4.6,20,6.2]};
@@ -201,7 +211,7 @@ for (const state of ['former', 'disused', 'proposed', 'construction']) style.lay
     filter:['all', ['!', present], notFerry, stateFilter(state)], layout:inactiveLayout(state), paint:inactiveLine(state)},
 );
 for (const [id,source,sourceLayer,minzoom,maxzoom,filter] of [
-  ['railway-names','railway','railway_line_high',9,undefined,['all',present,notFerry]],
+  ['railway-names','railway','railway_line_high',9,undefined,['all',present,notFerry,byKindZoom]],
   ['inactive-names','inactiveRegional','lifecycle',9,12,['literal',true]],
   ['inactive-detail-names','railway','railway_line_high',12,undefined,['all',['!',present],notFerry]],
 ]) style.layers.push({
@@ -232,7 +242,7 @@ badge('infrastructure-station-tracks', ['==', ['get', 'station'], true],
 // Values written along the tracks, like speed limits, in each view.
 const valueLabel = (id, filter, text) => style.layers.push({
   id, type: 'symbol', source: 'railway', 'source-layer': 'railway_line_high', minzoom: 10,
-  filter: ['all', present, notFerry, filter],
+  filter: ['all', present, notFerry, byKindZoom, filter],
   layout: { 'symbol-placement': 'line', 'symbol-spacing': 300, 'text-field': text, 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-padding': 5 },
   paint: { 'text-color': '#26363d', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
 });
@@ -253,17 +263,18 @@ valueLabel('loading-labels', ['has', 'loading_gauge'], loadingLabel());
 // zoom-7 tiles; 7 and above: all.
 const stationSelection = ['any', ['>=', ['zoom'], 6], ['==', ['get','station_size'], 'large']];
 const zoom6Small = ['any', ['>=', ['zoom'], 7], ['!', ['match', ['get','station_size'], ['large','normal'], true, false]]];
-// By mode, as the detailed tiles give it: metro stations appear from zoom 10,
-// before light rail and people movers (11) and trams, funiculars and
-// monorails (12; tram stops 13), so a high-capacity metro is never outranked
-// on screen by a tram stop that appears earlier.
+// By mode, as the detailed tiles give it: metro stations from zoom 8 (the
+// first zoom whose station tiles include them), light rail, monorail and
+// people movers from 10, trams, tram stops, funiculars and miniature
+// railways from 11, so a high-capacity metro is never outranked on screen by
+// a tram stop that appears earlier.
 const stationMode = ['coalesce', ['get','station'], ''];
 const stationFeatures = ['all', present,
-  ['any', ['==', ['get','feature'], 'station'], ['all', ['>=', ['zoom'], 11], ['==', ['get','feature'], 'halt']], ['all', ['>=', ['zoom'], 13], ['==', ['get','feature'], 'tram_stop']]],
+  ['any', ['==', ['get','feature'], 'station'], ['all', ['>=', ['zoom'], 11], ['match', ['get','feature'], ['halt', 'tram_stop'], true, false]]],
   ['case',
-    ['==', stationMode, 'subway'], ['>=', ['zoom'], 10],
-    ['match', stationMode, LIGHT_MODES, true, false], ['>=', ['zoom'], 11],
-    ['match', stationMode, MINOR_MODES, true, false], ['>=', ['zoom'], 12],
+    ['==', stationMode, 'subway'], ['>=', ['zoom'], 8],
+    ['match', stationMode, [...LIGHT_MODES, 'monorail'], true, false], ['>=', ['zoom'], 10],
+    ['match', stationMode, MINOR_MODES, true, false], ['>=', ['zoom'], 11],
     true],
 ];
 // Size by mode as well as by the provider's station size (which counts routes,
@@ -358,16 +369,10 @@ style.layers.splice(roadIndex,0,...roads.roads);
 // class colours on top. Separate from bridge parapets and lifecycle dashes.
 const streetIndex=style.layers.findIndex(l=>l.id==='infrastructure-tracks');
 style.layers.splice(streetIndex,0,{id:'infrastructure-street-running',type:'line',source:'streetRunning','source-layer':'street_running',minzoom:13,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#b68f55','line-width':['interpolate',['linear'],['zoom'],13,7,18,14],'line-opacity':0.65}});
-// Level crossings from zoom 5 (the project's own worldwide tiles,
-// crossings.yml): dots to zoom 11, where a cross could not be read and the
-// crossings of a busy network would run together; then a small × per
-// crossing, all drawn (no collision placement); from 15 the provider's ×
-// symbols with equipment details.
+// Level crossings from zoom 11 (the project's own worldwide tiles,
+// crossings.yml): a small × per crossing, all drawn (no collision
+// placement); from 15 the provider's × symbols with equipment details.
 const crossingColor = ['match',['get','kind'],'foot','#a0704a','#63332c'];
-const crossingDot = (id, source, minzoom, maxzoom) => ({id, type:'circle', source, 'source-layer':'level_crossings', minzoom, maxzoom, layout:{},
-  paint:{'circle-color':crossingColor, 'circle-radius':['interpolate',['linear'],['zoom'],5,0.9,8,1.4,11,2.2],
-    'circle-stroke-color':'#fffef8', 'circle-stroke-width':['interpolate',['linear'],['zoom'],9,0,11,0.8], 'circle-opacity':0.9}});
-style.layers.push(crossingDot('infrastructure-crossing-overview','crossingsOverview',OVERVIEW_ZOOM,DETAIL_ZOOM), crossingDot('infrastructure-crossing-dots','crossingsDetail',DETAIL_ZOOM,11));
 style.layers.push({id:'infrastructure-crossing-marks', type:'symbol', source:'crossingsDetail', 'source-layer':'level_crossings', minzoom:11, maxzoom:15,
   layout:{'icon-image':'crossing-x', 'icon-size':['interpolate',['linear'],['zoom'],11,0.7,13,0.85,14.99,1], 'icon-allow-overlap':true, 'icon-ignore-placement':true},
   paint:{'icon-color':crossingColor, 'icon-halo-color':'#fffef8', 'icon-halo-width':1.2, 'icon-opacity':0.95}});
