@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 import * as model from '../styles/map-model.mjs';
 import * as draw from '../styles/draw.mjs';
+import * as elevationModule from '../styles/elevation.mjs';
 import * as contextFeatures from '../styles/context.mjs';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
@@ -44,6 +45,7 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
     addLayer(layer) { (this.added ||= []).push(layer.id); }
     addSource() {}
     getCanvas() { return {style:{}}; }
+    getCanvasContainer() { return this.canvasContainer ||= window.document.createElement('div'); }
     doubleClickZoom = {enable(){}, disable(){}};
     queryRenderedFeatures() { return this.rendered || []; }
     querySourceFeatures(id,{sourceLayer}) { return (this.sourceFeatures || []).filter(f=>f.sourceLayer===sourceLayer); }
@@ -91,11 +93,14 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
   const drawing = new vm.SyntheticModule(Object.keys(draw), function() {
     for (const [key,value] of Object.entries(draw)) this.setExport(key,value);
   }, {context});
+  const elevation = new vm.SyntheticModule(Object.keys(elevationModule), function() {
+    for (const [key,value] of Object.entries(elevationModule)) this.setExport(key,value);
+  }, {context});
   const globe = new vm.SyntheticModule(['installGlobeDrag','allowPolarCentres'], function() { this.setExport('installGlobeDrag', () => ({sync() {}, justDragged: () => false})); this.setExport('allowPolarCentres', () => ({refresh() {}})); }, {context});
   const contextModule = new vm.SyntheticModule(Object.keys(contextFeatures),function() {
     for (const [key,value] of Object.entries(contextFeatures)) this.setExport(key,value);
   },{context});
-  await app.link(specifier => specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('globe-drag.mjs') ? globe : dependency);
+  await app.link(specifier => specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('globe-drag.mjs') ? globe : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries};

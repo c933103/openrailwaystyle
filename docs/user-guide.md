@@ -14,7 +14,7 @@ Station search and responsive controls. Display settings and the label language 
 
 The shared language selector offers local names or 12 languages. It uses recorded names and fallbacks, without automatic translation or script conversion; see [label rules](labels.md).
 
-Display options also control transport facilities, destinations, planning constraints, relief and metric or imperial units. On small screens the controls start folded away.
+Display options, in three groups (railways, surroundings, map), also control transport facilities, destinations, planning constraints, relief, metric or imperial units, and the readout under the scale bar: the coordinates under the cursor (the map's centre on a touch screen) and the zoom. On small screens the controls start folded away. Under the legend, “How to read this view” explains the current view's colours.
 
 ## Navigate and change detail
 
@@ -31,11 +31,21 @@ width. Drawings include length and area measurements, are kept in the browser,
 and can be saved or opened as GeoJSON.
 
 A line can mix straight sections and curves. With **Curved** on, newly added points
-form a smooth curve; with it off, they form corners. The measure tool supports
-multi-segment distances and curve radius, using a least-squares circle through
-three or more points clicked along a curve.
+form a smooth curve; with it off, they form corners. A curve leaves and joins a
+straight section along it, without a corner. The measure tool supports
+multi-segment distances, with the height difference and gradient (% and ‰)
+between the first and last points, and curve radius, using a least-squares
+circle through three or more points clicked along a curve.
 
-In either tool, drag a point to move it or click to select it. A selected point
+With the drawing tools closed, click a drawn line for its elevation profile:
+heights about every 10 m along it, with lowest and highest points, ascent,
+descent and the steepest stretch; hovering the chart marks the place on the map.
+Heights come from the terrain tiles (ground or seabed, not track level on
+bridges or in tunnels).
+
+In either tool, drag a point to move it or click to select it. In the drawing
+tools, the small dot in the middle of each segment adds a point there (click it,
+or drag it to where the point should go). A selected point
 can be deleted after confirmation or switched between corner and curve point.
 Selecting an endpoint of a finished line lets you extend the line.
 

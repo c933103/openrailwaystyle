@@ -10,8 +10,11 @@
 //   another, do not.
 // - Those tracks form a bundle while each lies within MAX_GAP of the next,
 //   or within LINE_GAP when both belong to the same named line: the two
-//   tracks of a metro line in twin tunnels can be well apart. Tunnels and trams are only compared with
-//   their own kind (group).
+//   tracks of a metro line in twin tunnels can be well apart. Tracks in
+//   tunnels count with those on the surface or on viaducts beside them (a
+//   line quadrupled with one pair underground, or stacked above the other),
+//   with the tunnel gaps only between two tunnel tracks; trams are only
+//   compared with trams (group). A bundle entirely in tunnels is marked so.
 // - The count is taken where it is measured, not for a whole way. Along
 //   each track it is the most common count over WINDOW probes around each
 //   point, so a brief extra (a crossover) or a brief gap (a track bending
@@ -22,7 +25,8 @@
 // Metres between neighbouring tracks: of different or unnamed lines (on the
 // surface a corridor's track pairs are often 15–26 m apart, such as south
 // of Ōmiya; separate tunnels are separate structures), and of the same line
-// (twin-bore tunnels, island platforms).
+// (twin-bore tunnels, island platforms). Tunnel values apply between two
+// tunnel tracks, surface values otherwise.
 const MAX_GAP = {surface: 30, tunnel: 12};
 const LINE_GAP = {surface: 30, tunnel: 35};
 const PROBE = 120;           // metres each side of the track
@@ -113,9 +117,11 @@ export function countTracks(lines, metres, {probe: measured = () => true, debug}
   // The bundle around `index` among the offsets, its size and whether
   // `index` is its middle track.
   const bundle = (index, group, offsets) => {
-    const kind = group.endsWith('-tunnel') ? 'tunnel' : 'surface', gap = MAX_GAP[kind] / metres, lineGap = LINE_GAP[kind] / metres;
     const sorted = [...offsets].sort((a, b) => a[1] - b[1]);
-    const joined = (a, b) => b[1] - a[1] <= gap || (b[1] - a[1] <= lineGap && sameLine(a[0], b[0]));
+    const joined = (a, b) => {
+      const kind = lines[a[0]].tunnel && lines[b[0]].tunnel ? 'tunnel' : 'surface';
+      return b[1] - a[1] <= MAX_GAP[kind] / metres || (b[1] - a[1] <= LINE_GAP[kind] / metres && sameLine(a[0], b[0]));
+    };
     let lo = sorted.findIndex(([i]) => i === index), hi = lo;
     while (lo > 0 && joined(sorted[lo-1], sorted[lo])) lo--;
     while (hi < sorted.length - 1 && joined(sorted[hi], sorted[hi+1])) hi++;
@@ -133,7 +139,7 @@ export function countTracks(lines, metres, {probe: measured = () => true, debug}
       const d = Math.abs(entry[1] - middle), b = Math.abs(best[1] - middle);
       if (d < b - tie || (Math.abs(d - b) <= tie && entry[0] < best[0])) best = entry;
     }
-    return {count: members.length, central: best[0] === index};
+    return {count: members.length, central: best[0] === index, tunnel: members.every(([i]) => lines[i].tunnel)};
   };
   const points = [];
   const result = lines.map((line, index) => {
@@ -188,7 +194,7 @@ export function countTracks(lines, metres, {probe: measured = () => true, debug}
       if (end > k || probes.length === 1) for (let n = 0; n < labels; n++) {
         const target = from + (to - from) * (n + 0.5) / labels;
         const p = probes.slice(k, end + 1).reduce((a, b) => Math.abs(b.at - target) < Math.abs(a.at - target) ? b : a);
-        points.push({x: p.x, y: p.y, tracks: smooth[k], group: line.group});
+        points.push({x: p.x, y: p.y, tracks: smooth[k], group: line.group, tunnel: p.tunnel});
       }
       k = end + 1;
     }
@@ -198,12 +204,86 @@ export function countTracks(lines, metres, {probe: measured = () => true, debug}
   return {lines: result, points};
 }
 
+// Tracks at a station, a different measure from the running tracks
+// outside: across the station's area (the provider's grouped station area),
+// every track counts, running or not, as platform and passing tracks are
+// often mapped as sidings; yards, spurs and crossovers do not. The number is
+// the most tracks one cross-section meets, at right angles to a counted
+// track (a siding too: some stations have only those) inside the area every STATION_STEP metres, smoothed over three such
+// sections so a single odd one (a turnout) does not set it, on every level
+// (underground platforms included). zones: [{inside(x, y)}]. Returns per zone {x, y, tracks} at
+// the middle of the widest cross-section, or null.
+const STATION_STEP = 20;
+const NOT_AT_STATION = new Set(['yard', 'spur', 'crossover']);
+export function stationTracks(lines, zones, metres) {
+  const probe = PROBE / metres, step = STATION_STEP / metres, cell = probe, samePlace = 0.8 / metres, grid = new Map();
+  lines.forEach((line, index) => {
+    if (NOT_AT_STATION.has(line.service)) return;
+    for (const part of line.parts) for (let i = 1; i < part.length; i++) {
+      const [x1, y1] = part[i-1], [x2, y2] = part[i], length = Math.hypot(x2 - x1, y2 - y1);
+      if (!length) continue;
+      const s = {index, group: line.group, x1, y1, x2, y2, dx: (x2 - x1) / length, dy: (y2 - y1) / length};
+      for (let gx = Math.floor(Math.min(x1, x2) / cell); gx <= Math.floor(Math.max(x1, x2) / cell); gx++)
+        for (let gy = Math.floor(Math.min(y1, y2) / cell); gy <= Math.floor(Math.max(y1, y2) / cell); gy++) {
+          const key = gx * 65536 + gy;
+          if (!grid.has(key)) grid.set(key, []);
+          grid.get(key).push(s);
+        }
+    }
+  });
+  // The tracks a cross-section at p (heading d) meets inside the zone, as
+  // sorted offsets, ways meeting end to end taken as one track.
+  const section = (zone, group, px, py, dx, dy) => {
+    const nx = -dy, ny = dx, nearest = new Map(), seen = new Set();
+    const x0 = px - nx * probe, x1 = px + nx * probe, y0 = py - ny * probe, y1 = py + ny * probe;
+    for (let gx = Math.floor(Math.min(x0, x1) / cell); gx <= Math.floor(Math.max(x0, x1) / cell); gx++)
+      for (let gy = Math.floor(Math.min(y0, y1) / cell); gy <= Math.floor(Math.max(y0, y1) / cell); gy++)
+        for (const s of grid.get(gx * 65536 + gy) || []) {
+          if (s.group !== group || seen.has(s) || Math.abs(s.dx * dy - s.dy * dx) > MAX_ANGLE) continue;
+          seen.add(s);
+          const ex = s.x2 - s.x1, ey = s.y2 - s.y1, det = ex * ny - ey * nx;
+          if (!det) continue;
+          const qx = s.x1 - px, qy = s.y1 - py, t = (ex * qy - ey * qx) / det, u = (nx * qy - ny * qx) / det;
+          if (u < 0 || u > 1 || Math.abs(t) > probe || !zone.inside(px + nx * t, py + ny * t)) continue;
+          if (!nearest.has(s.index) || Math.abs(t) < Math.abs(nearest.get(s.index))) nearest.set(s.index, t);
+        }
+    return [...nearest.values()].sort((a, b) => a - b).filter((t, i, all) => !i || t - all[i-1] > samePlace);
+  };
+  const widest = (zone, group) => {
+    let best = null;
+    for (const line of lines) {
+      if (NOT_AT_STATION.has(line.service) || line.group !== group) continue;
+      for (const part of line.parts) {
+        const sections = [];
+        for (let i = 1; i < part.length; i++) {
+          const [ax, ay] = part[i-1], [bx, by] = part[i], length = Math.hypot(bx - ax, by - ay);
+          for (let at = step / 2; at < length; at += step) {
+            const px = ax + (bx - ax) * at / length, py = ay + (by - ay) * at / length;
+            if (!zone.inside(px, py)) { sections.push(null); continue; }
+            const dx = (bx - ax) / length, dy = (by - ay) / length, offsets = section(zone, group, px, py, dx, dy);
+            const mid = (offsets[0] + offsets.at(-1)) / 2;
+            sections.push({count: offsets.length, x: px - dy * mid, y: py + dx * mid});
+          }
+        }
+        sections.forEach((s, k) => {
+          if (!s) return;
+          const around = sections.slice(Math.max(0, k - 1), k + 2).filter(Boolean).map(q => q.count);
+          const count = around.length === 3 ? mode(around) : Math.min(...around);
+          if (!best || count > best.tracks) best = {x: s.x, y: s.y, tracks: count};
+        });
+      }
+    }
+    return best;
+  };
+  return zones.map(zone => widest(zone, 'rail'));
+}
+
 // Railway tile features to countTracks input: present, non-ferry lines.
 export function trackLines(features) {
   return features.map(f => {
     const p = f.properties;
     if (f.type !== 2 || (p.state || 'present') !== 'present' || p.feature === 'ferry') return null;
-    return {group: `${p.feature === 'tram' ? 'tram' : 'rail'}${p.tunnel === true ? '-tunnel' : ''}`, main: !p.service,
+    return {group: p.feature === 'tram' ? 'tram' : 'rail', tunnel: p.tunnel === true, main: !p.service, service: p.service || undefined,
       line: p.name || p.ref || undefined, length: Number(p.way_length) || undefined,
       parts: f.loadGeometry().map(ring => ring.map(q => [q.x, q.y]))};
   });

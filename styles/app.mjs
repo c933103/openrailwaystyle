@@ -1,8 +1,9 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20260929-7';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260929-7';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20260929-8';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260929-8';
 
-import { Drawing, Measure, readDrawing } from './draw.mjs?v=20260929-7';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260929-7';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20260929-8';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20260929-8';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260929-8';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -27,8 +28,9 @@ const writeCookie = (name, value) => { try { document.cookie = `${name}=${encode
 const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_COOKIE) || '{}'); return value && typeof value === 'object' ? value : {}; } catch { return {}; } })();
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
+let legendHelpOpen = false;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260929-7';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260929-8';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -170,7 +172,9 @@ function renderLegend() {
     const station = textNode('div', '', 'legend-item'); station.append(textNode('span', '', 'station-swatch'), textNode('span', 'Station')); grid.append(station);
   }
   if (settings.mode === 'infrastructure') {
-    const tracks = textNode('div', '', 'legend-item'); tracks.append(textNode('span', '2', 'track-badge-swatch'), textNode('span', 'Tracks side by side')); grid.append(tracks);
+    for (const [kind, label] of [['', 'Tracks side by side'], ['tunnel', 'All in tunnel'], ['station', 'Tracks at station']]) {
+      const tracks = textNode('div', '', 'legend-item'); tracks.append(textNode('span', '2', `track-badge-swatch ${kind}`), textNode('span', label)); grid.append(tracks);
+    }
   }
   box.append(grid);
   const notes = {
@@ -179,11 +183,15 @@ function renderLegend() {
     control: 'Hue groups related systems (e.g. ETCS with China’s ETCS-derived CTCS); darker is more advanced: warning only, spot transmission, continuous, radio. Colour shows the first recorded system; click a track for all of them and their compatibility. Grey means nothing is recorded.',
     gauge: 'Gauges a few millimetres apart (e.g. 1432 and 1435, 1520 and 1524) share one colour and are generally compatible. Click a track for all recorded gauges. Grey means not recorded.',
     loading: 'Colour follows the envelope’s height above rail, so equal sizes match across regions; Britain’s W gauges share one height and form their own ladder. Click a track for dimensions. Grey means not recorded.',
-    infrastructure: 'Zoomed in (zoom 14+), a boxed number gives the running tracks side by side, counted from the mapped tracks; sidings, yards and crossovers are not counted, and station areas are left unlabelled. Ochre roadbeds mark explicitly tagged street-running tracks (13+); level crossings are dots from zoom 5 (light brown: pedestrian), × with equipment from 15.',
+    infrastructure: 'Numbers count the mapped tracks: running tracks side by side (not sidings, yards or crossovers), on the surface, on viaducts or in tunnels alike (grey-blue where all are in tunnels); at a station, every track there, sidings included. Ochre marks explicitly tagged shared roadway; dots and × mark level crossings (light brown: pedestrian).',
   };
   let note = notes[settings.mode];
   if (settings.inactive && settings.mode === 'speed') note += ' Planned and former lines take the colour of their recorded limit, if any.';
-  box.append(textNode('p', note, 'legend-note'));
+  // Collapsed by default, so the legend stays short; stays open once opened.
+  const help = Object.assign(textNode('details', '', 'legend-help'), {open: legendHelpOpen});
+  help.append(textNode('summary', 'How to read this view'), textNode('p', note, 'legend-note'));
+  help.addEventListener('toggle', () => { legendHelpOpen = help.open; });
+  box.append(help);
 }
 function saveSettings() {
   writeCookie(SETTINGS_COOKIE, JSON.stringify(Object.fromEntries(SETTING_KEYS.map(key => [key, settings[key]]))));
@@ -202,8 +210,9 @@ function shareURL() {
 saveSettings();
 function applySettings() {
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
-  for (const key of ['stations', 'labels', 'inactive', 'relief', 'names', 'autoGlobe', 'transport', 'destinations', 'constraints']) $(key).checked = settings[key];
+  for (const key of ['stations', 'labels', 'inactive', 'relief', 'names', 'autoGlobe', 'readout', 'transport', 'destinations', 'constraints']) $(key).checked = settings[key];
   $('units').value = settings.units;
+  readout.hidden = !settings.readout; updateReadout();
   if (ready) clickable = [];
   if (ready) for (const layer of map.getStyle().layers) {
     let visible;
@@ -457,6 +466,18 @@ function localizeStyle(style) {
 // tiles, features and smaller labels; the canvas keeps its pixel count.
 // Controls are scaled back to normal size. The button cycles through the
 // levels; its title gives the scale the map is drawn at.
+// Under the scale bar: the coordinates under the cursor (the map's centre
+// without one, as on a touch screen) and the zoom, where More detail adds the
+// scale the map is drawn at. Turned off in Display options.
+const readout = Object.assign(textNode('div', '', 'maplibregl-ctrl map-readout'), {hidden: !settings.readout});
+let readoutPoint = null;
+function updateReadout() {
+  if (!map || readout.hidden) return;
+  readout.textContent = formatReadout(readoutPoint ? map.unproject(readoutPoint) : map.getCenter(), map.getZoom(), settings.detail);
+}
+// Track-count badges (see build-style.mjs): running tracks, a group wholly
+// in tunnels, and all the tracks at a station.
+const TRACK_BADGES = {'track-badge': {edge: '#173e47', fill: '#fffef8'}, 'track-badge-tunnel': {edge: '#7d949c', fill: '#e3eaec'}, 'track-badge-station': {edge: '#c47d12', fill: '#fff3da'}};
 const detailButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'⊞'});
 const detailScale = level => 100 / 2 ** level;
 const drawButton = Object.assign(document.createElement('button'), {type:'button', className:'atlas-ctrl', textContent:'✎', title:'Drawing tools'});
@@ -727,18 +748,20 @@ async function initialize() {
       if (icon) map.addImage(event.id,icon,{pixelRatio:2});
       return;
     }
-    if (event.id === 'track-badge') {
-      // Track-count badge: a white rounded box with a dark edge, stretched
-      // around its number.
+    if (TRACK_BADGES[event.id]) {
+      // Track-count badge: a rounded box with an edge, stretched around its
+      // number.
+      const {edge: edgeColor, fill: fillColor} = TRACK_BADGES[event.id], rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+      const [e, f] = [rgb(edgeColor), rgb(fillColor)];
       const size = 24, radius = 7, edge = 2, data = new Uint8Array(size * size * 4);
       for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
         const qx = Math.max(radius - x - 0.5, x + 0.5 - (size - radius), 0), qy = Math.max(radius - y - 0.5, y + 0.5 - (size - radius), 0);
         const d = radius - Math.hypot(qx, qy); // distance inside the outline
         const alpha = Math.max(0, Math.min(1, d)), fill = Math.max(0, Math.min(1, d - edge));
-        const c = [23 + (255 - 23) * fill, 62 + (254 - 62) * fill, 71 + (248 - 71) * fill];
+        const c = e.map((v, i) => v + (f[i] - v) * fill);
         data.set([...c.map(Math.round), Math.round(alpha * 255)], (y * size + x) * 4);
       }
-      map.addImage('track-badge', {width: size, height: size, data}, {pixelRatio: 2, stretchX: [[8, 16]], stretchY: [[8, 16]], content: [6, 5, 18, 19]});
+      map.addImage(event.id, {width: size, height: size, data}, {pixelRatio: 2, stretchX: [[8, 16]], stretchY: [[8, 16]], content: [6, 5, 18, 19]});
       return;
     }
     if (event.id !== 'station-dot') return;
@@ -755,11 +778,16 @@ async function initialize() {
   map.addControl(new maplibregl.NavigationControl({ showZoom: false, showCompass: true, visualizePitch: true }), 'top-right');
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
   map.addControl(new ButtonControl([detailButton, drawButton, measureButton, polarButton]), 'top-right');
+  // Controls in the bottom corners stack upwards: added first, it sits below the scale bar.
+  map.addControl({onAdd: () => readout, onRemove: () => readout.remove()}, 'bottom-left');
+  map.on('mousemove', event => { readoutPoint = event.point; updateReadout(); });
+  map.getCanvasContainer().addEventListener('mouseleave', () => { readoutPoint = null; updateReadout(); });
+  map.on('move', updateReadout); updateReadout();
   scale = new maplibregl.ScaleControl({ unit: settings.units });
   map.addControl(scale, 'bottom-left');
   map.on('move', fitScale); fitScale();
   drawing = new Drawing(map, {units: () => settings.units, status: text => { $('draw-status').textContent = text; }, changed: updateDrawing});
-  measuring = new Measure(map, {units: () => settings.units, status: text => { $('measure-status').textContent = text; }, changed: updateDrawing});
+  measuring = new Measure(map, {units: () => settings.units, status: text => { $('measure-status').textContent = text; }, changed: updateDrawing, heights: elevation.heights});
   map.on('style.load', installDrawing);
   map.on('dblclick', event => {
     if (measuring.mode === 'distance') { event.preventDefault(); measuring.end(); }
@@ -820,6 +848,11 @@ async function initialize() {
     if (measuring.active) { measuring.click(event.lngLat, event.point); return; }
     if (drawing.active) { drawing.click(event.lngLat, event.point); return; }
     const p = event.point;
+    // A drawn line: its elevation profile.
+    const lines = ['drawing-line', 'drawing-line-dashed', 'drawing-line-dotted'].filter(id => map.getLayer(id));
+    const drawn = lines.length && map.queryRenderedFeatures([[p.x - 5, p.y - 5], [p.x + 5, p.y + 5]], {layers: lines}).find(f => f.geometry.type === 'LineString');
+    const line = drawn && drawing.features.find(f => f.id === drawn.properties.drawing);
+    if (line) { showProfile(line); return; }
     const features = map.queryRenderedFeatures([[p.x - 7, p.y - 7], [p.x + 7, p.y + 7]], {layers: clickable})
       .sort((a,b) => featurePickRank(a)-featurePickRank(b) || stationRank(a.properties)-stationRank(b.properties));
     if (!features[0]) return;
@@ -846,7 +879,7 @@ async function initialize() {
 document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
   settings.mode = button.dataset.mode; applySettings(); saveSettings();
 }));
-for (const key of ['stations', 'labels', 'inactive', 'relief', 'names', 'autoGlobe', 'transport', 'destinations', 'constraints']) $(key).addEventListener('change', () => {
+for (const key of ['stations', 'labels', 'inactive', 'relief', 'names', 'autoGlobe', 'readout', 'transport', 'destinations', 'constraints']) $(key).addEventListener('change', () => {
   settings[key] = $(key).checked; applySettings(); saveSettings();
   if (key === 'autoGlobe') { lastAutoProjection = undefined; updatePolar(); }
 });
@@ -892,7 +925,64 @@ $('collapse').addEventListener('click', () => {
 // On phones and other small screens start with the controls folded away, so
 // the map is visible at launch.
 if (matchMedia('(max-width: 650px), (max-height: 500px)').matches) $('collapse').click();
-function closeDetails() { $('details').hidden = true; currentFeature = null; }
+// Elevation profile of a drawn line: heights about every 10 m along it
+// (20 to 200 samples), from the terrain tiles. Hovering the chart marks the
+// place on the map.
+const elevation = createElevation(DEM_URL);
+let profileMarker, profileRequest = 0;
+async function showProfile(feature) {
+  const coordinates = feature.geometry.coordinates, units = settings.units, km = lengthKm(coordinates);
+  const panel = $('detail-content'), request = ++profileRequest;
+  const waiting = textNode('p', 'Finding heights…', 'small');
+  panel.replaceChildren(textNode('div', 'DRAWN LINE', 'eyebrow'), textNode('h2', feature.properties.name || 'Elevation profile'), waiting);
+  $('details').hidden = false; currentFeature = null;
+  const samples = alongLine(coordinates, Math.max(20, Math.min(200, Math.round(km * 100))), lengthKm);
+  const heights = await elevation.heights(samples.map(s => s.point));
+  // Only if this profile is still what the panel shows: not replaced by
+  // another feature's details, another profile or closed meanwhile.
+  if (request !== profileRequest || !waiting.isConnected || $('details').hidden) return;
+  const profile = samples.map((s, i) => ({...s, height: heights[i]})), stats = profileStats(profile);
+  waiting.remove();
+  if (!stats) { panel.append(textNode('p', 'The terrain tiles could not load here.', 'small')); return; }
+  const height = h => units === 'imperial' ? `${Math.round(h * 3.28084).toLocaleString('en')} ft` : `${Math.round(h).toLocaleString('en')} m`;
+  const ends = climb(profile[0].height, profile.at(-1).height, km);
+  const dl = document.createElement('dl');
+  row(dl, 'Length', formatLength(km, units)); row(dl, 'Lowest', height(stats.min)); row(dl, 'Highest', height(stats.max));
+  row(dl, 'Ascent / descent', `${height(stats.ascent)} / ${height(stats.descent)}`);
+  if (ends) row(dl, 'End to end', formatClimb(ends, units));
+  row(dl, 'Steepest', `${(stats.steepest * 100).toFixed(1)}% (${(stats.steepest * 1000).toFixed(0)}‰) over ${formatLength(stats.over, units)}`);
+  panel.append(profileChart(profile, km, units), dl, textNode('p', 'Heights from the terrain tiles (Mapzen Terrarium): ground or seabed level, not track level on bridges or in tunnels; ascent and descent include the data’s small ups and downs.', 'small'));
+}
+function profileChart(profile, km, units) {
+  const W = 280, H = 150, L = 44, R = 8, T = 10, B = 24, ns = 'http://www.w3.org/2000/svg';
+  const k = units === 'imperial' ? 3.28084 : 1, unit = units === 'imperial' ? 'ft' : 'm';
+  const known = profile.filter(p => p.height !== null), values = known.map(p => p.height * k);
+  let lo = Math.min(...values), hi = Math.max(...values);
+  if (hi - lo < 10) { const mid = (hi + lo) / 2; lo = mid - 5; hi = mid + 5; }
+  const x = at => L + (W - L - R) * at / km, y = h => T + (H - T - B) * (1 - (h * k - lo) / (hi - lo));
+  const el = (name, attrs, text) => { const e = document.createElementNS(ns, name); for (const [a, v] of Object.entries(attrs)) e.setAttribute(a, v); if (text !== undefined) e.textContent = text; return e; };
+  const svg = el('svg', {viewBox: `0 0 ${W} ${H}`, class: 'profile-chart', role: 'img', 'aria-label': 'Elevation along the line'});
+  const line = known.map(p => `${x(p.at).toFixed(1)},${y(p.height).toFixed(1)}`).join(' ');
+  svg.append(
+    el('polygon', {points: `${x(known[0].at).toFixed(1)},${H - B} ${line} ${x(known.at(-1).at).toFixed(1)},${H - B}`, class: 'profile-area'}),
+    el('polyline', {points: line, class: 'profile-line'}),
+    el('line', {x1: L, y1: H - B, x2: W - R, y2: H - B, class: 'profile-axis'}), el('line', {x1: L, y1: T, x2: L, y2: H - B, class: 'profile-axis'}),
+    el('text', {x: L - 4, y: T + 4, 'text-anchor': 'end'}, `${Math.round(hi)} ${unit}`), el('text', {x: L - 4, y: H - B, 'text-anchor': 'end'}, `${Math.round(lo)} ${unit}`),
+    el('text', {x: L, y: H - 8}, '0'), el('text', {x: W - R, y: H - 8, 'text-anchor': 'end'}, formatLength(km, units)));
+  const cursor = el('line', {y1: T, y2: H - B, class: 'profile-cursor', visibility: 'hidden'}), readout = el('text', {x: L + 4, y: T + 10, class: 'profile-readout'});
+  svg.append(cursor, readout);
+  svg.addEventListener('pointermove', event => {
+    const box = svg.getBoundingClientRect(), at = Math.max(0, Math.min(km, ((event.clientX - box.left) / box.width * W - L) / (W - L - R) * km));
+    const p = known.reduce((a, b) => Math.abs(b.at - at) < Math.abs(a.at - at) ? b : a);
+    cursor.setAttribute('x1', x(p.at)); cursor.setAttribute('x2', x(p.at)); cursor.setAttribute('visibility', 'visible');
+    readout.textContent = `${formatLength(p.at, units)} · ${Math.round(p.height * k)} ${unit}`;
+    profileMarker ||= new maplibregl.Marker({element: textNode('div', '', 'profile-marker')});
+    profileMarker.setLngLat(p.point).addTo(map);
+  });
+  svg.addEventListener('pointerleave', () => { cursor.setAttribute('visibility', 'hidden'); readout.textContent = ''; profileMarker?.remove(); });
+  return svg;
+}
+function closeDetails() { $('details').hidden = true; currentFeature = null; profileMarker?.remove(); }
 $('details-close').addEventListener('click', closeDetails);
 addEventListener('keydown', event => { if (event.key === 'Escape' && !$('details').hidden && !drawing?.active && !measuring?.active && !document.querySelector('dialog[open]')) closeDetails(); });
 $('about-open').addEventListener('click', () => $('about').showModal());

@@ -161,7 +161,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       extent = result.extent;
       for (const p of result.points) features.push({x: p.x, y: p.y, p});
     }
-    const layers = {atlas_track_counts: {features: features.map(({x: px, y: py, p}) => ({type: 1, geometry: [[Math.round(px), Math.round(py)]], tags: {tracks: p.tracks, ...(p.tunnel && {tunnel: true})}}))}};
+    const layers = {atlas_track_counts: {features: features.map(({x: px, y: py, p}) => ({type: 1, geometry: [[Math.round(px), Math.round(py)]], tags: {tracks: p.tracks, ...(p.tunnel && {tunnel: true}), ...(p.station && {station: true})}}))}};
     const out = encode.fromGeojsonVt(layers, {version: 2, extent});
     return {data: out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength)};
   });
