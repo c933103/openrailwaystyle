@@ -295,6 +295,14 @@ test('bridges and tunnels show in every view, including planned and former lines
   const order = id => style.layers.findIndex(l => l.id === id);
   assert.ok(order('structure-bridge-edge') < order('speed-tracks') && order('structure-bridge-edge') < order('gauge-tracks'));
   assert.ok(order('inactive-bridge-deck') < order('inactive-railways-construction'));
+  // A planned or former tram's bridge casing and name wait for its track (zoom 11).
+  for (const id of ['inactive-regional-bridge-edge','inactive-regional-bridge-deck','inactive-names']) {
+    const filter = styleSpec.featureFilter(style.layers.find(l => l.id === id).filter);
+    const at = (zoom, feature) => filter.filter({zoom}, {type:2, properties:{feature, bridge:true, state:'disused', name:'x'}});
+    assert.equal(at(10.9, 'tram'), false, id);
+    assert.equal(at(11, 'tram'), true, id);
+    assert.equal(at(10, 'rail'), true, id);
+  }
 });
 test('lifecycle snapshot keeps planned speed, bridges and tunnels', async () => {
   const {parseMaxspeed, toGeoJSON} = await import('../scripts/lifecycle.mjs');

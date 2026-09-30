@@ -199,8 +199,8 @@ const inactiveBridge = {type:'line', layout:{'line-cap':'butt','line-join':'roun
 const inactiveBridgeEdge = {'line-color':'#5b5550','line-width':['interpolate',['linear'],['zoom'],7,3,12,4.6,16,6.5,20,8.5]};
 const inactiveBridgeDeck = {'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],7,1.8,12,3,16,4.6,20,6.2]};
 style.layers.push(
-  {...inactiveBridge, id:'inactive-regional-bridge-edge', source:'inactiveRegional', 'source-layer':'lifecycle', minzoom:7, maxzoom:12, filter:['==',['get','bridge'],true], paint:inactiveBridgeEdge},
-  {...inactiveBridge, id:'inactive-regional-bridge-deck', source:'inactiveRegional', 'source-layer':'lifecycle', minzoom:7, maxzoom:12, filter:['==',['get','bridge'],true], paint:inactiveBridgeDeck},
+  {...inactiveBridge, id:'inactive-regional-bridge-edge', source:'inactiveRegional', 'source-layer':'lifecycle', minzoom:7, maxzoom:12, filter:['all',byKindZoom,['==',['get','bridge'],true]], paint:inactiveBridgeEdge},
+  {...inactiveBridge, id:'inactive-regional-bridge-deck', source:'inactiveRegional', 'source-layer':'lifecycle', minzoom:7, maxzoom:12, filter:['all',byKindZoom,['==',['get','bridge'],true]], paint:inactiveBridgeDeck},
   {...inactiveBridge, id:'inactive-bridge-edge', source:'railway', 'source-layer':'railway_line_high', minzoom:12, filter:['all', ['!', present], notFerry, ['==',['get','bridge'],true]], paint:inactiveBridgeEdge},
   {...inactiveBridge, id:'inactive-bridge-deck', source:'railway', 'source-layer':'railway_line_high', minzoom:12, filter:['all', ['!', present], notFerry, ['==',['get','bridge'],true]], paint:inactiveBridgeDeck},
 );
@@ -212,7 +212,7 @@ for (const state of ['former', 'disused', 'proposed', 'construction']) style.lay
 );
 for (const [id,source,sourceLayer,minzoom,maxzoom,filter] of [
   ['railway-names','railway','railway_line_high',9,undefined,['all',present,notFerry,byKindZoom]],
-  ['inactive-names','inactiveRegional','lifecycle',9,12,['literal',true]],
+  ['inactive-names','inactiveRegional','lifecycle',9,12,byKindZoom],
   ['inactive-detail-names','railway','railway_line_high',12,undefined,['all',['!',present],notFerry]],
 ]) style.layers.push({
   id, type:'symbol', source, 'source-layer':sourceLayer, minzoom, ...(maxzoom ? {maxzoom} : {}), filter,
