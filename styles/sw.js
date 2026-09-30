@@ -14,13 +14,17 @@ const PRECACHE = ['./', 'app.css', 'app.mjs', 'map-model.mjs', 'context.mjs', 'd
 
 self.addEventListener('install', event => event.waitUntil((async () => {
   const cache = await caches.open(CACHE);
-  // A file that fails to load does not stop the installation.
-  await Promise.allSettled(PRECACHE.map(async path => {
+  // Every file is needed: if one fails to load, the installation fails, the
+  // worker in place (and its complete copy) stays, and the browser tries
+  // again later.
+  await Promise.all(PRECACHE.map(async path => {
     const url = new URL(path, self.registration.scope), response = await fetch(url, {cache: 'no-cache'});
-    if (response.ok) await cache.put(url.origin + url.pathname, response);
+    if (!response.ok) throw new Error(`${path} returned ${response.status}`);
+    await cache.put(url.origin + url.pathname, response);
   }));
-  // The page loads the libraries without CORS, so they are saved as such.
-  await Promise.allSettled(LIBRARIES.map(async url => { if (!await cache.match(url)) await cache.put(url, await fetch(url, {mode: 'no-cors'})); }));
+  // The page loads the libraries without CORS, so they are saved as such
+  // (an opaque response: a network failure rejects, a status cannot be read).
+  await Promise.all(LIBRARIES.map(async url => { if (!await cache.match(url)) await cache.put(url, await fetch(url, {mode: 'no-cors'})); }));
   await self.skipWaiting();
 })()));
 self.addEventListener('activate', event => event.waitUntil((async () => {
