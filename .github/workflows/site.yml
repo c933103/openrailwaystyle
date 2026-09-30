@@ -92,11 +92,18 @@ jobs:
       - name: Load branch lines
         run: |
           mkdir -p styles/data/branch-lines
-          if git ls-remote --exit-code --heads origin branch-data; then
+          # Exit status 2: no snapshot yet. Any other failure stops the
+          # deploy rather than publishing the site without branch lines.
+          status=0
+          git ls-remote --exit-code --heads origin branch-data || status=$?
+          if [ "$status" = 0 ]; then
             git fetch --depth=1 origin branch-data
             git archive FETCH_HEAD | tar -x -C styles/data/branch-lines --exclude=state.json
-          else
+          elif [ "$status" = 2 ]; then
             echo '{"tiles":[]}' > styles/data/branch-lines/index.json
+          else
+            echo "Could not look up the branch-data snapshot (git exit $status)"
+            exit 1
           fi
       - name: Install test browser
         run: npx playwright install --with-deps chromium

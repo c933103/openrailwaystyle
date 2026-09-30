@@ -125,7 +125,7 @@ const IN_VIEW = {
 function updateInView() {
   const describe = IN_VIEW[settings.mode];
   if (!ready || !describe) return;
-  const layers = [`${settings.mode}-overview`, `${settings.mode}-tracks`].filter(id => map.getLayer(id));
+  const layers = [`${settings.mode}-branch-overview`, `${settings.mode}-overview`, `${settings.mode}-tracks`].filter(id => map.getLayer(id));
   const counts = new Map();
   for (const f of map.queryRenderedFeatures({layers})) {
     const described = describe(f.properties);
