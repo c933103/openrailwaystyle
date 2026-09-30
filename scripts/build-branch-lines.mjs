@@ -72,10 +72,12 @@ async function overpass(query) {
       const response = await fetch(api, {method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(300000),
         headers: {'User-Agent': 'OpenRailwayAtlas-branch-lines/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
       // Read within the run's budget: a response that would pass it is cut
-      // off (its bytes still count). Cut off in a run's first request, the
+      // off (its bytes still count). Cut off before any region is done this run, the
       // region is too large for any run and is split; later, the run stops
       // and the region is fetched first in the next run.
-      const chunks = [], fresh = downloaded === 0;
+      // Fresh: no region fetched or split yet this run (bytes of earlier
+      // error responses do not count).
+      const chunks = [], fresh = fetchedBoxes + splitBoxes === 0;
       let received = 0, over = false;
       for await (const chunk of response.body) {
         received += chunk.length; downloaded += chunk.length;

@@ -76,5 +76,6 @@ test('style: branch lines under the main overview lines in every view, from zoom
   const dual = style.layers.find(l => l.id === 'gauge-branch-dual'), branch = style.layers.find(l => l.id === 'gauge-branch-overview');
   assert.deepEqual([dual.source, dual['source-layer'], dual.minzoom, dual.maxzoom], ['branchLines', 'branch_lines', 4, 7], 'second gauge drawn on branch lines');
   assert.ok(JSON.stringify(dual.filter).includes('gaugeint1') && ids.indexOf(dual.id) > ids.indexOf(branch.id));
+  assert.ok(ids.indexOf(dual.id) < ids.indexOf('gauge-overview'), 'both halves under the main lines');
   assert.ok(branch.paint['line-offset'] && dual.paint['line-offset'], 'the two gauges side by side');
 });

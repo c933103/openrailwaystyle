@@ -139,6 +139,11 @@ for (const [mode, source, sourceLayer, color] of [
   // (their tiles carry the fields of the detailed railway tiles).
   addLine(`${mode}-branch-overview`, 'branchLines', 'branch_lines', 4, 7, color,
     mode === 'gauge' ? {'line-width': branchHalfWidth, 'line-offset': branchDualOffset(-1)} : {});
+  // The second gauge of a branch line, also under the main lines.
+  if (mode === 'gauge') style.layers.push({id:'gauge-branch-dual', type:'line', source:'branchLines', 'source-layer':'branch_lines', minzoom:4, maxzoom:7,
+    filter:['all', present, notFerry, isDual],
+    layout:{'line-cap':'butt','line-join':'round'},
+    paint:{'line-color':gaugePaint(1), 'line-width':branchHalfWidth, 'line-offset':branchDualOffset(1)}});
   addLine(`${mode}-overview`, source, sourceLayer, 0, 7, color);
   addLine(`${mode}-tracks`, 'railway', 'railway_line_high', 7, undefined, color, {
     'line-opacity': mode === 'infrastructure' ? 1 : ['case', ['==', ['get', 'tunnel'], true], 0.65, 1],
@@ -146,10 +151,6 @@ for (const [mode, source, sourceLayer, color] of [
     ...(mode === 'gauge' ? {'line-offset': dualOffset(-1)} : {}),
   });
 }
-style.layers.push({id:'gauge-branch-dual', type:'line', source:'branchLines', 'source-layer':'branch_lines', minzoom:4, maxzoom:7,
-  filter:['all', present, notFerry, isDual],
-  layout:{'line-cap':'butt','line-join':'round'},
-  paint:{'line-color':gaugePaint(1), 'line-width':branchHalfWidth, 'line-offset':branchDualOffset(1)}});
 style.layers.push({id:'gauge-dual', type:'line', source:'railway', 'source-layer':'railway_line_high', minzoom:7,
   filter:['all', present, notFerry, isDual],
   layout:{'line-cap':'butt','line-join':'round'},
