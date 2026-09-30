@@ -189,7 +189,8 @@ const inactiveLine = state => ({
 const inactiveLayout = state => ({'line-cap': LIFECYCLE_PATTERNS[state].cap, 'line-join': 'round'});
 // The complete snapshot supplies every lifecycle at regional scales. The
 // ordinary detail tiles take over together at z12, avoiding duplicate lines.
-// Construction shows at every zoom, proposals from z5, former lines from z7.
+// Construction shows at every zoom, proposals from z5, former lines from z7;
+// light rail, metro, tram and other urban kinds from z10 whatever their state.
 const regionalZoom = ['all', byKindZoom, ['any', ['>=',['zoom'],7], ['==',['get','state'],'construction'], ['all', ['>=',['zoom'],5], ['==',['get','state'],'proposed']]]];
 const inactiveBridge = {type:'line', layout:{'line-cap':'butt','line-join':'round'}};
 const inactiveBridgeEdge = {'line-color':'#5b5550','line-width':['interpolate',['linear'],['zoom'],7,3,12,4.6,16,6.5,20,8.5]};
