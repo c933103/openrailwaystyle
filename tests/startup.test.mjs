@@ -62,7 +62,7 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
   // This is the MapLibre 5 public surface used by the app. In particular,
   // supported() is absent: older Mapbox examples must not gate startup.
   const libraries = {};
-  libraries.maplibregl = {Map, addProtocol(){}, NavigationControl:class { constructor(options) { maps.controls.push(options); } }, ScaleControl:class { constructor(options) { this.unit = options.unit; maps.scale = this; } setUnit(unit) { this.unit = unit; } }};
+  libraries.maplibregl = {Map, addProtocol(){}, NavigationControl:class { constructor(options) { maps.controls.push(options); } }, GeolocateControl:class { constructor(options) { maps.controls.push(options); } }, ScaleControl:class { constructor(options) { this.unit = options.unit; maps.scale = this; } setUnit(unit) { this.unit = unit; } }};
   maps.controls = [];
   libraries.pmtiles = {Protocol:class { tile() {} }};
   libraries.mlcontour = {DemSource:class {constructor(options){this.options=options; (maps.dems ||= []).push(options);} setupMaplibre(){} contourProtocolUrl(options){return `${this.options.id}-contour://${options.multiplier ? 'ft' : 'm'}/{z}/{x}/{y}`;} sharedDemProtocolUrl='atlas-shared://{z}/{x}/{y}';}};
@@ -117,14 +117,34 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
     assert.equal(maps[0].image.data.data.length,32*32*4);
     maps[0].handlers['style.load']();
     assert.equal(window.document.body.dataset.mapReady,'true');
-    assert.equal(maps[0].visibility['speed-tracks'],'visible');
+    // The Infrastructure view on a first visit, from the first frame.
+    assert.equal(maps[0].options.style.layers.find(l => l.id === 'speed-tracks').layout.visibility,'none');
+    assert.equal(maps[0].visibility['infrastructure-tracks'],'visible');
+    assert.equal(maps[0].visibility['speed-tracks'],'none');
     maps[0].handlers.error({error:{name:'AbortError',message:'AbortError'}});
     assert.equal(window.document.getElementById('map-status').classList.contains('error'),false);
     assert.equal(errors.length,0);
+    window.document.querySelector('[data-mode="speed"]').click();
+    assert.equal(maps[0].visibility['speed-tracks'],'visible');
     window.document.querySelector('[data-mode="infrastructure"]').click();
     assert.equal(maps[0].visibility['speed-tracks'],'none');
     assert.equal(maps[0].visibility['infrastructure-tracks'],'visible');
     assert.equal(maps[0].visibility['station-stations-dots'],'visible');
+    // Track-count boxes can be switched off.
+    assert.equal(maps[0].visibility['infrastructure-track-count'],'visible');
+    const counts = window.document.getElementById('trackCounts');
+    counts.checked = false; counts.dispatchEvent(new window.Event('change'));
+    assert.equal(maps[0].visibility['infrastructure-track-count'],'none');
+    assert.equal(maps[0].visibility['infrastructure-station-tracks'],'none');
+    counts.checked = true; counts.dispatchEvent(new window.Event('change'));
+    // Satellite: the imagery alone; hybrid: imagery under the railways; the
+    // map brings everything back.
+    window.document.querySelector('[data-background="satellite"]').click();
+    assert.deepEqual(['satellite','water','infrastructure-tracks','station-stations-dots'].map(id => maps[0].visibility[id]), ['visible','none','none','none']);
+    window.document.querySelector('[data-background="hybrid"]').click();
+    assert.deepEqual(['satellite','water','terrain-relief','infrastructure-tracks','station-stations-dots'].map(id => maps[0].visibility[id]), ['visible','none','none','visible','visible']);
+    window.document.querySelector('[data-background="map"]').click();
+    assert.deepEqual(['satellite','water','terrain-relief','infrastructure-tracks','structure-bridge-edge'].map(id => maps[0].visibility[id]), ['none','visible','visible','visible','visible']);
     const language = window.document.getElementById('language');
     language.value='ko'; language.dispatchEvent(new window.Event('change'));
     assert.match(maps[0].options.style.sources.stations.url, /atlasstation:\/\/ko\//);

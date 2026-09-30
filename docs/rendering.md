@@ -39,6 +39,10 @@ Lifecycle patterns are shared between style and SVG legend: construction uses lo
 
 See [snapshot maintenance](data-maintenance.md#railway-lifecycle-snapshot) for extraction and publication.
 
+## Satellite and hybrid backgrounds
+
+Satellite shows [EOxCloudless](https://cloudless.eox.at) imagery alone (Sentinel-2, 2025 edition, 10 m per pixel; EOX IT Services GmbH, CC BY-NC-SA 4.0, free for non-commercial use with attribution). Hybrid draws the railways, stations, track counts and level crossings of the chosen view over the imagery; the drawn base map (land use, roads, places, terrain and planning context) is hidden in both. The imagery source stops at zoom 14, close to its own resolution, and is enlarged beyond; EOX's free service applies rate limiting under heavy load.
+
 ## Terrain and boundaries
 
 Station symbols use orange markers and bold names with halos, while retaining collision spacing. First-level regional boundaries use OSM admin levels 3/4 where supplied by the basemap; subdivision conventions and coverage differ by country.
@@ -74,4 +78,4 @@ Protected areas, military grounds, religious institutions and heritage sites hav
 
 Infrastructure view adds level crossings and ochre roadbeds for explicitly mapped street-running tracks (zoom 13+). Only `embedded=yes` or road `embedded_rails` tags qualify; trams and adjacent roads do not imply sharing. See [street-running snapshots](data-maintenance.md#street-running-snapshot) for publication and refresh behaviour.
 
-Level crossings are shown from zoom 5, so they can be seen across a region hundreds of kilometres wide: dark brown for road crossings (`railway=level_crossing`), light brown for pedestrian ones (`railway=crossing`). They come from the project's own [worldwide crossing tiles](data-maintenance.md#level-crossing-snapshot): an overview set (zoom-5 tiles, each crossing placed within about 150 m, crossings on the same spot drawn once) drawn as dots up to zoom 8 (a cross cannot be read at that size), then a small × for every crossing, clickable and linking to its OpenStreetMap node, to zoom 14 (all drawn, none hidden by label placement). From zoom 15 the provider's `points_of_interest` tiles draw × symbols whose details give the mapped equipment.
+Level crossings are shown from zoom 5, so they can be seen across a region hundreds of kilometres wide: dark brown for road crossings (`railway=level_crossing`), light brown for pedestrian ones (`railway=crossing`). They come from the project's own [worldwide crossing tiles](data-maintenance.md#level-crossing-snapshot): an overview set (zoom-5 tiles, each crossing placed within about 150 m, crossings on the same spot drawn once) up to zoom 8, then one clickable point per crossing, linking to its OpenStreetMap node: dots to zoom 10 (a cross cannot be read at that size, and those of a busy network would run together), then a small × for every crossing to zoom 14 (all drawn, none hidden by label placement). From zoom 15 the provider's `points_of_interest` tiles draw × symbols whose details give the mapped equipment.

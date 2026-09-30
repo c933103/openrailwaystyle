@@ -48,6 +48,12 @@ const style = {
     // and is enlarged beyond it rather than regenerated.
     seabedContours: {type:'vector',tiles:['atlas-contour://{z}/{x}/{y}'],minzoom:5,maxzoom:10},
     seabedContoursClose: {type:'vector',tiles:['atlas-contour://{z}/{x}/{y}'],minzoom:11,maxzoom:11},
+    // Satellite and hybrid backgrounds: EOxCloudless (Sentinel-2, 10 m), free
+    // for non-commercial use under CC BY-NC-SA 4.0 with this attribution. The
+    // source stops at zoom 14, near the imagery's own resolution, and is
+    // enlarged beyond it, which also spares EOX's free service.
+    satellite: {type:'raster', tiles:['https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2025_3857/default/g/{z}/{y}/{x}.jpg'], tileSize:256, maxzoom:14,
+      attribution:'<a href="https://cloudless.eox.at">EOxCloudless https://cloudless.eox.at</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2025), <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>'},
     relief: {type:'raster-dem', tiles:[DEM_URL], tileSize:256, encoding:'terrarium', maxzoom:15, attribution:'<a href="terrain-credits.html">Terrain: Mapzen / AWS and data contributors</a>'},
   },
   layers: original.layers.filter(l => (!l.source || l.source === 'openmaptiles') && !l.id.startsWith('airport_') && l['source-layer'] !== 'transportation').map(l => structuredClone(l)),
@@ -318,15 +324,18 @@ style.layers.splice(roadIndex,0,...roads.roads);
 const streetIndex=style.layers.findIndex(l=>l.id==='infrastructure-tracks');
 style.layers.splice(streetIndex,0,{id:'infrastructure-street-running',type:'line',source:'streetRunning','source-layer':'street_running',minzoom:13,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#b68f55','line-width':['interpolate',['linear'],['zoom'],13,7,18,14],'line-opacity':0.65}});
 // Level crossings from zoom 5 (the project's own worldwide tiles,
-// crossings.yml): dots from the overview multipoint set to zoom 9, where one
-// could not read a cross; then a small × per crossing, all drawn (no
-// collision placement); from 15 the provider's × symbols with equipment details.
+// crossings.yml): dots to zoom 11, where a cross could not be read and the
+// crossings of a busy network would run together; then a small × per
+// crossing, all drawn (no collision placement); from 15 the provider's ×
+// symbols with equipment details.
 const crossingColor = ['match',['get','kind'],'foot','#a0704a','#63332c'];
-style.layers.push({id:'infrastructure-crossing-overview', type:'circle', source:'crossingsOverview', 'source-layer':'level_crossings', minzoom:OVERVIEW_ZOOM, maxzoom:DETAIL_ZOOM, layout:{},
-  paint:{'circle-color':crossingColor, 'circle-radius':['interpolate',['linear'],['zoom'],5,0.9,8,1.4,9,1.6], 'circle-opacity':0.9}});
-style.layers.push({id:'infrastructure-crossing-dots', type:'symbol', source:'crossingsDetail', 'source-layer':'level_crossings', minzoom:DETAIL_ZOOM, maxzoom:15,
-  layout:{'icon-image':'crossing-x', 'icon-size':['interpolate',['linear'],['zoom'],9,0.6,12,0.8,14.99,1], 'icon-allow-overlap':true, 'icon-ignore-placement':true},
-  paint:{'icon-color':crossingColor, 'icon-halo-color':'#fffef8', 'icon-halo-width':['interpolate',['linear'],['zoom'],9,0.6,12,1.2], 'icon-opacity':0.95}});
+const crossingDot = (id, source, minzoom, maxzoom) => ({id, type:'circle', source, 'source-layer':'level_crossings', minzoom, maxzoom, layout:{},
+  paint:{'circle-color':crossingColor, 'circle-radius':['interpolate',['linear'],['zoom'],5,0.9,8,1.4,11,2.2],
+    'circle-stroke-color':'#fffef8', 'circle-stroke-width':['interpolate',['linear'],['zoom'],9,0,11,0.8], 'circle-opacity':0.9}});
+style.layers.push(crossingDot('infrastructure-crossing-overview','crossingsOverview',OVERVIEW_ZOOM,DETAIL_ZOOM), crossingDot('infrastructure-crossing-dots','crossingsDetail',DETAIL_ZOOM,11));
+style.layers.push({id:'infrastructure-crossing-marks', type:'symbol', source:'crossingsDetail', 'source-layer':'level_crossings', minzoom:11, maxzoom:15,
+  layout:{'icon-image':'crossing-x', 'icon-size':['interpolate',['linear'],['zoom'],11,0.7,13,0.85,14.99,1], 'icon-allow-overlap':true, 'icon-ignore-placement':true},
+  paint:{'icon-color':crossingColor, 'icon-halo-color':'#fffef8', 'icon-halo-width':1.2, 'icon-opacity':0.95}});
 style.layers.push({id:'infrastructure-level-crossings',type:'symbol',source:'crossings','source-layer':'points_of_interest',minzoom:15,filter:['==',['get','type'],'level_crossing'],layout:{'text-field':'×','text-font':['Noto Sans Bold'],'text-size':23,'text-allow-overlap':false,'text-padding':2},paint:{'text-color':'#63332c','text-halo-color':'#fffef8','text-halo-width':2}});
 const contextIndex = style.layers.findIndex(l => l.id === 'terrain-contours');
 // Ordinary buildings provide faint street-scale context independently of the
@@ -348,6 +357,8 @@ style.layers = style.layers.filter(l => !stationNames.includes(l) && !railwayNam
 for (const l of style.layers) {
   if (/^(infrastructure|electrification|control|gauge|loading)-/.test(l.id)) l.layout.visibility = 'none';
 }
+// Satellite imagery directly above the background, off unless chosen.
+style.layers.splice(style.layers.findIndex(l => l.id === 'background') + 1, 0, {id:'satellite', type:'raster', source:'satellite', layout:{visibility:'none'}, paint:{'raster-fade-duration':150}});
 await writeFile(new URL('../styles/world.style.json', import.meta.url), JSON.stringify(style, null, 2) + '\n');
 console.log(`Built world.style.json: ${style.layers.length} layers`);
 

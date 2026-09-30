@@ -4,7 +4,7 @@
 
 ## Find and inspect railways
 
-Use station search to locate a place and choose a railway view: track type, maximum speed, electrification, infrastructure or loading gauge. Click a railway to see its recorded speed, voltage, frequency, gauge and operator.
+Use station search to locate a place and choose a railway view: infrastructure (the view on a first visit), maximum speed, power, train control, gauge or loading gauge. Click a railway, station or level crossing to see what is recorded for it, with a link that opens that very object (node, way or relation) on OpenStreetMap.
 
 Stations appear progressively as you zoom in. Construction, proposed and former lines use distinct patterns. The [rendering reference](rendering.md) explains symbols, zoom levels, units and coverage limits.
 
@@ -14,11 +14,17 @@ Station search and responsive controls. Display settings and the label language 
 
 The shared language selector offers local names or 12 languages. It uses recorded names and fallbacks, without automatic translation or script conversion; see [label rules](labels.md).
 
-Display options, in three groups (railways, surroundings, map), also control transport facilities, destinations, planning constraints, relief, metric or imperial units, and the readout under the scale bar: the coordinates under the cursor (the map's centre on a touch screen) and the zoom. On small screens the controls start folded away. Under the legend, “How to read this view” explains the current view's colours.
+Under the view buttons, the background can be the drawn map, satellite imagery alone, or hybrid: the imagery under the railways (and stations) of the chosen view, without the map's roads and labels. The imagery is EOxCloudless (Sentinel-2, 10 m per pixel): stations, yards and track corridors show, not single tracks.
+
+Display options, in three groups (railways, surroundings, map), also control the boxed track counts of the Infrastructure view, transport facilities, destinations, planning constraints, relief, metric or imperial units, and the readout under the scale bar: the coordinates under the cursor (the map's centre on a touch screen) and the zoom. On small screens the controls start folded away. Under the legend, “How to read this view” explains the current view's colours.
+
+## Install as an app
+
+The atlas can be installed on a phone, tablet or computer from the browser (for example “Install app” or “Add to Home screen”); it then opens in its own window. The app's own files are kept for opening without a connection, but the map data needs one.
 
 ## Navigate and change detail
 
-The compass resets north. The “more detail” button cycles through 100%, 50% and 25%: the next zoom level is drawn at half size, then two levels further in at a quarter size, so the same area shows more tiles and features. Its tooltip reports the scale.
+The compass resets north. The location button shows your position (the browser asks first; the position stays in the browser) and follows it as it moves, with the direction of travel where the device reports one; moving the map stops following, and pressing the button again resumes it. The “more detail” button cycles through 100%, 50% and 25%: the next zoom level is drawn at half size, then two levels further in at a quarter size, so the same area shows more tiles and features. Its tooltip reports the scale.
 
 The map reopens where it was left, on the globe or flat map as last used. The globe/map button (🌍/🗺️) switches projection. The globe can be dragged and zoomed over the poles while keeping the planet’s size as the view moves.
 
