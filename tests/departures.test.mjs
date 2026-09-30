@@ -30,7 +30,7 @@ test('journey links and the station board request', async () => {
   const fetch = async url => { urls.push(url); return {ok:true, json: async () => url.includes('reverse-geocode') ? [stop('Austin','hk-MTR-AUS',22.30447,114.16666,['SUBWAY'])] : {stopTimes: []}}; };
   const board = await stationDepartures({lat:22.3046, lon:114.1660, names:['Austin']}, {fetch});
   assert.deepEqual(board, {stops:[stop('Austin','hk-MTR-AUS',22.30447,114.16666,['SUBWAY'])], rows:[]});
-  assert.deepEqual(urls, ['https://api.transitous.org/api/v1/reverse-geocode?place=22.3046,114.166&type=STOP', 'https://api.transitous.org/api/v1/stoptimes?stopId=hk-MTR-AUS&n=30']);
+  assert.deepEqual(urls, ['https://api.transitous.org/api/v1/reverse-geocode?place=22.3046,114.166&type=STOP', 'https://api.transitous.org/api/v1/stoptimes?stopId=hk-MTR-AUS&n=30&mode=HIGHSPEED_RAIL,LONG_DISTANCE,NIGHT_RAIL,REGIONAL_FAST_RAIL,REGIONAL_RAIL,SUBURBAN,RAIL,METRO,SUBWAY,TRAM,FUNICULAR,CABLE_CAR']);
 });
 
 test('one stop\'s board failing keeps the other\'s; all failing is an error', async () => {

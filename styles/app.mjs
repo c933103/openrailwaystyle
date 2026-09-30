@@ -327,7 +327,9 @@ function showDetails(feature) {
   if (isStation) {
     const nearby = document.createElement('section'); nearby.id = 'nearby-transport'; panel.append(nearby);
     updateNearbyTransport();
-    if (feature.geometry?.type === 'Point') showDepartures(panel, feature);
+    // Departures only for operating stations: a former or planned one near a
+    // current stop would otherwise show that stop's trains as its own.
+    if (feature.geometry?.type === 'Point' && (!p.state || p.state === 'present')) showDepartures(panel, feature);
   }
   $('details').hidden = false;
 }

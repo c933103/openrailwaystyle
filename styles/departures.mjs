@@ -8,8 +8,9 @@ export const TRANSITOUS_API = 'https://api.transitous.org/api/v1';
 export const TRANSITOUS_PLANNER = 'https://api.transitous.org/';
 export const TRANSITOUS_SOURCES = 'https://transitous.org/sources/';
 // Rail and other guided modes: a railway station's board leaves out buses,
-// coaches and ferries that share the stop.
-export const RAIL_MODES = new Set(['HIGHSPEED_RAIL', 'LONG_DISTANCE', 'NIGHT_RAIL', 'REGIONAL_FAST_RAIL', 'REGIONAL_RAIL', 'SUBURBAN', 'RAIL', 'METRO', 'SUBWAY', 'TRAM', 'FUNICULAR', 'CABLE_CAR', 'ODM_RAIL']);
+// coaches and ferries that share the stop. The service filters by mode, so
+// buses do not use up the requested number of departures.
+export const RAIL_MODES = new Set(['HIGHSPEED_RAIL', 'LONG_DISTANCE', 'NIGHT_RAIL', 'REGIONAL_FAST_RAIL', 'REGIONAL_RAIL', 'SUBURBAN', 'RAIL', 'METRO', 'SUBWAY', 'TRAM', 'FUNICULAR', 'CABLE_CAR']);
 const RADIUS_M = 400;
 
 const metres = (a, b) => {
@@ -82,7 +83,7 @@ export async function stationDepartures(station, {signal, fetch: get = fetch} = 
   const stops = pickStops(Array.isArray(candidates) ? candidates : [], station);
   if (!stops.length) return {stops, rows: []};
   // Each stop's board on its own: one feed failing keeps the other's.
-  const results = await Promise.allSettled(stops.map(s => json(`${TRANSITOUS_API}/stoptimes?stopId=${encodeURIComponent(s.id)}&n=30`).then(d => d.stopTimes || [])));
+  const results = await Promise.allSettled(stops.map(s => json(`${TRANSITOUS_API}/stoptimes?stopId=${encodeURIComponent(s.id)}&n=30&mode=${[...RAIL_MODES].join(',')}`).then(d => d.stopTimes || [])));
   const lists = results.filter(r => r.status === 'fulfilled').map(r => r.value);
   if (!lists.length) throw results[0].reason;
   return {stops, rows: departureRows(lists)};
