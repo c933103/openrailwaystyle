@@ -29,7 +29,7 @@ test('branch-line tags become the fields of the detailed railway tiles', () => {
   assert.deepEqual(a.properties, {osm_id: 42, feature: 'rail', usage: 'branch', state: 'present', name: '磐越西線', 'name:en': 'Ban\'etsu West Line', 'name:ja-Latn': 'Ban\'etsu-sai-sen',
     maxspeed: 95, speed_unit: 'km/h', speed_label: '95', electrification_state: 'present', voltage: 20000, frequency: 50, gauge0: '1067', gaugeint0: 1067, train_protection0: 'ats', operator: 'JR東日本'});
   assert.equal(a.geometry.coordinates.length, 3, 'a point within 50 m of the line is dropped');
-  assert.deepEqual(b.properties, {osm_id: 43, feature: 'narrow_gauge', usage: 'branch', state: 'present', name: '', maxspeed: 64, speed_unit: 'mph', speed_label: '40 mph / -', electrification_state: 'no',
+  assert.deepEqual(b.properties, {osm_id: 43, feature: 'narrow_gauge', usage: 'branch', state: 'present', name: '', maxspeed: 64.374, speed_unit: 'mph', speed_label: '40 mph / -', electrification_state: 'no',
     gauge0: '762', gaugeint0: 762, gauge1: '1067', gaugeint1: 1067, train_protection0: 'etcs_2'});
   assert.throws(() => toFeatures({remark: 'runtime error: Query timed out', elements: []}), /timed out/);
   assert.equal(trainProtection({'railway:ctcs': '1'}), 'ctcs');
@@ -53,6 +53,11 @@ test('branch-line tags become the fields of the detailed railway tiles', () => {
   assert.deepEqual([mixed.maxspeed, mixed.speed_unit, mixed.speed_label], [120, 'km/h', '60 mph / 120'], 'the unit of the direction the speed comes from');
   assert.equal(formatSpeed(mixed).mapped, '120 km/h', 'not shown as converted from mph');
   assert.equal(way({'maxspeed:forward': '80 mph', 'maxspeed:backward': '100'}).speed_unit, 'mph', 'the faster direction\'s unit');
+  assert.deepEqual([way({maxspeed: '80 mph;140'}).maxspeed, way({maxspeed: '80 mph;140'}).speed_unit], [140, 'km/h'], 'the list member that gives the speed');
+  assert.equal(way({maxspeed: '30 knots'}).speed_unit, 'knots');
+  assert.equal(formatSpeed(way({maxspeed: '30 knots'})).mapped, '55.6 km/h (30 knots)');
+  const planned = way({electrified: 'no', 'construction:electrified': 'contact_line', 'construction:voltage': '25000', 'construction:frequency': '50'});
+  assert.deepEqual([planned.electrification_state, planned.future_voltage, planned.future_frequency, planned.voltage], ['construction', 25000, 50, undefined], 'the planned current');
   const [gap] = toFeatures({elements: [{type: 'way', id: 12, tags: {railway: 'rail'}, geometry: [{lat: 0, lon: 0}, {lat: 0, lon: 1}, null, {lat: 5, lon: 5}, {lat: 5, lon: 6}]}]});
   assert.deepEqual(gap.geometry, {type: 'MultiLineString', coordinates: [[[0, 0], [1, 0]], [[5, 5], [6, 5]]]}, 'a missing node splits the way');
 });

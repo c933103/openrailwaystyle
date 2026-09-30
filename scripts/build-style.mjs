@@ -2,7 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import {roadLayers, constraintLayers} from './planning-style.mjs';
 import {contextLayers} from './context-style.mjs';
 import {OVERVIEW_ZOOM, DETAIL_ZOOM} from './crossing-data.mjs';
-import { ORM, LIFECYCLE_PATTERNS, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, loadingLabel, trainProtectionShort, TRAIN_PROTECTION, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
+import { ORM, LIGHT_MODES, MINOR_MODES, LIFECYCLE_PATTERNS, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, loadingLabel, trainProtectionShort, TRAIN_PROTECTION, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
 
 // Keep the Hack4Rail base-map design and replace its Europe-only rail source.
 const original = JSON.parse(await readFile(new URL('../styles/default.style.json', import.meta.url)));
@@ -258,7 +258,6 @@ const zoom6Small = ['any', ['>=', ['zoom'], 7], ['!', ['match', ['get','station_
 // monorails (12; tram stops 13), so a high-capacity metro is never outranked
 // on screen by a tram stop that appears earlier.
 const stationMode = ['coalesce', ['get','station'], ''];
-const LIGHT_MODES = ['light_rail'], MINOR_MODES = ['monorail', 'funicular', 'miniature', 'tram'];
 const stationFeatures = ['all', present,
   ['any', ['==', ['get','feature'], 'station'], ['all', ['>=', ['zoom'], 11], ['==', ['get','feature'], 'halt']], ['all', ['>=', ['zoom'], 13], ['==', ['get','feature'], 'tram_stop']]],
   ['case',

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {featureFilter} from '@maplibre/maplibre-gl-style-spec';
 import * as styleSpec from '@maplibre/maplibre-gl-style-spec';
-import { SPEED_BANDS, UNKNOWN_COLOR, numericSpeed, speedColor, formatSpeed, readSettings, osmObject } from '../styles/map-model.mjs';
+import { SPEED_BANDS, UNKNOWN_COLOR, numericSpeed, speedColor, formatSpeed, stationRank, readSettings, osmObject } from '../styles/map-model.mjs';
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
 
 test('unknown speed is never turned into zero, low speed, or high-speed-class inference', () => {
@@ -29,6 +29,8 @@ test('source mph and directional speed labels are preserved', () => {
   assert.equal(formatSpeed({ maxspeed: 160, speed_label: '160' }, 'imperial').mapped, '99.4 mph (160 km/h)');
   assert.equal(formatSpeed({ maxspeed: 160, speed_label: '160 / 120' }).tagged, '160 / 120 km/h');
   assert.equal(formatSpeed({ maxspeed: 56, speed_label: '30 knots' }).tagged, '30 knots');
+  assert.deepEqual([{station: 'subway', station_size: 'small'}, {station: 'tram', station_size: 'large'}, {feature: 'tram_stop'}, {station: 'light_rail', station_size: 'large'}, {station: 'train', station_size: 'large'}]
+    .map(stationRank), [2, 4, 4, 3, 0], 'a clicked metro station is chosen over a large tram stop, as drawn');
   assert.equal(formatSpeed({ maxspeed: 80.4672, speed_label: '50 mph (30 mph)' }).tagged, '50 mph (30 mph)');
   assert.equal(formatSpeed({ speed_label: '- / 80' }).tagged, '- / 80 km/h');
 });

@@ -83,6 +83,13 @@ function electrification(tags) {
   return e === 'no' ? 'no' : undefined;
 }
 
+function futureCurrent(tags) {
+  const state = electrification(tags);
+  if (state !== 'construction' && state !== 'proposed') return {};
+  const voltage = number(tags[`${state}:voltage`]), frequency = number(tags[`${state}:frequency`]);
+  return {...(voltage !== undefined && {future_voltage: voltage}), ...(frequency !== undefined && {future_frequency: frequency})};
+}
+
 // The mapped speed as written, as in OpenRailwayMap's speed_label: the
 // value with its unit (bare numbers are km/h), or "forward / backward" with a
 // dash for a direction not mapped.
@@ -124,7 +131,10 @@ export function speedUnit(tags) {
     const [forward, backward] = [tags['maxspeed:forward'], tags['maxspeed:backward']];
     source = (kmh(backward) ?? -1) > (kmh(forward) ?? -1) ? backward : forward;
   }
-  return kmh(source) === undefined ? undefined : /mph/i.test(source) ? 'mph' : 'km/h';
+  if (kmh(source) === undefined) return undefined;
+  // In a list ("80 mph;140") the member that gives the speed decides.
+  const member = String(source).split(';').reduce((best, part) => (kmh(part) ?? -1) > (kmh(best) ?? -1) ? part : best);
+  return /mph/i.test(member) ? 'mph' : /knots/i.test(member) ? 'knots' : 'km/h';
 }
 // Douglas–Peucker in degrees (tolerance 0.0005°, about 50 m: finer than a
 // z6 tile's 150 m units), then five decimals.
@@ -166,7 +176,7 @@ export function toFeatures(json) {
     }
     const lines = parts.filter(part => part.length > 1).map(part => simplify(part).map(round));
     if (!lines.length) continue;
-    const [g0, g1] = gauges(tags.gauge), protection = trainProtection(tags), maxspeed = parseMaxspeed(speedTags(tags), 'present'), label = speedLabel(tags);
+    const [g0, g1] = gauges(tags.gauge), protection = trainProtection(tags), maxspeed = parseMaxspeed(speedTags(tags), 'present', true), label = speedLabel(tags);
     const preferred = tags['railway:preferred_direction'];
     const properties = {
       osm_id: way.id, feature: tags.railway, usage: 'branch', state: 'present',
@@ -178,6 +188,9 @@ export function toFeatures(json) {
       ...(electrification(tags) && {electrification_state: electrification(tags)}),
       ...(number(tags.voltage) !== undefined && {voltage: number(tags.voltage)}),
       ...(number(tags.frequency) !== undefined && {frequency: number(tags.frequency)}),
+      // The planned current of electrification under construction or proposed
+      // (the panel's "Planned current", as in the detailed tiles).
+      ...futureCurrent(tags),
       ...(g0 && {gauge0: g0.text, ...(g0.mm && {gaugeint0: g0.mm})}),
       ...(g1 && {gauge1: g1.text, ...(g1.mm && {gaugeint1: g1.mm})}),
       ...(tags.loading_gauge && {loading_gauge: tags.loading_gauge}),

@@ -475,7 +475,8 @@ export function formatSpeed(properties, units = 'metric') {
   // In the chosen units; the mapped value follows in brackets only when it
   // was in the other unit (converted), as a label in mph is.
   // The source unit when the feature records it (branch lines), else from the label.
-  const inMph = properties.speed_unit ? properties.speed_unit === 'mph' : /mph/.test(raw || ''), shown = units === 'imperial' ? mph : kmh, source = inMph ? mph : kmh;
+  const inMph = properties.speed_unit ? properties.speed_unit === 'mph' : /mph/.test(raw || ''), shown = units === 'imperial' ? mph : kmh;
+  const source = properties.speed_unit === 'knots' && n !== null ? `${Number((n / 1.852).toFixed(1))} knots` : inMph ? mph : kmh;
   return {
     mapped: n === null ? 'Not recorded / not numeric' : shown === source ? shown : `${shown} (${source})`,
     tagged: raw ? `${raw}${/mph|km\/h|knots/.test(raw) ? '' : ' km/h'}` : 'Not recorded',
@@ -555,8 +556,14 @@ export function settingsQuery(settings) {
   for (const key of SETTING_KEYS) params.set(key, typeof settings[key] === 'boolean' ? (settings[key] ? '1' : '0') : settings[key]);
   return params;
 }
+// Station modes below heavy rail and metro, in the style's ranking.
+export const LIGHT_MODES = ['light_rail'], MINOR_MODES = ['monorail', 'funicular', 'miniature', 'tram'];
+// Click priority as drawn: heavy rail and metro by size, then light rail,
+// then trams, people movers and other minor modes.
 export function stationRank(properties) {
-  return ({ large: 0, normal: 1, small: 2 })[properties.station_size] ?? 3;
+  if (properties.feature === 'tram_stop' || MINOR_MODES.includes(properties.station)) return 4;
+  if (LIGHT_MODES.includes(properties.station)) return 3;
+  return ({ large: 0, normal: 1, small: 2 })[properties.station_size] ?? 2;
 }
 
 // HTTP decoding may already have removed gzip; handle either representation.
