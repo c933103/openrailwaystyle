@@ -29,10 +29,18 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Load the previous table
         run: |
-          if git ls-remote --exit-code --heads origin branch-data; then
+          # Exit status 2 means no such branch (the first run); any other
+          # failure stops the run, so an unreachable remote never leads to a
+          # fresh table published over the worldwide one.
+          status=0
+          git ls-remote --exit-code --heads origin branch-data || status=$?
+          if [ "$status" = 0 ]; then
             git fetch --depth=1 origin branch-data
             mkdir -p /tmp/previous-branch
             git --work-tree=/tmp/previous-branch checkout FETCH_HEAD -- branch-lines.ndjson.gz state.json
+          elif [ "$status" != 2 ]; then
+            echo "Could not look up the branch-data snapshot (git exit $status)"
+            exit 1
           fi
       - name: Fetch the next region from OpenStreetMap
         id: build
