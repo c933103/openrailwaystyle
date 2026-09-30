@@ -19,6 +19,11 @@ const RUN_BUDGET = Number(process.env.BUDGET_BYTES || 220_000_000);
 // Downloads over any 24 hours, scheduled and manual runs together.
 const DAY_BUDGET = Number(process.env.DAY_BUDGET_BYTES || 900_000_000);
 const REFRESH_DAYS = Number(process.env.REFRESH_DAYS || 14);
+// No new request after this long, so a run publishes its progress well
+// before the job's 150-minute limit (one request with its retries can take
+// about 35 minutes).
+const TIME_BUDGET_MS = Number(process.env.TIME_BUDGET_MINUTES || 100) * 60000;
+const started = Date.now();
 const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
 let downloaded = 0, requests = 0;
 
@@ -96,6 +101,7 @@ let fetchedBoxes = 0, splitBoxes = 0, stopped = null;
 const seen = new Set(current.seen);
 while (current.pending.length) {
   if (downloaded >= BUDGET_BYTES) { stopped = `download budget reached (${downloaded} bytes)`; break; }
+  if (Date.now() - started > TIME_BUDGET_MS) { stopped = `time budget reached (${Math.round((Date.now() - started) / 60000)} minutes)`; break; }
   const item = current.pending[0], part = stage.parts[item.part];
   let features;
   try { features = await overpass(partQuery(part, item.box)); }

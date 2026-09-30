@@ -934,7 +934,7 @@ async function initialize() {
   }});
   syncPanning = globeDrag.sync; globeDragged = globeDrag.justDragged;
   syncPanning();
-  map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'loadingLow', 'railway'].includes(e.sourceId) && e.tile) scheduleLegend(); });
+  map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'loadingLow', 'railway', 'branchLines'].includes(e.sourceId) && e.tile) scheduleLegend(); });
   map.on('click', event => {
     // The release that ends a globe drag is not a click.
     if (globeDragged()) return;
