@@ -1,0 +1,16 @@
+{
+  "generated": "2026-09-30T01:40:53.602Z",
+  "changesSince": "2026-09-29T21:36:54Z",
+  "crossings": 1229727,
+  "road": 1002967,
+  "pedestrian": 226760,
+  "tiles": 13109,
+  "tileBytes": 13705570,
+  "regions": 44,
+  "requests": 90,
+  "downloadedBytes": 5310557,
+  "source": "https://overpass-api.de/api/interpreter",
+  "query": "node[railway=level_crossing] and node[railway=crossing], by region",
+  "license": "ODbL-1.0",
+  "description": "OpenStreetMap railway level crossings (road: railway=level_crossing; pedestrian: railway=crossing). Coverage follows OSM mapping."
+}
