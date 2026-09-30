@@ -561,6 +561,8 @@ export const LIGHT_MODES = ['light_rail'], MINOR_MODES = ['monorail', 'funicular
 // Click priority as drawn: heavy rail and metro by size, then light rail,
 // then trams, people movers and other minor modes.
 export function stationRank(properties) {
+  // Former, disused and planned stations are drawn last, under every operating one.
+  if ((properties.state ?? 'present') !== 'present') return 5;
   if (properties.feature === 'tram_stop' || MINOR_MODES.includes(properties.station)) return 4;
   if (LIGHT_MODES.includes(properties.station)) return 3;
   return ({ large: 0, normal: 1, small: 2 })[properties.station_size] ?? 2;
