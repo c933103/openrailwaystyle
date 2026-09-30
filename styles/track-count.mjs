@@ -208,8 +208,8 @@ export function countTracks(lines, metres, {probe: measured = () => true, debug}
 // outside: across the station's area (the provider's grouped station area),
 // every track counts, running or not, as platform and passing tracks are
 // often mapped as sidings; yards, spurs and crossovers do not. The number is
-// the most tracks one cross-section meets, at right angles to a running
-// track inside the area every STATION_STEP metres, smoothed over three such
+// the most tracks one cross-section meets, at right angles to a counted
+// track (a siding too: some stations have only those) inside the area every STATION_STEP metres, smoothed over three such
 // sections so a single odd one (a turnout) does not set it, on every level
 // (underground platforms included). zones: [{inside(x, y)}]. Returns per zone {x, y, tracks} at
 // the middle of the widest cross-section, or null.
@@ -252,7 +252,7 @@ export function stationTracks(lines, zones, metres) {
   const widest = (zone, group) => {
     let best = null;
     for (const line of lines) {
-      if (line.main === false || line.group !== group) continue;
+      if (NOT_AT_STATION.has(line.service) || line.group !== group) continue;
       for (const part of line.parts) {
         const sections = [];
         for (let i = 1; i < part.length; i++) {

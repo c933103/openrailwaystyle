@@ -933,13 +933,16 @@ let profileMarker, profileRequest = 0;
 async function showProfile(feature) {
   const coordinates = feature.geometry.coordinates, units = settings.units, km = lengthKm(coordinates);
   const panel = $('detail-content'), request = ++profileRequest;
-  panel.replaceChildren(textNode('div', 'DRAWN LINE', 'eyebrow'), textNode('h2', feature.properties.name || 'Elevation profile'), textNode('p', 'Finding heights…', 'small'));
+  const waiting = textNode('p', 'Finding heights…', 'small');
+  panel.replaceChildren(textNode('div', 'DRAWN LINE', 'eyebrow'), textNode('h2', feature.properties.name || 'Elevation profile'), waiting);
   $('details').hidden = false; currentFeature = null;
   const samples = alongLine(coordinates, Math.max(20, Math.min(200, Math.round(km * 100))), lengthKm);
   const heights = await elevation.heights(samples.map(s => s.point));
-  if (request !== profileRequest) return;
+  // Only if this profile is still what the panel shows: not replaced by
+  // another feature's details, another profile or closed meanwhile.
+  if (request !== profileRequest || !waiting.isConnected || $('details').hidden) return;
   const profile = samples.map((s, i) => ({...s, height: heights[i]})), stats = profileStats(profile);
-  panel.lastChild.remove();
+  waiting.remove();
   if (!stats) { panel.append(textNode('p', 'The terrain tiles could not load here.', 'small')); return; }
   const height = h => units === 'imperial' ? `${Math.round(h * 3.28084).toLocaleString('en')} ft` : `${Math.round(h).toLocaleString('en')} m`;
   const ends = climb(profile[0].height, profile.at(-1).height, km);

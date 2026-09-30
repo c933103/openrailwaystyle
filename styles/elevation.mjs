@@ -64,7 +64,12 @@ export function alongLine(coordinates, count, lengthKm) {
     const at = total * k / count;
     while (i < pieces.length - 1 && at > start + pieces[i]) start += pieces[i++];
     const f = pieces[i] ? Math.min(1, (at - start) / pieces[i]) : 0, [a, b] = [coordinates[i], coordinates[i + 1] ?? coordinates[i]];
-    out.push({at, point: [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]});
+    // Longitude the short way round (across 180° where the line crosses it).
+    let dLng = b[0] - a[0];
+    if (dLng > 180) dLng -= 360; else if (dLng < -180) dLng += 360;
+    let lng = a[0] + dLng * f;
+    if (lng > 180) lng -= 360; else if (lng < -180) lng += 360;
+    out.push({at, point: [lng, a[1] + (b[1] - a[1]) * f]});
   }
   return out;
 }

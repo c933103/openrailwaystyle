@@ -396,6 +396,9 @@ test('station track counts include sidings, not yards; a station with no area co
   const covered = lines.map((l, i) => ({...l, tunnel: i % 2 === 0}));
   assert.deepEqual(stationTracks(covered, [zone], 1).map(p => p.tracks), [3]);
   assert.deepEqual(stationTracks(lines, [{inside: () => false, surface: true}], 1), [null]);
+  // A station whose tracks are all tagged as sidings (a terminal's bay platforms) still has a count.
+  const bays = [track(0, 'siding'), track(5, 'siding'), track(10, 'siding'), track(15, 'yard')];
+  assert.deepEqual(stationTracks(bays, [zone], 1).map(p => p.tracks), [3]);
 });
 test('legend colours equal the drawn colours for power, gauge and loading gauge', async () => {
   const m = await import('../styles/map-model.mjs');

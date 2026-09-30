@@ -41,6 +41,11 @@ test('profile samples spread evenly along a line; summary of the heights', () =>
   assert.deepEqual(samples[2].point.map(v => Number(v.toFixed(6))), [0.01, 0]);
   assert.deepEqual(samples[4].point, [0.01, 0.01]);
   assert.ok(Math.abs(samples[4].at - lengthKm(line)) < 1e-9);
+  // Across 180°: the short way, not round the world.
+  const across = alongLine([[179.9, 10], [-179.9, 10]], 2, lengthKm);
+  assert.ok(lengthKm([[179.9, 10], [-179.9, 10]]) < 25);
+  assert.deepEqual([across[0].point[0], across[2].point[0]], [179.9, -179.9]);
+  assert.ok(Math.abs(Math.abs(across[1].point[0]) - 180) < 1e-9, 'the middle sample is at the antimeridian');
   const stats = profileStats([{at: 0, height: 10}, {at: 0.1, height: 30}, {at: 0.2, height: 20}, {at: 0.3, height: null}]);
   assert.deepEqual(stats, {min: 10, max: 30, ascent: 20, descent: 10, steepest: 0.2, over: 0.1});
   // The steepest gradient is taken over at least 100 m: a 10 m spike is diluted.

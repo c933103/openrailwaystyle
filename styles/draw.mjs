@@ -163,14 +163,17 @@ export function readDrawing(json) {
 // ends are always corners. Where a curve meets a straight stretch, it
 // leaves (or joins) it along the straight, without a corner; a corner
 // between two curves stays a corner.
-export function buildLine(points, curved) {
-  if (points.length < 2) return points.map(p => [...p]);
+// nodes, if given, receives each point's index in the returned line.
+const CURVE_STEPS = 24;
+export function buildLine(points, curved, nodes = null) {
+  if (points.length < 2) { nodes?.push(...points.map((_, i) => i)); return points.map(p => [...p]); }
   const breaks = points.map((_, i) => i === 0 || i === points.length - 1 || !curved[i]).flatMap((b, i) => b ? [i] : []);
   const straight = k => k >= 1 && k < breaks.length && breaks[k] - breaks[k-1] === 1;
   const out = [];
   for (let k = 1; k < breaks.length; k++) {
-    const [a, b] = [breaks[k-1], breaks[k]], run = points.slice(a, b + 1);
-    const part = run.length > 2 ? smoothCurve(run, 24, {before: straight(k - 1) ? points[a - 1] : undefined, after: straight(k + 1) ? points[b + 1] : undefined}) : run.map(p => [...p]);
+    const [a, b] = [breaks[k-1], breaks[k]], run = points.slice(a, b + 1), start = Math.max(0, out.length - 1);
+    const part = run.length > 2 ? smoothCurve(run, CURVE_STEPS, {before: straight(k - 1) ? points[a - 1] : undefined, after: straight(k + 1) ? points[b + 1] : undefined}) : run.map(p => [...p]);
+    if (nodes) for (let i = a; i <= b; i++) nodes[i] = start + (i - a) * (run.length > 2 ? CURVE_STEPS : 1);
     out.push(...(out.length ? part.slice(1) : part));
   }
   return out;
@@ -322,20 +325,24 @@ export class Drawing {
     if (!this.mode || this.paused) return {type:'FeatureCollection', features:[]};
     const handle = (coordinates, drawing, index, color, curved) => ({type:'Feature', geometry:{type:'Point', coordinates},
       properties:{drawing, index, color, curved: curved ? 1 : 0, selected: this.selected?.drawing === drawing && this.selected?.index === index}});
-    const middles = (drawing, color, points, closed, drawn) => this.mode === 'erase' ? [] : points.slice(0, closed ? points.length : -1).map((p, i) => {
-      const q = points[(i + 1) % points.length], chord = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
-      // On a curve, the drawn line's point nearest the chord's middle.
-      const near = (a, b) => (b[0]-chord[0])**2 + (b[1]-chord[1])**2 < (a[0]-chord[0])**2 + (a[1]-chord[1])**2 ? b : a;
-      const at = drawn.length ? drawn.reduce(near) : chord;
-      return {type:'Feature', geometry:{type:'Point', coordinates: at}, properties:{drawing, after: i, mid: 1, color}};
-    });
+    // On a curve, the middle of the segment's own stretch of the drawn line
+    // (curved: the line's curve flags, or none for an area).
+    const middles = (drawing, color, points, closed, curved) => {
+      if (this.mode === 'erase') return [];
+      const nodes = [], drawn = curved ? buildLine(points, curved, nodes) : [];
+      return points.slice(0, closed ? points.length : -1).map((p, i) => {
+        const q = points[(i + 1) % points.length], [j, k] = [nodes[i], nodes[i + 1]];
+        const at = curved && k - j >= 2 ? drawn[(j + k) >> 1] : [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+        return {type:'Feature', geometry:{type:'Point', coordinates: at}, properties:{drawing, after: i, mid: 1, color}};
+      });
+    };
     return {type:'FeatureCollection', features:[
       ...this.features.flatMap(f => {
         const {points, curved} = editableNodes(f), polygon = f.geometry.type === 'Polygon';
         if (f.geometry.type === 'Point') return points.map((p, i) => handle(p, f.id, i, f.properties.color, 0));
-        return [...middles(f.id, f.properties.color, points, polygon, polygon ? [] : f.geometry.coordinates), ...points.map((p, i) => handle(p, f.id, i, f.properties.color, curved[i]))];
+        return [...middles(f.id, f.properties.color, points, polygon, polygon ? null : curved), ...points.map((p, i) => handle(p, f.id, i, f.properties.color, curved[i]))];
       }),
-      ...middles(0, this.style.color, this.draft, false, this.mode === 'line' ? buildLine(this.draft, this.draftCurved) : []),
+      ...middles(0, this.style.color, this.draft, false, this.mode === 'line' ? this.draftCurved : null),
       ...this.draft.map((p, i) => handle(p, 0, i, this.style.color, this.draftCurved[i])),
     ]};
   }

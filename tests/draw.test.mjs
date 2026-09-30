@@ -147,6 +147,23 @@ test('one line can join straight track and curves', async () => {
   assert.ok(line.length > points.length, 'the curved part is smoothed');
   assert.deepEqual(buildLine(points, [0,0,0,0,0]), points);
 });
+test('on a curve that doubles back, each middle handle stays on its own segment', async () => {
+  const {Drawing, editablePoints} = await import('../styles/draw.mjs');
+  const sources = {}, handlers = {};
+  const d = new Drawing(editingMap(sources, handlers, () => null)); d.clear(); d.install();
+  // A hairpin: out along y = 0, round, back along y = 0.0006 (about 65 m apart).
+  d.setMode('curve');
+  for (const [lng, lat] of [[0,0],[0.01,0],[0.012,0.0003],[0.01,0.0006],[0,0.0006]]) d.click({lng, lat}, {x:lng, y:lat});
+  d.finish(); d.setMode('line');
+  const nodes = editablePoints(d.features.at(-1));
+  const middles = sources['atlas-drawing-handles'].data.features.filter(f => f.properties.mid);
+  for (const f of middles) {
+    const i = f.properties.after, c = f.geometry.coordinates;
+    const chord = j => [(nodes[j][0] + nodes[j+1][0]) / 2, (nodes[j][1] + nodes[j+1][1]) / 2], dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+    for (let j = 0; j < nodes.length - 1; j++) if (j !== i) assert.ok(dist(c, chord(i)) < dist(c, chord(j)), `segment ${i}'s handle is nearer its own segment than segment ${j}`);
+  }
+  d.clear();
+});
 test('a curve leaves and joins a straight stretch along it, without a corner; a corner between two curves stays', async () => {
   const {buildLine} = await import('../styles/draw.mjs');
   // Small offsets around 0° N, where degrees are nearly square.
@@ -222,7 +239,14 @@ test('drawing points are selected, then moved, deleted, curved or extended', asy
   // On a curve, the middle handle sits on the drawn curve, not on the chord.
   const curvedLine = d.features.at(-1), drawnCoords = curvedLine.geometry.coordinates;
   const middles = sources['atlas-drawing-handles'].data.features.filter(f => f.properties.mid && f.properties.drawing === curvedLine.id);
-  assert.ok(middles.every(f => drawnCoords.some(c => c[0] === f.geometry.coordinates[0] && c[1] === f.geometry.coordinates[1])), 'each middle handle is a point of the drawn line');
+  const nodes = editablePoints(curvedLine), flags = curvedLine.properties.curved;
+  for (const f of middles) {
+    const i = f.properties.after, [p, q] = [nodes[i], nodes[i + 1]], c = f.geometry.coordinates;
+    if (flags[i] || flags[i + 1]) assert.ok(drawnCoords.some(d => d[0] === c[0] && d[1] === c[1]), `segment ${i} (curve): a point of the drawn curve`);
+    else assert.deepEqual(c, [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2], `segment ${i} (straight): the chord's middle`);
+    // Its own stretch: between its two points (here the line runs one way in x).
+    assert.ok(c[0] <= Math.max(p[0], q[0]) + 1e-9 && c[0] >= Math.min(p[0], q[0]) - 1e-9, `segment ${i}: between its points`);
+  }
   // Clicking a segment's middle handle inserts a point there and selects it:
   // a curve point inside a curve, a corner on a straight.
   line = d.features.at(-1);
