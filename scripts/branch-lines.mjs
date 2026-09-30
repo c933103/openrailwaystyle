@@ -85,8 +85,10 @@ function electrification(tags) {
 // The mapped speed as written, as in OpenRailwayMap's speed_label: the
 // value with its unit (bare numbers are km/h), or "forward / backward" with a
 // dash for a direction not mapped.
+// Only numeric values: words such as "none" or "signals" are not speeds (the
+// panel would add km/h to them).
 export function speedLabel(tags) {
-  const clean = value => String(value ?? '').trim().replace(/\s*km\/h$/i, '');
+  const clean = value => { const text = String(value ?? '').trim().replace(/\s*km\/h$/i, ''); return /^\d+(\.\d+)?( ?mph)?$/i.test(text) ? text : ''; };
   if (clean(tags.maxspeed)) return clean(tags.maxspeed);
   const forward = clean(tags['maxspeed:forward']), backward = clean(tags['maxspeed:backward']);
   return forward || backward ? `${forward || '-'} / ${backward || '-'}` : undefined;
@@ -99,11 +101,13 @@ export function simplify(points, tolerance = 0.0005) {
   const stack = [[0, points.length - 1]];
   while (stack.length) {
     const [a, b] = stack.pop(), [ax, ay] = points[a], [bx, by] = points[b];
-    const dx = bx - ax, dy = by - ay, len = Math.hypot(dx, dy);
+    const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
     let far = -1, best = tolerance;
     for (let i = a + 1; i < b; i++) {
-      const [px, py] = points[i];
-      const d = len ? Math.abs(dy * px - dx * py + bx * ay - by * ax) / len : Math.hypot(px - ax, py - ay);
+      // Distance to the segment, not the infinite line: a way that doubles
+      // back (a switchback) keeps its far end.
+      const [px, py] = points[i], t = len2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2)) : 0;
+      const d = Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
       if (d > best) { best = d; far = i; }
     }
     if (far >= 0) { keep[far] = 1; stack.push([a, far], [far, b]); }

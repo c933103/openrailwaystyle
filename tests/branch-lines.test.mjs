@@ -35,6 +35,8 @@ test('branch-line tags become the fields of the detailed railway tiles', () => {
   assert.equal(trainProtection({'railway:pzb': 'yes', 'railway:lzb': 'yes'}), 'lzb', 'the more advanced system first');
   assert.equal(trainProtection({}), undefined);
   assert.deepEqual(simplify([[0, 0], [1, 0.0001], [2, 0]]), [[0, 0], [2, 0]]);
+  assert.deepEqual(simplify([[0, 0], [2, 0], [1, 0]]), [[0, 0], [2, 0], [1, 0]], 'a way that doubles back keeps its far end');
+  assert.equal(toFeatures({elements: [{type: 'way', id: 9, tags: {railway: 'rail', maxspeed: 'signals'}, geometry: [{lat: 0, lon: 0}, {lat: 0, lon: 1}]}]})[0].properties.speed_label, undefined, 'no label for a word');
 });
 
 test('branch-line table and tiles: z4–6 only, the style\'s fields and the OSM way id', () => {

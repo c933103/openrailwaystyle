@@ -119,10 +119,14 @@ if (!current.pending.length) {
   // A complete stage: its lines not returned this time were deleted or retagged.
   const before = [...table.values()].filter(f => f.stage === stage.name).length;
   const stale = [...table.values()].filter(f => f.stage === stage.name && !seen.has(f.id));
-  if (current.completed && before > 100 && stale.length > before * 0.2) throw new Error(`Refresh of ${stage.name} would remove ${stale.length} of ${before} lines`);
-  for (const f of stale) table.delete(f.id);
-  Object.assign(current, {completed: now, pending: null, seen: [], lines: before - stale.length});
-  console.log(`Stage ${stage.name} complete: ${current.lines} lines (${stale.length} removed)`);
+  // A refresh that would remove over a fifth of a stage's lines points to an
+  // incomplete response: the lines stay, and the stage is tried again at its
+  // next refresh (the run's downloads are still recorded).
+  const suspicious = current.completed && before > 100 && stale.length > before * 0.2;
+  if (suspicious) console.warn(`Refresh of ${stage.name} would remove ${stale.length} of ${before} lines; keeping them`);
+  else for (const f of stale) table.delete(f.id);
+  Object.assign(current, {completed: now, pending: null, seen: [], lines: before - (suspicious ? 0 : stale.length), ...(suspicious ? {kept: stale.length} : {kept: 0})});
+  console.log(`Stage ${stage.name} complete: ${current.lines} lines (${suspicious ? 0 : stale.length} removed)`);
 } else console.log(`Stage ${stage.name} continues next run (${current.pending.length} region(s) left): ${stopped}`);
 // With nothing fetched and no region split, an unavailable server leaves the
 // published data as it was.
