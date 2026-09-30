@@ -48,6 +48,16 @@ The workflow [crossings.yml](../.github/workflows/crossings.yml) keeps a worldwi
 
 Each website build copies the tiles (`5/` overview, `9/` detail), `index.json`, `manifest.json` and the ODbL table `crossings.tsv.gz` into `styles/data/level-crossings/`. Before the first snapshot exists the site deploys without them. See [rail-road rendering](rendering.md#rail-road-interfaces) for how they are drawn.
 
+## Branch-line snapshot
+
+OpenRailwayMap's zoom 0–6 tiles hold main lines only (`usage=main`), so branch lines (`usage=branch`, for example most JR local lines) appeared only from zoom 7. The workflow [branch-lines.yml](../.github/workflows/branch-lines.yml) keeps a worldwide table of operating branch lines (`railway=rail` or `narrow_gauge`, `usage=branch`, not service track), simplified to about 50 m, and publishes it with z4–6 tiles to `branch-data`, one commit replaced each time. `scripts/build-branch-lines.mjs` converts the tags to the fields of OpenRailwayMap's railway tiles (speed, current, gauge, loading gauge, first train protection system), so each view colours them as it colours the detailed tracks.
+
+- Regions are fetched in stages, in this order: Japan; the Koreas, Taiwan, Hong Kong, Macau and Guangdong; the rest of China; Russia; the rest of Europe; India; the rest of Asia; the US and Canada; the rest of the Americas; the rest of the world. Countries fetched in an earlier stage are left out of later downloads.
+- One stage per run, every six hours (minute 41), each run capped at 220 MB of downloads, with a 15-second pause between requests: under the public Overpass server's guidance of about 1 GB and 10,000 requests a day. A stage too large for one run continues in the next; a query that times out is split into quarters.
+- Once every stage is in, a run refreshes the stage checked longest ago when it is two weeks old, removing deleted and retagged lines; a refresh that would remove more than 20% of a stage's lines is not published.
+
+Each website build copies the tiles, `index.json`, `manifest.json` (stages, counts, last run) and the ODbL table `branch-lines.ndjson.gz` into `styles/data/branch-lines/`.
+
 ## Published data and caches
 
 | Location | Contents | Updated by |

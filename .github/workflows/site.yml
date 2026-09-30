@@ -87,6 +87,17 @@ jobs:
           else
             echo '{"tiles":[]}' > styles/data/level-crossings/index.json
           fi
+      # Operating branch lines for zooms 4–6 (branch-lines.yml), filled in
+      # region by region; without them the overview shows main lines only.
+      - name: Load branch lines
+        run: |
+          mkdir -p styles/data/branch-lines
+          if git ls-remote --exit-code --heads origin branch-data; then
+            git fetch --depth=1 origin branch-data
+            git archive FETCH_HEAD | tar -x -C styles/data/branch-lines --exclude=state.json
+          else
+            echo '{"tiles":[]}' > styles/data/branch-lines/index.json
+          fi
       - name: Install test browser
         run: npx playwright install --with-deps chromium
       - name: Start test server

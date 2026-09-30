@@ -41,6 +41,9 @@ const style = {
     crossings: vector('points_of_interest',15,18),
     crossingsOverview: {type:'vector',tiles:['crossingtiles://{z}/{x}/{y}'],minzoom:OVERVIEW_ZOOM,maxzoom:OVERVIEW_ZOOM,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     crossingsDetail: {type:'vector',tiles:['crossingtiles://{z}/{x}/{y}'],minzoom:DETAIL_ZOOM,maxzoom:DETAIL_ZOOM,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
+    // Operating branch lines for the overview zooms (branch-lines.yml):
+    // OpenRailwayMap's z0–6 tiles hold main lines only.
+    branchLines: {type:'vector',tiles:['branchtiles://{z}/{x}/{y}'],minzoom:4,maxzoom:6,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     streetRunning: {type:'vector',tiles:['streettiles://{z}/{x}/{y}'],minzoom:12,maxzoom:12,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     contours: {type:'vector',tiles:['atlas-contour://{z}/{x}/{y}'],minzoom:7,maxzoom:15},
     // Seabed contours (see contourOptions in map-model.mjs). The elevation
@@ -129,6 +132,9 @@ for (const [mode, source, sourceLayer, color] of [
   ['gauge', 'gaugeLow', 'track_railway_line_low', gaugePaint()],
   ['loading', 'loadingLow', 'standard_railway_line_low', loadingPaint()],
 ]) {
+  // Branch lines from zoom 4, under the main lines, in the same colours
+  // (their tiles carry the fields of the detailed railway tiles).
+  addLine(`${mode}-branch-overview`, 'branchLines', 'branch_lines', 4, 7, color);
   addLine(`${mode}-overview`, source, sourceLayer, 0, 7, color);
   addLine(`${mode}-tracks`, 'railway', 'railway_line_high', 7, undefined, color, {
     'line-opacity': mode === 'infrastructure' ? 1 : ['case', ['==', ['get', 'tunnel'], true], 0.65, 1],

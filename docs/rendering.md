@@ -20,6 +20,10 @@ Major stations appear from zoom 6. From zoom 7, regional stations use the provid
 
 Before zoom 12 a marker and its name are placed together with collision detection. From zoom 12 individual markers remain visible when labels collide. Worldwide coverage means global source coverage, not a guarantee that every railway, station or speed is mapped.
 
+## Branch lines at overview zooms
+
+Below zoom 7 the provider's tiles hold main lines only. From zoom 4 the atlas adds operating branch lines from its own [branch-line snapshot](data-maintenance.md#branch-line-snapshot), drawn under the main lines in the same colours, so a line such as the Ban'etsu West Line no longer disappears when zooming out. The snapshot is filled region by region (Japan first); regions not yet fetched show main lines only below zoom 7. Train protection on these lines is read from the `railway:<system>` tags, approximating the provider's own choice of first system.
+
 ## Railway structures and track counts
 
 Bridge outlines and tunnel dashes from zoom 7 (the upstream zoom 0–6 overview tiles carry no bridge or tunnel data); click a railway for recorded speed, voltage, frequency, gauge and operator.

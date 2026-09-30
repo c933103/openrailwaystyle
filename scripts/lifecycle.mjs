@@ -16,8 +16,9 @@ export function parseMaxspeed(tags, state) {
   for (const prefix of [`${state}:`, '']) {
     const direct = kmh(tags[`${prefix}maxspeed`]);
     if (Number.isFinite(direct)) return Math.round(direct);
-    const directional = Math.max(kmh(tags[`${prefix}maxspeed:forward`]), kmh(tags[`${prefix}maxspeed:backward`]));
-    if (Number.isFinite(directional)) return Math.round(directional);
+    // Either direction alone counts (Math.max with a missing one is NaN).
+    const directional = [kmh(tags[`${prefix}maxspeed:forward`]), kmh(tags[`${prefix}maxspeed:backward`])].filter(Number.isFinite);
+    if (directional.length) return Math.round(Math.max(...directional));
   }
   return undefined;
 }
