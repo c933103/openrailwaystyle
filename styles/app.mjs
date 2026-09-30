@@ -1,10 +1,10 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20260930-3';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260930-3';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20260930-5';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260930-5';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20260930-3';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20260930-3';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20260930-3';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260930-3';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20260930-5';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20260930-5';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20260930-5';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260930-5';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -34,7 +34,7 @@ const settings = readSettings(location.search, {language: readCookie(LANGUAGE_CO
 const status = $('map-status');
 let legendHelpOpen = false;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260930-3';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260930-5';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -125,7 +125,7 @@ const IN_VIEW = {
 function updateInView() {
   const describe = IN_VIEW[settings.mode];
   if (!ready || !describe) return;
-  const layers = [`${settings.mode}-overview`, `${settings.mode}-tracks`].filter(id => map.getLayer(id));
+  const layers = [`${settings.mode}-branch-overview`, `${settings.mode}-overview`, `${settings.mode}-tracks`].filter(id => map.getLayer(id));
   const counts = new Map();
   for (const f of map.queryRenderedFeatures({layers})) {
     const described = describe(f.properties);
@@ -255,7 +255,7 @@ function applySettings() {
 const featurePickRank = f => f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading)-labels$/;
 const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-crossing-dots','infrastructure-crossing-marks','infrastructure-street-running'];
-const isClickable = id => INFRASTRUCTURE_POINTS.includes(id) || id.startsWith('context-') || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading)-(tracks|overview)$/.test(id);
+const isClickable = id => INFRASTRUCTURE_POINTS.includes(id) || id.startsWith('context-') || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading)-(tracks|overview|branch-overview)$/.test(id);
 function row(dl, label, value) {
   if (value === undefined || value === null || value === '') return;
   dl.append(textNode('dt', label), textNode('dd', String(value)));
@@ -458,7 +458,7 @@ function gauge(value) {
 // Units change speed colours and labels, contour intervals and the scale bar.
 function unitStyle(style) {
   for (const layer of style.layers) {
-    if (/^speed-(overview|tracks)$/.test(layer.id)) layer.paint['line-color'] = speedPaint(settings.units);
+    if (/^speed-(branch-overview|overview|tracks)$/.test(layer.id)) layer.paint['line-color'] = speedPaint(settings.units);
     if (layer.id === 'speed-labels') layer.layout['text-field'] = speedLabel(settings.units);
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) layer.paint['line-color'] = inactivePaint(settings.mode, settings.units);
     if (/^terrain-(seabed-)?contour-labels/.test(layer.id)) layer.layout['text-field'] = ['concat', ['to-string', ['get','ele']], settings.units === 'imperial' ? ' ft' : ' m'];
@@ -485,7 +485,7 @@ function applyUnits() {
   const style = {layers: map.getStyle().layers, sources: {contours: {}, seabedContours: {}, seabedContoursClose: {}}};
   unitStyle(style);
   for (const layer of style.layers) {
-    if (/^speed-(overview|tracks)$/.test(layer.id) || (/^inactive-(regional|railways)-/.test(layer.id) && !layer.id.includes('bridge'))) map.setPaintProperty(layer.id, 'line-color', layer.paint['line-color']);
+    if (/^speed-(branch-overview|overview|tracks)$/.test(layer.id) || (/^inactive-(regional|railways)-/.test(layer.id) && !layer.id.includes('bridge'))) map.setPaintProperty(layer.id, 'line-color', layer.paint['line-color']);
     if (layer.id === 'speed-labels' || /^terrain-(seabed-)?contour-labels/.test(layer.id)) map.setLayoutProperty(layer.id, 'text-field', layer.layout['text-field']);
   }
   map.getSource('contours')?.setTiles(style.sources.contours.tiles);
@@ -758,8 +758,8 @@ async function initialize() {
   installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url)});
   dem = new mlcontour.DemSource({url:DEM_URL,encoding:'terrarium',maxzoom:15,worker:true,cacheSize:200,timeoutMs:20000,id:'atlas'});
   dem.setupMaplibre(maplibregl);
-  // Level crossings carry no names: their tiles are served as stored.
-  for (const [scheme,folder,names = true] of [['railtiles','lifecycle'],['streettiles','street-running'],['crossingtiles','level-crossings',false]]) {
+  // Level crossings and branch lines are served as stored (no label names).
+  for (const [scheme,folder,names = true] of [['railtiles','lifecycle'],['streettiles','street-running'],['crossingtiles','level-crossings',false],['branchtiles','branch-lines',false]]) {
   const lifecycleRoot = new URL(`./data/${folder}/`, import.meta.url);
   let tileIndex;
   maplibregl.addProtocol(scheme, async (params, controller) => {
@@ -934,7 +934,7 @@ async function initialize() {
   }});
   syncPanning = globeDrag.sync; globeDragged = globeDrag.justDragged;
   syncPanning();
-  map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'loadingLow', 'railway'].includes(e.sourceId) && e.tile) scheduleLegend(); });
+  map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'loadingLow', 'railway', 'branchLines'].includes(e.sourceId) && e.tile) scheduleLegend(); });
   map.on('click', event => {
     // The release that ends a globe drag is not a click.
     if (globeDragged()) return;

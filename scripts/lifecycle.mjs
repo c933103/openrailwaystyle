@@ -3,7 +3,9 @@ const TRACKS = ['rail', 'narrow_gauge', 'light_rail', 'subway', 'tram', 'monorai
 // Recorded limit in km/h: the lifecycle-prefixed tag first (e.g. a planned
 // construction:maxspeed), then maxspeed, then the larger directional one.
 // Values such as 'none' or 'signals' are not numeric and are left out.
-export function parseMaxspeed(tags, state) {
+// exact: keep the converted value (to 0.001 km/h) rather than whole km/h.
+export function parseMaxspeed(tags, state, exact = false) {
+  const round = value => exact ? Math.round(value * 1000) / 1000 : Math.round(value);
   const kmh = value => {
     const speeds = String(value ?? '').split(';').map(part => {
       const m = /^\s*(\d+(?:\.\d+)?)\s*(mph|km\/h|kmh|kph|knots)?\s*$/i.exec(part);
@@ -15,9 +17,10 @@ export function parseMaxspeed(tags, state) {
   };
   for (const prefix of [`${state}:`, '']) {
     const direct = kmh(tags[`${prefix}maxspeed`]);
-    if (Number.isFinite(direct)) return Math.round(direct);
-    const directional = Math.max(kmh(tags[`${prefix}maxspeed:forward`]), kmh(tags[`${prefix}maxspeed:backward`]));
-    if (Number.isFinite(directional)) return Math.round(directional);
+    if (Number.isFinite(direct)) return round(direct);
+    // Either direction alone counts (Math.max with a missing one is NaN).
+    const directional = [kmh(tags[`${prefix}maxspeed:forward`]), kmh(tags[`${prefix}maxspeed:backward`])].filter(Number.isFinite);
+    if (directional.length) return round(Math.max(...directional));
   }
   return undefined;
 }

@@ -2,7 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import {roadLayers, constraintLayers} from './planning-style.mjs';
 import {contextLayers} from './context-style.mjs';
 import {OVERVIEW_ZOOM, DETAIL_ZOOM} from './crossing-data.mjs';
-import { ORM, LIFECYCLE_PATTERNS, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, loadingLabel, trainProtectionShort, TRAIN_PROTECTION, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
+import { ORM, LIGHT_MODES, MINOR_MODES, LIFECYCLE_PATTERNS, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, loadingLabel, trainProtectionShort, TRAIN_PROTECTION, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
 
 // Keep the Hack4Rail base-map design and replace its Europe-only rail source.
 const original = JSON.parse(await readFile(new URL('../styles/default.style.json', import.meta.url)));
@@ -41,6 +41,9 @@ const style = {
     crossings: vector('points_of_interest',15,18),
     crossingsOverview: {type:'vector',tiles:['crossingtiles://{z}/{x}/{y}'],minzoom:OVERVIEW_ZOOM,maxzoom:OVERVIEW_ZOOM,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     crossingsDetail: {type:'vector',tiles:['crossingtiles://{z}/{x}/{y}'],minzoom:DETAIL_ZOOM,maxzoom:DETAIL_ZOOM,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
+    // Operating branch lines for the overview zooms (branch-lines.yml):
+    // OpenRailwayMap's z0–6 tiles hold main lines only.
+    branchLines: {type:'vector',tiles:['branchtiles://{z}/{x}/{y}'],minzoom:4,maxzoom:6,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     streetRunning: {type:'vector',tiles:['streettiles://{z}/{x}/{y}'],minzoom:12,maxzoom:12,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     contours: {type:'vector',tiles:['atlas-contour://{z}/{x}/{y}'],minzoom:7,maxzoom:15},
     // Seabed contours (see contourOptions in map-model.mjs). The elevation
@@ -121,6 +124,9 @@ const halfWidth = ['interpolate', ['linear'], ['zoom'],
 const dualOffset = sign => ['interpolate', ['linear'], ['zoom'],
   7, ['case', isDual, 0.4 * sign, 0], 11, ['case', isDual, ['case', hasService, 0.275 * sign, 0.7 * sign], 0],
   16, ['case', isDual, ['case', hasService, 0.5 * sign, 1.2 * sign], 0], 20, ['case', isDual, 1.75 * sign, 0]];
+// Branch lines at zooms 4–7 are split the same way (the overview width).
+const branchHalfWidth = ['interpolate', ['linear'], ['zoom'], 4, ['case', isDual, 0.575, 1.15], 7, ['case', isDual, 0.9, 1.8]];
+const branchDualOffset = sign => ['interpolate', ['linear'], ['zoom'], 4, ['case', isDual, 0.2875 * sign, 0], 7, ['case', isDual, 0.45 * sign, 0]];
 for (const [mode, source, sourceLayer, color] of [
   ['infrastructure', 'network', 'standard_railway_line_low', infrastructurePaint],
   ['speed', 'speed', 'speed_railway_line_low', speedPaint],
@@ -129,6 +135,15 @@ for (const [mode, source, sourceLayer, color] of [
   ['gauge', 'gaugeLow', 'track_railway_line_low', gaugePaint()],
   ['loading', 'loadingLow', 'standard_railway_line_low', loadingPaint()],
 ]) {
+  // Branch lines from zoom 4, under the main lines, in the same colours
+  // (their tiles carry the fields of the detailed railway tiles).
+  addLine(`${mode}-branch-overview`, 'branchLines', 'branch_lines', 4, 7, color,
+    mode === 'gauge' ? {'line-width': branchHalfWidth, 'line-offset': branchDualOffset(-1)} : {});
+  // The second gauge of a branch line, also under the main lines.
+  if (mode === 'gauge') style.layers.push({id:'gauge-branch-dual', type:'line', source:'branchLines', 'source-layer':'branch_lines', minzoom:4, maxzoom:7,
+    filter:['all', present, notFerry, isDual],
+    layout:{'line-cap':'butt','line-join':'round'},
+    paint:{'line-color':gaugePaint(1), 'line-width':branchHalfWidth, 'line-offset':branchDualOffset(1)}});
   addLine(`${mode}-overview`, source, sourceLayer, 0, 7, color);
   addLine(`${mode}-tracks`, 'railway', 'railway_line_high', 7, undefined, color, {
     'line-opacity': mode === 'infrastructure' ? 1 : ['case', ['==', ['get', 'tunnel'], true], 0.65, 1],
@@ -238,14 +253,31 @@ valueLabel('loading-labels', ['has', 'loading_gauge'], loadingLabel());
 // zoom-7 tiles; 7 and above: all.
 const stationSelection = ['any', ['>=', ['zoom'], 6], ['==', ['get','station_size'], 'large']];
 const zoom6Small = ['any', ['>=', ['zoom'], 7], ['!', ['match', ['get','station_size'], ['large','normal'], true, false]]];
+// By mode, as the detailed tiles give it: metro stations appear from zoom 10,
+// before light rail and people movers (11) and trams, funiculars and
+// monorails (12; tram stops 13), so a high-capacity metro is never outranked
+// on screen by a tram stop that appears earlier.
+const stationMode = ['coalesce', ['get','station'], ''];
 const stationFeatures = ['all', present,
   ['any', ['==', ['get','feature'], 'station'], ['all', ['>=', ['zoom'], 11], ['==', ['get','feature'], 'halt']], ['all', ['>=', ['zoom'], 13], ['==', ['get','feature'], 'tram_stop']]],
-  ['any', ['>=', ['zoom'], 11], ['!', ['match', ['get','station'], ['subway','light_rail','monorail'], true, false]]],
+  ['case',
+    ['==', stationMode, 'subway'], ['>=', ['zoom'], 10],
+    ['match', stationMode, LIGHT_MODES, true, false], ['>=', ['zoom'], 11],
+    ['match', stationMode, MINOR_MODES, true, false], ['>=', ['zoom'], 12],
+    true],
 ];
+// Size by mode as well as by the provider's station size (which counts routes,
+// so a busy people mover can be "large" and most metro stations "small"):
+// heavy rail and metro by station size; light rail and people movers one step
+// smaller than any metro station; trams, funiculars and monorails smaller still.
+const modeClass = ['case', ['==', ['get','feature'], 'tram_stop'], 'minor',
+  ['match', stationMode, MINOR_MODES, true, false], 'minor', ['match', stationMode, LIGHT_MODES, true, false], 'light', 'major'];
+const bySize = (large, normal, small, light, minor) => ['match', modeClass, 'minor', minor, 'light', light,
+  ['match', ['get', 'station_size'], 'large', large, 'normal', normal, small]];
 const stationText = {
   'text-field': labelExpression('local', true), 'text-font': ['Noto Sans Bold'],
-  'text-size': ['interpolate', ['linear'], ['zoom'], 4, 12, 6, 14, 10, ['match', ['get', 'station_size'], 'large', 16, 'normal', 15, 14], 18, 18],
-  'symbol-sort-key': ['match', ['get', 'station_size'], 'large', 0, 'normal', 1, 2],
+  'text-size': ['interpolate', ['linear'], ['zoom'], 4, 12, 6, 14, 10, bySize(16, 15, 14, 13, 12), 18, bySize(18, 18, 17.5, 16, 15)],
+  'symbol-sort-key': bySize(0, 1, 2, 3, 4),
   'text-variable-anchor': ['top', 'bottom', 'left', 'right'], 'text-radial-offset': 0.7,
   'text-padding': ['step', ['zoom'], 14, 9, 9, 12, 4], 'text-max-width': 9, 'text-allow-overlap': false,
 };
@@ -279,22 +311,25 @@ for (const [tier, filter] of tiers) for (const [source, layer, minzoom, maxzoom]
   style.layers.push({
     id: `station-${source}-${tier}-names`, type: 'symbol', source, 'source-layer': layer, minzoom, maxzoom,
     filter: ['all', filter, ...(source === 'stations' ? [stationSelection, stationFeatures] : source === 'stationMed' ? [zoom6Small] : [stationSelection])],
-    layout: { ...stationText, 'icon-image': 'station-dot', 'icon-size': ['interpolate', ['linear'], ['zoom'], 4, 0.8, 6, 0.95, 11, 1.15],
+    layout: { ...stationText, 'icon-image': 'station-dot', 'icon-size': ['interpolate', ['linear'], ['zoom'], 4, 0.8, 6, 0.95, 11, bySize(1.25, 1.15, 1.05, 0.9, 0.8)],
       'icon-padding': 12, 'icon-allow-overlap': false, 'icon-ignore-placement': false, 'icon-optional': false, 'text-optional': false },
     paint: stationInk,
   });
 }
-style.layers.push({
-  id: 'station-stations-dots', type: 'circle', source: 'stations', 'source-layer': 'standard_railway_text_stations', minzoom: 12,
-  filter: stationFeatures,
-  paint: { 'circle-color': '#ffa323', 'circle-stroke-color': '#123e52', 'circle-stroke-width': 1.5,
-    'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, ['match', ['get', 'station_size'], 'large', 5, 'normal', 4, 3], 17, ['match', ['get', 'station_size'], 'large', 7, 'normal', 5.5, 4]] },
-});
-// Former, disused and planned stations rank last, from zoom 12, muted.
+// Former, disused and planned stations rank last, from zoom 12, muted; their
+// dots lie under the operating stations' dots.
 style.layers.push({
   id: 'station-former-dots', type: 'circle', source: 'stations', 'source-layer': 'standard_railway_text_stations', minzoom: 12,
   filter: ['all', ['!', current], ['match', ['get','feature'], ['station','halt'], true, false]],
   paint: { 'circle-color': '#fffef8', 'circle-stroke-color': '#8a8076', 'circle-stroke-width': 1.5, 'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 3, 17, 4.5] },
+});
+style.layers.push({
+  id: 'station-stations-dots', type: 'circle', source: 'stations', 'source-layer': 'standard_railway_text_stations', minzoom: 12,
+  filter: stationFeatures,
+  // Where dots meet, the higher-capacity station's is drawn on top.
+  layout: {'circle-sort-key': bySize(4, 3, 2, 1, 0)},
+  paint: { 'circle-color': '#ffa323', 'circle-stroke-color': '#123e52', 'circle-stroke-width': 1.5,
+    'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, bySize(5, 4, 3.2, 2.7, 2.3), 17, bySize(7, 5.5, 4.5, 3.8, 3.2)] },
 });
 style.layers.push({
   id: 'station-former-names', type: 'symbol', source: 'stations', 'source-layer': 'standard_railway_text_stations', minzoom: 12,

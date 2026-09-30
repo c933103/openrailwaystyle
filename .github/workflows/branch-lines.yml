@@ -1,0 +1,75 @@
+name: Build operating branch lines
+on:
+  workflow_dispatch:
+  # Every six hours: one region stage per run (Japan first), each capped at
+  # 220 MB of Overpass downloads, so a day stays under the public server's
+  # guidance of about 1 GB. Once every region is in, a run refreshes the
+  # region checked longest ago when it is two weeks old, and otherwise ends
+  # without downloading anything.
+  schedule:
+    - cron: '41 */6 * * *'
+  push:
+    branches: [main]
+    paths: ['scripts/build-branch-lines.mjs', 'scripts/branch-lines.mjs', '.github/workflows/branch-lines.yml']
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: branch-data
+  cancel-in-progress: false
+jobs:
+  stage:
+    # Only main publishes the shared snapshot (branches and manual runs
+    # started from other refs never replace it).
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Load the previous table
+        run: |
+          # Exit status 2 means no such branch (the first run); any other
+          # failure stops the run, so an unreachable remote never leads to a
+          # fresh table published over the worldwide one.
+          status=0
+          git ls-remote --exit-code --heads origin branch-data || status=$?
+          if [ "$status" = 0 ]; then
+            git fetch --depth=1 origin branch-data
+            mkdir -p /tmp/previous-branch
+            git --work-tree=/tmp/previous-branch checkout FETCH_HEAD -- branch-lines.ndjson.gz state.json
+          elif [ "$status" != 2 ]; then
+            echo "Could not look up the branch-data snapshot (git exit $status)"
+            exit 1
+          fi
+      - name: Fetch the next region from OpenStreetMap
+        id: build
+        run: |
+          if [ -f /tmp/previous-branch/state.json ]; then export PREVIOUS_DATA=/tmp/previous-branch; fi
+          node scripts/build-branch-lines.mjs
+      - name: Publish the table and tiles
+        if: steps.build.outputs.publish == 'true'
+        run: |
+          mkdir /tmp/branch-publish
+          cd /tmp/branch-publish
+          git init
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # One commit, replaced each time: its history is not needed.
+          git checkout --orphan branch-data
+          cp -r "$GITHUB_WORKSPACE/branch-data/." .
+          git add .
+          git commit -q -m "Operating branch lines $(date -u +%Y-%m-%dT%H:%MZ)"
+          if ! git push --force origin HEAD:branch-data; then
+            test "$(git ls-remote origin refs/heads/branch-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
+      - name: Redeploy the site with the new lines
+        if: steps.build.outputs.redeploy == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site.yml --ref main

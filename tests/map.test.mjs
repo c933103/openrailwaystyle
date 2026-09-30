@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {featureFilter} from '@maplibre/maplibre-gl-style-spec';
-import { SPEED_BANDS, UNKNOWN_COLOR, numericSpeed, speedColor, formatSpeed, readSettings, osmObject } from '../styles/map-model.mjs';
+import * as styleSpec from '@maplibre/maplibre-gl-style-spec';
+import { SPEED_BANDS, UNKNOWN_COLOR, numericSpeed, speedColor, formatSpeed, stationRank, readSettings, osmObject } from '../styles/map-model.mjs';
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
 
 test('unknown speed is never turned into zero, low speed, or high-speed-class inference', () => {
@@ -20,13 +21,19 @@ test('all speed bands have correct inclusive boundaries', () => {
   }
   assert.equal(speedColor(500), SPEED_BANDS.at(-1).color);
 });
-test('source mph and directional speed labels are preserved', () => {
+test('source mph and directional speed labels are preserved', async () => {
   // Brackets only for a converted value.
   assert.deepEqual(formatSpeed({ maxspeed: 160.9344, speed_label: '100 mph' }), { mapped: '160.9 km/h (100 mph)', tagged: '100 mph' });
   assert.equal(formatSpeed({ maxspeed: 160.9344, speed_label: '100 mph' }, 'imperial').mapped, '100 mph');
   assert.equal(formatSpeed({ maxspeed: 160, speed_label: '160' }).mapped, '160 km/h');
   assert.equal(formatSpeed({ maxspeed: 160, speed_label: '160' }, 'imperial').mapped, '99.4 mph (160 km/h)');
   assert.equal(formatSpeed({ maxspeed: 160, speed_label: '160 / 120' }).tagged, '160 / 120 km/h');
+  assert.equal(formatSpeed({ maxspeed: 56, speed_label: '30 knots' }).tagged, '30 knots');
+  assert.deepEqual([{station: 'subway', station_size: 'small'}, {station: 'tram', station_size: 'large'}, {feature: 'tram_stop'}, {station: 'light_rail', station_size: 'large'}, {station: 'train', station_size: 'large'}]
+    .map(stationRank), [2, 4, 4, 3, 0], 'a clicked metro station is chosen over a large tram stop, as drawn');
+  assert.ok(stationRank({station: 'train', station_size: 'large', state: 'abandoned'}) > stationRank({feature: 'tram_stop'}), 'former stations after every operating one');
+  const layerIds = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url))).layers.map(l => l.id);
+  assert.ok(layerIds.indexOf('station-former-dots') < layerIds.indexOf('station-stations-dots'), 'former station dots drawn under operating ones, as clicks pick them');
   assert.equal(formatSpeed({ maxspeed: 80.4672, speed_label: '50 mph (30 mph)' }).tagged, '50 mph (30 mph)');
   assert.equal(formatSpeed({ speed_label: '- / 80' }).tagged, '- / 80 km/h');
 });
@@ -83,8 +90,27 @@ test('regional stations have collision-aware markers and progressive size thresh
   assert.equal(shown(10, {station_size:'small'}),true);
   assert.equal(shown(10, {station_size:'small',feature:'halt'}),false);
   assert.equal(shown(11, {station_size:'small',feature:'halt'}),true);
-  assert.equal(shown(10, {station_size:'large',station:'subway'}),false);
-  assert.equal(shown(11, {station_size:'large',station:'subway'}),true);
+  // Metro before light rail and people movers, before trams (never the reverse).
+  assert.equal(shown(9.9, {station_size:'large',station:'subway'}),false);
+  assert.equal(shown(10, {station_size:'small',station:'subway'}),true);
+  assert.equal(shown(10.9, {station_size:'large',station:'light_rail'}),false);
+  assert.equal(shown(11, {station_size:'large',station:'light_rail'}),true);
+  assert.equal(shown(11.9, {station_size:'normal',station:'tram'}),false);
+  assert.equal(shown(12, {station_size:'normal',station:'tram'}),true);
+  assert.equal(shown(11.9, {station_size:'small',station:'monorail'}),false);
+  // Sized by mode: the smallest metro station outranks a "large" people mover
+  // or tram station, in name size, label priority and marker size.
+  const names = style.layers.find(l => l.id === 'station-detail-metro-names');
+  const sizeAt = (layerId, key, zoom, properties) => {
+    const layer = style.layers.find(l => l.id === layerId), value = (layer.layout[key] ?? layer.paint[key]);
+    return styleSpec.expression.createPropertyExpression(value, styleSpec.latest[layer.type === 'circle' ? (key === 'circle-radius' ? 'paint_circle' : 'layout_circle') : 'layout_symbol'][key]).value.evaluate({zoom}, {type:1, properties});
+  };
+  const metroSmall = {state:'present', feature:'station', station:'subway', station_size:'small'};
+  const moverLarge = {state:'present', feature:'station', station:'light_rail', station_size:'large'};
+  const tramLarge = {state:'present', feature:'station', station:'tram', station_size:'large'};
+  for (const [id, key, better] of [['station-detail-metro-names','text-size',(a,b)=>a>b], ['station-detail-metro-names','symbol-sort-key',(a,b)=>a<b], ['station-stations-dots','circle-radius',(a,b)=>a>b], ['station-stations-dots','circle-sort-key',(a,b)=>a>b]])
+    for (const other of [moverLarge, tramLarge]) assert.ok(better(sizeAt(id, key, 14, metroSmall), sizeAt(id, key, 14, other)), `${key}: metro over ${other.station}`);
+  assert.ok(names);
   assert.equal(shown(12.9, {feature:'tram_stop'}),false);
   assert.equal(shown(13, {feature:'tram_stop'}),true);
   for (const layer of layers) {

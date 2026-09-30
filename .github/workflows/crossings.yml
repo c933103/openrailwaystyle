@@ -6,7 +6,7 @@ on:
   schedule:
     - cron: '17 4 * * 0'
   push:
-    branches: [main, claude/vigilant-hamilton-hmk1xn]
+    branches: [main]
     paths: ['scripts/build-crossings.mjs', 'scripts/crossing-data.mjs', '.github/workflows/crossings.yml']
 permissions:
   contents: write
@@ -16,6 +16,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   snapshot:
+    # Only main publishes the shared snapshot (branches and manual runs
+    # started from other refs never replace it).
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     # The first run fetches the whole world one region at a time.
     timeout-minutes: 180
@@ -57,7 +60,6 @@ jobs:
             test "$(git ls-remote origin refs/heads/crossing-data | cut -f1)" = "$(git rev-parse HEAD)"
           fi
       - name: Redeploy the site with refreshed data
-        if: github.event_name == 'schedule' || github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run site.yml --ref main
