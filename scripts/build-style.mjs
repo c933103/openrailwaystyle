@@ -317,14 +317,16 @@ style.layers.splice(roadIndex,0,...roads.roads);
 // class colours on top. Separate from bridge parapets and lifecycle dashes.
 const streetIndex=style.layers.findIndex(l=>l.id==='infrastructure-tracks');
 style.layers.splice(streetIndex,0,{id:'infrastructure-street-running',type:'line',source:'streetRunning','source-layer':'street_running',minzoom:13,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#b68f55','line-width':['interpolate',['linear'],['zoom'],13,7,18,14],'line-opacity':0.65}});
-// Level crossings as dots from zoom 5 (the project's own worldwide tiles,
-// crossings.yml): an overview multipoint set to zoom 8, one point per
-// crossing from 9; from 15 the provider's × symbols with equipment details.
-const crossingDot = (id, source, minzoom, maxzoom) => ({id, type:'circle', source, 'source-layer':'level_crossings', minzoom, maxzoom, layout:{},
-  paint:{'circle-color':['match',['get','kind'],'foot','#a0704a','#63332c'],
-    'circle-radius':['interpolate',['linear'],['zoom'],5,0.9,8,1.4,11,2.2,14,3.4],
-    'circle-stroke-color':'#fffef8','circle-stroke-width':['interpolate',['linear'],['zoom'],9,0,11,0.8],'circle-opacity':0.9}});
-style.layers.push(crossingDot('infrastructure-crossing-overview','crossingsOverview',OVERVIEW_ZOOM,DETAIL_ZOOM), crossingDot('infrastructure-crossing-dots','crossingsDetail',DETAIL_ZOOM,15));
+// Level crossings from zoom 5 (the project's own worldwide tiles,
+// crossings.yml): dots from the overview multipoint set to zoom 9, where one
+// could not read a cross; then a small × per crossing, all drawn (no
+// collision placement); from 15 the provider's × symbols with equipment details.
+const crossingColor = ['match',['get','kind'],'foot','#a0704a','#63332c'];
+style.layers.push({id:'infrastructure-crossing-overview', type:'circle', source:'crossingsOverview', 'source-layer':'level_crossings', minzoom:OVERVIEW_ZOOM, maxzoom:DETAIL_ZOOM, layout:{},
+  paint:{'circle-color':crossingColor, 'circle-radius':['interpolate',['linear'],['zoom'],5,0.9,8,1.4,9,1.6], 'circle-opacity':0.9}});
+style.layers.push({id:'infrastructure-crossing-dots', type:'symbol', source:'crossingsDetail', 'source-layer':'level_crossings', minzoom:DETAIL_ZOOM, maxzoom:15,
+  layout:{'icon-image':'crossing-x', 'icon-size':['interpolate',['linear'],['zoom'],9,0.6,12,0.8,14.99,1], 'icon-allow-overlap':true, 'icon-ignore-placement':true},
+  paint:{'icon-color':crossingColor, 'icon-halo-color':'#fffef8', 'icon-halo-width':['interpolate',['linear'],['zoom'],9,0.6,12,1.2], 'icon-opacity':0.95}});
 style.layers.push({id:'infrastructure-level-crossings',type:'symbol',source:'crossings','source-layer':'points_of_interest',minzoom:15,filter:['==',['get','type'],'level_crossing'],layout:{'text-field':'×','text-font':['Noto Sans Bold'],'text-size':23,'text-allow-overlap':false,'text-padding':2},paint:{'text-color':'#63332c','text-halo-color':'#fffef8','text-halo-width':2}});
 const contextIndex = style.layers.findIndex(l => l.id === 'terrain-contours');
 // Ordinary buildings provide faint street-scale context independently of the

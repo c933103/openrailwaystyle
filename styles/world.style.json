@@ -11277,13 +11277,22 @@
           0.9,
           8,
           1.4,
-          11,
-          2.2,
-          14,
-          3.4
+          9,
+          1.6
         ],
-        "circle-stroke-color": "#fffef8",
-        "circle-stroke-width": [
+        "circle-opacity": 0.9
+      }
+    },
+    {
+      "id": "infrastructure-crossing-dots",
+      "type": "symbol",
+      "source": "crossingsDetail",
+      "source-layer": "level_crossings",
+      "minzoom": 9,
+      "maxzoom": 15,
+      "layout": {
+        "icon-image": "crossing-x",
+        "icon-size": [
           "interpolate",
           [
             "linear"
@@ -11292,25 +11301,18 @@
             "zoom"
           ],
           9,
-          0,
-          11,
-          0.8
+          0.6,
+          12,
+          0.8,
+          14.99,
+          1
         ],
-        "circle-opacity": 0.9
-      }
-    },
-    {
-      "id": "infrastructure-crossing-dots",
-      "type": "circle",
-      "source": "crossingsDetail",
-      "source-layer": "level_crossings",
-      "minzoom": 9,
-      "maxzoom": 15,
-      "layout": {
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
         "visibility": "none"
       },
       "paint": {
-        "circle-color": [
+        "icon-color": [
           "match",
           [
             "get",
@@ -11320,25 +11322,8 @@
           "#a0704a",
           "#63332c"
         ],
-        "circle-radius": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          5,
-          0.9,
-          8,
-          1.4,
-          11,
-          2.2,
-          14,
-          3.4
-        ],
-        "circle-stroke-color": "#fffef8",
-        "circle-stroke-width": [
+        "icon-halo-color": "#fffef8",
+        "icon-halo-width": [
           "interpolate",
           [
             "linear"
@@ -11347,11 +11332,11 @@
             "zoom"
           ],
           9,
-          0,
-          11,
-          0.8
+          0.6,
+          12,
+          1.2
         ],
-        "circle-opacity": 0.9
+        "icon-opacity": 0.95
       }
     },
     {
