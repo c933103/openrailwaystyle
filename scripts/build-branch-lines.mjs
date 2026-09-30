@@ -150,7 +150,9 @@ if (!fetchedBoxes && !splitBoxes && stopped) {
   console.warn(`Nothing fetched (${stopped}); recording ${downloaded} bytes downloaded`);
 }
 
-state.runs.push({at: now, bytes: downloaded});
+// Stamped when the downloads end, so the bytes stay in the 24-hour window
+// for a full day after they were last downloaded.
+state.runs.push({at: new Date().toISOString().replace(/\.\d+Z$/, 'Z'), bytes: downloaded});
 await rm(out, {recursive: true, force: true});
 await mkdir(out, {recursive: true});
 await writeFile(new URL('branch-lines.ndjson.gz', out), gzipSync(writeTable(table), {level: 9}));
