@@ -119,7 +119,9 @@ export function speedLabel(tags) {
 // direction's limit is its speed; otherwise the faster direction's.
 export function speedTags(tags) {
   const preferred = tags['railway:preferred_direction'];
-  if (tags.maxspeed || !['forward', 'backward'].includes(preferred) || parseMaxspeed({maxspeed: tags[`maxspeed:${preferred}`]}, 'present', true) === undefined) return tags;
+  const numeric = value => parseMaxspeed({maxspeed: value}, 'present', true) !== undefined;
+  // A plain limit applies when it is numeric (a word such as "signals" is not).
+  if (numeric(tags.maxspeed) || !['forward', 'backward'].includes(preferred) || !numeric(tags[`maxspeed:${preferred}`])) return tags;
   return {maxspeed: tags[`maxspeed:${preferred}`]};
 }
 // The unit of the value the speed comes from: a label can mix units
