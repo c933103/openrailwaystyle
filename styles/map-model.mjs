@@ -474,7 +474,8 @@ export function formatSpeed(properties, units = 'metric') {
   const kmh = n === null ? '' : `${Number(n.toFixed(1))} km/h`, mph = n === null ? '' : `${Number((n / MPH).toFixed(1))} mph`;
   // In the chosen units; the mapped value follows in brackets only when it
   // was in the other unit (converted), as a label in mph is.
-  const inMph = /mph/.test(raw || ''), shown = units === 'imperial' ? mph : kmh, source = inMph ? mph : kmh;
+  // The source unit when the feature records it (branch lines), else from the label.
+  const inMph = properties.speed_unit ? properties.speed_unit === 'mph' : /mph/.test(raw || ''), shown = units === 'imperial' ? mph : kmh, source = inMph ? mph : kmh;
   return {
     mapped: n === null ? 'Not recorded / not numeric' : shown === source ? shown : `${shown} (${source})`,
     tagged: raw ? `${raw}${/mph|km\/h|knots/.test(raw) ? '' : ' km/h'}` : 'Not recorded',

@@ -114,6 +114,18 @@ export function speedTags(tags) {
   if (tags.maxspeed || !['forward', 'backward'].includes(preferred) || parseMaxspeed({maxspeed: tags[`maxspeed:${preferred}`]}, 'present') === undefined) return tags;
   return {maxspeed: tags[`maxspeed:${preferred}`]};
 }
+// The unit of the value the speed comes from: a label can mix units
+// ("60 mph / 120"), and the panel must not guess from it.
+export function speedUnit(tags) {
+  const kmh = value => parseMaxspeed({maxspeed: value}, 'present');
+  const chosen = speedTags(tags);
+  let source = chosen.maxspeed;
+  if (kmh(source) === undefined) {
+    const [forward, backward] = [tags['maxspeed:forward'], tags['maxspeed:backward']];
+    source = (kmh(backward) ?? -1) > (kmh(forward) ?? -1) ? backward : forward;
+  }
+  return kmh(source) === undefined ? undefined : /mph/i.test(source) ? 'mph' : 'km/h';
+}
 // Douglas–Peucker in degrees (tolerance 0.0005°, about 50 m: finer than a
 // z6 tile's 150 m units), then five decimals.
 export function simplify(points, tolerance = 0.0005) {
@@ -161,7 +173,7 @@ export function toFeatures(json) {
       name: tags.name || tags['name:en'] || '',
       ...Object.fromEntries(Object.entries(tags).filter(([key]) => /^name:[a-z]{2,3}(-[A-Za-z]{2,4})?$/.test(key))),
       ...(tags.highspeed === 'yes' && {highspeed: true}),
-      ...(maxspeed !== undefined && {maxspeed}), ...(label && {speed_label: label}),
+      ...(maxspeed !== undefined && {maxspeed, speed_unit: speedUnit(tags)}), ...(label && {speed_label: label}),
       ...(['forward', 'backward', 'both'].includes(preferred) && {preferred_direction: preferred}),
       ...(electrification(tags) && {electrification_state: electrification(tags)}),
       ...(number(tags.voltage) !== undefined && {voltage: number(tags.voltage)}),
