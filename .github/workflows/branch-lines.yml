@@ -9,7 +9,7 @@ on:
   schedule:
     - cron: '41 */6 * * *'
   push:
-    branches: [main, claude/vigilant-hamilton-hmk1xn]
+    branches: [main]
     paths: ['scripts/build-branch-lines.mjs', 'scripts/branch-lines.mjs', '.github/workflows/branch-lines.yml']
 permissions:
   contents: write
@@ -19,6 +19,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   stage:
+    # Only main publishes the shared snapshot (branches and manual runs
+    # started from other refs never replace it).
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 150
     steps:
@@ -66,7 +69,7 @@ jobs:
             test "$(git ls-remote origin refs/heads/branch-data | cut -f1)" = "$(git rev-parse HEAD)"
           fi
       - name: Redeploy the site with the new lines
-        if: steps.build.outputs.redeploy == 'true' && (github.event_name != 'push' || github.ref == 'refs/heads/main')
+        if: steps.build.outputs.redeploy == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run site.yml --ref main
