@@ -89,13 +89,25 @@ function electrification(tags) {
 // panel would add km/h to them).
 export function speedLabel(tags) {
   // Units spelled as the panel expects them (lower-case "mph").
-  const clean = value => {
-    const text = String(value ?? '').trim().replace(/\s*km\/h$/i, ''), m = /^(\d+(?:\.\d+)?)( ?mph)?$/i.exec(text);
+  // A list ("80;100") stays a list when every part is a number.
+  const one = part => {
+    const m = /^(\d+(?:\.\d+)?)( ?mph)?$/i.exec(part.trim().replace(/\s*km\/h$/i, ''));
     return m ? `${m[1]}${m[2] ? ' mph' : ''}` : '';
+  };
+  const clean = value => {
+    const parts = String(value ?? '').split(';').map(one);
+    return parts.every(Boolean) ? parts.join(';') : '';
   };
   if (clean(tags.maxspeed)) return clean(tags.maxspeed);
   const forward = clean(tags['maxspeed:forward']), backward = clean(tags['maxspeed:backward']);
   return forward || backward ? `${forward || '-'} / ${backward || '-'}` : undefined;
+}
+// On a line run mainly one way (railway:preferred_direction), that
+// direction's limit is its speed; otherwise the faster direction's.
+export function speedTags(tags) {
+  const preferred = tags['railway:preferred_direction'];
+  if (tags.maxspeed || !['forward', 'backward'].includes(preferred) || parseMaxspeed({maxspeed: tags[`maxspeed:${preferred}`]}, 'present') === undefined) return tags;
+  return {maxspeed: tags[`maxspeed:${preferred}`]};
 }
 // Douglas–Peucker in degrees (tolerance 0.0005°, about 50 m: finer than a
 // z6 tile's 150 m units), then five decimals.
@@ -130,13 +142,15 @@ export function toFeatures(json) {
     const tags = way.tags || {};
     const coordinates = simplify(way.geometry.filter(p => p && Number.isFinite(p.lon) && Number.isFinite(p.lat)).map(p => [p.lon, p.lat])).map(round);
     if (coordinates.length < 2) continue;
-    const [g0, g1] = gauges(tags.gauge), protection = trainProtection(tags), maxspeed = parseMaxspeed(tags, 'present'), label = speedLabel(tags);
+    const [g0, g1] = gauges(tags.gauge), protection = trainProtection(tags), maxspeed = parseMaxspeed(speedTags(tags), 'present'), label = speedLabel(tags);
+    const preferred = tags['railway:preferred_direction'];
     const properties = {
       osm_id: way.id, feature: tags.railway, usage: 'branch', state: 'present',
       name: tags.name || tags['name:en'] || '',
       ...Object.fromEntries(Object.entries(tags).filter(([key]) => /^name:[a-z]{2,3}(-[A-Za-z]{2,4})?$/.test(key))),
       ...(tags.highspeed === 'yes' && {highspeed: true}),
       ...(maxspeed !== undefined && {maxspeed}), ...(label && {speed_label: label}),
+      ...(['forward', 'backward', 'both'].includes(preferred) && {preferred_direction: preferred}),
       ...(electrification(tags) && {electrification_state: electrification(tags)}),
       ...(number(tags.voltage) !== undefined && {voltage: number(tags.voltage)}),
       ...(number(tags.frequency) !== undefined && {frequency: number(tags.frequency)}),

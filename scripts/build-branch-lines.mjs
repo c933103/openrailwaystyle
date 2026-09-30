@@ -133,8 +133,12 @@ if (!current.pending.length) {
   console.log(`Stage ${stage.name} complete: ${current.lines} lines (${suspicious ? 0 : stale.length} removed)`);
 } else console.log(`Stage ${stage.name} continues next run (${current.pending.length} region(s) left): ${stopped}`);
 // With nothing fetched and no region split, an unavailable server leaves the
-// published data as it was.
-if (!fetchedBoxes && !splitBoxes && stopped) throw new Error(`Nothing fetched: ${stopped}`);
+// published data as it was; bytes it did download are still recorded (the
+// state is published with the table unchanged, and the site not redeployed).
+if (!fetchedBoxes && !splitBoxes && stopped) {
+  if (!downloaded) throw new Error(`Nothing fetched: ${stopped}`);
+  console.warn(`Nothing fetched (${stopped}); recording ${downloaded} bytes downloaded`);
+}
 
 state.runs.push({at: now, bytes: downloaded});
 await rm(out, {recursive: true, force: true});
@@ -159,5 +163,5 @@ const manifest = {generated: new Date().toISOString(), lines: table.size, tiles:
   query: 'way[railway~"^(rail|narrow_gauge)$"][usage=branch][!service], by region', license: 'ODbL-1.0',
   description: 'OpenStreetMap operating branch lines (usage=branch) for the overview zooms, where OpenRailwayMap shows main lines only.'};
 await writeFile(new URL('manifest.json', out), JSON.stringify(manifest, null, 2));
-if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, 'publish=true\n');
+if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `publish=true\nredeploy=${fetchedBoxes > 0}\n`);
 console.log(JSON.stringify({...manifest, stages: undefined, progress: manifest.stages.map(s => `${s.name}:${s.completed ? 'done' : s.inProgress ? 'partial' : '-'}:${s.lines}`).join(' ')}));

@@ -38,6 +38,13 @@ test('branch-line tags become the fields of the detailed railway tiles', () => {
   assert.deepEqual(simplify([[0, 0], [2, 0], [1, 0]]), [[0, 0], [2, 0], [1, 0]], 'a way that doubles back keeps its far end');
   assert.equal(toFeatures({elements: [{type: 'way', id: 10, tags: {railway: 'rail', maxspeed: '40 MPH'}, geometry: [{lat: 0, lon: 0}, {lat: 0, lon: 1}]}]})[0].properties.speed_label, '40 mph');
   assert.equal(toFeatures({elements: [{type: 'way', id: 9, tags: {railway: 'rail', maxspeed: 'signals'}, geometry: [{lat: 0, lon: 0}, {lat: 0, lon: 1}]}]})[0].properties.speed_label, undefined, 'no label for a word');
+  const way = tags => toFeatures({elements: [{type: 'way', id: 11, tags: {railway: 'rail', ...tags}, geometry: [{lat: 0, lon: 0}, {lat: 0, lon: 1}]}]})[0].properties;
+  assert.deepEqual([way({maxspeed: '80;100'}).speed_label, way({maxspeed: '80;100'}).maxspeed], ['80;100', 100], 'a numeric list keeps its label');
+  assert.equal(way({maxspeed: '80;signals'}).speed_label, undefined);
+  assert.deepEqual(way({'maxspeed:forward': '120', 'maxspeed:backward': '60', 'railway:preferred_direction': 'backward'}),
+    {osm_id: 11, feature: 'rail', usage: 'branch', state: 'present', name: '', maxspeed: 60, speed_label: '120 / 60', preferred_direction: 'backward'}, 'the preferred direction\'s speed');
+  assert.equal(way({'maxspeed:forward': '120', 'maxspeed:backward': '60', 'railway:preferred_direction': 'both'}).maxspeed, 120, 'else the faster direction');
+  assert.equal(way({'maxspeed:forward': '120', 'railway:preferred_direction': 'backward'}).maxspeed, 120, 'an unmapped preferred direction falls back');
 });
 
 test('branch-line table and tiles: z4–6 only, the style\'s fields and the OSM way id', () => {
