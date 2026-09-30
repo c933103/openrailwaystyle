@@ -33,10 +33,13 @@ export const inBox = ([s, w, n, e], lat, lon) => lat >= s && lat < n && lon >= w
 export const MINOR_TRACKS = '(way.w[railway~"^(tram|light_rail|funicular|miniature)$"];way.w[service];way.w[embedded=yes];)';
 export function regionQuery(box, since) {
   const newer = since ? `(newer:"${since}")` : '';
-  // Changes also cover crossings on railway ways edited since (a retagged
-  // track can change a crossing's minor flag without touching the node).
-  const changedWays = since ? `way[railway]${newer}(${box.join(',')})->.cw;` : '';
-  const onChangedWays = since ? 'node(w.cw)[railway~"^(level_crossing|crossing)$"];' : '';
+  // Changes also cover crossings on any way through a crossing edited since
+  // (a retagged track, or one no longer tagged railway, can change a
+  // crossing's minor flag without touching the node). Deleted ways are left
+  // to the rolling full refresh.
+  const bbox = `(${box.join(',')})`;
+  const changedWays = since ? `(node[railway=level_crossing]${bbox};node[railway=crossing]${bbox};)->.all;way(bn.all)${newer}->.cw;` : '';
+  const onChangedWays = since ? 'node.all(w.cw);' : '';
   // CSV output carries no error remarks: a final marker row, written only
   // when the query ran to the end, shows the response is complete. A marker
   // row (railway "minor") separates the major crossings from the minor ones.
