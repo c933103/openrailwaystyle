@@ -22,6 +22,9 @@ export const ORM = 'https://openrailwaymap.app';
 // Public API explicitly supports cross-origin clients; the vector site's
 // same-origin /api/facility endpoint is not suitable for GitHub Pages.
 export const SEARCH_API = 'https://api.openrailwaymap.org/v2/facility';
+// Map background: the drawn base map, satellite imagery alone, or imagery
+// under the railways (hybrid).
+export const BACKGROUNDS = ['map', 'satellite', 'hybrid'];
 export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge', 'loading'];
 export const LANGUAGES = [
   ['local','Local names'], ['en','English'], ['ko','한국어'], ['ja','日本語'],
@@ -480,7 +483,7 @@ export function formatSpeed(properties, units = 'metric') {
 // Display settings live in a cookie; a link can still carry them (the app
 // then saves them and removes them from the address). remembered: settings
 // kept in this browser, used for anything the URL does not name.
-export const SETTING_KEYS = ['mode','stations','labels','inactive','relief','names','autoGlobe','readout','transport','destinations','constraints','units','detail','language'];
+export const SETTING_KEYS = ['mode','background','stations','trackCounts','labels','inactive','relief','names','autoGlobe','readout','transport','destinations','constraints','units','detail','language'];
 const LEGACY_LANGUAGE_KEYS = ['stationLanguage','mapLanguage','lineLanguage'];
 export const SETTING_PARAMS = [...SETTING_KEYS, ...LEGACY_LANGUAGE_KEYS];
 // More detail: 0 (normal), 1 (the next zoom level at half size) or 2 (two
@@ -499,13 +502,37 @@ export function formatReadout({lng, lat}, zoom, detail = 0) {
   const coords = `${Math.abs(lat).toFixed(5)}° ${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(5)}° ${lon >= 0 ? 'E' : 'W'}`;
   return `${coords} · zoom ${zoom.toFixed(1)}${detail ? ` (drawn at ${100 / 2 ** detail}%)` : ''}`;
 }
+// The OpenStreetMap object behind a map feature, {type, id}, or null. The
+// provider's ids read "node-123…" (stations, crossings) or "123-0" (the way
+// and a piece number, railway lines); the project's own tiles carry the way
+// id (planned and former lines, street running) or the crossing node id;
+// base-map features carry the id times ten plus 1, 2 or 3 for a node, way or
+// relation.
+const WAY_SOURCES = ['railway', 'network', 'speed', 'electric', 'control', 'gaugeLow', 'loadingLow', 'inactiveRegional', 'streetRunning'];
+export function osmObject(feature) {
+  const p = feature?.properties || {};
+  for (const value of [p.id, p.osm_id]) {
+    const match = /^(node|way|relation)-(\d+)/.exec(String(value ?? ''));
+    if (match) return {type: match[1], id: match[2]};
+  }
+  if (feature.sourceLayer === 'level_crossings') return Number.isInteger(feature.id) ? {type: 'node', id: String(feature.id)} : null;
+  if (feature.source === 'openmaptiles') {
+    const type = [, 'node', 'way', 'relation'][feature.id % 10];
+    return Number.isInteger(feature.id) && feature.id > 0 && type ? {type, id: String(Math.floor(feature.id / 10))} : null;
+  }
+  // Railway lines: ways (search results give a bare id without its type).
+  if (!WAY_SOURCES.includes(feature.source)) return null;
+  const way = /^(\d+)(-\d+)?$/.exec(String(p.osm_id ?? p.id ?? ''));
+  return way ? {type: 'way', id: way[1]} : null;
+}
 export function readSettings(search, remembered = {}) {
   const params = new URLSearchParams(search);
   const flag = (key, fallback) => params.has(key) ? params.get(key) !== '0' && (fallback || params.get(key) === '1') : typeof remembered[key] === 'boolean' ? remembered[key] : fallback;
   const pick = (key, valid, fallback) => [params.get(key), remembered[key]].find(valid) ?? fallback;
   return {
-    mode: pick('mode', v => MODES.includes(v), 'speed'),
-    stations: flag('stations', true), labels: flag('labels', true), inactive: flag('inactive', true),
+    mode: pick('mode', v => MODES.includes(v), 'infrastructure'),
+    background: pick('background', v => BACKGROUNDS.includes(v), 'map'),
+    stations: flag('stations', true), trackCounts: flag('trackCounts', true), labels: flag('labels', true), inactive: flag('inactive', true),
     transport: flag('transport', true), destinations: flag('destinations', true), constraints: flag('constraints', true),
     relief: flag('relief', true), names: flag('names', true), autoGlobe: flag('autoGlobe', true), readout: flag('readout', true),
     units: pick('units', v => v === 'metric' || v === 'imperial', 'metric'),

@@ -170,6 +170,15 @@
       "minzoom": 11,
       "maxzoom": 11
     },
+    "satellite": {
+      "type": "raster",
+      "tiles": [
+        "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2025_3857/default/g/{z}/{y}/{x}.jpg"
+      ],
+      "tileSize": 256,
+      "maxzoom": 14,
+      "attribution": "<a href=\"https://cloudless.eox.at\">EOxCloudless https://cloudless.eox.at</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2025), <a href=\"https://creativecommons.org/licenses/by-nc-sa/4.0/\">CC BY-NC-SA 4.0</a>"
+    },
     "relief": {
       "type": "raster-dem",
       "tiles": [
@@ -187,6 +196,17 @@
       "type": "background",
       "paint": {
         "background-color": "#f2f1e9"
+      }
+    },
+    {
+      "id": "satellite",
+      "type": "raster",
+      "source": "satellite",
+      "layout": {
+        "visibility": "none"
+      },
+      "paint": {
+        "raster-fade-duration": 150
       }
     },
     {
@@ -11278,9 +11298,7 @@
           8,
           1.4,
           11,
-          2.2,
-          14,
-          3.4
+          2.2
         ],
         "circle-stroke-color": "#fffef8",
         "circle-stroke-width": [
@@ -11305,7 +11323,7 @@
       "source": "crossingsDetail",
       "source-layer": "level_crossings",
       "minzoom": 9,
-      "maxzoom": 15,
+      "maxzoom": 11,
       "layout": {
         "visibility": "none"
       },
@@ -11333,9 +11351,7 @@
           8,
           1.4,
           11,
-          2.2,
-          14,
-          3.4
+          2.2
         ],
         "circle-stroke-color": "#fffef8",
         "circle-stroke-width": [
@@ -11352,6 +11368,50 @@
           0.8
         ],
         "circle-opacity": 0.9
+      }
+    },
+    {
+      "id": "infrastructure-crossing-marks",
+      "type": "symbol",
+      "source": "crossingsDetail",
+      "source-layer": "level_crossings",
+      "minzoom": 11,
+      "maxzoom": 15,
+      "layout": {
+        "icon-image": "crossing-x",
+        "icon-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          11,
+          0.7,
+          13,
+          0.85,
+          14.99,
+          1
+        ],
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+        "visibility": "none"
+      },
+      "paint": {
+        "icon-color": [
+          "match",
+          [
+            "get",
+            "kind"
+          ],
+          "foot",
+          "#a0704a",
+          "#63332c"
+        ],
+        "icon-halo-color": "#fffef8",
+        "icon-halo-width": 1.2,
+        "icon-opacity": 0.95
       }
     },
     {

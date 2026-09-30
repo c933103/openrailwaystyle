@@ -1,15 +1,19 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20260929-8';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260929-8';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20260930-3';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260930-3';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20260929-8';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20260929-8';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260929-8';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20260930-3';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20260930-3';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20260930-3';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260930-3';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
 // label code load in the background (index.html reports a failure to load
 // this module itself).
 document.body.dataset.appStarted = 'true';
+// Installable as an app (manifest.webmanifest); the service worker keeps the
+// app's own files for opening without a connection.
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register(new URL('sw.js', import.meta.url)).catch(() => {});
 // Display settings are remembered in a cookie, not the address; settings in a
 // shared link apply once and are then saved and removed from the address.
 const SETTINGS_COOKIE = 'atlas_settings', LANGUAGE_COOKIE = 'atlas_language';
@@ -30,7 +34,7 @@ const settings = readSettings(location.search, {language: readCookie(LANGUAGE_CO
 const status = $('map-status');
 let legendHelpOpen = false;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260929-8';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260930-3';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -183,7 +187,7 @@ function renderLegend() {
     control: 'Hue groups related systems (e.g. ETCS with China’s ETCS-derived CTCS); darker is more advanced: warning only, spot transmission, continuous, radio. Colour shows the first recorded system; click a track for all of them and their compatibility. Grey means nothing is recorded.',
     gauge: 'Gauges a few millimetres apart (e.g. 1432 and 1435, 1520 and 1524) share one colour and are generally compatible. Click a track for all recorded gauges. Grey means not recorded.',
     loading: 'Colour follows the envelope’s height above rail, so equal sizes match across regions; Britain’s W gauges share one height and form their own ladder. Click a track for dimensions. Grey means not recorded.',
-    infrastructure: 'Numbers count the mapped tracks: running tracks side by side (not sidings, yards or crossovers), on the surface, on viaducts or in tunnels alike (grey-blue where all are in tunnels); at a station, every track there, sidings included. Ochre marks explicitly tagged shared roadway; dots and × mark level crossings (light brown: pedestrian).',
+    infrastructure: 'Numbers count the mapped tracks: running tracks side by side (not sidings, yards or crossovers), on the surface, on viaducts or in tunnels alike (grey-blue where all are in tunnels); at a station, every track there, sidings included. Ochre marks explicitly tagged shared roadway; level crossings are dots when zoomed out, × closer in (light brown: pedestrian).',
   };
   let note = notes[settings.mode];
   if (settings.inactive && settings.mode === 'speed') note += ' Planned and former lines take the colour of their recorded limit, if any.';
@@ -208,15 +212,23 @@ function shareURL() {
   return url.href;
 }
 saveSettings();
+const CHECKBOXES = ['stations', 'trackCounts', 'labels', 'inactive', 'relief', 'names', 'autoGlobe', 'readout', 'transport', 'destinations', 'constraints'];
+// The drawn base map: hidden under satellite imagery.
+const isBaseMap = layer => layer.source === 'openmaptiles' || layer.id === 'background' || layer.id.startsWith('terrain-');
+const RUNTIME_LAYER = /^(drawing|measure)-|^polar-caps$/;
 function applySettings() {
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
-  for (const key of ['stations', 'labels', 'inactive', 'relief', 'names', 'autoGlobe', 'readout', 'transport', 'destinations', 'constraints']) $(key).checked = settings[key];
+  document.querySelectorAll('[data-background]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.background === settings.background)));
+  $('legend').hidden = settings.background === 'satellite';
+  for (const key of CHECKBOXES) $(key).checked = settings[key];
   $('units').value = settings.units;
   readout.hidden = !settings.readout; updateReadout();
   if (ready) clickable = [];
   if (ready) for (const layer of map.getStyle().layers) {
-    let visible;
-    if (MODES.some(mode => layer.id.startsWith(`${mode}-`))) visible = layer.id.startsWith(`${settings.mode}-`) && (!VALUE_LABELS.test(layer.id) || settings.labels);
+    // Shown unless a setting hides it (a layer hidden under the imagery comes
+    // back with the map).
+    let visible = RUNTIME_LAYER.test(layer.id) ? undefined : true;
+    if (MODES.some(mode => layer.id.startsWith(`${mode}-`))) visible = layer.id.startsWith(`${settings.mode}-`) && (!VALUE_LABELS.test(layer.id) || settings.labels) && (layer.source !== 'trackCounts' || settings.trackCounts);
     if (layer.id.startsWith('station-')) visible = settings.stations && (!layer.id.startsWith('station-former-') || settings.inactive);
     if (layer.id.startsWith('inactive-')) visible = settings.inactive;
     if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive);
@@ -225,6 +237,10 @@ function applySettings() {
     if (layer.id.startsWith('context-destinations-')) visible = settings.destinations;
     if (layer.id.startsWith('context-constraints-')) visible = settings.constraints;
     if (layer.id === 'polar-caps') map.triggerRepaint();
+    // Satellite: the imagery alone; hybrid: the imagery under the railways.
+    if (layer.id === 'satellite') visible = settings.background !== 'map';
+    else if (settings.background === 'satellite' && !RUNTIME_LAYER.test(layer.id)) visible = false;
+    else if (settings.background === 'hybrid' && isBaseMap(layer)) visible = false;
     if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
     if ((visible ?? true) && isClickable(layer.id)) clickable.push(layer.id);
@@ -238,11 +254,26 @@ function applySettings() {
 }
 const featurePickRank = f => f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading)-labels$/;
-const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-crossing-dots','infrastructure-street-running'];
+const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-crossing-dots','infrastructure-crossing-marks','infrastructure-street-running'];
 const isClickable = id => INFRASTRUCTURE_POINTS.includes(id) || id.startsWith('context-') || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading)-(tracks|overview)$/.test(id);
 function row(dl, label, value) {
   if (value === undefined || value === null || value === '') return;
   dl.append(textNode('dt', label), textNode('dd', String(value)));
+}
+// A link to the feature's own OpenStreetMap object, or to its location when
+// the tiles do not identify one.
+function osmLink(panel, feature) {
+  const object = osmObject(feature), link = document.createElement('a');
+  if (object) {
+    link.textContent = `Open this ${object.type} on OpenStreetMap ↗`;
+    link.href = `https://www.openstreetmap.org/${object.type}/${object.id}`;
+  } else if (feature.geometry?.type === 'Point') {
+    const [lng, lat] = feature.geometry.coordinates;
+    link.textContent = 'View location on OpenStreetMap ↗';
+    link.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`;
+  } else return;
+  link.target = '_blank'; link.rel = 'noopener'; link.className = 'osm-link';
+  panel.append(link);
 }
 function showDetails(feature) {
   currentFeature = feature;
@@ -292,22 +323,66 @@ function showDetails(feature) {
   row(dl, 'Operator', Array.isArray(p.operator) ? p.operator.join(', ') : p.primary_operator || p.operator);
   panel.append(dl);
   if (!isStation && map?.getZoom() < 7) panel.append(textNode('p', 'This is a generalized overview. Zoom in for individual tracks and full details.', 'small'));
-  if (p.osm_id) {
-    const link = textNode('a', 'View railway on OpenStreetMap ↗');
-    link.href = `https://www.openstreetmap.org/way/${encodeURIComponent(p.osm_id)}`;
-    link.target = '_blank'; link.rel = 'noopener'; panel.append(link);
-  }
-  if (feature.geometry?.type === 'Point') {
-    const [lng, lat] = feature.geometry.coordinates;
-    const link = textNode('a', 'View location on OpenStreetMap ↗');
-    link.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`;
-    link.target = '_blank'; link.rel = 'noopener'; panel.append(link);
-  }
+  osmLink(panel, feature);
   if (isStation) {
     const nearby = document.createElement('section'); nearby.id = 'nearby-transport'; panel.append(nearby);
     updateNearbyTransport();
+    // Departures only for operating stations: a former or planned one near a
+    // current stop would otherwise show that stop's trains as its own.
+    if (feature.geometry?.type === 'Point' && (!p.state || p.state === 'present')) showDepartures(panel, feature);
   }
   $('details').hidden = false;
+}
+// Departures from Transitous, live where the operator publishes real-time
+// data, and journey links. Fetched once a minute at most per station (the
+// panel is redrawn when settings change).
+const departureBoards = new Map();
+function showDepartures(panel, feature) {
+  const p = feature.properties, [lon, lat] = feature.geometry.coordinates;
+  const names = [displayName(p, settings.language), p.name, p.localized_name, p['name:en'], p.full_name].filter(Boolean);
+  const section = document.createElement('section'); section.className = 'departures';
+  section.append(textNode('h3', 'Departures'), textNode('p', 'Loading departures…', 'small'));
+  panel.append(section);
+  const key = `${lat.toFixed(5)},${lon.toFixed(5)}`;
+  let board = departureBoards.get(key);
+  if (!board || Date.now() - board.at > 60_000) {
+    board = {at: Date.now(), promise: stationDepartures({lat, lon, names}, {signal: AbortSignal.timeout(15000)})};
+    departureBoards.set(key, board);
+    board.promise.catch(() => departureBoards.delete(key));
+  }
+  board.promise.then(({stops, rows}) => {
+    if (!section.isConnected) return;
+    section.replaceChildren(textNode('h3', 'Departures'));
+    if (!rows.length) section.append(textNode('p', stops.length ? 'No rail departures in the published timetable soon.' : 'No published timetable covers this station.', 'small'));
+    else {
+      const live = rows.filter(r => r.live).length;
+      section.append(textNode('p', live ? `Live times for ${live} of ${rows.length} departures; the rest are timetabled.` : 'Timetabled times: no live data for these departures.', 'small'));
+      const list = document.createElement('ol'); list.className = 'departure-list';
+      for (const r of rows) {
+        const item = document.createElement('li');
+        const time = textNode('span', clock(r.cancelled ? r.scheduled : r.departure, r.tz), 'departure-time');
+        if (r.cancelled) time.classList.add('cancelled');
+        const line = textNode('span', r.line || r.mode.toLowerCase().replace(/_/g, ' '), 'departure-line');
+        if (r.color) { line.style.background = r.color; line.style.color = r.textColor || '#fff'; }
+        const status = r.cancelled ? 'Cancelled' : r.live ? (r.delay > 0 ? `+${r.delay} min` : r.delay < 0 ? `${r.delay} min` : 'On time') : '';
+        item.append(time, line, textNode('span', r.headsign, 'departure-headsign'));
+        if (r.track) item.append(textNode('span', /^\w{1,4}$/.test(r.track) ? `Pl. ${r.track}` : r.track, 'departure-track'));
+        if (status) item.append(textNode('span', status, `departure-status${r.cancelled || r.delay > 0 ? ' late' : ''}`));
+        list.append(item);
+      }
+      section.append(list);
+    }
+    const place = stops[0]?.id || `${lat},${lon}`, name = names[0];
+    const links = textNode('p', '', 'departure-links');
+    for (const [direction, label] of [['from', 'Journey from here ↗'], ['to', 'Journey to here ↗']]) {
+      const a = textNode('a', label); a.href = plannerLink(direction, place, name); a.target = '_blank'; a.rel = 'noopener'; links.append(a, ' ');
+    }
+    const source = textNode('a', 'Transitous'); source.href = TRANSITOUS_SOURCES; source.target = '_blank'; source.rel = 'noopener';
+    const credit = textNode('p', 'Timetables and live data: ', 'small'); credit.append(source, ' (see its sources and licences).');
+    section.append(links, credit);
+  }).catch(() => {
+    if (section.isConnected) section.replaceChildren(textNode('h3', 'Departures'), textNode('p', 'Departures could not load. Try again later.', 'small'));
+  });
 }
 function showInfrastructureContext(feature) {
   const p=feature.properties,crossing=feature.sourceLayer==='points_of_interest';
@@ -315,11 +390,7 @@ function showInfrastructureContext(feature) {
   // A dot from the worldwide crossing tiles: its kind and OSM node only.
   if(feature.sourceLayer==='level_crossings') {
     panel.append(textNode('h2',p.kind==='foot'?'Pedestrian level crossing':'Road level crossing'));
-    if(Number.isInteger(feature.id)) {
-      const link=textNode('a','View this crossing on OpenStreetMap ↗');
-      link.href=`https://www.openstreetmap.org/node/${feature.id}`;link.target='_blank';link.rel='noopener';
-      panel.append(link);
-    }
+    osmLink(panel,feature);
     panel.append(textNode('p','Zoom to 15 for the mapped equipment (lights, barriers).','small'));
     $('details').hidden=false;return;
   }
@@ -329,6 +400,7 @@ function showInfrastructureContext(feature) {
     row(dl,'Mapped equipment',p.feature?.includes('light-barrier')?'Lights and barriers':p.feature?.includes('barrier')?'Barriers':p.feature?.includes('light')?'Lights':'No equipment specified in the tile');
   } else {row(dl,'Evidence',p.evidence);row(dl,'Access',p.access);row(dl,'Vehicle access',p.motor_vehicle);}
   panel.append(dl,textNode('p',crossing?'Equipment details follow the mapped feature; absence of a tag does not prove absence of equipment.':'Only explicitly mapped shared roadway is highlighted. Untagged street running can be missing.','small'));
+  osmLink(panel,feature);
   $('details').hidden=false;
 }
 function showContextDetails(feature) {
@@ -344,12 +416,7 @@ function showContextDetails(feature) {
   row(dl,'Access',p.access);
   panel.append(dl);
   panel.append(textNode('p',category?.group==='constraints'?'Mapped boundaries and sites provide planning context. Consult the responsible authority for jurisdiction, access and development requirements.':'Mapped facilities and land use show potential trip destinations, not measured passenger demand.','small'));
-  if (feature.geometry?.type === 'Point') {
-    const [lng,lat] = feature.geometry.coordinates;
-    const link = textNode('a','View location on OpenStreetMap ↗');
-    link.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`;
-    link.target='_blank';link.rel='noopener';panel.append(link);
-  }
+  osmLink(panel, feature);
   $('details').hidden = false;
 }
 function updateNearbyTransport() {
@@ -368,7 +435,7 @@ function updateNearbyTransport() {
     const item = document.createElement('li'), button = textNode('button',displayName(feature.properties,settings.language) || category.label);
     button.type='button';button.addEventListener('click',()=>{
       map.easeTo({center:feature.geometry.coordinates,zoom:Math.max(14,map.getZoom())});
-      showDetails({...feature,layer:{id:`context-transport-${category.id}-label`}});
+      showDetails({...feature,source:'openmaptiles',layer:{id:`context-transport-${category.id}-label`}});
     });
     item.append(button,textNode('span',`${category.label} · ${settings.units === 'imperial' ? Math.round(distance*3.28084/50)*50+' ft' : Math.round(distance/10)*10+' m'}`,'small'));
     list.append(item);
@@ -724,6 +791,15 @@ async function initialize() {
   // share one elevation loader and tile cache.
   localizeStyle(style);
   style.sources.relief.tiles = [dem.sharedDemProtocolUrl];
+  // Show the chosen view from the first frame, without loading the tiles of
+  // the style's default view (applySettings covers the rest once loaded).
+  for (const layer of style.layers) {
+    let visible;
+    if (MODES.some(mode => layer.id.startsWith(`${mode}-`))) visible = layer.id.startsWith(`${settings.mode}-`);
+    if (layer.id === 'satellite') visible = settings.background !== 'map';
+    else if (settings.background === 'satellite' || (settings.background === 'hybrid' && isBaseMap(layer))) visible = false;
+    if (visible !== undefined) (layer.layout ||= {}).visibility = visible ? 'visible' : 'none';
+  }
   // Reopen where the last visit ended, unless the link gives a position; start
   // on the globe (or as last left) so the first frame is not the flat map.
   const linked = /^#-?[\d.]+\//.test(location.hash), start = linked ? {} : rememberedView;
@@ -764,6 +840,19 @@ async function initialize() {
       map.addImage(event.id, {width: size, height: size, data}, {pixelRatio: 2, stretchX: [[8, 16]], stretchY: [[8, 16]], content: [6, 5, 18, 19]});
       return;
     }
+    if (event.id === 'crossing-x') {
+      // Level-crossing ×: a distance field (edge at 0.75, 8 pixels of
+      // falloff), so the style colours it by kind and gives it a halo.
+      const size = 32, half = 8, stroke = 2, data = new Uint8Array(size * size * 4);
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+        const px = Math.abs(x + 0.5 - size / 2), py = Math.abs(y + 0.5 - size / 2);
+        // Distance to the diagonal from the centre to (half, half).
+        const t = Math.min(half, (px + py) / 2), d = Math.hypot(px - t, py - t) - stroke;
+        data[(y * size + x) * 4 + 3] = Math.max(0, Math.min(255, Math.round(191 - d * 32)));
+      }
+      map.addImage(event.id, {width: size, height: size, data}, {pixelRatio: 2, sdf: true});
+      return;
+    }
     if (event.id !== 'station-dot') return;
     const width = 32, data = new Uint8Array(width * width * 4);
     for (let y = 0; y < width; y++) for (let x = 0; x < width; x++) {
@@ -777,6 +866,10 @@ async function initialize() {
   // Compass above the zoom buttons: shows the heading; click to face north.
   map.addControl(new maplibregl.NavigationControl({ showZoom: false, showCompass: true, visualizePitch: true }), 'top-right');
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+  // Your position: the first press shows it and follows it as it moves
+  // (with the direction of travel where the device reports one); moving the
+  // map stops following, and a press resumes it.
+  map.addControl(new maplibregl.GeolocateControl({positionOptions: {enableHighAccuracy: true}, trackUserLocation: true, showUserHeading: true, fitBoundsOptions: {maxZoom: 15 + settings.detail}}), 'top-right');
   map.addControl(new ButtonControl([detailButton, drawButton, measureButton, polarButton]), 'top-right');
   // Controls in the bottom corners stack upwards: added first, it sits below the scale bar.
   map.addControl({onAdd: () => readout, onRemove: () => readout.remove()}, 'bottom-left');
@@ -879,7 +972,10 @@ async function initialize() {
 document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
   settings.mode = button.dataset.mode; applySettings(); saveSettings();
 }));
-for (const key of ['stations', 'labels', 'inactive', 'relief', 'names', 'autoGlobe', 'readout', 'transport', 'destinations', 'constraints']) $(key).addEventListener('change', () => {
+document.querySelectorAll('[data-background]').forEach(button => button.addEventListener('click', () => {
+  settings.background = button.dataset.background; applySettings(); saveSettings();
+}));
+for (const key of CHECKBOXES) $(key).addEventListener('change', () => {
   settings[key] = $(key).checked; applySettings(); saveSettings();
   if (key === 'autoGlobe') { lastAutoProjection = undefined; updatePolar(); }
 });
