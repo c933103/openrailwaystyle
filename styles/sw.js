@@ -4,7 +4,7 @@
 // copy is used only when the network fails. The map libraries from the CDN
 // are kept too: their addresses carry the version, so a saved copy never goes
 // stale and is used first. Map tiles and data files are not handled here.
-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}3`;
+const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}4`;
 // Keep in step with loadScript in app.mjs and the stylesheet in index.html.
 const LIBRARIES = ['https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.js', 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css', 'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js'];
 const SHELL = /\/(app\.css|[\w-]+\.mjs|vendor\/[\w-]+\.js|world\.style\.json|manifest\.webmanifest|favicon\.svg|icon-[\w-]+\.png)$/;
@@ -22,9 +22,15 @@ self.addEventListener('install', event => event.waitUntil((async () => {
     if (!response.ok) throw new Error(`${path} returned ${response.status}`);
     await cache.put(url.origin + url.pathname, response);
   }));
-  // The page loads the libraries without CORS, so they are saved as such
-  // (an opaque response: a network failure rejects, a status cannot be read).
-  await Promise.all(LIBRARIES.map(async url => { if (!await cache.match(url)) await cache.put(url, await fetch(url, {mode: 'no-cors'})); }));
+  // Fetched with CORS (the CDN allows any origin) so that an error status can
+  // be seen and fails the installation; the saved copy also serves the page's
+  // plain script and stylesheet requests.
+  await Promise.all(LIBRARIES.map(async url => {
+    if (await cache.match(url)) return;
+    const response = await fetch(url, {mode: 'cors'});
+    if (!response.ok) throw new Error(`${url} returned ${response.status}`);
+    await cache.put(url, response);
+  }));
   await self.skipWaiting();
 })()));
 self.addEventListener('activate', event => event.waitUntil((async () => {
@@ -35,7 +41,15 @@ self.addEventListener('activate', event => event.waitUntil((async () => {
 self.addEventListener('fetch', event => {
   const request = event.request, url = new URL(request.url);
   if (request.method === 'GET' && LIBRARIES.includes(request.url)) {
-    event.respondWith(caches.open(CACHE).then(async cache => (await cache.match(request.url)) || fetch(request).then(response => { cache.put(request.url, response.clone()); return response; })));
+    event.respondWith(caches.open(CACHE).then(async cache => {
+      const saved = await cache.match(request.url);
+      if (saved) return saved;
+      // Only a successful copy is kept; otherwise the page's own request.
+      const response = await fetch(request.url, {mode: 'cors'}).catch(() => null);
+      if (!response?.ok) return fetch(request);
+      await cache.put(request.url, response.clone());
+      return response;
+    }));
     return;
   }
   if (request.method !== 'GET' || url.origin !== location.origin) return;
