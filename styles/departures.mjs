@@ -81,6 +81,9 @@ export async function stationDepartures(station, {signal, fetch: get = fetch} = 
   const candidates = await json(`${TRANSITOUS_API}/reverse-geocode?place=${station.lat},${station.lon}&type=STOP`);
   const stops = pickStops(Array.isArray(candidates) ? candidates : [], station);
   if (!stops.length) return {stops, rows: []};
-  const lists = await Promise.all(stops.map(s => json(`${TRANSITOUS_API}/stoptimes?stopId=${encodeURIComponent(s.id)}&n=30`).then(d => d.stopTimes || [])));
+  // Each stop's board on its own: one feed failing keeps the other's.
+  const results = await Promise.allSettled(stops.map(s => json(`${TRANSITOUS_API}/stoptimes?stopId=${encodeURIComponent(s.id)}&n=30`).then(d => d.stopTimes || [])));
+  const lists = results.filter(r => r.status === 'fulfilled').map(r => r.value);
+  if (!lists.length) throw results[0].reason;
   return {stops, rows: departureRows(lists)};
 }
