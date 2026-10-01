@@ -304,17 +304,20 @@ export function stationTracks(lines, zones, metres, {prefer = () => true} = {}) 
 // count their own lines. Lines go by operator (the provider's operator
 // colour; without one, by name): an operator's tracks go to the station of
 // that operator (same colour) where one is in the area, else to the station
-// nearest most of their length there, of the same kind of railway. Sets
+// nearest most of their length there, of the same kind of railway. Where
+// several stations there share the operator, each of its lines (by name)
+// goes to the one of them nearest most of its length. Sets
 // zone.takes(index) on the zones of each such area (zone.shared: {held: the
 // area's surface station points, zones}).
 export function shareLines(zones, lines, metres) {
   const areas = new Set(zones.map(zone => zone.shared).filter(Boolean));
   if (!areas.size) return;
-  const step = STATION_STEP / metres, keys = lines.map(line => line && (line.colour ? `${line.group}|c|${line.colour}` : line.line ? `${line.group}|n|${line.line}` : null));
+  const step = STATION_STEP / metres, keyed = line => Boolean(line && (line.colour || line.line));
   // A way with neither operator nor name (a siding, mostly) is the
-  // operator's whose track it leaves: it takes the key of a way it meets at
+  // operator's whose track it leaves: it follows (root) a way it meets at
   // either end, through any chain of such ways.
-  const touch = (SAME_PLACE + 0.5) / metres + SLACK, cell = 64, grid = new Map(), keyed = keys.slice();
+  const touch = (SAME_PLACE + 0.5) / metres + SLACK, cell = 64, grid = new Map();
+  const root = lines.map((line, index) => keyed(line) ? index : null);
   lines.forEach((line, index) => line && line.parts.forEach(part => part.slice(1).forEach((b, i) => {
     const a = part[i];
     for (let gx = Math.floor(Math.min(a[0], b[0]) / cell); gx <= Math.floor(Math.max(a[0], b[0]) / cell); gx++)
@@ -333,23 +336,31 @@ export function shareLines(zones, lines, metres) {
     }
     return out;
   };
-  for (let round = 0, changed = true; changed && round < 8; round++) {
+  const loose = lines.map((line, index) => line && root[index] === null ? line.parts.flatMap(part => [part[0], part.at(-1)]).flatMap(end => meets(index, end)) : null);
+  // Until nothing changes (each round follows each chain one way further).
+  for (let changed = true; changed;) {
     changed = false;
-    lines.forEach((line, index) => {
-      if (!line || keyed[index]) return;
-      const from = line.parts.flatMap(part => [part[0], part.at(-1)]).flatMap(end => meets(index, end)).find(i => keyed[i]);
-      if (from !== undefined) { keyed[index] = keyed[from]; changed = true; }
+    loose.forEach((met, index) => {
+      if (!met || root[index] !== null) return;
+      const from = met.find(i => root[i] !== null);
+      if (from !== undefined) { root[index] = root[from]; changed = true; }
     });
   }
-  const keyOf = (line, index) => keyed[index] || `#${index}`;
   for (const {held, zones: own} of areas) {
     const inside = own[0].inside, named = held.filter(p => p.name), lengths = new Map();
+    const operators = (colour, group) => new Set(named.filter(p => p.group === group && p.colour === colour).map(p => p.name)).size;
+    const keyOf = index => {
+      const r = root[index], line = lines[r ?? index];
+      if (r === null || r === undefined) return `#${index}`;
+      if (!line.colour) return `${line.group}|n|${line.line}`;
+      return operators(line.colour, line.group) > 1 ? `${line.group}|c|${line.colour}|${line.line ?? `#${r}`}` : `${line.group}|c|${line.colour}`;
+    };
     lines.forEach((line, index) => {
       if (!line) return;
-      const kind = named.filter(p => p.group === line.group);
-      const same = line.colour ? kind.filter(p => p.colour === line.colour) : [];
+      const colour = lines[root[index] ?? index].colour, kind = named.filter(p => p.group === line.group);
+      const same = colour ? kind.filter(p => p.colour === colour) : [];
       const pool = same.length ? same : kind.length ? kind : named;
-      const key = keyOf(line, index);
+      const key = keyOf(index);
       for (const part of line.parts) for (let i = 1; i < part.length; i++) {
         const [ax, ay] = part[i-1], [bx, by] = part[i], length = Math.hypot(bx - ax, by - ay);
         for (let at = step / 2; at < length; at += step) {
@@ -363,7 +374,8 @@ export function shareLines(zones, lines, metres) {
       }
     });
     const owner = new Map([...lengths].map(([key, byName]) => [key, [...byName].reduce((a, b) => (b[1] > a[1] ? b : a))[0]]));
-    for (const zone of own) zone.takes = index => lines[index] && owner.get(keyOf(lines[index], index)) === zone.name;
+    const owners = lines.map((line, index) => line ? owner.get(keyOf(index)) : undefined);
+    for (const zone of own) zone.takes = index => owners[index] === zone.name;
   }
 }
 

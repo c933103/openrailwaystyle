@@ -44,6 +44,8 @@ const insideRing = (x, y, ring) => {
 };
 const first = points => points.reduce((a, b) => (b.y < a.y || (b.y === a.y && b.x < a.x)) ? b : a);
 const around = tiles => Array.isArray(tiles) ? tiles : tiles ? [{dx: 0, dy: 0, data: tiles}] : [];
+// (Map.groupBy is newer than the browsers the worker is built for.)
+const groupBy = (list, keyOf) => list.reduce((groups, item) => { const key = keyOf(item); if (!groups.has(key)) groups.set(key, []); groups.get(key).push(item); return groups; }, new Map());
 function stationZones(areas, stations, extent) {
   const points = [], zones = [], seen = new Set();
   for (const {dx, dy, data} of around(stations)) for (const layer of layersOf(read(data))) {
@@ -87,7 +89,7 @@ function stationZones(areas, stations, extent) {
     // subway line serves which station, the tiles do not say).
     const surface = !held.length || held.some(p => !p.subway);
     if (!held.length) zones.push({inside, surface, stations: 0, groups: []});
-    for (const [group, kind] of Map.groupBy(held, p => p.group)) {
+    for (const [group, kind] of groupBy(held, p => p.group)) {
       const above = kind.filter(p => !p.subway && p.name), names = [...new Set(above.map(p => p.name))];
       const shared = names.length > 1 ? {held: above, zones: []} : null;
       for (const own of shared ? names.map(name => above.filter(p => p.name === name)) : [kind]) {

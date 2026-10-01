@@ -464,6 +464,27 @@ test('stations of different names sharing one area (a stop area group) each coun
     areas: [{dx: -1, dy: 0, data: piece(-64, 4160)}, {dx: 0, dy: 0, data: piece(-64, 4160)}],
     stations: [{dx: -1, dy: 0, data: westStations}, {dx: 0, dy: 0, data: both}]}, y)), []);
 });
+test('shared areas: one operator\'s lines split among its stations; sidings follow any chain to their track', async () => {
+  const {shareLines} = await import('../styles/track-count.mjs');
+  // 1 unit = 1 m. One operator (one colour) runs line L1 past station A and
+  // line L2 past station B, 600 m apart, in one area.
+  const way = (y, x0, x1, extra) => ({group: 'rail', main: true, parts: [[[x0, y], [x1, y]]], ...extra});
+  const lines = [way(0, 0, 400, {colour: '#111', line: 'L1'}), way(5, 0, 400, {colour: '#111', line: 'L1'}),
+    way(0, 600, 1000, {colour: '#111', line: 'L2'}), way(5, 600, 1000, {colour: '#111', line: 'L2'})];
+  // A siding of twelve unnamed ways without operator, leaving L2 at its
+  // east end and listed from its far end back.
+  const chain = Array.from({length: 12}, (_, k) => ({group: 'rail', main: true, parts: [[[1000 + 20 * (k + 1), 10], [1000 + 20 * k, 10]]]})).reverse();
+  chain.at(-1).parts[0][1] = [1000, 5];
+  lines.push(...chain);
+  const held = [{x: 200, y: 0, name: 'A', colour: '#111', group: 'rail'}, {x: 800, y: 0, name: 'B', colour: '#111', group: 'rail'}];
+  const shared = {held, zones: []}, inside = () => true;
+  const zones = ['A', 'B'].map(name => ({inside, name, shared, groups: ['rail']}));
+  shared.zones.push(...zones);
+  shareLines(zones, lines, 1);
+  const takes = zone => lines.map((_, i) => i).filter(i => zone.takes(i));
+  assert.deepEqual(takes(zones[0]), [0, 1], 'A: L1');
+  assert.deepEqual(takes(zones[1]), [2, 3, ...chain.map((_, k) => 4 + k)], 'B: L2 and the whole siding');
+});
 test('station track counts include sidings, not yards; a station with no area counts within 100 m of its point', async () => {
   const {stationTracks} = await import('../styles/track-count.mjs');
   // 1 unit = 1 m. Two running tracks, a siding (platform loop) and a yard
