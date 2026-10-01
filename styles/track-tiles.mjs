@@ -101,7 +101,7 @@ export function countTile({tiles, areas = null, stations = null}, y) {
   for (const index of connectors(lines, metres)) Object.assign(lines[index], {main: false, service: 'crossover'});
   // Sidings and spurs mapped as plain track are not running tracks (they
   // still count at stations).
-  for (const index of stubs(lines, metres, extent)) lines[index].main = false;
+  for (const index of stubs(lines, metres, extent, new Set(tiles.filter(t => t && t.data).map(t => `${t.dx},${t.dy}`)))) lines[index].main = false;
   const {points} = countTracks(lines, metres, {probe: i => lines[i].inside});
   const {zones, bare} = stationZones(areas, stations, extent), radius = BARE_STATION / metres, dominated = DOMINATED / metres, repeat = REPEAT / metres;
   // A station with no area: the tracks within BARE_STATION of its point.

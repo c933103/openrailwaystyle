@@ -846,6 +846,11 @@ test('track counts: untagged crossovers and sidings are not running tracks', asy
   // (The track runs on beyond the tiles read: extent 1000 covers −1000 to 2000.)
   const siding = [track(0, -1000, 0), track(0, 0, 2000), {group: 'rail', main: true, parts: [[[0, 0], [40, 5], [300, 5]]]}];
   assert.deepEqual([...stubs(siding, 1, 1000)], [2]);
+  // Unless its free end lies by a neighbouring tile that did not load (the
+  // one north of it here): the track may go on there.
+  const loaded = new Set([-1, 0, 1].flatMap(dx => [-1, 0, 1].map(dy => `${dx},${dy}`)));
+  loaded.delete('0,-1');
+  assert.equal(stubs(siding, 1, 1000, loaded).size, 0);
   // A gentle (high-speed) crossover, 400 m long between tracks 5 m apart, is
   // one too: it never keeps a steady distance from either track.
   const gentle = [track(0, -1000, 0), track(0, 0, 400), track(0, 400, 1000), track(5, -1000, 0), track(5, 0, 400), track(5, 400, 1000), leg([0, 0], [400, 5])];

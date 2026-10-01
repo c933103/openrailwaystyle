@@ -466,9 +466,12 @@ export function connectors(lines, metres) {
 // other, shorter than STUB_MAX: sidings and spurs. They are not running
 // tracks on the open line, though at a station (a terminus's platform
 // tracks) they still count. Ends near the edge of the tiles read are left
-// alone (the track may go on). Returns the set of indices.
+// alone (the track may go on): the 3×3 tiles round the one counted, less
+// any that did not load (loaded: a set of "dx,dy"; all nine by default).
+// Returns the set of indices.
 const STUB_MAX = 1500;       // metres
-export function stubs(lines, metres, extent = 4096) {
+const AROUND = new Set([-1, 0, 1].flatMap(dx => [-1, 0, 1].map(dy => `${dx},${dy}`)));
+export function stubs(lines, metres, extent = 4096, loaded = AROUND) {
   const touch = (SAME_PLACE + 0.5) / metres + SLACK, margin = PROBE / metres, found = new Set();
   const cell = margin, grid = new Map();
   lines.forEach((line, index) => line && line.parts.forEach(part => part.slice(1).forEach((b, i) => {
@@ -491,7 +494,8 @@ export function stubs(lines, metres, extent = 4096) {
         for (const s of grid.get(gx * 65536 + gy) || []) if (s.index !== index && s.group === group && distance(s, p) <= touch) out.add(s.index);
     return out;
   };
-  const nearEdge = ([x, y]) => x < -extent + margin || y < -extent + margin || x > 2 * extent - margin || y > 2 * extent - margin;
+  // Within margin of ground no loaded tile covers.
+  const nearEdge = ([x, y]) => [-margin, 0, margin].some(ox => [-margin, 0, margin].some(oy => !loaded.has(`${Math.floor((x + ox) / extent)},${Math.floor((y + oy) / extent)}`)));
   const joined = lines.map(line => line && stitchParts(line.parts));
   const endsOf = index => joined[index].flatMap(part => [part[0], part.at(-1)]);
   lines.forEach((line, index) => {
