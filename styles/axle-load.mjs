@@ -38,7 +38,8 @@ export function formatAxleLoad(value, units='metric') {
   if(!value) return '';
   const load=units==='imperial'?`${rounded(value.tonnes/SHORT_TON)} short tons`:`${rounded(value.tonnes)} t`;
   const per=value.perMetre===null?'':units==='imperial'?` · ${rounded(value.perMetre/SHORT_TON*0.3048)} short tons/ft`:` · ${value.perMetre} t/m`;
-  return load+per+(value.restricted?' · additional operating restrictions':'');
+  const mass=units==='imperial'?`${Math.round(value.tonnes/0.00045359237).toLocaleString('en-US')} lb`:`${Math.round(value.tonnes*1000).toLocaleString('en-US')} kg`;
+  return `${load} (${mass})`+per+(value.restricted?' · additional operating restrictions':'');
 }
 export function axlePaint() {
   const tonnes=['to-number',['coalesce',['get','axle_tonnes'],0],0];

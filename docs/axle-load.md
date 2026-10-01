@@ -1,6 +1,6 @@
 # Axle-load interpretation and maintenance
 
-The Axle load view uses explicit `axle_load` (physical capacity) and `maxaxleload` (legal limit) on railway ways first; if both are valid, it colours by the lower value, then supported load categories in `railway:track_class`. Colours vary continuously with metric tonnes; imperial labels use US short tons. An EN category specifies a reference load model, including wagon geometry and mass per metre; an axle-load colour alone does not establish vehicle compatibility.
+The Axle load view uses explicit `axle_load` (physical capacity) and `maxaxleload` (legal limit) on railway ways first; if both are valid, it colours by the lower value, then supported load categories in `railway:track_class`. Colours vary continuously with metric tonnes; imperial labels use US short tons. Legends/details also show kilograms in metric and pounds in imperial. Explicit kg/lb capacities are converted before applying colours, so the same load has the same colour regardless of its tagged unit. An EN category specifies a reference load model, including wagon geometry and mass per metre; an axle-load colour alone does not establish vehicle compatibility.
 
 | Codes | Axle load (t) | Mass per metre (t/m) |
 | --- | --- | --- |

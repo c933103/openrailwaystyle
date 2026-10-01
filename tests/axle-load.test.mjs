@@ -56,3 +56,13 @@ test('axle extraction rejects partial, duplicate and malformed CSV while accepti
  assert.deepEqual(axleRows('count\t0\t0\n',0),[]);
  for(const body of ['way\t123\t\t22.5\t\tD4','way\t123\t\t22.5\t\tD4\ncount\t0\t2','<html>error</html>','way\t1\t\nway\t1\t\ncount\t0\t2']) assert.throws(()=>axleRows(body,3));
 });
+
+
+test('kg and lb railway capacities affect colours and both legend unit presentations',()=>{
+ const metric=axleLoad({axle_load:'22500 kg'}),imperial=axleLoad({axle_load:'50000 lb'});
+ assert.equal(metric.tonnes,22.5);assert.equal(imperial.tonnes,22.6796185);
+ assert.equal(metric.colour,axleLoad({axle_load:'22.5 t'}).colour);
+ assert.match(formatAxleLoad(metric,'metric'),/22.5 t \(22,500 kg\)/);
+ assert.match(formatAxleLoad(imperial,'imperial'),/25 short tons \(50,000 lb\)/);
+ assert.match(formatAxleLoad(imperial,'metric'),/22.68 t \(22,680 kg\)/);
+});
