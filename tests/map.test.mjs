@@ -454,6 +454,10 @@ test('track counts: stacked tunnels are two tracks; light rail and main lines ar
   const tml = {group: 'rail', main: true, tunnel: true, line: 'Tuen Ma Line'};
   const stacked = countTracks([{...tml, parts: [[[0, 0], [1000, 0]]]}, {...tml, parts: [[[200, 0], [800, 0]]]}], 1);
   assert.ok(stacked.points.some(p => p.tracks === 2 && p.x > 250 && p.x < 750), JSON.stringify(stacked.points));
+  // A stacked pair beside a third track: probes from the third keep the
+  // pair apart too (offsets −5, −5, 0, 5 are four tracks).
+  const four = countTracks([{...tml, parts: [[[0, -5], [1000, -5]]]}, {...tml, parts: [[[0, -5], [1000, -5]]]}, {...tml, parts: [[[0, 0], [1000, 0]]]}, {...tml, parts: [[[0, 5], [1000, 5]]]}], 1);
+  assert.ok(four.points.length && four.points.every(p => p.tracks === 4), JSON.stringify(four.points));
   // A way meeting another end to end stays one track.
   const joined = countTracks([{...tml, parts: [[[0, 0], [500, 0]]]}, {...tml, parts: [[[500, 0], [1000, 0]]]}], 1);
   assert.ok(joined.points.every(p => p.tracks === 1), JSON.stringify(joined.points));

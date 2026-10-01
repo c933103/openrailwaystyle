@@ -118,6 +118,7 @@ export function countTracks(lines, metres, {probe: measured = () => true, debug}
     return {offsets, sines};
   };
   const sameLine = (a, b) => Boolean(lines[a].line) && lines[a].line === lines[b].line;
+  const pair = (a, b) => a < b ? `${a},${b}` : `${b},${a}`;
   // The bundle around `index` among the offsets, its size and whether
   // `index` is its middle track.
   const bundle = (index, group, offsets, stacked = new Set()) => {
@@ -132,7 +133,7 @@ export function countTracks(lines, metres, {probe: measured = () => true, debug}
     // Ways meeting end to end cross the probe at the same place: one track.
     // Tracks of two different named lines there cross each other (one
     // passes over the other) and both count.
-    const one = (a, b) => b[1] - a[1] <= 0.8 / metres && !stacked.has(a[0]) && !stacked.has(b[0]) && (!lines[a[0]].line || !lines[b[0]].line || sameLine(a[0], b[0]));
+    const one = (a, b) => b[1] - a[1] <= 0.8 / metres && !stacked.has(pair(a[0], b[0])) && (!lines[a[0]].line || !lines[b[0]].line || sameLine(a[0], b[0]));
     const members = sorted.slice(lo, hi + 1).filter((entry, i, all) => !i || !one(all[i-1], entry));
     // The middle track: nearest the bundle's centre; between two equally
     // near, the lower index, so every member picks the same one whichever
@@ -170,10 +171,16 @@ export function countTracks(lines, metres, {probe: measured = () => true, debug}
     // here (over 40 m, rounding hides a gentle crossover). A short way keeps
     // only tracks nearly parallel to it.
     const isShort = lengths[index] < short;
-    // Another way at this track's place here and at the next or previous
-    // probe overlaps it (a way meeting it end to end shares one point).
-    const atPlace = (q, i) => q?.crossed.has(i) && Math.abs(q.crossed.get(i)) <= samePlace + slack;
-    for (const [k, p] of probes.entries()) p.stacked = new Set([...p.crossed.keys()].filter(i => i !== index && atPlace(p, i) && (atPlace(probes[k-1], i) || atPlace(probes[k+1], i))));
+    // Two ways at the same place here and at the next or previous probe
+    // overlap (a way meeting another end to end shares one point): every
+    // such pair the probe crosses, this track or two beside it.
+    const together = (q, i, j) => q?.crossed.has(i) && q.crossed.has(j) && Math.abs(q.crossed.get(i) - q.crossed.get(j)) <= samePlace + slack;
+    for (const [k, p] of probes.entries()) {
+      p.stacked = new Set();
+      const ids = [...p.crossed.keys()];
+      for (const [n, i] of ids.entries()) for (const j of ids.slice(n + 1))
+        if (together(p, i, j) && (together(probes[k-1], i, j) || together(probes[k+1], i, j))) p.stacked.add(pair(i, j));
+    }
     for (const [k, p] of probes.entries()) {
       // The same way further along, or (tracks are often split into many
       // short ways) any track at the same distance there.
@@ -296,6 +303,8 @@ export function stationTracks(lines, zones, metres, {prefer = () => true} = {}) 
 // Trams and light rail are separate systems from the main lines and from
 // each other, compared only among themselves (a light rail line beside a
 // main line on a viaduct is two pairs, not four tracks).
+// (Tram stops get no station badge: track-tiles.mjs leaves them out, as
+// they are frequent and seldom mapped as station areas.)
 const GROUPS = {tram: 'tram', light_rail: 'light_rail'};
 export const stationGroup = station => GROUPS[station] || 'rail';
 export function trackLines(features) {
