@@ -20,3 +20,10 @@ test('platform requests leave the queue when panned away and respect a rate-limi
  try{p.update();await new Promise(r=>setTimeout(r,10));p.update();await new Promise(r=>setTimeout(r,10));assert.equal(requests,1);features=[];p.update();}
  finally{p.destroy();}
 });
+test('stationary edges recover after rate limits and transient errors without repeating unchanged source data',async()=>{
+ for(const status of [429,503]){
+  let requests=0,draws=0,data;const map={getZoom:()=>19,queryRenderedFeatures:()=>[edge()],getSource:()=>({setData:d=>{data=d;draws++;}})};
+  const p=createPlatformLengths(map,{delay:0,cooldown:10,retryDelay:10,fetcher:async()=>++requests===1?{ok:false,status}:{ok:true,json:async()=>({properties:{length:350}})}});
+  try{p.update();await new Promise(r=>setTimeout(r,50));assert.equal(requests,2);assert.equal(data.features[0].properties.platform_length,350);const before=draws;p.update();p.update();assert.equal(draws,before);}finally{p.destroy();}
+ }
+});
