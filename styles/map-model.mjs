@@ -34,6 +34,21 @@ const RAIL_MODES = ['train', 'subway', 'light_rail', 'monorail', 'tram'];
 const isRailPlace = place => RAIL_PLACES[place.category]?.includes(place.type) ||
   (place.category === 'public_transport' && place.type === 'station' &&
     (['station', 'halt', 'tram_stop'].includes(place.extratags?.railway) || RAIL_MODES.some(mode => place.extratags?.[mode] === 'yes')));
+// Two station names are the same when equal, or when one is the other plus
+// only a name in another script ("大埔墟 Tai Po Market" and "Tai Po Market"),
+// not when the rest is more of the same script ("Central Park" is not
+// "Central").
+const LATIN = /[A-Za-z\u00C0-\u024F]/, OTHER_LETTER = /[^\P{L}A-Za-z\u00C0-\u024F]/u;
+export function samePlaceName(a, b) {
+  // The word for station does not tell stations apart.
+  const tidy = v => String(v).toLowerCase().replace(/(\s+(railway |train |mtr )?station|站|駅|역)(?=\s|$)/gu, '').replace(/\s+/g, ' ').trim();
+  [a, b] = [tidy(a), tidy(b)].sort((x, y) => x.length - y.length);
+  if (!a || a.length < 2) return false;
+  if (a === b) return true;
+  if (!b.includes(a)) return false;
+  const rest = b.replace(a, '');
+  return LATIN.test(a) ? !LATIN.test(rest) : !OTHER_LETTER.test(rest);
+}
 // Facility API results and geocoder results → {rail, places}. A geocoded
 // station joins the railway results unless the facility API already gave it
 // (the same node, or the same name within about 400 m).
@@ -50,8 +65,7 @@ export function searchResults(facilities, places) {
     if (!located(item)) continue;
     if (isRailPlace(place)) {
       const own = names(item);
-      // Names match when one contains the other ("大埔墟 Tai Po Market" and "Tai Po Market").
-      const sameName = r => [...names(r)].some(n => [...own].some(o => n.length > 2 && o.length > 2 && (n.includes(o) || o.includes(n))));
+      const sameName = r => [...names(r)].some(n => [...own].some(o => samePlaceName(n, o)));
       if (rail.some(r => (place.osm_type === 'node' && r.osm_id === place.osm_id) || (near(r, item) && sameName(r)))) continue;
       rail.push({...item, railway: ['station', 'train_station'].includes(place.type) ? 'station' : place.type});
     } else others.push({...item, place: place.addresstype || place.type});
