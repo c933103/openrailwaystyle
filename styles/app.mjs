@@ -1248,7 +1248,10 @@ $('search-form').addEventListener('submit', async e => {
     // The facility request is cancelled at its 5-second limit (and with the
     // whole search), not just left running.
     const facility = new AbortController();
-    controller.signal.addEventListener('abort', () => facility.abort(), {once: true});
+    // (An abort that already fired, e.g. while the labels loaded, is not
+    // replayed to a new listener.)
+    if (controller.signal.aborted) facility.abort();
+    else controller.signal.addEventListener('abort', () => facility.abort(), {once: true});
     const facilityTimeout = setTimeout(() => facility.abort('timeout'), 5000);
     const [facilities, places] = await Promise.allSettled([
       Date.now() < searchPausedUntil ? Promise.reject(new Error('paused')) : json(facilityURL, facility.signal).finally(() => clearTimeout(facilityTimeout)),
