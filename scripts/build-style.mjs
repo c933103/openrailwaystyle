@@ -37,6 +37,8 @@ const style = {
     // tiles (atlastracks protocol, tile-labels.mjs and track-tiles.mjs):
     // always from zoom-14 tiles, so the same at every zoom.
     trackCounts: {type: 'vector', tiles: ['atlastracks://{z}/{x}/{y}'], minzoom: 14, maxzoom: 14, attribution: '<a href="https://www.openrailwaymap.app/">OpenRailwayMap</a> · <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>'},
+    platformEdges:vector('standard_railway_platform_edges',19,22),
+    platformLengths:{type:'geojson',data:{type:'FeatureCollection',features:[]}},
     stationLow: vector('standard_railway_text_stations_low', 4, 6),
     // The mid-zoom endpoint returns nothing below zoom 7, and the low-zoom
     // one keeps only stations OpenRailwayMap sizes large or normal, which
@@ -378,6 +380,8 @@ for (const [tier, filter] of tiers) for (const [source, layer, minzoom, maxzoom]
     paint: stationInk,
   });
 }
+style.layers.push({id:'platform-edges',type:'line',source:'platformEdges','source-layer':'standard_railway_platform_edges',minzoom:19,paint:{'line-color':'#527987','line-width':1.5}});
+style.layers.push({id:'platform-lengths',type:'symbol',source:'platformLengths',minzoom:19,layout:{'text-field':['concat',['to-string',['round',['get','platform_length']]],' m'],'text-font':['Noto Sans Bold'],'text-size':11,'text-padding':10,'text-allow-overlap':false},paint:{'text-color':'#214b5b','text-halo-color':'#fffef8','text-halo-width':2}});
 // Former, disused and planned stations rank last, from zoom 12, muted; their
 // dots lie under the operating stations' dots.
 style.layers.push({
