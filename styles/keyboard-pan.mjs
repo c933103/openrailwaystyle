@@ -29,6 +29,28 @@ export function installKeyboardPan(map, {reducedMotion = () => false} = {}) {
   // The latest keydown goes with each pan as its originalEvent, so the map
   // treats it as the user's (the location control stops following).
   let frame = 0, last = 0, moved = 0, direction = [0, 0], keyEvent = null;
+  // A held key is one movement: each frame's step would otherwise start and
+  // end a movement of its own, running everything that waits for the map to
+  // settle (redrawing the legend, looking up nearby stops) every frame. While
+  // a key is held, the first movestart goes through, later ones are dropped,
+  // and moveend is kept back until the keys are released.
+  let pendingEnd = null, started = false;
+  const hold = () => {
+    started = false; pendingEnd = null;
+    const fire = Object.getPrototypeOf(map).fire;
+    map.fire = function (event, properties) {
+      const type = typeof event === 'string' ? event : event?.type;
+      if (type === 'moveend') { pendingEnd = [event, properties]; return this; }
+      if (type === 'movestart') { if (started) return this; started = true; }
+      return fire.call(this, event, properties);
+    };
+  };
+  const release = () => {
+    if (!Object.hasOwn(map, 'fire')) return;
+    delete map.fire;
+    const end = pendingEnd; pendingEnd = null; started = false;
+    if (end) map.fire(...end);
+  };
   const tick = now => {
     const keys = [...held.keys()];
     if (!keys.length) { frame = 0; return; }
@@ -42,6 +64,7 @@ export function installKeyboardPan(map, {reducedMotion = () => false} = {}) {
   };
   const stop = (topUp = true) => {
     held.clear(); cancelAnimationFrame(frame); frame = 0;
+    release();
     // A short press moves at least one step, as MapLibre's did.
     if (topUp && moved < STEP && (direction[0] || direction[1])) {
       const rest = STEP - moved;
@@ -58,7 +81,7 @@ export function installKeyboardPan(map, {reducedMotion = () => false} = {}) {
     if (!DIRECTIONS[event.key] || modified) return;
     event.preventDefault(); event.stopPropagation();
     if (held.has(event.key)) return;
-    if (!held.size) { moved = 0; map.stop(); }
+    if (!held.size) { moved = 0; map.stop(); hold(); }
     keyEvent = event;
     held.set(event.key, performance.now());
     direction = panDirection(held.keys());

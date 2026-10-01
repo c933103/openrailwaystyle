@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {panSpeed, panDirection, RAMP_MS} from '../styles/keyboard-pan.mjs';
+import {panSpeed, panDirection, installKeyboardPan, RAMP_MS} from '../styles/keyboard-pan.mjs';
 
 test('keyboard panning: a steady speed after a short ramp, never jumps', () => {
   assert.equal(panSpeed(0, 800), 0);
@@ -18,4 +18,33 @@ test('keyboard panning: held arrows combine into one unit direction', () => {
   assert.ok(Math.abs(x - Math.SQRT1_2) < 1e-12 && Math.abs(y - Math.SQRT1_2) < 1e-12);
   assert.deepEqual(panDirection(['ArrowLeft', 'ArrowRight']), [0, 0]);
   assert.deepEqual(panDirection(['a']), [0, 0]);
+});
+
+test('keyboard panning: a held key is one movement, ended on release', () => {
+  const frames = [];
+  globalThis.requestAnimationFrame = callback => frames.push(callback);
+  globalThis.cancelAnimationFrame = () => { frames.length = 0; };
+  const listeners = {}, fired = [];
+  const container = {clientWidth: 800, clientHeight: 600, addEventListener: (type, f) => { listeners[type] = f; }};
+  class Camera {
+    fire(event) { fired.push(typeof event === 'string' ? event : event.type); return this; }
+    panBy(offset, options) { this.fire('movestart'); this.fire('move'); if (options.animate !== false) this.fire('move'); this.fire('moveend'); }
+    stop() {}
+    getContainer() { return container; }
+  }
+  const map = new Camera(), key = name => ({key: name, preventDefault() {}, stopPropagation() {}});
+  globalThis.window = {addEventListener() {}};
+  installKeyboardPan(map, {reducedMotion: () => true});
+  listeners.keydown(key('ArrowRight'));
+  let now = performance.now();
+  for (let i = 0; i < 30; i++) frames.shift()(now += 16);
+  assert.equal(fired.filter(t => t === 'movestart').length, 1);
+  assert.equal(fired.filter(t => t === 'moveend').length, 0, 'nothing settles while the key is held');
+  assert.ok(fired.filter(t => t === 'move').length >= 29);
+  listeners.keyup(key('ArrowRight'));
+  assert.equal(fired.filter(t => t === 'moveend').length, 1, 'one end on release');
+  assert.ok(!Object.hasOwn(map, 'fire'), 'events flow as usual afterwards');
+  map.panBy([1, 0], {});
+  assert.equal(fired.filter(t => t === 'moveend').length, 2);
+  delete globalThis.window; delete globalThis.requestAnimationFrame; delete globalThis.cancelAnimationFrame;
 });
