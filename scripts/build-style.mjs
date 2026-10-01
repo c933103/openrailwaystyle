@@ -373,8 +373,24 @@ for (const l of places) {
   l.paint['text-color'] = '#74807d';
   l.layout['text-font'] = ['Noto Sans Regular'];
   if (l.id.startsWith('place_')) l.layout['text-size'] = ['interpolate', ['linear'], ['zoom'], 5, 10, 14, 12];
+  // Provinces get a layer of their own below (with states).
+  if (l.id === 'place_label_other') l.filter = ['all', ['==', '$type', 'Point'], ['!in', 'class', 'city', 'state', 'province', 'country', 'continent']];
   style.layers.push(l);
 }
+// Country names: the base style faded them out by zoom 6 (and station names,
+// placed first, hid most of them). They stay to zoom 7, in spaced capitals.
+for (const l of style.layers.filter(l => /^country_label/.test(l.id))) {
+  Object.assign(l.layout, {'text-transform': 'uppercase', 'text-letter-spacing': 0.12, 'text-size': ['interpolate', ['linear'], ['zoom'], 2, 10, 6, 15], 'text-max-width': 8});
+  Object.assign(l.paint, {'text-color': '#5c6c68', 'text-opacity': ['interpolate', ['linear'], ['zoom'], 7, 1, 8, 0]});
+  l.minzoom = 1; l.maxzoom = 8;
+}
+// States, provinces and prefectures (OpenMapTiles place classes state and
+// province), zooms 4–9, smaller and lighter than countries.
+style.layers.push({id: 'state_label', type: 'symbol', source: 'openmaptiles', 'source-layer': 'place', minzoom: 4, maxzoom: 10,
+  filter: ['all', ['==', ['geometry-type'], 'Point'], ['match', ['get', 'class'], ['state', 'province'], true, false]],
+  layout: {'text-field': '{name:latin}', 'text-font': ['Noto Sans Regular'], 'text-size': ['interpolate', ['linear'], ['zoom'], 4, 9, 8, 12],
+    'text-transform': 'uppercase', 'text-letter-spacing': 0.08, 'text-max-width': 8, 'text-padding': 4},
+  paint: {'text-color': '#86938f', 'text-halo-color': 'rgba(255,255,255,0.8)', 'text-halo-width': 1.5, 'text-opacity': ['interpolate', ['linear'], ['zoom'], 9, 1, 10, 0]}});
 // Context fills sit above the base fills/shading, below contours and all
 // transport linework. Context labels outrank towns but yield to railways.
 const context = contextLayers(), constraints = constraintLayers(), roads = roadLayers();
@@ -423,6 +439,9 @@ for (const l of style.layers) {
 }
 // Satellite imagery directly above the background, off unless chosen.
 style.layers.splice(style.layers.findIndex(l => l.id === 'background') + 1, 0, {id:'satellite', type:'raster', source:'satellite', layout:{visibility:'none'}, paint:{'raster-fade-duration':150}});
+// Country names last: MapLibre places later layers first, and the few
+// country names should not give way to station names.
+for (const id of ['country_label-other', 'country_label']) style.layers.push(...style.layers.splice(style.layers.findIndex(l => l.id === id), 1));
 await writeFile(new URL('../styles/world.style.json', import.meta.url), JSON.stringify(style, null, 2) + '\n');
 console.log(`Built world.style.json: ${style.layers.length} layers`);
 

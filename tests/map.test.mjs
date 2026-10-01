@@ -648,3 +648,22 @@ test('search: geocoded stations join the railway results unless already found; o
   assert.deepEqual(other.map(p => [p.osm_id, p.place, p.area, p.boundingbox]), [[316731268, 'town', '香港 Hong Kong', [22.2, 22.5, 114, 114.3]]]);
   assert.deepEqual(osmObject({properties: rail[1]}), {type: 'way', id: '223848687'}, 'geocoded results link to their OSM object');
 });
+
+test('country names to zoom 7 above station names; states and provinces from zoom 4', async () => {
+  const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
+  const ids = style.layers.map(l => l.id), last = ids.lastIndexOf.bind(ids);
+  for (const id of ['country_label', 'country_label-other']) {
+    const layer = style.layers.find(l => l.id === id);
+    assert.ok(last(id) > last('station-detail-large-names'), `${id} placed before station names`);
+    const opacity = z => styleSpec.expression.createPropertyExpression(layer.paint['text-opacity'], styleSpec.latest.paint_symbol['text-opacity']).value.evaluate({zoom: z});
+    assert.equal(opacity(6), 1, `${id} still shown at zoom 6`);
+    assert.equal(opacity(8), 0);
+  }
+  const state = style.layers.find(l => l.id === 'state_label');
+  assert.deepEqual([state.source, state['source-layer'], state.minzoom, state.maxzoom], ['openmaptiles', 'place', 4, 10]);
+  const filter = featureFilter(state.filter);
+  assert.equal(filter.filter({zoom: 6}, {type: 1, properties: {class: 'province', name: '岩手県'}}), true, 'Japanese prefectures are provinces');
+  assert.equal(filter.filter({zoom: 6}, {type: 1, properties: {class: 'state'}}), true);
+  assert.equal(filter.filter({zoom: 6}, {type: 1, properties: {class: 'town'}}), false);
+  assert.equal(featureFilter(style.layers.find(l => l.id === 'place_label_other').filter).filter({zoom: 9}, {type: 1, properties: {class: 'province'}}), false, 'not drawn twice');
+});

@@ -1,10 +1,10 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-4';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-4';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-12';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-12';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-4';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-4';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-4';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-4';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-12';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-12';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-12';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-12';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -34,7 +34,7 @@ const settings = readSettings(location.search, {language: readCookie(LANGUAGE_CO
 const status = $('map-status');
 let legendHelpOpen = false;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-4';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-12';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -811,7 +811,7 @@ function installPolar() {
   if (!map) return;
   if (polarLayer) { if (!map.getLayer(polarLayer.id)) map.addLayer(polarLayer, map.getLayer('waterway-tunnel') ? 'waterway-tunnel' : undefined); return; }
   polarLoading ||= import(`./vendor/polar-layer.js?v=${assetVersion}`).then(({PolarLayer}) => {
-    polarLayer = new PolarLayer({data: new URL('./data/polar/', import.meta.url), units: () => settings.units, relief: () => settings.relief, places: showPolarPlaces});
+    polarLayer = new PolarLayer({data: new URL('./data/polar/', import.meta.url), units: () => settings.units, relief: () => settings.relief, places: showPolarPlaces, imagery: () => settings.background !== 'map'});
     installPolar();
   }).catch(error => console.warn('Polar caps unavailable:', error?.message || error));
 }

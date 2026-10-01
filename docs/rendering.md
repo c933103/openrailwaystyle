@@ -63,6 +63,10 @@ Ocean bathymetry is generally much coarser than land elevation; extra zoom does 
 
 Beyond 85.05° N and S, where the terrain tiles end, the globe's relief and contours come from NOAA ETOPO 2022 at 60 arc-seconds (about 1.85 km), prepared in advance rather than in the browser. This is not a navigation chart.
 
+## Country and state names
+
+Country names are shown up to zoom 7 in spaced capitals and are placed before station names (the base style faded them out by zoom 6, and station names, placed first, hid most of the rest). States, provinces and prefectures (OpenMapTiles `place` classes `state` and `province`) have their own lighter layer from zoom 4 to 9, below station names in priority.
+
 ## Transport interchanges and passenger destinations
 
 The Transport and Destinations display options are enabled by default, remembered with the other settings, and included in shared links. They use the existing worldwide OpenMapTiles archive; no live Overpass calls or additional tile service are introduced.
