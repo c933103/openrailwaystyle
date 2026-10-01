@@ -630,6 +630,18 @@ test('dragging the globe keeps the direction and the heading; over a pole it car
   let hundreds = {center: [0, 0], bearing: 0};
   for (let i = 0; i < 40; i++) hundreds = stepView(hundreds, 0, 100, 0.35 * perDegree);
   assert.ok(apart(across, hundreds) < 0.1, JSON.stringify({across, hundreds}));
+  // Work per pointer event is a few segments, whatever the distance or
+  // latitude: a huge drag round the polar caps returns at once.
+  const started = performance.now();
+  let far;
+  for (let i = 0; i < 1000; i++) far = stepView({center: [30, 84.99], bearing: 80}, 5000, 3000, perDegree);
+  assert.ok(performance.now() - started < 500, 'took ' + (performance.now() - started) + ' ms');
+  assert.ok(Math.abs(far.center[1]) <= 90 && Number.isFinite(far.center[0]) && Number.isFinite(far.bearing), JSON.stringify(far));
+  // Leaving a cap and running along a parallel just outside it: as in pieces.
+  const graze = stepView({center: [0, 86], bearing: 0}, 30, -4, perDegree);
+  let grazes = {center: [0, 86], bearing: 0};
+  for (let i = 0; i < 300; i++) grazes = stepView(grazes, 0.1, -4 / 300, perDegree);
+  assert.ok(apart(graze, grazes) < 1e-6, JSON.stringify({graze, grazes}));
   // The planet keeps its size: zoom falls as the centre nears a pole.
   assert.ok(near(zoomForLatitude(3, 0, 60), 2));
   assert.ok(near(zoomForLatitude(2, 60, 0), 3));

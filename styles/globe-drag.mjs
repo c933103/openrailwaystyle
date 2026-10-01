@@ -38,28 +38,81 @@ export function startFrame(center, bearing) {
 // distance on the planet, north–south along the meridian and east–west
 // along the parallel; the bearing stays.
 export function stepView(view, dx, dy, radiansPerPixel) {
-  // The movement is followed in small steps, each with the heading the last
-  // one left, so it ends where the same movement in small events would
-  // (however the browser groups them). East–west motion is magnified by
-  // 1/cos(latitude) near the poles, so the steps shrink with it.
-  const total = deg(Math.hypot(dx, dy) * radiansPerPixel);
-  // At most LIMIT steps; past that the last one takes what is left, so no
-  // movement is ever dropped.
-  for (let done = 0, n = 0; done < total; n++) {
-    const size = n >= LIMIT - 1 ? total - done : Math.min(total - done, 0.05 * Math.max(0.02, Math.cos(rad(view.center[1]))));
-    const f = size / total, d = dx * f, e = dy * f;
-    // Within the polar caps a constant heading has no steady meaning (a
-    // step east near a pole spins the view round it): there the globe turns
-    // as a ball, over the pole, the heading following.
-    view = Math.abs(view.center[1]) >= POLAR_DRAG ? frameView(stepFrame(startFrame(view.center, view.bearing), d, e, radiansPerPixel)) : step(view, d, e, radiansPerPixel);
-    done += size;
+  // The movement is followed as the same movement in many small events
+  // would be, however the browser groups them, in closed form: at a
+  // constant heading the centre runs along a rhumb line, and within the
+  // polar caps (where a constant heading has no steady meaning: a step east
+  // near a pole spins the view round it) the globe turns as a ball, about
+  // one axis. Each part is followed to where it meets the edge of a cap, so
+  // the work is a few segments whatever the distance.
+  let left = 1, polar = Math.abs(view.center[1]) > POLAR_DRAG;
+  for (let n = 0; left > 0 && n < SEGMENTS; n++) {
+    const last = n === SEGMENTS - 1;
+    if (polar) {
+      const {view: next, used} = turnBall(view, dx * left, dy * left, radiansPerPixel, last);
+      view = next; left *= 1 - used;
+    } else {
+      const {view: next, used} = rhumb(view, dx * left, dy * left, radiansPerPixel, last);
+      view = next; left *= 1 - used;
+    }
+    if (left < 1e-12) break;
+    polar = !polar;
   }
   return view;
 }
 // Where the constant heading gives way to turning the globe as a ball: the
 // edge of the flat map's tiles.
 export const POLAR_DRAG = 85;
-const LIMIT = 200000;
+// Each segment ends at the edge of a cap, so a drag needs one more than the
+// number of cap edges it crosses; this bounds the work for any distance
+// (the last segment takes what is left).
+const SEGMENTS = 64;
+// Along the rhumb line at the view's heading, until the movement ends or
+// the centre reaches the edge of a polar cap (unless `all`). Returns the
+// view and the fraction of the movement used.
+function rhumb({center: [lng, lat], bearing}, dx, dy, radiansPerPixel, all) {
+  const β = rad(bearing), right = -dx * radiansPerPixel, up = dy * radiansPerPixel;
+  const north = deg(up * Math.cos(β) - right * Math.sin(β)), east = up * Math.sin(β) + right * Math.cos(β);
+  let used = 1;
+  // Moving towards a pole: stop at the cap's edge.
+  if (!all && north && Math.abs(lat + north) > POLAR_DRAG && Math.sign(north) === Math.sign(lat + north)) used = Math.max(0, (Math.sign(north) * POLAR_DRAG - lat) / north);
+  const φ = clampLat(lat + north * used);
+  // East–west motion is magnified by 1/cos(latitude): over the rhumb line,
+  // by the change of the Mercator y over the change of latitude.
+  const y = l => Math.log(Math.tan(Math.PI / 4 + rad(l) / 2));
+  const stretch = Math.abs(φ - lat) > 1e-9 ? (y(φ) - y(lat)) / rad(φ - lat) : 1 / Math.cos(rad(lat));
+  let λ = lng + deg(east * used * stretch);
+  λ = ((λ + 180) % 360 + 360) % 360 - 180;
+  return {view: {center: [λ, φ], bearing}, used};
+}
+// Turning the globe as a ball for a movement of dx, dy pixels: many small
+// turns about the screen's axes, as stepFrame makes, add up to one turn
+// about a single axis. Stops where the centre leaves the polar cap (unless
+// `all`). Returns the view and the fraction of the movement used.
+function turnBall(view, dx, dy, radiansPerPixel, all) {
+  const {c, u} = startFrame(view.center, view.bearing), r = cross(u, c);
+  const b = dx * radiansPerPixel, a = dy * radiansPerPixel, angle = Math.hypot(a, b);
+  if (!angle) return {view, used: 1};
+  // The centre moves along the great circle through c towards m.
+  const m = unit(r.map((v, i) => -v * b + u[i] * a));
+  let t = angle;
+  if (!all) {
+    // z(t) = c.z cos t + m.z sin t = R cos(t − α): first outward crossing
+    // of the cap's edge.
+    const edge = Math.sin(rad(POLAR_DRAG)), R = Math.hypot(c[2], m[2]), α = Math.atan2(m[2], c[2]);
+    if (R > edge) for (const level of [edge, -edge]) for (const sign of [1, -1]) {
+      let x = α + sign * Math.acos(level / R);
+      x = ((x % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+      // A crossing at the start (rounded to just below a full turn) counts.
+      if (x > 2 * Math.PI - 1e-9) x = 0;
+      const z = Math.cos(x - α) * R, slope = -Math.sin(x - α) * R;
+      if (x < t && Math.sign(z) * slope < 0) t = x;
+    }
+  }
+  const k = unit(cross(c, m));
+  const turn = v => { const kv = cross(k, v), kd = dot(k, v); return unit(v.map((x, i) => x * Math.cos(t) + kv[i] * Math.sin(t) + k[i] * kd * (1 - Math.cos(t)))); };
+  return {view: frameView({c: turn(c), u: turn(u)}), used: t / angle};
+}
 // Turn the frame for a pointer movement of dx, dy pixels (right, down):
 // the globe follows the pointer, so the centre moves the other way.
 export function stepFrame({c, u}, dx, dy, radiansPerPixel) {
@@ -70,20 +123,6 @@ export function stepFrame({c, u}, dx, dy, radiansPerPixel) {
     c: unit(c1.map((v, i) => v * Math.cos(a) + u[i] * Math.sin(a))),
     u: unit(u.map((v, i) => v * Math.cos(a) - c1[i] * Math.sin(a))),
   };
-}
-function step({center: [lng, lat], bearing}, dx, dy, radiansPerPixel) {
-  const β = rad(bearing), right = -dx * radiansPerPixel, up = dy * radiansPerPixel;
-  const north = up * Math.cos(β) - right * Math.sin(β), east = up * Math.sin(β) + right * Math.cos(β);
-  let φ = lat + deg(north);
-  // East–west at the mean latitude of the step, never closer to a pole
-  // than the centre may come (where a parallel is a point).
-  const mid = rad(clampLat((lat + φ) / 2));
-  let λ = lng + deg(east) / Math.cos(mid);
-  // Over a pole: on down the far meridian, the view turned round.
-  if (φ > 90 || φ < -90) { φ = Math.sign(φ) * 180 - φ; λ += 180; bearing += 180; }
-  λ = ((λ + 180) % 360 + 360) % 360 - 180;
-  bearing = ((bearing + 180) % 360 + 360) % 360 - 180;
-  return {center: [λ, φ], bearing};
 }
 export function frameView({c, u}) {
   const {north, east} = axes(c);
