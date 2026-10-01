@@ -126,6 +126,21 @@
       },
       "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a> · <a href=\"https://www.wikidata.org/\">Wikidata, CC0</a>"
     },
+    "platformEdges": {
+      "type": "vector",
+      "url": "https://openrailwaymap.app/standard_railway_platform_edges",
+      "minzoom": 19,
+      "maxzoom": 22,
+      "promoteId": "id",
+      "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
+    },
+    "platformLengths": {
+      "type": "geojson",
+      "data": {
+        "type": "FeatureCollection",
+        "features": []
+      }
+    },
     "stationLow": {
       "type": "vector",
       "url": "https://openrailwaymap.app/standard_railway_text_stations_low",
@@ -18527,6 +18542,50 @@
       "paint": {
         "text-color": "#26363d",
         "text-halo-color": "#ffffff",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "platform-edges",
+      "type": "line",
+      "source": "platformEdges",
+      "source-layer": "standard_railway_platform_edges",
+      "minzoom": 19,
+      "paint": {
+        "line-color": "#527987",
+        "line-width": 1.5
+      }
+    },
+    {
+      "id": "platform-lengths",
+      "type": "symbol",
+      "source": "platformLengths",
+      "minzoom": 19,
+      "layout": {
+        "text-field": [
+          "concat",
+          [
+            "to-string",
+            [
+              "round",
+              [
+                "get",
+                "platform_length"
+              ]
+            ]
+          ],
+          " m"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 11,
+        "text-padding": 10,
+        "text-allow-overlap": false
+      },
+      "paint": {
+        "text-color": "#214b5b",
+        "text-halo-color": "#fffef8",
         "text-halo-width": 2
       }
     },
