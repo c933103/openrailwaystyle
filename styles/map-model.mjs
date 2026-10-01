@@ -75,7 +75,7 @@ export function searchResults(facilities, places) {
 // Map background: the drawn base map, satellite imagery alone, or imagery
 // under the railways (hybrid).
 export const BACKGROUNDS = ['map', 'satellite', 'hybrid'];
-export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge', 'loading'];
+export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge', 'loading', 'owner'];
 export const LANGUAGES = [
   ['local','Local names'], ['en','English'], ['ko','한국어'], ['ja','日本語'],
   ['zh-Hant','繁體中文'], ['zh-Hans','简体中文'], ['de','Deutsch'], ['fr','Français'],
@@ -339,6 +339,21 @@ export const loadingDimensions = (g, units = 'metric') => !g?.height ? ''
 // Whether the upper-cased tag lists a British gauge: alone, in a list ('in'
 // on "W6A," tokens avoids W6 matching inside W6A) or starred.
 const britishTest = (upper, code) => { const c = code.toUpperCase(); return ['any', ['==', upper, c], ['in', `${c},`, ['concat', upper, ',']], ['in', `${c}*`, upper]]; };
+// Owner view: each infrastructure owner (OSM owner=*) gets its own colour,
+// made from its name, so it is the same wherever and whenever it is drawn.
+// Tiles carry it as owner_color (added in the browser, tile-labels.mjs);
+// without an owner, the unknown colour.
+export function ownerColor(name) {
+  const key = String(name ?? '').trim().toLowerCase();
+  if (!key) return null;
+  let hash = 0x811c9dc5;
+  for (const ch of key) { hash ^= ch.codePointAt(0); hash = Math.imul(hash, 0x01000193) >>> 0; }
+  // Hues spread by the golden angle; saturation and lightness in three
+  // steps each, kept away from the grey of "not recorded".
+  const hue = Math.round((hash % 360) * 137.508) % 360, sat = [62, 74, 86][(hash >>> 9) % 3], light = [34, 42, 50][(hash >>> 13) % 3];
+  return `hsl(${hue}, ${sat}%, ${light}%)`;
+}
+export const ownerPaint = () => ['coalesce', ['get', 'owner_color'], UNKNOWN_COLOR];
 export function loadingPaint() {
   const lg = ['coalesce', ['get', 'loading_gauge'], ''], upper = ['upcase', lg];
   // Upper case: "W6a" is tagged as well as "W6A".
@@ -560,7 +575,7 @@ export function formatReadout({lng, lat}, zoom, detail = 0) {
 // id (planned and former lines, street running) or the crossing node id;
 // base-map features carry the id times ten plus 1, 2 or 3 for a node, way or
 // relation.
-const WAY_SOURCES = ['railway', 'network', 'speed', 'electric', 'control', 'gaugeLow', 'loadingLow', 'inactiveRegional', 'streetRunning', 'branchLines'];
+const WAY_SOURCES = ['railway', 'network', 'speed', 'electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'inactiveRegional', 'streetRunning', 'branchLines'];
 export function osmObject(feature) {
   const p = feature?.properties || {};
   // Geocoder results name the type.

@@ -447,6 +447,35 @@ test('station track counts include sidings, not yards; a station with no area co
   const bays = [track(0, 'siding'), track(5, 'siding'), track(10, 'siding'), track(15, 'yard')];
   assert.deepEqual(stationTracks(bays, [zone], 1).map(p => p.tracks), [3]);
 });
+test('track counts: stacked tunnels are two tracks; light rail and main lines are counted apart', async () => {
+  const {countTracks, stationTracks, trackLines} = await import('../styles/track-count.mjs');
+  // 1 unit = 1 m. Two tunnels of one line, one above the other, drawn on the
+  // same plan line for 600 m (as south of Austin, Hong Kong): two tracks.
+  const tml = {group: 'rail', main: true, tunnel: true, line: 'Tuen Ma Line'};
+  const stacked = countTracks([{...tml, parts: [[[0, 0], [1000, 0]]]}, {...tml, parts: [[[200, 0], [800, 0]]]}], 1);
+  assert.ok(stacked.points.some(p => p.tracks === 2 && p.x > 250 && p.x < 750), JSON.stringify(stacked.points));
+  // A stacked pair beside a third track: probes from the third keep the
+  // pair apart too (offsets −5, −5, 0, 5 are four tracks).
+  const four = countTracks([{...tml, parts: [[[0, -5], [1000, -5]]]}, {...tml, parts: [[[0, -5], [1000, -5]]]}, {...tml, parts: [[[0, 0], [1000, 0]]]}, {...tml, parts: [[[0, 5], [1000, 5]]]}], 1);
+  assert.ok(four.points.length && four.points.every(p => p.tracks === 4), JSON.stringify(four.points));
+  // A way meeting another end to end stays one track.
+  const joined = countTracks([{...tml, parts: [[[0, 0], [500, 0]]]}, {...tml, parts: [[[500, 0], [1000, 0]]]}], 1);
+  assert.ok(joined.points.every(p => p.tracks === 1), JSON.stringify(joined.points));
+  // A light rail pair 10 m from a main-line pair on a viaduct (north of
+  // Choy Yee Bridge): two and two, not four.
+  const feature = (properties, y) => ({type: 2, properties: {state: 'present', ...properties}, loadGeometry: () => [[{x: 0, y}, {x: 1000, y}]]});
+  const lines = trackLines([feature({feature: 'light_rail', name: 'Light Rail'}, 0), feature({feature: 'light_rail', name: 'Light Rail'}, 4),
+    feature({feature: 'rail', name: 'Tuen Ma Line', bridge: true}, 14), feature({feature: 'rail', name: 'Tuen Ma Line', bridge: true}, 20)]);
+  assert.deepEqual(lines.map(l => l.group), ['light_rail', 'light_rail', 'rail', 'rail']);
+  assert.deepEqual(countTracks(lines, 1).lines.map(l => l.tracks), [2, 2, 2, 2]);
+  // A station area holding a light rail stop and a main-line station counts
+  // each kind's tracks on its own (Ho Tin and Tuen Mun).
+  const zone = {inside: (x, y) => x >= 300 && x <= 700 && y >= -10 && y <= 30, groups: ['light_rail', 'rail']};
+  assert.deepEqual(stationTracks(lines, [zone], 1).map(p => [p.group, p.tracks]), [['light_rail', 2], ['rail', 2]]);
+  // Among equally wide places, one where the badge can be drawn.
+  const [inside] = stationTracks(lines, [{inside: zone.inside, groups: ['rail']}], 1, {prefer: x => x > 600});
+  assert.ok(inside.x > 600, JSON.stringify(inside));
+});
 test('legend colours equal the drawn colours for power, gauge and loading gauge', async () => {
   const m = await import('../styles/map-model.mjs');
   const {expression} = await import('@maplibre/maplibre-gl-style-spec');
@@ -716,4 +745,26 @@ test('country names to zoom 7 above station names; states and provinces from zoo
   assert.equal(filter.filter({zoom: 6}, {type: 1, properties: {class: 'state'}}), true);
   assert.equal(filter.filter({zoom: 6}, {type: 1, properties: {class: 'town'}}), false);
   assert.equal(featureFilter(style.layers.find(l => l.id === 'place_label_other').filter).filter({zoom: 9}, {type: 1, properties: {class: 'province'}}), false, 'not drawn twice');
+});
+
+test('owner view: a colour per owner name, the same everywhere; its own tile sources', async () => {
+  const {ownerColor, ownerPaint, MODES, readSettings, UNKNOWN_COLOR} = await import('../styles/map-model.mjs');
+  assert.ok(MODES.includes('owner'));
+  assert.equal(ownerColor('Network Rail'), ownerColor(' network rail '), 'case and spacing do not change it');
+  assert.notEqual(ownerColor('DB Netz AG'), ownerColor('DB InfraGO AG'));
+  assert.equal(ownerColor(''), null); assert.equal(ownerColor(undefined), null);
+  for (const name of ['CSX Transportation', 'Adif', '九廣鐵路公司 Kowloon-Canton Railway Corporation']) {
+    const [, h, s, l] = /^hsl\((\d+), (\d+)%, (\d+)%\)$/.exec(ownerColor(name)).map(Number);
+    assert.ok(h < 360 && s >= 62 && l >= 34 && l <= 50, 'saturated, mid lightness: never the grey of not recorded');
+  }
+  assert.deepEqual(ownerPaint(), ['coalesce', ['get', 'owner_color'], UNKNOWN_COLOR]);
+  assert.equal(readSettings('?mode=owner').mode, 'owner');
+  const tracks = style.layers.find(l => l.id === 'owner-tracks'), overview = style.layers.find(l => l.id === 'owner-overview');
+  assert.deepEqual([tracks.source, overview.source], ['ownerRail', 'ownerLow']);
+  assert.equal(tracks.layout.visibility, 'none');
+  assert.deepEqual([style.sources.ownerRail.url, style.sources.ownerLow.url].map(u => u.split('/').pop()), ['railway_line_high', 'operator_railway_line_low']);
+  // Owner names written along the tracks; clicked lines link to their way.
+  assert.deepEqual(style.layers.find(l => l.id === 'owner-labels').layout['text-field'], ['get', 'owner']);
+  const {osmObject} = await import('../styles/map-model.mjs');
+  for (const source of ['ownerRail', 'ownerLow']) assert.deepEqual(osmObject({source, properties: {id: '660796156-0'}}), {type: 'way', id: '660796156'});
 });

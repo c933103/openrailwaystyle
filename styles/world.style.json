@@ -60,6 +60,22 @@
       "promoteId": "id",
       "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
     },
+    "ownerLow": {
+      "type": "vector",
+      "url": "https://openrailwaymap.app/operator_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 6,
+      "promoteId": "id",
+      "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
+    },
+    "ownerRail": {
+      "type": "vector",
+      "url": "https://openrailwaymap.app/railway_line_high",
+      "minzoom": 7,
+      "maxzoom": 16,
+      "promoteId": "id",
+      "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
+    },
     "railway": {
       "type": "vector",
       "url": "https://openrailwaymap.app/railway_line_high",
@@ -12083,6 +12099,397 @@
       }
     },
     {
+      "id": "owner-branch-overview",
+      "type": "line",
+      "source": "branchLines",
+      "source-layer": "branch_lines",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "coalesce",
+          [
+            "get",
+            "owner_color"
+          ],
+          "#899197"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          0.6,
+          4,
+          1.15,
+          7,
+          1.8,
+          11,
+          2.6,
+          16,
+          4.5,
+          20,
+          7
+        ]
+      }
+    },
+    {
+      "id": "owner-overview",
+      "type": "line",
+      "source": "ownerLow",
+      "source-layer": "operator_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 7,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "coalesce",
+          [
+            "get",
+            "owner_color"
+          ],
+          "#899197"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          0.6,
+          4,
+          1.15,
+          7,
+          1.8,
+          11,
+          2.6,
+          16,
+          4.5,
+          20,
+          7
+        ]
+      }
+    },
+    {
+      "id": "owner-tracks",
+      "type": "line",
+      "source": "ownerRail",
+      "source-layer": "railway_line_high",
+      "minzoom": 7,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "coalesce",
+          [
+            "get",
+            "owner_color"
+          ],
+          "#899197"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1.6,
+          11,
+          [
+            "case",
+            [
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
+            ],
+            1.1,
+            2.8
+          ],
+          16,
+          [
+            "case",
+            [
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
+            ],
+            2,
+            4.8
+          ],
+          20,
+          7
+        ],
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "tunnel"
+            ],
+            true
+          ],
+          0.65,
+          1
+        ]
+      }
+    },
+    {
+      "id": "owner-metro-overview",
+      "type": "line",
+      "source": "branchLines",
+      "source-layer": "branch_lines",
+      "minzoom": 7,
+      "maxzoom": 10,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "coalesce",
+          [
+            "get",
+            "owner_color"
+          ],
+          "#899197"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1.6,
+          11,
+          [
+            "case",
+            [
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
+            ],
+            1.1,
+            2.8
+          ],
+          16,
+          [
+            "case",
+            [
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
+            ],
+            2,
+            4.8
+          ],
+          20,
+          7
+        ],
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "tunnel"
+            ],
+            true
+          ],
+          0.65,
+          1
+        ]
+      }
+    },
+    {
       "id": "gauge-dual",
       "type": "line",
       "source": "railway",
@@ -16655,6 +17062,101 @@
             ],
             ""
           ]
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 11,
+        "text-padding": 5,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "#26363d",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "owner-labels",
+      "type": "symbol",
+      "source": "railway",
+      "source-layer": "railway_line_high",
+      "minzoom": 10,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
+        ],
+        [
+          "has",
+          "owner"
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 300,
+        "text-field": [
+          "get",
+          "owner"
         ],
         "text-font": [
           "Noto Sans Bold"
