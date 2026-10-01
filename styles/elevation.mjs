@@ -2,6 +2,8 @@
 // tiles the relief shading already uses (Mapzen Terrarium PNGs: height =
 // R × 256 + G + B / 256 − 32768 metres, seabed included). Zoom-14 tiles
 // (about 9.5 m a pixel at the equator) are finer than most of the source data.
+// Their bad pixels are repaired as for the map (dem-repair.mjs).
+import {REPAIR_FROM, referenceTile, repairPixels} from './dem-repair.mjs?v=20261001-11';
 export const ELEVATION_ZOOM = 14;
 const TILE = 256, CACHE = 64;
 
@@ -39,12 +41,30 @@ async function loadPixels(url, signal) {
 // (null where a tile could not load). Tiles are shared between calls.
 export function createElevation(url, {zoom = ELEVATION_ZOOM, load = loadPixels} = {}) {
   const tiles = new Map();
-  const tile = (x, y) => {
-    const key = `${zoom}/${x}/${y}`;
+  const fetchTile = (z, x, y) => {
+    const key = `${z}/${x}/${y}`;
     if (tiles.has(key)) { const t = tiles.get(key); tiles.delete(key); tiles.set(key, t); return t; }
-    const promise = load(url.replace('{z}', zoom).replace('{x}', x).replace('{y}', y)).catch(() => { tiles.delete(key); return null; });
+    const promise = load(url.replace('{z}', z).replace('{x}', x).replace('{y}', y)).catch(() => { tiles.delete(key); return null; });
     tiles.set(key, promise);
     while (tiles.size > CACHE) tiles.delete(tiles.keys().next().value);
+    return promise;
+  };
+  // A tile with its bad pixels repaired against the coarser tile.
+  const repaired = new Map();
+  const tile = (x, y) => {
+    const key = `${x}/${y}`;
+    if (repaired.has(key)) return repaired.get(key);
+    const promise = (async () => {
+      const pixels = await fetchTile(zoom, x, y);
+      if (!pixels || zoom < REPAIR_FROM) return pixels;
+      const coarser = referenceTile(zoom, x, y), ref = await fetchTile(coarser.z, coarser.x, coarser.y);
+      const data = Uint8ClampedArray.from(pixels.data);
+      repairPixels(data, pixels.size, zoom, x, y, ref?.data, ref?.size);
+      return {data, size: pixels.size};
+    })();
+    repaired.set(key, promise);
+    promise.then(pixels => { if (!pixels) repaired.delete(key); });
+    while (repaired.size > CACHE) repaired.delete(repaired.keys().next().value);
     return promise;
   };
   return {
