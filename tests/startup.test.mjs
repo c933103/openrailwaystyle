@@ -356,6 +356,14 @@ test('compact controls open from the icon and return focus to it on collapse and
   } finally { dom.window.close(); }
 });
 
+test('saved hidden overlays are absent in the constructor before any tile request',async()=>{
+ const {dom,maps}=await start({search:'?relief=0&inactive=0&stations=0&trackCounts=0&labels=0&transport=0&destinations=0&constraints=0&mode=speed'});
+ try {
+  const layers=maps[0].options.style.layers;
+  for(const l of layers.filter(l=>/^terrain-|^inactive-|^station-|^context-/.test(l.id)||l.source==='trackCounts'||l.id==='speed-labels'))assert.equal(l.layout.visibility,'none',l.id);
+  assert.equal(layers.find(l=>l.id==='speed-tracks').layout.visibility,'visible');
+ }finally{dom.window.close();}
+});
 test('Causeway Bay search reaches both APIs before a delayed label bundle loads',async()=>{
  const calls=[];
  const places=[{osm_type:'way',osm_id:248971549,lat:'22.2802878',lon:'114.1841633',class:'railway',type:'station',name:'銅鑼灣 Causeway Bay',display_name:'銅鑼灣 Causeway Bay, Hong Kong',namedetails:{name:'銅鑼灣 Causeway Bay','name:en':'Causeway Bay'}}];
