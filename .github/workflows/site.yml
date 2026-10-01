@@ -57,6 +57,12 @@ jobs:
           python scripts/unpack-snapshot.py /tmp/lifecycle.pmtiles
           node scripts/build-overview-tiles.mjs
           cat lifecycle-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
+      - name: Load the published axle-load lookup
+        run: |
+          if git ls-remote --exit-code --heads origin axle-data; then
+            git fetch --depth=1 origin axle-data:refs/remotes/origin/axle-data
+            git show origin/axle-data:axle-load.json > styles/data/axle-load.json
+          fi
       - name: Wait for first street-running snapshot
         run: |
           for attempt in $(seq 1 40); do
