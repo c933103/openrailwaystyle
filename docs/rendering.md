@@ -2,6 +2,8 @@
 
 [Documentation index](README.md) · [Project overview](../README.md)
 
+For loading gauge view, see the [dimension reference and sources](loading-gauges.md).
+
 ## Speed and units
 
 Maximum-speed colouring uses eight bands plus an explicit unknown category.
