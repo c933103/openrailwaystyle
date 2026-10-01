@@ -18,7 +18,7 @@
 //   to −14 840 m, at every zoom from 9).
 // A bad pixel takes the coarser tile's height there or, where that is
 // missing or shares the fault, the average of its sound neighbours.
-export const REPAIR_FROM = 10, LEVELS_UP = 2, MISSING = -11500, WALL = 1000;
+export const REPAIR_FROM = 9, LEVELS_UP = 2, MISSING = -11500, WALL = 1000;
 export const drop = z => 60 * 2 ** Math.max(0, 14 - z);
 // How far to each side the WALL test looks, in pixels: about 190 m at the
 // equator, wider than the 120° E band.

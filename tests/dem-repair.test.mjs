@@ -36,5 +36,5 @@ test('terrain repair: pits, a groove and a band go; real terrain stays', () => {
   const sound = tile(ground), copy = sound.slice();
   assert.equal(repairPixels(sound, 256, 15, 0, 0, tile(() => 10)), 0);
   assert.deepEqual(sound, copy);
-  assert.equal(repairPixels(tile(() => -14840), 256, 9, 0, 0, null), 0);
+  assert.equal(repairPixels(tile(() => -14840), 256, 8, 0, 0, null), 0);
 });
