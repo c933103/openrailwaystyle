@@ -176,23 +176,46 @@ const drawnLines = way => way.lines || Object.values(way.nextLines || {})[0] || 
 // holds every relation found, in whichever box or stage. Returns relation
 // key → the route as drawn: its lowest relation, which gives its link and
 // details.
+const NEAR = 0.1; // degrees: relations of one service this close are one route
 export function serviceRoutes({routes, ways}) {
   const views = new Map([...routes.values()].map(route => [route.key, routeView(route)]));
-  const parent = new Map([...views.keys()].map(key => [key, key])), boxes = new Map();
+  const parent = new Map([...views.keys()].map(key => [key, key])), cells = new Map();
   const find = key => { const p = parent.get(key); if (p === key) return key; const root = find(p); parent.set(key, root); return root; };
   const join = (a, b) => { const [ra, rb] = [find(a), find(b)]; if (ra !== rb) parent.set(ra, rb); };
   const group = key => views.get(key).group ?? key;
+  // Each relation's lines as points at most NEAR / 2 apart, filed by cells
+  // NEAR wide, so two relations are near where their tracks are (not merely
+  // their extents, which overlap for long or diagonal routes far apart).
+  const cellOf = (x, y) => `${Math.floor(x / NEAR)},${Math.floor(y / NEAR)}`;
+  const file = (key, x, y) => {
+    if (!cells.has(key)) cells.set(key, new Map());
+    const own = cells.get(key), cell = cellOf(x, y);
+    if (!own.has(cell)) own.set(cell, []);
+    own.get(cell).push([x, y]);
+  };
   for (const way of ways.values()) {
     const keys = wayRoutes(way).filter(key => views.has(key));
-    for (const key of keys) for (const line of drawnLines(way)) for (const [x, y] of line) {
-      const box = boxes.get(key) || [Infinity, Infinity, -Infinity, -Infinity];
-      boxes.set(key, [Math.min(box[0], x), Math.min(box[1], y), Math.max(box[2], x), Math.max(box[3], y)]);
-    }
+    for (const key of keys) for (const line of drawnLines(way)) line.forEach(([x, y], i) => {
+      if (i) {
+        const [px, py] = line[i - 1], steps = Math.ceil(Math.hypot(x - px, y - py) / (NEAR / 2));
+        for (let k = 1; k < steps; k++) file(key, px + (x - px) * k / steps, py + (y - py) * k / steps);
+      }
+      file(key, x, y);
+    });
     for (const same of Map.groupBy(keys, group).values()) for (const key of same.slice(1)) join(same[0], key);
   }
-  const near = (a, b) => a && b && a[0] - 0.1 <= b[2] && b[0] - 0.1 <= a[2] && a[1] - 0.1 <= b[3] && b[1] - 0.1 <= a[3];
+  const near = (a, b) => {
+    if (!a || !b) return false;
+    const [small, large] = a.size <= b.size ? [a, b] : [b, a];
+    for (const points of small.values()) for (const [x, y] of points) {
+      const cx = Math.floor(x / NEAR), cy = Math.floor(y / NEAR);
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++)
+        for (const [ox, oy] of large.get(`${cx + dx},${cy + dy}`) || []) if (Math.hypot(ox - x, oy - y) <= NEAR) return true;
+    }
+    return false;
+  };
   for (const same of Map.groupBy(views.keys(), group).values())
-    for (let i = 0; i < same.length; i++) for (let j = i + 1; j < same.length; j++) if (near(boxes.get(same[i]), boxes.get(same[j]))) join(same[i], same[j]);
+    for (let i = 0; i < same.length; i++) for (let j = i + 1; j < same.length; j++) if (find(same[i]) !== find(same[j]) && near(cells.get(same[i]), cells.get(same[j]))) join(same[i], same[j]);
   const out = new Map();
   for (const members of Map.groupBy(views.keys(), find).values()) {
     const view = members.map(key => views.get(key)).reduce((a, b) => (b.relation < a.relation ? b : a));

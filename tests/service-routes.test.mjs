@@ -143,6 +143,12 @@ test('service routes: the same reference and network in two places are two route
   assert.notEqual(service.get('r3'), service.get('r1'));
   assert.notEqual(service.get('r4'), service.get('r5'), 'apart, though in the same 1° cell');
   assert.equal(new Set(service.values()).size, 4);
+  // A route whose extent covers another's, though their tracks lie far
+  // apart (an L-shaped line round a city with a short line inside the bend).
+  const bent = {type: 'way', id: 40, geometry: [{lon: 10, lat: 50}, {lon: 11, lat: 50}, {lon: 11, lat: 51}]};
+  const inner = {type: 'way', id: 41, geometry: [{lon: 10.2, lat: 50.9}, {lon: 10.5, lat: 50.9}]};
+  const apart = serviceRoutes(table([['A', [rel(6, 'Metro 1', [40]), rel(7, 'Metro 1', [41]), bent, inner]]]));
+  assert.notEqual(apart.get('r6'), apart.get('r7'), 'extents overlap, tracks do not');
   assert.notEqual(routeOf({id: 3, tags: {route: 'tram', ref: '1', network: 'X', name: 'One'}}).key, routeOf({id: 4, tags: {route: 'subway', ref: '1', network: 'X', name: 'One'}}).key);
 });
 
