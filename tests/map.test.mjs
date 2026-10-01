@@ -920,6 +920,10 @@ test('track counts: untagged crossovers and sidings are not running tracks', asy
   const scissors = [track(0, -1000, 0), track(0, 0, 170), track(0, 170, 1000), track(5, -1000, 0), track(5, 0, 170), track(5, 170, 1000),
     leg([0, 0], [170, 5]), leg([0, 5], [170, 0])];
   assert.deepEqual([...connectors(scissors, 1)].sort(), [6, 7]);
+  // Both tracks also split into two ways near the middle of the crossover:
+  // the pieces are one track each, and the crossover still swaps sides.
+  const splitTracks = [track(0, -1000, 0), track(0, 0, 90), track(0, 90, 170), track(0, 170, 1000), track(5, -1000, 0), track(5, 0, 80), track(5, 80, 170), track(5, 170, 1000), leg([0, 0], [170, 5])];
+  assert.deepEqual([...connectors(splitTracks, 1)], [8]);
   // A loop beside a track, joined at both ends to the same track, and a
   // siding between two tracks running beside them: tracks.
   const loop = [track(0, -1000, 0), track(0, 0, 400), track(0, 400, 1000), {group: 'rail', main: true, parts: [[[0, 0], [40, 4], [360, 4], [400, 0]]]}];

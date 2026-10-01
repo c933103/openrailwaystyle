@@ -494,6 +494,25 @@ export function connectors(lines, metres) {
     const through = !ends(other).some(([ex, ey]) => Math.hypot(ex - x, ey - y) <= touch);
     return {joined: through, touching};
   };
+  // A track split into several ways along its length (two ways meeting end
+  // to end, nothing else there: no turnout) is one track: track(i) names it.
+  const parent = lines.map((_, i) => i);
+  const track = i => parent[i] === i ? i : (parent[i] = track(parent[i]));
+  lines.forEach((line, index) => {
+    if (!line) return;
+    for (const [x, y] of ends(index)) {
+      const others = new Set();
+      for (const s of near(x, y, touch)) if (s.index !== index && s.group === line.group && distance(s, x, y) <= touch) others.add(s.index);
+      const [other] = others;
+      if (others.size === 1 && ends(other).some(([ex, ey]) => Math.hypot(ex - x, ey - y) <= touch)) parent[track(index)] = track(other);
+    }
+  });
+  // sides() by track: the nearest piece of each.
+  const byTrack = found => {
+    const out = new Map();
+    for (const [i, v] of found) { const k = track(i); if (!out.has(k) || Math.abs(v.t) < Math.abs(out.get(k).t)) out.set(k, v); }
+    return out;
+  };
   // Parallel tracks crossing a perpendicular probe at (x, y), heading d:
   // line index → {side (−1 or +1), t (offset)}, leaving out any it touches there.
   const sides = (index, group, x, y, dx, dy) => {
@@ -539,7 +558,7 @@ export function connectors(lines, metres) {
     // siding or loop between two tracks, joined to each at one end) is a
     // track: a crossover's distance from its neighbours keeps changing.
     const step = CONNECTOR_STEP / metres, samples = [];
-    for (let along = d; along <= total - d + 1e-9; along += step) { const [x, y, dx, dy] = at(along); samples.push(sides(index, line.group, x, y, dx, dy)); }
+    for (let along = d; along <= total - d + 1e-9; along += step) { const [x, y, dx, dy] = at(along); samples.push(byTrack(sides(index, line.group, x, y, dx, dy))); }
     // Beside a track at a steady distance (within CONNECTOR_STEADY) for half
     // its length or more, without a break. A crossover, however gentle (up
     // to CONNECTOR_MAX long), keeps moving across: over half
@@ -559,14 +578,15 @@ export function connectors(lines, metres) {
     };
     const steady = CONNECTOR_STEADY / metres + SLACK, neighbours = new Set(samples.flatMap(sample => [...sample.keys()]));
     if (samples.length > 1 && [...neighbours].some(other => steadyFor(other) * 2 >= samples.length)) return;
-    const first = sides(index, line.group, px, py, pdx, pdy), last = sides(index, line.group, qx, qy, qdx, qdy);
+    const first = byTrack(sides(index, line.group, px, py, pdx, pdy)), last = byTrack(sides(index, line.group, qx, qy, qdx, qdy));
     // A track beside it at both points, on the other side at the second.
     for (const [other, {side}] of first) if (last.get(other)?.side === -side) { found.add(index); return; }
     // Or the track it starts from lies beside its far end, and the track it
     // ends on beside its start (ways split at the turnouts).
-    const besideEnd = [...a.touching.keys()].some(i => last.has(i)), besideStart = [...b.touching.keys()].some(i => first.has(i));
+    const fromTracks = [...a.touching.keys()].map(track), toTracks = [...b.touching.keys()].map(track);
+    const besideEnd = fromTracks.some(i => last.has(i)), besideStart = toTracks.some(i => first.has(i));
     if (besideEnd && besideStart) {
-      const sideOfStartTrack = [...a.touching.keys()].map(i => last.get(i)?.side).find(v => v), sideOfEndTrack = [...b.touching.keys()].map(i => first.get(i)?.side).find(v => v);
+      const sideOfStartTrack = fromTracks.map(i => last.get(i)?.side).find(v => v), sideOfEndTrack = toTracks.map(i => first.get(i)?.side).find(v => v);
       if (sideOfStartTrack && sideOfEndTrack && sideOfStartTrack === -sideOfEndTrack) found.add(index);
     }
   });
