@@ -1167,21 +1167,24 @@ async function copyText(text, done, label) {
 $('share').addEventListener('click', () => { saveSettings(); copyText(shareURL(), 'Map link copied, including position and display options.', 'map address'); });
 // The map centre as latitude, longitude in decimal degrees (WGS 84), as GPS
 // devices and map apps accept it.
-$('copy-coordinates').addEventListener('click', () => {
+// The new controls may be missing when the service worker falls back to an
+// older saved page (offline, mid-update): their listeners are then skipped.
+$('copy-coordinates')?.addEventListener('click', () => {
   if (!map) return;
   const {lat, lng} = map.getCenter().wrap();
   copyText(`${lat.toFixed(6)}, ${lng.toFixed(6)}`, `Map centre copied: ${lat.toFixed(6)}, ${lng.toFixed(6)} (latitude, longitude).`, 'coordinates');
 });
 // Settings: a subpage of the panel, in place of the map controls.
 const showSettings = open => {
+  if (!$('main-view') || !$('settings-view')) return;
   $('main-view').hidden = open; $('settings-view').hidden = !open;
   $('settings-open').setAttribute('aria-expanded', String(open));
   (open ? $('settings-close') : $('settings-open')).focus();
 };
-$('settings-open').addEventListener('click', () => showSettings(true));
-$('settings-close').addEventListener('click', () => showSettings(false));
+$('settings-open')?.addEventListener('click', () => showSettings(true));
+$('settings-close')?.addEventListener('click', () => showSettings(false));
 // Escape here only leaves the settings (an open detail panel stays).
-$('settings-view').addEventListener('keydown', event => { if (event.key === 'Escape') { event.stopPropagation(); showSettings(false); } });
+$('settings-view')?.addEventListener('keydown', event => { if (event.key === 'Escape') { event.stopPropagation(); showSettings(false); } });
 $('search-form').addEventListener('submit', async e => {
   e.preventDefault();
   const q = $('search-input').value.trim(); if (q.length < 2) return;
