@@ -1163,6 +1163,21 @@ $('share').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(link); $('share-status').textContent = 'Map link copied, including position and display options.'; }
   catch { $('share-status').replaceChildren(textNode('span', 'Copy this address: ')); const input = document.createElement('input'); input.value = link; input.readOnly = true; input.setAttribute('aria-label', 'Shareable map address'); input.style.width = '100%'; $('share-status').append(input); input.select(); }
 });
+// Nominatim allows at most one request a second: searches submitted faster
+// wait their turn, and a repeated search is answered from memory.
+const placeCache = new Map();
+let placeNext = 0;
+async function placeSearch(url, json) {
+  const key = url.href;
+  if (placeCache.has(key)) return placeCache.get(key);
+  const wait = placeNext - Date.now();
+  placeNext = Math.max(Date.now(), placeNext) + 1000;
+  if (wait > 0) await new Promise(resolve => setTimeout(resolve, wait));
+  const items = await json(url);
+  placeCache.set(key, items);
+  while (placeCache.size > 50) placeCache.delete(placeCache.keys().next().value);
+  return items;
+}
 $('search-form').addEventListener('submit', async e => {
   e.preventDefault();
   const q = $('search-input').value.trim(); if (q.length < 2) return;
@@ -1190,7 +1205,7 @@ $('search-form').addEventListener('submit', async e => {
     if (settings.language !== 'local') placeURL.searchParams.set('accept-language', settings.language);
     const [facilities, places] = await Promise.allSettled([
       Date.now() < searchPausedUntil ? Promise.reject(new Error('paused')) : Promise.race([json(facilityURL), new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))]),
-      json(placeURL)]);
+      placeSearch(placeURL, json)]);
     if (controller !== searchController) return;
     if (facilities.status === 'rejected' && places.status === 'rejected') throw facilities.reason;
     const {rail, places: other} = searchResults(facilities.value || [], places.value || []);
@@ -1214,7 +1229,7 @@ $('search-form').addEventListener('submit', async e => {
         });
     }
     if (other.length) {
-      const heading = textNode('li', 'Places', 'search-heading'); heading.setAttribute('role', 'presentation'); results.append(heading);
+      const heading = textNode('li', 'Places · Nominatim / © OpenStreetMap contributors', 'search-heading'); heading.setAttribute('role', 'presentation'); results.append(heading);
       for (const item of other) {
         try { Object.assign(item, locate(item.longitude,item.latitude)); } catch {}
         entry(displayName(item,settings.language) || item.name, [item.place?.replaceAll('_', ' '), item.area].filter(Boolean).join(' · ').slice(0, 90), () => whenReady(() => {
