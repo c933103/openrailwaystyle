@@ -5,7 +5,7 @@
 import Actor from '../node_modules/maplibre-contour/src/actor.ts';
 import WorkerDispatch from '../node_modules/maplibre-contour/src/worker-dispatch.ts';
 import {LocalDemManager} from '../node_modules/maplibre-contour/src/local-dem-manager.ts';
-import {REPAIR_FROM, referenceTile, repairPixels} from './dem-repair.mjs';
+import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels} from './dem-repair.mjs';
 
 const TILE = /\/(\d+)\/(\d+)\/(\d+)\.png(?=\?|$)/, KEEP = 32;
 const decode = async blob => {
@@ -31,7 +31,7 @@ async function getTile(url, abortController) {
   if (!match || z < REPAIR_FROM || typeof OffscreenCanvas === 'undefined') return tile;
   try {
     const coarser = referenceTile(z, x, y);
-    const [{canvas, context, pixels}, ref] = await Promise.all([decode(blob), reference(url.replace(TILE, `/${coarser.z}/${coarser.x}/${coarser.y}.png`))]);
+    const [{canvas, context, pixels}, ref] = await Promise.all([decode(blob), z >= REFERENCE_FROM ? reference(url.replace(TILE, `/${coarser.z}/${coarser.x}/${coarser.y}.png`)) : null]);
     if (!repairPixels(pixels.data, pixels.width, z, x, y, ref?.data, ref?.width)) return tile;
     context.putImageData(pixels, 0, 0);
     return {...tile, data: await canvas.convertToBlob({type: 'image/png'})};
