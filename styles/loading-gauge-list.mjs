@@ -21,14 +21,17 @@ export function encodeLoadingGauges(rows) {
   }
   return {values, ids: Buffer.from(bytes).toString('base64')};
 }
-export function decodeLoadingGauges({values, ids}) {
+export function decodeLoadingGauges({values, ids}, transform = value => value) {
+  // Transform each distinct value once, rather than creating an object for
+  // every way or holding a second array/Map of the complete lookup.
+  const decodedValues = values.map(transform);
   const bytes = typeof atob === 'function' ? Uint8Array.from(atob(ids), c => c.charCodeAt(0)) : Buffer.from(ids, 'base64');
   const lookup = new Map();
   let value = 0, id = 0, gap = 0, scale = 1;
   for (const byte of bytes) {
     gap += (byte % 128) * scale;
     if (byte >= 128) { scale *= 128; continue; }
-    if (gap === 0) { value++; id = 0; } else { id += gap; lookup.set(id, values[value]); }
+    if (gap === 0) { value++; id = 0; } else { id += gap; lookup.set(id, decodedValues[value]); }
     gap = 0; scale = 1;
   }
   return lookup;
