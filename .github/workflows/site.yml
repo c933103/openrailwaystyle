@@ -49,6 +49,7 @@ jobs:
           mkdir -p styles/data
           cp lifecycle-data/manifest.json styles/data/
           # Loading gauge by way ID for the zoom 0–6 overview (optional).
+          if [ -f lifecycle-data/axle-load.json ]; then cp lifecycle-data/axle-load.json styles/data/; fi
           if [ -f lifecycle-data/loading-gauge.json ]; then cp lifecycle-data/loading-gauge.json styles/data/; fi
           # The polar caps beyond 85.05° (optional).
           if [ -d lifecycle-data/polar ]; then cp -r lifecycle-data/polar styles/data/polar; fi

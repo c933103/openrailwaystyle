@@ -3,6 +3,7 @@ import Pbf from 'pbf';
 import encode from 'vt-pbf';
 import {chooseName, mergeStationTranslation, stationLanguages, stationPending, ORM, ownerColor} from './map-model.mjs';
 import {hanRegion, chineseArea} from './han-region.mjs';
+import {axleLoad} from './axle-load.mjs';
 import {decodeLoadingGauges, wayId} from './loading-gauge-list.mjs';
 export {hanRegion, chineseArea};
 
@@ -205,6 +206,37 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     const result = encode(tile);
     return {data: result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength)};
   });
+  // The snapshot is fetched only when an Axle load tile is requested.
+  let axleList;
+  function axleValues() {
+    axleList ||= (dataRoot ? fetcher(new URL('axle-load.json',dataRoot)) : Promise.reject(new Error('no data location')))
+      .then(r=>{if(!r.ok) throw new Error(`HTTP ${r.status}`);return r.json();})
+      .then(decodeLoadingGauges).then(list=>new Map([...list].map(([id,value])=>[id,JSON.parse(value)])))
+      // Do not repeatedly request a missing snapshot for every tile.
+      .catch(error=>{console.warn('Axle load list unavailable:',error.message);return new Map();});
+    return axleList;
+  }
+  async function axleTile(data) {
+    if(!data.byteLength) return data;
+    const list=await axleValues(),tile=readTile(data);
+    for(const f of features(tile)) {
+      const p=f.properties,record=list.get(wayId(p.id??p.osm_id));
+      if(record) Object.assign(p,record);
+      else if(['A','B1','B2','C2'].includes(p.track_class)) p.axle_system='unknown';
+      const value=axleLoad(p);
+      if(value) {p.axle_tonnes=value.tonnes;if(value.perMetre!==null)p.axle_per_metre=value.perMetre;}
+    }
+    const result=encode(tile);
+    return result.buffer.slice(result.byteOffset,result.byteOffset+result.byteLength);
+  }
+  maplibregl.addProtocol('atlasaxle',async(params,controller)=>{
+    const url=params.url.replace(/^atlasaxle:\/\//,'');
+    if(params.type==='json') {
+      const data=await get(url,controller.signal,true);
+      return {data:{...data,tiles:data.tiles.map(t=>`atlasaxle://${t}`)}};
+    }
+    return {data:await axleTile(await get(url,controller.signal))};
+  });
   // Owner view: the railway tiles with each line's owner colour added
   // (owner_color, from the name; ownerColor).
   maplibregl.addProtocol('atlasowner',async (params,controller)=>{
@@ -310,5 +342,6 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       return {data:primaryData.slice(0)};
     }
   });
+  return {axleTile};
 }
 

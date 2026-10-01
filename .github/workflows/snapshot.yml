@@ -7,6 +7,8 @@ on:
       - scripts/lifecycle.mjs
       - scripts/snapshot-delta.mjs
       - scripts/refresh-snapshot-cache.mjs
+      - scripts/build-axle-load-list.mjs
+      - styles/axle-load.mjs
       - scripts/build-loading-gauge-list.mjs
       - styles/loading-gauge-list.mjs
       - scripts/build-polar.mjs
@@ -85,6 +87,9 @@ jobs:
       - name: Fetch loading gauge list
         continue-on-error: true
         run: node scripts/build-loading-gauge-list.mjs
+      - name: Refresh axle-load lookup (at most every 28 days)
+        continue-on-error: true
+        run: node scripts/build-axle-load-list.mjs
       # The two caps beyond 85.05° that Web Mercator tiles miss: contours and
       # relief from ETOPO 2022 (fetched once, then cached) and OpenStreetMap
       # water, ice shelves, runways and places (one small query per cap,
@@ -196,6 +201,7 @@ jobs:
           cp snapshot/manifest.json /tmp/rail-manifest.json
           cp snapshot/lifecycle.pmtiles /tmp/rail-lifecycle.pmtiles
           cp snapshot/lifecycle.geojson.gz /tmp/rail-lifecycle.geojson.gz
+          cp snapshot/axle-load.json /tmp/rail-axle-load.json 2>/dev/null || true
           cp snapshot/loading-gauge.json /tmp/rail-loading-gauge.json 2>/dev/null || true
           rm -rf /tmp/rail-polar
           if [ -f snapshot/polar/north-index.json ] && [ -f snapshot/polar/south-index.json ]; then cp -r snapshot/polar /tmp/rail-polar; fi
@@ -205,6 +211,7 @@ jobs:
           git rm -rf .
           git clean -fdx
           cp /tmp/rail-manifest.json manifest.json
+          cp /tmp/rail-axle-load.json axle-load.json 2>/dev/null || true
           cp /tmp/rail-loading-gauge.json loading-gauge.json 2>/dev/null || true
           if [ -d /tmp/rail-polar ]; then cp -r /tmp/rail-polar polar; fi
           # Keep individual Git blobs below the hosting limit. Pages receives
@@ -214,6 +221,7 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add manifest.json lifecycle.pmtiles.part-* lifecycle.geojson.gz.part-*
+          if [ -f axle-load.json ]; then git add axle-load.json; fi
           if [ -f loading-gauge.json ]; then git add loading-gauge.json; fi
           if [ -d polar ]; then git add polar; fi
           git commit -m "Publish complete worldwide railway lifecycle snapshot"
