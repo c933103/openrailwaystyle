@@ -49,7 +49,9 @@ With the drawing tools closed, click a drawn line for its elevation profile:
 heights about every 10 m along it, with lowest and highest points, ascent,
 descent and the steepest stretch; hovering the chart marks the place on the map.
 Heights come from the terrain tiles (ground or seabed, not track level on
-bridges or in tunnels).
+bridges or in tunnels). The tiles' known faults (isolated pixels far below the
+ground around them, and a band along 120° E in the Taiwan Strait) are repaired
+from the surrounding ground before they are shaded, contoured or measured.
 
 In either tool, drag a point to move it or click to select it. In the drawing
 tools, the small dot in the middle of each segment adds a point there (click it,
