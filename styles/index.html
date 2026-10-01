@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Rail Atlas">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20261001-80" rel="stylesheet">
+  <link href="app.css?v=20261001-91" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -48,6 +48,7 @@
       </details>
       <div class="section-heading">LABEL LANGUAGE</div>
       <div class="language-picker"><label for="language">All labels</label><select id="language"></select></div>
+      <div class="units-picker"><label for="units">Units</label><select id="units"><option value="metric">Metric (km/h, m, kg)</option><option value="imperial">Imperial (mph, ft, lb)</option></select></div>
       <div class="toolbar"><button id="share" class="icon-button" title="Copy map link" aria-label="Copy map link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4L11.6 6M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.6-1.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><button id="copy-coordinates" class="icon-button" title="Copy GPS coordinates of the map centre" aria-label="Copy GPS coordinates of the map centre"><svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m9.5 9.5 5 5"/><rect x="10.2" y="7.2" width="4.2" height="6.6" rx="1" transform="rotate(45 12.3 10.5)"/><path d="m3.5 7.5 3-3 3 3-3 3zM13.5 17.5l3-3 3 3-3 3z"/><path d="M15.5 20.5a5 5 0 0 0 5-5M15 23a8 8 0 0 0 8-8" stroke-linecap="round"/></g></svg></button><button id="settings-open" class="icon-button" title="Settings" aria-label="Settings" aria-expanded="false" aria-controls="settings-view"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm8.2 5-.1-3 2-1.6-2-3.4-2.4.9a8 8 0 0 0-2.6-1.5L14.7 2h-4l-.4 2.5a8 8 0 0 0-2.6 1.5l-2.4-.9-2 3.4 2 1.6a8 8 0 0 0 0 3l-2 1.6 2 3.4 2.4-.9a8 8 0 0 0 2.6 1.5l.4 2.5h4l.4-2.5a8 8 0 0 0 2.6-1.5l2.4.9 2-3.4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></button><button id="about-open" class="icon-button help-button" title="Help, licences and terms of use" aria-label="Help, licences and terms of use">?</button></div>
       <p id="share-status" role="status" class="small" hidden></p>
     </div>
@@ -57,7 +58,7 @@
         <fieldset><legend>Railways</legend>
           <label><input type="checkbox" id="stations" checked> Station markers and names</label>
           <label><input type="checkbox" id="names" checked> Railway names along tracks</label>
-          <label><input type="checkbox" id="labels" checked> Values along tracks (speed, power, train control, gauges)</label>
+          <label><input type="checkbox" id="labels" checked> Value labels (speed, power, train control, gauges, axle loads and platform lengths)</label>
           <label><input type="checkbox" id="trackCounts" checked> Track counts in boxes (Infrastructure view)</label>
           <label><input type="checkbox" id="inactive" checked> Planned, construction and former railways</label>
         </fieldset>
@@ -70,7 +71,6 @@
         <fieldset><legend>Map</legend>
           <label><input type="checkbox" id="readout" checked> Cursor coordinates and zoom under the scale bar</label>
           <label><input type="checkbox" id="autoGlobe" checked> Switch to the globe when zoomed out (and near the poles)</label>
-          <div class="units-picker"><label for="units">Units</label><select id="units"><option value="metric">Metric (km/h, m)</option><option value="imperial">Imperial (mph, ft)</option></select></div>
         </fieldset>
       </div>
     </section>
@@ -104,7 +104,7 @@
     <nav class="help-contents" aria-label="Contents"><a href="#help-start">Getting started</a> · <a href="#help-reading">Reading the map</a> · <a href="#help-names">Names and terrain</a> · <a href="#help-sources">Sources</a> · <a href="#help-licences">Licences</a> · <a href="#help-terms">Terms of use</a></nav>
     <h3 id="help-start" tabindex="-1">Getting started</h3>
     <p>Search for a station, railway facility or place with the box at the top of the panel. The view buttons colour the railways by infrastructure, maximum speed, power, train control, gauge, loading gauge or owner; Map, Satellite and Hybrid choose the background. Click a station, line, level crossing or transport facility to inspect it; its panel links to the object on OpenStreetMap.</p>
-    <p>At the foot of the panel: the link button copies a link to the current view, the satellite button copies the GPS coordinates of the map centre, the gear opens the settings (what is drawn, units, the coordinate readout and the automatic globe), and ? opens this page. Beside the map: compass, zoom, your location, ⊞ (more detail), ✎ (drawing), 📏 (measuring) and the globe/flat-map switch. With the map focused, the arrow keys pan the map and Shift with an arrow turns or tilts it.</p>
+    <p>At the foot of the panel: the link button copies a link to the current view, the satellite button copies the GPS coordinates of the map centre, the gear opens the settings (what is drawn, the coordinate readout and the automatic globe), and ? opens this page. Beside the map: compass, zoom, your location, ⊞ (more detail), ✎ (drawing), 📏 (measuring) and the globe/flat-map switch. With the map focused, the arrow keys pan the map and Shift with an arrow turns or tilts it.</p>
     <p>A station-first adaptation of <a href="https://github.com/c933103/openrailwaystyle">Open Railway Styles</a>, started at Hack4Rail. The background keeps roads and settlements subdued so railway infrastructure stands out.</p>
     <h3 id="help-reading" tabindex="-1">Reading the map</h3><p>Major stations are ranked by the provider’s mapped route importance, which is not a passenger-volume ranking. Coverage and station ranking depend on OpenStreetMap completeness.</p>
     <p>Speed colours use the provider’s numeric limit in km/h. Where directions differ, this is the preferred-direction limit, or the larger directional limit when no preferred direction is mapped. Track labels retain original units: bare numbers are km/h; mph is written explicitly. “A / B” means forward / backward; “A (B)” means preferred / opposite direction. A dash means missing data. These directions refer to the underlying OSM way.</p>
@@ -154,7 +154,7 @@
       status.textContent = 'The map could not load. Check your connection and reload the page.';
     }, true);
   </script>
-  <script type="module" src="app.mjs?v=20261001-80"></script>
+  <script type="module" src="app.mjs?v=20261001-91"></script>
 </body>
 </html>
 
