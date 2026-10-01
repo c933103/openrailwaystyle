@@ -102,8 +102,8 @@ test('service routes: memberships add up within a pass, are kept per stage, and 
   // Stage B finds its own route on the same way.
   addResult(table, {routes: [route('cross', 9)], ways: [{id: 1, routes: ['cross'], lines}]}, 'B');
   commitStage(table, 'B');
-  // A rejected refresh of A (incomplete) leaves everything as it was, names too.
-  addResult(table, {routes: [{...route('long', 6), label: 'renamed'}], ways: [{id: 1, routes: ['long'], lines}]}, 'A');
+  // A rejected refresh of A (incomplete) leaves everything as it was, names and geometry too.
+  addResult(table, {routes: [{...route('long', 6), label: 'renamed'}], ways: [{id: 1, routes: ['long'], lines: [[[5, 5], [6, 5]]]}]}, 'A');
   assert.deepEqual(stageChange(table, 'A'), {stale: 1, total: 3}, 'the local route was not found again');
   // What a pass newly finds does not dilute what it no longer found.
   addResult(table, {routes: [route('extra', 20)], ways: [{id: 2, routes: ['extra'], lines}]}, 'A');
@@ -111,6 +111,7 @@ test('service routes: memberships add up within a pass, are kept per stage, and 
   discardStage(table, 'A');
   assert.deepEqual(table.ways.get(1).routes, {A: ['local', 'long'], B: ['cross']});
   assert.equal(routeView(table.routes.get('long')).label, 'long');
+  assert.deepEqual(table.ways.get(1).lines, lines);
   assert.ok(table.routes.has('local'));
   // An accepted refresh: the local route goes, B's stays; the deleted
   // lower-id relation no longer gives the link.
@@ -124,8 +125,16 @@ test('service routes: memberships add up within a pass, are kept per stage, and 
   assert.equal(table.ways.size, 0);
 });
 
-test('service routes: a bare reference without a network is told apart by name and kind', () => {
-  const a = routeOf({id: 1, tags: {route: 'tram', ref: '1', name: 'Tram 1 Alpha'}}), b = routeOf({id: 2, tags: {route: 'tram', ref: '1', name: 'Tram 1 Beta'}});
-  assert.notEqual(a.key, b.key);
+test('service routes: the same reference and network in two places are two routes; both directions of one are one', () => {
+  const rel = (id, name, ways) => ({type: 'relation', id, tags: {route: 'subway', ref: '1', network: 'Metro', colour: 'red', name}, members: ways.map(ref => ({type: 'way', ref, role: ''}))});
+  const way = (id, lon, lat) => ({type: 'way', id, geometry: [{lon, lat}, {lon: lon + 0.01, lat}]});
+  const {routes, ways} = toTable({elements: [
+    rel(1, 'Metro 1 (northbound)', [10]), rel(2, 'Metro 1 (southbound)', [11]), rel(3, 'Metro 1', [20]),
+    way(10, 2.35, 48.85), way(11, 2.351, 48.851), way(20, 13.4, 52.5),
+  ]});
+  assert.equal(routes.length, 2, 'two cities, one route each');
+  assert.deepEqual(routes.map(r => r.relation).sort(), [1, 3]);
+  assert.equal(ways.find(w => w.id === 10).routes[0], ways.find(w => w.id === 11).routes[0], 'both directions are one route');
+  assert.notEqual(ways.find(w => w.id === 10).routes[0], ways.find(w => w.id === 20).routes[0]);
   assert.notEqual(routeOf({id: 3, tags: {route: 'tram', ref: '1', network: 'X', name: 'One'}}).key, routeOf({id: 4, tags: {route: 'subway', ref: '1', network: 'X', name: 'One'}}).key);
 });
