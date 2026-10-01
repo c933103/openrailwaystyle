@@ -616,6 +616,14 @@ test('dragging the globe keeps the direction and the heading; over a pole it car
   for (let i = 0; i < 100; i++) pieces = stepView(pieces, 0.1, 0.2, perDegree);
   const lngGap = Math.abs(((diagonal.center[0] - pieces.center[0]) + 540) % 360 - 180);
   assert.ok(lngGap < 1 && Math.abs(diagonal.center[1] - pieces.center[1]) < 0.1 && Math.abs(diagonal.bearing - pieces.bearing) < 1, JSON.stringify({diagonal, pieces}));
+  // Entering a polar cap obliquely: the same however the events are grouped
+  // (within 0.1° on the ground).
+  const apart = (a, b) => { const r = Math.PI / 180, [l1, p1] = a.center.map(v => v * r), [l2, p2] = b.center.map(v => v * r);
+    return Math.acos(Math.min(1, Math.sin(p1) * Math.sin(p2) + Math.cos(p1) * Math.cos(p2) * Math.cos(l1 - l2))) / r; };
+  const quarter = 0.25 * perDegree, oblique = stepView({center: [0, 84.9], bearing: 135}, 100, 90, quarter);
+  let events = {center: [0, 84.9], bearing: 135};
+  for (let i = 0; i < 100; i++) events = stepView(events, 1, 0.9, quarter);
+  assert.ok(apart(oblique, events) < 0.1, JSON.stringify({oblique, events}));
   // The planet keeps its size: zoom falls as the centre nears a pole.
   assert.ok(near(zoomForLatitude(3, 0, 60), 2));
   assert.ok(near(zoomForLatitude(2, 60, 0), 3));

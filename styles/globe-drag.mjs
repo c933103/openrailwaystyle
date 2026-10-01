@@ -38,16 +38,19 @@ export function startFrame(center, bearing) {
 // distance on the planet, north–south along the meridian and east–west
 // along the parallel; the bearing stays.
 export function stepView(view, dx, dy, radiansPerPixel) {
-  // A long movement (pointer events coalesced on a small globe) goes in
-  // steps of at most a tenth of a degree, each with the heading the last one
-  // left, so it ends about where the same movement in small events would.
-  const steps = Math.min(2000, Math.max(1, Math.ceil(deg(Math.hypot(dx, dy) * radiansPerPixel) / 0.1)));
-  for (let k = 0; k < steps; k++) {
-    const [d, e] = [dx / steps, dy / steps];
+  // The movement is followed in small steps, each with the heading the last
+  // one left, so it ends where the same movement in small events would
+  // (however the browser groups them). East–west motion is magnified by
+  // 1/cos(latitude) near the poles, so the steps shrink with it.
+  const total = deg(Math.hypot(dx, dy) * radiansPerPixel);
+  for (let done = 0, guard = 0; done < total && guard < 50000; guard++) {
+    const size = Math.min(total - done, 0.05 * Math.max(0.02, Math.cos(rad(view.center[1]))));
+    const f = size / total, d = dx * f, e = dy * f;
     // Within the polar caps a constant heading has no steady meaning (a
     // step east near a pole spins the view round it): there the globe turns
     // as a ball, over the pole, the heading following.
     view = Math.abs(view.center[1]) >= POLAR_DRAG ? frameView(stepFrame(startFrame(view.center, view.bearing), d, e, radiansPerPixel)) : step(view, d, e, radiansPerPixel);
+    done += size;
   }
   return view;
 }
