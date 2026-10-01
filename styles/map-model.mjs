@@ -26,7 +26,14 @@ export const SEARCH_API = 'https://api.openrailwaymap.org/v2/facility';
 // holds station nodes only: Sha Tin, a way, cannot be found there) and for
 // ordinary place names, listed below the railway results.
 export const PLACE_SEARCH_API = 'https://nominatim.openstreetmap.org/search';
-const RAIL_PLACES = {railway: ['station', 'halt', 'tram_stop'], public_transport: ['station']};
+const RAIL_PLACES = {railway: ['station', 'halt', 'tram_stop'], building: ['train_station']};
+// A public_transport=station result (Nominatim gives one category per
+// object) is a railway station only with rail evidence among its tags
+// (asked for with extratags=1); bus, coach and ferry stations are places.
+const RAIL_MODES = ['train', 'subway', 'light_rail', 'monorail', 'tram'];
+const isRailPlace = place => RAIL_PLACES[place.category]?.includes(place.type) ||
+  (place.category === 'public_transport' && place.type === 'station' &&
+    (['station', 'halt', 'tram_stop'].includes(place.extratags?.railway) || RAIL_MODES.some(mode => place.extratags?.[mode] === 'yes')));
 // Facility API results and geocoder results → {rail, places}. A geocoded
 // station joins the railway results unless the facility API already gave it
 // (the same node, or the same name within about 400 m).
@@ -41,12 +48,12 @@ export function searchResults(facilities, places) {
       osm_id: place.osm_id, osm_type: place.osm_type, area: String(place.display_name || '').split(',').slice(1).join(',').trim(),
       ...(Array.isArray(place.boundingbox) && {boundingbox: place.boundingbox.map(Number)})};
     if (!located(item)) continue;
-    if (RAIL_PLACES[place.category]?.includes(place.type)) {
+    if (isRailPlace(place)) {
       const own = names(item);
       // Names match when one contains the other ("大埔墟 Tai Po Market" and "Tai Po Market").
       const sameName = r => [...names(r)].some(n => [...own].some(o => n.length > 2 && o.length > 2 && (n.includes(o) || o.includes(n))));
       if (rail.some(r => (place.osm_type === 'node' && r.osm_id === place.osm_id) || (near(r, item) && sameName(r)))) continue;
-      rail.push({...item, railway: place.type === 'station' ? 'station' : place.type});
+      rail.push({...item, railway: ['station', 'train_station'].includes(place.type) ? 'station' : place.type});
     } else others.push({...item, place: place.addresstype || place.type});
   }
   return {rail, places: others};

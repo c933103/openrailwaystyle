@@ -1238,7 +1238,7 @@ $('search-form').addEventListener('submit', async e => {
     // submitted search (never as you type), within its usage policy.
     const facilityURL = new URL(SEARCH_API); facilityURL.searchParams.set('q', q); facilityURL.searchParams.set('limit', '8');
     const placeURL = new URL(PLACE_SEARCH_API);
-    for (const [key, value] of Object.entries({q, format: 'jsonv2', limit: '10', namedetails: '1'})) placeURL.searchParams.set(key, value);
+    for (const [key, value] of Object.entries({q, format: 'jsonv2', limit: '10', namedetails: '1', extratags: '1'})) placeURL.searchParams.set(key, value);
     if (settings.language !== 'local') placeURL.searchParams.set('accept-language', settings.language);
     const [facilities, places] = await Promise.allSettled([
       Date.now() < searchPausedUntil ? Promise.reject(new Error('paused')) : Promise.race([json(facilityURL), new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))]),
