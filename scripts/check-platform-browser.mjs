@@ -26,5 +26,11 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  await page.locator('#collapse').click();await page.screenshot({path:`browser-review/platform-${kind}-imperial.png`});
  if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();
  await page.selectOption('#units','metric');await page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);map.jumpTo({zoom:18});});
- await page.waitForFunction(()=>{const map=window.reviewMap;return map.queryRenderedFeatures({layers:['platform-lengths']}).length===0;});assert.equal(requests,1);console.log(`PASS: ${kind} platform length, unit conversion/cache and threshold`);await page.close();
+ await page.waitForFunction(()=>{const map=window.reviewMap;return map.queryRenderedFeatures({layers:['platform-lengths']}).length===0;});assert.equal(requests,1);console.log(`PASS: ${kind} platform length, unit conversion/cache and threshold`);
+ await page.locator('[data-mode="axle"]').click();
+ await page.evaluate(()=>{const map=window.reviewMap;map.jumpTo({center:[10,50],zoom:5});const layer={...map.getStyle().layers.find(l=>l.id==='axle-overview')};map.removeLayer(layer.id);delete layer['source-layer'];layer.source='reviewAxle';map.addSource('reviewAxle',{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{axle_load:'22500 kg',axle_tonnes:22.5},geometry:{type:'LineString',coordinates:[[9,50],[11,50]]}},{type:'Feature',properties:{axle_load:'50000 lb',axle_tonnes:22.6796185},geometry:{type:'LineString',coordinates:[[9,50.5],[11,50.5]]}}]}});map.addLayer(layer);map.fire('moveend');});
+ await page.waitForFunction(()=>document.querySelector('#legend').textContent.includes('22,500 kg'));
+ await page.selectOption('#units','imperial');assert.match(await page.locator('#legend').innerText(),/25 short tons \(50,000 lb\)/,'imperial legend updates without a pan or source event');
+ await page.selectOption('#units','metric');assert.match(await page.locator('#legend').innerText(),/22.5 t \(22,500 kg\)/,'metric legend updates without a pan or source event');
+ console.log(`PASS: ${kind} kg/lb axle legend updates immediately`);await page.close();
 }}finally{await browser.close();}
