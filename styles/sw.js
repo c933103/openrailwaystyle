@@ -51,6 +51,31 @@ async function saveVersion(cache, version, page) {
   }
 }
 
+// Brings the files of the version before over from this app's older caches
+// (before they are deleted on activation), so a page still open on it keeps
+// finding its lazy modules offline. Earlier caches kept each file only under
+// its plain address: those belong to the version their saved page names.
+async function migrate(cache, version) {
+  const scope = self.registration.scope, listKey = new URL('__versions', scope).href;
+  const versions = async c => c.match(listKey).then(r => r ? r.json() : []).catch(() => []);
+  let keep = await versions(cache);
+  for (const name of await caches.keys()) {
+    if (!name.startsWith(PREFIX) || name === CACHE) continue;
+    const old = await caches.open(name), page = await old.match(new URL('./', scope).href);
+    const pageOf = page ? pageVersion(await page.text()) : null;
+    keep = [...new Set([version, ...keep, ...(await versions(old)), ...(pageOf ? [pageOf] : [])])].slice(0, KEEP_VERSIONS);
+    for (const request of await old.keys()) {
+      const url = new URL(request.url), v = url.searchParams.get('v');
+      if (url.origin !== location.origin || !SHELL.test(url.pathname)) continue;
+      const key = v !== null ? request.url : pageOf && versioned(url.origin + url.pathname, pageOf);
+      if (!key || !keep.includes(v ?? pageOf) || await cache.match(key)) continue;
+      const response = await old.match(request);
+      if (response) await cache.put(key, response);
+    }
+  }
+  await cache.put(listKey, new Response(JSON.stringify(keep), {headers: {'content-type': 'application/json'}}));
+}
+
 self.addEventListener('install', event => event.waitUntil((async () => {
   const cache = await caches.open(CACHE);
   // Every file is needed: if one fails to load, the installation fails, the
@@ -61,6 +86,7 @@ self.addEventListener('install', event => event.waitUntil((async () => {
   const version = pageVersion(await response.clone().text());
   if (!version) throw new Error('page names no version');
   await saveVersion(cache, version, response);
+  await migrate(cache, version);
   // Fetched with CORS (the CDN allows any origin) so that an error status can
   // be seen and fails the installation; the saved copy also serves the page's
   // plain script and stylesheet requests.
@@ -73,7 +99,8 @@ self.addEventListener('install', event => event.waitUntil((async () => {
   await self.skipWaiting();
 })()));
 self.addEventListener('activate', event => event.waitUntil((async () => {
-  // Only this app's older copies: other apps on the same origin keep theirs.
+  // Only this app's older copies (their files of the version before were
+  // brought over at installation): other apps on the same origin keep theirs.
   for (const key of await caches.keys()) if (key.startsWith(PREFIX) && key !== CACHE) await caches.delete(key);
   await self.clients.claim();
 })()));

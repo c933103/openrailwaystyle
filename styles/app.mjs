@@ -1225,8 +1225,8 @@ $('search-form').addEventListener('submit', async e => {
   const timeout = setTimeout(() => controller.abort('timeout'), 8000);
   $('search-results').hidden = true;
   $('search-status').hidden = false; $('search-status').textContent = 'Searching railway facilities and places…';
-  const json = async url => {
-    const response = await fetch(url, { signal: controller.signal });
+  const json = async (url, signal = controller.signal) => {
+    const response = await fetch(url, { signal });
     if (response.status === 429 && url.href.startsWith(SEARCH_API)) searchPausedUntil = Date.now() + 10 * 60_000;
     if (!response.ok) throw new Error(`Search returned ${response.status}`);
     const items = await response.json(); if (!Array.isArray(items)) throw new Error('Unexpected search response');
@@ -1242,8 +1242,13 @@ $('search-form').addEventListener('submit', async e => {
     const placeURL = new URL(PLACE_SEARCH_API);
     for (const [key, value] of Object.entries({q, format: 'jsonv2', limit: '10', namedetails: '1', extratags: '1'})) placeURL.searchParams.set(key, value);
     if (settings.language !== 'local') placeURL.searchParams.set('accept-language', settings.language);
+    // The facility request is cancelled at its 5-second limit (and with the
+    // whole search), not just left running.
+    const facility = new AbortController();
+    controller.signal.addEventListener('abort', () => facility.abort(), {once: true});
+    const facilityTimeout = setTimeout(() => facility.abort('timeout'), 5000);
     const [facilities, places] = await Promise.allSettled([
-      Date.now() < searchPausedUntil ? Promise.reject(new Error('paused')) : Promise.race([json(facilityURL), new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))]),
+      Date.now() < searchPausedUntil ? Promise.reject(new Error('paused')) : json(facilityURL, facility.signal).finally(() => clearTimeout(facilityTimeout)),
       placeSearch(placeURL, json, controller.signal)]);
     if (controller !== searchController) return;
     if (facilities.status === 'rejected' && places.status === 'rejected') throw facilities.reason;
