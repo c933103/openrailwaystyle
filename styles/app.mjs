@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-21';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-21';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-26';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-26';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-21';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-21';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-21';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-21';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-21';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-26';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-26';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-26';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-26';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-26';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -43,7 +43,7 @@ const loadScript = (src, global) => window[global] ? Promise.resolve() : new Pro
   document.head.append(script);
 });
 const libraries = Promise.all([
-  loadScript('https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.js', 'maplibregl'),
+  loadScript('https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js', 'maplibregl'),
   loadScript('https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js', 'pmtiles'),
   loadScript(new URL(`vendor/maplibre-contour.js?v=${assetVersion}`, import.meta.url).href, 'mlcontour'),
 ]);
@@ -897,11 +897,17 @@ async function initialize() {
     renderWorldCopies: true, attributionControl: { compact: true },
   });
   // The globe may be centred beyond 85° (globe-drag.mjs); a view left or
-  // linked there is applied again once that is allowed.
+  // linked there is applied again once that is allowed. So is any view
+  // opening on the globe: MapLibre limits the opening view as on the flat
+  // map, where at low zoom the centre stays far from the poles (84° N at
+  // zoom 3 opened at 80° N on a phone).
   polarCentres = allowPolarCentres(map, maplibregl.LngLat, () => MIN_ZOOM + settings.detail);
   const [hashZoom, hashLat, hashLng] = linked ? location.hash.slice(1).split('/').map(Number) : [];
   const wanted = linked ? {center: [hashLng, hashLat], zoom: hashZoom} : validCenter ? {center: start.c, zoom: start.z} : null;
-  if (wanted && Math.abs(wanted.center[1]) > 85 && wanted.center.every(Number.isFinite)) map.jumpTo(wanted);
+  if (wanted && (startGlobe || Math.abs(wanted.center[1]) > 85) && wanted.center.every(Number.isFinite)) {
+    // Again once the style has put the map on the globe.
+    map.jumpTo(wanted); map.once('style.load', () => map.jumpTo(wanted));
+  }
   map.on('styleimagemissing', event => {
     if (event.id.startsWith('context-')) {
       const icon = contextIcon(event.id,document);
