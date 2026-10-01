@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-18';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-18';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-22';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-22';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-18';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-18';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-18';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-18';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-18';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-22';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-22';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-22';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-22';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-22';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -35,7 +35,7 @@ const settings = readSettings(location.search, {language: readCookie(LANGUAGE_CO
 const status = $('map-status');
 let legendHelpOpen = false;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-14';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-12';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -122,6 +122,8 @@ const IN_VIEW = {
     return rows.length ? rows : null;
   },
   loading: p => { const g = loadingGauge(p.loading_gauge); return g ? [g.color, g.name, g.rank, loadingDimensions(g, settings.units)] : null; },
+  // Owners in view, most track first.
+  owner: p => p.owner && p.owner_color ? [p.owner_color, p.owner, 0] : null,
   // Services in view, by colour (a line's branches usually share one).
   service: p => p.kind ? [p.colour || SERVICE_UNCOLOURED, displayName(p, settings.language) || p.ref, SERVICE_ORDER[p.kind]] : null,
 };
@@ -155,6 +157,7 @@ function renderLegend() {
     control: { title: 'Train protection · in view', rows: [...listed(inView), [NO_PROTECTION, 'No train protection']] },
     gauge: { title: 'Track gauge · in view', rows: listed(inView) },
     loading: { title: 'Loading gauge · in view', rows: listed(inView) },
+    owner: { title: 'Infrastructure owner · in view', rows: listed(inView) },
     service: { title: 'Urban rail services · in view', rows: listed(inView) },
   };
   const legend = legends[settings.mode];
@@ -194,6 +197,7 @@ function renderLegend() {
     control: 'Hue groups related systems (e.g. ETCS with China’s ETCS-derived CTCS); darker is more advanced: warning only, spot transmission, continuous, radio. Colour shows the first recorded system; click a track for all of them and their compatibility. Grey means nothing is recorded.',
     gauge: 'Gauges a few millimetres apart (e.g. 1432 and 1435, 1520 and 1524) share one colour and are generally compatible. Click a track for all recorded gauges. Grey means not recorded.',
     loading: 'Colour follows the envelope’s height above rail, so equal sizes match across regions; Britain’s W gauges share one height and form their own ladder. Click a track for dimensions. Grey means not recorded.',
+    owner: 'Each owner of the infrastructure, as recorded in OpenStreetMap, has its own colour, the same everywhere; the owner is not always the operator. Click a track for its owner and operator. Grey means no owner is recorded.',
     service: 'Metro, light rail, tram, monorail and commuter rail services, each in its own colour along the tracks it runs on, side by side where they share a track; long-distance trains are not shown. Click a service for its details. Grey tracks have no such service mapped.',
     infrastructure: 'Numbers count the mapped tracks: running tracks side by side (not sidings, yards or crossovers), on the surface, on viaducts or in tunnels alike (grey-blue where all are in tunnels); at a station, every track there, sidings included. Ochre marks explicitly tagged shared roadway; level crossings are dark brown (road) or light brown (pedestrian).',
   };
@@ -262,12 +266,12 @@ function applySettings() {
   if (ready) { scheduleLegend(); scheduleNearbyTransport(); }
 }
 const featurePickRank = f => f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
-const VALUE_LABELS = /^(speed|electrification|control|gauge|loading)-labels$/;
+const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|owner)-labels$/;
 const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-crossing-overview','infrastructure-crossing-dots','infrastructure-crossing-marks','infrastructure-street-running'];
 // Clickable: stations, tracks, level crossings, inactive lines, and transport
 // and destination points; land-use areas, protected, heritage and other
 // planning areas, jurisdictions and buildings are drawn for context only.
-const isClickable = id => INFRASTRUCTURE_POINTS.includes(id) || /^context-(transport|destinations)-.+-label$/.test(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|service)-(tracks|overview|branch-overview|metro-overview)$/.test(id) || id === 'service-routes';
+const isClickable = id => INFRASTRUCTURE_POINTS.includes(id) || /^context-(transport|destinations)-.+-label$/.test(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|owner|service)-(tracks|overview|branch-overview|metro-overview)$/.test(id) || id === 'service-routes';
 function row(dl, label, value) {
   if (value === undefined || value === null || value === '') return;
   dl.append(textNode('dt', label), textNode('dd', String(value)));
@@ -352,6 +356,7 @@ function showDetails(feature) {
     if (!p.state || p.state === 'present') panel.append(textNode('p', 'Colour uses the preferred-direction limit, or the larger directional limit if no preference is mapped. The source label above retains both directions. Bare numbers are km/h.', 'small'));
   }
   row(dl, 'Operator', Array.isArray(p.operator) ? p.operator.join(', ') : p.primary_operator || p.operator);
+  row(dl, 'Owner', p.owner);
   panel.append(dl);
   if (!isStation && map?.getZoom() < 7) panel.append(textNode('p', 'This is a generalized overview. Zoom in for individual tracks and full details.', 'small'));
   osmLink(panel, feature);
@@ -631,7 +636,7 @@ function updateStatus() {
   status.dataset.renderedFormer = String(regional.filter(f => !['proposed','construction'].includes(f.properties.state)).length);
   status.dataset.numericSpeeds = String(tracks.filter(f => numericSpeed(f.properties.maxspeed) !== null).length);
 }
-const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg):\/\//,'');
+const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg|owner):\/\//,'');
 function localizeStyle(style) {
   for (const layer of style.layers) {
     if (layer.type !== 'symbol' || layer.id === 'speed-labels' || layer.id.startsWith('terrain-')) continue;
@@ -643,6 +648,8 @@ function localizeStyle(style) {
   style.sources.inactiveRegional.tiles = [`railtiles://{z}/{x}/{y}?lang=${settings.language}`];
   style.sources.railway.url = `atlasrail://${unwrap(style.sources.railway.url)}`;
   style.sources.loadingLow.url = `atlaslg://${unwrap(style.sources.loadingLow.url)}`;
+  style.sources.ownerLow.url = `atlasowner://${unwrap(style.sources.ownerLow.url)}`;
+  style.sources.ownerRail.url = `atlasowner://${unwrap(style.sources.ownerRail.url)}`;
   unitStyle(style);
   styleLanguage = settings.language;
 }
@@ -1056,7 +1063,7 @@ async function initialize() {
   }});
   syncPanning = globeDrag.sync; globeDragged = globeDrag.justDragged;
   syncPanning();
-  map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'loadingLow', 'railway', 'branchLines', 'serviceRoutes'].includes(e.sourceId) && e.tile) scheduleLegend(); });
+  map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'railway', 'branchLines', 'serviceRoutes'].includes(e.sourceId) && e.tile) scheduleLegend(); });
   map.on('click', event => {
     // The release that ends a globe drag is not a click.
     if (globeDragged()) return;
@@ -1236,6 +1243,26 @@ $('copy-coordinates')?.addEventListener('click', () => {
   const {lat, lng} = map.getCenter().wrap();
   copyText(`${lat.toFixed(6)}, ${lng.toFixed(6)}`, `Map centre copied: ${lat.toFixed(6)}, ${lng.toFixed(6)} (latitude, longitude).`, 'coordinates');
 });
+// Nominatim allows at most one request a second: searches submitted faster
+// wait their turn, and a repeated search is answered from memory.
+const placeCache = new Map();
+let placeNext = 0;
+async function placeSearch(url, json, signal) {
+  const key = url.href;
+  if (placeCache.has(key)) return placeCache.get(key);
+  // The next second is taken only by a request about to be sent: a search
+  // given up while it waits (a newer one replaces it) holds no place.
+  while (Date.now() < placeNext) {
+    await new Promise(resolve => setTimeout(resolve, placeNext - Date.now()));
+    if (signal?.aborted) throw new Error('Search replaced');
+  }
+  if (signal?.aborted) throw new Error('Search replaced');
+  placeNext = Date.now() + 1000;
+  const items = await json(url);
+  placeCache.set(key, items);
+  while (placeCache.size > 50) placeCache.delete(placeCache.keys().next().value);
+  return items;
+}
 // Settings: a subpage of the panel, in place of the map controls.
 const showSettings = open => {
   if (!$('main-view') || !$('settings-view')) return;
@@ -1250,49 +1277,80 @@ $('settings-view')?.addEventListener('keydown', event => { if (event.key === 'Es
 $('search-form').addEventListener('submit', async e => {
   e.preventDefault();
   const q = $('search-input').value.trim(); if (q.length < 2) return;
-  // The OpenRailwayMap API asks clients to stop after HTTP 429 and to give
-  // up on requests after about 5 seconds.
-  if (Date.now() < searchPausedUntil) {
-    $('search-status').hidden = false;
-    $('search-status').textContent = 'Station search is busy. Please try again in a few minutes.';
-    return;
-  }
   searchController?.abort(); searchController = new AbortController();
   const controller = searchController;
-  const timeout = setTimeout(() => controller.abort('timeout'), 5000);
+  const timeout = setTimeout(() => controller.abort('timeout'), 8000);
   $('search-results').hidden = true;
-  $('search-status').hidden = false; $('search-status').textContent = 'Searching railway facilities…';
+  $('search-status').hidden = false; $('search-status').textContent = 'Searching railway facilities and places…';
+  const json = async (url, signal = controller.signal) => {
+    const response = await fetch(url, { signal });
+    if (response.status === 429 && url.href.startsWith(SEARCH_API)) searchPausedUntil = Date.now() + 10 * 60_000;
+    if (!response.ok) throw new Error(`Search returned ${response.status}`);
+    const items = await response.json(); if (!Array.isArray(items)) throw new Error('Unexpected search response');
+    return items;
+  };
   try {
     // Search results are located for their Chinese name order.
     await labels.catch(() => {});
-    const url = new URL(SEARCH_API); url.searchParams.set('q', q); url.searchParams.set('limit', '8');
-    const response = await fetch(url, { signal: controller.signal });
-    if (response.status === 429) searchPausedUntil = Date.now() + 10 * 60_000;
-    if (!response.ok) throw new Error(`Search returned ${response.status}`);
-    const items = await response.json(); if (!Array.isArray(items)) throw new Error('Unexpected search response');
+    // The OpenRailwayMap API asks clients to stop after HTTP 429 and to give
+    // up on requests after about 5 seconds; the geocoder is asked once per
+    // submitted search (never as you type), within its usage policy.
+    const facilityURL = new URL(SEARCH_API); facilityURL.searchParams.set('q', q); facilityURL.searchParams.set('limit', '8');
+    const placeURL = new URL(PLACE_SEARCH_API);
+    for (const [key, value] of Object.entries({q, format: 'jsonv2', limit: '10', namedetails: '1', extratags: '1'})) placeURL.searchParams.set(key, value);
+    if (settings.language !== 'local') placeURL.searchParams.set('accept-language', settings.language);
+    // The facility request is cancelled at its 5-second limit (and with the
+    // whole search), not just left running.
+    const facility = new AbortController();
+    // (An abort that already fired, e.g. while the labels loaded, is not
+    // replayed to a new listener.)
+    if (controller.signal.aborted) facility.abort();
+    else controller.signal.addEventListener('abort', () => facility.abort(), {once: true});
+    const facilityTimeout = setTimeout(() => facility.abort('timeout'), 5000);
+    const [facilities, places] = await Promise.allSettled([
+      Date.now() < searchPausedUntil ? Promise.reject(new Error('paused')) : json(facilityURL, facility.signal).finally(() => clearTimeout(facilityTimeout)),
+      placeSearch(placeURL, json, controller.signal)]);
     if (controller !== searchController) return;
+    if (facilities.status === 'rejected' && places.status === 'rejected') throw facilities.reason;
+    const {rail, places: other} = searchResults(facilities.value || [], places.value || []);
     const results = $('search-results'); results.replaceChildren();
-    for (const item of items) {
-      if (!Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)) continue;
-      try { Object.assign(item, locate(item.longitude,item.latitude)); } catch {}
+    const narrow = () => { results.hidden = true; $('search-status').hidden = true; if (matchMedia('(max-width: 650px)').matches && !$('controls').hidden) $('collapse').click(); };
+    const entry = (title, detail, onClick) => {
       const li = document.createElement('li'); const button = document.createElement('button'); button.type = 'button';
-      button.append(textNode('span', displayName(item,settings.language) || item.railway_ref || 'Unnamed facility'));
-      button.append(textNode('small', [item.station || item.feature || item.railway, item.railway_ref || item['railway:ref'], Array.isArray(item.operator) ? item.operator.join(', ') : item.operator].filter(Boolean).join(' · ')));
-      button.addEventListener('click', () => {
-        const coordinates = [item.longitude, item.latitude];
-        // Before the map has loaded, go there as soon as it has.
-        whenReady(() => map.flyTo({ center: coordinates, zoom: 14, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1000 }));
-        showDetails({ kind: 'station', properties: item, geometry: { type: 'Point', coordinates } });
-        results.hidden = true; $('search-status').hidden = true;
-        if (matchMedia('(max-width: 650px)').matches && !$('controls').hidden) $('collapse').click();
-      });
+      button.append(textNode('span', title), textNode('small', detail));
+      button.addEventListener('click', () => { onClick(); narrow(); });
       li.append(button); results.append(li);
+    };
+    const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+    for (const item of rail) {
+      try { Object.assign(item, locate(item.longitude,item.latitude)); } catch {}
+      entry(displayName(item,settings.language) || item.railway_ref || 'Unnamed facility',
+        [item.station || item.feature || item.railway, item.railway_ref || item['railway:ref'], Array.isArray(item.operator) ? item.operator.join(', ') : item.operator].filter(Boolean).join(' · '), () => {
+          const coordinates = [item.longitude, item.latitude];
+          // Before the map has loaded, go there as soon as it has.
+          whenReady(() => map.flyTo({ center: coordinates, zoom: 14, duration: reduced() ? 0 : 1000 }));
+          showDetails({ kind: 'station', properties: item, geometry: { type: 'Point', coordinates } });
+        });
     }
-    results.hidden = !results.children.length;
-    $('search-status').textContent = results.children.length ? `${results.children.length} results` : 'No matching facility found. Try a local name or railway code.';
+    if (other.length) {
+      const heading = textNode('li', 'Places · Nominatim / © OpenStreetMap contributors', 'search-heading'); heading.setAttribute('role', 'presentation'); results.append(heading);
+      for (const item of other) {
+        try { Object.assign(item, locate(item.longitude,item.latitude)); } catch {}
+        entry(displayName(item,settings.language) || item.name, [item.place?.replaceAll('_', ' '), item.area].filter(Boolean).join(' · ').slice(0, 90), () => whenReady(() => {
+          const [south, north, west, east] = item.boundingbox || [];
+          if ([south, north, west, east].every(Number.isFinite) && north > south) map.fitBounds([[west, south], [east, north]], { maxZoom: 15, padding: 40, duration: reduced() ? 0 : 1000 });
+          else map.flyTo({ center: [item.longitude, item.latitude], zoom: 13, duration: reduced() ? 0 : 1000 });
+        }));
+      }
+    }
+    const count = rail.length + other.length;
+    results.hidden = !count;
+    const unavailable = [facilities.status === 'rejected' && 'station search', places.status === 'rejected' && 'place search'].filter(Boolean);
+    $('search-status').textContent = (count ? `${rail.length} railway ${rail.length === 1 ? 'result' : 'results'}, ${other.length} ${other.length === 1 ? 'place' : 'places'}` : 'No matching facility or place found. Try a local name or railway code.')
+      + (unavailable.length ? ` (${unavailable.join(' and ')} unavailable)` : '');
   } catch (error) {
     if (controller !== searchController) return;
-    $('search-status').textContent = 'Station search is unavailable. Try again, or browse by panning and zooming.';
+    $('search-status').textContent = 'Search is unavailable. Try again, or browse by panning and zooming.';
   } finally { clearTimeout(timeout); }
 });
 applySettings();

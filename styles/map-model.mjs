@@ -22,10 +22,60 @@ export const ORM = 'https://openrailwaymap.app';
 // Public API explicitly supports cross-origin clients; the vector site's
 // same-origin /api/facility endpoint is not suitable for GitHub Pages.
 export const SEARCH_API = 'https://api.openrailwaymap.org/v2/facility';
+// OpenStreetMap's geocoder, for stations mapped as areas (the facility API
+// holds station nodes only: Sha Tin, a way, cannot be found there) and for
+// ordinary place names, listed below the railway results.
+export const PLACE_SEARCH_API = 'https://nominatim.openstreetmap.org/search';
+const RAIL_PLACES = {railway: ['station', 'halt', 'tram_stop'], building: ['train_station']};
+// A public_transport=station result (Nominatim gives one category per
+// object) is a railway station only with rail evidence among its tags
+// (asked for with extratags=1); bus, coach and ferry stations are places.
+const RAIL_MODES = ['train', 'subway', 'light_rail', 'monorail', 'tram'];
+const isRailPlace = place => RAIL_PLACES[place.category]?.includes(place.type) ||
+  (place.category === 'public_transport' && place.type === 'station' &&
+    (['station', 'halt', 'tram_stop'].includes(place.extratags?.railway) || RAIL_MODES.some(mode => place.extratags?.[mode] === 'yes')));
+// Two station names are the same when equal, or when one is the other plus
+// only a name in another script ("大埔墟 Tai Po Market" and "Tai Po Market"),
+// not when the rest is more of the same script ("Central Park" is not
+// "Central").
+const LATIN = /[A-Za-z\u00C0-\u024F]/, OTHER_LETTER = /[^\P{L}A-Za-z\u00C0-\u024F]/u;
+export function samePlaceName(a, b) {
+  // The word for station does not tell stations apart.
+  const tidy = v => String(v).toLowerCase().replace(/(\s+(railway |train |mtr )?station|站|駅|역)(?=\s|$)/gu, '').replace(/\s+/g, ' ').trim();
+  [a, b] = [tidy(a), tidy(b)].sort((x, y) => x.length - y.length);
+  if (!a || a.length < 2) return false;
+  if (a === b) return true;
+  if (!b.includes(a)) return false;
+  const rest = b.replace(a, '');
+  return LATIN.test(a) ? !LATIN.test(rest) : !OTHER_LETTER.test(rest);
+}
+// Facility API results and geocoder results → {rail, places}. A geocoded
+// station joins the railway results unless the facility API already gave it
+// (the same node, or the same name within about 400 m).
+export function searchResults(facilities, places) {
+  const located = item => Number.isFinite(item.longitude) && Number.isFinite(item.latitude);
+  const rail = facilities.filter(located), others = [];
+  const near = (a, b) => Math.abs(a.latitude - b.latitude) < 0.004 && Math.abs(a.longitude - b.longitude) * Math.cos(a.latitude * Math.PI / 180) < 0.004;
+  const names = item => new Set(Object.entries(item).filter(([key, value]) => (key === 'name' || key.startsWith('name:')) && typeof value === 'string').map(([, value]) => value.toLowerCase()));
+  for (const place of places) {
+    const details = place.namedetails || {};
+    const item = {...details, name: details.name || place.name || String(place.display_name || '').split(',')[0], latitude: Number(place.lat), longitude: Number(place.lon),
+      osm_id: place.osm_id, osm_type: place.osm_type, area: String(place.display_name || '').split(',').slice(1).join(',').trim(),
+      ...(Array.isArray(place.boundingbox) && {boundingbox: place.boundingbox.map(Number)})};
+    if (!located(item)) continue;
+    if (isRailPlace(place)) {
+      const own = names(item);
+      const sameName = r => [...names(r)].some(n => [...own].some(o => samePlaceName(n, o)));
+      if (rail.some(r => (place.osm_type === 'node' && r.osm_id === place.osm_id) || (near(r, item) && sameName(r)))) continue;
+      rail.push({...item, railway: ['station', 'train_station'].includes(place.type) ? 'station' : place.type});
+    } else others.push({...item, place: place.addresstype || place.type});
+  }
+  return {rail, places: others};
+}
 // Map background: the drawn base map, satellite imagery alone, or imagery
 // under the railways (hybrid).
 export const BACKGROUNDS = ['map', 'satellite', 'hybrid'];
-export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge', 'loading', 'service'];
+export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge', 'loading', 'owner', 'service'];
 export const LANGUAGES = [
   ['local','Local names'], ['en','English'], ['ko','한국어'], ['ja','日本語'],
   ['zh-Hant','繁體中文'], ['zh-Hans','简体中文'], ['de','Deutsch'], ['fr','Français'],
@@ -289,6 +339,21 @@ export const loadingDimensions = (g, units = 'metric') => !g?.height ? ''
 // Whether the upper-cased tag lists a British gauge: alone, in a list ('in'
 // on "W6A," tokens avoids W6 matching inside W6A) or starred.
 const britishTest = (upper, code) => { const c = code.toUpperCase(); return ['any', ['==', upper, c], ['in', `${c},`, ['concat', upper, ',']], ['in', `${c}*`, upper]]; };
+// Owner view: each infrastructure owner (OSM owner=*) gets its own colour,
+// made from its name, so it is the same wherever and whenever it is drawn.
+// Tiles carry it as owner_color (added in the browser, tile-labels.mjs);
+// without an owner, the unknown colour.
+export function ownerColor(name) {
+  const key = String(name ?? '').trim().toLowerCase();
+  if (!key) return null;
+  let hash = 0x811c9dc5;
+  for (const ch of key) { hash ^= ch.codePointAt(0); hash = Math.imul(hash, 0x01000193) >>> 0; }
+  // Hues spread by the golden angle; saturation and lightness in three
+  // steps each, kept away from the grey of "not recorded".
+  const hue = Math.round((hash % 360) * 137.508) % 360, sat = [62, 74, 86][(hash >>> 9) % 3], light = [34, 42, 50][(hash >>> 13) % 3];
+  return `hsl(${hue}, ${sat}%, ${light}%)`;
+}
+export const ownerPaint = () => ['coalesce', ['get', 'owner_color'], UNKNOWN_COLOR];
 export function loadingPaint() {
   const lg = ['coalesce', ['get', 'loading_gauge'], ''], upper = ['upcase', lg];
   // Upper case: "W6a" is tagged as well as "W6A".
@@ -510,9 +575,11 @@ export function formatReadout({lng, lat}, zoom, detail = 0) {
 // id (planned and former lines, street running) or the crossing node id;
 // base-map features carry the id times ten plus 1, 2 or 3 for a node, way or
 // relation.
-const WAY_SOURCES = ['railway', 'network', 'speed', 'electric', 'control', 'gaugeLow', 'loadingLow', 'inactiveRegional', 'streetRunning', 'branchLines'];
+const WAY_SOURCES = ['railway', 'network', 'speed', 'electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'inactiveRegional', 'streetRunning', 'branchLines'];
 export function osmObject(feature) {
   const p = feature?.properties || {};
+  // Geocoder results name the type.
+  if (['node', 'way', 'relation'].includes(p.osm_type) && /^\d+$/.test(String(p.osm_id ?? ''))) return {type: p.osm_type, id: String(p.osm_id)};
   for (const value of [p.id, p.osm_id]) {
     const match = /^(node|way|relation)-(\d+)/.exec(String(value ?? ''));
     if (match) return {type: match[1], id: match[2]};

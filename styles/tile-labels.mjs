@@ -1,7 +1,7 @@
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import encode from 'vt-pbf';
-import {chooseName, mergeStationTranslation, stationLanguages, stationPending, ORM} from './map-model.mjs';
+import {chooseName, mergeStationTranslation, stationLanguages, stationPending, ORM, ownerColor} from './map-model.mjs';
 import {hanRegion, chineseArea} from './han-region.mjs';
 import {decodeLoadingGauges, wayId} from './loading-gauge-list.mjs';
 export {hanRegion, chineseArea};
@@ -201,6 +201,24 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     for (const f of features(tile)) {
       const value = list.get(wayId(f.properties.id));
       if (value) f.properties.loading_gauge = value;
+    }
+    const result = encode(tile);
+    return {data: result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength)};
+  });
+  // Owner view: the railway tiles with each line's owner colour added
+  // (owner_color, from the name; ownerColor).
+  maplibregl.addProtocol('atlasowner',async (params,controller)=>{
+    const url = params.url.replace(/^atlasowner:\/\//,'');
+    if (params.type === 'json') {
+      const data = await get(url,controller.signal,true);
+      return {data:{...data,tiles:data.tiles.map(t=>`atlasowner://${t}`)}};
+    }
+    const data = await get(url, controller.signal);
+    if (!data?.byteLength) return {data: new ArrayBuffer(0)};
+    const tile = readTile(data);
+    for (const f of features(tile)) {
+      const color = ownerColor(f.properties.owner);
+      if (color) f.properties.owner_color = color;
     }
     const result = encode(tile);
     return {data: result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength)};

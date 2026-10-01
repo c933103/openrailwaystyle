@@ -447,6 +447,35 @@ test('station track counts include sidings, not yards; a station with no area co
   const bays = [track(0, 'siding'), track(5, 'siding'), track(10, 'siding'), track(15, 'yard')];
   assert.deepEqual(stationTracks(bays, [zone], 1).map(p => p.tracks), [3]);
 });
+test('track counts: stacked tunnels are two tracks; light rail and main lines are counted apart', async () => {
+  const {countTracks, stationTracks, trackLines} = await import('../styles/track-count.mjs');
+  // 1 unit = 1 m. Two tunnels of one line, one above the other, drawn on the
+  // same plan line for 600 m (as south of Austin, Hong Kong): two tracks.
+  const tml = {group: 'rail', main: true, tunnel: true, line: 'Tuen Ma Line'};
+  const stacked = countTracks([{...tml, parts: [[[0, 0], [1000, 0]]]}, {...tml, parts: [[[200, 0], [800, 0]]]}], 1);
+  assert.ok(stacked.points.some(p => p.tracks === 2 && p.x > 250 && p.x < 750), JSON.stringify(stacked.points));
+  // A stacked pair beside a third track: probes from the third keep the
+  // pair apart too (offsets −5, −5, 0, 5 are four tracks).
+  const four = countTracks([{...tml, parts: [[[0, -5], [1000, -5]]]}, {...tml, parts: [[[0, -5], [1000, -5]]]}, {...tml, parts: [[[0, 0], [1000, 0]]]}, {...tml, parts: [[[0, 5], [1000, 5]]]}], 1);
+  assert.ok(four.points.length && four.points.every(p => p.tracks === 4), JSON.stringify(four.points));
+  // A way meeting another end to end stays one track.
+  const joined = countTracks([{...tml, parts: [[[0, 0], [500, 0]]]}, {...tml, parts: [[[500, 0], [1000, 0]]]}], 1);
+  assert.ok(joined.points.every(p => p.tracks === 1), JSON.stringify(joined.points));
+  // A light rail pair 10 m from a main-line pair on a viaduct (north of
+  // Choy Yee Bridge): two and two, not four.
+  const feature = (properties, y) => ({type: 2, properties: {state: 'present', ...properties}, loadGeometry: () => [[{x: 0, y}, {x: 1000, y}]]});
+  const lines = trackLines([feature({feature: 'light_rail', name: 'Light Rail'}, 0), feature({feature: 'light_rail', name: 'Light Rail'}, 4),
+    feature({feature: 'rail', name: 'Tuen Ma Line', bridge: true}, 14), feature({feature: 'rail', name: 'Tuen Ma Line', bridge: true}, 20)]);
+  assert.deepEqual(lines.map(l => l.group), ['light_rail', 'light_rail', 'rail', 'rail']);
+  assert.deepEqual(countTracks(lines, 1).lines.map(l => l.tracks), [2, 2, 2, 2]);
+  // A station area holding a light rail stop and a main-line station counts
+  // each kind's tracks on its own (Ho Tin and Tuen Mun).
+  const zone = {inside: (x, y) => x >= 300 && x <= 700 && y >= -10 && y <= 30, groups: ['light_rail', 'rail']};
+  assert.deepEqual(stationTracks(lines, [zone], 1).map(p => [p.group, p.tracks]), [['light_rail', 2], ['rail', 2]]);
+  // Among equally wide places, one where the badge can be drawn.
+  const [inside] = stationTracks(lines, [{inside: zone.inside, groups: ['rail']}], 1, {prefer: x => x > 600});
+  assert.ok(inside.x > 600, JSON.stringify(inside));
+});
 test('legend colours equal the drawn colours for power, gauge and loading gauge', async () => {
   const m = await import('../styles/map-model.mjs');
   const {expression} = await import('@maplibre/maplibre-gl-style-spec');
@@ -575,35 +604,73 @@ test('globe below zoom 4; flat map from zoom 4 unless the view is mostly polar',
   assert.equal(autoProjection(6, 0.7), null); // leave as is near the poles
 });
 
-test('dragging the globe carries the view over a pole, turning the heading', async () => {
-  const {startFrame, stepFrame, frameView, zoomForLatitude} = await import('../styles/globe-drag.mjs');
+test('dragging the globe keeps the direction and the heading; over a pole it carries on', async () => {
+  const {stepView, zoomForLatitude} = await import('../styles/globe-drag.mjs');
   const near = (a, b, tolerance = 1e-6) => Math.abs(a - b) < tolerance;
   const perDegree = Math.PI / 180; // 1 px = 1° for the test
   // No movement: no change.
-  let view = frameView(stepFrame(startFrame([10, 50], 30), 0, 0, perDegree));
+  let view = stepView({center: [10, 50], bearing: 30}, 0, 0, perDegree);
   assert.ok(near(view.center[0], 10) && near(view.center[1], 50) && near(view.bearing, 30), JSON.stringify(view));
-  // Dragging down moves the view north; dragging right moves it west.
-  view = frameView(stepFrame(startFrame([10, 0], 0), 0, 5, perDegree));
+  // Dragging down moves the view north; dragging left moves it east.
+  view = stepView({center: [10, 0], bearing: 0}, 0, 5, perDegree);
   assert.ok(near(view.center[0], 10) && near(view.center[1], 5), JSON.stringify(view));
-  view = frameView(stepFrame(startFrame([10, 0], 0), 5, 0, perDegree));
+  view = stepView({center: [10, 0], bearing: 0}, 5, 0, perDegree);
   assert.ok(near(view.center[0], 5) && near(view.center[1], 0), JSON.stringify(view));
-  // From 80° N heading north, 20° of dragging passes continuously over the
-  // pole: every step moves the same angle, and it ends at 80° N on the far
-  // meridian, heading south.
-  let frame = startFrame([20, 80], 0), previous = frame.c, steps = [];
-  for (let i = 0; i < 20; i++) {
-    frame = stepFrame(frame, 0, 1, perDegree);
-    steps.push(Math.acos(Math.min(1, previous.reduce((s, v, k) => s + v * frame.c[k], 0))) / perDegree);
-    previous = frame.c;
-  }
-  view = frameView(frame);
-  assert.ok(near(view.center[0], -160) && near(view.center[1], 80), JSON.stringify(view));
+  // From Japan, a long sideways drag stays on the parallel (to California,
+  // not down a great circle to South America), heading unchanged.
+  view = {center: [139.7, 35.7], bearing: 0};
+  for (let i = 0; i < 325; i++) view = stepView(view, -0.25, 0, perDegree);
+  assert.ok(near(view.center[1], 35.7) && near(view.bearing, 0), JSON.stringify(view));
+  assert.ok(view.center[0] < -115 && view.center[0] > -125, 'about California: ' + view.center[0]);
+  // A turned map: dragging along the screen keeps the screen direction.
+  view = stepView({center: [0, 0], bearing: 90}, 0, 5, perDegree);
+  assert.ok(near(view.center[0], 5) && near(view.center[1], 0) && near(view.bearing, 90), JSON.stringify(view));
+  // From 80° N heading north, 20° of dragging passes over the pole and ends
+  // at 80° N on the far meridian, the map the other way up; and back.
+  view = {center: [20, 80], bearing: 0};
+  for (let i = 0; i < 20; i++) view = stepView(view, 0, 1, perDegree);
+  assert.ok(near(view.center[0], -160) && near(view.center[1], 80, 1e-9), JSON.stringify(view));
   assert.ok(near(Math.abs(view.bearing), 180), JSON.stringify(view));
-  assert.ok(steps.every(step => near(step, 1, 1e-6)), 'even steps: ' + steps.map(s => s.toFixed(3)));
-  // And back.
-  for (let i = 0; i < 20; i++) frame = stepFrame(frame, 0, -1, perDegree);
-  view = frameView(frame);
-  assert.ok(near(view.center[0], 20) && near(view.center[1], 80) && near(view.bearing, 0), JSON.stringify(view));
+  for (let i = 0; i < 20; i++) view = stepView(view, 0, -1, perDegree);
+  assert.ok(near(view.center[0], 20) && near(view.center[1], 80, 1e-9) && near(view.bearing, 0), JSON.stringify(view));
+  // One long step over both poles: still a valid place, as many small steps.
+  const long = stepView({center: [0, 80], bearing: 0}, 0, 200, perDegree);
+  let small = {center: [0, 80], bearing: 0};
+  for (let i = 0; i < 200; i++) small = stepView(small, 0, 1, perDegree);
+  assert.ok(near(long.center[1], small.center[1], 1e-6) && near(long.center[0], small.center[0], 1e-6) && near(long.bearing, small.bearing), JSON.stringify({long, small}));
+  assert.ok(Math.abs(long.center[1]) <= 90);
+  // A diagonal step over a pole: as the same movement in small events.
+  const diagonal = stepView({center: [0, 80], bearing: 0}, 10, 20, perDegree);
+  let pieces = {center: [0, 80], bearing: 0};
+  for (let i = 0; i < 100; i++) pieces = stepView(pieces, 0.1, 0.2, perDegree);
+  const lngGap = Math.abs(((diagonal.center[0] - pieces.center[0]) + 540) % 360 - 180);
+  assert.ok(lngGap < 1 && Math.abs(diagonal.center[1] - pieces.center[1]) < 0.1 && Math.abs(diagonal.bearing - pieces.bearing) < 1, JSON.stringify({diagonal, pieces}));
+  // Entering a polar cap obliquely: the same however the events are grouped
+  // (within 0.1° on the ground).
+  const apart = (a, b) => { const r = Math.PI / 180, [l1, p1] = a.center.map(v => v * r), [l2, p2] = b.center.map(v => v * r);
+    return Math.acos(Math.min(1, Math.sin(p1) * Math.sin(p2) + Math.cos(p1) * Math.cos(p2) * Math.cos(l1 - l2))) / r; };
+  const quarter = 0.25 * perDegree, oblique = stepView({center: [0, 84.9], bearing: 135}, 100, 90, quarter);
+  let events = {center: [0, 84.9], bearing: 135};
+  for (let i = 0; i < 100; i++) events = stepView(events, 1, 0.9, quarter);
+  assert.ok(apart(oblique, events) < 0.1, JSON.stringify({oblique, events}));
+  // A long movement (an edge-to-edge drag on a large screen) is followed to
+  // its end, as in pieces.
+  const across = stepView({center: [0, 0], bearing: 0}, 0, 4000, 0.35 * perDegree);
+  let hundreds = {center: [0, 0], bearing: 0};
+  for (let i = 0; i < 40; i++) hundreds = stepView(hundreds, 0, 100, 0.35 * perDegree);
+  assert.ok(apart(across, hundreds) < 0.1, JSON.stringify({across, hundreds}));
+  // Work per pointer event is a few segments, whatever the distance or
+  // latitude: a huge drag round the polar caps returns at once.
+  const started = performance.now();
+  let far;
+  for (let i = 0; i < 1000; i++) far = stepView({center: [30, 84.99], bearing: 80}, 5000, 3000, perDegree);
+  assert.ok(performance.now() - started < 500, 'took ' + (performance.now() - started) + ' ms');
+  assert.ok(Math.abs(far.center[1]) <= 90 && Number.isFinite(far.center[0]) && Number.isFinite(far.bearing), JSON.stringify(far));
+  // Leaving a cap and running along a parallel just outside it: as in pieces.
+  const graze = stepView({center: [0, 86], bearing: 0}, 30, -4, perDegree);
+  let grazes = {center: [0, 86], bearing: 0};
+  for (let i = 0; i < 300; i++) grazes = stepView(grazes, 0.1, -4 / 300, perDegree);
+  assert.ok(apart(graze, grazes) < 1e-6, JSON.stringify({graze, grazes}));
   // The planet keeps its size: zoom falls as the centre nears a pole.
   assert.ok(near(zoomForLatitude(3, 0, 60), 2));
   assert.ok(near(zoomForLatitude(2, 60, 0), 3));
@@ -631,6 +698,36 @@ test('OpenStreetMap object behind a feature', () => {
   assert.equal(osmObject({source:'openmaptiles', id:1234560, properties:{}}), null);
   assert.equal(osmObject({kind:'station', properties:{osm_id:2149761647}}), null, 'a search result does not say node or way');
 });
+
+test('search: geocoded stations join the railway results unless already found; other places follow', async () => {
+  const {searchResults, osmObject} = await import('../styles/map-model.mjs');
+  const facilities = [{osm_id: 4338478841, name: '大埔墟 Tai Po Market', railway: 'station', latitude: 22.4447, longitude: 114.1704}];
+  const places = [
+    {osm_type: 'way', osm_id: 223848687, category: 'railway', type: 'station', lat: '22.3826', lon: '114.1869', display_name: '沙田 Sha Tin, 沙田區 Sha Tin District, 香港 Hong Kong', namedetails: {name: '沙田 Sha Tin', 'name:en': 'Sha Tin'}},
+    {osm_type: 'node', osm_id: 4338478841, category: 'railway', type: 'station', lat: '22.4447', lon: '114.1704', display_name: '大埔墟 Tai Po Market'},
+    {osm_type: 'way', osm_id: 99, category: 'railway', type: 'station', lat: '22.4449', lon: '114.1706', display_name: 'x', namedetails: {name: 'Other', 'name:en': 'Tai Po Market'}},
+    {osm_type: 'node', osm_id: 316731268, category: 'place', type: 'town', addresstype: 'town', lat: '22.3836', lon: '114.1878', display_name: '沙田 Sha Tin, 香港 Hong Kong', boundingbox: ['22.2', '22.5', '114.0', '114.3'], namedetails: {name: '沙田 Sha Tin'}},
+    {osm_type: 'node', osm_id: 1, category: 'place', type: 'town', lat: 'x', lon: '1', display_name: 'bad'},
+    {osm_type: 'way', osm_id: 2, category: 'public_transport', type: 'station', lat: '22.30', lon: '114.17', display_name: 'Bus Terminus', extratags: {bus: 'yes'}},
+    {osm_type: 'way', osm_id: 3, category: 'public_transport', type: 'station', lat: '22.50', lon: '114.10', display_name: 'Rail Station', extratags: {train: 'yes'}},
+    {osm_type: 'way', osm_id: 4, category: 'building', type: 'train_station', lat: '22.3049', lon: '114.1615', display_name: '九龍站 Kowloon Station, 西九', extratags: {subway: 'yes'}},
+  ];
+  const {rail, places: other} = searchResults(facilities, places);
+  assert.deepEqual(rail.map(r => r.osm_id), [4338478841, 223848687, 3, 4], 'a station mapped as an area is added; the same node or name nearby is not repeated; a public-transport station only with rail evidence; a station building (Kowloon)');
+  assert.equal(rail[3].railway, 'station');
+  assert.deepEqual([rail[1].railway, rail[1]['name:en'], rail[1].osm_type], ['station', 'Sha Tin', 'way']);
+  assert.deepEqual(other.map(p => [p.osm_id, p.place, p.area, p.boundingbox]), [[316731268, 'town', '香港 Hong Kong', [22.2, 22.5, 114, 114.3]], [2, 'station', '', undefined]], 'a bus station stays a place');
+  assert.deepEqual(osmObject({properties: rail[1]}), {type: 'way', id: '223848687'}, 'geocoded results link to their OSM object');
+  // A nearby station whose name merely contains another's is a different station.
+  const {samePlaceName} = await import('../styles/map-model.mjs');
+  assert.equal(samePlaceName('Central Park', 'Central'), false);
+  assert.equal(samePlaceName('Central Station', 'Central Park Station'), false);
+  for (const [a, b] of [['大埔墟 Tai Po Market', 'Tai Po Market'], ['九龍塘站', '九龍塘'], ['紅磡 Hung Hom Station', 'Hung Hom'], ['東京駅', '東京']]) assert.ok(samePlaceName(a, b), `${a} = ${b}`);
+  const parkNearby = searchResults([{osm_id: 1, name: 'Central', railway: 'station', latitude: 22.28, longitude: 114.158}],
+    [{osm_type: 'way', osm_id: 5, category: 'railway', type: 'station', lat: '22.2805', lon: '114.1585', display_name: 'Central Park', namedetails: {name: 'Central Park'}}]);
+  assert.deepEqual(parkNearby.rail.map(r => r.osm_id), [1, 5]);
+});
+
 test('country names to zoom 7 above station names; states and provinces from zoom 4', async () => {
   const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
   const ids = style.layers.map(l => l.id), last = ids.lastIndexOf.bind(ids);
@@ -648,4 +745,26 @@ test('country names to zoom 7 above station names; states and provinces from zoo
   assert.equal(filter.filter({zoom: 6}, {type: 1, properties: {class: 'state'}}), true);
   assert.equal(filter.filter({zoom: 6}, {type: 1, properties: {class: 'town'}}), false);
   assert.equal(featureFilter(style.layers.find(l => l.id === 'place_label_other').filter).filter({zoom: 9}, {type: 1, properties: {class: 'province'}}), false, 'not drawn twice');
+});
+
+test('owner view: a colour per owner name, the same everywhere; its own tile sources', async () => {
+  const {ownerColor, ownerPaint, MODES, readSettings, UNKNOWN_COLOR} = await import('../styles/map-model.mjs');
+  assert.ok(MODES.includes('owner'));
+  assert.equal(ownerColor('Network Rail'), ownerColor(' network rail '), 'case and spacing do not change it');
+  assert.notEqual(ownerColor('DB Netz AG'), ownerColor('DB InfraGO AG'));
+  assert.equal(ownerColor(''), null); assert.equal(ownerColor(undefined), null);
+  for (const name of ['CSX Transportation', 'Adif', '九廣鐵路公司 Kowloon-Canton Railway Corporation']) {
+    const [, h, s, l] = /^hsl\((\d+), (\d+)%, (\d+)%\)$/.exec(ownerColor(name)).map(Number);
+    assert.ok(h < 360 && s >= 62 && l >= 34 && l <= 50, 'saturated, mid lightness: never the grey of not recorded');
+  }
+  assert.deepEqual(ownerPaint(), ['coalesce', ['get', 'owner_color'], UNKNOWN_COLOR]);
+  assert.equal(readSettings('?mode=owner').mode, 'owner');
+  const tracks = style.layers.find(l => l.id === 'owner-tracks'), overview = style.layers.find(l => l.id === 'owner-overview');
+  assert.deepEqual([tracks.source, overview.source], ['ownerRail', 'ownerLow']);
+  assert.equal(tracks.layout.visibility, 'none');
+  assert.deepEqual([style.sources.ownerRail.url, style.sources.ownerLow.url].map(u => u.split('/').pop()), ['railway_line_high', 'operator_railway_line_low']);
+  // Owner names written along the tracks; clicked lines link to their way.
+  assert.deepEqual(style.layers.find(l => l.id === 'owner-labels').layout['text-field'], ['get', 'owner']);
+  const {osmObject} = await import('../styles/map-model.mjs');
+  for (const source of ['ownerRail', 'ownerLow']) assert.deepEqual(osmObject({source, properties: {id: '660796156-0'}}), {type: 'way', id: '660796156'});
 });
