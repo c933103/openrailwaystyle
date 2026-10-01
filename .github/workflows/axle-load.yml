@@ -6,6 +6,7 @@ on:
       - .github/workflows/axle-load.yml
       - scripts/build-axle-load-list.mjs
       - scripts/axle-load-csv.mjs
+      - scripts/axle-load-parts.mjs
   workflow_dispatch:
   schedule:
     - cron: '17 2 * * 0'
@@ -18,12 +19,17 @@ concurrency:
 jobs:
   axle:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - uses: actions/cache/restore@v4
+        with:
+          path: .snapshot-cache/axle-load-parts.json
+          key: axle-parts-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: axle-parts-v1-
       - name: Restore the last published lookup
         run: |
           mkdir -p .snapshot-cache
@@ -36,6 +42,12 @@ jobs:
           node scripts/build-axle-load-list.mjs
           # Initial failure must remain visible; never publish an empty list.
           test -s snapshot/axle-load.json
+      - name: Retain validated parts even after a later query fails
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .snapshot-cache/axle-load-parts.json
+          key: axle-parts-v1-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Publish the validated lookup and refresh the site
         env:
           GH_TOKEN: ${{ github.token }}
