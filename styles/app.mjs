@@ -1,10 +1,10 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-7';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-7';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-14';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-14';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-7';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-7';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-7';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-7';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-14';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-14';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-14';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-14';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -34,7 +34,7 @@ const settings = readSettings(location.search, {language: readCookie(LANGUAGE_CO
 const status = $('map-status');
 let legendHelpOpen = false;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-7';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-14';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -497,7 +497,7 @@ function updateNearbyTransport() {
   if (!target || currentFeature?.geometry?.type !== 'Point') return;
   target.replaceChildren(textNode('h3','Nearby transport'));
   if (!settings.transport) { target.append(textNode('p','Enable “Other transport & interchanges” to see nearby facilities.','small')); return; }
-  if (!ready || map.getZoom() < 14) { target.append(textNode('p','Zoom to street detail (14+) for nearby terminals; bus stops, taxi stands and bike rental appear from zoom 15.','small')); return; }
+  if (!ready || map.getZoom() < 14) { target.append(textNode('p','Zoom in closer to list nearby terminals, stops, taxi stands and bike rental.','small')); return; }
   const features = ['poi','aerodrome_label'].flatMap(sourceLayer=>map.querySourceFeatures('openmaptiles',{sourceLayer}).map(f=>({id:f.id,properties:f.properties,geometry:f.geometry,sourceLayer})));
   const nearby = nearbyTransport(currentFeature.geometry.coordinates,features,500,map.getZoom());
   if (!nearby.length) {
@@ -570,7 +570,7 @@ function updateStatus() {
     status.classList.add('error'); status.textContent = 'Some map data could not load. Check your connection or reload to retry.'; return;
   }
   status.classList.remove('error');
-  status.textContent = map.getZoom() < 6 ? 'Worldwide coverage · zoom in for stations and former lines' : 'Explore the rail network · click a line or station';
+  status.textContent = map.getZoom() < 6 ? 'Worldwide coverage · click a line or station' : 'Explore the rail network · click a line or station';
   // Visible diagnostics make source availability inspectable without exposing
   // internal map objects or relying on a generic "loaded" flag.
   const features = map.queryRenderedFeatures();
@@ -670,7 +670,7 @@ function applyDetail(from = settings.detail) {
   $('map').classList.toggle('detail', level > 0);
   $('map').classList.toggle('detail-2', level === 2);
   detailButton.setAttribute('aria-pressed', String(level > 0));
-  detailButton.title = `More detail: map drawn at ${detailScale(level)}%. Click for ${next ? `${detailScale(next)}% (${next === 1 ? 'the next zoom level at half size' : 'two zoom levels further in at a quarter size'})` : '100% (normal)'}.`;
+  detailButton.title = `More detail: map drawn at ${detailScale(level)}%. Click for ${next ? `${detailScale(next)}%` : '100% (normal)'}.`;
   detailButton.setAttribute('aria-label', detailButton.title);
   if (!map) return;
   map.setPixelRatio(devicePixelRatio / 2 ** level);
