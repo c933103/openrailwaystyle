@@ -18,7 +18,7 @@ The shared language selector offers local names or 12 languages. It uses recorde
 
 Under the view buttons, the background can be the drawn map, satellite imagery alone, or hybrid: the imagery under the railways (and stations) of the chosen view, without the map's roads and labels. The imagery is EOxCloudless (Sentinel-2, 10 m per pixel): stations, yards and track corridors show, not single tracks.
 
-The gear button opens the settings, in place of the map controls (‹ returns): in three groups (railways, surroundings, map), they control the boxed track counts of the Infrastructure view, transport facilities, destinations, planning constraints, relief, metric or imperial units, and the readout under the scale bar: the coordinates under the cursor (the map's centre on a touch screen) and the zoom. On small screens the controls start folded away; the panel's title and its fold button stay in view when the panel scrolls. Under the legend, “How to read this view” explains the current view's colours.
+The gear button opens the settings, in place of the map controls (‹ returns): in three groups (railways, surroundings, map), they control the boxed track counts of the Infrastructure view, transport facilities, destinations, planning constraints, relief, metric or imperial units, and the readout under the scale bar: the coordinates under the cursor (the map's centre on a touch screen) and the zoom. With the map focused, the arrow keys pan smoothly while held (a short press moves one step); Shift with an arrow turns or tilts the map. On small screens the controls start folded away; the panel's title and its fold button stay in view when the panel scrolls. Under the legend, “How to read this view” explains the current view's colours.
 
 ## Install as an app
 
