@@ -1,7 +1,7 @@
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import encode from 'vt-pbf';
-import {chooseName, mergeStationTranslation, stationLanguages, stationPending, ORM} from './map-model.mjs';
+import {chooseName, mergeStationTranslation, stationLanguages, stationPending, ORM, ownerColor} from './map-model.mjs';
 import {hanRegion, chineseArea} from './han-region.mjs';
 import {decodeLoadingGauges, wayId} from './loading-gauge-list.mjs';
 export {hanRegion, chineseArea};
@@ -201,6 +201,37 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     for (const f of features(tile)) {
       const value = list.get(wayId(f.properties.id));
       if (value) f.properties.loading_gauge = value;
+    }
+    const result = encode(tile);
+    return {data: result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength)};
+  });
+  // Owner view: the railway tiles with each line's owner colour added
+  // (owner_color, from the name; ownerColor). The overview tiles (zoom 0–6)
+  // carry no owner: it comes from the published way ID list
+  // (data/owner.json, fetched once and only for this view). Without it the
+  // overview shows owners as not recorded.
+  let owners;
+  function ownerList() {
+    owners ||= (dataRoot ? fetcher(new URL('owner.json', dataRoot)) : Promise.reject(new Error('no data location')))
+      .then(response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
+      .then(decodeLoadingGauges)
+      .catch(error => { console.warn('Owner list unavailable:', error.message); owners = undefined; return new Map(); });
+    return owners;
+  }
+  maplibregl.addProtocol('atlasowner',async (params,controller)=>{
+    const [, kind, url] = /^atlasowner:\/\/(low|high)\/(.+)$/.exec(params.url) || [];
+    if (!url) throw new Error('Invalid owner tile request');
+    if (params.type === 'json') {
+      const data = await get(url,controller.signal,true);
+      return {data:{...data,tiles:data.tiles.map(t=>`atlasowner://${kind}/${t}`)}};
+    }
+    const [data, list] = await Promise.all([get(url, controller.signal), kind === 'low' ? ownerList() : new Map()]);
+    if (!data?.byteLength) return {data: new ArrayBuffer(0)};
+    const tile = readTile(data);
+    for (const f of features(tile)) {
+      const owner = f.properties.owner || list.get(wayId(f.properties.id));
+      const color = ownerColor(owner);
+      if (color) { f.properties.owner = owner; f.properties.owner_color = color; }
     }
     const result = encode(tile);
     return {data: result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength)};

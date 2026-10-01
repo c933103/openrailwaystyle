@@ -649,3 +649,21 @@ test('country names to zoom 7 above station names; states and provinces from zoo
   assert.equal(filter.filter({zoom: 6}, {type: 1, properties: {class: 'town'}}), false);
   assert.equal(featureFilter(style.layers.find(l => l.id === 'place_label_other').filter).filter({zoom: 9}, {type: 1, properties: {class: 'province'}}), false, 'not drawn twice');
 });
+
+test('owner view: a colour per owner name, the same everywhere; its own tile sources', async () => {
+  const {ownerColor, ownerPaint, MODES, readSettings, UNKNOWN_COLOR} = await import('../styles/map-model.mjs');
+  assert.ok(MODES.includes('owner'));
+  assert.equal(ownerColor('Network Rail'), ownerColor(' network rail '), 'case and spacing do not change it');
+  assert.notEqual(ownerColor('DB Netz AG'), ownerColor('DB InfraGO AG'));
+  assert.equal(ownerColor(''), null); assert.equal(ownerColor(undefined), null);
+  for (const name of ['CSX Transportation', 'Adif', '九廣鐵路公司 Kowloon-Canton Railway Corporation']) {
+    const [, h, s, l] = /^hsl\((\d+), (\d+)%, (\d+)%\)$/.exec(ownerColor(name)).map(Number);
+    assert.ok(h < 360 && s >= 62 && l >= 34 && l <= 50, 'saturated, mid lightness: never the grey of not recorded');
+  }
+  assert.deepEqual(ownerPaint(), ['coalesce', ['get', 'owner_color'], UNKNOWN_COLOR]);
+  assert.equal(readSettings('?mode=owner').mode, 'owner');
+  const tracks = style.layers.find(l => l.id === 'owner-tracks'), overview = style.layers.find(l => l.id === 'owner-overview');
+  assert.deepEqual([tracks.source, overview.source], ['ownerRail', 'ownerLow']);
+  assert.equal(tracks.layout.visibility, 'none');
+  assert.deepEqual([style.sources.ownerRail.url, style.sources.ownerLow.url].map(u => u.split('/').pop()), ['railway_line_high', 'standard_railway_line_low']);
+});

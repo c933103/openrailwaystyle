@@ -2,7 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import {roadLayers, constraintLayers} from './planning-style.mjs';
 import {contextLayers} from './context-style.mjs';
 import {OVERVIEW_ZOOM, DETAIL_ZOOM} from './crossing-data.mjs';
-import { ORM, LIGHT_MODES, MINOR_MODES, LIFECYCLE_PATTERNS, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, loadingLabel, trainProtectionShort, TRAIN_PROTECTION, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
+import { ORM, LIGHT_MODES, MINOR_MODES, LIFECYCLE_PATTERNS, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, ownerPaint, loadingLabel, trainProtectionShort, TRAIN_PROTECTION, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
 
 // Keep the Hack4Rail base-map design and replace its Europe-only rail source.
 const original = JSON.parse(await readFile(new URL('../styles/default.style.json', import.meta.url)));
@@ -24,6 +24,11 @@ const style = {
     // The same overview tiles with loading gauges added by way ID (atlaslg
     // protocol, tile-labels.mjs).
     loadingLow: vector('standard_railway_line_low', 0, 6),
+    // The Owner view's own copies of the railway tiles, with owner colours
+    // added in the browser (atlasowner; tile-labels.mjs). Loaded only while
+    // that view is shown.
+    ownerLow: vector('standard_railway_line_low', 0, 6),
+    ownerRail: vector('railway_line_high', 7, 16),
     railway: vector('railway_line_high', 7, 16),
     // Running tracks side by side, counted in the browser from the railway
     // tiles (atlastracks protocol, tile-labels.mjs and track-tiles.mjs):
@@ -144,6 +149,7 @@ for (const [mode, source, sourceLayer, color] of [
   ['control', 'control', 'signals_railway_line_low', controlPaint()],
   ['gauge', 'gaugeLow', 'track_railway_line_low', gaugePaint()],
   ['loading', 'loadingLow', 'standard_railway_line_low', loadingPaint()],
+  ['owner', 'ownerLow', 'standard_railway_line_low', ownerPaint()],
 ]) {
   // Branch lines from zoom 4, under the main lines, in the same colours
   // (their tiles carry the fields of the detailed railway tiles).
@@ -160,7 +166,7 @@ for (const [mode, source, sourceLayer, color] of [
     'line-width': mode === 'gauge' ? halfWidth : trackWidth(),
     ...(mode === 'gauge' ? {'line-offset': dualOffset(-1)} : {}),
   };
-  addLine(`${mode}-tracks`, 'railway', 'railway_line_high', 7, undefined, color, trackPaint);
+  addLine(`${mode}-tracks`, mode === 'owner' ? 'ownerRail' : 'railway', 'railway_line_high', 7, undefined, color, trackPaint);
   // Metro lines at zooms 7–9 from the same snapshot (the detailed railway
   // tiles hold them only from zoom 10).
   addLine(`${mode}-metro-overview`, 'branchLines', 'branch_lines', 7, 10, color, trackPaint);
@@ -435,7 +441,7 @@ const railwayNames = style.layers.filter(l => l.type === 'symbol' && l.id.endsWi
 const trackBadges = style.layers.filter(l => l.id === 'infrastructure-track-count' || l.id === 'infrastructure-station-tracks');
 style.layers = style.layers.filter(l => !stationNames.includes(l) && !railwayNames.includes(l) && !trackBadges.includes(l)).concat(railwayNames, trackBadges, stationNames);
 for (const l of style.layers) {
-  if (/^(infrastructure|electrification|control|gauge|loading)-/.test(l.id)) l.layout.visibility = 'none';
+  if (/^(infrastructure|electrification|control|gauge|loading|owner)-/.test(l.id)) l.layout.visibility = 'none';
 }
 // Satellite imagery directly above the background, off unless chosen.
 style.layers.splice(style.layers.findIndex(l => l.id === 'background') + 1, 0, {id:'satellite', type:'raster', source:'satellite', layout:{visibility:'none'}, paint:{'raster-fade-duration':150}});
