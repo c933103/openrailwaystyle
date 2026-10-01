@@ -312,7 +312,7 @@ function showDetails(feature) {
   const isStation = feature.source?.startsWith('station') || feature.kind === 'station';
   const panel = $('detail-content'); panel.replaceChildren();
   panel.append(textNode('div', isPlatform?'RAILWAY PLATFORM':isStation ? 'RAILWAY STATION' : 'RAILWAY INFRASTRUCTURE', 'eyebrow'));
-  panel.append(textNode('h2', displayName(p, settings.language) || (isStation ? 'Unnamed station' : 'Unnamed railway')));
+  panel.append(textNode('h2', displayName(p, settings.language) || (isPlatform ? (p.ref ? `Platform ${p.ref}` : 'Platform') : isStation ? 'Unnamed station' : 'Unnamed railway')));
   const dl = document.createElement('dl');
   row(dl, 'Type', p.feature || p.railway || (isStation ? 'station' : undefined));
   row(dl, 'Status', p.state || 'present');
@@ -1328,5 +1328,4 @@ initialize().catch(error => {
 // Named export lets integration tests inspect rendered features without
 // adding test controls or global variables to the map interface.
 export {map};
-
 

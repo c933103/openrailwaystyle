@@ -298,13 +298,11 @@ try{
   console.log('PASS: compass resets north');
   await page.locator('#collapse').click();
   await page.locator('[data-mode="speed"]').click();
-  await page.locator('#settings-open').click();
   await page.selectOption('#units','imperial');
   assert.match(await page.locator('#legend').textContent(),/mph/);
   assert.match(await page.locator('.maplibregl-ctrl-scale').textContent(),/ft|mi/);
   await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return JSON.stringify(map.getLayoutProperty('speed-labels','text-field')).includes('mph');},undefined,{timeout:10000});
   await page.selectOption('#units','metric');
-  await page.locator('#settings-close').click();
   assert.match(await page.locator('.maplibregl-ctrl-scale').textContent(),/km|\bm\b/);
   console.log('PASS: units switch legend, scale bar and speed labels');
   await page.locator('#copy-coordinates').click();
@@ -445,5 +443,4 @@ try{
   console.log('FAIL_IMAGE_START'+failure.toString('base64')+'FAIL_IMAGE_END');
   throw error;
 } finally {await browser.close();}
-
 
