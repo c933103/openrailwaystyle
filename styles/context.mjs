@@ -18,6 +18,7 @@ export const CONTEXT_CATEGORIES = [
   {id:'shopping', group:'destinations', label:'Shopping centre / market', color:'#93651d', icon:'shop', values:['mall','department_store','marketplace']},
   {id:'sport', group:'destinations', label:'Stadium / sports centre', color:'#6c7730', icon:'stadium', values:['stadium','sports_centre']},
   {id:'visitor', group:'destinations', label:'Visitor attraction', color:'#8a5a87', icon:'castle', values:['theme_park','water_park','zoo','aquarium','attraction']},
+  {id:'hotel', group:'destinations', label:'Hotel / accommodation', color:'#7b6a93', icon:'bed', values:['hotel','motel','hostel','guest_house'], zoom:14},
   {id:'culture', group:'destinations', label:'Museum / culture', color:'#8a5a87', icon:'civic', values:['museum','gallery','theatre','arts_centre','library','cinema'], zoom:13},
   {id:'civic', group:'destinations', label:'Government / community facility', color:'#61669a', icon:'civic', values:['government','townhall','town_hall','courthouse','public_building','community_centre','conference_centre','exhibition_centre'], zoom:13},
 ];
@@ -88,6 +89,7 @@ const ICON_PATHS = {
   stadium:'M3 8 Q12 1 21 8 V17 Q12 24 3 17 Z M3 8 Q12 15 21 8 M7 12 V19 M17 12 V19',
   castle:'M4 21 V6 H7 V9 H10 V4 H14 V9 H17 V6 H20 V21 Z M10 21 V16 Q12 12 14 16 V21',
   civic:'M3 8 L12 3 L21 8 Z M5 11 V19 M10 11 V19 M14 11 V19 M19 11 V19 M3 21 H21',
+  bed:'M3 7 V19 M3 15 H21 V19 M3 12 H21 V15 M9 12 V9 Q9 8 10 8 H18 Q21 8 21 11 V12 M5 12 A2 2 0 1 1 5.1 12',
 };
 export function contextIcon(id, document) {
   const category = categoryById.get(id.replace('context-',''));

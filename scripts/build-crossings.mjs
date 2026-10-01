@@ -58,11 +58,17 @@ async function fetchRegion(table, region, since, depth = 0) {
 // Overpass timestamps: the change query covers from a little before the
 // previous run began, so nothing edited while it ran is missed.
 const startedAt = new Date(Date.now() - 3600_000).toISOString().replace(/\.\d+Z$/, 'Z');
+// Table format version: 2 adds the minor-track flag, which a change query
+// cannot fill in for unchanged crossings, so an older table is fetched anew.
+const VERSION = 2;
 let table = new Map(), regions = startRegions(), since;
 if (previous) {
   try {
-    table = readTable(gunzipSync(await readFile(new URL('crossings.tsv.gz', previous))).toString());
-    ({regions, since} = JSON.parse(await readFile(new URL('regions.json', previous), 'utf8')));
+    const saved = JSON.parse(await readFile(new URL('regions.json', previous), 'utf8'));
+    if (saved.version === VERSION) {
+      table = readTable(gunzipSync(await readFile(new URL('crossings.tsv.gz', previous))).toString());
+      ({regions, since} = saved);
+    } else console.log('Previous table has an older format: fetching everything');
   } catch (error) { console.log('No usable previous data:', error.message); table = new Map(); regions = startRegions(); since = undefined; }
 }
 const before = table.size;
@@ -89,7 +95,7 @@ if (before && table.size < before * 0.95) throw new Error(`Crossings dropped fro
 await rm(out, {recursive: true, force: true});
 await mkdir(out, {recursive: true});
 await writeFile(new URL('crossings.tsv.gz', out), gzipSync(writeTable(table), {level: 9}));
-await writeFile(new URL('regions.json', out), JSON.stringify({since: startedAt, regions}));
+await writeFile(new URL('regions.json', out), JSON.stringify({version: VERSION, since: startedAt, regions}));
 const index = [];
 let bytes = 0;
 for (const [z, detail] of [[OVERVIEW_ZOOM, false], [DETAIL_ZOOM, true]]) {
@@ -103,11 +109,11 @@ for (const [z, detail] of [[OVERVIEW_ZOOM, false], [DETAIL_ZOOM, true]]) {
   }
 }
 await writeFile(new URL('index.json', out), JSON.stringify({tiles: index.sort()}));
-const counts = {road: 0, foot: 0};
-for (const [, [, , kind]] of table) counts[kind]++;
-const manifest = {generated: new Date().toISOString(), changesSince: since || null, crossings: table.size, road: counts.road, pedestrian: counts.foot,
+const counts = {road: 0, foot: 0, minor: 0};
+for (const [, [, , kind, minor]] of table) { counts[kind]++; if (minor) counts.minor++; }
+const manifest = {generated: new Date().toISOString(), changesSince: since || null, crossings: table.size, road: counts.road, pedestrian: counts.foot, onMinorTracksOnly: counts.minor,
   tiles: index.length, tileBytes: bytes, regions: regions.length, requests, downloadedBytes: downloaded, source: api,
-  query: 'node[railway=level_crossing] and node[railway=crossing], by region', license: 'ODbL-1.0',
+  query: 'node[railway=level_crossing] and node[railway=crossing], by region; minor: only on tram, light rail, funicular, miniature, service or street-running tracks', license: 'ODbL-1.0',
   description: 'OpenStreetMap railway level crossings (road: railway=level_crossing; pedestrian: railway=crossing). Coverage follows OSM mapping.'};
 await writeFile(new URL('manifest.json', out), JSON.stringify(manifest, null, 2));
 console.log(JSON.stringify(manifest));
