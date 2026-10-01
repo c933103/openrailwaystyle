@@ -16,3 +16,4 @@ street-snapshot/
 crossing-data/
 *.tmp.mjs
 .probe-tmp.mjs
+service-data/
