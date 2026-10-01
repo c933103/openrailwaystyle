@@ -1,3 +1,4 @@
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261001-64';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -75,7 +76,7 @@ export function searchResults(facilities, places) {
 // Map background: the drawn base map, satellite imagery alone, or imagery
 // under the railways (hybrid).
 export const BACKGROUNDS = ['map', 'satellite', 'hybrid'];
-export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge', 'loading', 'owner'];
+export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge', 'loading', 'axle', 'owner'];
 export const LANGUAGES = [
   ['local','Local names'], ['en','English'], ['ko','한국어'], ['ja','日本語'],
   ['zh-Hant','繁體中文'], ['zh-Hans','简体中文'], ['de','Deutsch'], ['fr','Français'],
@@ -592,7 +593,7 @@ export function formatReadout({lng, lat}, zoom, detail = 0) {
 // id (planned and former lines, street running) or the crossing node id;
 // base-map features carry the id times ten plus 1, 2 or 3 for a node, way or
 // relation.
-const WAY_SOURCES = ['railway', 'network', 'speed', 'electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'inactiveRegional', 'streetRunning', 'branchLines'];
+const WAY_SOURCES = ['axleLow','axleRail','axleBranch','railway', 'network', 'speed', 'electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'inactiveRegional', 'streetRunning', 'branchLines'];
 export function osmObject(feature) {
   const p = feature?.properties || {};
   // Geocoder results name the type.
