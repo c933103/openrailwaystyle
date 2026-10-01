@@ -5,6 +5,7 @@ import {readFile} from 'node:fs/promises';
 import {installLabelProtocols,readTile} from '../styles/tile-labels.mjs';
 import encode from 'vt-pbf';
 import {encodeLoadingGauges} from '../styles/loading-gauge-list.mjs';
+import {createExpression} from '@maplibre/maplibre-gl-style-spec';
 const style=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url)));
 test('axle loads distinguish reference categories, restricted variants and non-load classes',()=>{
  for(const [track_class,t,m] of [['A',16,5],['B2',18,6.4],['C3',20,7.2],['D4',22.5,8],['D4L',22.5,8],['E6',25,10],['CM2',21,6.4],['CE',20,8]]) {
@@ -42,11 +43,20 @@ test('axle lookup is lazy, annotates detailed and overview tiles and is shared w
  const r=await protocols.atlasaxle({type:'arrayBuffer',url:'atlasaxle://https://example.org/tile'}, {signal});
  const p=readTile(r.data).layers.railway_line_high.feature(0).properties;
  assert.equal(p.axle_tonnes,20);assert.equal(p.axle_system,'fi');
+ assert.equal(p.axle_native,'20 t');assert.equal(p.axle_units,'metric');
  await axleTile(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength));
  assert.equal(requests.filter(x=>x.endsWith('axle-load.json')).length,1);
  assert.equal(style.layers.find(l=>l.id==='axle-tracks').source,'axleRail');
  assert.equal(style.layers.find(l=>l.id==='axle-branch-overview').source,'axleBranch');
  assert.equal(style.layers.find(l=>l.id==='axle-labels').source,'axleRail');
+});
+test('map line labels preserve native kg/lb units and convert only the other system',()=>{
+ for(const units of ['metric','imperial']){
+  const compiled=createExpression(axleLabel(units));assert.equal(compiled.result,'success');
+  const label=props=>{const a=axleLoad(props);return compiled.value.evaluate({zoom:15},{type:2,properties:{axle_tonnes:a.tonnes,axle_native:a.nativeLabel,axle_units:a.nativeUnits}});};
+  assert.equal(label({axle_load:'22500 kg'}),units==='metric'?'22,500 kg':'24.8 short tons');
+  assert.equal(label({axle_load:'50000 lb'}),units==='imperial'?'50,000 lb':'22.68 t');
+ }
 });
 
 
@@ -58,11 +68,17 @@ test('axle extraction rejects partial, duplicate and malformed CSV while accepti
 });
 
 
-test('kg and lb railway capacities affect colours and both legend unit presentations',()=>{
+test('axle display preserves matching raw units and converts only between unit systems',()=>{
  const metric=axleLoad({axle_load:'22500 kg'}),imperial=axleLoad({axle_load:'50000 lb'});
  assert.equal(metric.tonnes,22.5);assert.equal(imperial.tonnes,22.6796185);
  assert.equal(metric.colour,axleLoad({axle_load:'22.5 t'}).colour);
- assert.match(formatAxleLoad(metric,'metric'),/22.5 t \(22,500 kg\)/);
- assert.match(formatAxleLoad(imperial,'imperial'),/25 short tons \(50,000 lb\)/);
- assert.match(formatAxleLoad(imperial,'metric'),/22.68 t \(22,680 kg\)/);
+ assert.equal(formatAxleLoad(metric,'metric'),'22,500 kg');
+ assert.equal(formatAxleLoad(imperial,'imperial'),'50,000 lb');
+ assert.equal(formatAxleLoad(imperial,'metric'),'22.68 t (50,000 lb)');
+ assert.equal(formatAxleLoad(metric,'imperial'),'24.8 short tons (22,500 kg)');
+ for(const raw of ['22.5','22.5 t','22.5 tonnes'])assert.equal(formatAxleLoad(axleLoad({axle_load:raw}),'metric'),'22.5 t');
+ for(const raw of ['25 st','25 short tons'])assert.equal(formatAxleLoad(axleLoad({axle_load:raw}),'imperial'),'25 short tons');
+ assert.equal(formatAxleLoad(axleLoad({axle_load:'18 t',maxaxleload:'50000 lbs'}),'metric'),'18 t','the controlling capacity supplies the native unit');
+ assert.equal(formatAxleLoad(axleLoad({axle_load:'25 t',maxaxleload:'50000 lbs'}),'imperial'),'50,000 lb','the lower legal limit supplies the native unit');
+ assert.equal(formatAxleLoad(axleLoad({axle_load:'invalid',maxaxleload:'50000 pounds'}),'imperial'),'50,000 lb');
 });

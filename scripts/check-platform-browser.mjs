@@ -30,8 +30,10 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  await page.locator('[data-mode="axle"]').click();
  await page.evaluate(()=>{const map=window.reviewMap;map.jumpTo({center:[10,50],zoom:5});for(const l of map.getStyle().layers)if(l.id.startsWith('axle-')&&l.id!=='axle-overview')map.setLayoutProperty(l.id,'visibility','none');const layer={...map.getStyle().layers.find(l=>l.id==='axle-overview')};map.removeLayer(layer.id);delete layer['source-layer'];layer.source='reviewAxle';map.addSource('reviewAxle',{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{axle_load:'22500 kg',axle_tonnes:22.5},geometry:{type:'LineString',coordinates:[[9,50],[11,50]]}},{type:'Feature',properties:{axle_load:'50000 lb',axle_tonnes:22.6796185},geometry:{type:'LineString',coordinates:[[9,50.5],[11,50.5]]}}]}});map.addLayer(layer);map.fire('moveend');});
  await page.waitForFunction(()=>window.reviewMap.queryRenderedFeatures({layers:['axle-overview']}).filter(f=>f.source==='reviewAxle').length===2);await page.evaluate(()=>window.reviewMap.fire('moveend'));
- await page.waitForFunction(()=>document.querySelector('#legend').textContent.includes('22,500 kg')&&document.querySelector('#legend').textContent.includes('22,680 kg'));
- await page.selectOption('#units','imperial');assert.match(await page.locator('#legend').innerText(),/25 short tons \(50,000 lb\)/,'imperial legend updates without a pan or source event');
- await page.selectOption('#units','metric');assert.match(await page.locator('#legend').innerText(),/22.5 t \(22,500 kg\)/,'metric legend updates without a pan or source event');
+ await page.waitForFunction(()=>[...document.querySelectorAll('#legend .legend-item')].some(e=>e.textContent==='22,500 kg')&&document.querySelector('#legend').textContent.includes('22.68 t (50,000 lb)'));
+ await page.screenshot({path:`browser-review/axle-${kind}-native-metric.png`});
+ await page.selectOption('#units','imperial');assert.ok((await page.locator('#legend .legend-item').allTextContents()).includes('50,000 lb'),'native pounds need no same-system conversion');assert.match(await page.locator('#legend').innerText(),/24.8 short tons \(22,500 kg\)/,'only metric data converts in Imperial');
+ await page.screenshot({path:`browser-review/axle-${kind}-native-imperial.png`});
+ await page.selectOption('#units','metric');assert.ok((await page.locator('#legend .legend-item').allTextContents()).includes('22,500 kg'),'native kilograms need no same-system conversion');assert.match(await page.locator('#legend').innerText(),/22.68 t \(50,000 lb\)/,'only imperial data converts in Metric');
  console.log(`PASS: ${kind} kg/lb axle legend updates immediately`);await page.close();
 }}finally{await browser.close();}
