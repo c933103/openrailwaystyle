@@ -511,10 +511,10 @@ export function stubs(lines, metres, extent = 4096, loaded = AROUND) {
     // it is no stub, however short: a branch to a terminus looks the same.
     if (!line || line.service || line.usage || line.routes > 0 || joined[index].length !== 1 || lengthOf(joined[index]) * metres > STUB_MAX) return;
     const part = joined[index][0], [s, e] = [part[0], part.at(-1)];
-    if (nearEdge(s) || nearEdge(e)) return;
     const ts = touching(index, line.group, s), te = touching(index, line.group, e);
     const turnout = (p, set) => set.size >= 2 || [...set].some(i => !endsOf(i).some(q => Math.hypot(q[0] - p[0], q[1] - p[1]) <= touch));
-    if ((ts.size === 0 && turnout(e, te)) || (te.size === 0 && turnout(s, ts))) found.add(index);
+    // Only the free end may run on into ground not read.
+    if ((ts.size === 0 && !nearEdge(s) && turnout(e, te)) || (te.size === 0 && !nearEdge(e) && turnout(s, ts))) found.add(index);
   });
   return found;
 }

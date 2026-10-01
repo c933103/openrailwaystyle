@@ -851,6 +851,10 @@ test('track counts: untagged crossovers and sidings are not running tracks', asy
   const loaded = new Set([-1, 0, 1].flatMap(dx => [-1, 0, 1].map(dy => `${dx},${dy}`)));
   loaded.delete('0,-1');
   assert.equal(stubs(siding, 1, 1000, loaded).size, 0);
+  // The turnout end by a missing tile does not matter: only the free end
+  // may run on. (The tile west of the turnout at x = 0 is missing.)
+  const westMissing = new Set(loaded); westMissing.add('0,-1'); westMissing.delete('-1,0');
+  assert.deepEqual([...stubs(siding, 1, 1000, westMissing)], [2]);
   // A gentle (high-speed) crossover, 400 m long between tracks 5 m apart, is
   // one too: it never keeps a steady distance from either track.
   const gentle = [track(0, -1000, 0), track(0, 0, 400), track(0, 400, 1000), track(5, -1000, 0), track(5, 0, 400), track(5, 400, 1000), leg([0, 0], [400, 5])];
