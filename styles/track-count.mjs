@@ -327,8 +327,8 @@ export function stitchParts(parts, tolerance = STITCH) {
 }
 
 // Connectors: ways mapped as track that only link two tracks (crossovers,
-// single or scissors, of any length) but carry no service tag, usage or
-// services.
+// single or scissors, up to CONNECTOR_MAX long) but carry no service tag,
+// usage or services.
 // A way is one when both ends branch off other track (each end meets two or
 // more ways, or one way in its middle: a turnout) and, between just inside
 // its start and just inside its end, it moves across the parallel tracks
@@ -337,7 +337,11 @@ export function stitchParts(parts, tolerance = STITCH) {
 // that leaves and rejoins one track, or a line branching away never crosses
 // a parallel track, so none of them is one. Returns the set of indices.
 const CONNECTOR_INSET = 15;  // metres inside each end where the sides are taken
-const CONNECTOR_MAX = 800;   // metres: longer ways are tracks
+// metres: longer ways are tracks. A crossover is two turnouts end to end,
+// and even high-speed ones are well short of this (the No. 42 turnouts of
+// the Beijing–Shanghai line are 157 m long). A longer way that ends up on
+// the other side of a track (a flyover's approach, a third track) is a line.
+const CONNECTOR_MAX = 800;
 const CONNECTOR_STEP = 10;   // metres between the points where its neighbours are measured
 const CONNECTOR_STEADY = 1;  // metres: a track whose distance from another varies less than this runs beside it
 export function connectors(lines, metres) {
@@ -425,8 +429,8 @@ export function connectors(lines, metres) {
     const step = CONNECTOR_STEP / metres, samples = [];
     for (let along = d; along <= total - d + 1e-9; along += step) { const [x, y, dx, dy] = at(along); samples.push(sides(index, line.group, x, y, dx, dy)); }
     // Beside a track at a steady distance (within CONNECTOR_STEADY) for half
-    // its length or more, without a break. A crossover, however gentle (a
-    // high-speed one is some 400 m long), keeps moving across: over half
+    // its length or more, without a break. A crossover, however gentle (up
+    // to CONNECTOR_MAX long), keeps moving across: over half
     // its length it moves half the way between the tracks.
     const steadyFor = other => {
       let best = 0;
