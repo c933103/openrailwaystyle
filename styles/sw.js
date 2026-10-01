@@ -1,14 +1,15 @@
 // Service worker for the installed app. It keeps the app's own page, code and
 // style so the app opens without a connection (the map data still needs
-// one). Always the network first, so an update is never held back; the saved
-// copy is used only when the network fails. The map libraries from the CDN
-// are kept too: their addresses carry the version, so a saved copy never goes
-// stale and is used first. Map tiles and data files are not handled here.
-// Files the page asks for with a version (?v=) are saved under that version
-// too, and offline a versioned request is answered only by the same version,
-// so a newer module is never paired with an older one it depends on; whenever
-// a page of a new version is saved, every file of that version is saved with
-// it.
+// one). The page comes from the network first, so an update is never held
+// back. Files the page asks for with a version (?v=) are kept per version
+// and served from the saved copy of that version first (a changed file gets
+// a new version); a versioned request is never answered by another version,
+// so a newer module is never paired with an older one it depends on. A new
+// page is shown only once every file of its version is saved. Other files
+// come from the network first, the saved copy only when it fails. The map
+// libraries from the CDN are kept too: their addresses carry the version, so
+// a saved copy never goes stale and is used first. Map tiles and data files
+// are not handled here.
 const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}6`;
 // Keep in step with loadScript in app.mjs and the stylesheet in index.html.
 const LIBRARIES = ['https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.js', 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css', 'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js'];
@@ -90,13 +91,27 @@ self.addEventListener('fetch', event => {
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const plain = request.mode === 'navigate' ? new URL('./', self.registration.scope).href : url.origin + url.pathname;
+    // A file of a saved version is the same file for good (a changed file
+    // gets a new version), so it comes from the saved copy: a page then
+    // always gets its own version's files, even the saved page shown when
+    // a newer one could not be saved, while the server already has newer.
+    if (version !== null && request.mode !== 'navigate') {
+      const saved = await cache.match(versioned(plain, version));
+      if (saved) return saved;
+    }
     try {
       const response = await fetch(request);
       if (response.ok && request.mode === 'navigate') {
-        // The saved page changes only once every file of its version is
-        // saved too, so the saved page always finds its own files.
-        const copy = response.clone(), next = pageVersion(await response.clone().text());
-        if (next) event.waitUntil(saveVersion(cache, next, copy).catch(() => {}));
+        // A page is shown only once every file of its version is saved
+        // (quick when the version is unchanged: they are all saved), so it
+        // always finds its own files even if the connection then drops. If
+        // they cannot all be had, the saved page, complete with its files,
+        // is shown instead.
+        const next = pageVersion(await response.clone().text());
+        if (next) {
+          try { await saveVersion(cache, next, response.clone()); }
+          catch { const saved = await cache.match(plain); if (saved) return saved; }
+        }
       } else if (response.ok) {
         await cache.put(plain, response.clone());
         if (version !== null) await cache.put(versioned(plain, version), response.clone());
