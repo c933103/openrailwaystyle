@@ -111,6 +111,22 @@ jobs:
             echo "Could not look up the branch-data snapshot (git exit $status)"
             exit 1
           fi
+      # Urban rail services for the Service view (service-routes.yml), filled
+      # in region by region; without them the view shows the tracks only.
+      - name: Load urban rail services
+        run: |
+          mkdir -p styles/data/service-routes
+          status=0
+          git ls-remote --exit-code --heads origin service-data || status=$?
+          if [ "$status" = 0 ]; then
+            git fetch --depth=1 origin service-data
+            git archive FETCH_HEAD | tar -x -C styles/data/service-routes --exclude=state.json
+          elif [ "$status" = 2 ]; then
+            echo '{"tiles":[]}' > styles/data/service-routes/index.json
+          else
+            echo "Could not look up the service-data snapshot (git exit $status)"
+            exit 1
+          fi
       - name: Install test browser
         run: npx playwright install --with-deps chromium
       - name: Start test server
