@@ -39,7 +39,8 @@ const reach = z => Math.max(2, Math.round(10 * 2 ** (z - 13)));
 
 // How many contour lines lie between heights low and high in a terrain
 // tile of zoom z, in whichever units draw more of them (map-model.mjs):
-// land contours from zoom 7; seabed contours from tiles one zoom coarser
+// land contours from zoom 7 (below sea level too at zooms 7 and 8, as the
+// style draws them); seabed contours from tiles one zoom coarser
 // (only above -200 m for tiles up to zoom 7), none beyond tile zoom 10.
 // Metric intervals in metres, imperial ones in feet.
 const FOOT = 0.3048;
@@ -52,7 +53,8 @@ const between = (interval, from, to) => interval && to > from ? Math.floor(to / 
 const ringCounter = z => {
   const seabed = z >= 4 && z <= 10, units = INTERVALS.map(({land, sea}) => [land(z), seabed ? sea(z) : 0]);
   return (low, high) => {
-    const top = Math.min(high, 0) - 1e-9, bottom = z < 8 ? Math.max(low, -200) : low, ground = Math.max(low, 0);
+    // The land contours draw below sea level too below map zoom 9.
+    const top = Math.min(high, 0) - 1e-9, bottom = z < 8 ? Math.max(low, -200) : low, ground = z < 9 ? low : Math.max(low, 0);
     let most = 0;
     for (const [land, sea] of units) most = Math.max(most, between(land, ground, high) + between(sea, bottom, top));
     return most;
