@@ -12,12 +12,12 @@ test('branch-line stages: the requested order, Japan first and the rest of the w
   assert.deepEqual(quarters([0, 90, 45, 135]), [[0, 90, 22.5, 112.5], [0, 112.5, 22.5, 135], [22.5, 90, 45, 112.5], [22.5, 112.5, 45, 135]]);
 });
 
-test('branch-line queries: within a country area, leaving out countries fetched earlier', () => {
+test('branch-line queries: branch and metro lines within a country area, leaving out countries fetched earlier', () => {
   assert.equal(partQuery({area: 'ISO3166-1=JP', box: [20, 122, 46, 154]}, [20, 122, 46, 154]),
-    '[out:json][timeout:180][maxsize:536870912];area["ISO3166-1"="JP"]->.a0;(way[railway~"^(rail|narrow_gauge)$"][usage=branch][!service](area.a0)(20,122,46,154););out tags geom qt;');
+    '[out:json][timeout:180][maxsize:536870912];area["ISO3166-1"="JP"]->.a0;(way[railway~"^(rail|narrow_gauge)$"][usage=branch][!service](area.a0)(20,122,46,154);way[railway=subway][!service](area.a0)(20,122,46,154););out tags geom qt;');
   const q = partQuery({area: 'ISO3166-1=CN', exclude: ['ISO3166-2=CN-GD'], box: [18, 73, 54, 135]}, [18, 73, 36, 104]);
-  assert.match(q, /area\["ISO3166-1"="CN"\]->\.a0;area\["ISO3166-2"="CN-GD"\]->\.a1;\(way\[.*\]\(area\.a0\)\(18,73,36,104\); - \(way\[.*\]\(area\.a1\)\(18,73,36,104\);\);\);out tags geom qt;$/);
-  assert.match(partQuery({box: [34, -25, 72, 26.5], exclude: ['ISO3166-1=RU']}, [34, -25, 72, 26.5]), /->\.a0;\(way\[.*?\]\(34,-25,72,26\.5\); - \(way\[.*\]\(area\.a0\)\(34,-25,72,26\.5\);\);\);/);
+  assert.match(q, /area\["ISO3166-1"="CN"\]->\.a0;area\["ISO3166-2"="CN-GD"\]->\.a1;\(\(way\[.*\]\(area\.a0\)\(18,73,36,104\);way\[railway=subway\]\[!service\]\(area\.a0\)\(18,73,36,104\);\); - \(way\[.*\]\(area\.a1\)\(18,73,36,104\);way\[railway=subway\]\[!service\]\(area\.a1\)\(18,73,36,104\);\);\);out tags geom qt;$/);
+  assert.match(partQuery({box: [34, -25, 72, 26.5], exclude: ['ISO3166-1=RU']}, [34, -25, 72, 26.5]), /->\.a0;\(\(way\[.*?\]\(34,-25,72,26\.5\);.*\); - \(way\[.*\]\(area\.a0\)\(34,-25,72,26\.5\);\);\);/);
 });
 
 test('branch-line tags become the fields of the detailed railway tiles', () => {
@@ -77,6 +77,18 @@ test('branch-line table and tiles: z4–6 only, the style\'s fields and the OSM 
   assert.equal(layer.feature(0).id, 7);
   assert.deepEqual([layer.feature(0).properties.usage, layer.feature(0).properties.maxspeed, layer.feature(0).properties.stage], ['branch', 85, undefined]);
 });
+test('metro lines: kept with their own usage, tiled at z7–9 only, apart from branch lines', () => {
+  const [metro] = toFeatures({elements: [{type: 'way', id: 8, tags: {railway: 'subway', name: '銀座線', maxspeed: '65'}, geometry: [{lat: 35.67, lon: 139.70}, {lat: 35.71, lon: 139.80}]}]});
+  assert.deepEqual([metro.properties.feature, metro.properties.usage], ['subway', '']);
+  const [tunnel, surface] = toFeatures({elements: [{type: 'way', id: 9, tags: {railway: 'subway', tunnel: 'yes', bridge: 'no'}, geometry: [{lat: 1, lon: 1}, {lat: 1.1, lon: 1.1}]}, {type: 'way', id: 10, tags: {railway: 'subway', bridge: 'viaduct'}, geometry: [{lat: 1, lon: 1}, {lat: 1.1, lon: 1.1}]}]});
+  assert.deepEqual([tunnel.properties.tunnel, tunnel.properties.bridge, surface.properties.bridge, surface.properties.tunnel], [true, undefined, true, undefined], 'structures as the detailed tiles\' booleans');
+  const [branch] = toFeatures({elements: [{type: 'way', id: 7, tags: {railway: 'rail', usage: 'branch'}, geometry: [{lat: 37.4, lon: 139.9}, {lat: 37.6, lon: 140.3}]}]});
+  const tiles = buildTiles(new Map([[7, branch], [8, metro]]));
+  const ids = zoom => [...tiles].filter(([k]) => k.startsWith(`${zoom}/`)).flatMap(([, data]) => { const l = new VectorTile(new Pbf(data)).layers.branch_lines; return [...Array(l.length).keys()].map(i => l.feature(i).id); });
+  for (const z of [4, 5, 6]) assert.deepEqual(ids(z), [7], `z${z}: branch lines only`);
+  for (const z of [7, 8, 9]) assert.deepEqual(ids(z), [8], `z${z}: metro only`);
+  assert.equal(ids(10).length, 0);
+});
 
 test('style: branch lines under the main overview lines in every view, from zoom 4 to 6', async () => {
   const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
@@ -87,7 +99,21 @@ test('style: branch lines under the main overview lines in every view, from zoom
     assert.deepEqual(layer.paint['line-color'], main.paint['line-color'], `${mode}: same colours as the main lines`);
     assert.ok(ids.indexOf(layer.id) < ids.indexOf(main.id), `${mode}: drawn under the main lines`);
   }
-  assert.deepEqual([style.sources.branchLines.minzoom, style.sources.branchLines.maxzoom], [4, 6]);
+  assert.deepEqual([style.sources.branchLines.minzoom, style.sources.branchLines.maxzoom], [4, 9]);
+  // Metro lines at zooms 7–9 in every view, drawn like the detailed tracks.
+  for (const mode of ['infrastructure', 'speed', 'electrification', 'control', 'gauge', 'loading']) {
+    const metro = style.layers.find(l => l.id === `${mode}-metro-overview`), tracks = style.layers.find(l => l.id === `${mode}-tracks`);
+    assert.deepEqual([metro.source, metro['source-layer'], metro.minzoom, metro.maxzoom], ['branchLines', 'branch_lines', 7, 10], mode);
+    assert.deepEqual(metro.paint, tracks.paint, `${mode}: same paint as the detailed tracks`);
+  }
+  // Bridges, tunnels and the second gauge on the snapshot's metro lines too.
+  for (const [id, like] of [['structure-metro-bridge-edge', 'structure-bridge-edge'], ['structure-metro-bridge-deck', 'structure-bridge-deck'], ['structure-metro-tunnel', 'structure-tunnel'], ['gauge-metro-dual', 'gauge-dual']]) {
+    const layer = style.layers.find(l => l.id === id), detailed = style.layers.find(l => l.id === like);
+    assert.deepEqual([layer.source, layer['source-layer'], layer.minzoom, layer.maxzoom], ['branchLines', 'branch_lines', 7, 10], id);
+    assert.deepEqual(layer.paint, detailed.paint, `${id} drawn as ${like}`);
+  }
+  assert.ok(ids.indexOf('structure-metro-bridge-edge') < ids.indexOf('infrastructure-metro-overview'), 'bridge parapets under the metro lines');
+  assert.ok(ids.indexOf('gauge-metro-dual') < ids.indexOf('structure-metro-tunnel'), 'the tunnel core over both gauge halves');
   const dual = style.layers.find(l => l.id === 'gauge-branch-dual'), branch = style.layers.find(l => l.id === 'gauge-branch-overview');
   assert.deepEqual([dual.source, dual['source-layer'], dual.minzoom, dual.maxzoom], ['branchLines', 'branch_lines', 4, 7], 'second gauge drawn on branch lines');
   assert.ok(JSON.stringify(dual.filter).includes('gaugeint1') && ids.indexOf(dual.id) > ids.indexOf(branch.id));

@@ -43,7 +43,7 @@ async function screenshot(name) {
 await mkdir('browser-review',{recursive:true});
 try {
   const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
-  await page.goto(base+'?v=20261001-2&mode=speed&language=en&relief=0&inactive=0#14/22.299/114.172',{waitUntil:'domcontentloaded'});
+  await page.goto(base+'?v=20261001-4&mode=speed&language=en&relief=0&inactive=0#14/22.299/114.172',{waitUntil:'domcontentloaded'});
   await page.waitForSelector('body[data-map-ready="true"]',{state:'attached'});
   await waitContext('transport');await waitContext('destinations');await settleContext();
   console.log('CONTEXT_DATA',JSON.stringify(await evaluate(map=>({
@@ -75,12 +75,13 @@ try {
   console.log('PASS: real station interchange context',await page.locator('#nearby-transport').innerText());
   await screenshot('interchange');
   await page.locator('#details-close').click();
-  await page.locator('.display-options > summary').click();
+  await page.locator('#settings-open').click();
   await page.locator('#transport').uncheck();await page.locator('#destinations').uncheck();await page.locator('#constraints').uncheck();
   assert.ok(await evaluate(map=>map.getStyle().layers.filter(l=>l.id.startsWith('context-')).every(l=>l.layout?.visibility==='none')),'both context groups are disabled');
   await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return !map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('context-'));});
   assert.ok(await evaluate(map=>map.queryRenderedFeatures({layers:['building-footprints']}).length>0),'ordinary buildings remain visible with destinations disabled');
   await page.locator('#transport').check();await page.locator('#destinations').check();await page.locator('#constraints').check();
+  await page.locator('#settings-close').click();
   await page.locator('#language').selectOption('zh-Hant');
   await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('context-')&&f.properties.atlas_language==='zh-Hant');});
   await waitContext('transport');await settleContext();
