@@ -1,0 +1,64 @@
+{
+  "source": "OpenStreetMap ODbL; complete way 349685435, verified 2026-10-01",
+  "apiURL": "https://openrailwaymap.app/api/feature/openrailwaymap_standard/standard_railway_platform_edges/349685435",
+  "feature": {
+    "type": "Feature",
+    "properties": {
+      "id": 349685435,
+      "ref": "1"
+    },
+    "geometry": {
+      "type": "LineString",
+      "coordinates": [
+        [
+          139.7659918,
+          35.6803895
+        ],
+        [
+          139.766053,
+          35.6806536
+        ],
+        [
+          139.766103,
+          35.6808298
+        ],
+        [
+          139.7661778,
+          35.6810556
+        ],
+        [
+          139.7663502,
+          35.6815449
+        ],
+        [
+          139.7664337,
+          35.6817579
+        ],
+        [
+          139.7665432,
+          35.6819785
+        ],
+        [
+          139.7666906,
+          35.6822474
+        ],
+        [
+          139.766843,
+          35.6824896
+        ]
+      ]
+    }
+  },
+  "response": {
+    "properties": {
+      "tactile_paving": null,
+      "osm_type": "W",
+      "osm_id": 349685435,
+      "ref": "1",
+      "length": 246.86183810409128,
+      "height": null,
+      "feature": "platform_edge"
+    },
+    "images": []
+  }
+}
