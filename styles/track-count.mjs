@@ -327,7 +327,8 @@ export function stitchParts(parts, tolerance = STITCH) {
 }
 
 // Connectors: ways mapped as track that only link two tracks (crossovers,
-// single or scissors, of any length) but carry no service tag.
+// single or scissors, of any length) but carry no service tag, usage or
+// services.
 // A way is one when both ends branch off other track (each end meets two or
 // more ways, or one way in its middle: a turnout) and, between just inside
 // its start and just inside its end, it moves across the parallel tracks
@@ -398,7 +399,9 @@ export function connectors(lines, metres) {
   const found = new Set(), inset = CONNECTOR_INSET / metres;
   lines.forEach((line, index) => {
     // A way already tagged (a siding, a yard track) keeps its tag.
-    if (!line || line.service || joined[index].length !== 1) return;
+    // A way tagged for a use (main, branch, industrial…) or with services on
+    // it is a line in its own right, whatever its shape.
+    if (!line || line.service || line.usage || line.routes > 0 || joined[index].length !== 1) return;
     const part = joined[index][0], total = lengthOf([part]);
     if (part.length < 2 || !total || total > CONNECTOR_MAX / metres) return;
     const [sx, sy] = part[0], [ex, ey] = part.at(-1);
@@ -453,8 +456,8 @@ export function connectors(lines, metres) {
   });
   return found;
 }
-// Stubs: ways mapped as track without a service tag (nor a main or branch
-// line's usage, nor services running on them) that end in nothing
+// Stubs: ways mapped as track without a service tag (nor a usage, nor
+// services running on them) that end in nothing
 // (buffer stops) at one end and leave another track at a turnout at the
 // other, shorter than STUB_MAX: sidings and spurs. They are not running
 // tracks on the open line, though at a station (a terminus's platform
@@ -488,9 +491,9 @@ export function stubs(lines, metres, extent = 4096) {
   const joined = lines.map(line => line && stitchParts(line.parts));
   const endsOf = index => joined[index].flatMap(part => [part[0], part.at(-1)]);
   lines.forEach((line, index) => {
-    // A line in use as such (main or branch, or with services on it) is no
-    // stub, however short: a branch to a terminus looks the same.
-    if (!line || line.service || line.usage === 'main' || line.usage === 'branch' || line.routes > 0 || joined[index].length !== 1 || lengthOf(joined[index]) * metres > STUB_MAX) return;
+    // A line tagged for a use (main, branch, industrial…) or with services on
+    // it is no stub, however short: a branch to a terminus looks the same.
+    if (!line || line.service || line.usage || line.routes > 0 || joined[index].length !== 1 || lengthOf(joined[index]) * metres > STUB_MAX) return;
     const part = joined[index][0], [s, e] = [part[0], part.at(-1)];
     if (nearEdge(s) || nearEdge(e)) return;
     const ts = touching(index, line.group, s), te = touching(index, line.group, e);
