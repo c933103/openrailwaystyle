@@ -28,7 +28,7 @@ The atlas can be installed on a phone, tablet or computer from the browser (for 
 
 The compass resets north. The location button shows your position (the browser asks first; the position stays in the browser) and follows it as it moves, with the direction of travel where the device reports one; moving the map stops following, and pressing the button again resumes it. The “more detail” button cycles through 100%, 50% and 25%: the next zoom level is drawn at half size, then two levels further in at a quarter size, so the same area shows more tiles and features. Its tooltip reports the scale.
 
-The map reopens where it was left, on the globe or flat map as last used. The globe/map button (🌍/🗺️) switches projection. Dragging the globe keeps its direction and the compass heading: sideways along the parallel, up and down along the meridian, and on over a pole, after which the map is the other way up. The planet keeps its size as the view moves.
+The map reopens where it was left, on the globe or flat map as last used. The globe/map button (🌍/🗺️) switches projection. Dragging the globe keeps its direction and the compass heading: sideways along the parallel, up and down along the meridian. Beyond 85° (the polar caps) it turns as a ball and carries on over the pole, after which the map is the other way up. The planet keeps its size as the view moves.
 
 The map switches to the globe automatically below zoom 4, and back to the flat map from zoom 4 unless most of the view is beyond 60° N or S. This can be turned off in the settings. Polar coverage and its resolution are described in the [data maintenance guide](data-maintenance.md#polar-caps).
 

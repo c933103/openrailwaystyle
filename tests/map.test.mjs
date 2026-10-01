@@ -610,6 +610,12 @@ test('dragging the globe keeps the direction and the heading; over a pole it car
   for (let i = 0; i < 200; i++) small = stepView(small, 0, 1, perDegree);
   assert.ok(near(long.center[1], small.center[1], 1e-6) && near(long.center[0], small.center[0], 1e-6) && near(long.bearing, small.bearing), JSON.stringify({long, small}));
   assert.ok(Math.abs(long.center[1]) <= 90);
+  // A diagonal step over a pole: as the same movement in small events.
+  const diagonal = stepView({center: [0, 80], bearing: 0}, 10, 20, perDegree);
+  let pieces = {center: [0, 80], bearing: 0};
+  for (let i = 0; i < 100; i++) pieces = stepView(pieces, 0.1, 0.2, perDegree);
+  const lngGap = Math.abs(((diagonal.center[0] - pieces.center[0]) + 540) % 360 - 180);
+  assert.ok(lngGap < 1 && Math.abs(diagonal.center[1] - pieces.center[1]) < 0.1 && Math.abs(diagonal.bearing - pieces.bearing) < 1, JSON.stringify({diagonal, pieces}));
   // The planet keeps its size: zoom falls as the centre nears a pole.
   assert.ok(near(zoomForLatitude(3, 0, 60), 2));
   assert.ok(near(zoomForLatitude(2, 60, 0), 3));

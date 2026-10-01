@@ -3,8 +3,9 @@
 //   sideways drag runs along the parallel (from Japan to California, not
 //   along a great circle down to South America) and an up-and-down drag
 //   along the meridian, the same distance on the planet per pixel at the
-//   centre. Over a pole the meridian carries on down the far side; the map
-//   is then the other way up, as the ground under it is.
+//   centre. Within the polar caps (beyond 85°) the globe turns as a ball
+//   instead and carries on over the pole; the map is then the other way
+//   up, as the ground under it is.
 // - The planet keeps its size while dragging: MapLibre's zoom is relative
 //   to the latitude of the centre (a zoom level shows a bigger planet
 //   nearer the poles), so the zoom is adjusted as the centre's latitude
@@ -36,7 +37,35 @@ export function startFrame(center, bearing) {
 // constant heading: the centre moves the other way, by the pointer's
 // distance on the planet, north–south along the meridian and east–west
 // along the parallel; the bearing stays.
-export function stepView({center: [lng, lat], bearing}, dx, dy, radiansPerPixel) {
+export function stepView(view, dx, dy, radiansPerPixel) {
+  // A long movement (pointer events coalesced on a small globe) goes in
+  // steps of at most a tenth of a degree, each with the heading the last one
+  // left, so it ends about where the same movement in small events would.
+  const steps = Math.min(2000, Math.max(1, Math.ceil(deg(Math.hypot(dx, dy) * radiansPerPixel) / 0.1)));
+  for (let k = 0; k < steps; k++) {
+    const [d, e] = [dx / steps, dy / steps];
+    // Within the polar caps a constant heading has no steady meaning (a
+    // step east near a pole spins the view round it): there the globe turns
+    // as a ball, over the pole, the heading following.
+    view = Math.abs(view.center[1]) >= POLAR_DRAG ? frameView(stepFrame(startFrame(view.center, view.bearing), d, e, radiansPerPixel)) : step(view, d, e, radiansPerPixel);
+  }
+  return view;
+}
+// Where the constant heading gives way to turning the globe as a ball: the
+// edge of the flat map's tiles.
+export const POLAR_DRAG = 85;
+// Turn the frame for a pointer movement of dx, dy pixels (right, down):
+// the globe follows the pointer, so the centre moves the other way.
+export function stepFrame({c, u}, dx, dy, radiansPerPixel) {
+  const b = dx * radiansPerPixel, a = dy * radiansPerPixel;
+  const r = cross(u, c); // screen right
+  const c1 = unit(c.map((v, i) => v * Math.cos(b) - r[i] * Math.sin(b)));
+  return {
+    c: unit(c1.map((v, i) => v * Math.cos(a) + u[i] * Math.sin(a))),
+    u: unit(u.map((v, i) => v * Math.cos(a) - c1[i] * Math.sin(a))),
+  };
+}
+function step({center: [lng, lat], bearing}, dx, dy, radiansPerPixel) {
   const β = rad(bearing), right = -dx * radiansPerPixel, up = dy * radiansPerPixel;
   const north = up * Math.cos(β) - right * Math.sin(β), east = up * Math.sin(β) + right * Math.cos(β);
   let φ = lat + deg(north);
@@ -44,10 +73,8 @@ export function stepView({center: [lng, lat], bearing}, dx, dy, radiansPerPixel)
   // than the centre may come (where a parallel is a point).
   const mid = rad(clampLat((lat + φ) / 2));
   let λ = lng + deg(east) / Math.cos(mid);
-  // Over a pole: on down the far meridian, the view turned round; as often
-  // as a long step (a coalesced pointer movement on a small globe) crosses
-  // one.
-  while (φ > 90 || φ < -90) { φ = Math.sign(φ) * 180 - φ; λ += 180; bearing += 180; }
+  // Over a pole: on down the far meridian, the view turned round.
+  if (φ > 90 || φ < -90) { φ = Math.sign(φ) * 180 - φ; λ += 180; bearing += 180; }
   λ = ((λ + 180) % 360 + 360) % 360 - 180;
   bearing = ((bearing + 180) % 360 + 360) % 360 - 180;
   return {center: [λ, φ], bearing};
