@@ -447,6 +447,35 @@ test('station track counts include sidings, not yards; a station with no area co
   const bays = [track(0, 'siding'), track(5, 'siding'), track(10, 'siding'), track(15, 'yard')];
   assert.deepEqual(stationTracks(bays, [zone], 1).map(p => p.tracks), [3]);
 });
+test('track counts: stacked tunnels are two tracks; light rail and main lines are counted apart', async () => {
+  const {countTracks, stationTracks, trackLines} = await import('../styles/track-count.mjs');
+  // 1 unit = 1 m. Two tunnels of one line, one above the other, drawn on the
+  // same plan line for 600 m (as south of Austin, Hong Kong): two tracks.
+  const tml = {group: 'rail', main: true, tunnel: true, line: 'Tuen Ma Line'};
+  const stacked = countTracks([{...tml, parts: [[[0, 0], [1000, 0]]]}, {...tml, parts: [[[200, 0], [800, 0]]]}], 1);
+  assert.ok(stacked.points.some(p => p.tracks === 2 && p.x > 250 && p.x < 750), JSON.stringify(stacked.points));
+  // A stacked pair beside a third track: probes from the third keep the
+  // pair apart too (offsets −5, −5, 0, 5 are four tracks).
+  const four = countTracks([{...tml, parts: [[[0, -5], [1000, -5]]]}, {...tml, parts: [[[0, -5], [1000, -5]]]}, {...tml, parts: [[[0, 0], [1000, 0]]]}, {...tml, parts: [[[0, 5], [1000, 5]]]}], 1);
+  assert.ok(four.points.length && four.points.every(p => p.tracks === 4), JSON.stringify(four.points));
+  // A way meeting another end to end stays one track.
+  const joined = countTracks([{...tml, parts: [[[0, 0], [500, 0]]]}, {...tml, parts: [[[500, 0], [1000, 0]]]}], 1);
+  assert.ok(joined.points.every(p => p.tracks === 1), JSON.stringify(joined.points));
+  // A light rail pair 10 m from a main-line pair on a viaduct (north of
+  // Choy Yee Bridge): two and two, not four.
+  const feature = (properties, y) => ({type: 2, properties: {state: 'present', ...properties}, loadGeometry: () => [[{x: 0, y}, {x: 1000, y}]]});
+  const lines = trackLines([feature({feature: 'light_rail', name: 'Light Rail'}, 0), feature({feature: 'light_rail', name: 'Light Rail'}, 4),
+    feature({feature: 'rail', name: 'Tuen Ma Line', bridge: true}, 14), feature({feature: 'rail', name: 'Tuen Ma Line', bridge: true}, 20)]);
+  assert.deepEqual(lines.map(l => l.group), ['light_rail', 'light_rail', 'rail', 'rail']);
+  assert.deepEqual(countTracks(lines, 1).lines.map(l => l.tracks), [2, 2, 2, 2]);
+  // A station area holding a light rail stop and a main-line station counts
+  // each kind's tracks on its own (Ho Tin and Tuen Mun).
+  const zone = {inside: (x, y) => x >= 300 && x <= 700 && y >= -10 && y <= 30, groups: ['light_rail', 'rail']};
+  assert.deepEqual(stationTracks(lines, [zone], 1).map(p => [p.group, p.tracks]), [['light_rail', 2], ['rail', 2]]);
+  // Among equally wide places, one where the badge can be drawn.
+  const [inside] = stationTracks(lines, [{inside: zone.inside, groups: ['rail']}], 1, {prefer: x => x > 600});
+  assert.ok(inside.x > 600, JSON.stringify(inside));
+});
 test('legend colours equal the drawn colours for power, gauge and loading gauge', async () => {
   const m = await import('../styles/map-model.mjs');
   const {expression} = await import('@maplibre/maplibre-gl-style-spec');
@@ -575,35 +604,73 @@ test('globe below zoom 4; flat map from zoom 4 unless the view is mostly polar',
   assert.equal(autoProjection(6, 0.7), null); // leave as is near the poles
 });
 
-test('dragging the globe carries the view over a pole, turning the heading', async () => {
-  const {startFrame, stepFrame, frameView, zoomForLatitude} = await import('../styles/globe-drag.mjs');
+test('dragging the globe keeps the direction and the heading; over a pole it carries on', async () => {
+  const {stepView, zoomForLatitude} = await import('../styles/globe-drag.mjs');
   const near = (a, b, tolerance = 1e-6) => Math.abs(a - b) < tolerance;
   const perDegree = Math.PI / 180; // 1 px = 1° for the test
   // No movement: no change.
-  let view = frameView(stepFrame(startFrame([10, 50], 30), 0, 0, perDegree));
+  let view = stepView({center: [10, 50], bearing: 30}, 0, 0, perDegree);
   assert.ok(near(view.center[0], 10) && near(view.center[1], 50) && near(view.bearing, 30), JSON.stringify(view));
-  // Dragging down moves the view north; dragging right moves it west.
-  view = frameView(stepFrame(startFrame([10, 0], 0), 0, 5, perDegree));
+  // Dragging down moves the view north; dragging left moves it east.
+  view = stepView({center: [10, 0], bearing: 0}, 0, 5, perDegree);
   assert.ok(near(view.center[0], 10) && near(view.center[1], 5), JSON.stringify(view));
-  view = frameView(stepFrame(startFrame([10, 0], 0), 5, 0, perDegree));
+  view = stepView({center: [10, 0], bearing: 0}, 5, 0, perDegree);
   assert.ok(near(view.center[0], 5) && near(view.center[1], 0), JSON.stringify(view));
-  // From 80° N heading north, 20° of dragging passes continuously over the
-  // pole: every step moves the same angle, and it ends at 80° N on the far
-  // meridian, heading south.
-  let frame = startFrame([20, 80], 0), previous = frame.c, steps = [];
-  for (let i = 0; i < 20; i++) {
-    frame = stepFrame(frame, 0, 1, perDegree);
-    steps.push(Math.acos(Math.min(1, previous.reduce((s, v, k) => s + v * frame.c[k], 0))) / perDegree);
-    previous = frame.c;
-  }
-  view = frameView(frame);
-  assert.ok(near(view.center[0], -160) && near(view.center[1], 80), JSON.stringify(view));
+  // From Japan, a long sideways drag stays on the parallel (to California,
+  // not down a great circle to South America), heading unchanged.
+  view = {center: [139.7, 35.7], bearing: 0};
+  for (let i = 0; i < 325; i++) view = stepView(view, -0.25, 0, perDegree);
+  assert.ok(near(view.center[1], 35.7) && near(view.bearing, 0), JSON.stringify(view));
+  assert.ok(view.center[0] < -115 && view.center[0] > -125, 'about California: ' + view.center[0]);
+  // A turned map: dragging along the screen keeps the screen direction.
+  view = stepView({center: [0, 0], bearing: 90}, 0, 5, perDegree);
+  assert.ok(near(view.center[0], 5) && near(view.center[1], 0) && near(view.bearing, 90), JSON.stringify(view));
+  // From 80° N heading north, 20° of dragging passes over the pole and ends
+  // at 80° N on the far meridian, the map the other way up; and back.
+  view = {center: [20, 80], bearing: 0};
+  for (let i = 0; i < 20; i++) view = stepView(view, 0, 1, perDegree);
+  assert.ok(near(view.center[0], -160) && near(view.center[1], 80, 1e-9), JSON.stringify(view));
   assert.ok(near(Math.abs(view.bearing), 180), JSON.stringify(view));
-  assert.ok(steps.every(step => near(step, 1, 1e-6)), 'even steps: ' + steps.map(s => s.toFixed(3)));
-  // And back.
-  for (let i = 0; i < 20; i++) frame = stepFrame(frame, 0, -1, perDegree);
-  view = frameView(frame);
-  assert.ok(near(view.center[0], 20) && near(view.center[1], 80) && near(view.bearing, 0), JSON.stringify(view));
+  for (let i = 0; i < 20; i++) view = stepView(view, 0, -1, perDegree);
+  assert.ok(near(view.center[0], 20) && near(view.center[1], 80, 1e-9) && near(view.bearing, 0), JSON.stringify(view));
+  // One long step over both poles: still a valid place, as many small steps.
+  const long = stepView({center: [0, 80], bearing: 0}, 0, 200, perDegree);
+  let small = {center: [0, 80], bearing: 0};
+  for (let i = 0; i < 200; i++) small = stepView(small, 0, 1, perDegree);
+  assert.ok(near(long.center[1], small.center[1], 1e-6) && near(long.center[0], small.center[0], 1e-6) && near(long.bearing, small.bearing), JSON.stringify({long, small}));
+  assert.ok(Math.abs(long.center[1]) <= 90);
+  // A diagonal step over a pole: as the same movement in small events.
+  const diagonal = stepView({center: [0, 80], bearing: 0}, 10, 20, perDegree);
+  let pieces = {center: [0, 80], bearing: 0};
+  for (let i = 0; i < 100; i++) pieces = stepView(pieces, 0.1, 0.2, perDegree);
+  const lngGap = Math.abs(((diagonal.center[0] - pieces.center[0]) + 540) % 360 - 180);
+  assert.ok(lngGap < 1 && Math.abs(diagonal.center[1] - pieces.center[1]) < 0.1 && Math.abs(diagonal.bearing - pieces.bearing) < 1, JSON.stringify({diagonal, pieces}));
+  // Entering a polar cap obliquely: the same however the events are grouped
+  // (within 0.1° on the ground).
+  const apart = (a, b) => { const r = Math.PI / 180, [l1, p1] = a.center.map(v => v * r), [l2, p2] = b.center.map(v => v * r);
+    return Math.acos(Math.min(1, Math.sin(p1) * Math.sin(p2) + Math.cos(p1) * Math.cos(p2) * Math.cos(l1 - l2))) / r; };
+  const quarter = 0.25 * perDegree, oblique = stepView({center: [0, 84.9], bearing: 135}, 100, 90, quarter);
+  let events = {center: [0, 84.9], bearing: 135};
+  for (let i = 0; i < 100; i++) events = stepView(events, 1, 0.9, quarter);
+  assert.ok(apart(oblique, events) < 0.1, JSON.stringify({oblique, events}));
+  // A long movement (an edge-to-edge drag on a large screen) is followed to
+  // its end, as in pieces.
+  const across = stepView({center: [0, 0], bearing: 0}, 0, 4000, 0.35 * perDegree);
+  let hundreds = {center: [0, 0], bearing: 0};
+  for (let i = 0; i < 40; i++) hundreds = stepView(hundreds, 0, 100, 0.35 * perDegree);
+  assert.ok(apart(across, hundreds) < 0.1, JSON.stringify({across, hundreds}));
+  // Work per pointer event is a few segments, whatever the distance or
+  // latitude: a huge drag round the polar caps returns at once.
+  const started = performance.now();
+  let far;
+  for (let i = 0; i < 1000; i++) far = stepView({center: [30, 84.99], bearing: 80}, 5000, 3000, perDegree);
+  assert.ok(performance.now() - started < 500, 'took ' + (performance.now() - started) + ' ms');
+  assert.ok(Math.abs(far.center[1]) <= 90 && Number.isFinite(far.center[0]) && Number.isFinite(far.bearing), JSON.stringify(far));
+  // Leaving a cap and running along a parallel just outside it: as in pieces.
+  const graze = stepView({center: [0, 86], bearing: 0}, 30, -4, perDegree);
+  let grazes = {center: [0, 86], bearing: 0};
+  for (let i = 0; i < 300; i++) grazes = stepView(grazes, 0.1, -4 / 300, perDegree);
+  assert.ok(apart(graze, grazes) < 1e-6, JSON.stringify({graze, grazes}));
   // The planet keeps its size: zoom falls as the centre nears a pole.
   assert.ok(near(zoomForLatitude(3, 0, 60), 2));
   assert.ok(near(zoomForLatitude(2, 60, 0), 3));
