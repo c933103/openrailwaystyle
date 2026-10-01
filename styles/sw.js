@@ -4,13 +4,13 @@
 // copy is used only when the network fails. The map libraries from the CDN
 // are kept too: their addresses carry the version, so a saved copy never goes
 // stale and is used first. Map tiles and data files are not handled here.
-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}4`;
+const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}5`;
 // Keep in step with loadScript in app.mjs and the stylesheet in index.html.
 const LIBRARIES = ['https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.js', 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css', 'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js'];
 const SHELL = /\/(app\.css|[\w-]+\.mjs|vendor\/[\w-]+\.js|world\.style\.json|manifest\.webmanifest|favicon\.svg|icon-[\w-]+\.png)$/;
 // Saved at installation, so an app installed on the first visit (before this
 // worker controlled the page) also opens offline.
-const PRECACHE = ['./', 'app.css', 'app.mjs', 'map-model.mjs', 'context.mjs', 'draw.mjs', 'elevation.mjs', 'globe-drag.mjs', 'departures.mjs', 'polar.mjs', 'track-count.mjs', 'track-tiles.mjs', 'han-region.mjs', 'han-region-data.mjs', 'loading-gauge-list.mjs', 'vendor/tile-labels.js', 'vendor/track-worker.js', 'vendor/polar-layer.js', 'vendor/maplibre-contour.js', 'world.style.json', 'manifest.webmanifest', 'favicon.svg', 'icon-192.png', 'icon-512.png'];
+const PRECACHE = ['./', 'app.css', 'app.mjs', 'map-model.mjs', 'context.mjs', 'draw.mjs', 'elevation.mjs', 'globe-drag.mjs', 'keyboard-pan.mjs', 'departures.mjs', 'polar.mjs', 'track-count.mjs', 'track-tiles.mjs', 'han-region.mjs', 'han-region-data.mjs', 'loading-gauge-list.mjs', 'vendor/tile-labels.js', 'vendor/track-worker.js', 'vendor/polar-layer.js', 'vendor/maplibre-contour.js', 'world.style.json', 'manifest.webmanifest', 'favicon.svg', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', event => event.waitUntil((async () => {
   const cache = await caches.open(CACHE);

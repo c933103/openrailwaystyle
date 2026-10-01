@@ -5,6 +5,7 @@ import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, cli
 import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20260930-5';
 import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20260930-5';
 import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260930-5';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20260930-5';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -879,6 +880,7 @@ async function initialize() {
   scale = new maplibregl.ScaleControl({ unit: settings.units });
   map.addControl(scale, 'bottom-left');
   map.on('move', fitScale); fitScale();
+  installKeyboardPan(map, {reducedMotion: () => matchMedia('(prefers-reduced-motion: reduce)').matches});
   drawing = new Drawing(map, {units: () => settings.units, status: text => { $('draw-status').textContent = text; }, changed: updateDrawing});
   measuring = new Measure(map, {units: () => settings.units, status: text => { $('measure-status').textContent = text; }, changed: updateDrawing, heights: elevation.heights});
   map.on('style.load', installDrawing);
