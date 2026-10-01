@@ -447,6 +447,31 @@ test('station track counts include sidings, not yards; a station with no area co
   const bays = [track(0, 'siding'), track(5, 'siding'), track(10, 'siding'), track(15, 'yard')];
   assert.deepEqual(stationTracks(bays, [zone], 1).map(p => p.tracks), [3]);
 });
+test('track counts: stacked tunnels are two tracks; light rail and main lines are counted apart', async () => {
+  const {countTracks, stationTracks, trackLines} = await import('../styles/track-count.mjs');
+  // 1 unit = 1 m. Two tunnels of one line, one above the other, drawn on the
+  // same plan line for 600 m (as south of Austin, Hong Kong): two tracks.
+  const tml = {group: 'rail', main: true, tunnel: true, line: 'Tuen Ma Line'};
+  const stacked = countTracks([{...tml, parts: [[[0, 0], [1000, 0]]]}, {...tml, parts: [[[200, 0], [800, 0]]]}], 1);
+  assert.ok(stacked.points.some(p => p.tracks === 2 && p.x > 250 && p.x < 750), JSON.stringify(stacked.points));
+  // A way meeting another end to end stays one track.
+  const joined = countTracks([{...tml, parts: [[[0, 0], [500, 0]]]}, {...tml, parts: [[[500, 0], [1000, 0]]]}], 1);
+  assert.ok(joined.points.every(p => p.tracks === 1), JSON.stringify(joined.points));
+  // A light rail pair 10 m from a main-line pair on a viaduct (north of
+  // Choy Yee Bridge): two and two, not four.
+  const feature = (properties, y) => ({type: 2, properties: {state: 'present', ...properties}, loadGeometry: () => [[{x: 0, y}, {x: 1000, y}]]});
+  const lines = trackLines([feature({feature: 'light_rail', name: 'Light Rail'}, 0), feature({feature: 'light_rail', name: 'Light Rail'}, 4),
+    feature({feature: 'rail', name: 'Tuen Ma Line', bridge: true}, 14), feature({feature: 'rail', name: 'Tuen Ma Line', bridge: true}, 20)]);
+  assert.deepEqual(lines.map(l => l.group), ['light_rail', 'light_rail', 'rail', 'rail']);
+  assert.deepEqual(countTracks(lines, 1).lines.map(l => l.tracks), [2, 2, 2, 2]);
+  // A station area holding a light rail stop and a main-line station counts
+  // each kind's tracks on its own (Ho Tin and Tuen Mun).
+  const zone = {inside: (x, y) => x >= 300 && x <= 700 && y >= -10 && y <= 30, groups: ['light_rail', 'rail']};
+  assert.deepEqual(stationTracks(lines, [zone], 1).map(p => [p.group, p.tracks]), [['light_rail', 2], ['rail', 2]]);
+  // Among equally wide places, one where the badge can be drawn.
+  const [inside] = stationTracks(lines, [{inside: zone.inside, groups: ['rail']}], 1, {prefer: x => x > 600});
+  assert.ok(inside.x > 600, JSON.stringify(inside));
+});
 test('legend colours equal the drawn colours for power, gauge and loading gauge', async () => {
   const m = await import('../styles/map-model.mjs');
   const {expression} = await import('@maplibre/maplibre-gl-style-spec');
