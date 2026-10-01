@@ -299,8 +299,35 @@ export function stationTracks(lines, zones, metres, {prefer = () => true} = {}) 
   return zones.flatMap(zone => (zone.groups || ['rail']).map(group => { const best = widest(zone, group); return best && {x: best.x, y: best.y, tracks: best.tracks, group}; }));
 }
 
+// The pieces of one way read from neighbouring tiles, joined again. Tiles
+// overlap (each reaches a little beyond its edges), so where the way runs on
+// from one piece into the next, the first piece's end lies on the second;
+// the way keeps its direction in every tile. Pieces that cannot be joined
+// (the way leaves the tiles read) stay apart.
+const STITCH = 2 + SLACK;    // tile units: a piece's end this close to another piece lies on it
+export function stitchParts(parts, tolerance = STITCH) {
+  let pieces = parts.filter(part => part.length > 1);
+  const join = (a, b) => {
+    const [x, y] = a.at(-1);
+    for (let k = 1; k < b.length; k++) {
+      const [x1, y1] = b[k-1], [x2, y2] = b[k], ex = x2 - x1, ey = y2 - y1, l2 = ex * ex + ey * ey;
+      const t = l2 ? Math.max(0, Math.min(1, ((x - x1) * ex + (y - y1) * ey) / l2)) : 0;
+      if (Math.hypot(x1 + ex * t - x, y1 + ey * t - y) <= tolerance) return [...a, ...b.slice(k)];
+    }
+    return null;
+  };
+  for (let joined = true; joined && pieces.length > 1;) {
+    joined = false;
+    search: for (let i = 0; i < pieces.length; i++) for (let j = 0; j < pieces.length; j++) {
+      const line = i !== j && join(pieces[i], pieces[j]);
+      if (line) { pieces = pieces.filter((_, k) => k !== i && k !== j).concat([line]); joined = true; break search; }
+    }
+  }
+  return pieces;
+}
+
 // Connectors: ways mapped as track that only link two tracks (crossovers,
-// single or scissors, of any length) but are not tagged service=crossover.
+// single or scissors, of any length) but carry no service tag.
 // A way is one when both ends branch off other track (each end meets two or
 // more ways, or one way in its middle: a turnout) and, between just inside
 // its start and just inside its end, it moves across the parallel tracks
@@ -341,7 +368,9 @@ export function connectors(lines, metres) {
     const t = Math.max(0, Math.min(s.length, (x - s.x1) * s.dx + (y - s.y1) * s.dy));
     return Math.hypot(s.x1 + s.dx * t - x, s.y1 + s.dy * t - y);
   };
-  const ends = line => line.parts.flatMap(part => [part[0], part.at(-1)]);
+  // Each way whole, though read in pieces from several tiles.
+  const joined = lines.map(line => line && stitchParts(line.parts));
+  const ends = index => joined[index].flatMap(part => [part[0], part.at(-1)]);
   // The ways meeting the point (x, y) other than `index`: does a turnout
   // join there (two or more ways, or one passing through)?
   const branches = (index, group, x, y) => {
@@ -350,7 +379,7 @@ export function connectors(lines, metres) {
     if (touching.size >= 2) return {joined: true, touching};
     const [other] = touching.keys();
     if (other === undefined) return {joined: false, touching};
-    const through = !ends(lines[other]).some(([ex, ey]) => Math.hypot(ex - x, ey - y) <= touch);
+    const through = !ends(other).some(([ex, ey]) => Math.hypot(ex - x, ey - y) <= touch);
     return {joined: through, touching};
   };
   // Parallel tracks crossing a perpendicular probe at (x, y), heading d:
@@ -369,8 +398,9 @@ export function connectors(lines, metres) {
   };
   const found = new Set(), inset = CONNECTOR_INSET / metres;
   lines.forEach((line, index) => {
-    if (!line || line.parts.length !== 1) return;
-    const part = line.parts[0], total = lengthOf([part]);
+    // A way already tagged (a siding, a yard track) keeps its tag.
+    if (!line || line.service || joined[index].length !== 1) return;
+    const part = joined[index][0], total = lengthOf([part]);
     if (part.length < 2 || !total || total > CONNECTOR_MAX / metres) return;
     const [sx, sy] = part[0], [ex, ey] = part.at(-1);
     const a = branches(index, line.group, sx, sy), b = branches(index, line.group, ex, ey);
@@ -442,13 +472,14 @@ export function stubs(lines, metres, extent = 4096) {
     return out;
   };
   const nearEdge = ([x, y]) => x < -extent + margin || y < -extent + margin || x > 2 * extent - margin || y > 2 * extent - margin;
-  const endsOf = line => line.parts.flatMap(part => [part[0], part.at(-1)]);
+  const joined = lines.map(line => line && stitchParts(line.parts));
+  const endsOf = index => joined[index].flatMap(part => [part[0], part.at(-1)]);
   lines.forEach((line, index) => {
-    if (!line || line.service || line.parts.length !== 1 || lengthOf(line.parts) * metres > STUB_MAX) return;
-    const part = line.parts[0], [s, e] = [part[0], part.at(-1)];
+    if (!line || line.service || joined[index].length !== 1 || lengthOf(joined[index]) * metres > STUB_MAX) return;
+    const part = joined[index][0], [s, e] = [part[0], part.at(-1)];
     if (nearEdge(s) || nearEdge(e)) return;
     const ts = touching(index, line.group, s), te = touching(index, line.group, e);
-    const turnout = (p, set) => set.size >= 2 || [...set].some(i => !endsOf(lines[i]).some(q => Math.hypot(q[0] - p[0], q[1] - p[1]) <= touch));
+    const turnout = (p, set) => set.size >= 2 || [...set].some(i => !endsOf(i).some(q => Math.hypot(q[0] - p[0], q[1] - p[1]) <= touch));
     if ((ts.size === 0 && turnout(e, te)) || (te.size === 0 && turnout(s, ts))) found.add(index);
   });
   return found;

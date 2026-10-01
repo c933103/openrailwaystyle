@@ -770,7 +770,7 @@ test('owner view: a colour per owner name, the same everywhere; its own tile sou
 });
 
 test('track counts: untagged crossovers and sidings are not running tracks', async () => {
-  const {connectors, stubs, stationTracks} = await import('../styles/track-count.mjs');
+  const {connectors, stitchParts, stubs, stationTracks} = await import('../styles/track-count.mjs');
   // 1 unit = 1 m. Two parallel tracks 5 m apart, each split at the turnouts.
   const track = (y, from, to) => ({group: 'rail', main: true, parts: [[[from, y], [to, y]]]});
   const leg = (a, b) => ({group: 'rail', main: true, parts: [[a, b]]});
@@ -789,6 +789,17 @@ test('track counts: untagged crossovers and sidings are not running tracks', asy
   // (The track runs on beyond the tiles read: extent 1000 covers −1000 to 2000.)
   const siding = [track(0, -1000, 0), track(0, 0, 2000), {group: 'rail', main: true, parts: [[[0, 0], [40, 5], [300, 5]]]}];
   assert.deepEqual([...stubs(siding, 1, 1000)], [2]);
+  // A tagged siding with a crossover's shape keeps its tag.
+  const tagged = scissors.map((line, i) => i === 6 ? {...line, main: false, service: 'siding'} : line);
+  assert.deepEqual([...connectors(tagged, 1)], [7]);
+  // A way read in pieces from two tiles (overlapping at their margins) is
+  // still recognised, as a crossover or as a stub.
+  const split = scissors.map((line, i) => i === 6 ? {...line, parts: [[[0, 0], [100, 100 * 5 / 170]], [[90, 90 * 5 / 170], [170, 5]]]} : line);
+  assert.deepEqual([...connectors(split, 1)].sort(), [6, 7]);
+  const splitSiding = siding.map((line, i) => i === 2 ? {...line, parts: [[[0, 0], [40, 5], [200, 5]], [[180, 5], [300, 5]]]} : line);
+  assert.deepEqual([...stubs(splitSiding, 1, 1000)], [2]);
+  assert.deepEqual(stitchParts([[[90, 0], [170, 0]], [[0, 0], [100, 0]]]), [[[0, 0], [100, 0], [170, 0]]]);
+  assert.equal(stitchParts([[[0, 0], [10, 0]], [[50, 0], [60, 0]]]).length, 2, 'pieces with a gap stay apart');
   // A station across the scissors counts its two tracks, not four.
   const zone = {inside: (x, y) => x >= -100 && x <= 300 && y >= -20 && y <= 25};
   for (const i of connectors(scissors, 1)) Object.assign(scissors[i], {main: false, service: 'crossover'});
