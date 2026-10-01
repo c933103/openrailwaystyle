@@ -277,7 +277,9 @@ function osmLink(panel, feature) {
     // name it (node-…, way-…) once the map has drawn the place.
     if (feature.kind === 'station' && /^\d+$/.test(String(feature.properties?.osm_id ?? ''))) {
       const resolve = () => { const found = ready && stationObject(feature.properties.osm_id); if (found && link.isConnected) toObject(found); return found; };
-      whenReady(() => { if (!resolve()) map.once('idle', resolve); });
+      const lookUp = () => { if (!resolve()) map.once('idle', resolve); };
+      // After any queued action (a search result's fly-to), not instead of it.
+      if (ready) lookUp(); else { const queued = pendingView; pendingView = () => { queued?.(); lookUp(); }; }
     }
   } else return;
   link.target = '_blank'; link.rel = 'noopener'; link.className = 'osm-link';
@@ -412,7 +414,8 @@ const CROSSING_TAGS = [['crossing:barrier','Barriers'],['crossing:light','Lights
   ['crossing','Crossing type'],['access','Access'],['description','Description'],['name','Name'],['ref','Reference']];
 const crossingCache=new Map();
 async function nearestCrossing(lngLat) {
-  const z=DETAIL_CROSSING_ZOOM, n=2**z, x=Math.floor((lngLat.lng+180)/360*n), lat=lngLat.lat*Math.PI/180;
+  // Columns wrap (world copies of the flat map, and 180° itself).
+  const z=DETAIL_CROSSING_ZOOM, n=2**z, x=((Math.floor((lngLat.lng+180)/360*n)%n)+n)%n, lat=lngLat.lat*Math.PI/180;
   const y=Math.floor((1-Math.asinh(Math.tan(lat))/Math.PI)/2*n);
   try {
     const response=await fetch(new URL(`./data/level-crossings/${z}/${x}/${y}.pbf.gz`, import.meta.url));
@@ -423,7 +426,9 @@ async function nearestCrossing(lngLat) {
     for(let i=0;i<layer.length;i++) {
       const f=layer.feature(i);if(f.properties.minor) continue;
       const [{x:px,y:py}]=f.loadGeometry()[0], tx=x+px/f.extent, ty=y+py/f.extent;
-      const point=[tx/n*360-180, Math.atan(Math.sinh(Math.PI*(1-2*ty/n)))*180/Math.PI], screen=map.project(point);
+      const point=[tx/n*360-180, Math.atan(Math.sinh(Math.PI*(1-2*ty/n)))*180/Math.PI];
+      point[0]+=Math.round((lngLat.lng-point[0])/360)*360; // into the clicked world copy
+      const screen=map.project(point);
       const distance=Math.hypot(screen.x-click.x,screen.y-click.y);
       if(distance<bestDistance) {bestDistance=distance;best={id:f.id,properties:{...f.properties},geometry:{type:'Point',coordinates:point}};}
     }
