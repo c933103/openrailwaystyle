@@ -75,7 +75,7 @@ export function searchResults(facilities, places) {
 // Map background: the drawn base map, satellite imagery alone, or imagery
 // under the railways (hybrid).
 export const BACKGROUNDS = ['map', 'satellite', 'hybrid'];
-export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge', 'loading', 'owner', 'service'];
+export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge', 'loading', 'service', 'owner'];
 export const LANGUAGES = [
   ['local','Local names'], ['en','English'], ['ko','한국어'], ['ja','日本語'],
   ['zh-Hant','繁體中文'], ['zh-Hans','简体中文'], ['de','Deutsch'], ['fr','Français'],
