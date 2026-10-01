@@ -189,9 +189,10 @@ style.layers.splice(style.layers.findIndex(l=>l.id==='infrastructure-tracks'),0,
   {...metroBridge,id:'structure-metro-bridge-edge',paint:structuredClone(style.layers.find(l=>l.id==='structure-bridge-edge').paint)},
   {...metroBridge,id:'structure-metro-bridge-deck',paint:structuredClone(style.layers.find(l=>l.id==='structure-bridge-deck').paint)},
 );
-style.layers.push({...metroStructure,id:'structure-metro-tunnel',filter:['all',present,['==',['get','tunnel'],true]],paint:structuredClone(style.layers.find(l=>l.id==='structure-tunnel').paint)});
+// The second gauge under the tunnel core, as gauge-dual is under structure-tunnel.
 style.layers.push({...structuredClone(style.layers.find(l=>l.id==='gauge-dual')), id:'gauge-metro-dual', source:'branchLines', 'source-layer':'branch_lines', minzoom:7, maxzoom:10,
   filter:['all', present, isDual]});
+style.layers.push({...metroStructure,id:'structure-metro-tunnel',filter:['all',present,['==',['get','tunnel'],true]],paint:structuredClone(style.layers.find(l=>l.id==='structure-tunnel').paint)});
 // Planned, construction and former lines. line-dasharray cannot vary by
 // feature, so each state has its own layers: long dashes with short gaps for
 // construction, spaced round dots for proposals, dash-dot for disused and

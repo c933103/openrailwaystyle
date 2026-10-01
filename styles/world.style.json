@@ -12559,65 +12559,6 @@
       }
     },
     {
-      "type": "line",
-      "source": "branchLines",
-      "source-layer": "branch_lines",
-      "minzoom": 7,
-      "layout": {
-        "line-cap": "butt",
-        "line-join": "round"
-      },
-      "maxzoom": 10,
-      "id": "structure-metro-tunnel",
-      "filter": [
-        "all",
-        [
-          "==",
-          [
-            "coalesce",
-            [
-              "get",
-              "state"
-            ],
-            "present"
-          ],
-          "present"
-        ],
-        [
-          "==",
-          [
-            "get",
-            "tunnel"
-          ],
-          true
-        ]
-      ],
-      "paint": {
-        "line-color": "#fffef8",
-        "line-width": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          7,
-          0.7,
-          10,
-          1.1,
-          14,
-          2,
-          18,
-          3
-        ],
-        "line-dasharray": [
-          3,
-          2
-        ]
-      }
-    },
-    {
       "id": "gauge-metro-dual",
       "type": "line",
       "source": "branchLines",
@@ -12935,6 +12876,65 @@
         ]
       },
       "maxzoom": 10
+    },
+    {
+      "type": "line",
+      "source": "branchLines",
+      "source-layer": "branch_lines",
+      "minzoom": 7,
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "maxzoom": 10,
+      "id": "structure-metro-tunnel",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "tunnel"
+          ],
+          true
+        ]
+      ],
+      "paint": {
+        "line-color": "#fffef8",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          0.7,
+          10,
+          1.1,
+          14,
+          2,
+          18,
+          3
+        ],
+        "line-dasharray": [
+          3,
+          2
+        ]
+      }
     },
     {
       "type": "line",

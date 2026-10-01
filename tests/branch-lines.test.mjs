@@ -113,6 +113,7 @@ test('style: branch lines under the main overview lines in every view, from zoom
     assert.deepEqual(layer.paint, detailed.paint, `${id} drawn as ${like}`);
   }
   assert.ok(ids.indexOf('structure-metro-bridge-edge') < ids.indexOf('infrastructure-metro-overview'), 'bridge parapets under the metro lines');
+  assert.ok(ids.indexOf('gauge-metro-dual') < ids.indexOf('structure-metro-tunnel'), 'the tunnel core over both gauge halves');
   const dual = style.layers.find(l => l.id === 'gauge-branch-dual'), branch = style.layers.find(l => l.id === 'gauge-branch-overview');
   assert.deepEqual([dual.source, dual['source-layer'], dual.minzoom, dual.maxzoom], ['branchLines', 'branch_lines', 4, 7], 'second gauge drawn on branch lines');
   assert.ok(JSON.stringify(dual.filter).includes('gaugeint1') && ids.indexOf(dual.id) > ids.indexOf(branch.id));
