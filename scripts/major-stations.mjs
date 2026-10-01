@@ -20,6 +20,9 @@ export function selectMajorStations(entries){
  }
  return entries.map(e=>({...e,tier:tiers.get(e.wikidata)??7}));
 }
+export function validateStationCountries(entries){
+ for(const e of entries)if(!e.countryEvidence?.includes(e.country)&&!(e.country==='HK'&&e.countryEvidence?.includes('CN')))throw new Error(`Station country conflicts with recorded evidence: ${e.name}`);
+}
 export function majorStationsGeoJSON(entries){
  const seen=new Set();for(const e of entries){
   if(seen.has(e.wikidata)||!/^Q\d+$/.test(e.wikidata)||!/^(node|way|relation)\/[1-9]\d*$/.test(e.osm)||!e.name||!e.basis||!Number.isFinite(e.lon)||!Number.isFinite(e.lat)||Math.abs(e.lon)>180||Math.abs(e.lat)>90||![3,4,5,6].includes(e.minZoom))throw new Error(`Invalid major station: ${e.name}`);seen.add(e.wikidata);

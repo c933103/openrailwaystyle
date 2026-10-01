@@ -28,6 +28,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     }
     once(name,handler) {this.handlers[name]=handler;}
     setStyle(style, options) {this.options.style=style;this.styleOptions=options;this.handlers['style.load']?.();}
+    removeControl(control) { this.controls = this.controls.filter(c => c !== control); }
     addControl(control) { (this.controls ||= []).push(control); }
     addImage(id, data, options) { this.image = {id,data,options}; }
     off(name) { delete this.handlers[name]; }
@@ -63,7 +64,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   // This is the MapLibre 5 public surface used by the app. In particular,
   // supported() is absent: older Mapbox examples must not gate startup.
   const libraries = {};
-  libraries.maplibregl = {Map, addProtocol(){}, NavigationControl:class { constructor(options) { maps.controls.push(options); } }, GeolocateControl:class { constructor(options) { maps.controls.push(options); } }, ScaleControl:class { constructor(options) { this.unit = options.unit; maps.scale = this; } setUnit(unit) { this.unit = unit; } }};
+  libraries.maplibregl = {Map, addProtocol(){}, NavigationControl:class { constructor(options) { maps.controls.push(options); } }, GeolocateControl:class { constructor(options) { maps.controls.push(options); } }, AttributionControl:class {constructor(options){this.options=options;}}, ScaleControl:class { constructor(options) { this.unit = options.unit; maps.scale = this; } setUnit(unit) { this.unit = unit; } }};
   maps.controls = [];
   libraries.pmtiles = {Protocol:class { tile() {} }};
   libraries.mlcontour = {DemSource:class {constructor(options){this.options=options; (maps.dems ||= []).push(options);} setupMaplibre(){} contourProtocolUrl(options){return `${this.options.id}-contour://${options.multiplier ? 'ft' : 'm'}/{z}/{x}/{y}`;} sharedDemProtocolUrl='atlas-shared://{z}/{x}/{y}';}};
@@ -304,6 +305,27 @@ test('station inspection finds nearby interchanges and facility inspection avoid
     assert.match(detail.textContent,/TRANSPORT FACILITY/);
     assert.doesNotMatch(detail.textContent,/Speed|Not recorded|RAILWAY INFRASTRUCTURE/);
     assert.equal(errors.length,0);
+  } finally {dom.window.close();}
+});
+
+test('Carto shows railway overlays, honours terrain, hides duplicate basemap labels and keeps attribution open', async () => {
+  const {dom,window,maps} = await start({search:'?background=carto'});
+  try {
+    const map=maps[0], layer=id=>map.options.style.layers.find(l=>l.id===id);
+    assert.equal(layer('carto').layout.visibility,'visible');
+    assert.equal(layer('satellite').layout.visibility,'none');
+    assert.equal(layer('water').layout.visibility,'none');
+    assert.ok(map.controls.some(c=>c.options?.compact===false));
+    map.handlers['style.load']();
+    assert.equal(map.visibility['infrastructure-tracks'],'visible');
+    assert.equal(map.visibility['terrain-relief'],'visible');
+    assert.equal(map.visibility['water'],'none');
+    assert.equal(window.document.getElementById('legend').hidden,false);
+    window.document.getElementById('relief').click();
+    assert.equal(map.visibility['terrain-relief'],'none');
+    window.document.querySelector('[data-background="map"]').click();
+    assert.equal(map.visibility.carto,'none');
+    assert.equal(map.visibility.water,'visible');
   } finally {dom.window.close();}
 });
 

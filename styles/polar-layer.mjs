@@ -11,6 +11,7 @@ import {CAP_RADIUS, MERCATOR_LIMIT, bandFor, decodeLine, fromPolar, toPolar} fro
 // (hsl(47, 26%, 88%) at 0.8), runways, contours; and the caps under
 // satellite imagery.
 const COLOURS = {noImagery: '#000000', land: '#f2f1e9', water: '#bfd8e0', iceShelf: '#e8e5d8', runway: '#ffffff', contourLand: '#927b5a', contourSeabed: '#467d9a'};
+const CARTO_COLOURS = {...COLOURS,land:'#f2efe9',water:'#aad3df',iceShelf:'#ddecec'};
 const rgba = (hex, alpha = 1) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).concat(alpha);
 // Opacity by zoom, as the style's contour layers: [zoom, opacity] stops.
 const ramp = (stops, zoom) => {
@@ -132,8 +133,8 @@ const FRAGMENT = `precision mediump float; uniform vec4 u_color; out vec4 fragCo
 // background is satellite imagery, which has no picture beyond 85.05°: the
 // caps are then plain black rather than a drawn map beside a photograph.
 export class PolarLayer {
-  constructor({data, units, maxTileBytes=32*1024*1024, maxTiles=64, relief = () => true, places = () => {}, imagery = () => false}) {
-    Object.assign(this, {id: 'polar-caps', type: 'custom', renderingMode: '2d', data, units, relief, places, imagery});
+  constructor({data, units, maxTileBytes=32*1024*1024, maxTiles=64, relief = () => true, places = () => {}, imagery = () => false, palette = () => 'map'}) {
+    Object.assign(this, {id: 'polar-caps', type: 'custom', renderingMode: '2d', data, units, relief, places, imagery, palette});
     this.maxTileBytes=maxTileBytes;this.maxTiles=maxTiles;this.visibleKeys=new Set();this.generation=0;
     this.programs = new Map(); this.caps = {north: {}, south: {}}; this.tiles = new Map();
   }
@@ -337,15 +338,15 @@ export class PolarLayer {
     // Line quads come in either winding, so nothing is culled.
     gl.disable(gl.CULL_FACE); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     this.visibleKeys=new Set();
-    const view = this.visible(), imagery = this.imagery();
+    const view = this.visible(), imagery = this.imagery(), colours = this.palette() === 'carto' ? CARTO_COLOURS : COLOURS;
     for (const cap of ['north', 'south']) {
       if (!view[cap]) continue;
       this.loadCap(cap);
       const state = this.caps[cap];
-      if (imagery) { this.fill(state.disc, options.shaderData, projection, rgba(COLOURS.noImagery, fade)); continue; }
-      this.fill(state.disc, options.shaderData, projection, rgba(cap === 'north' ? COLOURS.water : COLOURS.land, fade));
-      this.fill(state.water, options.shaderData, projection, rgba(COLOURS.water, fade));
-      this.fill(state.iceShelves, options.shaderData, projection, rgba(COLOURS.iceShelf, 0.8 * fade));
+      if (imagery) { this.fill(state.disc, options.shaderData, projection, rgba(colours.noImagery, fade)); continue; }
+      this.fill(state.disc, options.shaderData, projection, rgba(cap === 'north' ? colours.water : colours.land, fade));
+      this.fill(state.water, options.shaderData, projection, rgba(colours.water, fade));
+      this.fill(state.iceShelves, options.shaderData, projection, rgba(colours.iceShelf, 0.8 * fade));
       const terrain = this.relief();
       if (terrain && state.relief && state.index?.relief) this.drawRelief(cap, state, options.shaderData, projection, zoom, fade);
       // The finest band prepared for this zoom (only the coarsest may exist).
@@ -360,11 +361,11 @@ export class PolarLayer {
           if (tile.loading || tile.failed) continue;
           for (const [part, kind, major] of [['seabedMinor', 'seabed', 0], ['seabedMajor', 'seabed', 1], ['landMinor', 'land', 0], ['landMajor', 'land', 1]]) {
             if (zoom < MIN_ZOOM[kind]) continue;
-            this.line(tile[part], options.shaderData, projection, rgba(kind === 'land' ? COLOURS.contourLand : COLOURS.contourSeabed, ramp(OPACITY[kind], zoom) * fade), major ? 0.8 : 0.4);
+            this.line(tile[part], options.shaderData, projection, rgba(kind === 'land' ? colours.contourLand : colours.contourSeabed, ramp(OPACITY[kind], zoom) * fade), major ? 0.8 : 0.4);
           }
         }
       }
-      if (zoom >= MIN_ZOOM.runway) this.line(state.runways, options.shaderData, projection, rgba(COLOURS.runway, fade), 2);
+      if (zoom >= MIN_ZOOM.runway) this.line(state.runways, options.shaderData, projection, rgba(colours.runway, fade), 2);
       if (zoom >= MIN_ZOOM.places && state.places) labels.push(...state.places.filter(p => !this.map.transform?.isLocationOccluded?.({lng: p.lngLat[0], lat: p.lngLat[1]})));
     }
     this.pruneTiles();

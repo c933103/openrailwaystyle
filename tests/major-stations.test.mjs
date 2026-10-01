@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {majorStationsGeoJSON,selectMajorStations,distanceKm,separationPixels,duplicatesMajorStation} from '../scripts/major-stations.mjs';
+import {validateStationCountries,majorStationsGeoJSON,selectMajorStations,distanceKm,separationPixels,duplicatesMajorStation} from '../scripts/major-stations.mjs';
 import {readFile} from 'node:fs/promises';
 import {chooseName,osmObject} from '../styles/map-model.mjs';
 const entry=(id,lon,lat,extra={})=>({wikidata:`Q${id}`,osm:`node/${id}`,lon,lat,name:`Hub ${id}`,country:'X',metro:`City ${id}`,region:'Test',rank:id,minZoom:3,basis:'Curated passenger hub; https://www.wikidata.org/wiki/Q'+id,...extra});
@@ -34,4 +34,10 @@ test('reviewed worldwide candidates retain principal hubs and postpone adjacent 
  assert.equal(byId.get('Q801447').tier,7,'Shinjuku waits for space');assert.equal(byId.get('Q11290').tier,7,'Grand Central waits for space');
  assert.equal(new Set(entries.map(e=>e.region)).size,10);
  for(let z=3;z<=4;z++){const places=picked.filter(e=>e.tier<=z).map(e=>e.country+':'+e.metro);assert.equal(new Set(places).size,places.length);}
+});
+
+test('station country evidence rejects homonymous foreign stations and keeps Lagos in Nigeria',async()=>{
+ const entries=JSON.parse(await readFile(new URL('../styles/data-src/major-stations.json',import.meta.url)));validateStationCountries(entries);
+ const lagos=entries.find(e=>e.metro==='Lagos');assert.equal(lagos.osm,'node/12260658320');assert.equal(lagos.country,'NG');assert.ok(lagos.lon>3&&lagos.lon<4&&lagos.lat>6&&lagos.lat<7);
+ assert.equal(entries.some(e=>e.wikidata==='Q17087683'||e.wikidata==='Q8780001'),false);assert.throws(()=>validateStationCountries([{name:'Lagos',country:'NG',countryEvidence:['PT']}]));
 });

@@ -1,11 +1,12 @@
-import {majorStationsGeoJSON,curatedStationFilter} from './major-stations.mjs';
+import {validateStationCountries,majorStationsGeoJSON,curatedStationFilter} from './major-stations.mjs';
 import { readFile, writeFile } from 'node:fs/promises';
 import {roadLayers, constraintLayers} from './planning-style.mjs';
 import {contextLayers} from './context-style.mjs';
 import {OVERVIEW_ZOOM, DETAIL_ZOOM} from './crossing-data.mjs';
-import { ORM, axlePaint, axleLabel, LIGHT_MODES, MINOR_MODES, LIFECYCLE_PATTERNS, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, ownerPaint, loadingLabel, trainProtectionShort, TRAIN_PROTECTION, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
+import { CARTO_TILES, ORM, axlePaint, axleLabel, LIGHT_MODES, MINOR_MODES, LIFECYCLE_PATTERNS, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, ownerPaint, loadingLabel, trainProtectionShort, TRAIN_PROTECTION, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
 
 const majorStations=JSON.parse(await readFile(new URL('../styles/data-src/major-stations.json',import.meta.url)));
+validateStationCountries(majorStations);
 await writeFile(new URL('../styles/major-stations.geojson',import.meta.url),JSON.stringify(majorStationsGeoJSON(majorStations))+'\n');
 // Keep the Hack4Rail base-map design and replace its Europe-only rail source.
 const original = JSON.parse(await readFile(new URL('../styles/default.style.json', import.meta.url)));
@@ -69,6 +70,7 @@ const style = {
     // enlarged beyond it, which also spares EOX's free service.
     satellite: {type:'raster', tiles:['https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2025_3857/default/g/{z}/{y}/{x}.jpg'], tileSize:256, maxzoom:14,
       attribution:'<a href="https://cloudless.eox.at">EOxCloudless https://cloudless.eox.at</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2025), <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>'},
+    carto: {type:'raster',tiles:[CARTO_TILES],tileSize:256,maxzoom:19,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>'},
     relief: {type:'raster-dem', tiles:[DEM_URL], tileSize:256, encoding:'terrarium', maxzoom:15, attribution:'<a href="terrain-credits.html">Terrain: Mapzen / AWS and data contributors</a>'},
   },
   // The base map's airport layers are replaced by the transport context
@@ -462,6 +464,7 @@ for (const l of style.layers) {
 }
 // Satellite imagery directly above the background, off unless chosen.
 style.layers.splice(style.layers.findIndex(l => l.id === 'background') + 1, 0, {id:'satellite', type:'raster', source:'satellite', layout:{visibility:'none'}, paint:{'raster-fade-duration':150}});
+style.layers.splice(style.layers.findIndex(l => l.id === 'background') + 1, 0, {id:'carto',type:'raster',source:'carto',layout:{visibility:'none'},paint:{'raster-fade-duration':150}});
 // Country names last: MapLibre places later layers first, and the few
 // country names should not give way to station names.
 for (const id of ['country_label-other', 'country_label']) style.layers.push(...style.layers.splice(style.layers.findIndex(l => l.id === id), 1));

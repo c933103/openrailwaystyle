@@ -33,7 +33,11 @@
     "wikidata": "Q283196",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "JP"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q283196#P17"
   },
   {
     "osm": "node/2389061844",
@@ -63,7 +67,11 @@
     "wikidata": "Q801447",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "JP"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q801447#P17"
   },
   {
     "osm": "node/3626952971",
@@ -90,7 +98,11 @@
     "wikidata": "Q801438",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "JP"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q801438#P17"
   },
   {
     "osm": "node/346685291",
@@ -115,7 +127,11 @@
     "wikidata": "Q801694",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "JP"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q801694#P17"
   },
   {
     "osm": "node/4919810141",
@@ -141,7 +157,11 @@
     "wikidata": "Q49381",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "JP"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q49381#P17"
   },
   {
     "osm": "node/267316272",
@@ -168,7 +188,11 @@
     "wikidata": "Q801046",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "JP"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q801046#P17"
   },
   {
     "osm": "node/3637038754",
@@ -193,7 +217,11 @@
     "wikidata": "Q800875",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "JP"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q800875#P17"
   },
   {
     "osm": "node/4086852685",
@@ -214,7 +242,11 @@
     "wikidata": "Q801404",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "JP"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q801404#P17"
   },
   {
     "osm": "node/3570916502",
@@ -237,7 +269,11 @@
     "wikidata": "Q801429",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "JP"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q801429#P17"
   },
   {
     "osm": "node/6624627173",
@@ -269,7 +305,11 @@
     "wikidata": "Q576459",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "JP"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q576459#P17"
   },
   {
     "osm": "node/3977645705",
@@ -292,7 +332,11 @@
     "wikidata": "Q1136378",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "JP"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1136378#P17"
   },
   {
     "osm": "node/8667971394",
@@ -313,7 +357,11 @@
     "wikidata": "Q860503",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "JP"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q860503#P17"
   },
   {
     "osm": "node/5603040079",
@@ -334,7 +382,11 @@
     "wikidata": "Q1316913",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "JP"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1316913#P17"
   },
   {
     "osm": "way/23641610",
@@ -357,7 +409,11 @@
     "wikidata": "Q700588",
     "mappedFeature": "building=train_station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "TW"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q700588#P17"
   },
   {
     "osm": "node/5981456317",
@@ -387,7 +443,11 @@
     "wikidata": "Q709900",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "TW"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q709900#P17"
   },
   {
     "osm": "node/539260172",
@@ -407,7 +467,11 @@
     "wikidata": "Q163962",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q163962#P17"
   },
   {
     "osm": "node/7780210950",
@@ -426,7 +490,11 @@
     "wikidata": "Q523887",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q523887#P17"
   },
   {
     "osm": "node/4610023440",
@@ -448,7 +516,11 @@
     "wikidata": "Q1088925",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1088925#P17"
   },
   {
     "osm": "node/3677030154",
@@ -467,7 +539,11 @@
     "wikidata": "Q1073420",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1073420#P17"
   },
   {
     "osm": "node/7855785186",
@@ -486,7 +562,11 @@
     "wikidata": "Q1047372",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1047372#P17"
   },
   {
     "osm": "node/5369745039",
@@ -505,7 +585,11 @@
     "wikidata": "Q3272538",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q3272538#P17"
   },
   {
     "osm": "node/7900305742",
@@ -524,7 +608,12 @@
     "wikidata": "Q996591",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN",
+      "GB"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q996591#P17"
   },
   {
     "osm": "node/7212021583",
@@ -545,7 +634,11 @@
     "wikidata": "Q5091316",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q5091316#P17"
   },
   {
     "osm": "node/654769359",
@@ -566,7 +659,11 @@
     "wikidata": "Q5104670",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q5104670#P17"
   },
   {
     "osm": "node/579971406",
@@ -585,7 +682,11 @@
     "wikidata": "Q584376",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q584376#P17"
   },
   {
     "osm": "node/4185074601",
@@ -604,7 +705,11 @@
     "wikidata": "Q5934499",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q5934499#P17"
   },
   {
     "osm": "node/6654827885",
@@ -623,7 +728,11 @@
     "wikidata": "Q8070777",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q8070777#P17"
   },
   {
     "osm": "node/2483530943",
@@ -645,7 +754,11 @@
     "wikidata": "Q5925968",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q5925968#P17"
   },
   {
     "osm": "node/7160108921",
@@ -665,7 +778,11 @@
     "wikidata": "Q5648115",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q5648115#P17"
   },
   {
     "osm": "node/2865839196",
@@ -686,7 +803,11 @@
     "wikidata": "Q6444895",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q6444895#P17"
   },
   {
     "osm": "node/7691075908",
@@ -709,7 +830,11 @@
     "wikidata": "Q10907353",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q10907353#P17"
   },
   {
     "osm": "node/334358067",
@@ -731,7 +856,11 @@
     "wikidata": "Q1059254",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1059254#P17"
   },
   {
     "osm": "node/676578837",
@@ -756,7 +885,11 @@
     "wikidata": "Q988013",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q988013#P17"
   },
   {
     "osm": "node/9171411689",
@@ -775,7 +908,11 @@
     "wikidata": "Q2617209",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q2617209#P17"
   },
   {
     "osm": "node/273088049",
@@ -794,7 +931,11 @@
     "wikidata": "Q944738",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q944738#P17"
   },
   {
     "osm": "node/8081624907",
@@ -814,7 +955,11 @@
     "wikidata": "Q7267810",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q7267810#P17"
   },
   {
     "osm": "way/227465776",
@@ -834,7 +979,11 @@
     "wikidata": "Q4391478",
     "mappedFeature": "railway=station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q4391478#P17"
   },
   {
     "osm": "node/6999105218",
@@ -853,7 +1002,11 @@
     "wikidata": "Q987678",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q987678#P17"
   },
   {
     "osm": "node/6527623010",
@@ -871,7 +1024,11 @@
     "wikidata": "Q8044109",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q8044109#P17"
   },
   {
     "osm": "node/3481086575",
@@ -890,7 +1047,11 @@
     "wikidata": "Q6487722",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q6487722#P17"
   },
   {
     "osm": "node/5772099311",
@@ -1012,7 +1173,11 @@
     "wikidata": "Q20415",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "KR"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q20415#P17"
   },
   {
     "osm": "node/8693385785",
@@ -1034,7 +1199,11 @@
     "wikidata": "Q53118",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "KR"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q53118#P17"
   },
   {
     "osm": "node/32539105",
@@ -1062,7 +1231,11 @@
     "wikidata": "Q701162",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "KP"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q701162#P17"
   },
   {
     "osm": "node/6131069513",
@@ -1097,7 +1270,11 @@
     "wikidata": "Q2742296",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "IN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q2742296#P17"
   },
   {
     "osm": "node/12176277888",
@@ -1120,7 +1297,11 @@
     "wikidata": "Q235884",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "IN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q235884#P17"
   },
   {
     "osm": "node/3321321335",
@@ -1139,7 +1320,11 @@
     "wikidata": "Q986105",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "IN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q986105#P17"
   },
   {
     "osm": "node/2481969291",
@@ -1160,7 +1345,11 @@
     "wikidata": "Q257382",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "IN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q257382#P17"
   },
   {
     "osm": "node/2669084978",
@@ -1180,7 +1369,11 @@
     "wikidata": "Q3633970",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "IN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q3633970#P17"
   },
   {
     "osm": "node/7572390828",
@@ -1199,7 +1392,11 @@
     "wikidata": "Q15265677",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "IN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q15265677#P17"
   },
   {
     "osm": "node/2669094329",
@@ -1222,7 +1419,11 @@
     "wikidata": "Q5621999",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "IN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q5621999#P17"
   },
   {
     "osm": "way/26753079",
@@ -1241,7 +1442,11 @@
     "wikidata": "Q3544938",
     "mappedFeature": "railway=station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "IN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q3544938#P17"
   },
   {
     "osm": "way/429426172",
@@ -1260,7 +1465,11 @@
     "wikidata": "Q6355669",
     "mappedFeature": "railway=station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "BD"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q6355669#P17"
   },
   {
     "osm": "way/408164895",
@@ -1285,7 +1494,11 @@
     "wikidata": "Q3605245",
     "mappedFeature": "railway=station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "PK"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q3605245#P17"
   },
   {
     "osm": "way/810454622",
@@ -1305,7 +1518,11 @@
     "wikidata": "Q7296934",
     "mappedFeature": "railway=station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "PK"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q7296934#P17"
   },
   {
     "osm": "way/232514810",
@@ -1324,7 +1541,11 @@
     "wikidata": "Q5471883",
     "mappedFeature": "railway=station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "LK"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q5471883#P17"
   },
   {
     "osm": "node/8986366369",
@@ -1346,7 +1567,11 @@
     "wikidata": "Q23925684",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "TH"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q23925684#P17"
   },
   {
     "osm": "relation/18050303",
@@ -1367,7 +1592,11 @@
     "wikidata": "Q125929",
     "mappedFeature": "building=train_station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "TH"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q125929#P17"
   },
   {
     "osm": "node/8797855637",
@@ -1401,7 +1630,11 @@
     "wikidata": "Q1884773",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "TH"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1884773#P17"
   },
   {
     "osm": "node/10591743723",
@@ -1431,7 +1664,11 @@
     "wikidata": "Q1207323",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "VN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1207323#P17"
   },
   {
     "osm": "node/10591979655",
@@ -1454,7 +1691,11 @@
     "wikidata": "Q2673539",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "VN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q2673539#P17"
   },
   {
     "osm": "way/638688527",
@@ -1478,7 +1719,11 @@
     "wikidata": "Q801042",
     "mappedFeature": "railway=station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "MY"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q801042#P17"
   },
   {
     "osm": "node/1639480363",
@@ -1505,7 +1750,11 @@
     "wikidata": "Q6132274",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "MY"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q6132274#P17"
   },
   {
     "osm": "node/4891132084",
@@ -1525,7 +1774,11 @@
     "wikidata": "Q1889128",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "ID"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1889128#P17"
   },
   {
     "osm": "node/10693460294",
@@ -1543,7 +1796,11 @@
     "wikidata": "Q2571158",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "ID"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q2571158#P17"
   },
   {
     "osm": "node/11519736545",
@@ -1564,7 +1821,11 @@
     "wikidata": "Q7374763",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "KH"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q7374763#P17"
   },
   {
     "osm": "node/566997277",
@@ -1588,7 +1849,11 @@
     "wikidata": "Q800161",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "MN"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q800161#P17"
   },
   {
     "osm": "node/4020137342",
@@ -1611,7 +1876,12 @@
     "wikidata": "Q800371",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "KZ",
+      "SU"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q800371#P17"
   },
   {
     "osm": "node/13676555260",
@@ -1631,7 +1901,11 @@
     "wikidata": "Q30642068",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "KZ"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q30642068#P17"
   },
   {
     "osm": "node/2204812766",
@@ -1653,7 +1927,11 @@
     "wikidata": "Q136688834",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "UZ"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q136688834#P17"
   },
   {
     "osm": "node/240449433",
@@ -1673,7 +1951,11 @@
     "wikidata": "Q9172267",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "KG"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q9172267#P17"
   },
   {
     "osm": "node/12660718814",
@@ -1691,7 +1973,11 @@
     "wikidata": "Q800974",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "TR"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q800974#P17"
   },
   {
     "osm": "node/13930771948",
@@ -1710,7 +1996,11 @@
     "wikidata": "Q1341835",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "GE"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1341835#P17"
   },
   {
     "osm": "relation/5963179",
@@ -1731,7 +2021,11 @@
     "wikidata": "Q981696",
     "mappedFeature": "railway=station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "IL"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q981696#P17"
   },
   {
     "osm": "node/26824135",
@@ -1755,7 +2049,11 @@
     "wikidata": "Q747541",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "FR"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q747541#P17"
   },
   {
     "osm": "node/3090733718",
@@ -1780,7 +2078,11 @@
     "wikidata": "Q745942",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "FR"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q745942#P17"
   },
   {
     "osm": "node/2506241285",
@@ -1804,7 +2106,11 @@
     "wikidata": "Q757180",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "FR"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q757180#P17"
   },
   {
     "osm": "node/4290857016",
@@ -1823,7 +2129,11 @@
     "wikidata": "Q2008",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "FR"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q2008#P17"
   },
   {
     "osm": "node/4290857022",
@@ -1841,7 +2151,11 @@
     "wikidata": "Q371217",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "FR"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q371217#P17"
   },
   {
     "osm": "node/5615156624",
@@ -1859,7 +2173,11 @@
     "wikidata": "Q800564",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "FR"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q800564#P17"
   },
   {
     "osm": "node/8745537418",
@@ -1878,7 +2196,11 @@
     "wikidata": "Q801099",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "FR"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q801099#P17"
   },
   {
     "osm": "node/3069229440",
@@ -1898,7 +2220,11 @@
     "wikidata": "Q801473",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "FR"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q801473#P17"
   },
   {
     "osm": "node/7159162454",
@@ -1920,7 +2246,11 @@
     "wikidata": "Q219867",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "GB"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q219867#P17"
   },
   {
     "osm": "node/3662847634",
@@ -1944,7 +2274,11 @@
     "wikidata": "Q720102",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "GB"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q720102#P17"
   },
   {
     "osm": "node/3638795617",
@@ -1969,7 +2303,11 @@
     "wikidata": "Q795691",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "GB"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q795691#P17"
   },
   {
     "osm": "node/6765532062",
@@ -1991,7 +2329,11 @@
     "wikidata": "Q683063",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "GB"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q683063#P17"
   },
   {
     "osm": "node/5064005964",
@@ -2011,7 +2353,11 @@
     "wikidata": "Q600367",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "GB"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q600367#P17"
   },
   {
     "osm": "node/7149998196",
@@ -2029,7 +2375,11 @@
     "wikidata": "Q800716",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "GB"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q800716#P17"
   },
   {
     "osm": "node/6099806145",
@@ -2050,7 +2400,11 @@
     "wikidata": "Q800825",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "GB"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q800825#P17"
   },
   {
     "osm": "node/6605149666",
@@ -2069,7 +2423,11 @@
     "wikidata": "Q2292817",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "GB"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q2292817#P17"
   },
   {
     "osm": "node/12248421687",
@@ -2087,7 +2445,11 @@
     "wikidata": "Q48817446",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "GB"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q48817446#P17"
   },
   {
     "osm": "node/6854406241",
@@ -2106,7 +2468,11 @@
     "wikidata": "Q2377845",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "IE"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q2377845#P17"
   },
   {
     "osm": "node/2459919675",
@@ -2127,7 +2493,11 @@
     "wikidata": "Q1097",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "DE"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1097#P17"
   },
   {
     "osm": "node/205364328",
@@ -2147,7 +2517,11 @@
     "wikidata": "Q165368",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "DE"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q165368#P17"
   },
   {
     "osm": "node/1680910488",
@@ -2175,7 +2549,11 @@
     "wikidata": "Q6456",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "DE"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q6456#P17"
   },
   {
     "osm": "node/2470201868",
@@ -2199,7 +2577,11 @@
     "wikidata": "Q254647",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "DE"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q254647#P17"
   },
   {
     "osm": "node/2399559029",
@@ -2216,7 +2598,11 @@
     "wikidata": "Q1954",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "DE"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1954#P17"
   },
   {
     "osm": "node/376142577",
@@ -2238,7 +2624,11 @@
     "wikidata": "Q703916",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "DE"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q703916#P17"
   },
   {
     "osm": "node/25397500",
@@ -2257,7 +2647,11 @@
     "wikidata": "Q704354",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "DE"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q704354#P17"
   },
   {
     "osm": "node/1635698272",
@@ -2279,7 +2673,11 @@
     "wikidata": "Q613766",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "DE"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q613766#P17"
   },
   {
     "osm": "node/4290854847",
@@ -2306,7 +2704,11 @@
     "wikidata": "Q50719",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "NL"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q50719#P17"
   },
   {
     "osm": "node/4048801967",
@@ -2326,7 +2728,11 @@
     "wikidata": "Q801388",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "NL"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q801388#P17"
   },
   {
     "osm": "node/17401552",
@@ -2350,7 +2756,11 @@
     "wikidata": "Q800587",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "BE"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q800587#P17"
   },
   {
     "osm": "node/3964570119",
@@ -2373,7 +2783,11 @@
     "wikidata": "Q801140",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "LU"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q801140#P17"
   },
   {
     "osm": "node/1236383343",
@@ -2392,7 +2806,11 @@
     "wikidata": "Q224494",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CH"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q224494#P17"
   },
   {
     "osm": "node/3080746011",
@@ -2411,7 +2829,11 @@
     "wikidata": "Q667201",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CH"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q667201#P17"
   },
   {
     "osm": "node/1839787470",
@@ -2433,7 +2855,11 @@
     "wikidata": "Q697300",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "AT"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q697300#P17"
   },
   {
     "osm": "node/302097253",
@@ -2452,7 +2878,11 @@
     "wikidata": "Q694694",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "AT"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q694694#P17"
   },
   {
     "osm": "node/251904108",
@@ -2481,7 +2911,11 @@
     "wikidata": "Q754485",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "IT"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q754485#P17"
   },
   {
     "osm": "node/6297158592",
@@ -2498,7 +2932,11 @@
     "wikidata": "Q801115",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "PT"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q801115#P17"
   },
   {
     "osm": "node/10783341023",
@@ -2517,7 +2955,11 @@
     "wikidata": "Q801328",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "PT"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q801328#P17"
   },
   {
     "osm": "node/660921",
@@ -2543,7 +2985,11 @@
     "wikidata": "Q1410317",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "NO"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1410317#P17"
   },
   {
     "osm": "relation/7188623",
@@ -2560,7 +3006,11 @@
     "wikidata": "Q3267413",
     "mappedFeature": "building=train_station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "NO"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q3267413#P17"
   },
   {
     "osm": "node/5526332028",
@@ -2578,7 +3028,11 @@
     "wikidata": "Q3095584",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "NO"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q3095584#P17"
   },
   {
     "osm": "node/25948183",
@@ -2596,7 +3050,11 @@
     "wikidata": "Q54315",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "SE"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q54315#P17"
   },
   {
     "osm": "node/1305188216",
@@ -2617,7 +3075,11 @@
     "wikidata": "Q54326",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "SE"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q54326#P17"
   },
   {
     "osm": "node/3739700410",
@@ -2644,7 +3106,11 @@
     "wikidata": "Q1495052",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "DK"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1495052#P17"
   },
   {
     "osm": "node/25474663",
@@ -2669,7 +3135,11 @@
     "wikidata": "Q1044613",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "FI"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1044613#P17"
   },
   {
     "osm": "node/34943548",
@@ -2689,7 +3159,11 @@
     "wikidata": "Q801513",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "FI"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q801513#P17"
   },
   {
     "osm": "node/205329095",
@@ -2708,7 +3182,11 @@
     "wikidata": "Q3270598",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "FI"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q3270598#P17"
   },
   {
     "osm": "node/7799405223",
@@ -2730,7 +3208,11 @@
     "wikidata": "Q2660080",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "LV"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q2660080#P17"
   },
   {
     "osm": "node/9814916146",
@@ -2755,7 +3237,11 @@
     "wikidata": "Q693034",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "PL"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q693034#P17"
   },
   {
     "osm": "node/206270454",
@@ -2779,7 +3265,11 @@
     "wikidata": "Q2154725",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "PL"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q2154725#P17"
   },
   {
     "osm": "node/155479759",
@@ -2796,7 +3286,11 @@
     "wikidata": "Q428443",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "PL"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q428443#P17"
   },
   {
     "osm": "node/3784638270",
@@ -2820,7 +3314,11 @@
     "wikidata": "Q557448",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "PL"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q557448#P17"
   },
   {
     "osm": "node/3134751791",
@@ -2850,7 +3348,11 @@
     "wikidata": "Q751174",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CZ"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q751174#P17"
   },
   {
     "osm": "node/3350963359",
@@ -2873,7 +3375,11 @@
     "wikidata": "Q899662",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "SK"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q899662#P17"
   },
   {
     "osm": "node/3141893115",
@@ -2893,7 +3399,11 @@
     "wikidata": "Q841167",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "HU"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q841167#P17"
   },
   {
     "osm": "node/5627130425",
@@ -2912,7 +3422,11 @@
     "wikidata": "Q140377",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "HR"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q140377#P17"
   },
   {
     "osm": "node/942406094",
@@ -2938,7 +3452,11 @@
     "wikidata": "Q9333848",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "BA"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q9333848#P17"
   },
   {
     "osm": "node/13121251703",
@@ -2957,7 +3475,11 @@
     "wikidata": "Q683346",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "RO"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q683346#P17"
   },
   {
     "osm": "node/13254223964",
@@ -2976,7 +3498,11 @@
     "wikidata": "Q2095010",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "BG"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q2095010#P17"
   },
   {
     "osm": "node/4925130296",
@@ -3012,7 +3538,11 @@
     "wikidata": "Q15116556",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "GR"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q15116556#P17"
   },
   {
     "osm": "node/2644051429",
@@ -3039,7 +3569,11 @@
     "wikidata": "Q2105249",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "UA"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q2105249#P17"
   },
   {
     "osm": "node/3911229407",
@@ -3060,7 +3594,11 @@
     "wikidata": "Q15072398",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "UA"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q15072398#P17"
   },
   {
     "osm": "node/27184541",
@@ -3083,7 +3621,11 @@
     "wikidata": "Q801196",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "BY"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q801196#P17"
   },
   {
     "osm": "relation/1309225",
@@ -3109,7 +3651,11 @@
     "wikidata": "Q1432585",
     "mappedFeature": "building=train_station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "RU"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1432585#P17"
   },
   {
     "osm": "node/4795178525",
@@ -3128,7 +3674,12 @@
     "wikidata": "Q3180012",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "RU",
+      "SU"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q3180012#P17"
   },
   {
     "osm": "node/4535206674",
@@ -3147,7 +3698,12 @@
     "wikidata": "Q764749",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "RU",
+      "SU"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q764749#P17"
   },
   {
     "osm": "node/5691045840",
@@ -3168,7 +3724,12 @@
     "wikidata": "Q4203274",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "RU",
+      "SU"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q4203274#P17"
   },
   {
     "osm": "node/271864421",
@@ -3191,7 +3752,11 @@
     "wikidata": "Q633754",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "EG"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q633754#P17"
   },
   {
     "osm": "node/1125997846",
@@ -3211,26 +3776,32 @@
     "wikidata": "Q958574",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "EG"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q958574#P17"
   },
   {
-    "osm": "node/4561570123",
+    "osm": "node/12260658320",
     "osmAliases": [],
-    "lon": -8.6712947,
-    "lat": 37.1083314,
-    "name": "Lagos",
-    "name:en": "Lagos Train Station",
-    "name:fr": "Gare de Lagos",
+    "lon": 3.3736846,
+    "lat": 6.5017657,
+    "name": "Mobolaji Johnson Station",
     "minZoom": 3,
     "rank": 216,
     "metro": "Lagos",
     "country": "NG",
     "region": "Africa",
-    "basis": "Curated principal passenger hub for Lagos; https://en.wikipedia.org/wiki/Lagos_railway_station; identity https://www.wikidata.org/wiki/Q8780001",
-    "wikidata": "Q8780001",
+    "basis": "Curated principal passenger hub for Lagos; mapped railway=station with train=yes, open since 2021; https://www.openstreetmap.org/node/12260658320; identity https://www.wikidata.org/wiki/Q110182450",
+    "wikidata": "Q110182450",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "NG"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q110182450#P17"
   },
   {
     "osm": "way/499873616",
@@ -3247,7 +3818,11 @@
     "wikidata": "Q6959799",
     "mappedFeature": "railway=station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "KE"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q6959799#P17"
   },
   {
     "osm": "way/248970809",
@@ -3266,7 +3841,12 @@
     "wikidata": "Q2672929",
     "mappedFeature": "railway=station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "MZ",
+      "PT"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q2672929#P17"
   },
   {
     "osm": "node/326084268",
@@ -3283,7 +3863,11 @@
     "wikidata": "Q5175720",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "ZA"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q5175720#P17"
   },
   {
     "osm": "node/288676470",
@@ -3307,7 +3891,11 @@
     "wikidata": "Q1034496",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "ZA"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1034496#P17"
   },
   {
     "osm": "node/348954984",
@@ -3324,7 +3912,11 @@
     "wikidata": "Q4851790",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "ZA"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q4851790#P17"
   },
   {
     "osm": "node/6983501555",
@@ -3343,7 +3935,11 @@
     "wikidata": "Q7242184",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "ZA"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q7242184#P17"
   },
   {
     "osm": "node/10051082015",
@@ -3363,7 +3959,11 @@
     "wikidata": "Q801615",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "NA"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q801615#P17"
   },
   {
     "osm": "node/5073776567",
@@ -3381,7 +3981,11 @@
     "wikidata": "Q1155989",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "US"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1155989#P17"
   },
   {
     "osm": "node/895371274",
@@ -3408,7 +4012,11 @@
     "wikidata": "Q54451",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "US"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q54451#P17"
   },
   {
     "osm": "node/7099182377",
@@ -3429,7 +4037,11 @@
     "wikidata": "Q11290",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "US"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q11290#P17"
   },
   {
     "osm": "node/6097540128",
@@ -3452,7 +4064,11 @@
     "wikidata": "Q3570",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "US"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q3570#P17"
   },
   {
     "osm": "node/6097540131",
@@ -3469,7 +4085,11 @@
     "wikidata": "Q224214",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "US"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q224214#P17"
   },
   {
     "osm": "way/29742438",
@@ -3486,7 +4106,11 @@
     "wikidata": "Q54453",
     "mappedFeature": "railway=station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "US"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q54453#P17"
   },
   {
     "osm": "node/268547062",
@@ -3505,7 +4129,11 @@
     "wikidata": "Q198019",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "US"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q198019#P17"
   },
   {
     "osm": "node/7120275924",
@@ -3522,7 +4150,11 @@
     "wikidata": "Q7413912",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "US"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q7413912#P17"
   },
   {
     "osm": "way/442511853",
@@ -3540,7 +4172,11 @@
     "wikidata": "Q536131",
     "mappedFeature": "railway=station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "US"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q536131#P17"
   },
   {
     "osm": "node/7010428404",
@@ -3557,7 +4193,11 @@
     "wikidata": "Q861473",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "US"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q861473#P17"
   },
   {
     "osm": "node/1814505997",
@@ -3574,7 +4214,11 @@
     "wikidata": "Q1587587",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "US"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1587587#P17"
   },
   {
     "osm": "node/7002689053",
@@ -3591,7 +4235,11 @@
     "wikidata": "Q5265835",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "US"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q5265835#P17"
   },
   {
     "osm": "node/5729248834",
@@ -3610,7 +4258,11 @@
     "wikidata": "Q14691825",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "US"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q14691825#P17"
   },
   {
     "osm": "node/5634060961",
@@ -3629,7 +4281,11 @@
     "wikidata": "Q22079319",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "US"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q22079319#P17"
   },
   {
     "osm": "node/5818005704",
@@ -3646,7 +4302,11 @@
     "wikidata": "Q5371609",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "US"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q5371609#P17"
   },
   {
     "osm": "node/2123396934",
@@ -3663,7 +4323,11 @@
     "wikidata": "Q5472392",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "US"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q5472392#P17"
   },
   {
     "osm": "node/5796201083",
@@ -3680,7 +4344,11 @@
     "wikidata": "Q7413360",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "US"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q7413360#P17"
   },
   {
     "osm": "way/1123450443",
@@ -3697,7 +4365,11 @@
     "wikidata": "Q3097479",
     "mappedFeature": "railway=station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "US"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q3097479#P17"
   },
   {
     "osm": "node/6997477908",
@@ -3714,7 +4386,11 @@
     "wikidata": "Q511316",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CA"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q511316#P17"
   },
   {
     "osm": "node/6298031649",
@@ -3734,7 +4410,11 @@
     "wikidata": "Q1148666",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CA"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1148666#P17"
   },
   {
     "osm": "node/7012109787",
@@ -3753,7 +4433,11 @@
     "wikidata": "Q1327751",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CA"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1327751#P17"
   },
   {
     "osm": "node/7002747046",
@@ -3770,7 +4454,11 @@
     "wikidata": "Q3095762",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CA"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q3095762#P17"
   },
   {
     "osm": "node/6949058012",
@@ -3787,7 +4475,11 @@
     "wikidata": "Q54867396",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "MX"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q54867396#P17"
   },
   {
     "osm": "node/4757181460",
@@ -3804,7 +4496,11 @@
     "wikidata": "Q28163126",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "CL"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q28163126#P17"
   },
   {
     "osm": "way/8105832",
@@ -3824,24 +4520,11 @@
     "wikidata": "Q2983699",
     "mappedFeature": "building=train_station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
-  },
-  {
-    "osm": "way/791565328",
-    "osmAliases": [],
-    "lon": 121.05527777777777,
-    "lat": 14.361666666666666,
-    "name": "San Pedro",
-    "minZoom": 3,
-    "rank": 270,
-    "metro": "Cusco",
-    "country": "PE",
-    "region": "South America",
-    "basis": "Curated principal passenger hub for Cusco; https://en.wikipedia.org/wiki/San_Pedro_station; identity https://www.wikidata.org/wiki/Q17087683",
-    "wikidata": "Q17087683",
-    "mappedFeature": "railway=station",
-    "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "BR"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q2983699#P17"
   },
   {
     "osm": "way/679354513",
@@ -3860,7 +4543,11 @@
     "wikidata": "Q1585639",
     "mappedFeature": "railway=station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "AU"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q1585639#P17"
   },
   {
     "osm": "way/33261083",
@@ -3877,7 +4564,11 @@
     "wikidata": "Q801455",
     "mappedFeature": "railway=station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "AU"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q801455#P17"
   },
   {
     "osm": "node/9586829503",
@@ -3894,7 +4585,11 @@
     "wikidata": "Q7361491",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "AU"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q7361491#P17"
   },
   {
     "osm": "node/5234365897",
@@ -3911,7 +4606,11 @@
     "wikidata": "Q4681770",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "AU"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q4681770#P17"
   },
   {
     "osm": "node/10086635093",
@@ -3928,7 +4627,11 @@
     "wikidata": "Q7170917",
     "mappedFeature": "railway=station",
     "coordinateSource": "OpenStreetMap",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "AU"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q7170917#P17"
   },
   {
     "osm": "way/5184061",
@@ -3947,7 +4650,11 @@
     "wikidata": "Q505487",
     "mappedFeature": "railway=station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "NZ"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q505487#P17"
   },
   {
     "osm": "way/940237256",
@@ -3969,6 +4676,10 @@
     "wikidata": "Q920488",
     "mappedFeature": "railway=station",
     "coordinateSource": "Wikidata (CC0)",
-    "verified": "2026-10-01"
+    "verified": "2026-10-01",
+    "countryEvidence": [
+      "NZ"
+    ],
+    "countrySource": "https://www.wikidata.org/wiki/Q920488#P17"
   }
 ]
