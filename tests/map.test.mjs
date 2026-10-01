@@ -924,6 +924,9 @@ test('track counts: untagged crossovers and sidings are not running tracks', asy
   // the pieces are one track each, and the crossover still swaps sides.
   const splitTracks = [track(0, -1000, 0), track(0, 0, 90), track(0, 90, 170), track(0, 170, 1000), track(5, -1000, 0), track(5, 0, 80), track(5, 80, 170), track(5, 170, 1000), leg([0, 0], [170, 5])];
   assert.deepEqual([...connectors(splitTracks, 1)], [8]);
+  // Even where a siding branches off at that split (a turnout there).
+  const branched = [...splitTracks, {group: 'rail', main: true, service: 'siding', parts: [[[90, 0], [130, -4], [300, -4]]]}];
+  assert.deepEqual([...connectors(branched, 1)], [8]);
   // A loop beside a track, joined at both ends to the same track, and a
   // siding between two tracks running beside them: tracks.
   const loop = [track(0, -1000, 0), track(0, 0, 400), track(0, 400, 1000), {group: 'rail', main: true, parts: [[[0, 0], [40, 4], [360, 4], [400, 0]]]}];

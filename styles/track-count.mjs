@@ -451,6 +451,7 @@ const CONNECTOR_INSET = 15;  // metres inside each end where the sides are taken
 // the other side of a track (a flyover's approach, a third track) is a line.
 const CONNECTOR_MAX = 800;
 const CONNECTOR_STEP = 10;   // metres between the points where its neighbours are measured
+const CONTINUE = 30;         // degrees: ways meeting end to end within this run on as one track
 const CONNECTOR_STEADY = 1;  // metres: a track whose distance from another varies less than this runs beside it
 export function connectors(lines, metres) {
   const touch = (SAME_PLACE + 0.5) / metres + SLACK, cell = PROBE / metres, probe = PROBE / metres, grid = new Map(), segs = [];
@@ -494,19 +495,39 @@ export function connectors(lines, metres) {
     const through = !ends(other).some(([ex, ey]) => Math.hypot(ex - x, ey - y) <= touch);
     return {joined: through, touching};
   };
-  // A track split into several ways along its length (two ways meeting end
-  // to end, nothing else there: no turnout) is one track: track(i) names it.
+  // A track split into several ways along its length is one track:
+  // track(i) names it. At a point where ways end, the two that run on
+  // most nearly straight into each other (each the other's best, within
+  // CONTINUE) are one track; a turnout's diverging way, or a way meeting the
+  // middle of another, is not joined.
   const parent = lines.map((_, i) => i);
   const track = i => parent[i] === i ? i : (parent[i] = track(parent[i]));
+  // Each way end: its point and the unit direction from it into the way.
+  const endsAt = new Map();
   lines.forEach((line, index) => {
     if (!line) return;
-    for (const [x, y] of ends(index)) {
-      const others = new Set();
-      for (const s of near(x, y, touch)) if (s.index !== index && s.group === line.group && distance(s, x, y) <= touch) others.add(s.index);
-      const [other] = others;
-      if (others.size === 1 && ends(other).some(([ex, ey]) => Math.hypot(ex - x, ey - y) <= touch)) parent[track(index)] = track(other);
+    for (const piece of joined[index]) {
+      if (Math.hypot(piece[0][0] - piece.at(-1)[0], piece[0][1] - piece.at(-1)[1]) <= STITCH) continue;
+      for (const [p, q] of [[piece[0], piece.find(v => Math.hypot(v[0] - piece[0][0], v[1] - piece[0][1]) > touch)], [piece.at(-1), piece.findLast(v => Math.hypot(v[0] - piece.at(-1)[0], v[1] - piece.at(-1)[1]) > touch)]]) {
+        if (!q) continue;
+        const l = Math.hypot(q[0] - p[0], q[1] - p[1]), key = `${Math.round(p[0] / (2 * touch))},${Math.round(p[1] / (2 * touch))}`;
+        if (!endsAt.has(key)) endsAt.set(key, []);
+        endsAt.get(key).push({index, group: line.group, p, d: [(q[0] - p[0]) / l, (q[1] - p[1]) / l]});
+      }
     }
   });
+  const cos = Math.cos(CONTINUE * Math.PI / 180);
+  for (const [key, here] of endsAt) {
+    const [kx, ky] = key.split(',').map(Number), all = [];
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) all.push(...endsAt.get(`${kx + dx},${ky + dy}`) || []);
+    // Running straight on: the two directions into the ways are opposite.
+    const best = e => all.filter(o => o.index !== e.index && o.group === e.group && Math.hypot(o.p[0] - e.p[0], o.p[1] - e.p[1]) <= touch)
+      .map(o => ({o, c: -(o.d[0] * e.d[0] + o.d[1] * e.d[1])})).filter(({c}) => c >= cos).sort((x, y) => y.c - x.c)[0]?.o;
+    for (const e of here) {
+      const o = best(e);
+      if (o && best(o) === e) parent[track(e.index)] = track(o.index);
+    }
+  }
   // sides() by track: the nearest piece of each.
   const byTrack = found => {
     const out = new Map();
