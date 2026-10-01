@@ -76,6 +76,31 @@
       "promoteId": "id",
       "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
     },
+    "axleLow": {
+      "type": "vector",
+      "url": "https://openrailwaymap.app/standard_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 6,
+      "promoteId": "id",
+      "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
+    },
+    "axleRail": {
+      "type": "vector",
+      "url": "https://openrailwaymap.app/railway_line_high",
+      "minzoom": 7,
+      "maxzoom": 16,
+      "promoteId": "id",
+      "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
+    },
+    "axleBranch": {
+      "type": "vector",
+      "tiles": [
+        "axlebranch://{z}/{x}/{y}"
+      ],
+      "minzoom": 4,
+      "maxzoom": 9,
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
+    },
     "railway": {
       "type": "vector",
       "url": "https://openrailwaymap.app/railway_line_high",
@@ -204,6 +229,15 @@
       "maxzoom": 14,
       "attribution": "<a href=\"https://cloudless.eox.at\">EOxCloudless https://cloudless.eox.at</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2025), <a href=\"https://creativecommons.org/licenses/by-nc-sa/4.0/\">CC BY-NC-SA 4.0</a>"
     },
+    "carto": {
+      "type": "raster",
+      "tiles": [
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+      ],
+      "tileSize": 256,
+      "maxzoom": 19,
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
+    },
     "relief": {
       "type": "raster-dem",
       "tiles": [
@@ -221,6 +255,17 @@
       "type": "background",
       "paint": {
         "background-color": "#f2f1e9"
+      }
+    },
+    {
+      "id": "carto",
+      "type": "raster",
+      "source": "carto",
+      "layout": {
+        "visibility": "none"
+      },
+      "paint": {
+        "raster-fade-duration": 150
       }
     },
     {
@@ -12587,6 +12632,581 @@
       }
     },
     {
+      "id": "axle-branch-overview",
+      "type": "line",
+      "source": "axleBranch",
+      "source-layer": "branch_lines",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            ">",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "axle_tonnes"
+                ],
+                0
+              ],
+              0
+            ],
+            0
+          ],
+          [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "axle_tonnes"
+                ],
+                0
+              ],
+              0
+            ],
+            10,
+            "#526da8",
+            16,
+            "#218aab",
+            18,
+            "#278454",
+            20,
+            "#9a8500",
+            22.5,
+            "#d98213",
+            25,
+            "#d24c35",
+            30,
+            "#742da0",
+            40,
+            "#ad2463"
+          ],
+          "#899197"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          0.6,
+          4,
+          1.15,
+          7,
+          1.8,
+          11,
+          2.6,
+          16,
+          4.5,
+          20,
+          7
+        ]
+      }
+    },
+    {
+      "id": "axle-overview",
+      "type": "line",
+      "source": "axleLow",
+      "source-layer": "standard_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 7,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            ">",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "axle_tonnes"
+                ],
+                0
+              ],
+              0
+            ],
+            0
+          ],
+          [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "axle_tonnes"
+                ],
+                0
+              ],
+              0
+            ],
+            10,
+            "#526da8",
+            16,
+            "#218aab",
+            18,
+            "#278454",
+            20,
+            "#9a8500",
+            22.5,
+            "#d98213",
+            25,
+            "#d24c35",
+            30,
+            "#742da0",
+            40,
+            "#ad2463"
+          ],
+          "#899197"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          0.6,
+          4,
+          1.15,
+          7,
+          1.8,
+          11,
+          2.6,
+          16,
+          4.5,
+          20,
+          7
+        ]
+      }
+    },
+    {
+      "id": "axle-tracks",
+      "type": "line",
+      "source": "axleRail",
+      "source-layer": "railway_line_high",
+      "minzoom": 7,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            ">",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "axle_tonnes"
+                ],
+                0
+              ],
+              0
+            ],
+            0
+          ],
+          [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "axle_tonnes"
+                ],
+                0
+              ],
+              0
+            ],
+            10,
+            "#526da8",
+            16,
+            "#218aab",
+            18,
+            "#278454",
+            20,
+            "#9a8500",
+            22.5,
+            "#d98213",
+            25,
+            "#d24c35",
+            30,
+            "#742da0",
+            40,
+            "#ad2463"
+          ],
+          "#899197"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1.6,
+          11,
+          [
+            "case",
+            [
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
+            ],
+            1.1,
+            2.8
+          ],
+          16,
+          [
+            "case",
+            [
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
+            ],
+            2,
+            4.8
+          ],
+          20,
+          7
+        ],
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "tunnel"
+            ],
+            true
+          ],
+          0.65,
+          1
+        ]
+      }
+    },
+    {
+      "id": "axle-metro-overview",
+      "type": "line",
+      "source": "axleBranch",
+      "source-layer": "branch_lines",
+      "minzoom": 7,
+      "maxzoom": 10,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            ">",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "axle_tonnes"
+                ],
+                0
+              ],
+              0
+            ],
+            0
+          ],
+          [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "axle_tonnes"
+                ],
+                0
+              ],
+              0
+            ],
+            10,
+            "#526da8",
+            16,
+            "#218aab",
+            18,
+            "#278454",
+            20,
+            "#9a8500",
+            22.5,
+            "#d98213",
+            25,
+            "#d24c35",
+            30,
+            "#742da0",
+            40,
+            "#ad2463"
+          ],
+          "#899197"
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          1.6,
+          11,
+          [
+            "case",
+            [
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
+            ],
+            1.1,
+            2.8
+          ],
+          16,
+          [
+            "case",
+            [
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
+            ],
+            2,
+            4.8
+          ],
+          20,
+          7
+        ],
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "tunnel"
+            ],
+            true
+          ],
+          0.65,
+          1
+        ]
+      }
+    },
+    {
       "id": "owner-branch-overview",
       "type": "line",
       "source": "branchLines",
@@ -17656,6 +18276,143 @@
             ],
             ""
           ]
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 11,
+        "text-padding": 5,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "#26363d",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "axle-labels",
+      "type": "symbol",
+      "source": "axleRail",
+      "source-layer": "railway_line_high",
+      "minzoom": 10,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "feature"
+          ],
+          "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
+        ],
+        [
+          ">",
+          [
+            "to-number",
+            [
+              "get",
+              "axle_tonnes"
+            ],
+            0
+          ],
+          0
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 300,
+        "text-field": [
+          "case",
+          [
+            ">",
+            [
+              "to-number",
+              [
+                "get",
+                "axle_tonnes"
+              ],
+              0
+            ],
+            0
+          ],
+          [
+            "concat",
+            [
+              "to-string",
+              [
+                "/",
+                [
+                  "round",
+                  [
+                    "*",
+                    [
+                      "get",
+                      "axle_tonnes"
+                    ],
+                    100
+                  ]
+                ],
+                100
+              ]
+            ],
+            " t"
+          ],
+          ""
         ],
         "text-font": [
           "Noto Sans Bold"

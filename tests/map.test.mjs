@@ -72,6 +72,12 @@ test('world map has no European rail source or geographic bounds', () => {
   assert.equal(ids.length, new Set(ids).size);
   for (const layer of style.layers) if (layer.source) assert.ok(style.sources[layer.source], layer.id);
 });
+test('large way lookups decode each distinct property group once and share its immutable record',async()=>{
+ const {encodeLoadingGauges,decodeLoadingGauges}=await import('../styles/loading-gauge-list.mjs');
+ const rows=Array.from({length:4096},(_,i)=>[i+1,JSON.stringify({track_class:'D4',axle_system:'en'})]);let parsed=0;
+ const decoded=decodeLoadingGauges(encodeLoadingGauges(rows),value=>{parsed++;return Object.freeze(JSON.parse(value));});
+ assert.equal(parsed,1);assert.equal(decoded.size,4096);assert.equal(decoded.get(1),decoded.get(4096));assert.ok(Object.isFrozen(decoded.get(1)));
+});
 test('regional stations have collision-aware markers and progressive size thresholds', () => {
   const visible = (layer, zoom, properties) => zoom >= layer.minzoom && (layer.maxzoom === undefined || zoom < layer.maxzoom) && featureFilter(layer.filter).filter({zoom}, {type:1,properties});
   const layers = style.layers.filter(l => l.id.startsWith('station-'));

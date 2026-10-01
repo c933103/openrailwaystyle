@@ -90,3 +90,15 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 .departure-status { color: #247046; font-size: 11px; font-weight: 600; }
 .departure-status.late { color: #a02b22; }
 .departure-links a { margin-right: 10px; font-size: 12px; }
+
+/* The brand button is the compact menu; the same artwork is used everywhere. */
+button.brand-mark{padding:0;border:0;background:transparent;flex-shrink:0}
+button.brand-mark:focus-visible{outline:3px solid #d58d13;outline-offset:3px}
+@media(max-width:650px),(max-height:500px){
+  .panel{top:max(10px,env(safe-area-inset-top));left:max(10px,env(safe-area-inset-left))}
+  .panel.collapsed{width:48px;max-height:48px;background:transparent;border:0;box-shadow:none;overflow:visible}
+  .panel.collapsed header{padding:0;background:transparent;border:0;box-shadow:none}
+  .panel.collapsed header>div,.panel.collapsed #collapse{display:none}
+  .panel.collapsed .brand-mark{width:48px;height:48px;min-width:48px;min-height:48px;margin:0;border-radius:11px;box-shadow:0 3px 12px #173e4759}
+  .panel.collapsed .brand-mark svg{display:block;width:48px;height:48px}
+}
