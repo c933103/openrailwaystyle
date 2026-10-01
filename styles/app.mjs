@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-48';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-48';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-61';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-61';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-48';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-48';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-48';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-48';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-48';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-61';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-61';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-61';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-61';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-61';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -35,7 +35,7 @@ const settings = readSettings(location.search, {language: readCookie(LANGUAGE_CO
 const status = $('map-status');
 let legendHelpOpen = false;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-48';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-61';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -1106,10 +1106,11 @@ function setControlsExpanded(expanded, focus = false) {
   $('collapse').setAttribute('aria-expanded', String(expanded));
   $('collapse').setAttribute('aria-label', `${expanded ? 'Collapse' : 'Expand'} map controls`);
   $('controls-open').setAttribute('aria-expanded', String(expanded));
+  $('controls-open').setAttribute('aria-label', expanded ? 'Collapse map controls' : 'Open map controls');
   if (focus) (expanded || !compactControls() ? $('collapse') : $('controls-open')).focus();
 }
 $('collapse').addEventListener('click', () => setControlsExpanded($('controls').hidden, true));
-$('controls-open').addEventListener('click', () => setControlsExpanded(true, true));
+$('controls-open').addEventListener('click', () => setControlsExpanded($('controls').hidden, true));
 document.querySelector('.panel').addEventListener('keydown', event => {
   if (event.key === 'Escape' && compactControls() && !$('controls').hidden) {
     event.stopPropagation(); setControlsExpanded(false, true);
@@ -1254,8 +1255,8 @@ $('search-form').addEventListener('submit', async e => {
     return items;
   };
   try {
-    // Search results are located for their Chinese name order.
-    await labels.catch(() => {});
+    // Search must work while map labels are still downloading. The small
+    // locate fallback is replaced when that bundle arrives.
     // The OpenRailwayMap API asks clients to stop after HTTP 429 and to give
     // up on requests after about 5 seconds; the geocoder is asked once per
     // submitted search (never as you type), within its usage policy.
@@ -1266,7 +1267,7 @@ $('search-form').addEventListener('submit', async e => {
     // The facility request is cancelled at its 5-second limit (and with the
     // whole search), not just left running.
     const facility = new AbortController();
-    // (An abort that already fired, e.g. while the labels loaded, is not
+    // (An abort that already fired is not
     // replayed to a new listener.)
     if (controller.signal.aborted) facility.abort();
     else controller.signal.addEventListener('abort', () => facility.abort(), {once: true});
@@ -1329,5 +1330,4 @@ initialize().catch(error => {
 // Named export lets integration tests inspect rendered features without
 // adding test controls or global variables to the map interface.
 export {map};
-
 
