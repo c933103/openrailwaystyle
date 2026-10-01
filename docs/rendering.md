@@ -97,3 +97,5 @@ Level crossings are shown from zoom 5, so they can be seen across a region hundr
 ### Carto background
 
 Carto uses the OSMF Standard raster tiles, with visible attribution and normal browser caching; the service worker never handles these tiles. The drawn basemap and its duplicate place/context labels are hidden, while railway overlays and optional relief/contours remain. Beyond the Mercator limit the existing polar data uses Carto land, water and ice colours; satellite/hybrid alone use black caps. The tile URL is centralized as `CARTO_TILES` in `map-model.mjs`. See the [tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
+
+See [Axle load](axle-load.md) for the new view, national class distinctions, source references and the 28-day snapshot refresh.

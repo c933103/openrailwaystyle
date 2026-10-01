@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-62';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-62';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-74';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-74';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-62';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-62';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-62';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-62';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-62';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-74';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-74';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-74';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-74';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-74';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -35,7 +35,7 @@ const settings = readSettings(location.search, {language: readCookie(LANGUAGE_CO
 const status = $('map-status');
 let legendHelpOpen = false;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-62';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-74';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -121,6 +121,7 @@ const IN_VIEW = {
       .map(mm => [gaugeColor(mm), `${gauge(mm)}${GAUGE_NAMES[mm] && settings.units !== 'imperial' ? ` (${GAUGE_NAMES[mm]})` : ''}`, mm]);
     return rows.length ? rows : null;
   },
+  axle: p => {const a=axleLoad(p);return a?[a.colour,formatAxleLoad(a,settings.units),a.tonnes]:null;},
   loading: p => { const g = loadingGauge(p.loading_gauge); return g ? [g.color, g.name, g.rank, loadingDimensions(g, settings.units)] : null; },
   // Owners in view, most track first.
   owner: p => p.owner && p.owner_color ? [p.owner_color, p.owner, 0] : null,
@@ -152,6 +153,7 @@ function renderLegend() {
     electrification: { title: 'Electrification · in view', rows: [...listed(inView), [NOT_ELECTRIFIED, 'Not electrified']] },
     control: { title: 'Train protection · in view', rows: [...listed(inView), [NO_PROTECTION, 'No train protection']] },
     gauge: { title: 'Track gauge · in view', rows: listed(inView) },
+    axle: {title:'Axle load · in view',rows:listed(inView)},
     loading: { title: 'Loading gauge · in view', rows: listed(inView) },
     owner: { title: 'Infrastructure owner · in view', rows: listed(inView) },
   };
@@ -190,6 +192,7 @@ function renderLegend() {
     electrification: 'Hue is the current type (DC, or AC by frequency); darker is higher voltage. A train needs both to match, unless built for several systems. Grey means not recorded.',
     control: 'Hue groups related systems (e.g. ETCS with China’s ETCS-derived CTCS); darker is more advanced: warning only, spot transmission, continuous, radio. Colour shows the first recorded system; click a track for all of them and their compatibility. Grey means nothing is recorded.',
     gauge: 'Gauges a few millimetres apart (e.g. 1432 and 1435, 1520 and 1524) share one colour and are generally compatible. Click a track for all recorded gauges. Grey means not recorded.',
+    axle: 'Colour shows the mapped axle load or the load category’s reference axle load. Load per metre and additional operating restrictions also matter. Numeric US/Canadian classes describe speed, and Finnish superstructure classes do not give a single axle-load limit. Grey means not recorded.',
     loading: 'Colour follows the envelope’s height above rail, so equal sizes match across regions; Britain’s W gauges share one height and form their own ladder. Click a track for dimensions. Grey means not recorded.',
     owner: 'Each owner of the infrastructure, as recorded in OpenStreetMap, has its own colour, the same everywhere; the owner is not always the operator. Click a track for its owner and operator. Grey means no owner is recorded.',
     infrastructure: 'Numbers count the mapped tracks: running tracks side by side (not sidings, yards or crossovers), on the surface, on viaducts or in tunnels alike (grey-blue where all are in tunnels); at a station, every track there, sidings included. Ochre marks explicitly tagged shared roadway; level crossings are dark brown (road) or light brown (pedestrian).',
@@ -271,12 +274,12 @@ function updateAttribution() {
   map.addControl(attribution, 'bottom-right');
 }
 const featurePickRank = f => f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
-const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|owner)-labels$/;
+const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
 const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-crossing-overview','infrastructure-crossing-dots','infrastructure-crossing-marks','infrastructure-street-running'];
 // Clickable: stations, tracks, level crossings, inactive lines, and transport
 // and destination points; land-use areas, protected, heritage and other
 // planning areas, jurisdictions and buildings are drawn for context only.
-const isClickable = id => INFRASTRUCTURE_POINTS.includes(id) || /^context-(transport|destinations)-.+-label$/.test(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|owner)-(tracks|overview|branch-overview|metro-overview)$/.test(id);
+const isClickable = id => INFRASTRUCTURE_POINTS.includes(id) || /^context-(transport|destinations)-.+-label$/.test(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|axle|owner)-(tracks|overview|branch-overview|metro-overview)$/.test(id);
 function row(dl, label, value) {
   if (value === undefined || value === null || value === '') return;
   dl.append(textNode('dt', label), textNode('dd', String(value)));
@@ -353,6 +356,14 @@ function showDetails(feature) {
     row(dl, 'Protection being built', p.train_protection_construction ? trainProtectionName(p.train_protection_construction) : undefined);
     const gauges = p.gauges ? String(p.gauges).split(/[;,]\s*/) : [p.gauge0, p.gauge1, p.gauge2].filter(Boolean);
     row(dl, 'Gauge', gauges.length ? gauges.map(gauge).join(', ') : undefined);
+    // Other views have no country annotation from the axle lookup. Their
+    // explicit load tags remain usable; their national class codes do not.
+    const axle = axleLoad({...p,axle_system:p.axle_system || (feature.source?.startsWith('axle') ? undefined : 'unknown')});
+    row(dl,'Axle load',axle ? formatAxleLoad(axle,settings.units) : undefined);
+    row(dl,'Mapped axle capacity',p.axle_load);
+    row(dl,'Legal axle limit',p.maxaxleload);
+    row(dl,'Track class',p['railway:track_class'] || p.track_class);
+    if(!axle && (p.track_class || p['railway:track_class'])) row(dl,'Class interpretation',p.axle_system==='fi' ? 'Finnish superstructure class; axle load not inferred' : 'Axle load not established from this class');
     const loading = loadingGauge(p.loading_gauge);
     row(dl, 'Loading gauge', loading ? [loading.name, loadingDimensions(loading, settings.units), loading.note].filter(Boolean).join(' · ') + (p.loading_gauge !== loading.code ? ` (tagged: ${p.loading_gauge})` : '') : undefined);
     row(dl, 'Tunnel', p.tunnel === true ? 'Yes' : undefined);
@@ -551,6 +562,7 @@ function gauge(value) {
 function unitStyle(style) {
   for (const layer of style.layers) {
     if (/^speed-(branch-overview|metro-overview|overview|tracks)$/.test(layer.id)) layer.paint['line-color'] = speedPaint(settings.units);
+    if (layer.id === 'axle-labels') layer.layout['text-field'] = axleLabel(settings.units);
     if (layer.id === 'speed-labels') layer.layout['text-field'] = speedLabel(settings.units);
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) layer.paint['line-color'] = inactivePaint(settings.mode, settings.units);
     if (/^terrain-(seabed-)?contour-labels/.test(layer.id)) layer.layout['text-field'] = ['concat', ['to-string', ['get','ele']], settings.units === 'imperial' ? ' ft' : ' m'];
@@ -578,7 +590,7 @@ function applyUnits() {
   unitStyle(style);
   for (const layer of style.layers) {
     if (/^speed-(branch-overview|metro-overview|overview|tracks)$/.test(layer.id) || (/^inactive-(regional|railways)-/.test(layer.id) && !layer.id.includes('bridge'))) map.setPaintProperty(layer.id, 'line-color', layer.paint['line-color']);
-    if (layer.id === 'speed-labels' || /^terrain-(seabed-)?contour-labels/.test(layer.id)) map.setLayoutProperty(layer.id, 'text-field', layer.layout['text-field']);
+    if (layer.id === 'speed-labels' || layer.id === 'axle-labels' || /^terrain-(seabed-)?contour-labels/.test(layer.id)) map.setLayoutProperty(layer.id, 'text-field', layer.layout['text-field']);
   }
   map.getSource('contours')?.setTiles(style.sources.contours.tiles);
   map.getSource('seabedContours')?.setTiles(style.sources.seabedContours.tiles);
@@ -605,7 +617,7 @@ function updateStatus() {
   status.dataset.renderedFormer = String(regional.filter(f => !['proposed','construction'].includes(f.properties.state)).length);
   status.dataset.numericSpeeds = String(tracks.filter(f => numericSpeed(f.properties.maxspeed) !== null).length);
 }
-const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg|owner):\/\//,'');
+const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg|owner|axle):\/\//,'');
 function localizeStyle(style) {
   for (const layer of style.layers) {
     if (layer.type !== 'symbol' || layer.id === 'speed-labels' || layer.id.startsWith('terrain-')) continue;
@@ -618,6 +630,8 @@ function localizeStyle(style) {
   style.sources.railway.url = `atlasrail://${unwrap(style.sources.railway.url)}`;
   style.sources.loadingLow.url = `atlaslg://${unwrap(style.sources.loadingLow.url)}`;
   style.sources.ownerLow.url = `atlasowner://${unwrap(style.sources.ownerLow.url)}`;
+  style.sources.axleLow.url = `atlasaxle://${unwrap(style.sources.axleLow.url)}`;
+  style.sources.axleRail.url = `atlasaxle://${unwrap(style.sources.axleRail.url)}`;
   style.sources.ownerRail.url = `atlasowner://${unwrap(style.sources.ownerRail.url)}`;
   unitStyle(style);
   styleLanguage = settings.language;
@@ -849,14 +863,14 @@ async function initialize() {
   // WebGL itself; initialization errors are caught by the handler below.
   const protocol = new pmtiles.Protocol();
   maplibregl.addProtocol('pmtiles', protocol.tile);
-  installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url)});
+  const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url)});
   // The contour worker with the terrain tiles' bad pixels repaired
   // (dem-worker.mjs); relief shading reads its tiles through it too.
   mlcontour.workerUrl = new URL(`vendor/dem-worker.js?v=${assetVersion}`, import.meta.url).href;
   dem = new mlcontour.DemSource({url:DEM_URL,encoding:'terrarium',maxzoom:15,worker:true,cacheSize:200,timeoutMs:20000,id:'atlas'});
   dem.setupMaplibre(maplibregl);
   // Level crossings and branch lines are served as stored (no label names).
-  for (const [scheme,folder,names = true] of [['railtiles','lifecycle'],['streettiles','street-running'],['crossingtiles','level-crossings',false],['branchtiles','branch-lines',false]]) {
+  for (const [scheme,folder,names = true] of [['railtiles','lifecycle'],['streettiles','street-running'],['crossingtiles','level-crossings',false],['branchtiles','branch-lines',false],['axlebranch','branch-lines',false]]) {
   const lifecycleRoot = new URL(`./data/${folder}/`, import.meta.url);
   let tileIndex;
   maplibregl.addProtocol(scheme, async (params, controller) => {
@@ -872,6 +886,7 @@ async function initialize() {
     if (!response.ok) throw new Error(`Railway tile returned ${response.status}`);
     const [z,x,y] = key.split('/').map(Number);
     const data = await decodeLifecycleTile(await response.arrayBuffer());
+    if(scheme==='axlebranch') return {data:await labelProtocols.axleTile(data)};
     return {data: names ? localizeTile(data,lang,{z,x,y}) : data};
   });
   }
@@ -1034,7 +1049,7 @@ async function initialize() {
   }});
   syncPanning = globeDrag.sync; globeDragged = globeDrag.justDragged;
   syncPanning();
-  map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'railway', 'branchLines'].includes(e.sourceId) && e.tile) scheduleLegend(); });
+  map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'axleLow', 'axleRail', 'axleBranch', 'railway', 'branchLines'].includes(e.sourceId) && e.tile) scheduleLegend(); });
   map.on('click', event => {
     // The release that ends a globe drag is not a click.
     if (globeDragged()) return;
@@ -1113,15 +1128,27 @@ $('units').addEventListener('change', () => {
   applyUnits(); renderLegend(); saveSettings(); drawing?.refresh(); measuring?.refresh();
   if (currentFeature) showDetails(currentFeature);
 });
-$('collapse').addEventListener('click', () => {
-  $('controls').hidden = !$('controls').hidden;
-  $('collapse').textContent = $('controls').hidden ? '+' : '−';
-  $('collapse').setAttribute('aria-expanded', String(!$('controls').hidden));
-  $('collapse').setAttribute('aria-label', `${$('controls').hidden ? 'Expand' : 'Collapse'} map controls`);
+const compactControls = () => matchMedia('(max-width: 650px), (max-height: 500px)').matches;
+function setControlsExpanded(expanded, focus = false) {
+  $('controls').hidden = !expanded;
+  document.querySelector('.panel').classList.toggle('collapsed', !expanded);
+  $('collapse').textContent = expanded ? '−' : '+';
+  $('collapse').setAttribute('aria-expanded', String(expanded));
+  $('collapse').setAttribute('aria-label', `${expanded ? 'Collapse' : 'Expand'} map controls`);
+  $('controls-open').setAttribute('aria-expanded', String(expanded));
+  $('controls-open').setAttribute('aria-label', expanded ? 'Collapse map controls' : 'Open map controls');
+  if (focus) (expanded || !compactControls() ? $('collapse') : $('controls-open')).focus();
+}
+$('collapse').addEventListener('click', () => setControlsExpanded($('controls').hidden, true));
+$('controls-open').addEventListener('click', () => setControlsExpanded($('controls').hidden, true));
+document.querySelector('.panel').addEventListener('keydown', event => {
+  if (event.key === 'Escape' && compactControls() && !$('controls').hidden) {
+    event.stopPropagation(); setControlsExpanded(false, true);
+  }
 });
 // On phones and other small screens start with the controls folded away, so
 // the map is visible at launch.
-if (matchMedia('(max-width: 650px), (max-height: 500px)').matches) $('collapse').click();
+if (compactControls()) setControlsExpanded(false);
 // Elevation profile of a drawn line: heights about every 10 m along it
 // (20 to 200 samples), from the terrain tiles. Hovering the chart marks the
 // place on the map.
@@ -1333,5 +1360,4 @@ initialize().catch(error => {
 // Named export lets integration tests inspect rendered features without
 // adding test controls or global variables to the map interface.
 export {map};
-
 
