@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import Pbf from 'pbf';
 import {VectorTile} from '@mapbox/vector-tile';
-import {addResult, buildTiles, commitStage, discardStage, joinLines, orient, routeView, stageChange, partQuery, readTable, routeLabel, routeOf, toTable, writeTable, LAYER} from '../scripts/service-routes.mjs';
+import {addResult, buildTiles, commitStage, discardStage, joinLines, orient, routeView, serviceRoutes, stageChange, partQuery, readTable, routeLabel, routeOf, toTable, writeTable, LAYER} from '../scripts/service-routes.mjs';
 
 test('service routes: names without their direction', () => {
   assert.equal(routeLabel('港鐵荃灣綫 MTR Tsuen Wan Line (南行 Southbound)'), '港鐵荃灣綫 MTR Tsuen Wan Line');
@@ -39,14 +39,16 @@ const sample = {elements: [
 
 test('service routes: table and tiles, each route along its tracks in its place', () => {
   const {routes, ways} = toTable(sample);
-  assert.equal(routes.length, 2);
-  assert.equal(routes.find(r => r.ref === 'A').relation, 10, 'linked to its lowest relation id');
+  assert.deepEqual(routes.map(r => r.key), ['r10', 'r11', 'r12'], 'each relation by its id');
   assert.deepEqual(ways.map(w => w.id), [1, 2], 'platforms are not tracks');
   const built = {routes: new Map(), ways: new Map()};
   addResult(built, {routes, ways}, 'japan');
   commitStage(built, 'japan');
   const table = readTable(writeTable(built));
-  assert.equal(table.routes.size, 2); assert.equal(table.ways.size, 2);
+  assert.equal(table.routes.size, 3); assert.equal(table.ways.size, 2);
+  const service = serviceRoutes(table);
+  assert.equal(service.get('r11'), service.get('r10'), 'both directions are one route');
+  assert.equal(service.get('r11').relation, 10, 'linked to its lowest relation id');
   const tiles = buildTiles(table);
   const read = key => { const l = new VectorTile(new Pbf(tiles.get(key))).layers[LAYER]; return Array.from({length: l.length}, (_, i) => l.feature(i)); };
   const close = read([...tiles.keys()].find(k => k.startsWith('12/')));
@@ -128,13 +130,33 @@ test('service routes: memberships add up within a pass, are kept per stage, and 
 test('service routes: the same reference and network in two places are two routes; both directions of one are one', () => {
   const rel = (id, name, ways) => ({type: 'relation', id, tags: {route: 'subway', ref: '1', network: 'Metro', colour: 'red', name}, members: ways.map(ref => ({type: 'way', ref, role: ''}))});
   const way = (id, lon, lat) => ({type: 'way', id, geometry: [{lon, lat}, {lon: lon + 0.01, lat}]});
-  const {routes, ways} = toTable({elements: [
+  const table = elements => { const t = {routes: new Map(), ways: new Map()}; for (const [stage, part] of elements) addResult(t, toTable({elements: part}), stage); return t; };
+  // Paris and Berlin; and two cities about 30 km apart whose centres fall in
+  // the same 1° cell.
+  const service = serviceRoutes(table([['A', [
     rel(1, 'Metro 1 (northbound)', [10]), rel(2, 'Metro 1 (southbound)', [11]), rel(3, 'Metro 1', [20]),
-    way(10, 2.35, 48.85), way(11, 2.351, 48.851), way(20, 13.4, 52.5),
-  ]});
-  assert.equal(routes.length, 2, 'two cities, one route each');
-  assert.deepEqual(routes.map(r => r.relation).sort(), [1, 3]);
-  assert.equal(ways.find(w => w.id === 10).routes[0], ways.find(w => w.id === 11).routes[0], 'both directions are one route');
-  assert.notEqual(ways.find(w => w.id === 10).routes[0], ways.find(w => w.id === 20).routes[0]);
+    rel(4, 'Metro 1', [30]), rel(5, 'Metro 1', [31]),
+    way(10, 2.35, 48.85), way(11, 2.351, 48.851), way(20, 13.4, 52.5), way(30, 5.1, 45.1), way(31, 5.45, 45.2),
+  ]]]));
+  assert.equal(service.get('r2'), service.get('r1'), 'both directions are one route');
+  assert.equal(service.get('r1').relation, 1);
+  assert.notEqual(service.get('r3'), service.get('r1'));
+  assert.notEqual(service.get('r4'), service.get('r5'), 'apart, though in the same 1° cell');
+  assert.equal(new Set(service.values()).size, 4);
   assert.notEqual(routeOf({id: 3, tags: {route: 'tram', ref: '1', network: 'X', name: 'One'}}).key, routeOf({id: 4, tags: {route: 'subway', ref: '1', network: 'X', name: 'One'}}).key);
+});
+
+test('service routes: relations of one line from different boxes or stages are one route, drawn once', () => {
+  const rel = (id, ways) => ({type: 'relation', id, tags: {route: 'subway', ref: '2', network: 'Metro', colour: 'blue', name: 'Line 2'}, members: ways.map(ref => ({type: 'way', ref, role: ''}))});
+  const way = (id, lon, lat) => ({type: 'way', id, geometry: [{lon, lat}, {lon: lon + 0.05, lat}]});
+  const t = {routes: new Map(), ways: new Map()};
+  // One box selects the main line, another (far up the branch) only the branch.
+  addResult(t, toTable({elements: [rel(7, [1, 2]), way(1, 0, 0), way(2, 0.05, 0)]}), 'A');
+  addResult(t, toTable({elements: [rel(9, [2, 3, 4]), way(2, 0.05, 0), way(3, 0.1, 0), way(4, 0.5, 0.4)]}), 'B');
+  commitStage(t, 'A'); commitStage(t, 'B');
+  const service = serviceRoutes(t);
+  assert.equal(service.get('r9'), service.get('r7'), 'the branch shares a track with the main line');
+  const tiles = buildTiles(t);
+  const features = [...tiles.entries()].filter(([k]) => k.startsWith('12/')).flatMap(([, data]) => { const l = new VectorTile(new Pbf(data)).layers[LAYER]; return Array.from({length: l.length}, (_, i) => l.feature(i)); });
+  assert.ok(features.length && features.every(f => f.properties.n === 1 && f.properties.id === 'relation-7'), 'one line on the shared track, linked to the lowest relation');
 });

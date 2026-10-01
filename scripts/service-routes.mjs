@@ -45,8 +45,9 @@ export function routeLabel(name) {
 const NAME_KEY = /^name:[a-z]{2,3}(-[A-Za-z]{2,4})?$/;
 // The same service in each direction (and in variants) is one route: the
 // same kind, network, reference and colour (and name, without a reference),
-// in the same place. routeOf gives that key without the place; toTable adds
-// it, since networks are often named generically ("Metro").
+// in the same place. routeOf gives that group without the place;
+// serviceRoutes adds it, since networks are often named generically
+// ("Metro").
 export function routeOf(rel) {
   const t = rel.tags || {};
   const label = routeLabel(t.name) || t.ref || '', ref = t.ref || '';
@@ -78,33 +79,16 @@ export function toTable(json) {
     const lines = parts.filter(part => part.length > 1).map(part => simplify(part, 0.00005).map(round));
     if (lines.length) geometry.set(el.id, lines);
   }
-  // Relations with the same key form one route where they share a track or
-  // lie within about 10 km of each other (the directions of a line); apart,
-  // they are routes of different places. The place (the 1° cell of the
-  // group's centre) completes the key: each response has every way of its
-  // relations, so a group comes out the same in every stage.
+  // Each relation is kept on its own, by its id: a response holds only the
+  // relations selected in its box, so which relations make up a route is
+  // decided from the whole table when the tiles are made (serviceRoutes).
+  const routes = new Map(), wayRoutes = new Map();
   for (const rel of rels) {
-    const points = rel.ways.flatMap(id => geometry.get(id) || []).flat();
-    rel.box = points.length ? points.reduce(([w, s, e, n], [x, y]) => [Math.min(w, x), Math.min(s, y), Math.max(e, x), Math.max(n, y)], [Infinity, Infinity, -Infinity, -Infinity]) : null;
-  }
-  const near = (a, b) => a.box && b.box && a.box[0] - 0.1 <= b.box[2] && b.box[0] - 0.1 <= a.box[2] && a.box[1] - 0.1 <= b.box[3] && b.box[1] - 0.1 <= a.box[3];
-  const shared = (a, b) => { const set = new Set(a.ways); return b.ways.some(id => set.has(id)); };
-  const routes = new Map(), wayRoutes = new Map(), byKey = Map.groupBy(rels, rel => rel.route.key);
-  for (const group of byKey.values()) {
-    const parent = group.map((_, i) => i), find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
-    for (let i = 0; i < group.length; i++) for (let j = i + 1; j < group.length; j++) if (near(group[i], group[j]) || shared(group[i], group[j])) parent[find(i)] = find(j);
-    for (const members of Map.groupBy(group.map((rel, i) => [rel, i]), ([, i]) => find(i)).values()) {
-      const boxes = members.map(([rel]) => rel.box).filter(Boolean);
-      const cell = boxes.length ? (() => { const [w, s, e, n] = boxes.reduce((a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]);
-        return `${Math.round((s + n) / 2)},${Math.round((w + e) / 2)}`; })() : '';
-      // The lowest relation of the route gives its link and details.
-      const first = members.map(([rel]) => rel.route).reduce((a, b) => (b.relation < a.relation ? b : a));
-      const key = `${first.key}|${cell}`;
-      routes.set(key, {...first, key});
-      for (const [rel] of members) for (const id of rel.ways) {
-        if (!wayRoutes.has(id)) wayRoutes.set(id, new Set());
-        wayRoutes.get(id).add(key);
-      }
+    const key = `r${rel.route.relation}`;
+    routes.set(key, {...rel.route, group: rel.route.key, key});
+    for (const id of rel.ways) {
+      if (!wayRoutes.has(id)) wayRoutes.set(id, new Set());
+      wayRoutes.get(id).add(key);
     }
   }
   const ways = [...wayRoutes].filter(([id]) => geometry.has(id)).map(([id, keys]) => ({id, routes: [...keys].sort(), lines: geometry.get(id)}));
@@ -112,8 +96,8 @@ export function toTable(json) {
 }
 const round = ([x, y]) => [Math.round(x * 1e6) / 1e6, Math.round(y * 1e6) / 1e6];
 
-// The table keeps, for each way and route, what each stage found: a way's
-// routes by stage and a route (its lowest relation and what it says) by
+// The table keeps, for each way and route (one relation), what each stage
+// found: a way's routes by stage and a route (what its relation says) by
 // stage. A stage's pass (which
 // may span runs) writes into `next`, adding up across its boxes (each
 // response lists only the routes selected in its box); when the pass is
@@ -184,6 +168,39 @@ export function readTable(text) {
   return {routes, ways};
 }
 
+const drawnLines = way => way.lines || Object.values(way.nextLines || {})[0] || [];
+// Relations of one service (the same kind, network, reference and colour…)
+// become one route where they share a track or lie within about 10 km of
+// each other (the directions and variants of a line); apart, they are the
+// like-named routes of different places. Made from the whole table, which
+// holds every relation found, in whichever box or stage. Returns relation
+// key → the route as drawn: its lowest relation, which gives its link and
+// details.
+export function serviceRoutes({routes, ways}) {
+  const views = new Map([...routes.values()].map(route => [route.key, routeView(route)]));
+  const parent = new Map([...views.keys()].map(key => [key, key])), boxes = new Map();
+  const find = key => { const p = parent.get(key); if (p === key) return key; const root = find(p); parent.set(key, root); return root; };
+  const join = (a, b) => { const [ra, rb] = [find(a), find(b)]; if (ra !== rb) parent.set(ra, rb); };
+  const group = key => views.get(key).group ?? key;
+  for (const way of ways.values()) {
+    const keys = wayRoutes(way).filter(key => views.has(key));
+    for (const key of keys) for (const line of drawnLines(way)) for (const [x, y] of line) {
+      const box = boxes.get(key) || [Infinity, Infinity, -Infinity, -Infinity];
+      boxes.set(key, [Math.min(box[0], x), Math.min(box[1], y), Math.max(box[2], x), Math.max(box[3], y)]);
+    }
+    for (const same of Map.groupBy(keys, group).values()) for (const key of same.slice(1)) join(same[0], key);
+  }
+  const near = (a, b) => a && b && a[0] - 0.1 <= b[2] && b[0] - 0.1 <= a[2] && a[1] - 0.1 <= b[3] && b[1] - 0.1 <= a[3];
+  for (const same of Map.groupBy(views.keys(), group).values())
+    for (let i = 0; i < same.length; i++) for (let j = i + 1; j < same.length; j++) if (near(boxes.get(same[i]), boxes.get(same[j]))) join(same[i], same[j]);
+  const out = new Map();
+  for (const members of Map.groupBy(views.keys(), find).values()) {
+    const view = members.map(key => views.get(key)).reduce((a, b) => (b.relation < a.relation ? b : a));
+    for (const key of members) out.set(key, view);
+  }
+  return out;
+}
+
 // Lines run west to east (or south to north when due north–south), so that
 // neighbouring ways mostly share a direction and each route keeps its side
 // where routes run side by side (drawn with an offset by their order).
@@ -220,10 +237,12 @@ export function joinLines(lines) {
 // from zoom 10 all of them).
 export function buildTiles({routes, ways}) {
   const out = new Map(), sets = [[new Map(), MIN_ZOOM, LOCAL_MIN_ZOOM - 1, r => !LOCAL_KINDS.includes(r.kind)], [new Map(), LOCAL_MIN_ZOOM, MAX_ZOOM, () => true]];
+  const service = serviceRoutes({routes, ways});
   for (const way of ways.values()) {
-    const all = wayRoutes(way).map(key => routes.get(key)).filter(Boolean).map(routeView)
+    // A route once, whichever of its relations run here.
+    const all = [...new Set(wayRoutes(way).map(key => service.get(key)).filter(Boolean))]
       .sort((a, b) => ORDER[a.kind] - ORDER[b.kind] || a.ref.localeCompare(b.ref, 'en', {numeric: true}) || a.label.localeCompare(b.label));
-    const lines = (way.lines || Object.values(way.nextLines || {})[0] || []).map(orient);
+    const lines = drawnLines(way).map(orient);
     if (!lines.length) continue;
     for (const [groups, , , shown] of sets) {
       const list = all.filter(shown);
