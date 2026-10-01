@@ -1,4 +1,4 @@
-# Open Railway Atlas
+# Railway Atlas
 
 A worldwide railway map built with MapLibre and OpenStreetMap data, with railway
 stations and infrastructure at the centre of the map.

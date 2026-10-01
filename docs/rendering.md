@@ -10,7 +10,7 @@ The railway provider’s `maxspeed` field is normalized to km/h. Where direction
 
 These are mapped infrastructure limits, not train operating speeds, temporary restrictions or timetable information.
 
-Display options switch between metric and imperial units: imperial colours speeds by round mph bands (< 25 … ≥ 185), shows track labels in mph (labels already tagged in mph are kept as tagged, others are converted from the numeric limit), draws contours at foot intervals and switches the scale bar and detail values.
+The settings switch between metric and imperial units: imperial colours speeds by round mph bands (< 25 … ≥ 185), shows track labels in mph (labels already tagged in mph are kept as tagged, others are converted from the numeric limit), draws contours at foot intervals and switches the scale bar and detail values.
 
 ## Station hierarchy
 
