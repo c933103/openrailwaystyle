@@ -1159,6 +1159,16 @@ $('details-close').addEventListener('click', closeDetails);
 addEventListener('keydown', event => { if (event.key === 'Escape' && !$('details').hidden && !drawing?.active && !measuring?.active && !document.querySelector('dialog[open]')) closeDetails(); });
 $('about-open').addEventListener('click', () => $('about').showModal());
 $('about-close').addEventListener('click', () => $('about').close());
+// The contents links scroll within the dialog; following them would replace
+// the address's map position (#zoom/lat/lon) with the section's name.
+$('about').querySelector('.help-contents')?.addEventListener('click', event => {
+  const link = event.target.closest('a[href^="#"]');
+  if (!link) return;
+  event.preventDefault();
+  const section = document.getElementById(link.getAttribute('href').slice(1));
+  section?.scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start'});
+  section?.focus({preventScroll: true});
+});
 // Copies text, or shows it selected for copying where the clipboard is
 // unavailable.
 async function copyText(text, done, label) {
