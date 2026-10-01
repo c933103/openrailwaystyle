@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-49';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-49';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-64';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-64';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-49';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-49';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-49';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-49';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-49';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-64';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-64';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-64';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-64';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-64';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -35,7 +35,7 @@ const settings = readSettings(location.search, {language: readCookie(LANGUAGE_CO
 const status = $('map-status');
 let legendHelpOpen = false;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-49';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-64';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -343,7 +343,9 @@ function showDetails(feature) {
     row(dl, 'Protection being built', p.train_protection_construction ? trainProtectionName(p.train_protection_construction) : undefined);
     const gauges = p.gauges ? String(p.gauges).split(/[;,]\s*/) : [p.gauge0, p.gauge1, p.gauge2].filter(Boolean);
     row(dl, 'Gauge', gauges.length ? gauges.map(gauge).join(', ') : undefined);
-    const axle = axleLoad(p);
+    // Other views have no country annotation from the axle lookup. Their
+    // explicit load tags remain usable; their national class codes do not.
+    const axle = axleLoad({...p,axle_system:p.axle_system || (feature.source?.startsWith('axle') ? undefined : 'unknown')});
     row(dl,'Axle load',axle ? formatAxleLoad(axle,settings.units) : undefined);
     row(dl,'Mapped axle capacity',p.axle_load);
     row(dl,'Legal axle limit',p.maxaxleload);
@@ -1256,8 +1258,8 @@ $('search-form').addEventListener('submit', async e => {
     return items;
   };
   try {
-    // Search results are located for their Chinese name order.
-    await labels.catch(() => {});
+    // Search must work while map labels are still downloading. The small
+    // locate fallback is replaced when that bundle arrives.
     // The OpenRailwayMap API asks clients to stop after HTTP 429 and to give
     // up on requests after about 5 seconds; the geocoder is asked once per
     // submitted search (never as you type), within its usage policy.
@@ -1268,7 +1270,7 @@ $('search-form').addEventListener('submit', async e => {
     // The facility request is cancelled at its 5-second limit (and with the
     // whole search), not just left running.
     const facility = new AbortController();
-    // (An abort that already fired, e.g. while the labels loaded, is not
+    // (An abort that already fired is not
     // replayed to a new listener.)
     if (controller.signal.aborted) facility.abort();
     else controller.signal.addEventListener('abort', () => facility.abort(), {once: true});
@@ -1331,5 +1333,4 @@ initialize().catch(error => {
 // Named export lets integration tests inspect rendered features without
 // adding test controls or global variables to the map interface.
 export {map};
-
 

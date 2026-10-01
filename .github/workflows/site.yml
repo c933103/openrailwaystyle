@@ -49,7 +49,6 @@ jobs:
           mkdir -p styles/data
           cp lifecycle-data/manifest.json styles/data/
           # Loading gauge by way ID for the zoom 0–6 overview (optional).
-          if [ -f lifecycle-data/axle-load.json ]; then cp lifecycle-data/axle-load.json styles/data/; fi
           if [ -f lifecycle-data/loading-gauge.json ]; then cp lifecycle-data/loading-gauge.json styles/data/; fi
           # The polar caps beyond 85.05° (optional).
           if [ -d lifecycle-data/polar ]; then cp -r lifecycle-data/polar styles/data/polar; fi
@@ -58,6 +57,12 @@ jobs:
           python scripts/unpack-snapshot.py /tmp/lifecycle.pmtiles
           node scripts/build-overview-tiles.mjs
           cat lifecycle-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
+      - name: Load the published axle-load lookup
+        run: |
+          if git ls-remote --exit-code --heads origin axle-data; then
+            git fetch --depth=1 origin axle-data:refs/remotes/origin/axle-data
+            git show origin/axle-data:axle-load.json > styles/data/axle-load.json
+          fi
       - name: Wait for first street-running snapshot
         run: |
           for attempt in $(seq 1 40); do
