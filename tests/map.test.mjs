@@ -698,6 +698,36 @@ test('OpenStreetMap object behind a feature', () => {
   assert.equal(osmObject({source:'openmaptiles', id:1234560, properties:{}}), null);
   assert.equal(osmObject({kind:'station', properties:{osm_id:2149761647}}), null, 'a search result does not say node or way');
 });
+
+test('search: geocoded stations join the railway results unless already found; other places follow', async () => {
+  const {searchResults, osmObject} = await import('../styles/map-model.mjs');
+  const facilities = [{osm_id: 4338478841, name: '大埔墟 Tai Po Market', railway: 'station', latitude: 22.4447, longitude: 114.1704}];
+  const places = [
+    {osm_type: 'way', osm_id: 223848687, category: 'railway', type: 'station', lat: '22.3826', lon: '114.1869', display_name: '沙田 Sha Tin, 沙田區 Sha Tin District, 香港 Hong Kong', namedetails: {name: '沙田 Sha Tin', 'name:en': 'Sha Tin'}},
+    {osm_type: 'node', osm_id: 4338478841, category: 'railway', type: 'station', lat: '22.4447', lon: '114.1704', display_name: '大埔墟 Tai Po Market'},
+    {osm_type: 'way', osm_id: 99, category: 'railway', type: 'station', lat: '22.4449', lon: '114.1706', display_name: 'x', namedetails: {name: 'Other', 'name:en': 'Tai Po Market'}},
+    {osm_type: 'node', osm_id: 316731268, category: 'place', type: 'town', addresstype: 'town', lat: '22.3836', lon: '114.1878', display_name: '沙田 Sha Tin, 香港 Hong Kong', boundingbox: ['22.2', '22.5', '114.0', '114.3'], namedetails: {name: '沙田 Sha Tin'}},
+    {osm_type: 'node', osm_id: 1, category: 'place', type: 'town', lat: 'x', lon: '1', display_name: 'bad'},
+    {osm_type: 'way', osm_id: 2, category: 'public_transport', type: 'station', lat: '22.30', lon: '114.17', display_name: 'Bus Terminus', extratags: {bus: 'yes'}},
+    {osm_type: 'way', osm_id: 3, category: 'public_transport', type: 'station', lat: '22.50', lon: '114.10', display_name: 'Rail Station', extratags: {train: 'yes'}},
+    {osm_type: 'way', osm_id: 4, category: 'building', type: 'train_station', lat: '22.3049', lon: '114.1615', display_name: '九龍站 Kowloon Station, 西九', extratags: {subway: 'yes'}},
+  ];
+  const {rail, places: other} = searchResults(facilities, places);
+  assert.deepEqual(rail.map(r => r.osm_id), [4338478841, 223848687, 3, 4], 'a station mapped as an area is added; the same node or name nearby is not repeated; a public-transport station only with rail evidence; a station building (Kowloon)');
+  assert.equal(rail[3].railway, 'station');
+  assert.deepEqual([rail[1].railway, rail[1]['name:en'], rail[1].osm_type], ['station', 'Sha Tin', 'way']);
+  assert.deepEqual(other.map(p => [p.osm_id, p.place, p.area, p.boundingbox]), [[316731268, 'town', '香港 Hong Kong', [22.2, 22.5, 114, 114.3]], [2, 'station', '', undefined]], 'a bus station stays a place');
+  assert.deepEqual(osmObject({properties: rail[1]}), {type: 'way', id: '223848687'}, 'geocoded results link to their OSM object');
+  // A nearby station whose name merely contains another's is a different station.
+  const {samePlaceName} = await import('../styles/map-model.mjs');
+  assert.equal(samePlaceName('Central Park', 'Central'), false);
+  assert.equal(samePlaceName('Central Station', 'Central Park Station'), false);
+  for (const [a, b] of [['大埔墟 Tai Po Market', 'Tai Po Market'], ['九龍塘站', '九龍塘'], ['紅磡 Hung Hom Station', 'Hung Hom'], ['東京駅', '東京']]) assert.ok(samePlaceName(a, b), `${a} = ${b}`);
+  const parkNearby = searchResults([{osm_id: 1, name: 'Central', railway: 'station', latitude: 22.28, longitude: 114.158}],
+    [{osm_type: 'way', osm_id: 5, category: 'railway', type: 'station', lat: '22.2805', lon: '114.1585', display_name: 'Central Park', namedetails: {name: 'Central Park'}}]);
+  assert.deepEqual(parkNearby.rail.map(r => r.osm_id), [1, 5]);
+});
+
 test('country names to zoom 7 above station names; states and provinces from zoom 4', async () => {
   const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
   const ids = style.layers.map(l => l.id), last = ids.lastIndexOf.bind(ids);
