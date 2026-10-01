@@ -1,11 +1,12 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-23';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-23';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-bathymetry1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-bathymetry1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-23';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-23';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-23';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-23';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-23';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-bathymetry1';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-bathymetry1';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-bathymetry1';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-bathymetry1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-bathymetry1';
+import { installBathymetry, shareArchiveRequests } from './bathymetry.mjs?v=20261001-bathymetry1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -35,7 +36,7 @@ const settings = readSettings(location.search, {language: readCookie(LANGUAGE_CO
 const status = $('map-status');
 let legendHelpOpen = false;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-23';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-bathymetry1';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -835,6 +836,7 @@ async function initialize() {
   // MapLibre 5 has no top-level supported() export. The Map constructor checks
   // WebGL itself; initialization errors are caught by the handler below.
   const protocol = new pmtiles.Protocol();
+  protocol.tile = shareArchiveRequests(protocol.tile.bind(protocol));
   maplibregl.addProtocol('pmtiles', protocol.tile);
   installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url)});
   // The contour worker with the terrain tiles' bad pixels repaired
@@ -866,6 +868,11 @@ async function initialize() {
   const response = await fetch(styleURL);
   if (!response.ok) throw new Error('The map style could not load. Reload to try again.');
   const style = await response.json();
+  const waterArchive = style.sources.openmaptiles.url;
+  installBathymetry(maplibregl, dem, {
+    waterTile: (z, x, y, controller) => protocol.tile({url: `${waterArchive}/${z}/${x}/${y}`, type: 'arrayBuffer'}, controller),
+    readTile: data => labelCode.readTile(data, ['water']),
+  });
   for (const source of Object.values(style.sources)) {
     if (source.url?.startsWith('pmtiles://data/')) source.url = 'pmtiles://' + new URL(source.url.slice(10), styleURL).href;
   }
@@ -879,6 +886,7 @@ async function initialize() {
   // the style's default view (applySettings covers the rest once loaded).
   for (const layer of style.layers) {
     let visible;
+    if (layer.id === 'terrain-bathymetry') visible = settings.relief;
     if (MODES.some(mode => layer.id.startsWith(`${mode}-`))) visible = layer.id.startsWith(`${settings.mode}-`);
     if (layer.id === 'satellite') visible = settings.background !== 'map';
     else if (settings.background === 'satellite' || (settings.background === 'hybrid' && isBaseMap(layer))) visible = false;
@@ -1318,5 +1326,3 @@ initialize().catch(error => {
 // Named export lets integration tests inspect rendered features without
 // adding test controls or global variables to the map interface.
 export {map};
-
-

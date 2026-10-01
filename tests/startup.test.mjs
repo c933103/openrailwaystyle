@@ -8,6 +8,7 @@ import * as draw from '../styles/draw.mjs';
 import * as departuresModule from '../styles/departures.mjs';
 import * as elevationModule from '../styles/elevation.mjs';
 import * as contextFeatures from '../styles/context.mjs';
+import * as bathymetryModule from '../styles/bathymetry.mjs';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
 const appURL = new URL('../styles/app.mjs', import.meta.url);
@@ -106,7 +107,10 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
   const contextModule = new vm.SyntheticModule(Object.keys(contextFeatures),function() {
     for (const [key,value] of Object.entries(contextFeatures)) this.setExport(key,value);
   },{context});
-  await app.link(specifier => specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  const bathymetry = new vm.SyntheticModule(Object.keys(bathymetryModule),function() {
+    for (const [key,value] of Object.entries(bathymetryModule)) this.setExport(key,value);
+  },{context});
+  await app.link(specifier => specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries};

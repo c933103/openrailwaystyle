@@ -63,6 +63,9 @@ const style = {
     satellite: {type:'raster', tiles:['https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2025_3857/default/g/{z}/{y}/{x}.jpg'], tileSize:256, maxzoom:14,
       attribution:'<a href="https://cloudless.eox.at">EOxCloudless https://cloudless.eox.at</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2025), <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>'},
     relief: {type:'raster-dem', tiles:[DEM_URL], tileSize:256, encoding:'terrarium', maxzoom:15, attribution:'<a href="terrain-credits.html">Terrain: Mapzen / AWS and data contributors</a>'},
+    // Depth colours reuse relief's DEM cache (capped at zoom 10) but the
+    // water mask follows the basemap's coastlines through zoom 14.
+    bathymetry: {type:'raster', tiles:['atlas-depth://{z}/{x}/{y}'], tileSize:512, maxzoom:14},
   },
   // The base map's airport layers are replaced by the transport context
   // layers (context-style.mjs), including its white runway stripe.
@@ -90,6 +93,10 @@ style.layers.push({...firstBoundary,id:'regional-border-casing',paint:{'line-col
 style.layers.push({...firstBoundary,id:'regional-borders',paint:{'line-color':'#81747e','line-opacity':0.9,'line-width':['interpolate',['linear'],['zoom'],3,0.7,7,1.25,12,1.8],'line-dasharray':[5,2]}});
 // Place hillshade over land/water fills, below waterways, roads and borders.
 style.layers = [...style.layers.filter(l=>l.type==='background'||l.type==='fill'), ...style.layers.filter(l=>l.type!=='background'&&l.type!=='fill')];
+// Above the ocean fill, below ice shelves, contours, roads and all railways.
+// The protocol clips depth pixels to ocean polygons, retaining island holes.
+style.layers.splice(style.layers.findIndex(l => l.id === 'water') + 1, 0,
+  {id:'terrain-bathymetry', type:'raster', source:'bathymetry', paint:{'raster-fade-duration':0,'raster-resampling':'linear'}});
 const reliefIndex = style.layers.findIndex(l => l.type === 'line');
 style.layers.splice(reliefIndex,0,{id:'terrain-relief',type:'hillshade',source:'relief',paint:{'hillshade-exaggeration':0.3,'hillshade-shadow-color':'#667365','hillshade-highlight-color':'#ffffff','hillshade-accent-color':'#738978','hillshade-illumination-anchor':'map','hillshade-illumination-direction':315}});
 const contourBase = {type:'line',source:'contours','source-layer':'contours',minzoom:7,filter:['!=',['get','ele'],0],layout:{'line-join':'round'}};
@@ -451,4 +458,3 @@ style.layers.splice(style.layers.findIndex(l => l.id === 'background') + 1, 0, {
 for (const id of ['country_label-other', 'country_label']) style.layers.push(...style.layers.splice(style.layers.findIndex(l => l.id === id), 1));
 await writeFile(new URL('../styles/world.style.json', import.meta.url), JSON.stringify(style, null, 2) + '\n');
 console.log(`Built world.style.json: ${style.layers.length} layers`);
-

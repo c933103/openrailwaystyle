@@ -59,6 +59,30 @@ Station symbols use orange markers and bold names with halos, while retaining co
 
 Land and seabed shading comes from [Mapzen Terrain Tiles hosted by AWS](https://registry.opendata.aws/terrain-tiles/), including NOAA ETOPO1 bathymetry. See [terrain credits](../styles/terrain-credits.html) for source credits.
 
+The sea also has a continuous depth palette: pale turquoise near sea level,
+then progressively bluer at 20, 200, 1,000, 3,000, 6,000 and 11,500 m below
+sea level. It reveals shallow reef platforms and atolls where the elevation
+data resolves them, including around the Marshall and Spratly Islands, without
+requiring OSM reef tags. Existing hillshade and labelled contours remain above
+the colours. All three follow the Terrain, seabed and contours setting; satellite
+and hybrid retain their imagery.
+
+Depth tiles reuse the existing repaired DEM cache and stop at source zoom 10,
+because finer Mapzen tiles lose the seabed values. The basemap's ocean polygons
+mask the colour through zoom 14, keeping island holes, lakes and dry land clear.
+Only the ocean layer is decoded for this mask, and an inland tile adds no DEM
+request. Up to 32 encoded colour tiles are retained. Concurrent basemap/mask
+requests share one archive read, with independent cancellation and byte buffers;
+no additional raw-vector cache is retained. The mask uses the existing
+PMTiles archive; there is no new tile provider or Overpass extraction.
+
+This displays the available depth surface, not a newly surveyed reef outline:
+ETOPO1 is approximately one arc-minute (about 1.85 km north–south), so narrow
+reef crests and small lagoon details cannot be reconstructed reliably. Mixed
+land/sea elevation samples are clamped to sea level inside the ocean mask.
+Missing or impossible depths stay transparent. Beyond the Web Mercator limit,
+the separately prepared polar caps retain their existing relief and contours.
+
 Contours are calculated in the browser using the pinned maplibre-contour library, reusing the DEM cache with hillshade. Brown lines show land elevation and blue lines show negative seabed elevation, labelled in signed metres. Fine / index intervals are 200 / 1,000 m at zoom 7, 100 / 500 m at 9, 50 / 250 m at 11, 20 / 100 m at 13, and 10 / 50 m at 15.
 
 Ocean bathymetry is generally much coarser than land elevation; extra zoom does not create survey detail.

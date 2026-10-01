@@ -109,6 +109,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Start test server
         run: node scripts/serve.mjs &
+      - name: Verify bathymetric depth colours
+        run: node scripts/check-bathymetry-browser.mjs
       - name: Verify roads, planning boundaries and rail-road interfaces
         run: node scripts/check-planning-browser.mjs
       - name: Verify transport and destination context
@@ -199,4 +201,3 @@ jobs:
         with:
           name: published-map-review
           path: browser-review
-

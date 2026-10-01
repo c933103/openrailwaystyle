@@ -213,6 +213,14 @@
       "encoding": "terrarium",
       "maxzoom": 15,
       "attribution": "<a href=\"terrain-credits.html\">Terrain: Mapzen / AWS and data contributors</a>"
+    },
+    "bathymetry": {
+      "type": "raster",
+      "tiles": [
+        "atlas-depth://{z}/{x}/{y}"
+      ],
+      "tileSize": 512,
+      "maxzoom": 14
     }
   },
   "layers": [
@@ -344,6 +352,15 @@
       },
       "paint": {
         "fill-color": "#bfd8e0"
+      }
+    },
+    {
+      "id": "terrain-bathymetry",
+      "type": "raster",
+      "source": "bathymetry",
+      "paint": {
+        "raster-fade-duration": 0,
+        "raster-resampling": "linear"
       }
     },
     {
