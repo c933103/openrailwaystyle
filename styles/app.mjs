@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-50';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-50';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-62';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-62';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-50';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-50';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-50';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-50';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-50';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-62';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-62';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-62';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-62';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-62';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -35,7 +35,7 @@ const settings = readSettings(location.search, {language: readCookie(LANGUAGE_CO
 const status = $('map-status');
 let legendHelpOpen = false;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-50';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-62';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -1258,8 +1258,8 @@ $('search-form').addEventListener('submit', async e => {
     return items;
   };
   try {
-    // Search results are located for their Chinese name order.
-    await labels.catch(() => {});
+    // Search must work while map labels are still downloading. The small
+    // locate fallback is replaced when that bundle arrives.
     // The OpenRailwayMap API asks clients to stop after HTTP 429 and to give
     // up on requests after about 5 seconds; the geocoder is asked once per
     // submitted search (never as you type), within its usage policy.
@@ -1270,7 +1270,7 @@ $('search-form').addEventListener('submit', async e => {
     // The facility request is cancelled at its 5-second limit (and with the
     // whole search), not just left running.
     const facility = new AbortController();
-    // (An abort that already fired, e.g. while the labels loaded, is not
+    // (An abort that already fired is not
     // replayed to a new listener.)
     if (controller.signal.aborted) facility.abort();
     else controller.signal.addEventListener('abort', () => facility.abort(), {once: true});
