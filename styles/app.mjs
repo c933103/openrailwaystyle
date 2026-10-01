@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-24';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-24';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-41';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-41';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-24';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-24';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-24';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-24';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-24';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-41';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-41';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-41';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-41';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-41';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -35,7 +35,7 @@ const settings = readSettings(location.search, {language: readCookie(LANGUAGE_CO
 const status = $('map-status');
 let legendHelpOpen = false;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-24';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-41';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -225,6 +225,7 @@ function applySettings() {
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
   document.querySelectorAll('[data-background]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.background === settings.background)));
   $('legend').hidden = settings.background === 'satellite';
+  updateAttribution();
   for (const key of CHECKBOXES) $(key).checked = settings[key];
   $('units').value = settings.units;
   readout.hidden = !settings.readout; updateReadout();
@@ -243,9 +244,11 @@ function applySettings() {
     if (layer.id.startsWith('context-constraints-')) visible = settings.constraints;
     if (layer.id === 'polar-caps') map.triggerRepaint();
     // Satellite: the imagery alone; hybrid: the imagery under the railways.
-    if (layer.id === 'satellite') visible = settings.background !== 'map';
+    if (layer.id === 'carto') visible = settings.background === 'carto';
+    else if (layer.id === 'satellite') visible = ['satellite','hybrid'].includes(settings.background);
     else if (settings.background === 'satellite' && !RUNTIME_LAYER.test(layer.id)) visible = false;
     else if (settings.background === 'hybrid' && isBaseMap(layer)) visible = false;
+    else if (settings.background === 'carto' && isBaseMap(layer) && !layer.id.startsWith('terrain-')) visible = false;
     if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
     if ((visible ?? true) && isClickable(layer.id)) clickable.push(layer.id);
@@ -256,6 +259,16 @@ function applySettings() {
   inView = [];
   renderLegend();
   if (ready) { scheduleLegend(); scheduleNearbyTransport(); }
+}
+let attribution, attributionCarto;
+function updateAttribution() {
+  if (!map) return;
+  const carto = settings.background === 'carto';
+  if (attribution && attributionCarto === carto) return;
+  if (attribution) map.removeControl(attribution);
+  attributionCarto = carto;
+  attribution = new maplibregl.AttributionControl({compact: !carto});
+  map.addControl(attribution, 'bottom-right');
 }
 const featurePickRank = f => f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|owner)-labels$/;
@@ -819,7 +832,7 @@ function installPolar() {
   if (!map) return;
   if (polarLayer) { if (!map.getLayer(polarLayer.id)) map.addLayer(polarLayer, map.getLayer('waterway-tunnel') ? 'waterway-tunnel' : undefined); return; }
   polarLoading ||= import(`./vendor/polar-layer.js?v=${assetVersion}`).then(({PolarLayer}) => {
-    polarLayer = new PolarLayer({data: new URL('./data/polar/', import.meta.url), units: () => settings.units, relief: () => settings.relief, places: showPolarPlaces, imagery: () => settings.background !== 'map'});
+    polarLayer = new PolarLayer({data: new URL('./data/polar/', import.meta.url), units: () => settings.units, relief: () => settings.relief, places: showPolarPlaces, imagery: () => ['satellite','hybrid'].includes(settings.background), palette: () => settings.background});
     installPolar();
   }).catch(error => console.warn('Polar caps unavailable:', error?.message || error));
 }
@@ -880,8 +893,9 @@ async function initialize() {
   for (const layer of style.layers) {
     let visible;
     if (MODES.some(mode => layer.id.startsWith(`${mode}-`))) visible = layer.id.startsWith(`${settings.mode}-`);
-    if (layer.id === 'satellite') visible = settings.background !== 'map';
-    else if (settings.background === 'satellite' || (settings.background === 'hybrid' && isBaseMap(layer))) visible = false;
+    if (layer.id === 'carto') visible = settings.background === 'carto';
+    else if (layer.id === 'satellite') visible = ['satellite','hybrid'].includes(settings.background);
+    else if (settings.background === 'satellite' || (['hybrid','carto'].includes(settings.background) && isBaseMap(layer) && (settings.background !== 'carto' || !layer.id.startsWith('terrain-')))) visible = false;
     if (visible !== undefined) (layer.layout ||= {}).visibility = visible ? 'visible' : 'none';
   }
   // Reopen where the last visit ended, unless the link gives a position; start
@@ -894,8 +908,9 @@ async function initialize() {
   map = new maplibregl.Map({
     container: 'map', style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / 2 ** settings.detail,
     center: validCenter ? start.c : [15,23], zoom: Number.isFinite(start.z) ? start.z : 1.8, bearing: Number.isFinite(start.b) ? start.b : 0, pitch: Number.isFinite(start.p) ? start.p : 0, hash: true, minZoom: MIN_ZOOM + settings.detail, maxZoom: MAX_ZOOM + settings.detail,
-    renderWorldCopies: true, attributionControl: { compact: true },
+    renderWorldCopies: true, attributionControl: false,
   });
+  updateAttribution();
   // The globe may be centred beyond 85° (globe-drag.mjs); a view left or
   // linked there is applied again once that is allowed.
   polarCentres = allowPolarCentres(map, maplibregl.LngLat, () => MIN_ZOOM + settings.detail);

@@ -204,6 +204,15 @@
       "maxzoom": 14,
       "attribution": "<a href=\"https://cloudless.eox.at\">EOxCloudless https://cloudless.eox.at</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2025), <a href=\"https://creativecommons.org/licenses/by-nc-sa/4.0/\">CC BY-NC-SA 4.0</a>"
     },
+    "carto": {
+      "type": "raster",
+      "tiles": [
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+      ],
+      "tileSize": 256,
+      "maxzoom": 19,
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
+    },
     "relief": {
       "type": "raster-dem",
       "tiles": [
@@ -221,6 +230,17 @@
       "type": "background",
       "paint": {
         "background-color": "#f2f1e9"
+      }
+    },
+    {
+      "id": "carto",
+      "type": "raster",
+      "source": "carto",
+      "layout": {
+        "visibility": "none"
+      },
+      "paint": {
+        "raster-fade-duration": 150
       }
     },
     {
