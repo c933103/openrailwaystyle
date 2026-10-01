@@ -43,7 +43,7 @@ const style = {
     crossingsDetail: {type:'vector',tiles:['crossingtiles://{z}/{x}/{y}'],minzoom:DETAIL_ZOOM,maxzoom:DETAIL_ZOOM,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     // Operating branch lines for the overview zooms (branch-lines.yml):
     // OpenRailwayMap's z0–6 tiles hold main lines only.
-    branchLines: {type:'vector',tiles:['branchtiles://{z}/{x}/{y}'],minzoom:4,maxzoom:6,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
+    branchLines: {type:'vector',tiles:['branchtiles://{z}/{x}/{y}'],minzoom:4,maxzoom:9,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     streetRunning: {type:'vector',tiles:['streettiles://{z}/{x}/{y}'],minzoom:12,maxzoom:12,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     contours: {type:'vector',tiles:['atlas-contour://{z}/{x}/{y}'],minzoom:7,maxzoom:15},
     // Seabed contours (see contourOptions in map-model.mjs). The elevation
@@ -155,11 +155,15 @@ for (const [mode, source, sourceLayer, color] of [
     layout:{'line-cap':'butt','line-join':'round'},
     paint:{'line-color':gaugePaint(1), 'line-width':branchHalfWidth, 'line-offset':branchDualOffset(1)}});
   addLine(`${mode}-overview`, source, sourceLayer, 0, 7, color);
-  addLine(`${mode}-tracks`, 'railway', 'railway_line_high', 7, undefined, color, {
+  const trackPaint = {
     'line-opacity': mode === 'infrastructure' ? 1 : ['case', ['==', ['get', 'tunnel'], true], 0.65, 1],
     'line-width': mode === 'gauge' ? halfWidth : trackWidth(),
     ...(mode === 'gauge' ? {'line-offset': dualOffset(-1)} : {}),
-  });
+  };
+  addLine(`${mode}-tracks`, 'railway', 'railway_line_high', 7, undefined, color, trackPaint);
+  // Metro lines at zooms 7–9 from the same snapshot (the detailed railway
+  // tiles hold them only from zoom 10).
+  addLine(`${mode}-metro-overview`, 'branchLines', 'branch_lines', 7, 10, color, trackPaint);
 }
 style.layers.push({id:'gauge-dual', type:'line', source:'railway', 'source-layer':'railway_line_high', minzoom:7,
   filter:['all', present, notFerry, byKindZoom, isDual],
@@ -178,6 +182,17 @@ style.layers.splice(trackIndex,0,
   {...bridge,id:'structure-bridge-deck',paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],7,2.2,10,3.8,14,6,18,10]}},
 );
 style.layers.push({...structure,id:'structure-tunnel',filter:['all',present,notFerry,byKindZoom,['==',['get','tunnel'],true]],paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],7,0.7,10,1.1,14,2,18,3], 'line-dasharray':[3,2]}});
+// The same cues on the metro snapshot at zooms 7–9, and its second gauge.
+const metroStructure = {...structure, source:'branchLines', 'source-layer':'branch_lines', maxzoom:10};
+const metroBridge = {...metroStructure, filter:['all',present,['==',['get','bridge'],true]]};
+style.layers.splice(style.layers.findIndex(l=>l.id==='infrastructure-tracks'),0,
+  {...metroBridge,id:'structure-metro-bridge-edge',paint:structuredClone(style.layers.find(l=>l.id==='structure-bridge-edge').paint)},
+  {...metroBridge,id:'structure-metro-bridge-deck',paint:structuredClone(style.layers.find(l=>l.id==='structure-bridge-deck').paint)},
+);
+// The second gauge under the tunnel core, as gauge-dual is under structure-tunnel.
+style.layers.push({...structuredClone(style.layers.find(l=>l.id==='gauge-dual')), id:'gauge-metro-dual', source:'branchLines', 'source-layer':'branch_lines', minzoom:7, maxzoom:10,
+  filter:['all', present, isDual]});
+style.layers.push({...metroStructure,id:'structure-metro-tunnel',filter:['all',present,['==',['get','tunnel'],true]],paint:structuredClone(style.layers.find(l=>l.id==='structure-tunnel').paint)});
 // Planned, construction and former lines. line-dasharray cannot vary by
 // feature, so each state has its own layers: long dashes with short gaps for
 // construction, spaced round dots for proposals, dash-dot for disused and
