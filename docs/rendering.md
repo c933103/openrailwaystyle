@@ -10,7 +10,7 @@ The railway provider’s `maxspeed` field is normalized to km/h. Where direction
 
 These are mapped infrastructure limits, not train operating speeds, temporary restrictions or timetable information.
 
-Display options switch between metric and imperial units: imperial colours speeds by round mph bands (< 25 … ≥ 185), shows track labels in mph (labels already tagged in mph are kept as tagged, others are converted from the numeric limit), draws contours at foot intervals and switches the scale bar and detail values.
+The settings switch between metric and imperial units: imperial colours speeds by round mph bands (< 25 … ≥ 185), shows track labels in mph (labels already tagged in mph are kept as tagged, others are converted from the numeric limit), draws contours at foot intervals and switches the scale bar and detail values.
 
 ## Station hierarchy
 
@@ -26,7 +26,7 @@ Before zoom 12 a marker and its name are placed together with collision detectio
 
 ## Branch lines at overview zooms
 
-Below zoom 7 the provider's tiles hold main lines only. From zoom 4 the atlas adds operating branch lines from its own [branch-line snapshot](data-maintenance.md#branch-line-snapshot), drawn under the main lines in the same colours, so a line such as the Ban'etsu West Line no longer disappears when zooming out. The snapshot is filled region by region (Japan first); regions not yet fetched show main lines only below zoom 7. Train protection on these lines is read from the `railway:<system>` tags, approximating the provider's own choice of first system.
+Below zoom 7 the provider's tiles hold main lines only. From zoom 4 the atlas adds operating branch lines from its own [branch-line snapshot](data-maintenance.md#branch-line-snapshot), drawn under the main lines in the same colours, so a line such as the Ban'etsu West Line no longer disappears when zooming out. The snapshot is filled region by region (Japan first); regions not yet fetched show main lines only below zoom 7. Metro lines (`railway=subway`) come from the same snapshot at zooms 7–9, drawn like the detailed tracks in every view (bridges, tunnels and dual gauge included), since the provider's tiles hold them only from zoom 10; regions not yet fetched show metro lines from zoom 10. Train protection on these lines is read from the `railway:<system>` tags, approximating the provider's own choice of first system.
 
 ## Railway structures and track counts
 
