@@ -518,6 +518,9 @@ test('loading gauge dimensions: British W gauges (GE/RT8073), AAR plates, tag va
   assert.equal(loadingDimensions(loadingGauge('W6A, W7, W8, W9, W10')), '3.891 m high × 2.525 m wide');
   assert.equal(loadingDimensions(loadingGauge('W6A, W7, W8, W9, W10, W12')), '3.965 m high × 2.6 m wide');
   assert.match(loadingGauge('W10').note, /load gauges/);
+  // W6 shares W6A's height and width (W6A changed only the lower body).
+  assert.equal(loadingDimensions(loadingGauge('W6')), '3.965 m high × 2.82 m wide');
+  assert.match(loadingGauge('W6').note, /lower body/);
   // Withdrawn gauges keep no invented size.
   assert.equal(loadingDimensions(loadingGauge('W11')), '');
   assert.equal(loadingGauge('W6a').code, 'W6A');
