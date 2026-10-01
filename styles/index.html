@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Rail Atlas">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20261001-99" rel="stylesheet">
+  <link href="app.css?v=20261001-101" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -35,9 +35,9 @@
         <button data-mode="control" aria-pressed="false">Train control</button>
         <button data-mode="gauge" aria-pressed="false">Gauge</button>
         <button data-mode="loading" aria-pressed="false">Loading gauge</button>
-        <button data-mode="axle" aria-pressed="false">Axle load</button>
         <button data-mode="service" aria-pressed="false">Service</button>
         <button data-mode="owner" aria-pressed="false">Owner</button>
+        <button data-mode="axle" aria-pressed="false">Axle load</button>
       </div>
       <div class="background-picker" role="group" aria-label="Background"><button data-background="map" aria-pressed="true">Map</button><button data-background="satellite" aria-pressed="false" title="Satellite imagery only">Satellite</button><button data-background="hybrid" aria-pressed="false" title="Satellite imagery under the railways">Hybrid</button><button data-background="carto" aria-pressed="false">Carto</button></div>
       <div id="legend" aria-live="polite"></div>
@@ -155,7 +155,6 @@
       status.textContent = 'The map could not load. Check your connection and reload the page.';
     }, true);
   </script>
-  <script type="module" src="app.mjs?v=20261001-99"></script>
+  <script type="module" src="app.mjs?v=20261001-101"></script>
 </body>
 </html>
-
