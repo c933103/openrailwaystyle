@@ -338,8 +338,7 @@ export function stitchParts(parts, tolerance = STITCH) {
 const CONNECTOR_INSET = 15;  // metres inside each end where the sides are taken
 const CONNECTOR_MAX = 800;   // metres: longer ways are tracks
 const CONNECTOR_STEP = 10;   // metres between the points where its neighbours are measured
-const CONNECTOR_SPAN = 6;    // points (60 m) over which a change of distance is taken
-const PARALLEL = Math.tan(0.7 * Math.PI / 180); // beside another: change of distance per metre along (gentler than any crossover)
+const CONNECTOR_STEADY = 1;  // metres: a track whose distance from another varies less than this runs beside it
 export function connectors(lines, metres) {
   const touch = (SAME_PLACE + 0.5) / metres + SLACK, cell = PROBE / metres, probe = PROBE / metres, grid = new Map(), segs = [];
   lines.forEach((line, index) => {
@@ -422,12 +421,25 @@ export function connectors(lines, metres) {
     // track: a crossover's distance from its neighbours keeps changing.
     const step = CONNECTOR_STEP / metres, samples = [];
     for (let along = d; along <= total - d + 1e-9; along += step) { const [x, y, dx, dy] = at(along); samples.push(sides(index, line.group, x, y, dx, dy)); }
-    // Compared over about 60 m, so rounding does not hide a gentle drift.
-    const gap = Math.max(1, Math.min(CONNECTOR_SPAN, samples.length - 1));
-    let steady = 0;
-    for (let k = gap; k < samples.length; k++)
-      if ([...samples[k]].some(([other, {t}]) => samples[k-gap].has(other) && Math.abs(samples[k-gap].get(other).t - t) <= PARALLEL * step * gap + SLACK)) steady++;
-    if (samples.length > gap && steady * 2 >= samples.length - gap) return;
+    // Beside a track at a steady distance (within CONNECTOR_STEADY) for half
+    // its length or more, without a break. A crossover, however gentle (a
+    // high-speed one is some 400 m long), keeps moving across: over half
+    // its length it moves half the way between the tracks.
+    const steadyFor = other => {
+      let best = 0;
+      for (let i = 0; i < samples.length; i++) {
+        let low = Infinity, high = -Infinity;
+        for (let j = i; j < samples.length && samples[j].has(other); j++) {
+          const t = samples[j].get(other).t;
+          low = Math.min(low, t); high = Math.max(high, t);
+          if (high - low > steady) break;
+          best = Math.max(best, j - i + 1);
+        }
+      }
+      return best;
+    };
+    const steady = CONNECTOR_STEADY / metres + SLACK, neighbours = new Set(samples.flatMap(sample => [...sample.keys()]));
+    if (samples.length > 1 && [...neighbours].some(other => steadyFor(other) * 2 >= samples.length)) return;
     const first = sides(index, line.group, px, py, pdx, pdy), last = sides(index, line.group, qx, qy, qdx, qdy);
     // A track beside it at both points, on the other side at the second.
     for (const [other, {side}] of first) if (last.get(other)?.side === -side) { found.add(index); return; }
@@ -441,7 +453,8 @@ export function connectors(lines, metres) {
   });
   return found;
 }
-// Stubs: ways mapped as track without a service tag that end in nothing
+// Stubs: ways mapped as track without a service tag (nor a main or branch
+// line's usage, nor services running on them) that end in nothing
 // (buffer stops) at one end and leave another track at a turnout at the
 // other, shorter than STUB_MAX: sidings and spurs. They are not running
 // tracks on the open line, though at a station (a terminus's platform
@@ -475,7 +488,9 @@ export function stubs(lines, metres, extent = 4096) {
   const joined = lines.map(line => line && stitchParts(line.parts));
   const endsOf = index => joined[index].flatMap(part => [part[0], part.at(-1)]);
   lines.forEach((line, index) => {
-    if (!line || line.service || joined[index].length !== 1 || lengthOf(joined[index]) * metres > STUB_MAX) return;
+    // A line in use as such (main or branch, or with services on it) is no
+    // stub, however short: a branch to a terminus looks the same.
+    if (!line || line.service || line.usage === 'main' || line.usage === 'branch' || line.routes > 0 || joined[index].length !== 1 || lengthOf(joined[index]) * metres > STUB_MAX) return;
     const part = joined[index][0], [s, e] = [part[0], part.at(-1)];
     if (nearEdge(s) || nearEdge(e)) return;
     const ts = touching(index, line.group, s), te = touching(index, line.group, e);
@@ -498,7 +513,7 @@ export function trackLines(features) {
     const p = f.properties;
     if (f.type !== 2 || (p.state || 'present') !== 'present' || p.feature === 'ferry') return null;
     return {group: GROUPS[p.feature] || 'rail', tunnel: p.tunnel === true, main: !p.service, service: p.service || undefined,
-      line: p.name || p.ref || undefined, length: Number(p.way_length) || undefined,
+      line: p.name || p.ref || undefined, usage: p.usage || undefined, routes: Number(p.route_count) || 0, length: Number(p.way_length) || undefined,
       parts: f.loadGeometry().map(ring => ring.map(q => [q.x, q.y]))};
   });
 }
