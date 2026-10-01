@@ -10,7 +10,7 @@
 // libraries from the CDN are kept too: their addresses carry the version, so
 // a saved copy never goes stale and is used first. Map tiles and data files
 // are not handled here.
-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}6`;
+const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}6`, KEEP_VERSIONS = 2;
 // Keep in step with loadScript in app.mjs and the stylesheet in index.html.
 const LIBRARIES = ['https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.js', 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css', 'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js'];
 const SHELL = /\/(app\.css|[\w-]+\.mjs|vendor\/[\w-]+\.js|world\.style\.json|manifest\.webmanifest|favicon\.svg|icon-[\w-]+\.png)$/;
@@ -38,9 +38,16 @@ async function saveVersion(cache, version, page) {
     await cache.put(key, response);
   }
   if (page) await cache.put(new URL('./', self.registration.scope).href, page);
+  // The two latest versions are kept: a page still open on the one before
+  // (another tab) loads its lazy modules (the polar layer, the track worker)
+  // from it. Older ones are dropped.
+  const listKey = new URL('__versions', self.registration.scope).href;
+  const known = await cache.match(listKey).then(r => r ? r.json() : []).catch(() => []);
+  const keep = [version, ...known.filter(v => v !== version)].slice(0, KEEP_VERSIONS);
+  await cache.put(listKey, new Response(JSON.stringify(keep), {headers: {'content-type': 'application/json'}}));
   for (const request of await cache.keys()) {
     const v = new URL(request.url).searchParams.get('v');
-    if (v !== null && v !== version) await cache.delete(request);
+    if (v !== null && !keep.includes(v)) await cache.delete(request);
   }
 }
 
