@@ -63,9 +63,9 @@ function stationZones(areas, stations, extent) {
       const held = points.filter(p => inside(p.x, p.y));
       for (const p of held) p.inArea = true;
       // Without a station point in this tile, taken as holding a surface one.
-      // Counted by the tile holding one of its station points (the tiles'
-      // margins repeat points of the tiles beside).
-      zones.push({inside, surface: !held.length || held.some(p => !p.subway), stations: held.filter(p => p.own).length, groups: [...new Set(held.map(p => p.group))]});
+      // Counted, kind by kind, by the tile holding a station point of that
+      // kind (the tiles' margins repeat points of the tiles beside).
+      zones.push({inside, surface: !held.length || held.some(p => !p.subway), stations: held.filter(p => p.own).length, groups: [...new Set(held.filter(p => p.own).map(p => p.group))]});
     }
   }
   return {zones, bare: points.filter(p => !p.inArea)};
