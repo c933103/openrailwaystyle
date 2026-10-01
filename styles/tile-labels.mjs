@@ -312,3 +312,4 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     }
   });
 }
+

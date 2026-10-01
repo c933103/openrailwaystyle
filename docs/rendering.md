@@ -64,7 +64,9 @@ then progressively bluer at 20, 200, 1,000, 3,000, 6,000 and 11,500 m below
 sea level. It reveals shallow reef platforms and atolls where the elevation
 data resolves them, including around the Marshall and Spratly Islands, without
 requiring OSM reef tags. Existing hillshade and labelled contours remain above
-the colours. All three follow the Terrain, seabed and contours setting; satellite
+the colours; fine/deep-water lines are fainter so they do not obscure the depth
+surface, while shallow and index contours retain more weight. All three follow
+the Terrain, seabed and contours setting; satellite
 and hybrid retain their imagery.
 
 Depth tiles reuse the existing repaired DEM cache and stop at source zoom 10,

@@ -59,18 +59,32 @@ export function depthColour(elevation) {
   return stops.at(-1)[1].concat(255);
 }
 // A flat, 46 KB palette avoids per-pixel colour work and object allocation.
-const colours = new Uint8ClampedArray(11501 * 4);
-for (let depth = 0; depth <= 11500; depth++) colours.set(depthColour(-depth), depth * 4);
+let colours;
+const palette = () => {
+  if (!colours) {
+    colours = new Uint8ClampedArray(11501 * 4);
+    for (let depth = 0; depth <= 11500; depth++) colours.set(depthColour(-depth), depth * 4);
+  }
+  return colours;
+};
 
 export function depthTile(z, x, y) {
   const scale = 2 ** Math.max(0, z - DEPTH_ZOOM);
   return {z: Math.min(z, DEPTH_ZOOM), x: Math.floor(x / scale), y: Math.floor(y / scale),
     scale, ox: x % scale, oy: y % scale};
 }
+// Contour heights are emitted in the chosen display units. Convert them back
+// to metres for styling, so switching units does not change contour weight.
+export function seabedContourOpacity(units = 'metric') {
+  const elevation = units === 'imperial' ? ['/', ['get','ele'], 3.28084] : ['get','ele'];
+  const weight = ['*', ['case',['>', ['get','level'],0],1,0.45],
+    ['interpolate',['linear'],['abs',elevation],0,1,200,0.9,1000,0.45,3000,0.2,6000,0.1]];
+  return ['interpolate',['linear'],['zoom'],5,['*',0.4,weight],12,['*',0.65,weight]];
+}
 // Bilinear elevations, sampled at pixel centres, before applying the palette.
 // This makes a smooth depth surface rather than sharp, invented isoband edges.
 export function colourPixels(dem, tile, size = 256) {
-  const out = new Uint8ClampedArray(size * size * 4), {width, height, data} = dem;
+  const out = new Uint8ClampedArray(size * size * 4), {width, height, data} = dem, lookup = palette();
   const clamp = (v, max) => Math.max(0, Math.min(max - 1, v));
   for (let py = 0; py < size; py++) {
     const sy = clamp((tile.oy + (py + 0.5) / size) / tile.scale * height - 0.5, height);
@@ -87,7 +101,7 @@ export function colourPixels(dem, tile, size = 256) {
       // A coastline pixel may mix sea and land in the coarse DEM. The
       // detailed ocean mask, not that mixed height, decides what is water.
       const colour = Math.max(0, Math.min(11500, Math.round(-elevation))) * 4, at = (py * size + px) * 4;
-      out[at] = colours[colour]; out[at + 1] = colours[colour + 1]; out[at + 2] = colours[colour + 2]; out[at + 3] = 255;
+      out[at] = lookup[colour]; out[at + 1] = lookup[colour + 1]; out[at + 2] = lookup[colour + 2]; out[at + 3] = 255;
     }
   }
   return out;
@@ -132,7 +146,14 @@ export function maskOcean(context, polygons, size) {
 export function installBathymetry(maplibre, dem, {waterTile, readTile, keep = 32}) {
   const cache = new Map();
   let blank;
-  const empty = () => blank ||= png(canvas(1)).then(blob => blob.arrayBuffer());
+  const empty = () => {
+    if (!blank) {
+      const image = canvas(1);
+      image.getContext('2d'); // OffscreenCanvas needs a context before encoding.
+      blank = png(image).then(blob => blob.arrayBuffer());
+    }
+    return blank;
+  };
   maplibre.addProtocol('atlas-depth', async ({url}, controller) => {
     const match = /^atlas-depth:\/\/(\d+)\/(\d+)\/(\d+)$/.exec(url);
     if (!match) throw new Error('Invalid depth tile');

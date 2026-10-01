@@ -6,7 +6,7 @@ import { createElevation, alongLine, profileStats } from './elevation.mjs?v=2026
 import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-bathymetry1';
 import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-bathymetry1';
 import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-bathymetry1';
-import { installBathymetry, shareArchiveRequests } from './bathymetry.mjs?v=20261001-bathymetry1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261001-bathymetry1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -542,6 +542,7 @@ function unitStyle(style) {
     if (layer.id === 'speed-labels') layer.layout['text-field'] = speedLabel(settings.units);
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) layer.paint['line-color'] = inactivePaint(settings.mode, settings.units);
     if (/^terrain-(seabed-)?contour-labels/.test(layer.id)) layer.layout['text-field'] = ['concat', ['to-string', ['get','ele']], settings.units === 'imperial' ? ' ft' : ' m'];
+    if (/^terrain-seabed-contours(?:-close)?$/.test(layer.id)) layer.paint['line-opacity'] = seabedContourOpacity(settings.units);
   }
   if (dem) {
     style.sources.contours.tiles = [dem.contourProtocolUrl(contourOptions(settings.units))];
@@ -567,6 +568,7 @@ function applyUnits() {
   for (const layer of style.layers) {
     if (/^speed-(branch-overview|metro-overview|overview|tracks)$/.test(layer.id) || (/^inactive-(regional|railways)-/.test(layer.id) && !layer.id.includes('bridge'))) map.setPaintProperty(layer.id, 'line-color', layer.paint['line-color']);
     if (layer.id === 'speed-labels' || /^terrain-(seabed-)?contour-labels/.test(layer.id)) map.setLayoutProperty(layer.id, 'text-field', layer.layout['text-field']);
+    if (/^terrain-seabed-contours(?:-close)?$/.test(layer.id)) map.setPaintProperty(layer.id, 'line-opacity', layer.paint['line-opacity']);
   }
   map.getSource('contours')?.setTiles(style.sources.contours.tiles);
   map.getSource('seabedContours')?.setTiles(style.sources.seabedContours.tiles);
@@ -1326,3 +1328,4 @@ initialize().catch(error => {
 // Named export lets integration tests inspect rendered features without
 // adding test controls or global variables to the map interface.
 export {map};
+

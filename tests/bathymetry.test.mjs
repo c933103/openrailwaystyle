@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {DEPTH_ZOOM, depthColour, depthTile, colourPixels, oceanPolygons, installBathymetry, shareArchiveRequests} from '../styles/bathymetry.mjs';
+import {createExpression} from '@maplibre/maplibre-gl-style-spec';
+import {DEPTH_ZOOM, depthColour, depthTile, colourPixels, oceanPolygons, installBathymetry, shareArchiveRequests, seabedContourOpacity} from '../styles/bathymetry.mjs';
 
 test('depth colours distinguish shallow reefs, shelves, deep basins and trenches', () => {
   const depths = [0, 20, 200, 1000, 3000, 6000, 11000].map(d => depthColour(-d));
@@ -15,6 +16,17 @@ test('depth colours distinguish shallow reefs, shelves, deep basins and trenches
 test('street-detail tiles keep using bathymetry instead of fine DEM tiles without depths', () => {
   assert.deepEqual(depthTile(8, 201, 97), {z:8, x:201, y:97, scale:1, ox:0, oy:0});
   assert.deepEqual(depthTile(14, 15823, 7798), {z:DEPTH_ZOOM, x:988, y:487, scale:16, ox:15, oy:6});
+});
+
+test('deep and fine contours are subdued, with the same weight in metres and feet', () => {
+  const compiled = units => {
+    const result=createExpression(seabedContourOpacity(units));assert.equal(result.result,'success');
+    return (ele,level)=>result.value.evaluate({zoom:9},{type:2,properties:{ele,level}});
+  };
+  const metric=compiled('metric'), imperial=compiled('imperial');
+  assert.ok(metric(-4000,0)<metric(-50,0));
+  assert.ok(metric(-4000,1)>metric(-4000,0));
+  assert.ok(Math.abs(metric(-4000,1)-imperial(-4000*3.28084,1))<1e-12);
 });
 
 test('overzooming crops the right shallow/deep quadrant and keeps missing data transparent', () => {

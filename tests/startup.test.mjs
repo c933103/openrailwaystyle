@@ -150,11 +150,11 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
     // Satellite: the imagery alone; hybrid: imagery under the railways; the
     // map brings everything back.
     window.document.querySelector('[data-background="satellite"]').click();
-    assert.deepEqual(['satellite','water','infrastructure-tracks','station-stations-dots'].map(id => maps[0].visibility[id]), ['visible','none','none','none']);
+    assert.deepEqual(['satellite','water','terrain-bathymetry','infrastructure-tracks','station-stations-dots'].map(id => maps[0].visibility[id]), ['visible','none','none','none','none']);
     window.document.querySelector('[data-background="hybrid"]').click();
-    assert.deepEqual(['satellite','water','terrain-relief','infrastructure-tracks','station-stations-dots'].map(id => maps[0].visibility[id]), ['visible','none','none','visible','visible']);
+    assert.deepEqual(['satellite','water','terrain-relief','terrain-bathymetry','infrastructure-tracks','station-stations-dots'].map(id => maps[0].visibility[id]), ['visible','none','none','none','visible','visible']);
     window.document.querySelector('[data-background="map"]').click();
-    assert.deepEqual(['satellite','water','terrain-relief','infrastructure-tracks','structure-bridge-edge'].map(id => maps[0].visibility[id]), ['none','visible','visible','visible','visible']);
+    assert.deepEqual(['satellite','water','terrain-relief','terrain-bathymetry','infrastructure-tracks','structure-bridge-edge'].map(id => maps[0].visibility[id]), ['none','visible','visible','visible','visible','visible']);
     const language = window.document.getElementById('language');
     language.value='ko'; language.dispatchEvent(new window.Event('change'));
     assert.match(maps[0].options.style.sources.stations.url, /atlasstation:\/\/ko\//);

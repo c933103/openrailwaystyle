@@ -32,6 +32,13 @@ try {
     maskOcean(context,[{extent:64,rings:[ring(0,0,48,64),ring(12,12,24,24)]},{extent:64,rings:[ring(32,0,64,64)]}],64);
     const pixel=(x,y)=>[...context.getImageData(x,y,1,1).data];
     const mask={island:pixel(18,18),overlap:pixel(40,40),sea:pixel(4,4)};
+    let inlandProtocol, inlandDEM=0;
+    installBathymetry({addProtocol:(_,handler)=>inlandProtocol=handler},{getDemTile:()=>inlandDEM++},{
+      waterTile:async()=>({data:new ArrayBuffer(0)}),readTile:()=>({layers:{}}),
+    });
+    const empty=await inlandProtocol({url:'atlas-depth://10/500/400'},new AbortController());
+    const blank=await createImageBitmap(new Blob([empty.data],{type:'image/png'}));
+    const inland={width:blank.width,height:blank.height,demRequests:inlandDEM};blank.close();
 
     const style = await (await fetch(base+'world.style.json')).json();
     const protocol = new pmtiles.Protocol(); protocol.tile=shareArchiveRequests(protocol.tile.bind(protocol)); maplibregl.addProtocol('pmtiles',protocol.tile);
@@ -63,11 +70,12 @@ try {
     sources.seabedContoursClose.tiles=[dem.contourProtocolUrl(contourOptions('metric','close'))];
     window.depthMap=new maplibregl.Map({container:'map',style:{version:8,sources,layers},center:[165.38,11.60],zoom:9.2,canvasContextAttributes:{preserveDrawingBuffer:true},attributionControl:false});
     await new Promise(resolve=>depthMap.once('load',resolve));
-    return {mask,tiles};
+    return {mask,tiles,inland};
   },base);
   assert.equal(checks.mask.island[3],0,'island must remain transparent');
   assert.equal(checks.mask.overlap[3],255,'overlapping ocean polygons must stay ocean');
   assert.equal(checks.mask.sea[3],255);
+  assert.deepEqual(checks.inland,{width:1,height:1,demRequests:0});
   for(const tile of checks.tiles) {
     assert.ok(tile.shallow>50,`${tile.key} must reveal shallow reefs`);
     assert.ok(tile.deep>1000,`${tile.key} must distinguish the deep basin`);
