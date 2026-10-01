@@ -28,3 +28,8 @@ test('stationary edges recover after rate limits and transient errors without re
   try{p.update();await new Promise(r=>setTimeout(r,50));assert.equal(requests,2);assert.equal(data.features[0].properties.platform_length,350);const before=draws;p.update();p.update();assert.equal(draws,before);source={setData:d=>{data=d;draws++;}};p.update();assert.equal(draws,before+1);assert.equal(data.features[0].properties.platform_length,350);}finally{p.destroy();}
  }
 });
+
+test('a longer straight tile fragment anchors the label ahead of a shorter fragment with more vertices',async()=>{
+ const long={...edge(),geometry:{type:'LineString',coordinates:[[0,0],[.002,0]]}},short={...edge(),geometry:{type:'LineString',coordinates:[[0,0],[.00003,.00001],[.00008,.00002],[.0001,0]]}};let data;const map={getZoom:()=>19,queryRenderedFeatures:()=>[short,long],getSource:()=>({setData:d=>data=d})},p=createPlatformLengths(map,{delay:0,fetcher:async()=>({ok:true,json:async()=>({properties:{length:350}})})});
+ try{p.update();await new Promise(r=>setTimeout(r,20));assert.deepEqual(data.features[0].geometry.coordinates,[.001,0]);}finally{p.destroy();}
+});

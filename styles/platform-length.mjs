@@ -10,14 +10,14 @@ export function platformLengthLabel(units='metric') {
 export function platformIdentity(feature){const p=feature.properties||{},value=p.id??feature.id;const m=/^(?:way-)?(\d+)$/.exec(String(value??''));return m&&Number(m[1])>0?m[1]:null;}
 // Anchor at the midpoint of the longest loaded piece; the API supplies the
 // full length independently of that visible/clipped piece.
+function longestPlatformLine(feature){
+ const g=feature.geometry;if(!g)return null;const lines=g.type==='LineString'?[g.coordinates]:g.type==='MultiLineString'?g.coordinates:[];let best;
+ const rad=Math.PI/180;for(const line of lines){if(line.length<2)continue;const lens=line.slice(1).map((p,i)=>{const a=line[i],h=Math.sin((p[1]-a[1])*rad/2)**2+Math.cos(a[1]*rad)*Math.cos(p[1]*rad)*Math.sin((p[0]-a[0])*rad/2)**2;return 12742000*Math.asin(Math.min(1,Math.sqrt(h)));}),total=lens.reduce((a,b)=>a+b,0);if(!best||total>best.total)best={line,lens,total};}return best;
+}
+export function platformSpan(feature){return longestPlatformLine(feature)?.total||0;}
 export function platformAnchor(feature){
- const g=feature.geometry;if(!g)return null;
- const lines=g.type==='LineString'?[g.coordinates]:g.type==='MultiLineString'?g.coordinates:[];
- let best,length=-1;
- for(const line of lines){if(line.length<2)continue;const lens=line.slice(1).map((p,i)=>Math.hypot((p[0]-line[i][0])*Math.cos(p[1]*Math.PI/180),p[1]-line[i][1])),total=lens.reduce((a,b)=>a+b,0);if(total<=length)continue;
-  let half=total/2;for(let i=0;i<lens.length;i++){if(half<=lens[i]){const t=lens[i]?half/lens[i]:0;best=line[i].map((v,j)=>v+(line[i+1][j]-v)*t);break;}half-=lens[i];}length=total;
- }
- return best||null;
+ const best=longestPlatformLine(feature);if(!best)return null;const {line,lens,total}=best;let half=total/2;
+ for(let i=0;i<lens.length;i++){if(half<=lens[i]){const t=lens[i]?half/lens[i]:0;return line[i].map((v,j)=>v+(line[i+1][j]-v)*t);}half-=lens[i];}return null;
 }
 export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1100,maxEntries=256,cooldown=600000,retryDelay=30000}={}){
  const cache=new Map(),pending=new Map();let desired=new Map(),timer,wakeTimer,busy=false,disposed=false,controller,inflight;let pausedUntil=0,lastDraw,lastSource;
@@ -35,7 +35,7 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
  function schedule(){if(timer||busy||disposed||!pending.size||Date.now()<pausedUntil)return;timer=setTimeout(()=>{timer=undefined;next();},delay);}
  function update(){
   if(disposed)return;desired=new Map();
-  if(active()&&map.getZoom()>=19){for(const f of map.queryRenderedFeatures({layers:['platform-edges']})){const id=platformIdentity(f);if(!id)continue;const previous=desired.get(id);if(!previous||JSON.stringify(f.geometry).length>JSON.stringify(previous.geometry).length)desired.set(id,f);}}
+  if(active()&&map.getZoom()>=19){for(const f of map.queryRenderedFeatures({layers:['platform-edges']})){const id=platformIdentity(f);if(!id)continue;const previous=desired.get(id);if(!previous||platformSpan(f)>platformSpan(previous))desired.set(id,f);}}
   for(const id of pending.keys())if(!desired.has(id))pending.delete(id);
   for(const id of desired.keys())if(!cache.has(id)&&!pending.has(id)&&id!==inflight&&Date.now()>=pausedUntil)pending.set(id,PLATFORM_API+id);
   if(inflight&&!desired.has(inflight))controller?.abort();
