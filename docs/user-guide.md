@@ -68,3 +68,7 @@ Community-hosted external services can be unavailable or change schema. The appl
 For sources and credits, use the map’s **?** help page or the [data and attribution reference](data-maintenance.md#sources-and-attribution).
 
 Metric/imperial units are directly below Language. They apply to speed, dimensions, axle loads and mapped platform boarding-edge lengths. Platform lengths come from complete mapped boarding edges; they are not a guarantee of usable train length.
+
+On phones and short landscape screens, the controls start as a floating app icon. Tap it to open the menu; the collapse button or Escape returns it to the icon.
+
+See [Axle load](axle-load.md) for the new view, national class distinctions, source references and the 28-day snapshot refresh.

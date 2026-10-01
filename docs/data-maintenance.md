@@ -70,3 +70,5 @@ Each website build copies the tiles, `index.json`, `manifest.json` (stages, coun
 | `styles/data/` in the built site | Assembled published snapshots | `site.yml` |
 
 Use the published snapshots for local development; [setup instructions](development.md#load-published-map-data) avoid a new worldwide extraction. The workflows are the executable source of truth for schedules and publishing steps; update this guide when they change.
+
+See [Axle load](axle-load.md) for the new view, national class distinctions, source references and the 28-day snapshot refresh.

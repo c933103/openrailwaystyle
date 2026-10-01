@@ -20,10 +20,10 @@ export function platformAnchor(feature){
  return best||null;
 }
 export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1100,maxEntries=256,cooldown=600000,retryDelay=30000}={}){
- const cache=new Map(),pending=new Map();let desired=new Map(),timer,wakeTimer,busy=false,disposed=false,controller,inflight;let pausedUntil=0,lastDraw;
+ const cache=new Map(),pending=new Map();let desired=new Map(),timer,wakeTimer,busy=false,disposed=false,controller,inflight;let pausedUntil=0,lastDraw,lastSource;
  const remember=(id,length)=>{cache.delete(id);cache.set(id,length);while(cache.size>maxEntries)cache.delete(cache.keys().next().value);};
  const pause=duration=>{pausedUntil=Date.now()+duration;clearTimeout(wakeTimer);wakeTimer=setTimeout(()=>{wakeTimer=undefined;pausedUntil=0;update();},duration);};
- const draw=()=>{if(disposed)return;const features=[];for(const [id,f] of desired){const length=cache.get(id);if(!(length>0))continue;const coordinates=platformAnchor(f);if(coordinates)features.push({type:'Feature',id,geometry:{type:'Point',coordinates},properties:{id:`way-${id}`,osm_type:'way',osm_id:id,feature:'platform_edge',ref:f.properties?.ref||'',platform_length:length}});}const data={type:'FeatureCollection',features},signature=JSON.stringify(data),source=map.getSource('platformLengths');if(source&&signature!==lastDraw){source.setData(data);lastDraw=signature;}};
+ const draw=()=>{if(disposed)return;const features=[];for(const [id,f] of desired){const length=cache.get(id);if(!(length>0))continue;const coordinates=platformAnchor(f);if(coordinates)features.push({type:'Feature',id,geometry:{type:'Point',coordinates},properties:{id:`way-${id}`,osm_type:'way',osm_id:id,feature:'platform_edge',ref:f.properties?.ref||'',platform_length:length}});}const data={type:'FeatureCollection',features},signature=JSON.stringify(data),source=map.getSource('platformLengths');if(source&&(source!==lastSource||signature!==lastDraw)){source.setData(data);lastDraw=signature;lastSource=source;}};
  async function next(){
   if(busy||disposed||Date.now()<pausedUntil)return;const entry=pending.entries().next().value;if(!entry)return;
   const [id,url]=entry;pending.delete(id);if(!desired.has(id)){schedule();return;}busy=true;inflight=id;controller=new AbortController();
