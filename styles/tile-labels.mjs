@@ -122,13 +122,18 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     const signal = never, key = `${x}/${y}`;
     if (counted.has(key)) return counted.get(key);
     const job = (async () => {
-      const around = [];
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-        const n = 2 ** 14, tx = (x + dx + n) % n, ty = y + dy;
-        if (ty >= 0 && ty < n) around.push(optional(get(orm(`railway_line_high/14/${tx}/${ty}`), signal)).then(data => data && {dx, dy, data}));
-      }
-      const [tiles, areas, stations] = await Promise.all([Promise.all(around),
-        optional(get(orm(`standard_railway_grouped_station_areas/14/${x}/${y}`), signal)), optional(get(orm(`standard_railway_text_stations/14/${x}/${y}`), signal))]);
+      // This tile and the eight around it, of each source: tracks near the
+      // edges are counted with those beside them, and a station area
+      // reaching into a neighbour is seen whole, with all its stations.
+      const around = source => {
+        const list = [];
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const n = 2 ** 14, tx = (x + dx + n) % n, ty = y + dy;
+          if (ty >= 0 && ty < n) list.push(optional(get(orm(`${source}/14/${tx}/${ty}`), signal)).then(data => data && {dx, dy, data}));
+        }
+        return Promise.all(list);
+      };
+      const [tiles, areas, stations] = await Promise.all(['railway_line_high', 'standard_railway_grouped_station_areas', 'standard_railway_text_stations'].map(around));
       if (!tiles.some(t => t && !t.dx && !t.dy)) throw new Error('Railway tile unavailable');
       if (!trackWorker) {
         trackWorker = new Worker(new URL(`track-worker.js${new URL(import.meta.url).search}`, import.meta.url));
@@ -140,12 +145,11 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       }
       // Copies go to the worker: the cache keeps the originals.
       const copy = list => list.filter(Boolean).map(t => ({...t, data: t.data.slice(0)}));
-      const own = data => data && data.slice(0);
       return new Promise(resolve => {
         const id = nextJob++;
         trackJobs.set(id, resolve);
-        const message={id,tiles:copy(tiles),areas:own(areas),stations:own(stations),y};
-        trackWorker.postMessage(message,[...message.tiles.map(t=>t.data),message.areas,message.stations].filter(Boolean));
+        const message={id,tiles:copy(tiles),areas:copy(areas),stations:copy(stations),y};
+        trackWorker.postMessage(message,[...message.tiles,...message.areas,...message.stations].map(t=>t.data));
       });
     })();
     counted.set(key, job);

@@ -437,6 +437,90 @@ test('track-count tiles: neighbours joined by way, points inside, none in statio
   assert.deepEqual(atStations(countTile({tiles, areas, stations: stationAt('train')}, y)).map(p => [p.tracks, p.station]), [[2, true]]);
   assert.equal(atStations(countTile({tiles, areas}, y)).length, 0);
 });
+test('stations of different names sharing one area (a stop area group) each count their own lines', async () => {
+  const {countTile} = await import('../styles/track-tiles.mjs');
+  const {fromGeojsonVt} = await import('vt-pbf');
+  const tile = (layer, features) => { const out = fromGeojsonVt({[layer]: {features}}, {version: 2, extent: 4096}); return out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength); };
+  const way = (id, y, x0, x1, tags = {}) => ({type: 2, tags: {id, feature: 'rail', ...tags}, geometry: [[[x0, y], [x1, y]]]});
+  // Two tiles side by side, one area across both (in two pieces). Alpha's
+  // operator runs two tracks through both tiles; Beta, in the east tile,
+  // has three tracks of its own beside them (about 25 m off) and a siding
+  // with neither operator nor name leaving one of them.
+  const alpha = {operator_color: '#111111'}, beta = {operator_color: '#222222'};
+  const west = tile('railway_line_high', [way(1, 2000, -64, 4160, alpha), way(2, 2007.5, -64, 4160, alpha)]);
+  const east = tile('railway_line_high', [way(1, 2000, -64, 4160, alpha), way(2, 2007.5, -64, 4160, alpha),
+    way(3, 2040, 500, 4160, beta), way(4, 2047.5, 500, 4160, beta), way(5, 2055, 500, 4160, beta),
+    {type: 2, tags: {id: 6, feature: 'rail', service: 'siding'}, geometry: [[[1000, 2055], [1100, 2062.5], [3000, 2062.5]]]}]);
+  const piece = (x0, x1) => tile('standard_railway_grouped_station_areas', [{type: 3, tags: {id: 7}, geometry: [[[x0, 1900], [x1, 1900], [x1, 2200], [x0, 2200], [x0, 1900]]]}]);
+  const station = (id, name, colour, x) => ({type: 1, tags: {id, name, operator_color: colour, feature: 'station', station: 'train'}, geometry: [[x, 2000]]});
+  const westStations = tile('standard_railway_text_stations', [station(11, 'Alpha', '#111111', 1000)]);
+  const eastStations = tile('standard_railway_text_stations', [station(12, 'Beta', '#222222', 2000)]);
+  const y = 2 ** 13, badges = result => result.points.filter(p => p.station).map(p => p.tracks);
+  // From the west tile (Alpha's point): Alpha's two tracks, not Beta's.
+  assert.deepEqual(badges(countTile({tiles: [{dx: 0, dy: 0, data: west}, {dx: 1, dy: 0, data: east}],
+    areas: [{dx: 0, dy: 0, data: piece(-64, 4160)}, {dx: 1, dy: 0, data: piece(-64, 4160)}],
+    stations: [{dx: 0, dy: 0, data: westStations}, {dx: 1, dy: 0, data: eastStations}]}, y)), [2]);
+  // From the east tile (Beta's point): Beta's three tracks and the siding.
+  assert.deepEqual(badges(countTile({tiles: [{dx: -1, dy: 0, data: west}, {dx: 0, dy: 0, data: east}],
+    areas: [{dx: -1, dy: 0, data: piece(-64, 4160)}, {dx: 0, dy: 0, data: piece(-64, 4160)}],
+    stations: [{dx: -1, dy: 0, data: westStations}, {dx: 0, dy: 0, data: eastStations}]}, y)), [4]);
+  // Alpha also mapped in a second, smaller area of its own (overlapping
+  // the first): still one badge.
+  const both7 = tile('standard_railway_grouped_station_areas', [{type: 3, tags: {id: 7}, geometry: [[[-64, 1900], [4160, 1900], [4160, 2200], [-64, 2200], [-64, 1900]]]}, {type: 3, tags: {id: 8}, geometry: [[[-64, 1950], [4160, 1950], [4160, 2020], [-64, 2020], [-64, 1950]]]}]);
+  assert.deepEqual(badges(countTile({tiles: [{dx: 0, dy: 0, data: west}, {dx: 1, dy: 0, data: east}],
+    areas: [{dx: 0, dy: 0, data: both7}, {dx: 1, dy: 0, data: piece(-64, 4160)}],
+    stations: [{dx: 0, dy: 0, data: westStations}, {dx: 1, dy: 0, data: eastStations}]}, y)), [2]);
+  // One name in the area: one count of everything, as before.
+  const both = tile('standard_railway_text_stations', [station(12, 'Alpha', '#222222', 2000)]);
+  assert.deepEqual(badges(countTile({tiles: [{dx: -1, dy: 0, data: west}, {dx: 0, dy: 0, data: east}],
+    areas: [{dx: -1, dy: 0, data: piece(-64, 4160)}, {dx: 0, dy: 0, data: piece(-64, 4160)}],
+    stations: [{dx: -1, dy: 0, data: westStations}, {dx: 0, dy: 0, data: both}]}, y)), []);
+});
+test('shared areas: one operator\'s lines split among its stations; sidings follow any chain to their track', async () => {
+  const {shareLines} = await import('../styles/track-count.mjs');
+  // 1 unit = 1 m. One operator (one colour) runs line L1 past station A and
+  // line L2 past station B, 600 m apart, in one area.
+  const way = (y, x0, x1, extra) => ({group: 'rail', main: true, parts: [[[x0, y], [x1, y]]], ...extra});
+  const lines = [way(0, 0, 400, {colour: '#111', line: 'L1'}), way(5, 0, 400, {colour: '#111', line: 'L1'}),
+    way(0, 600, 1000, {colour: '#111', line: 'L2'}), way(5, 600, 1000, {colour: '#111', line: 'L2'})];
+  // A siding of twelve unnamed ways without operator, leaving L2 at its
+  // east end and listed from its far end back.
+  const chain = Array.from({length: 12}, (_, k) => ({group: 'rail', main: true, parts: [[[1000 + 20 * (k + 1), 10], [1000 + 20 * k, 10]]]})).reverse();
+  chain.at(-1).parts[0][1] = [1000, 5];
+  lines.push(...chain);
+  const held = [{x: 200, y: 0, name: 'A', colour: '#111', group: 'rail'}, {x: 800, y: 0, name: 'B', colour: '#111', group: 'rail'}];
+  const shared = {held, zones: []}, inside = () => true;
+  const zones = ['A', 'B'].map(name => ({inside, name, shared, groups: ['rail']}));
+  shared.zones.push(...zones);
+  shareLines(zones, lines, 1);
+  const takes = zone => lines.map((_, i) => i).filter(i => zone.takes(i));
+  assert.deepEqual(takes(zones[0]), [0, 1], 'A: L1');
+  assert.deepEqual(takes(zones[1]), [2, 3, ...chain.map((_, k) => 4 + k)], 'B: L2 and the whole siding');
+});
+test('shared areas: closely drawn lines count; a siding meets its track across a grid cell edge', async () => {
+  const {shareLines} = await import('../styles/track-count.mjs');
+  // 1 unit = 1 m. L1 runs past station A and L2 past station B (one
+  // operator), both at y = -1, just across a 64-unit grid cell edge.
+  const way = (points, extra) => ({group: 'rail', main: true, parts: [points], ...extra});
+  const lines = [way([[0, -1], [400, -1]], {colour: '#111', line: 'L1'}), way([[600, -1], [1000, -1]], {colour: '#111', line: 'L2'}),
+    // An unnamed siding leaving L2 at (620, 0.5), in the next cell, then
+    // running back west past A, longer than L2: it goes with L2's station,
+    // and does not carry L2 to A.
+    way([[620, 0.5], [620, 40], [-600, 40]]),
+    // Operator C's line drawn with a vertex every 5 m (less than half a
+    // sampling step apart).
+    way(Array.from({length: 41}, (_, k) => [5 * k, 80]), {colour: '#222', line: 'L3'})];
+  const held = [{x: 200, y: 0, name: 'A', colour: '#111', group: 'rail'}, {x: 800, y: 0, name: 'B', colour: '#111', group: 'rail'},
+    {x: 100, y: 90, name: 'C', colour: '#222', group: 'rail'}];
+  const shared = {held, zones: []}, inside = () => true;
+  const zones = ['A', 'B', 'C'].map(name => ({inside, name, shared, groups: ['rail']}));
+  shared.zones.push(...zones);
+  shareLines(zones, lines, 1);
+  const takes = zone => lines.map((_, i) => i).filter(i => zone.takes(i));
+  assert.deepEqual(takes(zones[0]), [0], 'A: L1');
+  assert.deepEqual(takes(zones[1]), [1, 2], 'B: L2 and its siding');
+  assert.deepEqual(takes(zones[2]), [3], 'C: its closely drawn line');
+});
 test('station track counts include sidings, not yards; a station with no area counts within 100 m of its point', async () => {
   const {stationTracks} = await import('../styles/track-count.mjs');
   // 1 unit = 1 m. Two running tracks, a siding (platform loop) and a yard

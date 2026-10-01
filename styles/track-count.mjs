@@ -255,7 +255,7 @@ export function stationTracks(lines, zones, metres, {prefer = () => true} = {}) 
     for (let gx = Math.floor(Math.min(x0, x1) / cell); gx <= Math.floor(Math.max(x0, x1) / cell); gx++)
       for (let gy = Math.floor(Math.min(y0, y1) / cell); gy <= Math.floor(Math.max(y0, y1) / cell); gy++)
         for (const s of grid.get(gx * 65536 + gy) || []) {
-          if (s.group !== group || seen.has(s) || Math.abs(s.dx * dy - s.dy * dx) > MAX_ANGLE) continue;
+          if (s.group !== group || seen.has(s) || Math.abs(s.dx * dy - s.dy * dx) > MAX_ANGLE || (zone.takes && !zone.takes(s.index))) continue;
           seen.add(s);
           const ex = s.x2 - s.x1, ey = s.y2 - s.y1, det = ex * ny - ey * nx;
           if (!det) continue;
@@ -267,8 +267,8 @@ export function stationTracks(lines, zones, metres, {prefer = () => true} = {}) 
   };
   const widest = (zone, group) => {
     let best = null;
-    for (const line of lines) {
-      if (NOT_AT_STATION.has(line.service) || line.group !== group) continue;
+    for (const [index, line] of lines.entries()) {
+      if (!line || NOT_AT_STATION.has(line.service) || line.group !== group || (zone.takes && !zone.takes(index))) continue;
       for (const part of line.parts) {
         const sections = [];
         for (let i = 1; i < part.length; i++) {
@@ -296,7 +296,101 @@ export function stationTracks(lines, zones, metres, {prefer = () => true} = {}) 
   // Each kind of railway at the station on its own (a light rail stop
   // beside a main line's viaduct counts its own tracks); one result per
   // zone and kind.
-  return zones.flatMap(zone => (zone.groups || ['rail']).map(group => { const best = widest(zone, group); return best && {x: best.x, y: best.y, tracks: best.tracks, group}; }));
+  return zones.flatMap(zone => (zone.groups || ['rail']).map(group => { const best = widest(zone, group); return best && {x: best.x, y: best.y, tracks: best.tracks, group, name: zone.name}; }));
+}
+
+// Surface stations of different names sharing one area (a stop area group:
+// 新宿 beside 西武新宿, whose area takes in the JR tracks passing it) each
+// count their own lines. Lines go by operator (the provider's operator
+// colour; without one, by name): an operator's tracks go to the station of
+// that operator (same colour) where one is in the area, else to the station
+// nearest most of their length there, of the same kind of railway. Where
+// several stations there share the operator, each of its lines (by name)
+// goes to the one of them nearest most of its length. Sets
+// zone.takes(index) on the zones of each such area (zone.shared: {held: the
+// area's surface station points, zones}).
+export function shareLines(zones, lines, metres) {
+  const areas = new Set(zones.map(zone => zone.shared).filter(Boolean));
+  if (!areas.size) return;
+  const step = STATION_STEP / metres, keyed = line => Boolean(line && (line.colour || line.line));
+  // A way with neither operator nor name (a siding, mostly) is the
+  // operator's whose track it leaves: it follows (root) a way it meets at
+  // either end, through any chain of such ways.
+  const touch = (SAME_PLACE + 0.5) / metres + SLACK, cell = 64, grid = new Map();
+  const root = lines.map((line, index) => keyed(line) ? index : null);
+  lines.forEach((line, index) => line && line.parts.forEach(part => part.slice(1).forEach((b, i) => {
+    const a = part[i];
+    for (let gx = Math.floor(Math.min(a[0], b[0]) / cell); gx <= Math.floor(Math.max(a[0], b[0]) / cell); gx++)
+      for (let gy = Math.floor(Math.min(a[1], b[1]) / cell); gy <= Math.floor(Math.max(a[1], b[1]) / cell); gy++) {
+        const k = gx * 65536 + gy;
+        if (!grid.has(k)) grid.set(k, []);
+        grid.get(k).push({index, a, b});
+      }
+  })));
+  const meets = (index, [x, y]) => {
+    const out = [];
+    // Every cell within reach of the end, not only the end's own.
+    const near = [];
+    for (let gx = Math.floor((x - touch) / cell); gx <= Math.floor((x + touch) / cell); gx++)
+      for (let gy = Math.floor((y - touch) / cell); gy <= Math.floor((y + touch) / cell); gy++) near.push(...grid.get(gx * 65536 + gy) || []);
+    for (const s of near) {
+      if (s.index === index || lines[s.index].group !== lines[index].group) continue;
+      const ex = s.b[0] - s.a[0], ey = s.b[1] - s.a[1], l2 = ex * ex + ey * ey, t = l2 ? Math.max(0, Math.min(1, ((x - s.a[0]) * ex + (y - s.a[1]) * ey) / l2)) : 0;
+      if (Math.hypot(s.a[0] + ex * t - x, s.a[1] + ey * t - y) <= touch) out.push(s.index);
+    }
+    return out;
+  };
+  const loose = lines.map((line, index) => line && root[index] === null ? line.parts.flatMap(part => [part[0], part.at(-1)]).flatMap(end => meets(index, end)) : null);
+  // Until nothing changes (each round follows each chain one way further).
+  for (let changed = true; changed;) {
+    changed = false;
+    loose.forEach((met, index) => {
+      if (!met || root[index] !== null) return;
+      const from = met.find(i => root[i] !== null);
+      if (from !== undefined) { root[index] = root[from]; changed = true; }
+    });
+  }
+  for (const {held, zones: own} of areas) {
+    const inside = own[0].inside, named = held.filter(p => p.name), lengths = new Map();
+    const operators = (colour, group) => new Set(named.filter(p => p.group === group && p.colour === colour).map(p => p.name)).size;
+    const keyOf = index => {
+      const r = root[index], line = lines[r ?? index];
+      if (r === null || r === undefined) return `#${index}`;
+      if (!line.colour) return `${line.group}|n|${line.line}`;
+      return operators(line.colour, line.group) > 1 ? `${line.group}|c|${line.colour}|${line.line ?? `#${r}`}` : `${line.group}|c|${line.colour}`;
+    };
+    // Ownership is voted by each key's own lines; a siding that inherits a
+    // line's key goes with that line's station, however far it runs
+    // towards another.
+    lines.forEach((line, index) => {
+      if (!line || (root[index] !== null && root[index] !== index)) return;
+      const colour = lines[root[index] ?? index].colour, kind = named.filter(p => p.group === line.group);
+      const same = colour ? kind.filter(p => p.colour === colour) : [];
+      const pool = same.length ? same : kind.length ? kind : named;
+      const key = keyOf(index);
+      // Points every step along each part (by distance along it, however
+      // closely its vertices lie; a part shorter than a step at its middle).
+      for (const part of line.parts) {
+        const total = part.slice(1).reduce((sum, b, i) => sum + Math.hypot(b[0] - part[i][0], b[1] - part[i][1]), 0);
+        for (let i = 1, travelled = 0, next = Math.min(step, total) / 2; i < part.length; i++) {
+          const [ax, ay] = part[i-1], [bx, by] = part[i], length = Math.hypot(bx - ax, by - ay);
+          if (!length) continue;
+          for (; next < travelled + length || (i === part.length - 1 && next <= travelled + length); next += step) {
+            const at = next - travelled, x = ax + (bx - ax) * at / length, y = ay + (by - ay) * at / length;
+            if (!inside(x, y)) continue;
+            const nearest = pool.reduce((a, b) => Math.hypot(b.x - x, b.y - y) < Math.hypot(a.x - x, a.y - y) ? b : a);
+            if (!lengths.has(key)) lengths.set(key, new Map());
+            const byName = lengths.get(key);
+            byName.set(nearest.name, (byName.get(nearest.name) || 0) + 1);
+          }
+          travelled += length;
+        }
+      }
+    });
+    const owner = new Map([...lengths].map(([key, byName]) => [key, [...byName].reduce((a, b) => (b[1] > a[1] ? b : a))[0]]));
+    const owners = lines.map((line, index) => line ? owner.get(keyOf(index)) : undefined);
+    for (const zone of own) zone.takes = index => owners[index] === zone.name;
+  }
 }
 
 // Railway tile features to countTracks input: present, non-ferry lines.
@@ -312,7 +406,7 @@ export function trackLines(features) {
     const p = f.properties;
     if (f.type !== 2 || (p.state || 'present') !== 'present' || p.feature === 'ferry') return null;
     return {group: GROUPS[p.feature] || 'rail', tunnel: p.tunnel === true, main: !p.service, service: p.service || undefined,
-      line: p.name || p.ref || undefined, length: Number(p.way_length) || undefined,
+      line: p.name || p.ref || undefined, colour: p.operator_color || undefined, length: Number(p.way_length) || undefined,
       parts: f.loadGeometry().map(ring => ring.map(q => [q.x, q.y]))};
   });
 }
