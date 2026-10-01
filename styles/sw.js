@@ -21,6 +21,8 @@ const PRECACHE = ['./', 'app.css', 'app.mjs', 'map-model.mjs', 'context.mjs', 'd
 // The version the page asks for, read from its module script.
 const pageVersion = html => html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1] ?? null;
 const versioned = (key, version) => `${key}?v=${encodeURIComponent(version)}`;
+// The versions kept (saveVersion), newest first.
+const keptVersions = cache => cache.match(new URL('__versions', self.registration.scope).href).then(r => r ? r.json() : []).catch(() => []);
 // Saves every file of one version, all fetched now (so they match each
 // other), under both the plain and the versioned address; then drops the
 // files of other versions. Throws if any file fails, keeping what was there.
@@ -42,7 +44,7 @@ async function saveVersion(cache, version, page) {
   // (another tab) loads its lazy modules (the polar layer, the track worker)
   // from it. Older ones are dropped.
   const listKey = new URL('__versions', self.registration.scope).href;
-  const known = await cache.match(listKey).then(r => r ? r.json() : []).catch(() => []);
+  const known = await keptVersions(cache);
   const keep = [version, ...known.filter(v => v !== version)].slice(0, KEEP_VERSIONS);
   await cache.put(listKey, new Response(JSON.stringify(keep), {headers: {'content-type': 'application/json'}}));
   for (const request of await cache.keys()) {
@@ -148,7 +150,10 @@ self.addEventListener('fetch', event => {
         }
       } else if (response.ok) {
         await cache.put(plain, response.clone());
-        if (version !== null) await cache.put(versioned(plain, version), response.clone());
+        // Kept under its version only while that version is kept: the server
+        // answers any ?v= with the current file, so a tab still open on a
+        // dropped version would otherwise have newer bytes saved as its own.
+        if (version !== null && (await keptVersions(cache)).includes(version)) await cache.put(versioned(plain, version), response.clone());
       }
       return response;
     } catch (error) {
