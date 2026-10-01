@@ -842,6 +842,11 @@ test('track counts: untagged crossovers and sidings are not running tracks', asy
   assert.equal(connectors(loop, 1).size, 0);
   const middle = [track(0, -1000, 0), track(0, 0, 1000), track(10, -1000, 400), track(10, 400, 1000), {group: 'rail', main: true, parts: [[[0, 0], [40, 5], [360, 5], [400, 10]]]}];
   assert.equal(connectors(middle, 1).size, 0);
+  // A turning loop leaving a track heading east and rejoining it, turnouts
+  // in its middle, heading west sees the track on both sides, but is no
+  // crossover.
+  const turning = [track(0, -1000, 1000), {group: 'rail', main: true, parts: [[[0, 0], [40, 9], [200, 60], [400, 60], [450, 30], [340, 9], [300, 0]]]}];
+  assert.equal(connectors(turning, 1).size, 0);
   // A dead-end siding off a turnout: not a running track; the track itself is.
   // (The track runs on beyond the tiles read: extent 1000 covers −1000 to 2000.)
   const siding = [track(0, -1000, 0), track(0, 0, 2000), {group: 'rail', main: true, parts: [[[0, 0], [40, 5], [300, 5]]]}];

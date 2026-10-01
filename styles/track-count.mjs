@@ -431,6 +431,10 @@ export function connectors(lines, metres) {
       return [x2, y2, (x2 - x1) / length, (y2 - y1) / length];
     };
     const d = Math.min(inset, total / 4), [px, py, pdx, pdy] = at(d), [qx, qy, qdx, qdy] = at(total - d);
+    // A crossover keeps its heading; a loop that turns back (a balloon or
+    // turning loop) sees the track it leaves and rejoins on both sides only
+    // because it faces the other way at its end.
+    if (pdx * qdx + pdy * qdy <= 0) return;
     // A track that runs beside another for half its length or more (a
     // siding or loop between two tracks, joined to each at one end) is a
     // track: a crossover's distance from its neighbours keeps changing.
