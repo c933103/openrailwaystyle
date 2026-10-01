@@ -299,6 +299,161 @@ export function stationTracks(lines, zones, metres, {prefer = () => true} = {}) 
   return zones.flatMap(zone => (zone.groups || ['rail']).map(group => { const best = widest(zone, group); return best && {x: best.x, y: best.y, tracks: best.tracks, group}; }));
 }
 
+// Connectors: ways mapped as track that only link two tracks (crossovers,
+// single or scissors, of any length) but are not tagged service=crossover.
+// A way is one when both ends branch off other track (each end meets two or
+// more ways, or one way in its middle: a turnout) and, between just inside
+// its start and just inside its end, it moves across the parallel tracks
+// beside it (one that lies to its left at the start lies to its right at the
+// end, or the other way round). A running track split into pieces, a loop
+// that leaves and rejoins one track, or a line branching away never crosses
+// a parallel track, so none of them is one. Returns the set of indices.
+const CONNECTOR_INSET = 15;  // metres inside each end where the sides are taken
+const CONNECTOR_MAX = 800;   // metres: longer ways are tracks
+const CONNECTOR_STEP = 10;   // metres between the points where its neighbours are measured
+const CONNECTOR_SPAN = 6;    // points (60 m) over which a change of distance is taken
+const PARALLEL = Math.tan(0.7 * Math.PI / 180); // beside another: change of distance per metre along (gentler than any crossover)
+export function connectors(lines, metres) {
+  const touch = (SAME_PLACE + 0.5) / metres + SLACK, cell = PROBE / metres, probe = PROBE / metres, grid = new Map(), segs = [];
+  lines.forEach((line, index) => {
+    if (!line) return;
+    for (const part of line.parts) for (let i = 1; i < part.length; i++) {
+      const [x1, y1] = part[i-1], [x2, y2] = part[i], length = Math.hypot(x2 - x1, y2 - y1);
+      if (!length) continue;
+      const s = {index, group: line.group, x1, y1, x2, y2, dx: (x2 - x1) / length, dy: (y2 - y1) / length, length};
+      segs.push(s);
+      for (let gx = Math.floor(Math.min(x1, x2) / cell); gx <= Math.floor(Math.max(x1, x2) / cell); gx++)
+        for (let gy = Math.floor(Math.min(y1, y2) / cell); gy <= Math.floor(Math.max(y1, y2) / cell); gy++) {
+          const key = gx * 65536 + gy;
+          if (!grid.has(key)) grid.set(key, []);
+          grid.get(key).push(s);
+        }
+    }
+  });
+  const near = (x, y, r) => {
+    const out = new Set();
+    for (let gx = Math.floor((x - r) / cell); gx <= Math.floor((x + r) / cell); gx++)
+      for (let gy = Math.floor((y - r) / cell); gy <= Math.floor((y + r) / cell); gy++)
+        for (const s of grid.get(gx * 65536 + gy) || []) out.add(s);
+    return out;
+  };
+  const distance = (s, x, y) => {
+    const t = Math.max(0, Math.min(s.length, (x - s.x1) * s.dx + (y - s.y1) * s.dy));
+    return Math.hypot(s.x1 + s.dx * t - x, s.y1 + s.dy * t - y);
+  };
+  const ends = line => line.parts.flatMap(part => [part[0], part.at(-1)]);
+  // The ways meeting the point (x, y) other than `index`: does a turnout
+  // join there (two or more ways, or one passing through)?
+  const branches = (index, group, x, y) => {
+    const touching = new Map();
+    for (const s of near(x, y, touch)) if (s.index !== index && s.group === group && distance(s, x, y) <= touch) touching.set(s.index, true);
+    if (touching.size >= 2) return {joined: true, touching};
+    const [other] = touching.keys();
+    if (other === undefined) return {joined: false, touching};
+    const through = !ends(lines[other]).some(([ex, ey]) => Math.hypot(ex - x, ey - y) <= touch);
+    return {joined: through, touching};
+  };
+  // Parallel tracks crossing a perpendicular probe at (x, y), heading d:
+  // line index → {side (−1 or +1), t (offset)}, leaving out any it touches there.
+  const sides = (index, group, x, y, dx, dy) => {
+    const nx = -dy, ny = dx, out = new Map();
+    for (const s of near(x, y, probe)) {
+      if (s.index === index || s.group !== group || Math.abs(s.dx * dy - s.dy * dx) > MAX_ANGLE) continue;
+      const ex = s.x2 - s.x1, ey = s.y2 - s.y1, det = ex * ny - ey * nx;
+      if (!det) continue;
+      const qx = s.x1 - x, qy = s.y1 - y, t = (ex * qy - ey * qx) / det, u = (nx * qy - ny * qx) / det;
+      if (u < 0 || u > 1 || Math.abs(t) > probe || Math.abs(t) <= touch) continue;
+      if (!out.has(s.index) || Math.abs(t) < Math.abs(out.get(s.index).t)) out.set(s.index, {side: Math.sign(t), t});
+    }
+    return out;
+  };
+  const found = new Set(), inset = CONNECTOR_INSET / metres;
+  lines.forEach((line, index) => {
+    if (!line || line.parts.length !== 1) return;
+    const part = line.parts[0], total = lengthOf([part]);
+    if (part.length < 2 || !total || total > CONNECTOR_MAX / metres) return;
+    const [sx, sy] = part[0], [ex, ey] = part.at(-1);
+    const a = branches(index, line.group, sx, sy), b = branches(index, line.group, ex, ey);
+    if (!a.joined || !b.joined) return;
+    // Points along the way, with its heading there.
+    const at = distanceAlong => {
+      let walked = 0;
+      for (let i = 1; i < part.length; i++) {
+        const [x1, y1] = part[i-1], [x2, y2] = part[i], length = Math.hypot(x2 - x1, y2 - y1);
+        if (walked + length >= distanceAlong && length) { const f = (distanceAlong - walked) / length; return [x1 + (x2 - x1) * f, y1 + (y2 - y1) * f, (x2 - x1) / length, (y2 - y1) / length]; }
+        walked += length;
+      }
+      const [x1, y1] = part.at(-2), [x2, y2] = part.at(-1), length = Math.hypot(x2 - x1, y2 - y1) || 1;
+      return [x2, y2, (x2 - x1) / length, (y2 - y1) / length];
+    };
+    const d = Math.min(inset, total / 4), [px, py, pdx, pdy] = at(d), [qx, qy, qdx, qdy] = at(total - d);
+    // A track that runs beside another for half its length or more (a
+    // siding or loop between two tracks, joined to each at one end) is a
+    // track: a crossover's distance from its neighbours keeps changing.
+    const step = CONNECTOR_STEP / metres, samples = [];
+    for (let along = d; along <= total - d + 1e-9; along += step) { const [x, y, dx, dy] = at(along); samples.push(sides(index, line.group, x, y, dx, dy)); }
+    // Compared over about 60 m, so rounding does not hide a gentle drift.
+    const gap = Math.max(1, Math.min(CONNECTOR_SPAN, samples.length - 1));
+    let steady = 0;
+    for (let k = gap; k < samples.length; k++)
+      if ([...samples[k]].some(([other, {t}]) => samples[k-gap].has(other) && Math.abs(samples[k-gap].get(other).t - t) <= PARALLEL * step * gap + SLACK)) steady++;
+    if (samples.length > gap && steady * 2 >= samples.length - gap) return;
+    const first = sides(index, line.group, px, py, pdx, pdy), last = sides(index, line.group, qx, qy, qdx, qdy);
+    // A track beside it at both points, on the other side at the second.
+    for (const [other, {side}] of first) if (last.get(other)?.side === -side) { found.add(index); return; }
+    // Or the track it starts from lies beside its far end, and the track it
+    // ends on beside its start (ways split at the turnouts).
+    const besideEnd = [...a.touching.keys()].some(i => last.has(i)), besideStart = [...b.touching.keys()].some(i => first.has(i));
+    if (besideEnd && besideStart) {
+      const sideOfStartTrack = [...a.touching.keys()].map(i => last.get(i)?.side).find(v => v), sideOfEndTrack = [...b.touching.keys()].map(i => first.get(i)?.side).find(v => v);
+      if (sideOfStartTrack && sideOfEndTrack && sideOfStartTrack === -sideOfEndTrack) found.add(index);
+    }
+  });
+  return found;
+}
+// Stubs: ways mapped as track without a service tag that end in nothing
+// (buffer stops) at one end and leave another track at a turnout at the
+// other, shorter than STUB_MAX: sidings and spurs. They are not running
+// tracks on the open line, though at a station (a terminus's platform
+// tracks) they still count. Ends near the edge of the tiles read are left
+// alone (the track may go on). Returns the set of indices.
+const STUB_MAX = 1500;       // metres
+export function stubs(lines, metres, extent = 4096) {
+  const touch = (SAME_PLACE + 0.5) / metres + SLACK, margin = PROBE / metres, found = new Set();
+  const cell = margin, grid = new Map();
+  lines.forEach((line, index) => line && line.parts.forEach(part => part.slice(1).forEach((b, i) => {
+    const a = part[i], seg = {index, group: line.group, a, b};
+    for (let gx = Math.floor(Math.min(a[0], b[0]) / cell); gx <= Math.floor(Math.max(a[0], b[0]) / cell); gx++)
+      for (let gy = Math.floor(Math.min(a[1], b[1]) / cell); gy <= Math.floor(Math.max(a[1], b[1]) / cell); gy++) {
+        const key = gx * 65536 + gy;
+        if (!grid.has(key)) grid.set(key, []);
+        grid.get(key).push(seg);
+      }
+  })));
+  const distance = ({a, b}, [x, y]) => {
+    const ex = b[0] - a[0], ey = b[1] - a[1], l2 = ex * ex + ey * ey, t = l2 ? Math.max(0, Math.min(1, ((x - a[0]) * ex + (y - a[1]) * ey) / l2)) : 0;
+    return Math.hypot(a[0] + ex * t - x, a[1] + ey * t - y);
+  };
+  const touching = (index, group, p) => {
+    const out = new Set();
+    for (let gx = Math.floor((p[0] - touch) / cell); gx <= Math.floor((p[0] + touch) / cell); gx++)
+      for (let gy = Math.floor((p[1] - touch) / cell); gy <= Math.floor((p[1] + touch) / cell); gy++)
+        for (const s of grid.get(gx * 65536 + gy) || []) if (s.index !== index && s.group === group && distance(s, p) <= touch) out.add(s.index);
+    return out;
+  };
+  const nearEdge = ([x, y]) => x < -extent + margin || y < -extent + margin || x > 2 * extent - margin || y > 2 * extent - margin;
+  const endsOf = line => line.parts.flatMap(part => [part[0], part.at(-1)]);
+  lines.forEach((line, index) => {
+    if (!line || line.service || line.parts.length !== 1 || lengthOf(line.parts) * metres > STUB_MAX) return;
+    const part = line.parts[0], [s, e] = [part[0], part.at(-1)];
+    if (nearEdge(s) || nearEdge(e)) return;
+    const ts = touching(index, line.group, s), te = touching(index, line.group, e);
+    const turnout = (p, set) => set.size >= 2 || [...set].some(i => !endsOf(lines[i]).some(q => Math.hypot(q[0] - p[0], q[1] - p[1]) <= touch));
+    if ((ts.size === 0 && turnout(e, te)) || (te.size === 0 && turnout(s, ts))) found.add(index);
+  });
+  return found;
+}
+
 // Railway tile features to countTracks input: present, non-ferry lines.
 // Trams and light rail are separate systems from the main lines and from
 // each other, compared only among themselves (a light rail line beside a

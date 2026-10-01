@@ -768,3 +768,29 @@ test('owner view: a colour per owner name, the same everywhere; its own tile sou
   const {osmObject} = await import('../styles/map-model.mjs');
   for (const source of ['ownerRail', 'ownerLow']) assert.deepEqual(osmObject({source, properties: {id: '660796156-0'}}), {type: 'way', id: '660796156'});
 });
+
+test('track counts: untagged crossovers and sidings are not running tracks', async () => {
+  const {connectors, stubs, stationTracks} = await import('../styles/track-count.mjs');
+  // 1 unit = 1 m. Two parallel tracks 5 m apart, each split at the turnouts.
+  const track = (y, from, to) => ({group: 'rail', main: true, parts: [[[from, y], [to, y]]]});
+  const leg = (a, b) => ({group: 'rail', main: true, parts: [[a, b]]});
+  // A scissors crossover between x = 0 and x = 170 (Tuen Mun's TX32): two
+  // untagged legs crossing at the middle.
+  const scissors = [track(0, -1000, 0), track(0, 0, 170), track(0, 170, 1000), track(5, -1000, 0), track(5, 0, 170), track(5, 170, 1000),
+    leg([0, 0], [170, 5]), leg([0, 5], [170, 0])];
+  assert.deepEqual([...connectors(scissors, 1)].sort(), [6, 7]);
+  // A loop beside a track, joined at both ends to the same track, and a
+  // siding between two tracks running beside them: tracks.
+  const loop = [track(0, -1000, 0), track(0, 0, 400), track(0, 400, 1000), {group: 'rail', main: true, parts: [[[0, 0], [40, 4], [360, 4], [400, 0]]]}];
+  assert.equal(connectors(loop, 1).size, 0);
+  const middle = [track(0, -1000, 0), track(0, 0, 1000), track(10, -1000, 400), track(10, 400, 1000), {group: 'rail', main: true, parts: [[[0, 0], [40, 5], [360, 5], [400, 10]]]}];
+  assert.equal(connectors(middle, 1).size, 0);
+  // A dead-end siding off a turnout: not a running track; the track itself is.
+  // (The track runs on beyond the tiles read: extent 1000 covers −1000 to 2000.)
+  const siding = [track(0, -1000, 0), track(0, 0, 2000), {group: 'rail', main: true, parts: [[[0, 0], [40, 5], [300, 5]]]}];
+  assert.deepEqual([...stubs(siding, 1, 1000)], [2]);
+  // A station across the scissors counts its two tracks, not four.
+  const zone = {inside: (x, y) => x >= -100 && x <= 300 && y >= -20 && y <= 25};
+  for (const i of connectors(scissors, 1)) Object.assign(scissors[i], {main: false, service: 'crossover'});
+  assert.equal(stationTracks(scissors, [zone], 1)[0].tracks, 2);
+});

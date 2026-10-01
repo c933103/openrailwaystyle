@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-21';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-21';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-25';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-25';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-21';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-21';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-21';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-21';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-21';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-25';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-25';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-25';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-25';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-25';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
