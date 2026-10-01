@@ -39,12 +39,13 @@ test('terrain repair: pits, a groove and a band go; real terrain stays', () => {
   assert.equal(repairPixels(tile(() => -14840), 256, 8, 0, 0, null), 0);
 });
 
-test('terrain repair: contour line counts follow the map\'s intervals', () => {
-  assert.equal(contourRings(9, -400, -20), 18); // 20 m seabed lines, -380 to -40
-  assert.equal(contourRings(7, -400, -20), 3); // 50 m, only above -200 m
+test('terrain repair: contour lines are counted in whichever units draw more', () => {
+  assert.equal(contourRings(9, -400, -20), 25); // 50 ft seabed lines (18 at 20 m)
+  assert.equal(contourRings(9, -250, -20), 15); // 11 at 20 m: an imperial storm
+  assert.equal(contourRings(7, -400, -20), 4); // 150 ft, only above -200 m
   assert.equal(contourRings(11, -400, -20), 0); // no seabed lines
-  assert.equal(contourRings(13, 0, 250), 12); // 20 m land lines
-  assert.equal(contourRings(9, -100, 150), 5); // both: 100 m, and -80 to -20
+  assert.equal(contourRings(13, 0, 250), 16); // 50 ft land lines (12 at 20 m)
+  assert.equal(contourRings(9, -100, 150), 7); // both: 250 ft, and 50 ft below the sea
 });
 
 test('terrain repair: single-pixel contour storms go at coarse zooms; real holes stay', () => {
@@ -52,6 +53,10 @@ test('terrain repair: single-pixel contour storms go at coarse zooms; real holes
   const data = tile((x, y) => {
     if (x === 30 && y === 30) return -420; // a pit 400 m below level seabed: 20 rings
     if (x === 60) return -410; // a one-pixel strip, as the 120° E band at zoom 9
+    if (x === 90) return -250; // a strip drawing 11 lines at 20 m, 15 at 50 ft
+    if (y === 255 && x >= 128) return -150 - x; // a coast along the tile's edge: sea below, land above
+    if (y === 254 && x >= 128) return 12;
+    if (y === 160 && x >= 40 && x < 120) return -410; // a strip crossing the one at x = 60
     if (x === 100 && y === 100) return -120; // a blue hole: 5 rings
     if (x === 140 && y === 140) return 300; // an islet
     if (Math.hypot(x - 200, y - 200) < 12) return -60; // an atoll's lagoon
@@ -63,8 +68,8 @@ test('terrain repair: single-pixel contour storms go at coarse zooms; real holes
   });
   const copy = data.slice();
   repairPixels(data, 256, 9, 0, 0, null);
-  for (const [x, y] of [[30, 30], [60, 5], [60, 128], [60, 255]]) assert.ok(Math.abs(at(data, x, y) - seabed(x, y)) < 5, `${x},${y}: ${at(data, x, y)}`);
-  for (const [x, y] of [[100, 100], [140, 140], [200, 200], [190, 200], [21, 201], [22, 203], [230, 20], [240, 10]]) assert.equal(at(data, x, y), terrarium(...copy.slice((y * 256 + x) * 4, (y * 256 + x) * 4 + 3)), `${x},${y} kept`);
+  for (const [x, y] of [[30, 30], [60, 5], [60, 128], [60, 255], [90, 128], [60, 160], [61, 160], [60, 161], [100, 160]]) assert.ok(Math.abs(at(data, x, y) - seabed(x, y)) < 5, `${x},${y}: ${at(data, x, y)}`);
+  for (const [x, y] of [[100, 100], [140, 140], [200, 200], [190, 200], [21, 201], [22, 203], [230, 20], [240, 10], [130, 255], [200, 255]]) assert.equal(at(data, x, y), terrarium(...copy.slice((y * 256 + x) * 4, (y * 256 + x) * 4 + 3)), `${x},${y} kept`);
   // Steep but sound ground is left alone.
   const slope = tile((x, y) => -20 - x * 30), slopeCopy = slope.slice();
   assert.equal(repairPixels(slope, 256, 8, 0, 0, null), 0);
