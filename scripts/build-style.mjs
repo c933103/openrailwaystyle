@@ -2,7 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import {roadLayers, constraintLayers} from './planning-style.mjs';
 import {contextLayers} from './context-style.mjs';
 import {OVERVIEW_ZOOM, DETAIL_ZOOM} from './crossing-data.mjs';
-import { ORM, LIGHT_MODES, MINOR_MODES, LIFECYCLE_PATTERNS, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, ownerPaint, loadingLabel, trainProtectionShort, TRAIN_PROTECTION, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
+import { CARTO_TILES, ORM, axlePaint, axleLabel, LIGHT_MODES, MINOR_MODES, LIFECYCLE_PATTERNS, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, ownerPaint, loadingLabel, trainProtectionShort, TRAIN_PROTECTION, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
 
 // Keep the Hack4Rail base-map design and replace its Europe-only rail source.
 const original = JSON.parse(await readFile(new URL('../styles/default.style.json', import.meta.url)));
@@ -29,6 +29,9 @@ const style = {
     // that view is shown.
     ownerLow: vector('operator_railway_line_low', 0, 6),
     ownerRail: vector('railway_line_high', 7, 16),
+    axleLow: vector('standard_railway_line_low',0,6),
+    axleRail: vector('railway_line_high',7,16),
+    axleBranch: {type:'vector',tiles:['axlebranch://{z}/{x}/{y}'],minzoom:4,maxzoom:9,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     railway: vector('railway_line_high', 7, 16),
     // Running tracks side by side, counted in the browser from the railway
     // tiles (atlastracks protocol, tile-labels.mjs and track-tiles.mjs):
@@ -64,6 +67,7 @@ const style = {
     // enlarged beyond it, which also spares EOX's free service.
     satellite: {type:'raster', tiles:['https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2025_3857/default/g/{z}/{y}/{x}.jpg'], tileSize:256, maxzoom:14,
       attribution:'<a href="https://cloudless.eox.at">EOxCloudless https://cloudless.eox.at</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2025), <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>'},
+    carto: {type:'raster',tiles:[CARTO_TILES],tileSize:256,maxzoom:19,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>'},
     relief: {type:'raster-dem', tiles:[DEM_URL], tileSize:256, encoding:'terrarium', maxzoom:15, attribution:'<a href="terrain-credits.html">Terrain: Mapzen / AWS and data contributors</a>'},
   },
   // The base map's airport layers are replaced by the transport context
@@ -124,7 +128,7 @@ const electricPaint = electrificationPaint();
 const width = ['interpolate', ['linear'], ['zoom'], 0, 0.6, 4, 1.15, 7, 1.8, 11, 2.6, 16, 4.5, 20, 7];
 const addLine = (id, source, sourceLayer, minzoom, maxzoom, paint, extra = {}) => style.layers.push({
   id, type: 'line', source, 'source-layer': sourceLayer, minzoom, ...(maxzoom === undefined ? {} : {maxzoom}),
-  filter: ['all', present, notFerry, ...(source === 'railway' || source === 'ownerRail' ? [byKindZoom] : [])], layout: { 'line-cap': 'round', 'line-join': 'round' },
+  filter: ['all', present, notFerry, ...(source === 'railway' || source === 'ownerRail' || source === 'axleRail' ? [byKindZoom] : [])], layout: { 'line-cap': 'round', 'line-join': 'round' },
   paint: { 'line-color': paint, 'line-width': width, ...extra },
 });
 // Track width by zoom; scale multiplies each stop, so halves and offsets
@@ -152,13 +156,14 @@ for (const [mode, source, sourceLayer, color] of [
   ['control', 'control', 'signals_railway_line_low', controlPaint()],
   ['gauge', 'gaugeLow', 'track_railway_line_low', gaugePaint()],
   ['loading', 'loadingLow', 'standard_railway_line_low', loadingPaint()],
+  ['axle','axleLow','standard_railway_line_low',axlePaint()],
   ['owner', 'ownerLow', 'operator_railway_line_low', ownerPaint()],
   // Service view: the infrastructure in grey, under the services.
   ['service', 'network', 'standard_railway_line_low', SERVICE_TRACK],
 ]) {
   // Branch lines from zoom 4, under the main lines, in the same colours
   // (their tiles carry the fields of the detailed railway tiles).
-  addLine(`${mode}-branch-overview`, 'branchLines', 'branch_lines', 4, 7, color,
+  addLine(`${mode}-branch-overview`, mode === 'axle' ? 'axleBranch' : 'branchLines', 'branch_lines', 4, 7, color,
     mode === 'gauge' ? {'line-width': branchHalfWidth, 'line-offset': branchDualOffset(-1)} : {});
   // The second gauge of a branch line, also under the main lines.
   if (mode === 'gauge') style.layers.push({id:'gauge-branch-dual', type:'line', source:'branchLines', 'source-layer':'branch_lines', minzoom:4, maxzoom:7,
@@ -171,10 +176,10 @@ for (const [mode, source, sourceLayer, color] of [
     'line-width': mode === 'gauge' ? halfWidth : trackWidth(),
     ...(mode === 'gauge' ? {'line-offset': dualOffset(-1)} : {}),
   };
-  addLine(`${mode}-tracks`, mode === 'owner' ? 'ownerRail' : 'railway', 'railway_line_high', 7, undefined, color, trackPaint);
+  addLine(`${mode}-tracks`, mode === 'owner' ? 'ownerRail' : mode === 'axle' ? 'axleRail' : 'railway', 'railway_line_high', 7, undefined, color, trackPaint);
   // Metro lines at zooms 7–9 from the same snapshot (the detailed railway
   // tiles hold them only from zoom 10).
-  addLine(`${mode}-metro-overview`, 'branchLines', 'branch_lines', 7, 10, color, trackPaint);
+  addLine(`${mode}-metro-overview`, mode === 'axle' ? 'axleBranch' : 'branchLines', 'branch_lines', 7, 10, color, trackPaint);
 }
 style.layers.push({id:'gauge-dual', type:'line', source:'railway', 'source-layer':'railway_line_high', minzoom:7,
   filter:['all', present, notFerry, byKindZoom, isDual],
@@ -302,6 +307,8 @@ valueLabel('control-labels', ['has', 'train_protection0'],
 valueLabel('gauge-labels', ['>', ['to-number', ['coalesce', ['get', 'gaugeint0'], 0], 0], 0],
   ['concat', ['get', 'gauge0'], ['case', ['has', 'gauge1'], ['concat', ' / ', ['get', 'gauge1']], ''], ' mm']);
 valueLabel('loading-labels', ['has', 'loading_gauge'], loadingLabel());
+valueLabel('axle-labels',['>', ['to-number',['get','axle_tonnes'],0],0],axleLabel());
+style.layers.at(-1).source='axleRail';
 valueLabel('owner-labels', ['has', 'owner'], ['get', 'owner']);
 // Keep distant views sparse. Marker and name form one collision-aware symbol
 // below zoom 12; individual circles appear only at local scale.
@@ -464,10 +471,11 @@ const railwayNames = style.layers.filter(l => l.type === 'symbol' && l.id.endsWi
 const trackBadges = style.layers.filter(l => l.id === 'infrastructure-track-count' || l.id === 'infrastructure-station-tracks');
 style.layers = style.layers.filter(l => !stationNames.includes(l) && !railwayNames.includes(l) && !trackBadges.includes(l)).concat(railwayNames, trackBadges, stationNames);
 for (const l of style.layers) {
-  if (/^(infrastructure|electrification|control|gauge|loading|owner|service)-/.test(l.id)) l.layout.visibility = 'none';
+  if (/^(infrastructure|electrification|control|gauge|loading|axle|owner|service)-/.test(l.id)) l.layout.visibility = 'none';
 }
 // Satellite imagery directly above the background, off unless chosen.
 style.layers.splice(style.layers.findIndex(l => l.id === 'background') + 1, 0, {id:'satellite', type:'raster', source:'satellite', layout:{visibility:'none'}, paint:{'raster-fade-duration':150}});
+style.layers.splice(style.layers.findIndex(l => l.id === 'background') + 1, 0, {id:'carto',type:'raster',source:'carto',layout:{visibility:'none'},paint:{'raster-fade-duration':150}});
 // Country names last: MapLibre places later layers first, and the few
 // country names should not give way to station names.
 for (const id of ['country_label-other', 'country_label']) style.layers.push(...style.layers.splice(style.layers.findIndex(l => l.id === id), 1));
