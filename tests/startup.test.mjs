@@ -307,6 +307,10 @@ test('station inspection finds nearby interchanges and facility inspection avoid
   } finally {dom.window.close();}
 });
 
+test('desktop brand announces collapse on its first activation',async()=>{
+ const {dom,window}=await start();try{const icon=window.document.getElementById('controls-open');assert.equal(icon.getAttribute('aria-label'),'Collapse map controls');icon.click();assert.equal(window.document.getElementById('controls').hidden,true);assert.equal(icon.getAttribute('aria-label'),'Open map controls');}finally{dom.window.close();}
+});
+
 test('compact controls open from the icon and return focus to it on collapse and Escape', async () => {
   const {dom,window} = await start({compact:true});
   try {
