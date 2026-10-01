@@ -1178,12 +1178,17 @@ $('copy-coordinates')?.addEventListener('click', () => {
 // wait their turn, and a repeated search is answered from memory.
 const placeCache = new Map();
 let placeNext = 0;
-async function placeSearch(url, json) {
+async function placeSearch(url, json, signal) {
   const key = url.href;
   if (placeCache.has(key)) return placeCache.get(key);
-  const wait = placeNext - Date.now();
-  placeNext = Math.max(Date.now(), placeNext) + 1000;
-  if (wait > 0) await new Promise(resolve => setTimeout(resolve, wait));
+  // The next second is taken only by a request about to be sent: a search
+  // given up while it waits (a newer one replaces it) holds no place.
+  while (Date.now() < placeNext) {
+    await new Promise(resolve => setTimeout(resolve, placeNext - Date.now()));
+    if (signal?.aborted) throw new Error('Search replaced');
+  }
+  if (signal?.aborted) throw new Error('Search replaced');
+  placeNext = Date.now() + 1000;
   const items = await json(url);
   placeCache.set(key, items);
   while (placeCache.size > 50) placeCache.delete(placeCache.keys().next().value);
@@ -1227,7 +1232,7 @@ $('search-form').addEventListener('submit', async e => {
     if (settings.language !== 'local') placeURL.searchParams.set('accept-language', settings.language);
     const [facilities, places] = await Promise.allSettled([
       Date.now() < searchPausedUntil ? Promise.reject(new Error('paused')) : Promise.race([json(facilityURL), new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))]),
-      placeSearch(placeURL, json)]);
+      placeSearch(placeURL, json, controller.signal)]);
     if (controller !== searchController) return;
     if (facilities.status === 'rejected' && places.status === 'rejected') throw facilities.reason;
     const {rail, places: other} = searchResults(facilities.value || [], places.value || []);
