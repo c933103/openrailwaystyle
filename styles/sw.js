@@ -4,7 +4,7 @@
 // copy is used only when the network fails. The map libraries from the CDN
 // are kept too: their addresses carry the version, so a saved copy never goes
 // stale and is used first. Map tiles and data files are not handled here.
-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}4`;
+const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}5`;
 // Keep in step with loadScript in app.mjs and the stylesheet in index.html.
 const LIBRARIES = ['https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.js', 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css', 'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js'];
 const SHELL = /\/(app\.css|[\w-]+\.mjs|vendor\/[\w-]+\.js|world\.style\.json|manifest\.webmanifest|favicon\.svg|icon-[\w-]+\.png)$/;

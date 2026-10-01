@@ -521,8 +521,8 @@ test('loading gauge dimensions: British W gauges (GE/RT8073), AAR plates, tag va
   // W6 shares W6A's height and width (W6A changed only the lower body).
   assert.equal(loadingDimensions(loadingGauge('W6')), '3.965 m high × 2.82 m wide');
   assert.match(loadingGauge('W6').note, /lower body/);
-  // Withdrawn gauges keep no invented size.
-  assert.equal(loadingDimensions(loadingGauge('W11')), '');
+  // Withdrawn outlines retain their dimensions, with their status explicit.
+  assert.equal(loadingDimensions(loadingGauge('W11')), 'Withdrawn profile: 3.896 m high × 2.625 m wide');
   assert.equal(loadingGauge('W6a').code, 'W6A');
   assert.equal(loadingGauge('W8A').name, 'W8a');
   assert.equal(loadingGauge('AAR F').code, 'AAR_F');
@@ -558,6 +558,46 @@ test('loading gauge list round-trips and matches overview feature IDs', async ()
   assert.equal(wayId('273450997-0'), 273450997);
 });
 
+test('loading gauge reference fills historical and regional profiles with the measurement basis intact', async () => {
+  const {LOADING_GAUGES, loadingGauge, loadingDimensions, loadingPaint, loadingLabel} = await import('../styles/map-model.mjs');
+  const {expression} = await import('@maplibre/maplibre-gl-style-spec');
+  const sizes = [
+    ['W5', 3.965, 2.74], ['W9Plus', 3.965, 2.796], ['W11', 3.896, 2.625],
+    ['W7a', 3.635, 2.525], ['W9a', 3.866, 2.625],
+    ['EBV 1', 4.53, 3.29], ['EBV 2', 4.63, 3.29], ['EBV 3', 4.63, 3.29], ['EBV 4', 4.7, 3.29], ['FS', 4.3, 3.2],
+  ];
+  for (const [code, height, width] of sizes) {
+    const g = loadingGauge(code);
+    assert.deepEqual([g.height, g.width], [height, width], code);
+    assert.match(loadingDimensions(g, 'imperial'), /ft .* in high × .* ft .* in wide/, code);
+  }
+  assert.match(loadingDimensions(loadingGauge('W5')), /^Approx\. historic outline:/);
+  assert.match(loadingDimensions(loadingGauge('EBV 1')), /^Reference profile:/);
+  assert.notEqual(loadingGauge('EBV 1').name, loadingGauge('EBV 4').name);
+  assert.match(loadingGauge('FS').note, /RFI/);
+  assert.doesNotMatch(loadingGauge('FS').note, /Gotthard|EBV/);
+  for (const [code, height, width] of [['deep-tube', 2.869, 2.62], ['subsurface', 3.682, 2.92], ['Kleinprofil', 3.16, 2.4], ['Großprofil', 3.425, 2.65]]) {
+    const g = loadingGauge(code);
+    assert.equal(g.height, null, 'vehicle examples must not become gauge envelope heights');
+    assert.deepEqual(g.dimensions.example, {height, width});
+    assert.match(loadingDimensions(g), /^Vehicle example \(.+\):/);
+    assert.match(loadingDimensions(g, 'imperial'), /^Vehicle example \(.+\): .* ft/);
+  }
+  // Every recognised entry now has either profile dimensions or a labelled example.
+  for (const [codes] of LOADING_GAUGES) for (const code of codes) assert.ok(loadingDimensions(loadingGauge(code)), code);
+  assert.equal(loadingDimensions(loadingGauge('unrecognised')), '');
+  assert.equal(loadingDimensions(null), '');
+  const paint = expression.createExpression(loadingPaint(), {type: 'color'}).value;
+  const label = expression.createExpression(loadingLabel(), {type: 'string'}).value;
+  const drawn = value => JSON.stringify(paint.evaluate({zoom: 10}, {properties: {loading_gauge: value}}));
+  for (const [alias, canonical] of [['ebv1', 'EBV 1'], ['EBV O4', 'EBV 4'], ['Grossprofil', 'Großprofil'], ['w7a', 'W7A'], ['w9a', 'W9A']]) {
+    assert.equal(loadingDimensions(loadingGauge(alias)), loadingDimensions(loadingGauge(canonical)));
+    assert.equal(drawn(alias), drawn(canonical));
+  }
+  assert.equal(label.evaluate({zoom: 10}, {properties: {loading_gauge: 'W7, W7a'}}), 'W7a');
+  assert.equal(label.evaluate({zoom: 10}, {properties: {loading_gauge: 'W9, W9a'}}), 'W9a');
+});
+
 test('legend groups values drawn in the same colour and summarises the rest', async () => {
   const {legendRows} = await import('../styles/map-model.mjs');
   const rows = legendRows([
@@ -565,6 +605,17 @@ test('legend groups values drawn in the same colour and summarises the rest', as
     {row: ['#b', 'GC', 4.65, '4.65 m high'], n: 30}, {row: ['#c', 'PPI', 4.28, '4.28 m high'], n: 1},
   ], 2);
   assert.deepEqual(rows, [['#a', 'GB1, GA · 4.32 m high'], ['#b', 'GC · 4.65 m high'], ['transparent', '1 less common value in view; zoom in for them', 'empty']]);
+});
+
+test('loading legend keeps different dimensions visible when profiles share a colour', async () => {
+  const {loadingGauge, loadingDimensions, legendRows} = await import('../styles/map-model.mjs');
+  const entries = ['FS', 'EBV 1', 'EBV 2', 'EBV 3', 'EBV 4', 'deep-tube', 'subsurface', 'Kleinprofil', 'Großprofil'].map(code => {
+    const g = loadingGauge(code);
+    return {row: [g.color, g.name, g.rank, loadingDimensions(g)], n: 1};
+  });
+  const rows = legendRows(entries);
+  assert.equal(rows.length, 8, 'only EBV 2 and EBV 3 have identical colour and dimensions');
+  for (const {row: [, name, , dimensions]} of entries) assert.ok(rows.some(([, text]) => text.includes(name) && text.includes(dimensions)), name);
 });
 
 test('globe below zoom 4; flat map from zoom 4 unless the view is mostly polar', async () => {

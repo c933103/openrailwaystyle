@@ -195,11 +195,14 @@ export const trainProtectionShort = code => ({etcs_2: 'ETCS L2', etcs_1: 'ETCS L
 // ladder: W6A is the standard wagon envelope, and W7 to W12 are load gauges
 // (the containers and swap bodies a W6A wagon may carry), with height and
 // width from the co-ordinate tables of RSSB GE/RT8073 (issue 4.1, 2022).
+// Additional profile sources and measurement bases: docs/loading-gauges.md.
+// EBV dimensions are kinematic reference profiles. Metro tags name networks,
+// not one envelope: their named vehicle examples stay separate from gauge size.
 // Other values are shown as tagged.
 const FT = (ft, inch = 0) => Math.round((ft * 12 + inch) * 25.4) / 1000;
 const W_NOTE = 'W7 to W12 are load gauges: the envelope of containers or swap bodies on W6A wagons (RSSB GE/RT8073).';
 export const LOADING_GAUGES = [
-  // code(s), name, height m, width m, family, note
+  // code(s), name, height m, width m, family, note, optional dimension metadata
   [['PPI', 'G1', 'TSI_G1'], 'PPI (G1, Berne gauge)', 4.28, 3.15, 'height'],
   [['TSI_GA', 'GA'], 'GA', 4.32, 3.15, 'height', 'GA, GB, GB1 and GB2 reach the same height; each clears larger upper corners (containers, swap bodies, semi-trailers).'],
   [['TSI_GB', 'GB'], 'GB', 4.32, 3.15, 'height'], [['TSI_GB1', 'GB1'], 'GB1', 4.32, 3.15, 'height'], [['TSI_GB2', 'GB2'], 'GB2', 4.32, 3.15, 'height'],
@@ -215,59 +218,67 @@ export const LOADING_GAUGES = [
   [['AAR_J', 'AAR J'], 'AAR Plate J', FT(19), FT(10, 8), 'height'],
   [['AAR_H', 'AAR H'], 'AAR Plate H', FT(20, 2), FT(10, 8), 'height', 'Double-stack container cars.'],
   [['AAR_K', 'AAR K'], 'AAR Plate K', FT(20, 3), FT(10), 'height', 'Autoracks and double-stack cars.'],
-  [['W5'], 'W5', null, null, 'british', 'British standard freight gauge of 1951, refined as W6 and W6A.'],
+  [['W5'], 'W5', 3.965, 2.74, 'british', 'Historic British stationary-vehicle outline in the W5 comparison published by ITS Leeds (1989, Figure 1); dimensions are approximate. W6 subsequently enlarged the profile.', {basis: 'Approx. historic outline'}],
   [['W6'], 'W6', 3.965, 2.82, 'british', 'Height and width as W6A, which changed only the lower body (for third-rail electrification); W6 itself is no longer in GE/RT8073.'],
   [['W6A', 'W6A*'], 'W6A', 3.965, 2.82, 'british', 'Standard British wagon envelope, available over most of the network.'],
   [['W7', 'W7*'], 'W7', 3.965, 2.82, 'british', '8 ft 0 in (2.44 m) high containers on W6A wagons. ' + W_NOTE],
+  [['W7A'], 'W7a', 3.635, 2.525, 'british', 'Supplementary upper load profile introduced in 2020 (RSSB T1132); includes fastening tolerance. ' + W_NOTE],
   [['W8', 'W8*'], 'W8', 3.965, 2.82, 'british', '8 ft 6 in (2.59 m) high containers on W6A wagons. ' + W_NOTE],
   [['W8A'], 'W8a', 3.635, 2.643, 'british', 'Introduced in 2020 (RSSB research T1132). ' + W_NOTE],
   [['W9'], 'W9', 3.965, 2.796, 'british', 'Swap bodies; 9 ft 0 in containers on low wagons. ' + W_NOTE],
-  [['W9Plus'], 'W9Plus', null, null, 'british', 'Withdrawn from GE/RT8073 in 2020.'],
+  [['W9A'], 'W9a', 3.866, 2.625, 'british', 'Supplementary upper load profile introduced in 2020 (RSSB T1132); includes fastening tolerance. ' + W_NOTE],
+  [['W9Plus'], 'W9Plus', 3.965, 2.796, 'british', 'Historic upper load profile, withdrawn from GE/RT8073 in 2020. Its maximum height and width match W9, but the upper corners differ.', {basis: 'Withdrawn profile'}],
   [['W10'], 'W10', 3.891, 2.525, 'british', '9 ft 6 in high-cube containers on standard wagons; 2.5 m wide Euro containers. ' + W_NOTE],
   [['W10A'], 'W10a', 3.891, 2.525, 'british', W_NOTE],
-  [['W11'], 'W11', null, null, 'british', 'Withdrawn from GE/RT8073 in 2015.'],
+  [['W11'], 'W11', 3.896, 2.625, 'british', 'Historic upper load profile, withdrawn from GE/RT8073 in 2015. These are outline dimensions above rail, including allowances, rather than the 9 ft 6 in × 2.55 m container dimensions.', {basis: 'Withdrawn profile'}],
   [['W12'], 'W12', 3.965, 2.6, 'british', 'As W10, and 2.6 m wide refrigerated containers; recommended for new structures. ' + W_NOTE],
-  [['EBV 1', 'EBV 2', 'EBV 3', 'EBV 4'], 'EBV (Swiss profiles)', null, null, 'other', 'EBV 4 is the Gotthard corridor profile for 4.00 m corner-height road vehicles on suitable wagons.'],
-  [['FS'], 'FS (Italian profile)', null, null, 'other'],
-  [['deep-tube'], 'London deep tube', null, null, 'metro', 'Tube tunnels are 11 ft 6 in to 12 ft 6 in (3.51 to 3.81 m) across.'],
-  [['subsurface'], 'London sub-surface', null, null, 'metro'],
-  [['Kleinprofil'], 'Kleinprofil (Berlin U-Bahn)', null, null, 'metro'], [['Großprofil'], 'Großprofil (Berlin U-Bahn)', null, null, 'metro'],
+  [['EBV 1', 'EBV1', 'EBV O1'], 'EBV 1 (Switzerland)', 4.53, 3.29, 'other', 'EBV O1 upper kinematic reference profile (AB-EBV 18.2/47.2, sheet 7 N). Vehicle construction dimensions require the associated reductions.', {basis: 'Reference profile'}],
+  [['EBV 2', 'EBV2', 'EBV O2'], 'EBV 2 (Switzerland)', 4.63, 3.29, 'other', 'EBV O2 upper kinematic reference profile (AB-EBV, sheet 8 N). Same maximum dimensions as O3, with different upper corners.', {basis: 'Reference profile'}],
+  [['EBV 3', 'EBV3', 'EBV O3'], 'EBV 3 (Switzerland)', 4.63, 3.29, 'other', 'EBV O3 upper kinematic reference profile (AB-EBV, sheet 9 N). Same maximum dimensions as O2, with wider upper corners.', {basis: 'Reference profile'}],
+  [['EBV 4', 'EBV4', 'EBV O4'], 'EBV 4 (Switzerland)', 4.7, 3.29, 'other', 'EBV O4 upper kinematic reference profile (AB-EBV, sheet 10 N); this sheet applies to infrastructure. It is not a rectangular vehicle envelope.', {basis: 'Reference profile'}],
+  [['FS'], 'FS (Italian profile)', 4.3, 3.2, 'other', 'RFI (FS) / FN loading outline: UIC Loading Guidelines, volume 1, table 1.7 (2026).'],
+  [['deep-tube'], 'London deep tube', null, null, 'metro', 'Vehicle example from TfL: 1992 Tube Stock, width over doors. Clearance profiles vary by line and are not tunnel diameters.', {basis: 'Vehicle example (1992 Stock)', example: {height: 2.869, width: 2.62}}],
+  [['subsurface'], 'London sub-surface', null, null, 'metro', 'Vehicle example from TfL: S Stock, width over doors. This describes the train, not a universal sub-surface clearance profile.', {basis: 'Vehicle example (S Stock)', example: {height: 3.682, width: 2.92}}],
+  [['Kleinprofil'], 'Kleinprofil (Berlin U-Bahn)', null, null, 'metro', 'Vehicle example: Stadler / BVG JK datasheet (2024). Dimensions describe this train type, not the complete clearance profile.', {basis: 'Vehicle example (JK)', example: {height: 3.16, width: 2.4}}],
+  [['Großprofil', 'Grossprofil'], 'Großprofil (Berlin U-Bahn)', null, null, 'metro', 'Vehicle example: Stadler / BVG J datasheet. Dimensions describe this train type, not the complete clearance profile.', {basis: 'Vehicle example (J)', example: {height: 3.425, width: 2.65}}],
 ];
 const LOADING_HEIGHT_STOPS = [[4.28, '#a5d66b'], [4.32, '#43a047'], [4.5, '#00897b'], [4.65, '#1e88e5'], [4.72, '#3949ab'], [4.8, '#5e35b1'], [5.3, '#8e24aa'], [6.2, '#6a1b4d']];
-const BRITISH_LADDER = ['W5', 'W6', 'W6A', 'W7', 'W8', 'W8A', 'W9', 'W9Plus', 'W10', 'W10A', 'W11', 'W12'];
+const BRITISH_LADDER = ['W5', 'W6', 'W6A', 'W7', 'W7A', 'W8', 'W8A', 'W9', 'W9A', 'W9Plus', 'W10', 'W10A', 'W11', 'W12'];
 export const LOADING_OTHER = '#a1887f', LOADING_METRO = '#b0a4c8';
 // "AAR F", "AAR-F", "aar_f" and "AARF" are all Plate F.
 const aarCode = value => value.replace(/^AAR[ _-]?([A-Z])$/i, (_, plate) => `AAR_${plate.toUpperCase()}`);
 const aarAliases = code => /^AAR_[A-Z]$/.test(code) ? ['_', ' ', '-', ''].map(sep => `AAR${sep}${code.at(-1)}`) : [code];
 export function loadingGauge(value) {
   if (!value) return null;
-  // Lists (e.g. "W6A, W7, W8") mean the line clears all of them: take the largest.
+  // Lists mean the line clears each listed profile. Pick the last display
+  // category; W gauges do not form a strictly nested set of envelopes.
   // Tags vary in case and separators: "W6a", "AAR F".
   const british = BRITISH_LADDER.filter(code => String(value).split(/,\s*/).some(v => v.replace('*', '').toUpperCase() === code.toUpperCase()));
   const code = british.length ? british.at(-1) : aarCode(String(value).trim());
   const entry = LOADING_GAUGES.find(([codes]) => codes.some(c => c.toUpperCase() === code.toUpperCase()));
   if (!entry && /^[A-E][1-5]?$/.test(code)) return {code, name: `${code} (EN 15528 line category, not a loading gauge)`, family: 'other', color: LOADING_OTHER, rank: 0};
   if (!entry) return {code, name: `${code} (as tagged)`, family: 'other', color: LOADING_OTHER, rank: 0};
-  const [, name, height, width, family, note] = entry;
+  const [, name, height, width, family, note, dimensions] = entry;
   const color = family === 'height' ? interpolateColor(LOADING_HEIGHT_STOPS, height)
     : family === 'british' ? hsl(18, 70, 72 - BRITISH_LADDER.indexOf(code) * 4.2) : family === 'metro' ? LOADING_METRO : LOADING_OTHER;
   // Sort key for legends: height where published, else position on the ladder.
   const rank = height || (family === 'british' ? 3 + BRITISH_LADDER.indexOf(code) / 100 : family === 'metro' ? 1 : 2);
-  return {code, name, height, width, family, note: note || LOADING_GAUGES.find(([, , , , f, n]) => f === family && n)?.[5], color, rank};
+  return {code, name, height, width, family, note, dimensions, color, rank};
 }
 // In-view legend rows from counted values ({row: [colour, name, sort key,
-// detail], n}). Values drawn in the same colour share a row (e.g. GA, GB,
-// GB1 and GB2, all 4.32 m high), named most common first, with their shared
-// detail. The most common groups are listed, in order of size; the rest are
+// detail], n}). Values with the same colour AND detail share a row (e.g.
+// GA and GB). Different dimensions must remain visible even if colours match.
+// The most common groups are listed, in order of size; the rest are
 // summarised in a last row.
 export function legendRows(entries, limit = 12) {
   const groups = new Map();
   for (const {row: [color, name, sort, detail], n} of entries) {
-    const group = groups.get(color) || {color, names: new Map(), details: new Set(), sort, n: 0};
+    const key = JSON.stringify([color, detail || '']);
+    const group = groups.get(key) || {color, names: new Map(), details: new Set(), sort, n: 0};
     group.names.set(name, (group.names.get(name) || 0) + n);
     group.details.add(detail || '');
     if (sort !== undefined && (group.sort === undefined || sort < group.sort)) group.sort = sort;
-    group.n += n; groups.set(color, group);
+    group.n += n; groups.set(key, group);
   }
   const all = [...groups.values()].sort((a, b) => b.n - a.n);
   const shown = all.slice(0, limit).sort((a, b) => a.sort === undefined || b.sort === undefined ? 0 : a.sort - b.sort);
@@ -284,8 +295,14 @@ export function legendRows(entries, limit = 12) {
 // To the millimetre, as the sources give them (3.965, 2.82).
 const metres = m => String(Number(m.toFixed(3)));
 const feetInches = m => { const inches = Math.round(m / 0.0254); return `${Math.floor(inches / 12)} ft ${inches % 12} in`; };
-export const loadingDimensions = (g, units = 'metric') => !g?.height ? ''
-  : units === 'imperial' ? `${feetInches(g.height)} high × ${feetInches(g.width)} wide` : `${metres(g.height)} m high × ${metres(g.width)} m wide`;
+export function loadingDimensions(g, units = 'metric') {
+  const size = g?.dimensions?.example || g;
+  if (!(size?.height > 0 && size?.width > 0)) return '';
+  const dimensions = units === 'imperial'
+    ? `${feetInches(size.height)} high × ${feetInches(size.width)} wide`
+    : `${metres(size.height)} m high × ${metres(size.width)} m wide`;
+  return g.dimensions?.basis ? `${g.dimensions.basis}: ${dimensions}` : dimensions;
+}
 // Whether the upper-cased tag lists a British gauge: alone, in a list ('in'
 // on "W6A," tokens avoids W6 matching inside W6A) or starred.
 const britishTest = (upper, code) => { const c = code.toUpperCase(); return ['any', ['==', upper, c], ['in', `${c},`, ['concat', upper, ',']], ['in', `${c}*`, upper]]; };
