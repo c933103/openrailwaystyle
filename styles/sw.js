@@ -13,10 +13,10 @@
 const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}6`, KEEP_VERSIONS = 2;
 // Keep in step with loadScript in app.mjs and the stylesheet in index.html.
 const LIBRARIES = ['https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js', 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css', 'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js'];
-const SHELL = /\/(app\.css|[\w-]+\.mjs|vendor\/[\w-]+\.js|world\.style\.json|manifest\.webmanifest|favicon\.svg|icon-[\w-]+\.png)$/;
+const SHELL = /\/(app\.css|[\w-]+\.mjs|vendor\/[\w-]+\.js|world\.style\.json|manifest\.webmanifest|atlas-icon[\w-]*\.(?:png|svg))$/;
 // Saved at installation, so an app installed on the first visit (before this
 // worker controlled the page) also opens offline.
-const PRECACHE = ['./', 'app.css', 'app.mjs', 'map-model.mjs', 'context.mjs', 'draw.mjs', 'elevation.mjs', 'dem-repair.mjs', 'globe-drag.mjs', 'keyboard-pan.mjs', 'departures.mjs', 'polar.mjs', 'track-count.mjs', 'track-tiles.mjs', 'han-region.mjs', 'han-region-data.mjs', 'loading-gauge-list.mjs', 'vendor/tile-labels.js', 'vendor/track-worker.js', 'vendor/polar-layer.js', 'vendor/maplibre-contour.js', 'vendor/dem-worker.js', 'world.style.json', 'manifest.webmanifest', 'favicon.svg', 'icon-192.png', 'icon-512.png'];
+const PRECACHE = ['./', 'app.css', 'app.mjs', 'map-model.mjs', 'context.mjs', 'draw.mjs', 'elevation.mjs', 'dem-repair.mjs', 'globe-drag.mjs', 'keyboard-pan.mjs', 'departures.mjs', 'polar.mjs', 'track-count.mjs', 'track-tiles.mjs', 'han-region.mjs', 'han-region-data.mjs', 'loading-gauge-list.mjs', 'vendor/tile-labels.js', 'vendor/track-worker.js', 'vendor/polar-layer.js', 'vendor/maplibre-contour.js', 'vendor/dem-worker.js', 'world.style.json', 'manifest.webmanifest', 'atlas-icon.svg', 'atlas-icon-192.png', 'atlas-icon-512.png', 'atlas-icon-maskable-512.png', 'atlas-icon-touch-180.png'];
 
 // The version the page asks for, read from its module script.
 const pageVersion = html => html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1] ?? null;
@@ -87,17 +87,21 @@ self.addEventListener('install', event => event.waitUntil((async () => {
   if (!response.ok) throw new Error(`page returned ${response.status}`);
   const version = pageVersion(await response.clone().text());
   if (!version) throw new Error('page names no version');
+  // The libraries are fetched before anything is saved, so a library that
+  // fails to load leaves the cache as it was: the worker in place keeps a
+  // page that only asks for the libraries it knows. Fetched with CORS (the
+  // CDN allows any origin) so that an error status can be seen and fails the
+  // installation; the saved copy also serves the page's plain script and
+  // stylesheet requests.
+  const libraries = await Promise.all(LIBRARIES.map(async url => {
+    if (await cache.match(url)) return null;
+    const library = await fetch(url, {mode: 'cors'});
+    if (!library.ok) throw new Error(`${url} returned ${library.status}`);
+    return [url, library];
+  }));
   await saveVersion(cache, version, response);
   await migrate(cache, version);
-  // Fetched with CORS (the CDN allows any origin) so that an error status can
-  // be seen and fails the installation; the saved copy also serves the page's
-  // plain script and stylesheet requests.
-  await Promise.all(LIBRARIES.map(async url => {
-    if (await cache.match(url)) return;
-    const response = await fetch(url, {mode: 'cors'});
-    if (!response.ok) throw new Error(`${url} returned ${response.status}`);
-    await cache.put(url, response);
-  }));
+  for (const entry of libraries) if (entry) await cache.put(...entry);
   await self.skipWaiting();
 })()));
 self.addEventListener('activate', event => event.waitUntil((async () => {
