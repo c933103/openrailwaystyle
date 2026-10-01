@@ -359,8 +359,11 @@ export function shareLines(zones, lines, metres) {
       if (!line.colour) return `${line.group}|n|${line.line}`;
       return operators(line.colour, line.group) > 1 ? `${line.group}|c|${line.colour}|${line.line ?? `#${r}`}` : `${line.group}|c|${line.colour}`;
     };
+    // Ownership is voted by each key's own lines; a siding that inherits a
+    // line's key goes with that line's station, however far it runs
+    // towards another.
     lines.forEach((line, index) => {
-      if (!line) return;
+      if (!line || (root[index] !== null && root[index] !== index)) return;
       const colour = lines[root[index] ?? index].colour, kind = named.filter(p => p.group === line.group);
       const same = colour ? kind.filter(p => p.colour === colour) : [];
       const pool = same.length ? same : kind.length ? kind : named;

@@ -504,8 +504,9 @@ test('shared areas: closely drawn lines count; a siding meets its track across a
   const way = (points, extra) => ({group: 'rail', main: true, parts: [points], ...extra});
   const lines = [way([[0, -1], [400, -1]], {colour: '#111', line: 'L1'}), way([[600, -1], [1000, -1]], {colour: '#111', line: 'L2'}),
     // An unnamed siding leaving L2 at (620, 0.5), in the next cell, then
-    // running back west past A: it goes with L2's station.
-    way([[620, 0.5], [620, 40], [200, 40]]),
+    // running back west past A, longer than L2: it goes with L2's station,
+    // and does not carry L2 to A.
+    way([[620, 0.5], [620, 40], [-600, 40]]),
     // Operator C's line drawn with a vertex every 5 m (less than half a
     // sampling step apart).
     way(Array.from({length: 41}, (_, k) => [5 * k, 80]), {colour: '#222', line: 'L3'})];
