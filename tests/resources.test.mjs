@@ -17,7 +17,8 @@ test('track-count worker transfers private copies while keeping downloaded buffe
  try {
   installLabelProtocols({addProtocol:(id,f)=>protocols[id]=f},{},async()=>({ok:true,arrayBuffer:async()=>{const b=new ArrayBuffer(16);originals.push(b);return b;}}));
   await protocols.atlastracks({url:'atlastracks://14/8192/8192'},{signal:new AbortController().signal});
-  assert.equal(sent[0].transfer.length,11);assert.equal(new Set(sent[0].transfer).size,11);
+  // The nine railway tiles around the tile, and its nine station-area and nine station tiles.
+  assert.equal(sent[0].transfer.length,27);assert.equal(new Set(sent[0].transfer).size,27);
   assert.ok(sent[0].transfer.every(b=>b.byteLength===0),'worker received ownership');assert.ok(originals.every(b=>b.byteLength===16),'cache retains reusable originals');
  }finally{globalThis.Worker=previous;}
 });
