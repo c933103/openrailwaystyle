@@ -64,6 +64,7 @@ Each website build copies the tiles, `index.json`, `manifest.json` (stages, coun
 | Location | Contents | Updated by |
 | --- | --- | --- |
 | `rail-data` branch | Lifecycle archive parts, manifest, loading-gauge list and optional polar assets | `snapshot.yml` |
+| `axle-data` branch | Compact railway axle capacity/load-category lookup and snapshot date | `axle-load.yml` |
 | `street-data` branch | Street-running static tiles, index, manifest and GeoJSON | `street-running.yml` |
 | `crossing-data` branch | Level-crossing table, region state, static tiles, index and manifest | `crossings.yml` |
 | `overpass-cache` release | Raw responses for rebuilding the lifecycle snapshot | `snapshot.yml` |

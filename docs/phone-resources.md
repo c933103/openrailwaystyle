@@ -28,7 +28,7 @@ Caches never remove tiles currently drawn by MapLibre; evicting raw responses or
 
 Recheck on the current MapLibre release and on the Xperia with Chrome remote inspection before attributing any change in frame time or GPU memory to these fixes. Record network failures, wait for settled tiles, use one render listener, and compare identical views/settings with the same browser cache state.
 
-## Pending MapLibre 5.24 integration
+## MapLibre 5.24 integration
 
 A second run used the same 5.24.0 library and globe compatibility code on both the old and updated cache implementations. All 131 integration tests passed, and desktop/portrait/landscape UI checks reported no page errors. A single render listener was used for all views.
 
@@ -44,3 +44,5 @@ A second run used the same 5.24.0 library and globe compatibility code on both t
 The two runs rendered the same feature counts at every sampled view and kept the same 1081×2401 canvas. Many API/tile requests failed or were still pending. Most samples recorded no repaints during the two-second window; the updated 50% sample recorded seven frames as work settled. These results show startup/compatibility and network limitations, not a measured frame-time improvement. The byte budgets and eliminated duplicate buffer copy above are deterministic; Xperia/PWA frame time and GPU-memory checks remain outstanding.
 
 The axle lookup optimisation was added after task 30 landed. A 4,096-way regression confirms one parse for a shared tag group and unchanged way-ID values. This removes the per-way object duplication from the new view as well as its temporary full array and second Map.
+
+The final combined station/platform build was also checked against MapLibre 5.24.0 with the merged upgrade’s globe compatibility module. Desktop and 412×915 touch checks passed for curated globe labels, station inspection, Japanese labels, polar panning, platform length arrival/conversion and immediate kg/lb axle legends. This is compatibility evidence; it adds no claim about device frame time or GPU memory.
