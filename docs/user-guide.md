@@ -18,7 +18,7 @@ The shared language selector offers local names or 12 languages. It uses recorde
 
 Under the view buttons, the background can be the drawn map, satellite imagery alone, or hybrid: the imagery under the railways (and stations) of the chosen view, without the map's roads and labels. The imagery is EOxCloudless (Sentinel-2, 10 m per pixel): stations, yards and track corridors show, not single tracks.
 
-The gear button opens the settings, in place of the map controls (‹ returns): in three groups (railways, surroundings, map), they control the boxed track counts of the Infrastructure view, transport facilities, destinations, planning constraints, relief, metric or imperial units, and the readout under the scale bar: the coordinates under the cursor (the map's centre on a touch screen) and the zoom. On small screens the controls start folded away; the panel's title and its fold button stay in view when the panel scrolls. Under the legend, “How to read this view” explains the current view's colours.
+The gear button opens the settings, in place of the map controls (‹ returns): in three groups (railways, surroundings, map), they control the boxed track counts of the Infrastructure view, transport facilities, destinations, planning constraints, relief, metric or imperial units, and the readout under the scale bar: the coordinates under the cursor (the map's centre on a touch screen) and the zoom. With the map focused, the arrow keys pan smoothly while held (a short press moves one step); Shift with an arrow turns or tilts the map. On small screens the controls start folded away; the panel's title and its fold button stay in view when the panel scrolls. Under the legend, “How to read this view” explains the current view's colours.
 
 ## Install as an app
 
@@ -49,7 +49,9 @@ With the drawing tools closed, click a drawn line for its elevation profile:
 heights about every 10 m along it, with lowest and highest points, ascent,
 descent and the steepest stretch; hovering the chart marks the place on the map.
 Heights come from the terrain tiles (ground or seabed, not track level on
-bridges or in tunnels).
+bridges or in tunnels). The tiles' known faults (isolated pixels far below the
+ground around them, and a band along 120° E in the Taiwan Strait) are repaired
+from the surrounding ground before they are shaded, contoured or measured.
 
 In either tool, drag a point to move it or click to select it. In the drawing
 tools, the small dot in the middle of each segment adds a point there (click it,
@@ -63,4 +65,4 @@ Mapped speed limits are infrastructure information, not train operating speeds, 
 
 Community-hosted external services can be unavailable or change schema. The application shows loading failures rather than replacing missing speeds with guessed values. Station search uses the cross-origin-enabled `https://api.openrailwaymap.org/v2/facility` endpoint; railway vectors continue to use `openrailwaymap.app`. Search requests are submitted only on demand and have cancellation and timeout handling. No personal location is requested automatically.
 
-For sources and credits, use the map’s **About & data** panel or the [data and attribution reference](data-maintenance.md#sources-and-attribution).
+For sources and credits, use the map’s **?** help page or the [data and attribution reference](data-maintenance.md#sources-and-attribution).
