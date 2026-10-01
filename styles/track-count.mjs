@@ -412,11 +412,14 @@ export function stitchParts(parts, tolerance = STITCH) {
   };
   // A piece lying wholly on another (a tile's margin repeating part of the
   // way) adds nothing to it.
+  // (Every point of it, not its ends alone: a closed way's ends are one
+  // point.)
+  const inside = (a, b) => a.every(p => on(p, b));
   const join = (a, b) => {
     const k = on(a.at(-1), b);
     if (!k) return null;
-    if (on(a[0], b)) return b;
-    return on(b[0], a) && on(b.at(-1), a) ? a : [...a, ...b.slice(k)];
+    if (inside(a, b)) return b;
+    return inside(b, a) ? a : [...a, ...b.slice(k)];
   };
   for (let joined = true; joined && pieces.length > 1;) {
     joined = false;

@@ -968,6 +968,11 @@ test('track counts: untagged crossovers and sidings are not running tracks', asy
   // way's tail) leaves the whole way, in either order.
   assert.deepEqual(stitchParts([[[20, 0], [10, 0]], [[100, 0], [10, 0]]]), [[[100, 0], [10, 0]]]);
   assert.deepEqual(stitchParts([[[100, 0], [10, 0]], [[20, 0], [10, 0]]]), [[[100, 0], [10, 0]]]);
+  // A closed way (a loop) keeps its whole ring when a neighbouring tile
+  // repeats a piece by its start and end, which are one point.
+  const ring = [[0, 0], [100, 0], [100, 100], [0, 100], [0, 0]];
+  assert.deepEqual(stitchParts([[[0, 0], [0, 10]], ring]), [ring]);
+  assert.deepEqual(stitchParts([ring, [[0, 0], [0, 10]]]), [ring]);
   // A station across the scissors counts its two tracks, not four.
   const zone = {inside: (x, y) => x >= -100 && x <= 300 && y >= -20 && y <= 25};
   for (const i of connectors(scissors, 1)) Object.assign(scissors[i], {main: false, service: 'crossover'});
