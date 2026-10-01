@@ -33,3 +33,9 @@ test('a longer straight tile fragment anchors the label ahead of a shorter fragm
  const long={...edge(),geometry:{type:'LineString',coordinates:[[0,0],[.002,0]]}},short={...edge(),geometry:{type:'LineString',coordinates:[[0,0],[.00003,.00001],[.00008,.00002],[.0001,0]]}};let data;const map={getZoom:()=>19,queryRenderedFeatures:()=>[short,long],getSource:()=>({setData:d=>data=d})},p=createPlatformLengths(map,{delay:0,fetcher:async()=>({ok:true,json:async()=>({properties:{length:350}})})});
  try{p.update();await new Promise(r=>setTimeout(r,20));assert.deepEqual(data.features[0].geometry.coordinates,[.001,0]);}finally{p.destroy();}
 });
+
+test('a completed platform lookup notifies an already open raw-edge inspection',async()=>{
+ let complete,shown,controller;const inspected={...edge(),source:'platformEdges'},map={getZoom:()=>19,queryRenderedFeatures:()=>[edge()],getSource:()=>({setData(){}})};
+ controller=createPlatformLengths(map,{delay:0,fetcher:()=>new Promise(r=>complete=r),onLength:(id,length)=>{assert.equal(id,'1');assert.equal(length,350);shown=controller.enrich(inspected);}});
+ try{controller.update();await new Promise(r=>setTimeout(r,10));assert.equal(controller.enrich(inspected).properties.platform_length,undefined);complete({ok:true,json:async()=>({properties:{length:350}})});await new Promise(r=>setTimeout(r,10));assert.equal(shown.properties.platform_length,350);}finally{controller.destroy();}
+});

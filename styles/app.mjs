@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-83';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-83';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-84';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-84';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-83';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-83';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-83';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-83';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-83';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-84';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-84';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-84';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-84';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-84';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -36,7 +36,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-83';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-84';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -1043,7 +1043,7 @@ async function initialize() {
   };
   if (map.isStyleLoaded?.()) styleReady(); else map.once('style.load', styleReady);
   map.on('idle', updateStatus);
-  platformLengths=createPlatformLengths(map,{active:()=>ready&&settings.labels&&settings.background!=='satellite'});
+  platformLengths=createPlatformLengths(map,{active:()=>ready&&settings.labels&&settings.background!=='satellite',onLength:(id,length)=>{if(length>0&&currentFeature?.source==='platformEdges'&&String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);}});
   map.on('moveend',()=>platformLengths.update());
   map.on('remove',()=>platformLengths.destroy());
   map.on('sourcedata',e=>{if(e.sourceId==='platformEdges'&&e.tile)platformLengths.update();});

@@ -19,7 +19,7 @@ export function platformAnchor(feature){
  const best=longestPlatformLine(feature);if(!best)return null;const {line,lens,total}=best;let half=total/2;
  for(let i=0;i<lens.length;i++){if(half<=lens[i]){const t=lens[i]?half/lens[i]:0;return line[i].map((v,j)=>v+(line[i+1][j]-v)*t);}half-=lens[i];}return null;
 }
-export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1100,maxEntries=256,cooldown=600000,retryDelay=30000}={}){
+export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1100,maxEntries=256,cooldown=600000,retryDelay=30000,onLength=()=>{}}={}){
  const cache=new Map(),pending=new Map();let desired=new Map(),timer,wakeTimer,busy=false,disposed=false,controller,inflight;let pausedUntil=0,lastDraw,lastSource;
  const remember=(id,length)=>{cache.delete(id);cache.set(id,length);while(cache.size>maxEntries)cache.delete(cache.keys().next().value);};
  const pause=duration=>{pausedUntil=Date.now()+duration;clearTimeout(wakeTimer);wakeTimer=setTimeout(()=>{wakeTimer=undefined;pausedUntil=0;update();},duration);};
@@ -28,7 +28,7 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
   if(busy||disposed||Date.now()<pausedUntil)return;const entry=pending.entries().next().value;if(!entry)return;
   const [id,url]=entry;pending.delete(id);if(!desired.has(id)){schedule();return;}busy=true;inflight=id;controller=new AbortController();
   const timeout=setTimeout(()=>controller.abort(),5000);
-  try {const r=await fetcher(url,{signal:controller.signal});if(r.status===429){pause(cooldown);pending.clear();return;}if(r.status===404||r.status===410){remember(id,null);return;}if(!r.ok)throw new Error(`HTTP ${r.status}`);const data=await r.json(),length=Number(data.properties?.length);remember(id,Number.isFinite(length)&&length>0?length:null);draw();}
+  try {const r=await fetcher(url,{signal:controller.signal});if(r.status===429){pause(cooldown);pending.clear();return;}if(r.status===404||r.status===410){remember(id,null);return;}if(!r.ok)throw new Error(`HTTP ${r.status}`);const data=await r.json(),length=Number(data.properties?.length);remember(id,Number.isFinite(length)&&length>0?length:null);draw();onLength(id,cache.get(id));}
   catch(error){if(desired.has(id)&&!disposed)pause(retryDelay);}
   finally{clearTimeout(timeout);busy=false;inflight=undefined;schedule();}
  }
