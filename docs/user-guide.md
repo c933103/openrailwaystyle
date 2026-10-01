@@ -63,4 +63,4 @@ Mapped speed limits are infrastructure information, not train operating speeds, 
 
 Community-hosted external services can be unavailable or change schema. The application shows loading failures rather than replacing missing speeds with guessed values. Station search uses the cross-origin-enabled `https://api.openrailwaymap.org/v2/facility` endpoint, which holds station nodes only, together with OpenStreetMap's Nominatim geocoder (`https://nominatim.openstreetmap.org/search`, one request per submitted search) for stations mapped as areas, such as Hong Kong's Sha Tin, and for ordinary place names, listed under the railway results; railway vectors continue to use `openrailwaymap.app`. Search requests are submitted only on demand and have cancellation and timeout handling. No personal location is requested automatically.
 
-For sources and credits, use the map’s **About & data** panel or the [data and attribution reference](data-maintenance.md#sources-and-attribution).
+For sources and credits, use the map’s **?** help page or the [data and attribution reference](data-maintenance.md#sources-and-attribution).
