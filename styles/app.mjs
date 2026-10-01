@@ -498,7 +498,7 @@ function updateNearbyTransport() {
   if (!target || currentFeature?.geometry?.type !== 'Point') return;
   target.replaceChildren(textNode('h3','Nearby transport'));
   if (!settings.transport) { target.append(textNode('p','Enable “Other transport & interchanges” to see nearby facilities.','small')); return; }
-  if (!ready || map.getZoom() < 14) { target.append(textNode('p','Zoom to street detail (14+) for nearby terminals; bus stops, taxi stands and bike rental appear from zoom 15.','small')); return; }
+  if (!ready || map.getZoom() < 14) { target.append(textNode('p','Zoom in closer to list nearby terminals, stops, taxi stands and bike rental.','small')); return; }
   const features = ['poi','aerodrome_label'].flatMap(sourceLayer=>map.querySourceFeatures('openmaptiles',{sourceLayer}).map(f=>({id:f.id,properties:f.properties,geometry:f.geometry,sourceLayer})));
   const nearby = nearbyTransport(currentFeature.geometry.coordinates,features,500,map.getZoom());
   if (!nearby.length) {
@@ -571,7 +571,7 @@ function updateStatus() {
     status.classList.add('error'); status.textContent = 'Some map data could not load. Check your connection or reload to retry.'; return;
   }
   status.classList.remove('error');
-  status.textContent = map.getZoom() < 6 ? 'Worldwide coverage · zoom in for stations and former lines' : 'Explore the rail network · click a line or station';
+  status.textContent = map.getZoom() < 4 ? 'Worldwide coverage · click a line' : 'Explore the rail network · click a line or station';
   // Visible diagnostics make source availability inspectable without exposing
   // internal map objects or relying on a generic "loaded" flag.
   const features = map.queryRenderedFeatures();
@@ -671,7 +671,7 @@ function applyDetail(from = settings.detail) {
   $('map').classList.toggle('detail', level > 0);
   $('map').classList.toggle('detail-2', level === 2);
   detailButton.setAttribute('aria-pressed', String(level > 0));
-  detailButton.title = `More detail: map drawn at ${detailScale(level)}%. Click for ${next ? `${detailScale(next)}% (${next === 1 ? 'the next zoom level at half size' : 'two zoom levels further in at a quarter size'})` : '100% (normal)'}.`;
+  detailButton.title = `More detail: map drawn at ${detailScale(level)}%. Click for ${next ? `${detailScale(next)}%` : '100% (normal)'}.`;
   detailButton.setAttribute('aria-label', detailButton.title);
   if (!map) return;
   map.setPixelRatio(devicePixelRatio / 2 ** level);
