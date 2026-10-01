@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import Pbf from 'pbf';
 import {VectorTile} from '@mapbox/vector-tile';
-import {buildTiles, joinLines, mergeWay, orient, partQuery, readTable, routeLabel, routeOf, toTable, writeTable, LAYER} from '../scripts/service-routes.mjs';
+import {addResult, buildTiles, joinLines, orient, removeStale, staleItems, partQuery, readTable, routeLabel, routeOf, toTable, writeTable, LAYER} from '../scripts/service-routes.mjs';
 
 test('service routes: names without their direction', () => {
   assert.equal(routeLabel('港鐵荃灣綫 MTR Tsuen Wan Line (南行 Southbound)'), '港鐵荃灣綫 MTR Tsuen Wan Line');
@@ -42,7 +42,9 @@ test('service routes: table and tiles, each route along its tracks in its place'
   assert.equal(routes.length, 2);
   assert.equal(routes.find(r => r.ref === 'A').relation, 10, 'linked to its lowest relation id');
   assert.deepEqual(ways.map(w => w.id), [1, 2], 'platforms are not tracks');
-  const table = readTable(writeTable({routes: new Map(routes.map(r => [r.key, r])), ways: new Map(ways.map(w => [w.id, w]))}));
+  const built = {routes: new Map(), ways: new Map()};
+  addResult(built, {routes, ways}, 'japan', new Set());
+  const table = readTable(writeTable(built));
   assert.equal(table.routes.size, 2); assert.equal(table.ways.size, 2);
   const tiles = buildTiles(table);
   const read = key => { const l = new VectorTile(new Pbf(tiles.get(key))).layers[LAYER]; return Array.from({length: l.length}, (_, i) => l.feature(i)); };
@@ -82,15 +84,32 @@ test('service view: grey tracks under the services, side by side, named in the l
   assert.deepEqual(style.sources.serviceRoutes.tiles, ['servicetiles://{z}/{x}/{y}']);
 });
 
-test('service routes: a way fetched in several boxes keeps every route on it', () => {
-  const lines = [[[0, 0], [1, 0]]];
-  const first = mergeWay(undefined, {id: 1, routes: ['local', 'long'], lines}, {stage: 'japan', seenThisPass: false});
-  // A later box selects only the long route, which runs through it.
-  const second = mergeWay(first, {id: 1, routes: ['long'], lines}, {stage: 'japan', seenThisPass: true});
-  assert.deepEqual(second.routes, ['local', 'long']);
-  // The next refresh of the stage starts the list afresh (the local route is gone).
-  assert.deepEqual(mergeWay(second, {id: 1, routes: ['long'], lines}, {stage: 'japan', seenThisPass: false}).routes, ['long']);
-  // A way another stage owns only gains routes.
-  const other = mergeWay(second, {id: 1, routes: ['cross'], lines}, {stage: 'east-asia', seenThisPass: false});
-  assert.deepEqual([other.routes, other.stage], [['cross', 'local', 'long'], 'japan']);
+test('service routes: memberships add up within a pass and are kept per stage', () => {
+  const lines = [[[0, 0], [1, 0]]], table = {routes: new Map(), ways: new Map()};
+  const route = (key, relation) => ({key, relation, kind: 'subway', ref: key, label: key, colour: '', network: 'N', operator: '', names: {}});
+  // Stage A, two boxes: the second selects only the long route.
+  let seen = new Set();
+  addResult(table, {routes: [route('local', 5), route('long', 7)], ways: [{id: 1, routes: ['local', 'long'], lines}]}, 'A', seen);
+  addResult(table, {routes: [route('long', 6)], ways: [{id: 1, routes: ['long'], lines}]}, 'A', seen);
+  assert.deepEqual(table.ways.get(1).routes, {A: ['local', 'long']});
+  assert.equal(table.routes.get('long').relation, 6, 'the lowest relation id seen');
+  // Stage B finds its own route on the same way.
+  const seenB = new Set();
+  addResult(table, {routes: [route('cross', 9)], ways: [{id: 1, routes: ['cross'], lines}]}, 'B', seenB);
+  // A's next refresh no longer finds the local route: only A's part changes.
+  seen = new Set();
+  addResult(table, {routes: [route('long', 6)], ways: [{id: 1, routes: ['long'], lines}]}, 'A', seen);
+  removeStale(table, 'A', staleItems(table, 'A', seen));
+  assert.deepEqual(table.ways.get(1).routes, {A: ['long'], B: ['cross']});
+  assert.ok(!table.routes.has('local') && table.routes.has('cross'));
+  // A way no stage holds any more goes.
+  removeStale(table, 'A', staleItems(table, 'A', new Set()));
+  removeStale(table, 'B', staleItems(table, 'B', new Set()));
+  assert.equal(table.ways.size, 0);
+});
+
+test('service routes: a bare reference without a network is told apart by name and kind', () => {
+  const a = routeOf({id: 1, tags: {route: 'tram', ref: '1', name: 'Tram 1 Alpha'}}), b = routeOf({id: 2, tags: {route: 'tram', ref: '1', name: 'Tram 1 Beta'}});
+  assert.notEqual(a.key, b.key);
+  assert.notEqual(routeOf({id: 3, tags: {route: 'tram', ref: '1', network: 'X', name: 'One'}}).key, routeOf({id: 4, tags: {route: 'subway', ref: '1', network: 'X', name: 'One'}}).key);
 });

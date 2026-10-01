@@ -44,13 +44,17 @@ export function routeLabel(name) {
 }
 const NAME_KEY = /^name:[a-z]{2,3}(-[A-Za-z]{2,4})?$/;
 // The same service in each direction (and in variants) is one route: the
-// same network, reference and colour (or, without a reference, name).
+// same kind, network, reference and colour (and name, without a reference
+// or without a network).
 export function routeOf(rel) {
   const t = rel.tags || {};
   const label = routeLabel(t.name) || t.ref || '', ref = t.ref || '';
   if (!label) return null;
   const names = Object.fromEntries(Object.entries(t).filter(([k]) => NAME_KEY.test(k)).map(([k, v]) => [k, routeLabel(v)]).filter(([, v]) => v));
-  return {key: [t.network || t.operator || '', ref, colour(t.colour), ref ? '' : label].join('|'), kind: t.route === 'train' ? 'commuter' : t.route,
+  // Without a network or operator, a bare reference ("1") says nothing of
+  // the city: the name tells such routes apart.
+  const network = t.network || t.operator || '', kind = t.route === 'train' ? 'commuter' : t.route;
+  return {key: [kind, network, ref, colour(t.colour), ref && network ? '' : label].join('|'), kind,
     ref, label, colour: colour(t.colour), network: t.network || '', operator: t.operator || '', relation: rel.id, names};
 }
 
@@ -65,7 +69,7 @@ export function toTable(json) {
     if (!route) continue;
     // The first relation of a route gives its link (the lowest id, so it is stable).
     const known = routes.get(route.key);
-    if (!known || route.relation < known.relation) routes.set(route.key, {...route, kind: known && known.kind !== route.kind ? known.kind : route.kind});
+    if (!known || route.relation < known.relation) routes.set(route.key, route);
     for (const m of el.members || []) if (m.type === 'way' && !/platform|stop/.test(m.role || '')) {
       if (!wayRoutes.has(m.ref)) wayRoutes.set(m.ref, new Set());
       wayRoutes.get(m.ref).add(route.key);
@@ -86,17 +90,44 @@ export function toTable(json) {
 }
 const round = ([x, y]) => [Math.round(x * 1e6) / 1e6, Math.round(y * 1e6) / 1e6];
 
-// A way fetched again: each response lists only the routes selected in its
-// box, so within a stage's pass (and for a way another stage owns) the
-// routes add up; the first time a stage's own pass meets the way, its list
-// starts afresh, so routes no longer running there drop out.
-export function mergeWay(previous, item, {stage, seenThisPass}) {
-  const owner = previous?.stage || stage;
-  const fresh = !previous || (owner === stage && !seenThisPass);
-  return {...item, routes: fresh ? item.routes : [...new Set([...previous.routes, ...item.routes])].sort(), stage: owner};
+// The table keeps, for each way and route, what each stage found: a way's
+// routes by stage (each response lists only the routes selected in its box,
+// so within a stage's pass they add up) and the stages that found a route.
+// A stage's refresh replaces only its own part, so routes another stage
+// found on a shared way stay. seen: the `w:<id>`/`r:<key>` met so far in the
+// stage's current pass.
+export function addResult(table, result, stage, seen) {
+  for (const route of result.routes) {
+    const previous = table.routes.get(route.key);
+    table.routes.set(route.key, {...route, relation: Math.min(previous?.relation ?? Infinity, route.relation),
+      stages: [...new Set([...(previous?.stages || []), stage])].sort()});
+    seen.add(`r:${route.key}`);
+  }
+  for (const way of result.ways) {
+    const previous = table.ways.get(way.id), byStage = {...(previous?.routes || {})};
+    byStage[stage] = [...new Set([...(seen.has(`w:${way.id}`) ? byStage[stage] || [] : []), ...way.routes])].sort();
+    table.ways.set(way.id, {id: way.id, lines: way.lines, routes: byStage});
+    seen.add(`w:${way.id}`);
+  }
 }
+// What a complete pass of the stage no longer found: its routes and its
+// part of each way. Returns [kind, key] pairs.
+export const staleItems = (table, stage, seen) => [
+  ...[...table.routes.values()].filter(r => r.stages.includes(stage) && !seen.has(`r:${r.key}`)).map(r => ['r', r.key]),
+  ...[...table.ways.values()].filter(w => w.routes[stage] && !seen.has(`w:${w.id}`)).map(w => ['w', w.id]),
+];
+export const stageItems = (table, stage) => [...table.routes.values()].filter(r => r.stages.includes(stage)).length + [...table.ways.values()].filter(w => w.routes[stage]).length;
+// Drops the stage's part of those items; an item no stage holds goes.
+export function removeStale(table, stage, items) {
+  for (const [kind, key] of items) {
+    const map = kind === 'r' ? table.routes : table.ways, item = map.get(key);
+    if (kind === 'r') item.stages = item.stages.filter(s => s !== stage); else delete item.routes[stage];
+    if (kind === 'r' ? !item.stages.length : !Object.keys(item.routes).length) map.delete(key);
+  }
+}
+const wayRoutes = way => [...new Set(Object.values(way.routes).flat())].sort();
 
-// The table (NDJSON): routes and ways, each with the stage it belongs to.
+// The table (NDJSON): routes and ways, with the stages that found them.
 export const writeTable = ({routes, ways}) => [
   ...[...routes.values()].sort((a, b) => a.key.localeCompare(b.key)).map(r => JSON.stringify({type: 'route', ...r})),
   ...[...ways.values()].sort((a, b) => a.id - b.id).map(w => JSON.stringify({type: 'way', ...w})),
@@ -147,7 +178,7 @@ export function joinLines(lines) {
 export function buildTiles({routes, ways}) {
   const out = new Map(), sets = [[new Map(), MIN_ZOOM, LOCAL_MIN_ZOOM - 1, r => !LOCAL_KINDS.includes(r.kind)], [new Map(), LOCAL_MIN_ZOOM, MAX_ZOOM, () => true]];
   for (const way of ways.values()) {
-    const all = way.routes.map(key => routes.get(key)).filter(Boolean)
+    const all = wayRoutes(way).map(key => routes.get(key)).filter(Boolean)
       .sort((a, b) => ORDER[a.kind] - ORDER[b.kind] || a.ref.localeCompare(b.ref, 'en', {numeric: true}) || a.label.localeCompare(b.label));
     const lines = way.lines.map(orient);
     for (const [groups, , , shown] of sets) {

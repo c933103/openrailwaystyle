@@ -12,7 +12,7 @@
 import {mkdir, readFile, writeFile, rm, appendFile} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {STAGES, quarters} from './branch-lines.mjs';
-import {MIN_ZOOM, MAX_ZOOM, buildTiles, mergeWay, partQuery, readTable, toTable, writeTable} from './service-routes.mjs';
+import {MIN_ZOOM, MAX_ZOOM, addResult, buildTiles, partQuery, readTable, removeStale, stageItems, staleItems, toTable, writeTable} from './service-routes.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const previous = process.env.PREVIOUS_DATA ? new URL(`file://${process.env.PREVIOUS_DATA.replace(/\/?$/, '/')}`) : null;
@@ -129,29 +129,21 @@ while (current.pending.length) {
     continue;
   }
   fetchedBoxes++;
-  // A route or way keeps the stage that first fetched it (stages overlap at
-  // edges, and routes cross them).
-  for (const [map, items, id, prefix] of [[table.routes, result.routes, r => r.key, 'r'], [table.ways, result.ways, w => w.id, 'w']]) for (const item of items) {
-    const key = id(item), previous = map.get(key), owner = previous?.stage || stage.name;
-    map.set(key, prefix === 'w' ? mergeWay(previous, item, {stage: stage.name, seenThisPass: seen.has(`w:${key}`)}) : {...item, relation: Math.min(previous?.relation ?? Infinity, item.relation), stage: owner});
-    if (owner === stage.name) seen.add(`${prefix}:${key}`);
-  }
+  addResult(table, result, stage.name, seen);
   console.log(`Region ${item.box.join(',')}: ${result.routes.length} routes, ${result.ways.length} ways; ${downloaded} bytes, ${requests} requests this run`);
 }
 current.seen = [...seen];
 if (!current.pending.length) {
-  // A complete stage: its routes and ways not returned this time were
-  // deleted or retagged.
-  const mine = (map, prefix) => [...map.entries()].filter(([, v]) => v.stage === stage.name).map(([k]) => [map, k, `${prefix}:${k}`]);
-  const items = [...mine(table.routes, 'r'), ...mine(table.ways, 'w')];
-  const stale = items.filter(([, , k]) => !seen.has(k));
+  // A complete stage: the routes and memberships it no longer found were
+  // deleted or retagged (memberships other stages found stay).
+  const total = stageItems(table, stage.name), stale = staleItems(table, stage.name, seen);
   // A refresh that would remove over a fifth of a stage's routes and ways
   // points to an incomplete response: they stay, and the stage is tried
   // again at its next refresh (the run's downloads are still recorded).
-  const suspicious = current.completed && items.length > 100 && stale.length > items.length * 0.2;
-  if (suspicious) console.warn(`Refresh of ${stage.name} would remove ${stale.length} of ${items.length} items; keeping them`);
-  else for (const [map, k] of stale) map.delete(k);
-  const routes = [...table.routes.values()].filter(r => r.stage === stage.name).length;
+  const suspicious = current.completed && total > 100 && stale.length > total * 0.2;
+  if (suspicious) console.warn(`Refresh of ${stage.name} would remove ${stale.length} of ${total} items; keeping them`);
+  else removeStale(table, stage.name, stale);
+  const routes = [...table.routes.values()].filter(r => r.stages.includes(stage.name)).length;
   Object.assign(current, {completed: now, pending: null, seen: [], routes, kept: suspicious ? stale.length : 0});
   console.log(`Stage ${stage.name} complete: ${routes} routes (${suspicious ? 0 : stale.length} items removed)`);
 } else console.log(`Stage ${stage.name} continues next run (${current.pending.length} region(s) left): ${stopped}`);
@@ -183,7 +175,7 @@ for (const [key, data] of buildTiles(table)) {
 await writeFile(new URL('index.json', out), JSON.stringify({tiles: index.sort()}));
 const manifest = {generated: new Date().toISOString(), routes: table.routes.size, ways: table.ways.size, tiles: index.length, tileBytes, zooms: [MIN_ZOOM, MAX_ZOOM],
   stages: STAGES.map(s => ({name: s.name, label: s.label, completed: info(s.name).completed, inProgress: Boolean(info(s.name).pending?.length),
-    routes: [...table.routes.values()].filter(r => r.stage === s.name).length})),
+    routes: [...table.routes.values()].filter(r => r.stages.includes(s.name)).length})),
   run: {stage: stage.name, requests, downloadedBytes: downloaded}, source: api,
   query: 'route relations (type=route) with route=subway, light_rail, tram or monorail, or route=train with service=commuter or urban, and their track ways, by region', license: 'ODbL-1.0',
   description: 'OpenStreetMap urban rail services (metro, light rail, tram, monorail and commuter rail routes) along the tracks they run on, for the Service view.'};

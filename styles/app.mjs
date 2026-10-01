@@ -239,7 +239,8 @@ function applySettings() {
     if (MODES.some(mode => layer.id.startsWith(`${mode}-`))) visible = layer.id.startsWith(`${settings.mode}-`) && (!VALUE_LABELS.test(layer.id) || settings.labels) && (layer.source !== 'trackCounts' || settings.trackCounts);
     if (layer.id.startsWith('station-')) visible = settings.stations && (!layer.id.startsWith('station-former-') || settings.inactive);
     if (layer.id.startsWith('inactive-')) visible = settings.inactive;
-    if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive);
+    // Service names follow the names setting, in the Service view only.
+    if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive) && (!layer.id.startsWith('service-') || settings.mode === 'service');
     if (layer.id.startsWith('terrain-')) visible = settings.relief;
     if (layer.id.startsWith('context-transport-')) visible = settings.transport;
     if (layer.id.startsWith('context-destinations-')) visible = settings.destinations;
