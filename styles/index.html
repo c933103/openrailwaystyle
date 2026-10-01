@@ -14,12 +14,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Rail Atlas">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20261001-68" rel="stylesheet">
+  <link href="app.css?v=20261001-75" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
   <aside class="panel" aria-label="Map controls">
-    <header><span class="brand-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><clipPath id="brand-clip"><rect width="64" height="64" rx="14"/></clipPath><g clip-path="url(#brand-clip)"><rect width="64" height="64" rx="14" fill="#173e47"/><path d="M0 19h64v31a14 14 0 0 1-14 14H14A14 14 0 0 1 0 50z" fill="#24565f"/><path d="M5 19h54" stroke="#6f9b9b" stroke-width="1.1" stroke-linecap="round"/><path d="M11.7 60.0H52.3" stroke="#b8925a" stroke-width="3.0" stroke-linecap="round"/><path d="M20.1 43.1H43.9" stroke="#b8925a" stroke-width="1.7" stroke-linecap="round"/><path d="M23.5 36.1H40.5" stroke="#b8925a" stroke-width="1.2" stroke-linecap="round"/><path d="M25.5 32.2H38.5" stroke="#b8925a" stroke-width="1.0" stroke-linecap="round"/><path d="M26.7 29.8H37.3" stroke="#b8925a" stroke-width="0.8" stroke-linecap="round"/><path d="M27.5 28.1H36.5" stroke="#b8925a" stroke-width="0.8" stroke-linecap="round"/><path d="M28.1 26.9H35.9" stroke="#b8925a" stroke-width="0.8" stroke-linecap="round"/><path d="M14.30 66.00 L18.70 66.00 L30.90 24.00 L29.80 24.00Z" fill="#f5ce82"/><path d="M45.30 66.00 L49.70 66.00 L34.20 24.00 L33.10 24.00Z" fill="#f5ce82"/></g></svg></span><div><h1>Railway Atlas</h1><p>The world, by rail.</p></div><button id="collapse" aria-label="Collapse map controls" aria-expanded="true">−</button></header>
+    <header><button id="controls-open" type="button" class="brand-mark" aria-label="Collapse map controls" aria-controls="controls" aria-expanded="true"><svg viewBox="0 0 64 64" aria-hidden="true"><clipPath id="brand-clip"><rect width="64" height="64" rx="14"/></clipPath><g clip-path="url(#brand-clip)"><rect width="64" height="64" rx="14" fill="#173e47"/><path d="M0 19h64v31a14 14 0 0 1-14 14H14A14 14 0 0 1 0 50z" fill="#24565f"/><path d="M5 19h54" stroke="#6f9b9b" stroke-width="1.1" stroke-linecap="round"/><path d="M11.7 60.0H52.3" stroke="#b8925a" stroke-width="3.0" stroke-linecap="round"/><path d="M20.1 43.1H43.9" stroke="#b8925a" stroke-width="1.7" stroke-linecap="round"/><path d="M23.5 36.1H40.5" stroke="#b8925a" stroke-width="1.2" stroke-linecap="round"/><path d="M25.5 32.2H38.5" stroke="#b8925a" stroke-width="1.0" stroke-linecap="round"/><path d="M26.7 29.8H37.3" stroke="#b8925a" stroke-width="0.8" stroke-linecap="round"/><path d="M27.5 28.1H36.5" stroke="#b8925a" stroke-width="0.8" stroke-linecap="round"/><path d="M28.1 26.9H35.9" stroke="#b8925a" stroke-width="0.8" stroke-linecap="round"/><path d="M14.30 66.00 L18.70 66.00 L30.90 24.00 L29.80 24.00Z" fill="#f5ce82"/><path d="M45.30 66.00 L49.70 66.00 L34.20 24.00 L33.10 24.00Z" fill="#f5ce82"/></g></svg></button><div><h1>Railway Atlas</h1><p>The world, by rail.</p></div><button id="collapse" aria-controls="controls" aria-label="Collapse map controls" aria-expanded="true">−</button></header>
     <div id="controls"><div id="main-view">
       <form id="search-form" role="search">
         <label class="sr-only" for="search-input">Find a station, railway facility or place</label>
@@ -153,7 +153,7 @@
       status.textContent = 'The map could not load. Check your connection and reload the page.';
     }, true);
   </script>
-  <script type="module" src="app.mjs?v=20261001-68"></script>
+  <script type="module" src="app.mjs?v=20261001-75"></script>
 </body>
 </html>
 

@@ -14,7 +14,7 @@ const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fetcher, search = '', cookie = '' } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fetcher, search = '', cookie = '', compact = false } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -74,7 +74,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   };
   if (!delayLibraries) Object.assign(window, libraries);
   window.fetch = fetcher || (async () => ({ok:true,json:async()=>structuredClone(style)}));
-  window.matchMedia = () => ({matches:false});
+  window.matchMedia = () => ({matches:compact});
   const context = dom.getInternalVMContext();
   const dependency = new vm.SyntheticModule(Object.keys(model), function() {
     for (const [key,value] of Object.entries(model)) this.setExport(key,value);
@@ -307,6 +307,32 @@ test('station inspection finds nearby interchanges and facility inspection avoid
   } finally {dom.window.close();}
 });
 
+test('desktop brand announces collapse on its first activation',async()=>{
+ const {dom,window}=await start();try{const icon=window.document.getElementById('controls-open');assert.equal(icon.getAttribute('aria-label'),'Collapse map controls');icon.click();assert.equal(window.document.getElementById('controls').hidden,true);assert.equal(icon.getAttribute('aria-label'),'Open map controls');}finally{dom.window.close();}
+});
+
+test('compact controls open from the icon and return focus to it on collapse and Escape', async () => {
+  const {dom,window} = await start({compact:true});
+  try {
+    const d=window.document, icon=d.getElementById('controls-open'), collapse=d.getElementById('collapse'), panel=d.querySelector('.panel');
+    assert.equal(d.getElementById('controls').hidden,true);
+    assert.equal(panel.classList.contains('collapsed'),true);
+    icon.click();
+    assert.equal(d.getElementById('controls').hidden,false);
+    assert.equal(icon.getAttribute('aria-expanded'),'true');
+    assert.equal(d.activeElement,collapse);
+    assert.equal(icon.getAttribute('aria-label'),'Collapse map controls');
+    icon.click();
+    assert.equal(d.getElementById('controls').hidden,true);
+    icon.click();
+    collapse.click();
+    assert.equal(d.activeElement,icon);
+    assert.equal(icon.getAttribute('aria-expanded'),'false');
+    icon.click();collapse.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+    assert.equal(d.getElementById('controls').hidden,true);
+    assert.equal(d.activeElement,icon);
+  } finally { dom.window.close(); }
+});
 
 test('saved hidden overlays are absent in the constructor before any tile request',async()=>{
  const {dom,maps}=await start({search:'?relief=0&inactive=0&stations=0&trackCounts=0&labels=0&transport=0&destinations=0&constraints=0&mode=speed'});
