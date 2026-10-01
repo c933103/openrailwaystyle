@@ -12,7 +12,7 @@
 import {mkdir, readFile, writeFile, rm, appendFile} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {STAGES, quarters} from './branch-lines.mjs';
-import {MIN_ZOOM, MAX_ZOOM, addResult, buildTiles, commitStage, discardStage, partQuery, readTable, routeStages, stageChange, toTable, writeTable} from './service-routes.mjs';
+import {MIN_ZOOM, MAX_ZOOM, addResult, buildTiles, commitStage, discardStage, partQuery, readTable, routeStages, stageChange, suspiciousChange, toTable, writeTable} from './service-routes.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const previous = process.env.PREVIOUS_DATA ? new URL(`file://${process.env.PREVIOUS_DATA.replace(/\/?$/, '/')}`) : null;
@@ -139,8 +139,8 @@ if (!current.pending.length) {
   // incomplete response: it is dropped whole, the previous part stays, and
   // the stage is tried again at its next refresh (the run's downloads are
   // still recorded).
-  const {stale, total} = stageChange(table, stage.name);
-  const suspicious = current.completed && total > 100 && stale > total * 0.2;
+  const change = stageChange(table, stage.name), {stale, total} = change;
+  const suspicious = Boolean(current.completed) && suspiciousChange(change);
   if (suspicious) { console.warn(`Refresh of ${stage.name} would remove ${stale} of ${total} items; keeping the previous data`); discardStage(table, stage.name); }
   else commitStage(table, stage.name);
   const routes = [...table.routes.values()].filter(r => routeStages(r).includes(stage.name)).length;

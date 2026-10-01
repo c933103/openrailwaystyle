@@ -119,20 +119,31 @@ export function addResult(table, result, stage) {
     table.ways.set(way.id, {id: way.id, lines: previous?.lines, routes: previous?.routes || {}, next, nextLines: {...(previous?.nextLines || {}), [stage]: way.lines}});
   }
 }
-const items = table => [...table.routes.values(), ...table.ways.values()];
 const partOf = item => item.stages || item.routes;
 // How much of the stage's committed part its pass did not find again, of
 // that committed part (what the pass newly found does not count, so it
 // cannot mask an incomplete response).
+// Routes and ways are counted apart: ways shared by many routes stay found
+// while some of those routes are missing, so they cannot mask a loss of
+// routes. stale and total are the two together.
 export function stageChange(table, stage) {
-  let stale = 0, total = 0;
-  for (const item of items(table)) {
-    const held = stage in partOf(item);
-    if (held) total++;
-    if (held && !(stage in item.next)) stale++;
-  }
-  return {stale, total};
+  const count = map => {
+    let stale = 0, total = 0;
+    for (const item of map.values()) {
+      const held = stage in partOf(item);
+      if (held) total++;
+      if (held && !(stage in item.next)) stale++;
+    }
+    return {stale, total};
+  };
+  const routes = count(table.routes), ways = count(table.ways);
+  return {stale: routes.stale + ways.stale, total: routes.total + ways.total, routes, ways};
 }
+// A completed refresh that looks incomplete: it would remove more than a
+// fifth of the stage's committed routes, or of its ways (with enough of
+// them for the share to mean something).
+export const suspiciousChange = ({routes, ways}) =>
+  (routes.total >= 20 && routes.stale > routes.total * 0.2) || (ways.total > 100 && ways.stale > ways.total * 0.2);
 function settle(table, stage, commit) {
   for (const [map, key] of [[table.routes, 'key'], [table.ways, 'id']]) for (const item of [...map.values()]) {
     const part = partOf(item);

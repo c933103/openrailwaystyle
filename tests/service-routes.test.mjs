@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import Pbf from 'pbf';
 import {VectorTile} from '@mapbox/vector-tile';
-import {addResult, buildTiles, commitStage, discardStage, joinLines, orient, routeView, serviceRoutes, stageChange, partQuery, readTable, routeLabel, routeOf, toTable, writeTable, LAYER} from '../scripts/service-routes.mjs';
+import {addResult, buildTiles, commitStage, discardStage, joinLines, orient, routeView, serviceRoutes, stageChange, suspiciousChange, partQuery, readTable, routeLabel, routeOf, toTable, writeTable, LAYER} from '../scripts/service-routes.mjs';
 
 test('service routes: names without their direction', () => {
   assert.equal(routeLabel('港鐵荃灣綫 MTR Tsuen Wan Line (南行 Southbound)'), '港鐵荃灣綫 MTR Tsuen Wan Line');
@@ -106,10 +106,10 @@ test('service routes: memberships add up within a pass, are kept per stage, and 
   commitStage(table, 'B');
   // A rejected refresh of A (incomplete) leaves everything as it was, names and geometry too.
   addResult(table, {routes: [{...route('long', 6), label: 'renamed'}], ways: [{id: 1, routes: ['long'], lines: [[[5, 5], [6, 5]]]}]}, 'A');
-  assert.deepEqual(stageChange(table, 'A'), {stale: 1, total: 3}, 'the local route was not found again');
+  assert.deepEqual((({stale, total}) => ({stale, total}))(stageChange(table, 'A')), {stale: 1, total: 3}, 'the local route was not found again');
   // What a pass newly finds does not dilute what it no longer found.
   addResult(table, {routes: [route('extra', 20)], ways: [{id: 2, routes: ['extra'], lines}]}, 'A');
-  assert.deepEqual(stageChange(table, 'A'), {stale: 1, total: 3});
+  assert.deepEqual((({stale, total}) => ({stale, total}))(stageChange(table, 'A')), {stale: 1, total: 3});
   discardStage(table, 'A');
   assert.deepEqual(table.ways.get(1).routes, {A: ['local', 'long'], B: ['cross']});
   assert.equal(routeView(table.routes.get('long')).label, 'long');
@@ -165,4 +165,20 @@ test('service routes: relations of one line from different boxes or stages are o
   const tiles = buildTiles(t);
   const features = [...tiles.entries()].filter(([k]) => k.startsWith('12/')).flatMap(([, data]) => { const l = new VectorTile(new Pbf(data)).layers[LAYER]; return Array.from({length: l.length}, (_, i) => l.feature(i)); });
   assert.ok(features.length && features.every(f => f.properties.n === 1 && f.properties.id === 'relation-7'), 'one line on the shared track, linked to the lowest relation');
+});
+
+test('service routes: a refresh missing many routes is caught even when their ways are still found', () => {
+  // 30 routes share 200 ways (one corridor); a refresh finds only 18 routes
+  // but, through them, every way.
+  const table = {routes: new Map(), ways: new Map()}, lines = [[[0, 0], [1, 0]]];
+  const route = n => ({key: `r${n}`, relation: n, kind: 'subway', ref: String(n), label: String(n), colour: '', network: 'N', operator: '', names: {}});
+  const keys = Array.from({length: 30}, (_, n) => `r${n}`);
+  addResult(table, {routes: keys.map((_, n) => route(n)), ways: Array.from({length: 200}, (_, id) => ({id, routes: keys, lines}))}, 'A');
+  commitStage(table, 'A');
+  addResult(table, {routes: keys.slice(0, 18).map((_, n) => route(n)), ways: Array.from({length: 200}, (_, id) => ({id, routes: keys.slice(0, 18), lines}))}, 'A');
+  const change = stageChange(table, 'A');
+  assert.deepEqual(change.routes, {stale: 12, total: 30});
+  assert.ok(change.stale * 5 < change.total, 'the items together would pass');
+  assert.equal(suspiciousChange(change), true);
+  assert.equal(suspiciousChange({routes: {stale: 1, total: 30}, ways: {stale: 0, total: 200}}), false);
 });
