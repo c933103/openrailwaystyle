@@ -1,0 +1,57 @@
+name: Refresh railway axle-load lookup
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/axle-load.yml
+      - scripts/build-axle-load-list.mjs
+      - scripts/axle-load-csv.mjs
+  workflow_dispatch:
+  schedule:
+    - cron: '17 2 * * 0'
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: axle-load-snapshot
+  cancel-in-progress: false
+jobs:
+  axle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore the last published lookup
+        run: |
+          mkdir -p .snapshot-cache
+          if git ls-remote --exit-code --heads origin axle-data; then
+            git fetch --depth=1 origin axle-data:refs/remotes/origin/axle-data
+            git show origin/axle-data:axle-load.json > .snapshot-cache/axle-load.json
+          fi
+      - name: Refresh at most once every 28 days
+        run: |
+          node scripts/build-axle-load-list.mjs
+          # Initial failure must remain visible; never publish an empty list.
+          test -s snapshot/axle-load.json
+      - name: Publish the validated lookup and refresh the site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp snapshot/axle-load.json /tmp/atlas-axle-load.json
+          if git show-ref --verify --quiet refs/remotes/origin/axle-data; then
+            git checkout -B axle-data origin/axle-data
+          else
+            git checkout --orphan axle-data
+            git rm -rf .
+          fi
+          cp /tmp/atlas-axle-load.json axle-load.json
+          git add axle-load.json
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Refresh railway axle-load lookup'
+          git push origin HEAD:axle-data
+          gh workflow run site.yml --ref main

@@ -18,6 +18,7 @@ The fixes target verified retention/copy/initialisation behaviour, with determin
 | Behaviour | Before | After |
 | --- | --- | --- |
 | Retaining 120 raw 1 MiB responses | 120 MiB (count cap 240) | 24 MiB byte budget, also count capped |
+| Axle lookup with N ways and K distinct tag groups | N parsed records plus a temporary N-entry array and second Map | K shared immutable records decoded directly into one Map |
 | Track-count worker handoff for N bytes | N-byte private copy plus N-byte structured clone | N-byte private copy transferred; original cache buffers survive |
 | Polar meshes from old views | Unbounded | 32 MiB / 64-entry budget; visible working set is protected |
 | Settings disabled before first map frame | Only view/background honoured | All overlay settings honoured before source requests start |
@@ -41,3 +42,5 @@ A second run used the same 5.24.0 library and globe compatibility code on both t
 | Tokyo 25% | 37.89 / 38.51 | 0.90 / 1.39 | 165 / 298 |
 
 The two runs rendered the same feature counts at every sampled view and kept the same 1081×2401 canvas. Many API/tile requests failed or were still pending. Most samples recorded no repaints during the two-second window; the updated 50% sample recorded seven frames as work settled. These results show startup/compatibility and network limitations, not a measured frame-time improvement. The byte budgets and eliminated duplicate buffer copy above are deterministic; Xperia/PWA frame time and GPU-memory checks remain outstanding.
+
+The axle lookup optimisation was added after task 30 landed. A 4,096-way regression confirms one parse for a shared tag group and unchanged way-ID values. This removes the per-way object duplication from the new view as well as its temporary full array and second Map.
