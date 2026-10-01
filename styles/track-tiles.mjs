@@ -93,8 +93,10 @@ function stationZones(areas, stations, extent) {
       const above = kind.filter(p => !p.subway && p.name), names = [...new Set(above.map(p => p.name))];
       const shared = names.length > 1 ? {held: above, zones: []} : null;
       for (const own of shared ? names.map(name => above.filter(p => p.name === name)) : [kind]) {
-        const zone = {inside, surface, stations: own.filter(p => p.own).length, groups: first(own).own ? [group] : []};
-        if (shared) shared.zones.push(Object.assign(zone, {name: own[0].name, shared}));
+        // Named after its station where it has one name, so the same station
+        // found through two overlapping areas still gives one badge.
+        const zone = {inside, surface, stations: own.filter(p => p.own).length, groups: first(own).own ? [group] : [], name: names.length <= 1 ? names[0] : own[0].name};
+        if (shared) shared.zones.push(Object.assign(zone, {shared}));
         zones.push(zone);
       }
     }

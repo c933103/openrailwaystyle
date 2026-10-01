@@ -458,6 +458,12 @@ test('stations of different names sharing one area (a stop area group) each coun
   assert.deepEqual(badges(countTile({tiles: [{dx: -1, dy: 0, data: west}, {dx: 0, dy: 0, data: east}],
     areas: [{dx: -1, dy: 0, data: piece(-64, 4160)}, {dx: 0, dy: 0, data: piece(-64, 4160)}],
     stations: [{dx: -1, dy: 0, data: westStations}, {dx: 0, dy: 0, data: eastStations}]}, y)), [4]);
+  // Alpha also mapped in a second, smaller area of its own (overlapping
+  // the first): still one badge.
+  const both7 = tile('standard_railway_grouped_station_areas', [{type: 3, tags: {id: 7}, geometry: [[[-64, 1900], [4160, 1900], [4160, 2200], [-64, 2200], [-64, 1900]]]}, {type: 3, tags: {id: 8}, geometry: [[[-64, 1950], [4160, 1950], [4160, 2020], [-64, 2020], [-64, 1950]]]}]);
+  assert.deepEqual(badges(countTile({tiles: [{dx: 0, dy: 0, data: west}, {dx: 1, dy: 0, data: east}],
+    areas: [{dx: 0, dy: 0, data: both7}, {dx: 1, dy: 0, data: piece(-64, 4160)}],
+    stations: [{dx: 0, dy: 0, data: westStations}, {dx: 1, dy: 0, data: eastStations}]}, y)), [2]);
   // One name in the area: one count of everything, as before.
   const both = tile('standard_railway_text_stations', [station(12, 'Alpha', '#222222', 2000)]);
   assert.deepEqual(badges(countTile({tiles: [{dx: -1, dy: 0, data: west}, {dx: 0, dy: 0, data: east}],
