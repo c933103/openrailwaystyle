@@ -329,7 +329,11 @@ export function shareLines(zones, lines, metres) {
   })));
   const meets = (index, [x, y]) => {
     const out = [];
-    for (const s of grid.get(Math.floor(x / cell) * 65536 + Math.floor(y / cell)) || []) {
+    // Every cell within reach of the end, not only the end's own.
+    const near = [];
+    for (let gx = Math.floor((x - touch) / cell); gx <= Math.floor((x + touch) / cell); gx++)
+      for (let gy = Math.floor((y - touch) / cell); gy <= Math.floor((y + touch) / cell); gy++) near.push(...grid.get(gx * 65536 + gy) || []);
+    for (const s of near) {
       if (s.index === index || lines[s.index].group !== lines[index].group) continue;
       const ex = s.b[0] - s.a[0], ey = s.b[1] - s.a[1], l2 = ex * ex + ey * ey, t = l2 ? Math.max(0, Math.min(1, ((x - s.a[0]) * ex + (y - s.a[1]) * ey) / l2)) : 0;
       if (Math.hypot(s.a[0] + ex * t - x, s.a[1] + ey * t - y) <= touch) out.push(s.index);
@@ -361,15 +365,22 @@ export function shareLines(zones, lines, metres) {
       const same = colour ? kind.filter(p => p.colour === colour) : [];
       const pool = same.length ? same : kind.length ? kind : named;
       const key = keyOf(index);
-      for (const part of line.parts) for (let i = 1; i < part.length; i++) {
-        const [ax, ay] = part[i-1], [bx, by] = part[i], length = Math.hypot(bx - ax, by - ay);
-        for (let at = step / 2; at < length; at += step) {
-          const x = ax + (bx - ax) * at / length, y = ay + (by - ay) * at / length;
-          if (!inside(x, y)) continue;
-          const nearest = pool.reduce((a, b) => Math.hypot(b.x - x, b.y - y) < Math.hypot(a.x - x, a.y - y) ? b : a);
-          if (!lengths.has(key)) lengths.set(key, new Map());
-          const byName = lengths.get(key);
-          byName.set(nearest.name, (byName.get(nearest.name) || 0) + 1);
+      // Points every step along each part (by distance along it, however
+      // closely its vertices lie; a part shorter than a step at its middle).
+      for (const part of line.parts) {
+        const total = part.slice(1).reduce((sum, b, i) => sum + Math.hypot(b[0] - part[i][0], b[1] - part[i][1]), 0);
+        for (let i = 1, travelled = 0, next = Math.min(step, total) / 2; i < part.length; i++) {
+          const [ax, ay] = part[i-1], [bx, by] = part[i], length = Math.hypot(bx - ax, by - ay);
+          if (!length) continue;
+          for (; next < travelled + length || (i === part.length - 1 && next <= travelled + length); next += step) {
+            const at = next - travelled, x = ax + (bx - ax) * at / length, y = ay + (by - ay) * at / length;
+            if (!inside(x, y)) continue;
+            const nearest = pool.reduce((a, b) => Math.hypot(b.x - x, b.y - y) < Math.hypot(a.x - x, a.y - y) ? b : a);
+            if (!lengths.has(key)) lengths.set(key, new Map());
+            const byName = lengths.get(key);
+            byName.set(nearest.name, (byName.get(nearest.name) || 0) + 1);
+          }
+          travelled += length;
         }
       }
     });
