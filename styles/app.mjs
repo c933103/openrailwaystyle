@@ -5,6 +5,7 @@ import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, cli
 import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-14';
 import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-14';
 import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-14';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-14';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -570,7 +571,7 @@ function updateStatus() {
     status.classList.add('error'); status.textContent = 'Some map data could not load. Check your connection or reload to retry.'; return;
   }
   status.classList.remove('error');
-  status.textContent = map.getZoom() < 6 ? 'Worldwide coverage · click a line or station' : 'Explore the rail network · click a line or station';
+  status.textContent = map.getZoom() < 4 ? 'Worldwide coverage · click a line' : 'Explore the rail network · click a line or station';
   // Visible diagnostics make source availability inspectable without exposing
   // internal map objects or relying on a generic "loaded" flag.
   const features = map.queryRenderedFeatures();
@@ -952,6 +953,7 @@ async function initialize() {
   scale = new maplibregl.ScaleControl({ unit: settings.units });
   map.addControl(scale, 'bottom-left');
   map.on('move', fitScale); fitScale();
+  installKeyboardPan(map, {reducedMotion: () => matchMedia('(prefers-reduced-motion: reduce)').matches});
   drawing = new Drawing(map, {units: () => settings.units, status: text => { $('draw-status').textContent = text; }, changed: updateDrawing});
   measuring = new Measure(map, {units: () => settings.units, status: text => { $('measure-status').textContent = text; }, changed: updateDrawing, heights: elevation.heights});
   map.on('style.load', installDrawing);
