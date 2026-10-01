@@ -3,7 +3,7 @@
 // R × 256 + G + B / 256 − 32768 metres, seabed included). Zoom-14 tiles
 // (about 9.5 m a pixel at the equator) are finer than most of the source data.
 // Their bad pixels are repaired as for the map (dem-repair.mjs).
-import {REPAIR_FROM, referenceTile, repairPixels} from './dem-repair.mjs?v=20261001-95';
+import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels} from './dem-repair.mjs?v=20261001-96';
 export const ELEVATION_ZOOM = 14;
 const TILE = 256, CACHE = 64;
 
@@ -57,7 +57,7 @@ export function createElevation(url, {zoom = ELEVATION_ZOOM, load = loadPixels} 
     const promise = (async () => {
       const pixels = await fetchTile(zoom, x, y);
       if (!pixels || zoom < REPAIR_FROM) return pixels;
-      const coarser = referenceTile(zoom, x, y), ref = await fetchTile(coarser.z, coarser.x, coarser.y);
+      const coarser = referenceTile(zoom, x, y), ref = zoom >= REFERENCE_FROM ? await fetchTile(coarser.z, coarser.x, coarser.y) : null;
       const data = Uint8ClampedArray.from(pixels.data);
       repairPixels(data, pixels.size, zoom, x, y, ref?.data, ref?.size);
       return {data, size: pixels.size};
