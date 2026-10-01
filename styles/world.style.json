@@ -3441,6 +3441,116 @@
       }
     },
     {
+      "type": "line",
+      "source": "branchLines",
+      "source-layer": "branch_lines",
+      "minzoom": 7,
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "maxzoom": 10,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "bridge"
+          ],
+          true
+        ]
+      ],
+      "id": "structure-metro-bridge-edge",
+      "paint": {
+        "line-color": "#263b48",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          3.4,
+          10,
+          5.4,
+          14,
+          8,
+          18,
+          12
+        ]
+      }
+    },
+    {
+      "type": "line",
+      "source": "branchLines",
+      "source-layer": "branch_lines",
+      "minzoom": 7,
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "maxzoom": 10,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "bridge"
+          ],
+          true
+        ]
+      ],
+      "id": "structure-metro-bridge-deck",
+      "paint": {
+        "line-color": "#fffef8",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          2.2,
+          10,
+          3.8,
+          14,
+          6,
+          18,
+          10
+        ]
+      }
+    },
+    {
       "id": "infrastructure-street-running",
       "type": "line",
       "source": "streetRunning",
@@ -12447,6 +12557,384 @@
           2
         ]
       }
+    },
+    {
+      "type": "line",
+      "source": "branchLines",
+      "source-layer": "branch_lines",
+      "minzoom": 7,
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "maxzoom": 10,
+      "id": "structure-metro-tunnel",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "tunnel"
+          ],
+          true
+        ]
+      ],
+      "paint": {
+        "line-color": "#fffef8",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          0.7,
+          10,
+          1.1,
+          14,
+          2,
+          18,
+          3
+        ],
+        "line-dasharray": [
+          3,
+          2
+        ]
+      }
+    },
+    {
+      "id": "gauge-metro-dual",
+      "type": "line",
+      "source": "branchLines",
+      "source-layer": "branch_lines",
+      "minzoom": 7,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          ">",
+          [
+            "to-number",
+            [
+              "coalesce",
+              [
+                "get",
+                "gaugeint1"
+              ],
+              0
+            ],
+            0
+          ],
+          0
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round",
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": [
+          "case",
+          [
+            "<=",
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "gaugeint1"
+                ],
+                -1
+              ],
+              -1
+            ],
+            0
+          ],
+          "#899197",
+          [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "to-number",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "gaugeint1"
+                ],
+                -1
+              ],
+              -1
+            ],
+            381,
+            "#5b3f86",
+            391,
+            "#5b3f86",
+            590,
+            "#8a5fb3",
+            610,
+            "#8a5fb3",
+            752,
+            "#c26fbf",
+            772,
+            "#c26fbf",
+            904,
+            "#e2729b",
+            924,
+            "#e2729b",
+            990,
+            "#2f9e44",
+            1010,
+            "#2f9e44",
+            1057,
+            "#17a2b8",
+            1077,
+            "#17a2b8",
+            1362,
+            "#8fb339",
+            1382,
+            "#8fb339",
+            1425,
+            "#1f5fbf",
+            1445,
+            "#1f5fbf",
+            1510,
+            "#d62728",
+            1530,
+            "#d62728",
+            1590,
+            "#8c564b",
+            1610,
+            "#8c564b",
+            1662,
+            "#e07b00",
+            1672,
+            "#e07b00"
+          ]
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          0.8,
+          11,
+          [
+            "case",
+            [
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
+            ],
+            0.55,
+            1.4
+          ],
+          16,
+          [
+            "case",
+            [
+              "!=",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "service"
+                ],
+                ""
+              ],
+              ""
+            ],
+            1,
+            2.4
+          ],
+          20,
+          3.5
+        ],
+        "line-offset": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          7,
+          [
+            "case",
+            [
+              ">",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "gaugeint1"
+                  ],
+                  0
+                ],
+                0
+              ],
+              0
+            ],
+            0.4,
+            0
+          ],
+          11,
+          [
+            "case",
+            [
+              ">",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "gaugeint1"
+                  ],
+                  0
+                ],
+                0
+              ],
+              0
+            ],
+            [
+              "case",
+              [
+                "!=",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "service"
+                  ],
+                  ""
+                ],
+                ""
+              ],
+              0.275,
+              0.7
+            ],
+            0
+          ],
+          16,
+          [
+            "case",
+            [
+              ">",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "gaugeint1"
+                  ],
+                  0
+                ],
+                0
+              ],
+              0
+            ],
+            [
+              "case",
+              [
+                "!=",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "service"
+                  ],
+                  ""
+                ],
+                ""
+              ],
+              0.5,
+              1.2
+            ],
+            0
+          ],
+          20,
+          [
+            "case",
+            [
+              ">",
+              [
+                "to-number",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "gaugeint1"
+                  ],
+                  0
+                ],
+                0
+              ],
+              0
+            ],
+            1.75,
+            0
+          ]
+        ],
+        "line-opacity": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "tunnel"
+            ],
+            true
+          ],
+          0.65,
+          1
+        ]
+      },
+      "maxzoom": 10
     },
     {
       "type": "line",

@@ -80,6 +80,8 @@ test('branch-line table and tiles: z4–6 only, the style\'s fields and the OSM 
 test('metro lines: kept with their own usage, tiled at z7–9 only, apart from branch lines', () => {
   const [metro] = toFeatures({elements: [{type: 'way', id: 8, tags: {railway: 'subway', name: '銀座線', maxspeed: '65'}, geometry: [{lat: 35.67, lon: 139.70}, {lat: 35.71, lon: 139.80}]}]});
   assert.deepEqual([metro.properties.feature, metro.properties.usage], ['subway', '']);
+  const [tunnel, surface] = toFeatures({elements: [{type: 'way', id: 9, tags: {railway: 'subway', tunnel: 'yes', bridge: 'no'}, geometry: [{lat: 1, lon: 1}, {lat: 1.1, lon: 1.1}]}, {type: 'way', id: 10, tags: {railway: 'subway', bridge: 'viaduct'}, geometry: [{lat: 1, lon: 1}, {lat: 1.1, lon: 1.1}]}]});
+  assert.deepEqual([tunnel.properties.tunnel, tunnel.properties.bridge, surface.properties.bridge, surface.properties.tunnel], [true, undefined, true, undefined], 'structures as the detailed tiles\' booleans');
   const [branch] = toFeatures({elements: [{type: 'way', id: 7, tags: {railway: 'rail', usage: 'branch'}, geometry: [{lat: 37.4, lon: 139.9}, {lat: 37.6, lon: 140.3}]}]});
   const tiles = buildTiles(new Map([[7, branch], [8, metro]]));
   const ids = zoom => [...tiles].filter(([k]) => k.startsWith(`${zoom}/`)).flatMap(([, data]) => { const l = new VectorTile(new Pbf(data)).layers.branch_lines; return [...Array(l.length).keys()].map(i => l.feature(i).id); });
@@ -104,6 +106,13 @@ test('style: branch lines under the main overview lines in every view, from zoom
     assert.deepEqual([metro.source, metro['source-layer'], metro.minzoom, metro.maxzoom], ['branchLines', 'branch_lines', 7, 10], mode);
     assert.deepEqual(metro.paint, tracks.paint, `${mode}: same paint as the detailed tracks`);
   }
+  // Bridges, tunnels and the second gauge on the snapshot's metro lines too.
+  for (const [id, like] of [['structure-metro-bridge-edge', 'structure-bridge-edge'], ['structure-metro-bridge-deck', 'structure-bridge-deck'], ['structure-metro-tunnel', 'structure-tunnel'], ['gauge-metro-dual', 'gauge-dual']]) {
+    const layer = style.layers.find(l => l.id === id), detailed = style.layers.find(l => l.id === like);
+    assert.deepEqual([layer.source, layer['source-layer'], layer.minzoom, layer.maxzoom], ['branchLines', 'branch_lines', 7, 10], id);
+    assert.deepEqual(layer.paint, detailed.paint, `${id} drawn as ${like}`);
+  }
+  assert.ok(ids.indexOf('structure-metro-bridge-edge') < ids.indexOf('infrastructure-metro-overview'), 'bridge parapets under the metro lines');
   const dual = style.layers.find(l => l.id === 'gauge-branch-dual'), branch = style.layers.find(l => l.id === 'gauge-branch-overview');
   assert.deepEqual([dual.source, dual['source-layer'], dual.minzoom, dual.maxzoom], ['branchLines', 'branch_lines', 4, 7], 'second gauge drawn on branch lines');
   assert.ok(JSON.stringify(dual.filter).includes('gaugeint1') && ids.indexOf(dual.id) > ids.indexOf(branch.id));

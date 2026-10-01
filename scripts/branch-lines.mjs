@@ -198,6 +198,10 @@ export function toFeatures(json) {
       ...(tags.loading_gauge && {loading_gauge: tags.loading_gauge}),
       ...(protection && {train_protection0: protection}),
       ...(tags.operator && {operator: tags.operator}),
+      // Structures, as the detailed tiles' booleans (bridge=no and tunnel=no
+      // are not structures).
+      ...(tags.bridge && tags.bridge !== 'no' && {bridge: true}),
+      ...(tags.tunnel && tags.tunnel !== 'no' && {tunnel: true}),
     };
     features.push({type: 'Feature', id: way.id, properties, geometry: lines.length === 1 ? {type: 'LineString', coordinates: lines[0]} : {type: 'MultiLineString', coordinates: lines}});
   }

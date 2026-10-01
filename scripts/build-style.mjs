@@ -182,6 +182,16 @@ style.layers.splice(trackIndex,0,
   {...bridge,id:'structure-bridge-deck',paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],7,2.2,10,3.8,14,6,18,10]}},
 );
 style.layers.push({...structure,id:'structure-tunnel',filter:['all',present,notFerry,byKindZoom,['==',['get','tunnel'],true]],paint:{'line-color':'#fffef8','line-width':['interpolate',['linear'],['zoom'],7,0.7,10,1.1,14,2,18,3], 'line-dasharray':[3,2]}});
+// The same cues on the metro snapshot at zooms 7–9, and its second gauge.
+const metroStructure = {...structure, source:'branchLines', 'source-layer':'branch_lines', maxzoom:10};
+const metroBridge = {...metroStructure, filter:['all',present,['==',['get','bridge'],true]]};
+style.layers.splice(style.layers.findIndex(l=>l.id==='infrastructure-tracks'),0,
+  {...metroBridge,id:'structure-metro-bridge-edge',paint:structuredClone(style.layers.find(l=>l.id==='structure-bridge-edge').paint)},
+  {...metroBridge,id:'structure-metro-bridge-deck',paint:structuredClone(style.layers.find(l=>l.id==='structure-bridge-deck').paint)},
+);
+style.layers.push({...metroStructure,id:'structure-metro-tunnel',filter:['all',present,['==',['get','tunnel'],true]],paint:structuredClone(style.layers.find(l=>l.id==='structure-tunnel').paint)});
+style.layers.push({...structuredClone(style.layers.find(l=>l.id==='gauge-dual')), id:'gauge-metro-dual', source:'branchLines', 'source-layer':'branch_lines', minzoom:7, maxzoom:10,
+  filter:['all', present, isDual]});
 // Planned, construction and former lines. line-dasharray cannot vary by
 // feature, so each state has its own layers: long dashes with short gaps for
 // construction, spaced round dots for proposals, dash-dot for disused and
