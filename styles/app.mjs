@@ -255,8 +255,11 @@ function applySettings() {
 }
 const featurePickRank = f => f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading)-labels$/;
-const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-crossing-dots','infrastructure-crossing-marks','infrastructure-street-running'];
-const isClickable = id => INFRASTRUCTURE_POINTS.includes(id) || id.startsWith('context-') || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading)-(tracks|overview|branch-overview)$/.test(id);
+const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-crossing-overview','infrastructure-crossing-dots','infrastructure-crossing-marks','infrastructure-street-running'];
+// Clickable: stations, tracks, level crossings, inactive lines, and transport
+// and destination points; land-use areas, protected, heritage and other
+// planning areas, jurisdictions and buildings are drawn for context only.
+const isClickable = id => INFRASTRUCTURE_POINTS.includes(id) || /^context-(transport|destinations)-.+-label$/.test(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading)-(tracks|overview|branch-overview)$/.test(id);
 function row(dl, label, value) {
   if (value === undefined || value === null || value === '') return;
   dl.append(textNode('dt', label), textNode('dd', String(value)));
@@ -265,16 +268,34 @@ function row(dl, label, value) {
 // the tiles do not identify one.
 function osmLink(panel, feature) {
   const object = osmObject(feature), link = document.createElement('a');
-  if (object) {
-    link.textContent = `Open this ${object.type} on OpenStreetMap ↗`;
-    link.href = `https://www.openstreetmap.org/${object.type}/${object.id}`;
-  } else if (feature.geometry?.type === 'Point') {
+  const toObject = ({type, id}) => { link.textContent = `Open this ${type} on OpenStreetMap ↗`; link.href = `https://www.openstreetmap.org/${type}/${id}`; };
+  if (object) toObject(object);
+  else if (feature.geometry?.type === 'Point') {
     const [lng, lat] = feature.geometry.coordinates;
     link.textContent = 'View location on OpenStreetMap ↗';
     link.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`;
+    // A search result gives a bare OSM id without its type: the station tiles
+    // name it (node-…, way-…) once the map has drawn the place.
+    if (feature.kind === 'station' && /^\d+$/.test(String(feature.properties?.osm_id ?? ''))) {
+      const resolve = () => { const found = ready && stationObject(feature.properties.osm_id); if (found && link.isConnected) toObject(found); return found; };
+      const lookUp = () => { if (!resolve()) map.once('idle', resolve); };
+      // After any queued action (a search result's fly-to), not instead of it.
+      if (ready) lookUp(); else { const queued = pendingView; pendingView = () => { queued?.(); lookUp(); }; }
+    }
   } else return;
   link.target = '_blank'; link.rel = 'noopener'; link.className = 'osm-link';
   panel.append(link);
+}
+function stationObject(osmId) {
+  const pattern = new RegExp(`^(node|way|relation)-${osmId}(-|$)`);
+  for (const layer of map.getStyle().layers) {
+    if (!layer.id.startsWith('station-') || !map.getSource(layer.source)) continue;
+    for (const f of map.querySourceFeatures(layer.source, {sourceLayer: layer['source-layer']})) {
+      const match = pattern.exec(String(f.properties.id ?? ''));
+      if (match) return {type: match[1], id: String(osmId)};
+    }
+  }
+  return null;
 }
 function showDetails(feature) {
   currentFeature = feature;
@@ -385,15 +406,67 @@ function showDepartures(panel, feature) {
     if (section.isConnected) section.replaceChildren(textNode('h3', 'Departures'), textNode('p', 'Departures could not load. Try again later.', 'small'));
   });
 }
+// Level-crossing equipment as tagged on the OSM node, read from the
+// OpenStreetMap API when a crossing is opened (the crossing tiles hold only
+// its kind and id).
+const DETAIL_CROSSING_ZOOM = 9;
+const CROSSING_TAGS = [['crossing:barrier','Barriers'],['crossing:light','Lights'],['crossing:bell','Bells'],['crossing:activation','Activation'],
+  ['crossing:supervision','Supervision'],['crossing:on_demand','On demand'],['crossing:saltire','Saltire (St Andrew\'s cross)'],['crossing:chicane','Chicane'],
+  ['crossing','Crossing type'],['access','Access'],['description','Description'],['name','Name'],['ref','Reference']];
+const crossingCache=new Map();
+async function nearestCrossing(lngLat) {
+  // Columns wrap (world copies of the flat map, and 180° itself).
+  const z=DETAIL_CROSSING_ZOOM, n=2**z, x=((Math.floor((lngLat.lng+180)/360*n)%n)+n)%n, lat=lngLat.lat*Math.PI/180;
+  const y=Math.floor((1-Math.asinh(Math.tan(lat))/Math.PI)/2*n);
+  try {
+    const response=await fetch(new URL(`./data/level-crossings/${z}/${x}/${y}.pbf.gz`, import.meta.url));
+    if(!response.ok) return null;
+    const layer=(await labels).readTile(await decodeLifecycleTile(await response.arrayBuffer())).layers.level_crossings;
+    if(!layer) return null;
+    const click=map.project(lngLat);let best=null,bestDistance=12;
+    for(let i=0;i<layer.length;i++) {
+      const f=layer.feature(i);if(f.properties.minor) continue;
+      const [{x:px,y:py}]=f.loadGeometry()[0], tx=x+px/f.extent, ty=y+py/f.extent;
+      const point=[tx/n*360-180, Math.atan(Math.sinh(Math.PI*(1-2*ty/n)))*180/Math.PI];
+      point[0]+=Math.round((lngLat.lng-point[0])/360)*360; // into the clicked world copy
+      const screen=map.project(point);
+      const distance=Math.hypot(screen.x-click.x,screen.y-click.y);
+      if(distance<bestDistance) {bestDistance=distance;best={id:f.id,properties:{...f.properties},geometry:{type:'Point',coordinates:point}};}
+    }
+    return best;
+  } catch { return null; }
+}
+function crossingTags(id) {
+  if(!crossingCache.has(id)) crossingCache.set(id,fetch(`https://api.openstreetmap.org/api/0.6/node/${id}.json`).then(async response=>{
+    if(!response.ok) throw new Error(`OpenStreetMap returned ${response.status}`);
+    return (await response.json()).elements?.[0]?.tags || {};
+  }).catch(error=>{crossingCache.delete(id);throw error;}));
+  return crossingCache.get(id);
+}
 function showInfrastructureContext(feature) {
   const p=feature.properties,crossing=feature.sourceLayer==='points_of_interest';
   const panel=$('detail-content');panel.replaceChildren(textNode('div','RAILWAY INFRASTRUCTURE','eyebrow'));
+  // An overview dot (crossings merged per tile, without ids): the nearest
+  // crossing in the detailed crossing tiles.
+  if(feature.sourceLayer==='level_crossings' && !Number.isInteger(feature.id) && feature.clickLngLat) {
+    const pending=feature;
+    nearestCrossing(feature.clickLngLat).then(found=>{ if(currentFeature===pending) showInfrastructureContext(found ? {...pending, ...found} : {...pending, clickLngLat: null}); });
+    return;
+  }
   // A dot from the worldwide crossing tiles: its kind and OSM node only.
   if(feature.sourceLayer==='level_crossings') {
     panel.append(textNode('h2',p.kind==='foot'?'Pedestrian level crossing':'Road level crossing'));
     osmLink(panel,feature);
-    panel.append(textNode('p','Zoom to 15 for the mapped equipment (lights, barriers).','small'));
-    $('details').hidden=false;return;
+    const status=textNode('p','Loading the mapped equipment…','small');panel.append(status);
+    $('details').hidden=false;
+    if(Number.isInteger(feature.id)) crossingTags(feature.id).then(tags=>{
+      if(!status.isConnected) return;
+      const dl=document.createElement('dl');
+      for(const [key,label] of CROSSING_TAGS) row(dl,label,tags[key]?.replaceAll('_',' ').replaceAll(';',', '));
+      status.replaceWith(...(dl.children.length?[dl]:[]),textNode('p',dl.children.length?'From the crossing\'s OpenStreetMap tags; absence of a tag does not prove absence of equipment.':'No equipment is tagged on this crossing in OpenStreetMap.','small'));
+    }).catch(()=>{ if(status.isConnected) status.textContent='The mapped equipment could not load. Try again later, or open the crossing on OpenStreetMap.'; });
+    else status.textContent='Zoom in to pick out a single crossing.';
+    return;
   }
   panel.append(textNode('h2',crossing ? (p.feature==='general/crossing'?'Pedestrian level crossing':'Road level crossing') : 'Track in shared roadway'));
   const dl=document.createElement('dl');row(dl,'Name',displayName(p,settings.language));row(dl,'Reference',p.ref);
@@ -954,6 +1027,7 @@ async function initialize() {
     // Operating-line tiles are not relabelled; locate them by the click.
     const {properties} = features[0];
     features[0].properties = properties.atlas_han ? properties : {...properties, ...locate(event.lngLat.lng, event.lngLat.lat)};
+    features[0].clickLngLat = event.lngLat;
     showDetails(features[0]);
   });
   // A full feature query on every mouse move is slow in dense areas and made

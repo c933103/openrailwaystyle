@@ -216,7 +216,7 @@ export const LOADING_GAUGES = [
   [['AAR_H', 'AAR H'], 'AAR Plate H', FT(20, 2), FT(10, 8), 'height', 'Double-stack container cars.'],
   [['AAR_K', 'AAR K'], 'AAR Plate K', FT(20, 3), FT(10), 'height', 'Autoracks and double-stack cars.'],
   [['W5'], 'W5', null, null, 'british', 'British standard freight gauge of 1951, refined as W6 and W6A.'],
-  [['W6'], 'W6', null, null, 'british'],
+  [['W6'], 'W6', 3.965, 2.82, 'british', 'Height and width as W6A, which changed only the lower body (for third-rail electrification); W6 itself is no longer in GE/RT8073.'],
   [['W6A', 'W6A*'], 'W6A', 3.965, 2.82, 'british', 'Standard British wagon envelope, available over most of the network.'],
   [['W7', 'W7*'], 'W7', 3.965, 2.82, 'british', '8 ft 0 in (2.44 m) high containers on W6A wagons. ' + W_NOTE],
   [['W8', 'W8*'], 'W8', 3.965, 2.82, 'british', '8 ft 6 in (2.59 m) high containers on W6A wagons. ' + W_NOTE],
