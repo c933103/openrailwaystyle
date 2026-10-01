@@ -624,6 +624,12 @@ test('dragging the globe keeps the direction and the heading; over a pole it car
   let events = {center: [0, 84.9], bearing: 135};
   for (let i = 0; i < 100; i++) events = stepView(events, 1, 0.9, quarter);
   assert.ok(apart(oblique, events) < 0.1, JSON.stringify({oblique, events}));
+  // A long movement (an edge-to-edge drag on a large screen) is followed to
+  // its end, as in pieces.
+  const across = stepView({center: [0, 0], bearing: 0}, 0, 4000, 0.35 * perDegree);
+  let hundreds = {center: [0, 0], bearing: 0};
+  for (let i = 0; i < 40; i++) hundreds = stepView(hundreds, 0, 100, 0.35 * perDegree);
+  assert.ok(apart(across, hundreds) < 0.1, JSON.stringify({across, hundreds}));
   // The planet keeps its size: zoom falls as the centre nears a pole.
   assert.ok(near(zoomForLatitude(3, 0, 60), 2));
   assert.ok(near(zoomForLatitude(2, 60, 0), 3));

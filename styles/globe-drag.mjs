@@ -43,8 +43,10 @@ export function stepView(view, dx, dy, radiansPerPixel) {
   // (however the browser groups them). East–west motion is magnified by
   // 1/cos(latitude) near the poles, so the steps shrink with it.
   const total = deg(Math.hypot(dx, dy) * radiansPerPixel);
-  for (let done = 0, guard = 0; done < total && guard < 50000; guard++) {
-    const size = Math.min(total - done, 0.05 * Math.max(0.02, Math.cos(rad(view.center[1]))));
+  // At most LIMIT steps; past that the last one takes what is left, so no
+  // movement is ever dropped.
+  for (let done = 0, n = 0; done < total; n++) {
+    const size = n >= LIMIT - 1 ? total - done : Math.min(total - done, 0.05 * Math.max(0.02, Math.cos(rad(view.center[1]))));
     const f = size / total, d = dx * f, e = dy * f;
     // Within the polar caps a constant heading has no steady meaning (a
     // step east near a pole spins the view round it): there the globe turns
@@ -57,6 +59,7 @@ export function stepView(view, dx, dy, radiansPerPixel) {
 // Where the constant heading gives way to turning the globe as a ball: the
 // edge of the flat map's tiles.
 export const POLAR_DRAG = 85;
+const LIMIT = 200000;
 // Turn the frame for a pointer movement of dx, dy pixels (right, down):
 // the globe follows the pointer, so the centre moves the other way.
 export function stepFrame({c, u}, dx, dy, radiansPerPixel) {
