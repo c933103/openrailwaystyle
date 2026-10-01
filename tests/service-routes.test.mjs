@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import Pbf from 'pbf';
 import {VectorTile} from '@mapbox/vector-tile';
-import {buildTiles, joinLines, orient, partQuery, readTable, routeLabel, routeOf, toTable, writeTable, LAYER} from '../scripts/service-routes.mjs';
+import {buildTiles, joinLines, mergeWay, orient, partQuery, readTable, routeLabel, routeOf, toTable, writeTable, LAYER} from '../scripts/service-routes.mjs';
 
 test('service routes: names without their direction', () => {
   assert.equal(routeLabel('港鐵荃灣綫 MTR Tsuen Wan Line (南行 Southbound)'), '港鐵荃灣綫 MTR Tsuen Wan Line');
@@ -80,4 +80,17 @@ test('service view: grey tracks under the services, side by side, named in the l
   assert.equal(routes.layout.visibility, 'none'); assert.equal(names.layout.visibility, 'none');
   assert.ok(names.id.endsWith('-names'), 'the label language applies to it as to the other names');
   assert.deepEqual(style.sources.serviceRoutes.tiles, ['servicetiles://{z}/{x}/{y}']);
+});
+
+test('service routes: a way fetched in several boxes keeps every route on it', () => {
+  const lines = [[[0, 0], [1, 0]]];
+  const first = mergeWay(undefined, {id: 1, routes: ['local', 'long'], lines}, {stage: 'japan', seenThisPass: false});
+  // A later box selects only the long route, which runs through it.
+  const second = mergeWay(first, {id: 1, routes: ['long'], lines}, {stage: 'japan', seenThisPass: true});
+  assert.deepEqual(second.routes, ['local', 'long']);
+  // The next refresh of the stage starts the list afresh (the local route is gone).
+  assert.deepEqual(mergeWay(second, {id: 1, routes: ['long'], lines}, {stage: 'japan', seenThisPass: false}).routes, ['long']);
+  // A way another stage owns only gains routes.
+  const other = mergeWay(second, {id: 1, routes: ['cross'], lines}, {stage: 'east-asia', seenThisPass: false});
+  assert.deepEqual([other.routes, other.stage], [['cross', 'local', 'long'], 'japan']);
 });

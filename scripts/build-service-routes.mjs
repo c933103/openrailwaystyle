@@ -12,7 +12,7 @@
 import {mkdir, readFile, writeFile, rm, appendFile} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {STAGES, quarters} from './branch-lines.mjs';
-import {MIN_ZOOM, MAX_ZOOM, buildTiles, partQuery, readTable, toTable, writeTable} from './service-routes.mjs';
+import {MIN_ZOOM, MAX_ZOOM, buildTiles, mergeWay, partQuery, readTable, toTable, writeTable} from './service-routes.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const previous = process.env.PREVIOUS_DATA ? new URL(`file://${process.env.PREVIOUS_DATA.replace(/\/?$/, '/')}`) : null;
@@ -131,10 +131,10 @@ while (current.pending.length) {
   fetchedBoxes++;
   // A route or way keeps the stage that first fetched it (stages overlap at
   // edges, and routes cross them).
-  for (const [map, items, id] of [[table.routes, result.routes, r => r.key], [table.ways, result.ways, w => w.id]]) for (const item of items) {
-    const key = id(item), owner = map.get(key)?.stage || stage.name;
-    map.set(key, {...item, stage: owner});
-    if (owner === stage.name) seen.add(`${map === table.routes ? 'r' : 'w'}:${key}`);
+  for (const [map, items, id, prefix] of [[table.routes, result.routes, r => r.key, 'r'], [table.ways, result.ways, w => w.id, 'w']]) for (const item of items) {
+    const key = id(item), previous = map.get(key), owner = previous?.stage || stage.name;
+    map.set(key, prefix === 'w' ? mergeWay(previous, item, {stage: stage.name, seenThisPass: seen.has(`w:${key}`)}) : {...item, relation: Math.min(previous?.relation ?? Infinity, item.relation), stage: owner});
+    if (owner === stage.name) seen.add(`${prefix}:${key}`);
   }
   console.log(`Region ${item.box.join(',')}: ${result.routes.length} routes, ${result.ways.length} ways; ${downloaded} bytes, ${requests} requests this run`);
 }

@@ -86,6 +86,16 @@ export function toTable(json) {
 }
 const round = ([x, y]) => [Math.round(x * 1e6) / 1e6, Math.round(y * 1e6) / 1e6];
 
+// A way fetched again: each response lists only the routes selected in its
+// box, so within a stage's pass (and for a way another stage owns) the
+// routes add up; the first time a stage's own pass meets the way, its list
+// starts afresh, so routes no longer running there drop out.
+export function mergeWay(previous, item, {stage, seenThisPass}) {
+  const owner = previous?.stage || stage;
+  const fresh = !previous || (owner === stage && !seenThisPass);
+  return {...item, routes: fresh ? item.routes : [...new Set([...previous.routes, ...item.routes])].sort(), stage: owner};
+}
+
 // The table (NDJSON): routes and ways, each with the stage it belongs to.
 export const writeTable = ({routes, ways}) => [
   ...[...routes.values()].sort((a, b) => a.key.localeCompare(b.key)).map(r => JSON.stringify({type: 'route', ...r})),
