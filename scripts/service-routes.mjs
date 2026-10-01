@@ -229,7 +229,14 @@ export function serviceRoutes({routes, ways}) {
     for (let i = 0; i < same.length; i++) for (let j = i + 1; j < same.length; j++) if (find(same[i]) !== find(same[j]) && near(cells.get(same[i]), cells.get(same[j]))) join(same[i], same[j]);
   const out = new Map();
   for (const members of Map.groupBy(views.keys(), find).values()) {
-    const view = members.map(key => views.get(key)).reduce((a, b) => (b.relation < a.relation ? b : a));
+    // The lowest relation gives the link and the name; translations and
+    // tags it lacks come from the others (lowest first).
+    const [first, ...rest] = members.map(key => views.get(key)).sort((a, b) => a.relation - b.relation);
+    const view = {...first, names: {...first.names}};
+    for (const other of rest) {
+      for (const [k, v] of Object.entries(other.names || {})) if (!view.names[k]) view.names[k] = v;
+      for (const field of ['network', 'operator', 'colour']) if (!view[field] && other[field]) view[field] = other[field];
+    }
     for (const key of members) out.set(key, view);
   }
   return out;

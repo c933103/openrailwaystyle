@@ -30,7 +30,7 @@ test('service routes: both directions are one route; urban kinds only in the que
 
 const sample = {elements: [
   {type: 'relation', id: 10, tags: {route: 'subway', ref: 'A', name: 'Line A (Northbound)', colour: '#ff0000', network: 'Metro', 'name:en': 'Line A (Northbound)'}, members: [{type: 'way', ref: 1, role: ''}, {type: 'way', ref: 2, role: ''}, {type: 'node', ref: 5, role: 'stop'}]},
-  {type: 'relation', id: 11, tags: {route: 'subway', ref: 'A', name: 'Line A (Southbound)', colour: '#ff0000', network: 'Metro'}, members: [{type: 'way', ref: 2, role: ''}, {type: 'way', ref: 1, role: ''}]},
+  {type: 'relation', id: 11, tags: {route: 'subway', ref: 'A', name: 'Line A (Southbound)', colour: '#ff0000', network: 'Metro', operator: 'Metro Co', 'name:ja': 'A線 (南行)'}, members: [{type: 'way', ref: 2, role: ''}, {type: 'way', ref: 1, role: ''}]},
   {type: 'relation', id: 12, tags: {route: 'tram', ref: '7', name: 'Tram 7: X → Y', colour: '00f', network: 'Trams'}, members: [{type: 'way', ref: 2, role: ''}, {type: 'way', ref: 3, role: 'platform'}]},
   {type: 'way', id: 1, geometry: [{lat: 35.68, lon: 139.70}, {lat: 35.69, lon: 139.71}]},
   {type: 'way', id: 2, geometry: [{lat: 35.70, lon: 139.73}, {lat: 35.69, lon: 139.71}]},
@@ -49,6 +49,9 @@ test('service routes: table and tiles, each route along its tracks in its place'
   const service = serviceRoutes(table);
   assert.equal(service.get('r11'), service.get('r10'), 'both directions are one route');
   assert.equal(service.get('r11').relation, 10, 'linked to its lowest relation id');
+  assert.equal(service.get('r10').names['name:ja'], 'A線', 'a translation only the other direction has');
+  assert.equal(service.get('r10').names['name:en'], 'Line A');
+  assert.equal(service.get('r10').operator, 'Metro Co', 'a tag only the other direction has');
   const tiles = buildTiles(table);
   const read = key => { const l = new VectorTile(new Pbf(tiles.get(key))).layers[LAYER]; return Array.from({length: l.length}, (_, i) => l.feature(i)); };
   const close = read([...tiles.keys()].find(k => k.startsWith('12/')));
@@ -57,6 +60,7 @@ test('service routes: table and tiles, each route along its tracks in its place'
   assert.deepEqual(close.filter(f => f.properties.n === 2).map(f => f.properties.slot), [-1, 1], 'names stand apart across the track');
   assert.equal(close.find(f => f.properties.name === 'Line A').properties.id, 'relation-10');
   assert.equal(close.find(f => f.properties.name === 'Line A')?.properties['name:en'], 'Line A');
+  assert.equal(close.find(f => f.properties.name === 'Line A')?.properties['name:ja'], 'A線');
   // Below zoom 10, trams are not drawn and do not take a place.
   const far = read([...tiles.keys()].find(k => k.startsWith('9/')));
   assert.ok(far.every(f => f.properties.kind === 'subway' && f.properties.n === 1));
