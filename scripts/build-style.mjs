@@ -280,6 +280,7 @@ valueLabel('control-labels', ['has', 'train_protection0'],
 valueLabel('gauge-labels', ['>', ['to-number', ['coalesce', ['get', 'gaugeint0'], 0], 0], 0],
   ['concat', ['get', 'gauge0'], ['case', ['has', 'gauge1'], ['concat', ' / ', ['get', 'gauge1']], ''], ' mm']);
 valueLabel('loading-labels', ['has', 'loading_gauge'], loadingLabel());
+valueLabel('owner-labels', ['has', 'owner'], ['get', 'owner']);
 // Keep distant views sparse. Marker and name form one collision-aware symbol
 // below zoom 12; individual circles appear only at local scale.
 // Zoom 4–5: large stations; 6: large and normal, plus small ones from the

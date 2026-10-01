@@ -666,4 +666,8 @@ test('owner view: a colour per owner name, the same everywhere; its own tile sou
   assert.deepEqual([tracks.source, overview.source], ['ownerRail', 'ownerLow']);
   assert.equal(tracks.layout.visibility, 'none');
   assert.deepEqual([style.sources.ownerRail.url, style.sources.ownerLow.url].map(u => u.split('/').pop()), ['railway_line_high', 'operator_railway_line_low']);
+  // Owner names written along the tracks; clicked lines link to their way.
+  assert.deepEqual(style.layers.find(l => l.id === 'owner-labels').layout['text-field'], ['get', 'owner']);
+  const {osmObject} = await import('../styles/map-model.mjs');
+  for (const source of ['ownerRail', 'ownerLow']) assert.deepEqual(osmObject({source, properties: {id: '660796156-0'}}), {type: 'way', id: '660796156'});
 });

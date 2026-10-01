@@ -258,7 +258,7 @@ function applySettings() {
   if (ready) { scheduleLegend(); scheduleNearbyTransport(); }
 }
 const featurePickRank = f => f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
-const VALUE_LABELS = /^(speed|electrification|control|gauge|loading)-labels$/;
+const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|owner)-labels$/;
 const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-crossing-overview','infrastructure-crossing-dots','infrastructure-crossing-marks','infrastructure-street-running'];
 // Clickable: stations, tracks, level crossings, inactive lines, and transport
 // and destination points; land-use areas, protected, heritage and other

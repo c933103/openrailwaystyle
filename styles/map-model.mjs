@@ -525,7 +525,7 @@ export function formatReadout({lng, lat}, zoom, detail = 0) {
 // id (planned and former lines, street running) or the crossing node id;
 // base-map features carry the id times ten plus 1, 2 or 3 for a node, way or
 // relation.
-const WAY_SOURCES = ['railway', 'network', 'speed', 'electric', 'control', 'gaugeLow', 'loadingLow', 'inactiveRegional', 'streetRunning', 'branchLines'];
+const WAY_SOURCES = ['railway', 'network', 'speed', 'electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'inactiveRegional', 'streetRunning', 'branchLines'];
 export function osmObject(feature) {
   const p = feature?.properties || {};
   for (const value of [p.id, p.osm_id]) {
