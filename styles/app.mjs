@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-21';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-21';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-40';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-40';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-21';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-21';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-21';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-21';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-21';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-40';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-40';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-40';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-40';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-40';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -35,7 +35,7 @@ const settings = readSettings(location.search, {language: readCookie(LANGUAGE_CO
 const status = $('map-status');
 let legendHelpOpen = false;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-12';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-40';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -1098,15 +1098,26 @@ $('units').addEventListener('change', () => {
   applyUnits(); renderLegend(); saveSettings(); drawing?.refresh(); measuring?.refresh();
   if (currentFeature) showDetails(currentFeature);
 });
-$('collapse').addEventListener('click', () => {
-  $('controls').hidden = !$('controls').hidden;
-  $('collapse').textContent = $('controls').hidden ? '+' : '−';
-  $('collapse').setAttribute('aria-expanded', String(!$('controls').hidden));
-  $('collapse').setAttribute('aria-label', `${$('controls').hidden ? 'Expand' : 'Collapse'} map controls`);
+const compactControls = () => matchMedia('(max-width: 650px), (max-height: 500px)').matches;
+function setControlsExpanded(expanded, focus = false) {
+  $('controls').hidden = !expanded;
+  document.querySelector('.panel').classList.toggle('collapsed', !expanded);
+  $('collapse').textContent = expanded ? '−' : '+';
+  $('collapse').setAttribute('aria-expanded', String(expanded));
+  $('collapse').setAttribute('aria-label', `${expanded ? 'Collapse' : 'Expand'} map controls`);
+  $('controls-open').setAttribute('aria-expanded', String(expanded));
+  if (focus) (expanded || !compactControls() ? $('collapse') : $('controls-open')).focus();
+}
+$('collapse').addEventListener('click', () => setControlsExpanded($('controls').hidden, true));
+$('controls-open').addEventListener('click', () => setControlsExpanded(true, true));
+document.querySelector('.panel').addEventListener('keydown', event => {
+  if (event.key === 'Escape' && compactControls() && !$('controls').hidden) {
+    event.stopPropagation(); setControlsExpanded(false, true);
+  }
 });
 // On phones and other small screens start with the controls folded away, so
 // the map is visible at launch.
-if (matchMedia('(max-width: 650px), (max-height: 500px)').matches) $('collapse').click();
+if (compactControls()) setControlsExpanded(false);
 // Elevation profile of a drawn line: heights about every 10 m along it
 // (20 to 200 samples), from the terrain tiles. Hovering the chart marks the
 // place on the map.
