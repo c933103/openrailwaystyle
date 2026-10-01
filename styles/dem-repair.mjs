@@ -18,11 +18,52 @@
 //   to −14 840 m, at every zoom from 9).
 // A bad pixel takes the coarser tile's height there or, where that is
 // missing or shares the fault, the average of its sound neighbours.
-export const REPAIR_FROM = 9, LEVELS_UP = 2, MISSING = -11500, WALL = 1000;
+//
+// At every zoom contours are drawn from (REPAIR_FROM), missing data is
+// filled, and a single pixel that would draw a storm of contour rings is
+// repaired: a pit (below all eight pixels round it) or a groove one pixel
+// wide (below the six pixels beside it) that lies RINGS or more contour lines
+// below ground that is nearly level round it (the pixels round it differ by
+// at most half the pit's depth). Real holes are wider, or much shallower at
+// one pixel's width: a blue hole or a mine pit one pixel across at a zoom
+// draws a few rings, an atoll's lagoon spans many pixels. Pixels standing
+// above all round them are left alone: a steep islet in deep water draws as
+// many rings and is real.
+// The tests against the coarser tile, and the narrower ones above, run from
+// REFERENCE_FROM.
+export const REPAIR_FROM = 4, REFERENCE_FROM = 9, LEVELS_UP = 2, MISSING = -11500, WALL = 1000, RINGS = 12;
 export const drop = z => 60 * 2 ** Math.max(0, 14 - z);
 // How far to each side the WALL test looks, in pixels: about 190 m at the
 // equator, wider than the 120° E band.
 const reach = z => Math.max(2, Math.round(10 * 2 ** (z - 13)));
+
+// How many contour lines lie between heights low and high in a terrain
+// tile of zoom z, in whichever units and family (land or seabed) draw
+// more of them (map-model.mjs):
+// land contours from zoom 7 (below sea level too at zooms 7 and 8, as the
+// style draws them); seabed contours from tiles one zoom coarser
+// (only above -200 m for tiles up to zoom 7), none beyond tile zoom 10.
+// Metric intervals in metres, imperial ones in feet.
+const FOOT = 0.3048;
+const INTERVALS = [
+  {land: z => z >= 15 ? 10 : z >= 13 ? 20 : z >= 11 ? 50 : z >= 9 ? 100 : z >= 7 ? 200 : 0, sea: z => z >= 10 ? 10 : z >= 8 ? 20 : 50},
+  {land: z => FOOT * (z >= 15 ? 25 : z >= 13 ? 50 : z >= 11 ? 100 : z >= 9 ? 250 : z >= 7 ? 500 : 0), sea: z => FOOT * (z >= 10 ? 25 : z >= 8 ? 50 : 150)},
+];
+const between = (interval, from, to) => interval && to > from ? Math.floor(to / interval) - Math.floor(from / interval) : 0;
+// A counter for one zoom: (low, high) => lines between them.
+const ringCounter = z => {
+  const seabed = z >= 4 && z <= 10, units = INTERVALS.map(({land, sea}) => [land(z), seabed ? sea(z) : 0]);
+  return (low, high) => {
+    // The land contours draw below sea level too below map zoom 9.
+    const top = Math.min(high, 0) - 1e-9, bottom = z < 8 ? Math.max(low, -200) : low, ground = z < 9 ? low : Math.max(low, 0);
+    let most = 0;
+    // Each family on its own: the land contours of a tile draw at its own
+    // map zoom, its seabed contours one zoom further in.
+    for (const [land, sea] of units) most = Math.max(most, between(land, ground, high), between(sea, bottom, top));
+    return most;
+  };
+};
+export const contourRings = (z, low, high) => ringCounter(z)(low, high);
 
 export const terrarium = (r, g, b) => r * 256 + g + b / 256 - 32768;
 // Height to Terrarium colour, to the format's 1/256 m.
@@ -67,15 +108,72 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
   const spike = (px, py, value) => [[1, 0], [0, 1], [1, 1], [1, -1]].some(([dx, dy]) => value < Math.min(sound(px - dx, py - dy), sound(px + dx, py + dy)) - limit);
   const queue = [];
   const mark = (i, value) => { bad[i] = 1; out[i] = value; queue.push(i); };
+  const referenced = z >= REFERENCE_FROM;
+  // A single pixel far below level ground round it, in contour lines.
+  const on = (qx, qy) => qx >= 0 && qy >= 0 && qx < size && qy < size;
+  // The ring of eight pixels round a pixel, clockwise from the north-west;
+  // ring[k] and ring[k + 4] face each other.
+  const RING = [[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]], QUICK = [[1, 0], [0, 1], [1, 1], [1, -1]];
+  const rings = ringCounter(z);
+  // The ground straight across a pixel in direction (dx, dy): the two
+  // pixels either side, or null where either is off the tile, missing or
+  // bad. Along a tile's edge nothing is judged: from one tile, a fault
+  // there looks just like a coast or shelf edge running along the edge.
+  const across = (px, py, dx, dy) => {
+    const ground = [sound(px - dx, py - dy), sound(px + dx, py + dy)];
+    return ground.some(v => Number.isNaN(v)) ? null : ground;
+  };
+  // later: a pixel continuing a fault already set aside (one along it is
+  // bad) need only lie below the ground straight across it.
+  const storm = (px, py, value, later = false) => {
+    const sunk = (low, high) => value < low && high - low <= (low - value) / 2 && rings(value, low) >= RINGS;
+    // Quick rejection: a pit or groove lies RINGS lines below the ground
+    // straight across it in some direction.
+    if (!QUICK.some(([dx, dy]) => {
+      const ground = Math.min(sound(px - dx, py - dy), sound(px + dx, py + dy));
+      return value < ground && rings(value, ground) >= RINGS;
+    })) return false;
+    const ring = RING.map(([dx, dy]) => sound(px + dx, py + dy));
+    if (!ring.some(v => Number.isNaN(v)) && sunk(Math.min(...ring), Math.max(...ring))) return true;
+    // A groove: below the pixels beside it (those of them on the tile and
+    // sound, with the ground straight across it), which are level, while
+    // the two along it (ring[k] and ring[k + 4]) may share the fault. Not
+    // the corner of a deep basin, whose pixel has deep neighbours beside it.
+    return [0, 1, 2, 3].some(k => {
+      const ground = across(px, py, ...RING[k + 2]);
+      if (!ground) return false;
+      const continues = later && [k, k + 4].some(j => on(px + RING[j][0], py + RING[j][1]) && bad[(py + RING[j][1]) * size + px + RING[j][0]]);
+      const side = continues ? ground : [...ring.filter((v, j) => j % 4 !== k && !Number.isNaN(v)), ...ground];
+      return sunk(Math.min(...side), Math.max(...side));
+    });
+  };
   // Missing data and faults the coarser tile shares: filled from the
   // neighbours.
   for (let py = 0; py < size; py++) for (let px = 0; px < size; px++) {
     const i = py * size + px;
-    if (Number.isNaN(h[i]) || depth(px, py, h[i]) > WALL || spike(px, py, h[i])) mark(i, NaN);
+    if (Number.isNaN(h[i]) || (referenced && (depth(px, py, h[i]) > WALL || spike(px, py, h[i])))) mark(i, NaN);
+  }
+  // Contour storms, all judged before any is marked.
+  const storms = [];
+  for (let py = 0; py < size; py++) for (let px = 0; px < size; px++) {
+    const i = py * size + px;
+    if (!bad[i] && storm(px, py, h[i])) storms.push(i);
+  }
+  for (const i of storms) mark(i, NaN);
+  // Then round them, until none is left: where two such faults cross, the
+  // pixels where they meet stand out once the rest is set aside.
+  for (let marked = storms; marked.length;) {
+    const next = new Set();
+    for (const i of marked) {
+      const px = i % size, py = (i - px) / size;
+      for (const [dx, dy] of RING) if (on(px + dx, py + dy) && !bad[(py + dy) * size + px + dx]) next.add((py + dy) * size + px + dx);
+    }
+    marked = [...next].filter(i => storm(i % size, Math.floor(i / size), h[i], true));
+    for (const i of marked) mark(i, NaN);
   }
   // Pits below the coarser tile: its height there, unless that shares the
   // fault.
-  if (r) for (let py = 0; py < size; py++) for (let px = 0; px < size; px++) {
+  if (r && referenced) for (let py = 0; py < size; py++) for (let px = 0; px < size; px++) {
     const i = py * size + px, value = h[i];
     if (bad[i]) continue;
     // The coarser tile's pixel centres around this pixel's centre.
