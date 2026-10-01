@@ -665,5 +665,5 @@ test('owner view: a colour per owner name, the same everywhere; its own tile sou
   const tracks = style.layers.find(l => l.id === 'owner-tracks'), overview = style.layers.find(l => l.id === 'owner-overview');
   assert.deepEqual([tracks.source, overview.source], ['ownerRail', 'ownerLow']);
   assert.equal(tracks.layout.visibility, 'none');
-  assert.deepEqual([style.sources.ownerRail.url, style.sources.ownerLow.url].map(u => u.split('/').pop()), ['railway_line_high', 'standard_railway_line_low']);
+  assert.deepEqual([style.sources.ownerRail.url, style.sources.ownerLow.url].map(u => u.split('/').pop()), ['railway_line_high', 'operator_railway_line_low']);
 });

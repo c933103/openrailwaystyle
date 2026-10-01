@@ -27,7 +27,7 @@ const style = {
     // The Owner view's own copies of the railway tiles, with owner colours
     // added in the browser (atlasowner; tile-labels.mjs). Loaded only while
     // that view is shown.
-    ownerLow: vector('standard_railway_line_low', 0, 6),
+    ownerLow: vector('operator_railway_line_low', 0, 6),
     ownerRail: vector('railway_line_high', 7, 16),
     railway: vector('railway_line_high', 7, 16),
     // Running tracks side by side, counted in the browser from the railway
@@ -122,7 +122,7 @@ const electricPaint = electrificationPaint();
 const width = ['interpolate', ['linear'], ['zoom'], 0, 0.6, 4, 1.15, 7, 1.8, 11, 2.6, 16, 4.5, 20, 7];
 const addLine = (id, source, sourceLayer, minzoom, maxzoom, paint, extra = {}) => style.layers.push({
   id, type: 'line', source, 'source-layer': sourceLayer, minzoom, ...(maxzoom === undefined ? {} : {maxzoom}),
-  filter: ['all', present, notFerry, ...(source === 'railway' ? [byKindZoom] : [])], layout: { 'line-cap': 'round', 'line-join': 'round' },
+  filter: ['all', present, notFerry, ...(source === 'railway' || source === 'ownerRail' ? [byKindZoom] : [])], layout: { 'line-cap': 'round', 'line-join': 'round' },
   paint: { 'line-color': paint, 'line-width': width, ...extra },
 });
 // Track width by zoom; scale multiplies each stop, so halves and offsets
@@ -149,7 +149,7 @@ for (const [mode, source, sourceLayer, color] of [
   ['control', 'control', 'signals_railway_line_low', controlPaint()],
   ['gauge', 'gaugeLow', 'track_railway_line_low', gaugePaint()],
   ['loading', 'loadingLow', 'standard_railway_line_low', loadingPaint()],
-  ['owner', 'ownerLow', 'standard_railway_line_low', ownerPaint()],
+  ['owner', 'ownerLow', 'operator_railway_line_low', ownerPaint()],
 ]) {
   // Branch lines from zoom 4, under the main lines, in the same colours
   // (their tiles carry the fields of the detailed railway tiles).

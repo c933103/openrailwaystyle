@@ -62,7 +62,7 @@
     },
     "ownerLow": {
       "type": "vector",
-      "url": "https://openrailwaymap.app/standard_railway_line_low",
+      "url": "https://openrailwaymap.app/operator_railway_line_low",
       "minzoom": 0,
       "maxzoom": 6,
       "promoteId": "id",
@@ -12169,7 +12169,7 @@
       "id": "owner-overview",
       "type": "line",
       "source": "ownerLow",
-      "source-layer": "standard_railway_line_low",
+      "source-layer": "operator_railway_line_low",
       "minzoom": 0,
       "maxzoom": 7,
       "filter": [
@@ -12259,6 +12259,48 @@
             "feature"
           ],
           "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
         ]
       ],
       "layout": {

@@ -592,7 +592,7 @@ function updateStatus() {
   status.dataset.renderedFormer = String(regional.filter(f => !['proposed','construction'].includes(f.properties.state)).length);
   status.dataset.numericSpeeds = String(tracks.filter(f => numericSpeed(f.properties.maxspeed) !== null).length);
 }
-const unwrap = url => url.replace(/^atlas(?:base|station|owner):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg):\/\//,'');
+const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg|owner):\/\//,'');
 function localizeStyle(style) {
   for (const layer of style.layers) {
     if (layer.type !== 'symbol' || layer.id === 'speed-labels' || layer.id.startsWith('terrain-')) continue;
@@ -604,8 +604,8 @@ function localizeStyle(style) {
   style.sources.inactiveRegional.tiles = [`railtiles://{z}/{x}/{y}?lang=${settings.language}`];
   style.sources.railway.url = `atlasrail://${unwrap(style.sources.railway.url)}`;
   style.sources.loadingLow.url = `atlaslg://${unwrap(style.sources.loadingLow.url)}`;
-  style.sources.ownerLow.url = `atlasowner://low/${unwrap(style.sources.ownerLow.url)}`;
-  style.sources.ownerRail.url = `atlasowner://high/${unwrap(style.sources.ownerRail.url)}`;
+  style.sources.ownerLow.url = `atlasowner://${unwrap(style.sources.ownerLow.url)}`;
+  style.sources.ownerRail.url = `atlasowner://${unwrap(style.sources.ownerRail.url)}`;
   unitStyle(style);
   styleLanguage = settings.language;
 }

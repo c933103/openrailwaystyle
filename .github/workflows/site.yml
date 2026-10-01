@@ -50,8 +50,6 @@ jobs:
           cp lifecycle-data/manifest.json styles/data/
           # Loading gauge by way ID for the zoom 0–6 overview (optional).
           if [ -f lifecycle-data/loading-gauge.json ]; then cp lifecycle-data/loading-gauge.json styles/data/; fi
-          # Owner by way ID for the Owner view's zoom 0–6 overview (optional).
-          if [ -f lifecycle-data/owner.json ]; then cp lifecycle-data/owner.json styles/data/; fi
           # The polar caps beyond 85.05° (optional).
           if [ -d lifecycle-data/polar ]; then cp -r lifecycle-data/polar styles/data/polar; fi
           cat lifecycle-data/lifecycle.pmtiles.part-* > /tmp/lifecycle.pmtiles
