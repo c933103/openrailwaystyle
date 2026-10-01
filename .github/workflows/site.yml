@@ -23,7 +23,7 @@ jobs:
       - name: Rebuild world style
         run: npm run build
       - name: Check committed style is reproducible
-        run: git diff --exit-code -- styles/world.style.json
+        run: git diff --exit-code -- styles/world.style.json styles/major-stations.geojson
       - name: Validate speed semantics and MapLibre style
         run: npm test
       - name: Check JavaScript syntax
@@ -121,6 +121,8 @@ jobs:
         run: node scripts/check-context-browser.mjs
       - name: Verify actual WebGL rendering and zoom-7 panning
         run: node scripts/check-map-browser.mjs
+      - name: Verify curated station labels and details on the globe
+        run: node scripts/check-major-stations-browser.mjs
       - name: Save browser review
         if: always()
         uses: actions/upload-artifact@v4

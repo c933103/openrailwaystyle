@@ -1,9 +1,12 @@
+import {majorStationsGeoJSON,curatedStationFilter} from './major-stations.mjs';
 import { readFile, writeFile } from 'node:fs/promises';
 import {roadLayers, constraintLayers} from './planning-style.mjs';
 import {contextLayers} from './context-style.mjs';
 import {OVERVIEW_ZOOM, DETAIL_ZOOM} from './crossing-data.mjs';
 import { ORM, axlePaint, axleLabel, LIGHT_MODES, MINOR_MODES, LIFECYCLE_PATTERNS, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, ownerPaint, loadingLabel, trainProtectionShort, TRAIN_PROTECTION, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
 
+const majorStations=JSON.parse(await readFile(new URL('../styles/data-src/major-stations.json',import.meta.url)));
+await writeFile(new URL('../styles/major-stations.geojson',import.meta.url),JSON.stringify(majorStationsGeoJSON(majorStations))+'\n');
 // Keep the Hack4Rail base-map design and replace its Europe-only rail source.
 const original = JSON.parse(await readFile(new URL('../styles/default.style.json', import.meta.url)));
 const vector = (path, minzoom, maxzoom) => ({
@@ -37,6 +40,7 @@ const style = {
     // tiles (atlastracks protocol, tile-labels.mjs and track-tiles.mjs):
     // always from zoom-14 tiles, so the same at every zoom.
     trackCounts: {type: 'vector', tiles: ['atlastracks://{z}/{x}/{y}'], minzoom: 14, maxzoom: 14, attribution: '<a href="https://www.openrailwaymap.app/">OpenRailwayMap</a> · <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>'},
+    stationMajor:{type:'geojson',data:{type:'FeatureCollection',features:[]},attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a> · <a href="https://www.wikidata.org/">Wikidata, CC0</a>'},
     stationLow: vector('standard_railway_text_stations_low', 4, 6),
     // The mid-zoom endpoint returns nothing below zoom 7, and the low-zoom
     // one keeps only stations OpenRailwayMap sizes large or normal, which
@@ -343,18 +347,24 @@ const tiers = [ // bottom to top
   ['large', ['all', heavy, isStation, ['==', size, 'large']]],
 ];
 for (const [tier, filter] of tiers) for (const [source, layer, minzoom, maxzoom] of [
-  ['stationLow', 'standard_railway_text_stations_low', 4, 7],
+  ['stationLow', 'standard_railway_text_stations_low', 6, 7],
   ['stationMed', 'standard_railway_text_stations_med', 6, 8],
   ['stations', 'standard_railway_text_stations', 8, 12],
 ]) {
   style.layers.push({
     id: `station-${source}-${tier}-names`, type: 'symbol', source, 'source-layer': layer, minzoom, maxzoom,
-    filter: ['all', filter, ...(source === 'stations' ? [stationSelection, stationFeatures] : source === 'stationMed' ? [zoom6Small] : [stationSelection])],
+    filter: ['all', filter,...(source==='stations'?[]:[source==='stationMed'?['any',['>=',['zoom'],7],curatedStationFilter(majorStations)]:curatedStationFilter(majorStations)]), ...(source === 'stations' ? [stationSelection, stationFeatures] : source === 'stationMed' ? [zoom6Small] : [stationSelection])],
     layout: { ...stationText, 'icon-image': 'station-dot', 'icon-size': ['interpolate', ['linear'], ['zoom'], 4, 0.8, 6, 0.95, 11, bySize(1.25, 1.15, 1.05, 0.9, 0.8)],
       'icon-padding': 12, 'icon-allow-overlap': false, 'icon-ignore-placement': false, 'icon-optional': false, 'text-optional': false },
     paint: stationInk,
   });
 }
+// Curated tiers lie above provider fill at zoom 6; principal hubs place first.
+for(const tier of [6,5,4,3])style.layers.push({
+ id:`station-major-${tier}-names`,type:'symbol',source:'stationMajor',minzoom:tier,maxzoom:7,
+ filter:['==',['get','tier'],tier],
+ layout:{...stationText,'symbol-sort-key':['get','rank'],'icon-image':'station-dot','icon-size':.85,'icon-padding':12,'icon-allow-overlap':false,'icon-ignore-placement':false,'icon-optional':false,'text-optional':false},paint:stationInk,
+});
 // Former, disused and planned stations rank last, from zoom 12, muted; their
 // dots lie under the operating stations' dots.
 style.layers.push({
