@@ -1150,38 +1150,117 @@
       "source-layer": "aeroway",
       "minzoom": 10,
       "filter": [
-        "match",
+        "all",
         [
-          "coalesce",
+          "==",
           [
-            "get",
-            "class"
+            "geometry-type"
           ],
-          ""
+          "LineString"
         ],
         [
-          "runway",
-          "taxiway"
-        ],
-        true,
-        false
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "runway",
+            "taxiway"
+          ],
+          true,
+          false
+        ]
       ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
       "paint": {
-        "line-color": "#7982a1",
+        "line-color": [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "runway"
+          ],
+          "#8d95b0",
+          "#aab1c8"
+        ],
         "line-width": [
           "interpolate",
           [
-            "linear"
+            "exponential",
+            2
           ],
           [
             "zoom"
           ],
           10,
-          1.5,
+          [
+            "case",
+            [
+              "==",
+              [
+                "get",
+                "class"
+              ],
+              "runway"
+            ],
+            1,
+            0.5
+          ],
+          13,
+          [
+            "case",
+            [
+              "==",
+              [
+                "get",
+                "class"
+              ],
+              "runway"
+            ],
+            2.5,
+            1
+          ],
           16,
-          5
+          [
+            "case",
+            [
+              "==",
+              [
+                "get",
+                "class"
+              ],
+              "runway"
+            ],
+            18,
+            8
+          ],
+          19,
+          [
+            "case",
+            [
+              "==",
+              [
+                "get",
+                "class"
+              ],
+              "runway"
+            ],
+            140,
+            62
+          ]
         ],
-        "line-opacity": 0.7
+        "line-opacity": 0.85
       }
     },
     {
@@ -1941,62 +2020,6 @@
             [
               20,
               8
-            ]
-          ]
-        }
-      }
-    },
-    {
-      "id": "aeroway-runway",
-      "type": "line",
-      "metadata": {
-        "mapbox:group": "1444849345966.4436"
-      },
-      "source": "openmaptiles",
-      "source-layer": "aeroway",
-      "minzoom": 10,
-      "filter": [
-        "all",
-        [
-          "in",
-          "class",
-          "runway"
-        ],
-        [
-          "==",
-          "$type",
-          "LineString"
-        ]
-      ],
-      "layout": {
-        "line-cap": "round",
-        "line-join": "round",
-        "visibility": "visible"
-      },
-      "paint": {
-        "line-color": "rgba(255, 255, 255, 1)",
-        "line-opacity": {
-          "stops": [
-            [
-              10,
-              0
-            ],
-            [
-              11,
-              1
-            ]
-          ]
-        },
-        "line-width": {
-          "base": 1.5,
-          "stops": [
-            [
-              11,
-              4
-            ],
-            [
-              17,
-              50
             ]
           ]
         }
@@ -3241,6 +3264,48 @@
           "ferry"
         ],
         [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
+        ],
+        [
           "==",
           [
             "get",
@@ -3301,6 +3366,48 @@
             "feature"
           ],
           "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
         ],
         [
           "==",
@@ -3389,6 +3496,48 @@
             "feature"
           ],
           "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
         ]
       ],
       "layout": {
@@ -3751,6 +3900,48 @@
             "feature"
           ],
           "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
         ]
       ],
       "layout": {
@@ -4727,6 +4918,48 @@
             "feature"
           ],
           "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
         ]
       ],
       "layout": {
@@ -5543,6 +5776,48 @@
             "feature"
           ],
           "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
         ]
       ],
       "layout": {
@@ -6373,6 +6648,48 @@
             "feature"
           ],
           "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
         ]
       ],
       "layout": {
@@ -8479,6 +8796,48 @@
             "feature"
           ],
           "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
         ]
       ],
       "layout": {
@@ -9359,6 +9718,48 @@
           "ferry"
         ],
         [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
+        ],
+        [
           ">",
           [
             "to-number",
@@ -9689,6 +10090,48 @@
           "ferry"
         ],
         [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
+        ],
+        [
           "==",
           [
             "get",
@@ -9734,12 +10177,57 @@
       "minzoom": 7,
       "maxzoom": 12,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "bridge"
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
         ],
-        true
+        [
+          "==",
+          [
+            "get",
+            "bridge"
+          ],
+          true
+        ]
       ],
       "paint": {
         "line-color": "#5b5550",
@@ -9774,12 +10262,57 @@
       "minzoom": 7,
       "maxzoom": 12,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "bridge"
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
         ],
-        true
+        [
+          "==",
+          [
+            "get",
+            "bridge"
+          ],
+          true
+        ]
       ],
       "paint": {
         "line-color": "#fffef8",
@@ -9942,30 +10475,57 @@
       "filter": [
         "all",
         [
-          "any",
+          "all",
           [
-            ">=",
+            "case",
             [
-              "zoom"
+              "==",
+              [
+                "get",
+                "feature"
+              ],
+              "subway"
             ],
-            7
-          ],
-          [
-            "==",
-            [
-              "get",
-              "state"
-            ],
-            "construction"
-          ],
-          [
-            "all",
             [
               ">=",
               [
                 "zoom"
               ],
-              5
+              7
+            ],
+            [
+              "match",
+              [
+                "get",
+                "feature"
+              ],
+              [
+                "light_rail",
+                "monorail",
+                "tram",
+                "funicular",
+                "miniature"
+              ],
+              true,
+              false
+            ],
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              10
+            ],
+            true
+          ],
+          [
+            "any",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              7
             ],
             [
               "==",
@@ -9973,7 +10533,25 @@
                 "get",
                 "state"
               ],
-              "proposed"
+              "construction"
+            ],
+            [
+              "all",
+              [
+                ">=",
+                [
+                  "zoom"
+                ],
+                5
+              ],
+              [
+                "==",
+                [
+                  "get",
+                  "state"
+                ],
+                "proposed"
+              ]
             ]
           ]
         ],
@@ -10316,30 +10894,57 @@
       "filter": [
         "all",
         [
-          "any",
+          "all",
           [
-            ">=",
+            "case",
             [
-              "zoom"
+              "==",
+              [
+                "get",
+                "feature"
+              ],
+              "subway"
             ],
-            7
-          ],
-          [
-            "==",
-            [
-              "get",
-              "state"
-            ],
-            "construction"
-          ],
-          [
-            "all",
             [
               ">=",
               [
                 "zoom"
               ],
-              5
+              7
+            ],
+            [
+              "match",
+              [
+                "get",
+                "feature"
+              ],
+              [
+                "light_rail",
+                "monorail",
+                "tram",
+                "funicular",
+                "miniature"
+              ],
+              true,
+              false
+            ],
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              10
+            ],
+            true
+          ],
+          [
+            "any",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              7
             ],
             [
               "==",
@@ -10347,7 +10952,25 @@
                 "get",
                 "state"
               ],
-              "proposed"
+              "construction"
+            ],
+            [
+              "all",
+              [
+                ">=",
+                [
+                  "zoom"
+                ],
+                5
+              ],
+              [
+                "==",
+                [
+                  "get",
+                  "state"
+                ],
+                "proposed"
+              ]
             ]
           ]
         ],
@@ -10670,30 +11293,57 @@
       "filter": [
         "all",
         [
-          "any",
+          "all",
           [
-            ">=",
+            "case",
             [
-              "zoom"
+              "==",
+              [
+                "get",
+                "feature"
+              ],
+              "subway"
             ],
-            7
-          ],
-          [
-            "==",
-            [
-              "get",
-              "state"
-            ],
-            "construction"
-          ],
-          [
-            "all",
             [
               ">=",
               [
                 "zoom"
               ],
-              5
+              7
+            ],
+            [
+              "match",
+              [
+                "get",
+                "feature"
+              ],
+              [
+                "light_rail",
+                "monorail",
+                "tram",
+                "funicular",
+                "miniature"
+              ],
+              true,
+              false
+            ],
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              10
+            ],
+            true
+          ],
+          [
+            "any",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              7
             ],
             [
               "==",
@@ -10701,7 +11351,25 @@
                 "get",
                 "state"
               ],
-              "proposed"
+              "construction"
+            ],
+            [
+              "all",
+              [
+                ">=",
+                [
+                  "zoom"
+                ],
+                5
+              ],
+              [
+                "==",
+                [
+                  "get",
+                  "state"
+                ],
+                "proposed"
+              ]
             ]
           ]
         ],
@@ -11020,30 +11688,57 @@
       "filter": [
         "all",
         [
-          "any",
+          "all",
           [
-            ">=",
+            "case",
             [
-              "zoom"
+              "==",
+              [
+                "get",
+                "feature"
+              ],
+              "subway"
             ],
-            7
-          ],
-          [
-            "==",
-            [
-              "get",
-              "state"
-            ],
-            "construction"
-          ],
-          [
-            "all",
             [
               ">=",
               [
                 "zoom"
               ],
-              5
+              7
+            ],
+            [
+              "match",
+              [
+                "get",
+                "feature"
+              ],
+              [
+                "light_rail",
+                "monorail",
+                "tram",
+                "funicular",
+                "miniature"
+              ],
+              true,
+              false
+            ],
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              10
+            ],
+            true
+          ],
+          [
+            "any",
+            [
+              ">=",
+              [
+                "zoom"
+              ],
+              7
             ],
             [
               "==",
@@ -11051,7 +11746,25 @@
                 "get",
                 "state"
               ],
-              "proposed"
+              "construction"
+            ],
+            [
+              "all",
+              [
+                ">=",
+                [
+                  "zoom"
+                ],
+                5
+              ],
+              [
+                "==",
+                [
+                  "get",
+                  "state"
+                ],
+                "proposed"
+              ]
             ]
           ]
         ],
@@ -11389,6 +12102,48 @@
           "ferry"
         ],
         [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
+        ],
+        [
           "has",
           "speed_label"
         ]
@@ -11439,6 +12194,48 @@
             "feature"
           ],
           "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
         ],
         [
           ">",
@@ -11774,6 +12571,48 @@
             "feature"
           ],
           "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
         ],
         [
           "has",
@@ -12223,6 +13062,48 @@
           "ferry"
         ],
         [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
+        ],
+        [
           ">",
           [
             "to-number",
@@ -12306,6 +13187,48 @@
             "feature"
           ],
           "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
         ],
         [
           "has",
@@ -13086,7 +14009,7 @@
               [
                 "zoom"
               ],
-              13
+              10
             ],
             [
               "==",
@@ -13117,7 +14040,7 @@
             [
               "zoom"
             ],
-            10
+            8
           ],
           [
             "match",
@@ -13130,29 +14053,7 @@
               ""
             ],
             [
-              "light_rail"
-            ],
-            true,
-            false
-          ],
-          [
-            ">=",
-            [
-              "zoom"
-            ],
-            11
-          ],
-          [
-            "match",
-            [
-              "coalesce",
-              [
-                "get",
-                "station"
-              ],
-              ""
-            ],
-            [
+              "light_rail",
               "monorail",
               "funicular",
               "miniature",
@@ -13166,7 +14067,7 @@
             [
               "zoom"
             ],
-            12
+            10
           ],
           true
         ]
@@ -13640,6 +14541,14 @@
       "layout": {
         "visibility": "none"
       },
+      "filter": [
+        "!=",
+        [
+          "get",
+          "minor"
+        ],
+        true
+      ],
       "paint": {
         "circle-color": [
           "match",
@@ -13693,6 +14602,14 @@
       "layout": {
         "visibility": "none"
       },
+      "filter": [
+        "!=",
+        [
+          "get",
+          "minor"
+        ],
+        true
+      ],
       "paint": {
         "circle-color": [
           "match",
@@ -16580,6 +17497,211 @@
       }
     },
     {
+      "id": "context-destinations-hotel-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 14,
+      "filter": [
+        "any",
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "subclass"
+            ],
+            [
+              "get",
+              "class"
+            ],
+            ""
+          ],
+          [
+            "hotel",
+            "motel",
+            "hostel",
+            "guest_house"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          10,
+          16,
+          11,
+          19,
+          12
+        ],
+        "text-variable-anchor": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "text-radial-offset": 0.9,
+        "text-max-width": 9,
+        "text-padding": 8,
+        "text-optional": true,
+        "icon-size": 0.55,
+        "icon-padding": 4,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "symbol-sort-key": [
+          "to-number",
+          [
+            "coalesce",
+            [
+              "get",
+              "rank"
+            ],
+            100
+          ],
+          100
+        ],
+        "icon-image": "context-hotel"
+      },
+      "paint": {
+        "text-color": "#707973",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1,
+        "icon-opacity": 0.7,
+        "text-opacity": 0.85
+      }
+    },
+    {
       "id": "context-destinations-culture-label",
       "type": "symbol",
       "source": "openmaptiles",
@@ -18842,6 +19964,48 @@
             "feature"
           ],
           "ferry"
+        ],
+        [
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "feature"
+            ],
+            "subway"
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "match",
+            [
+              "get",
+              "feature"
+            ],
+            [
+              "light_rail",
+              "monorail",
+              "tram",
+              "funicular",
+              "miniature"
+            ],
+            true,
+            false
+          ],
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            10
+          ],
+          true
         ]
       ],
       "layout": {
@@ -19002,7 +20166,45 @@
       "minzoom": 9,
       "maxzoom": 12,
       "filter": [
-        "literal",
+        "case",
+        [
+          "==",
+          [
+            "get",
+            "feature"
+          ],
+          "subway"
+        ],
+        [
+          ">=",
+          [
+            "zoom"
+          ],
+          7
+        ],
+        [
+          "match",
+          [
+            "get",
+            "feature"
+          ],
+          [
+            "light_rail",
+            "monorail",
+            "tram",
+            "funicular",
+            "miniature"
+          ],
+          true,
+          false
+        ],
+        [
+          ">=",
+          [
+            "zoom"
+          ],
+          10
+        ],
         true
       ],
       "layout": {
@@ -20717,7 +21919,7 @@
                 [
                   "zoom"
                 ],
-                13
+                10
               ],
               [
                 "==",
@@ -20748,7 +21950,7 @@
               [
                 "zoom"
               ],
-              10
+              8
             ],
             [
               "match",
@@ -20761,29 +21963,7 @@
                 ""
               ],
               [
-                "light_rail"
-              ],
-              true,
-              false
-            ],
-            [
-              ">=",
-              [
-                "zoom"
-              ],
-              11
-            ],
-            [
-              "match",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "station"
-                ],
-                ""
-              ],
-              [
+                "light_rail",
                 "monorail",
                 "funicular",
                 "miniature",
@@ -20797,7 +21977,7 @@
               [
                 "zoom"
               ],
-              12
+              10
             ],
             true
           ]
@@ -22431,7 +23611,7 @@
                 [
                   "zoom"
                 ],
-                13
+                10
               ],
               [
                 "==",
@@ -22462,7 +23642,7 @@
               [
                 "zoom"
               ],
-              10
+              8
             ],
             [
               "match",
@@ -22475,29 +23655,7 @@
                 ""
               ],
               [
-                "light_rail"
-              ],
-              true,
-              false
-            ],
-            [
-              ">=",
-              [
-                "zoom"
-              ],
-              11
-            ],
-            [
-              "match",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "station"
-                ],
-                ""
-              ],
-              [
+                "light_rail",
                 "monorail",
                 "funicular",
                 "miniature",
@@ -22511,7 +23669,7 @@
               [
                 "zoom"
               ],
-              12
+              10
             ],
             true
           ]
@@ -24145,7 +25303,7 @@
                 [
                   "zoom"
                 ],
-                13
+                10
               ],
               [
                 "==",
@@ -24176,7 +25334,7 @@
               [
                 "zoom"
               ],
-              10
+              8
             ],
             [
               "match",
@@ -24189,29 +25347,7 @@
                 ""
               ],
               [
-                "light_rail"
-              ],
-              true,
-              false
-            ],
-            [
-              ">=",
-              [
-                "zoom"
-              ],
-              11
-            ],
-            [
-              "match",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "station"
-                ],
-                ""
-              ],
-              [
+                "light_rail",
                 "monorail",
                 "funicular",
                 "miniature",
@@ -24225,7 +25361,7 @@
               [
                 "zoom"
               ],
-              12
+              10
             ],
             true
           ]
@@ -25973,7 +27109,7 @@
                 [
                   "zoom"
                 ],
-                13
+                10
               ],
               [
                 "==",
@@ -26004,7 +27140,7 @@
               [
                 "zoom"
               ],
-              10
+              8
             ],
             [
               "match",
@@ -26017,29 +27153,7 @@
                 ""
               ],
               [
-                "light_rail"
-              ],
-              true,
-              false
-            ],
-            [
-              ">=",
-              [
-                "zoom"
-              ],
-              11
-            ],
-            [
-              "match",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "station"
-                ],
-                ""
-              ],
-              [
+                "light_rail",
                 "monorail",
                 "funicular",
                 "miniature",
@@ -26053,7 +27167,7 @@
               [
                 "zoom"
               ],
-              12
+              10
             ],
             true
           ]
@@ -27852,7 +28966,7 @@
                 [
                   "zoom"
                 ],
-                13
+                10
               ],
               [
                 "==",
@@ -27883,7 +28997,7 @@
               [
                 "zoom"
               ],
-              10
+              8
             ],
             [
               "match",
@@ -27896,29 +29010,7 @@
                 ""
               ],
               [
-                "light_rail"
-              ],
-              true,
-              false
-            ],
-            [
-              ">=",
-              [
-                "zoom"
-              ],
-              11
-            ],
-            [
-              "match",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "station"
-                ],
-                ""
-              ],
-              [
+                "light_rail",
                 "monorail",
                 "funicular",
                 "miniature",
@@ -27932,7 +29024,7 @@
               [
                 "zoom"
               ],
-              12
+              10
             ],
             true
           ]
@@ -29707,7 +30799,7 @@
                 [
                   "zoom"
                 ],
-                13
+                10
               ],
               [
                 "==",
@@ -29738,7 +30830,7 @@
               [
                 "zoom"
               ],
-              10
+              8
             ],
             [
               "match",
@@ -29751,29 +30843,7 @@
                 ""
               ],
               [
-                "light_rail"
-              ],
-              true,
-              false
-            ],
-            [
-              ">=",
-              [
-                "zoom"
-              ],
-              11
-            ],
-            [
-              "match",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "station"
-                ],
-                ""
-              ],
-              [
+                "light_rail",
                 "monorail",
                 "funicular",
                 "miniature",
@@ -29787,7 +30857,7 @@
               [
                 "zoom"
               ],
-              12
+              10
             ],
             true
           ]
@@ -31562,7 +32632,7 @@
                 [
                   "zoom"
                 ],
-                13
+                10
               ],
               [
                 "==",
@@ -31593,7 +32663,7 @@
               [
                 "zoom"
               ],
-              10
+              8
             ],
             [
               "match",
@@ -31606,29 +32676,7 @@
                 ""
               ],
               [
-                "light_rail"
-              ],
-              true,
-              false
-            ],
-            [
-              ">=",
-              [
-                "zoom"
-              ],
-              11
-            ],
-            [
-              "match",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "station"
-                ],
-                ""
-              ],
-              [
+                "light_rail",
                 "monorail",
                 "funicular",
                 "miniature",
@@ -31642,7 +32690,7 @@
               [
                 "zoom"
               ],
-              12
+              10
             ],
             true
           ]
@@ -32487,7 +33535,7 @@
                 [
                   "zoom"
                 ],
-                13
+                10
               ],
               [
                 "==",
@@ -32518,7 +33566,7 @@
               [
                 "zoom"
               ],
-              10
+              8
             ],
             [
               "match",
@@ -32531,29 +33579,7 @@
                 ""
               ],
               [
-                "light_rail"
-              ],
-              true,
-              false
-            ],
-            [
-              ">=",
-              [
-                "zoom"
-              ],
-              11
-            ],
-            [
-              "match",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "station"
-                ],
-                ""
-              ],
-              [
+                "light_rail",
                 "monorail",
                 "funicular",
                 "miniature",
@@ -32567,7 +33593,7 @@
               [
                 "zoom"
               ],
-              12
+              10
             ],
             true
           ]
@@ -33037,7 +34063,7 @@
                 [
                   "zoom"
                 ],
-                13
+                10
               ],
               [
                 "==",
@@ -33068,7 +34094,7 @@
               [
                 "zoom"
               ],
-              10
+              8
             ],
             [
               "match",
@@ -33081,29 +34107,7 @@
                 ""
               ],
               [
-                "light_rail"
-              ],
-              true,
-              false
-            ],
-            [
-              ">=",
-              [
-                "zoom"
-              ],
-              11
-            ],
-            [
-              "match",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "station"
-                ],
-                ""
-              ],
-              [
+                "light_rail",
                 "monorail",
                 "funicular",
                 "miniature",
@@ -33117,7 +34121,7 @@
               [
                 "zoom"
               ],
-              12
+              10
             ],
             true
           ]
@@ -33587,7 +34591,7 @@
                 [
                   "zoom"
                 ],
-                13
+                10
               ],
               [
                 "==",
@@ -33618,7 +34622,7 @@
               [
                 "zoom"
               ],
-              10
+              8
             ],
             [
               "match",
@@ -33631,29 +34635,7 @@
                 ""
               ],
               [
-                "light_rail"
-              ],
-              true,
-              false
-            ],
-            [
-              ">=",
-              [
-                "zoom"
-              ],
-              11
-            ],
-            [
-              "match",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "station"
-                ],
-                ""
-              ],
-              [
+                "light_rail",
                 "monorail",
                 "funicular",
                 "miniature",
@@ -33667,7 +34649,7 @@
               [
                 "zoom"
               ],
-              12
+              10
             ],
             true
           ]
@@ -34175,7 +35157,7 @@
                 [
                   "zoom"
                 ],
-                13
+                10
               ],
               [
                 "==",
@@ -34206,7 +35188,7 @@
               [
                 "zoom"
               ],
-              10
+              8
             ],
             [
               "match",
@@ -34219,29 +35201,7 @@
                 ""
               ],
               [
-                "light_rail"
-              ],
-              true,
-              false
-            ],
-            [
-              ">=",
-              [
-                "zoom"
-              ],
-              11
-            ],
-            [
-              "match",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "station"
-                ],
-                ""
-              ],
-              [
+                "light_rail",
                 "monorail",
                 "funicular",
                 "miniature",
@@ -34255,7 +35215,7 @@
               [
                 "zoom"
               ],
-              12
+              10
             ],
             true
           ]
@@ -34780,7 +35740,7 @@
                 [
                   "zoom"
                 ],
-                13
+                10
               ],
               [
                 "==",
@@ -34811,7 +35771,7 @@
               [
                 "zoom"
               ],
-              10
+              8
             ],
             [
               "match",
@@ -34824,29 +35784,7 @@
                 ""
               ],
               [
-                "light_rail"
-              ],
-              true,
-              false
-            ],
-            [
-              ">=",
-              [
-                "zoom"
-              ],
-              11
-            ],
-            [
-              "match",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "station"
-                ],
-                ""
-              ],
-              [
+                "light_rail",
                 "monorail",
                 "funicular",
                 "miniature",
@@ -34860,7 +35798,7 @@
               [
                 "zoom"
               ],
-              12
+              10
             ],
             true
           ]
@@ -35377,7 +36315,7 @@
                 [
                   "zoom"
                 ],
-                13
+                10
               ],
               [
                 "==",
@@ -35408,7 +36346,7 @@
               [
                 "zoom"
               ],
-              10
+              8
             ],
             [
               "match",
@@ -35421,29 +36359,7 @@
                 ""
               ],
               [
-                "light_rail"
-              ],
-              true,
-              false
-            ],
-            [
-              ">=",
-              [
-                "zoom"
-              ],
-              11
-            ],
-            [
-              "match",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "station"
-                ],
-                ""
-              ],
-              [
+                "light_rail",
                 "monorail",
                 "funicular",
                 "miniature",
@@ -35457,7 +36373,7 @@
               [
                 "zoom"
               ],
-              12
+              10
             ],
             true
           ]
@@ -35974,7 +36890,7 @@
                 [
                   "zoom"
                 ],
-                13
+                10
               ],
               [
                 "==",
@@ -36005,7 +36921,7 @@
               [
                 "zoom"
               ],
-              10
+              8
             ],
             [
               "match",
@@ -36018,29 +36934,7 @@
                 ""
               ],
               [
-                "light_rail"
-              ],
-              true,
-              false
-            ],
-            [
-              ">=",
-              [
-                "zoom"
-              ],
-              11
-            ],
-            [
-              "match",
-              [
-                "coalesce",
-                [
-                  "get",
-                  "station"
-                ],
-                ""
-              ],
-              [
+                "light_rail",
                 "monorail",
                 "funicular",
                 "miniature",
@@ -36054,7 +36948,7 @@
               [
                 "zoom"
               ],
-              12
+              10
             ],
             true
           ]

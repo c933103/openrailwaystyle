@@ -90,14 +90,16 @@ test('regional stations have collision-aware markers and progressive size thresh
   assert.equal(shown(10, {station_size:'small'}),true);
   assert.equal(shown(10, {station_size:'small',feature:'halt'}),false);
   assert.equal(shown(11, {station_size:'small',feature:'halt'}),true);
-  // Metro before light rail and people movers, before trams (never the reverse).
-  assert.equal(shown(9.9, {station_size:'large',station:'subway'}),false);
-  assert.equal(shown(10, {station_size:'small',station:'subway'}),true);
-  assert.equal(shown(10.9, {station_size:'large',station:'light_rail'}),false);
-  assert.equal(shown(11, {station_size:'large',station:'light_rail'}),true);
-  assert.equal(shown(11.9, {station_size:'normal',station:'tram'}),false);
-  assert.equal(shown(12, {station_size:'normal',station:'tram'}),true);
-  assert.equal(shown(11.9, {station_size:'small',station:'monorail'}),false);
+  // Metro (from the first station tiles that carry it, zoom 8) before light
+  // rail, monorail, people movers and trams (10): never the reverse.
+  // (Below zoom 8 the provider's overview station tiles carry no metro at all.)
+  assert.equal(shown(8, {station_size:'small',station:'subway'}),true);
+  assert.equal(shown(9.9, {station_size:'large',station:'light_rail'}),false);
+  assert.equal(shown(10, {station_size:'large',station:'light_rail'}),true);
+  assert.equal(shown(9.9, {station_size:'small',station:'monorail'}),false);
+  assert.equal(shown(10, {station_size:'small',station:'monorail'}),true);
+  assert.equal(shown(9.9, {station_size:'normal',station:'tram'}),false);
+  assert.equal(shown(10, {station_size:'normal',station:'tram'}),true);
   // Sized by mode: the smallest metro station outranks a "large" people mover
   // or tram station, in name size, label priority and marker size.
   const names = style.layers.find(l => l.id === 'station-detail-metro-names');
@@ -111,8 +113,8 @@ test('regional stations have collision-aware markers and progressive size thresh
   for (const [id, key, better] of [['station-detail-metro-names','text-size',(a,b)=>a>b], ['station-detail-metro-names','symbol-sort-key',(a,b)=>a<b], ['station-stations-dots','circle-radius',(a,b)=>a>b], ['station-stations-dots','circle-sort-key',(a,b)=>a>b]])
     for (const other of [moverLarge, tramLarge]) assert.ok(better(sizeAt(id, key, 14, metroSmall), sizeAt(id, key, 14, other)), `${key}: metro over ${other.station}`);
   assert.ok(names);
-  assert.equal(shown(12.9, {feature:'tram_stop'}),false);
-  assert.equal(shown(13, {feature:'tram_stop'}),true);
+  assert.equal(shown(9.9, {feature:'tram_stop'}),false);
+  assert.equal(shown(10, {feature:'tram_stop'}),true);
   for (const layer of layers) {
     if (layer.type === 'circle') assert.ok(layer.minzoom >= 12, 'unconditional dots only at local scale');
     else {
@@ -139,8 +141,16 @@ test('every lifecycle is shown at zoom 7 without a live query or a zoom-8 handof
   // Construction at every zoom, proposals from z5, former lines from z7.
   const lowest={construction:0,proposed:5,disused:7,abandoned:7,razed:7};
   for(const zoom of [0,2,4.99,5,6.99]) for(const [state,min] of Object.entries(lowest)) {
-    assert.equal(filter.filter({zoom},{type:2,properties:{state,feature:'tram',usage:'',service:''}}),zoom>=min,`${state} at z${zoom}`);
+    assert.equal(filter.filter({zoom},{type:2,properties:{state,feature:'rail',usage:'',service:''}}),zoom>=min,`${state} at z${zoom}`);
   }
+  // Service tracks are not held back (only tram and urban kinds are).
+  // Metro under construction from zoom 7 (never held back to 10).
+  assert.equal(filter.filter({zoom:6.9},{type:2,properties:{state:'construction',feature:'subway'}}),false);
+  assert.equal(filter.filter({zoom:7},{type:2,properties:{state:'construction',feature:'subway'}}),true);
+  assert.equal(filter.filter({zoom:7},{type:2,properties:{state:'construction',feature:'rail',service:'siding'}}),true);
+  // Planned and former trams wait for zoom 10, like operating ones.
+  assert.equal(filter.filter({zoom:9.9},{type:2,properties:{state:'construction',feature:'tram'}}),false);
+  assert.equal(filter.filter({zoom:10},{type:2,properties:{state:'construction',feature:'tram'}}),true);
   for(const zoom of [7,7.83,8,9,10,11.99]) for(const state of ['proposed','construction','disused','abandoned','razed']) {
     assert.equal(filter.filter({zoom},{type:2,properties:{state,feature:'rail',usage:'main',service:''}}),true);
   }
@@ -290,6 +300,14 @@ test('bridges and tunnels show in every view, including planned and former lines
   const order = id => style.layers.findIndex(l => l.id === id);
   assert.ok(order('structure-bridge-edge') < order('speed-tracks') && order('structure-bridge-edge') < order('gauge-tracks'));
   assert.ok(order('inactive-bridge-deck') < order('inactive-railways-construction'));
+  // A planned or former tram's bridge casing and name wait for its track (zoom 10).
+  for (const id of ['inactive-regional-bridge-edge','inactive-regional-bridge-deck','inactive-names']) {
+    const filter = styleSpec.featureFilter(style.layers.find(l => l.id === id).filter);
+    const at = (zoom, feature) => filter.filter({zoom}, {type:2, properties:{feature, bridge:true, state:'disused', name:'x'}});
+    assert.equal(at(9.9, 'tram'), false, id);
+    assert.equal(at(10, 'tram'), true, id);
+    assert.equal(at(9, 'rail'), true, id);
+  }
 });
 test('lifecycle snapshot keeps planned speed, bridges and tunnels', async () => {
   const {parseMaxspeed, toGeoJSON} = await import('../scripts/lifecycle.mjs');
