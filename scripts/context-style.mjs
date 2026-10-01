@@ -20,7 +20,12 @@ export function contextLayers() {
   areas.push({...base('context-transport-grounds','fill','landuse',12,values('class',['bus_station','railway'])),paint:{'fill-color':'#6ca6a8','fill-opacity':0.2}});
   lines.push({...base('context-transport-grounds-edge','line','landuse',12,values('class',['bus_station','railway'])),paint:{'line-color':'#4d8d91','line-width':1,'line-opacity':0.65}});
   areas.push({...base('context-transport-airport-area','fill','aeroway',10,['all',['==',['geometry-type'],'Polygon'],values('class',['aerodrome','apron','terminal','runway','taxiway'])]),paint:{'fill-color':'#929bc2','fill-opacity':0.25}});
-  lines.push({...base('context-transport-airport-runways','line','aeroway',10,values('class',['runway','taxiway'])),paint:{'line-color':'#7982a1','line-width':['interpolate',['linear'],['zoom'],10,1.5,16,5],'line-opacity':0.7}});
+  // Runways as grey-blue strips about their real width (runways about 45 m,
+  // taxiways about 20 m), in place of the base map's broad white stripe.
+  const runway=['==',['get','class'],'runway'];
+  lines.push({...base('context-transport-airport-runways','line','aeroway',10,['all',['==',['geometry-type'],'LineString'],values('class',['runway','taxiway'])]),
+    layout:{'line-cap':'butt','line-join':'round'},
+    paint:{'line-color':['case',runway,'#8d95b0','#aab1c8'],'line-width':['interpolate',['exponential',2],['zoom'],10,['case',runway,1,0.5],13,['case',runway,2.5,1],16,['case',runway,18,8],19,['case',runway,140,62]],'line-opacity':0.85}});
   lines.push({...base('context-transport-ferry-routes','line','transportation',9,values('class',['ferry'])),paint:{'line-color':'#388b9b','line-width':1.2,'line-opacity':0.65,'line-dasharray':[4,3]}});
   // Destinations are placed below transport and all rail labels. Named major
   // facilities lead; ordinary schools/cultural sites enter a little later.
