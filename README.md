@@ -43,4 +43,4 @@ original examples and Europe extractor remain in the repository.
 
 Repository code is licensed under [Apache 2.0](LICENSE). Map data and third-party
 assets retain their own licences; see [sources and attribution](docs/data-maintenance.md#sources-and-attribution)
-and the map’s **About & data** panel.
+and the map’s **?** help page.
