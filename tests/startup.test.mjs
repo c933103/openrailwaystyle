@@ -48,7 +48,7 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
     getCanvas() { return {style:{}}; }
     getCanvasContainer() { return this.canvasContainer ||= window.document.createElement('div'); }
     doubleClickZoom = {enable(){}, disable(){}};
-    queryRenderedFeatures() { return this.rendered || []; }
+    queryRenderedFeatures({layers}={}) {return (this.rendered||[]).filter(f=>!layers||layers.includes(f.layer?.id));}
     querySourceFeatures(id,{sourceLayer}) { return (this.sourceFeatures || []).filter(f=>f.sourceLayer===sourceLayer); }
     isSourceLoaded() { return true; }
     projection = {type:'mercator'};

@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-23';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-23';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-47';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-47';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-23';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-23';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-23';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-23';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-23';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-47';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-47';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-47';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-47';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-47';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -34,8 +34,9 @@ const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_C
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
 const status = $('map-status');
 let legendHelpOpen = false;
+let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-23';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-47';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -237,6 +238,7 @@ function applySettings() {
     if (layer.id.startsWith('station-')) visible = settings.stations && (!layer.id.startsWith('station-former-') || settings.inactive);
     if (layer.id.startsWith('inactive-')) visible = settings.inactive;
     if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive);
+    if(layer.id==='platform-lengths')visible=settings.labels;
     if (layer.id.startsWith('terrain-')) visible = settings.relief;
     if (layer.id.startsWith('context-transport-')) visible = settings.transport;
     if (layer.id.startsWith('context-destinations-')) visible = settings.destinations;
@@ -255,7 +257,7 @@ function applySettings() {
   // would keep the old rows.
   inView = [];
   renderLegend();
-  if (ready) { scheduleLegend(); scheduleNearbyTransport(); }
+  if (ready) { scheduleLegend(); scheduleNearbyTransport();platformLengths?.update(); }
 }
 const featurePickRank = f => f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|owner)-labels$/;
@@ -263,7 +265,7 @@ const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-
 // Clickable: stations, tracks, level crossings, inactive lines, and transport
 // and destination points; land-use areas, protected, heritage and other
 // planning areas, jurisdictions and buildings are drawn for context only.
-const isClickable = id => INFRASTRUCTURE_POINTS.includes(id) || /^context-(transport|destinations)-.+-label$/.test(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|owner)-(tracks|overview|branch-overview|metro-overview)$/.test(id);
+const isClickable = id => id.startsWith('platform-') || INFRASTRUCTURE_POINTS.includes(id) || /^context-(transport|destinations)-.+-label$/.test(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|owner)-(tracks|overview|branch-overview|metro-overview)$/.test(id);
 function row(dl, label, value) {
   if (value === undefined || value === null || value === '') return;
   dl.append(textNode('dt', label), textNode('dd', String(value)));
@@ -306,15 +308,17 @@ function showDetails(feature) {
   if (INFRASTRUCTURE_POINTS.includes(feature.layer?.id)) { showInfrastructureContext(feature); return; }
   if (feature.layer?.id.startsWith('context-')) { showContextDetails(feature); return; }
   const p = feature.properties;
+  const isPlatform=feature.source==='platformLengths'||feature.source==='platformEdges';
   const isStation = feature.source?.startsWith('station') || feature.kind === 'station';
   const panel = $('detail-content'); panel.replaceChildren();
-  panel.append(textNode('div', isStation ? 'RAILWAY STATION' : 'RAILWAY INFRASTRUCTURE', 'eyebrow'));
+  panel.append(textNode('div', isPlatform?'RAILWAY PLATFORM':isStation ? 'RAILWAY STATION' : 'RAILWAY INFRASTRUCTURE', 'eyebrow'));
   panel.append(textNode('h2', displayName(p, settings.language) || (isStation ? 'Unnamed station' : 'Unnamed railway')));
   const dl = document.createElement('dl');
   row(dl, 'Type', p.feature || p.railway || (isStation ? 'station' : undefined));
   row(dl, 'Status', p.state || 'present');
   row(dl, 'Reference', p.label || p.ref || p.railway_ref || p['railway:ref']);
-  if (isStation) {
+  if(isPlatform){row(dl,'Boarding edge length',formatPlatformLength(Number(p.platform_length),settings.units));row(dl,'Platform',p.ref);}
+  else if (isStation) {
     row(dl, 'Station type', p.station);
     row(dl, 'Mapped size', p.station_size);
     if (p.station_size) panel.append(textNode('p', 'Size follows mapped route importance, not passenger numbers.', 'small'));
@@ -538,6 +542,7 @@ function gauge(value) {
 function unitStyle(style) {
   for (const layer of style.layers) {
     if (/^speed-(branch-overview|metro-overview|overview|tracks)$/.test(layer.id)) layer.paint['line-color'] = speedPaint(settings.units);
+    if(layer.id==='platform-lengths')layer.layout['text-field']=platformLengthLabel(settings.units);
     if (layer.id === 'speed-labels') layer.layout['text-field'] = speedLabel(settings.units);
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) layer.paint['line-color'] = inactivePaint(settings.mode, settings.units);
     if (/^terrain-(seabed-)?contour-labels/.test(layer.id)) layer.layout['text-field'] = ['concat', ['to-string', ['get','ele']], settings.units === 'imperial' ? ' ft' : ' m'];
@@ -565,7 +570,7 @@ function applyUnits() {
   unitStyle(style);
   for (const layer of style.layers) {
     if (/^speed-(branch-overview|metro-overview|overview|tracks)$/.test(layer.id) || (/^inactive-(regional|railways)-/.test(layer.id) && !layer.id.includes('bridge'))) map.setPaintProperty(layer.id, 'line-color', layer.paint['line-color']);
-    if (layer.id === 'speed-labels' || /^terrain-(seabed-)?contour-labels/.test(layer.id)) map.setLayoutProperty(layer.id, 'text-field', layer.layout['text-field']);
+    if (layer.id === 'speed-labels' || layer.id==='platform-lengths' || /^terrain-(seabed-)?contour-labels/.test(layer.id)) map.setLayoutProperty(layer.id, 'text-field', layer.layout['text-field']);
   }
   map.getSource('contours')?.setTiles(style.sources.contours.tiles);
   map.getSource('seabedContours')?.setTiles(style.sources.seabedContours.tiles);
@@ -595,7 +600,7 @@ function updateStatus() {
 const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg|owner):\/\//,'');
 function localizeStyle(style) {
   for (const layer of style.layers) {
-    if (layer.type !== 'symbol' || layer.id === 'speed-labels' || layer.id.startsWith('terrain-')) continue;
+    if (layer.type !== 'symbol' || layer.id === 'speed-labels' || layer.id==='platform-lengths' || layer.id.startsWith('terrain-')) continue;
     if (layer.source === 'openmaptiles' || layer.id.startsWith('station-') || layer.id.endsWith('-names')) layer.layout['text-field'] = labelExpression(settings.language);
   }
   style.sources.openmaptiles.url = `atlasbase://${settings.language}/${unwrap(style.sources.openmaptiles.url).replace(/^pmtiles:\/\//,'')}`;
@@ -882,6 +887,7 @@ async function initialize() {
     if (MODES.some(mode => layer.id.startsWith(`${mode}-`))) visible = layer.id.startsWith(`${settings.mode}-`);
     if (layer.id === 'satellite') visible = settings.background !== 'map';
     else if (settings.background === 'satellite' || (settings.background === 'hybrid' && isBaseMap(layer))) visible = false;
+    if(layer.id==='platform-lengths')visible=visible!==false&&settings.labels;
     if (visible !== undefined) (layer.layout ||= {}).visibility = visible ? 'visible' : 'none';
   }
   // Reopen where the last visit ended, unless the link gives a position; start
@@ -1007,6 +1013,10 @@ async function initialize() {
   };
   if (map.isStyleLoaded?.()) styleReady(); else map.once('style.load', styleReady);
   map.on('idle', updateStatus);
+  platformLengths=createPlatformLengths(map,{active:()=>ready&&settings.labels&&settings.background!=='satellite'});
+  map.on('moveend',()=>platformLengths.update());
+  map.on('remove',()=>platformLengths.destroy());
+  map.on('sourcedata',e=>{if(e.sourceId==='platformEdges'&&e.tile)platformLengths.update();});
   map.on('moveend', scheduleLegend);
   map.on('moveend', scheduleNearbyTransport);
   map.on('sourcedata', e => { if (e.sourceId === 'openmaptiles' && e.isSourceLoaded) scheduleNearbyTransport(); });
