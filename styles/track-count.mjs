@@ -307,14 +307,22 @@ export function stationTracks(lines, zones, metres, {prefer = () => true} = {}) 
 const STITCH = 2 + SLACK;    // tile units: a piece's end this close to another piece lies on it
 export function stitchParts(parts, tolerance = STITCH) {
   let pieces = parts.filter(part => part.length > 1);
-  const join = (a, b) => {
-    const [x, y] = a.at(-1);
+  // The first segment of b that point [x, y] lies on (its index + 1), or 0.
+  const on = ([x, y], b) => {
     for (let k = 1; k < b.length; k++) {
       const [x1, y1] = b[k-1], [x2, y2] = b[k], ex = x2 - x1, ey = y2 - y1, l2 = ex * ex + ey * ey;
       const t = l2 ? Math.max(0, Math.min(1, ((x - x1) * ex + (y - y1) * ey) / l2)) : 0;
-      if (Math.hypot(x1 + ex * t - x, y1 + ey * t - y) <= tolerance) return [...a, ...b.slice(k)];
+      if (Math.hypot(x1 + ex * t - x, y1 + ey * t - y) <= tolerance) return k;
     }
-    return null;
+    return 0;
+  };
+  // A piece lying wholly on another (a tile's margin repeating part of the
+  // way) adds nothing to it.
+  const join = (a, b) => {
+    const k = on(a.at(-1), b);
+    if (!k) return null;
+    if (on(a[0], b)) return b;
+    return on(b[0], a) && on(b.at(-1), a) ? a : [...a, ...b.slice(k)];
   };
   for (let joined = true; joined && pieces.length > 1;) {
     joined = false;

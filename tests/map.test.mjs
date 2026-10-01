@@ -871,6 +871,10 @@ test('track counts: untagged crossovers and sidings are not running tracks', asy
   for (const extra of [{usage: 'main'}, {routes: 1}]) assert.deepEqual([...connectors(scissors.map((line, i) => i === 6 ? {...line, ...extra} : line), 1)], [7]);
   assert.deepEqual(stitchParts([[[90, 0], [170, 0]], [[0, 0], [100, 0]]]), [[[0, 0], [100, 0], [170, 0]]]);
   assert.equal(stitchParts([[[0, 0], [10, 0]], [[50, 0], [60, 0]]]).length, 2, 'pieces with a gap stay apart');
+  // A piece wholly on another (a neighbouring tile's margin repeating the
+  // way's tail) leaves the whole way, in either order.
+  assert.deepEqual(stitchParts([[[20, 0], [10, 0]], [[100, 0], [10, 0]]]), [[[100, 0], [10, 0]]]);
+  assert.deepEqual(stitchParts([[[100, 0], [10, 0]], [[20, 0], [10, 0]]]), [[[100, 0], [10, 0]]]);
   // A station across the scissors counts its two tracks, not four.
   const zone = {inside: (x, y) => x >= -100 && x <= 300 && y >= -20 && y <= 25};
   for (const i of connectors(scissors, 1)) Object.assign(scissors[i], {main: false, service: 'crossover'});
