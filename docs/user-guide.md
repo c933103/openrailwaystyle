@@ -1,4 +1,4 @@
-# Using Open Railway Atlas
+# Using Railway Atlas
 
 [Documentation index](README.md) · [Project overview](../README.md)
 
@@ -12,13 +12,13 @@ Stations appear progressively as you zoom in. Construction, proposed and former 
 
 ## Display settings and sharing
 
-Station search and responsive controls. Display settings and the label language are remembered in a cookie; the address carries only the map position, and “Copy map link” adds the display settings so a shared link opens the same view (they are then saved and removed from the address).
+Station search and responsive controls. Display settings and the label language are remembered in a cookie; the address carries only the map position, and the link button (🔗, copy map link) adds the display settings so a shared link opens the same view (they are then saved and removed from the address). The satellite button copies the GPS coordinates of the map centre (latitude, longitude in decimal degrees).
 
 The shared language selector offers local names or 12 languages. It uses recorded names and fallbacks, without automatic translation or script conversion; see [label rules](labels.md).
 
 Under the view buttons, the background can be the drawn map, satellite imagery alone, or hybrid: the imagery under the railways (and stations) of the chosen view, without the map's roads and labels. The imagery is EOxCloudless (Sentinel-2, 10 m per pixel): stations, yards and track corridors show, not single tracks.
 
-Display options, in three groups (railways, surroundings, map), also control the boxed track counts of the Infrastructure view, transport facilities, destinations, planning constraints, relief, metric or imperial units, and the readout under the scale bar: the coordinates under the cursor (the map's centre on a touch screen) and the zoom. On small screens the controls start folded away. Under the legend, “How to read this view” explains the current view's colours.
+The gear button opens the settings, in place of the map controls (‹ returns): in three groups (railways, surroundings, map), they control the boxed track counts of the Infrastructure view, transport facilities, destinations, planning constraints, relief, metric or imperial units, and the readout under the scale bar: the coordinates under the cursor (the map's centre on a touch screen) and the zoom. On small screens the controls start folded away; the panel's title and its fold button stay in view when the panel scrolls. Under the legend, “How to read this view” explains the current view's colours.
 
 ## Install as an app
 
@@ -30,7 +30,7 @@ The compass resets north. The location button shows your position (the browser a
 
 The map reopens where it was left, on the globe or flat map as last used. The globe/map button (🌍/🗺️) switches projection. The globe can be dragged and zoomed over the poles while keeping the planet’s size as the view moves.
 
-The map switches to the globe automatically below zoom 4, and back to the flat map from zoom 4 unless most of the view is beyond 60° N or S. This can be turned off in Display options. Polar coverage and its resolution are described in the [data maintenance guide](data-maintenance.md#polar-caps).
+The map switches to the globe automatically below zoom 4, and back to the flat map from zoom 4 unless most of the view is beyond 60° N or S. This can be turned off in the settings. Polar coverage and its resolution are described in the [data maintenance guide](data-maintenance.md#polar-caps).
 
 ## Draw and measure
 

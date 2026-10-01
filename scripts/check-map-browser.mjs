@@ -83,7 +83,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') { console.log('Browser resource:',msg.text()); if(/DataCloneError|already detached/.test(msg.text())) errors.push(msg.text()); }});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20260930-5&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261001-1&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
@@ -229,7 +229,8 @@ try{
   const contours=await page.screenshot({path:'browser-review/contours.jpg',type:'jpeg',quality:55});
   console.log('CONTOUR_IMAGE_START'+contours.toString('base64')+'CONTOUR_IMAGE_END');
   console.log('Checking display controls');
-  await page.locator('.display-options summary').click();
+  await page.locator('#settings-open').click();
+  assert.equal(await page.locator('#main-view').isHidden(),true,'settings replace the map controls');
   await page.locator('#inactive').uncheck();
   await page.waitForFunction(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
@@ -242,6 +243,7 @@ try{
     return map.getLayoutProperty('terrain-contours','visibility')==='none' && !map.queryRenderedFeatures().some(f=>f.source==='contours');
   },undefined,{timeout:30000});
   await page.locator('#relief').check();
+  await page.locator('#settings-close').click();
   assert.equal(await page.locator('.language-picker select').count(),1);
   assert.equal(await page.locator('#region').count(),0);
   assert.ok(requests.some(url=>url.includes('terrarium')),'Relief source requested');
@@ -292,13 +294,26 @@ try{
   console.log('PASS: compass resets north');
   await page.locator('#collapse').click();
   await page.locator('[data-mode="speed"]').click();
+  await page.locator('#settings-open').click();
   await page.selectOption('#units','imperial');
   assert.match(await page.locator('#legend').textContent(),/mph/);
   assert.match(await page.locator('.maplibregl-ctrl-scale').textContent(),/ft|mi/);
   await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return JSON.stringify(map.getLayoutProperty('speed-labels','text-field')).includes('mph');},undefined,{timeout:10000});
   await page.selectOption('#units','metric');
+  await page.locator('#settings-close').click();
   assert.match(await page.locator('.maplibregl-ctrl-scale').textContent(),/km|\bm\b/);
   console.log('PASS: units switch legend, scale bar and speed labels');
+  await page.locator('#copy-coordinates').click();
+  await page.waitForFunction(()=>/Map centre copied: -?\d+\.\d{6}, -?\d+\.\d{6}|coordinates/.test(document.querySelector('#share-status').textContent+(document.querySelector('#share-status input')?.value||'')));
+  const coordinateText=await page.evaluate(()=>document.querySelector('#share-status input')?.value || document.querySelector('#share-status').textContent);
+  assert.match(coordinateText,/-?\d+\.\d{6}, -?\d+\.\d{6}/,'the map centre as latitude, longitude');
+  // The panel title and its collapse button stay in place when the panel scrolls.
+  const headerTop=async()=>(await page.locator('.panel header').boundingBox()).y;
+  const panelTop=(await page.locator('.panel').boundingBox()).y;
+  await page.locator('.panel').evaluate(panel=>{panel.scrollTop=panel.scrollHeight;});
+  assert.ok(Math.abs(await headerTop()-panelTop)<2,'the header stays at the top of the scrolled panel');
+  await page.locator('.panel').evaluate(panel=>{panel.scrollTop=0;});
+  console.log('PASS: coordinates copied; panel header stays visible when scrolling');
   const zoomNow=()=>page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map.getZoom();});
   const zoomBefore=await zoomNow();
   await page.locator('button.atlas-ctrl[title^="More detail"]').click();

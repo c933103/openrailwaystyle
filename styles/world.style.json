@@ -1,6 +1,6 @@
 {
   "version": 8,
-  "name": "Open Railway Atlas — world",
+  "name": "Railway Atlas — world",
   "metadata": {
     "description": "Worldwide station-first adaptation of Open Railway Styles",
     "openrailwaystyle:rail-data": "https://openrailwaymap.app"

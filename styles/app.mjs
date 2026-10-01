@@ -1,10 +1,10 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20260930-5';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20260930-5';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20260930-5';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20260930-5';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20260930-5';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20260930-5';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-1';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-1';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-1';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -34,7 +34,7 @@ const settings = readSettings(location.search, {language: readCookie(LANGUAGE_CO
 const status = $('map-status');
 let legendHelpOpen = false;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20260930-5';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-1';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -608,7 +608,7 @@ function localizeStyle(style) {
 // levels; its title gives the scale the map is drawn at.
 // Under the scale bar: the coordinates under the cursor (the map's centre
 // without one, as on a touch screen) and the zoom, where More detail adds the
-// scale the map is drawn at. Turned off in Display options.
+// scale the map is drawn at. Turned off in the settings.
 const readout = Object.assign(textNode('div', '', 'maplibregl-ctrl map-readout'), {hidden: !settings.readout});
 let readoutPoint = null;
 function updateReadout() {
@@ -624,7 +624,7 @@ const drawButton = Object.assign(document.createElement('button'), {type:'button
 // Globe or flat map. Web Mercator stretches high latitudes without limit;
 // the globe (MapLibre's vertical-perspective projection) shows every region
 // at its true shape. The button switches either way; automatically (unless
-// turned off in Display options) the map becomes the globe below zoom 4 and
+// turned off in the settings) the map becomes the globe below zoom 4 and
 // the flat map from zoom 4, except where most of the view is beyond 60° N or
 // S (autoProjection). It acts only when that choice changes, so a manual
 // switch holds until then.
@@ -1157,12 +1157,34 @@ $('details-close').addEventListener('click', closeDetails);
 addEventListener('keydown', event => { if (event.key === 'Escape' && !$('details').hidden && !drawing?.active && !measuring?.active && !document.querySelector('dialog[open]')) closeDetails(); });
 $('about-open').addEventListener('click', () => $('about').showModal());
 $('about-close').addEventListener('click', () => $('about').close());
-$('share').addEventListener('click', async () => {
-  saveSettings(); $('share-status').hidden = false;
-  const link = shareURL();
-  try { await navigator.clipboard.writeText(link); $('share-status').textContent = 'Map link copied, including position and display options.'; }
-  catch { $('share-status').replaceChildren(textNode('span', 'Copy this address: ')); const input = document.createElement('input'); input.value = link; input.readOnly = true; input.setAttribute('aria-label', 'Shareable map address'); input.style.width = '100%'; $('share-status').append(input); input.select(); }
+// Copies text, or shows it selected for copying where the clipboard is
+// unavailable.
+async function copyText(text, done, label) {
+  $('share-status').hidden = false;
+  try { await navigator.clipboard.writeText(text); $('share-status').textContent = done; }
+  catch { $('share-status').replaceChildren(textNode('span', `Copy this ${label}: `)); const input = document.createElement('input'); input.value = text; input.readOnly = true; input.setAttribute('aria-label', label); input.style.width = '100%'; $('share-status').append(input); input.select(); }
+}
+$('share').addEventListener('click', () => { saveSettings(); copyText(shareURL(), 'Map link copied, including position and display options.', 'map address'); });
+// The map centre as latitude, longitude in decimal degrees (WGS 84), as GPS
+// devices and map apps accept it.
+// The new controls may be missing when the service worker falls back to an
+// older saved page (offline, mid-update): their listeners are then skipped.
+$('copy-coordinates')?.addEventListener('click', () => {
+  if (!map) return;
+  const {lat, lng} = map.getCenter().wrap();
+  copyText(`${lat.toFixed(6)}, ${lng.toFixed(6)}`, `Map centre copied: ${lat.toFixed(6)}, ${lng.toFixed(6)} (latitude, longitude).`, 'coordinates');
 });
+// Settings: a subpage of the panel, in place of the map controls.
+const showSettings = open => {
+  if (!$('main-view') || !$('settings-view')) return;
+  $('main-view').hidden = open; $('settings-view').hidden = !open;
+  $('settings-open').setAttribute('aria-expanded', String(open));
+  (open ? $('settings-close') : $('settings-open')).focus();
+};
+$('settings-open')?.addEventListener('click', () => showSettings(true));
+$('settings-close')?.addEventListener('click', () => showSettings(false));
+// Escape here only leaves the settings (an open detail panel stays).
+$('settings-view')?.addEventListener('keydown', event => { if (event.key === 'Escape') { event.stopPropagation(); showSettings(false); } });
 $('search-form').addEventListener('submit', async e => {
   e.preventDefault();
   const q = $('search-input').value.trim(); if (q.length < 2) return;
