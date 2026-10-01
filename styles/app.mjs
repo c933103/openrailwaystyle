@@ -43,7 +43,7 @@ const loadScript = (src, global) => window[global] ? Promise.resolve() : new Pro
   document.head.append(script);
 });
 const libraries = Promise.all([
-  loadScript('https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.js', 'maplibregl'),
+  loadScript('https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js', 'maplibregl'),
   loadScript('https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js', 'pmtiles'),
   loadScript(new URL(`vendor/maplibre-contour.js?v=${assetVersion}`, import.meta.url).href, 'mlcontour'),
 ]);
@@ -971,11 +971,17 @@ async function initialize() {
   });
   updateAttribution();
   // The globe may be centred beyond 85° (globe-drag.mjs); a view left or
-  // linked there is applied again once that is allowed.
+  // linked there is applied again once that is allowed. So is any view
+  // opening on the globe: MapLibre limits the opening view as on the flat
+  // map, where at low zoom the centre stays far from the poles (84° N at
+  // zoom 3 opened at 80° N on a phone).
   polarCentres = allowPolarCentres(map, maplibregl.LngLat, () => MIN_ZOOM + settings.detail);
   const [hashZoom, hashLat, hashLng] = linked ? location.hash.slice(1).split('/').map(Number) : [];
   const wanted = linked ? {center: [hashLng, hashLat], zoom: hashZoom} : validCenter ? {center: start.c, zoom: start.z} : null;
-  if (wanted && Math.abs(wanted.center[1]) > 85 && wanted.center.every(Number.isFinite)) map.jumpTo(wanted);
+  if (wanted && (startGlobe || Math.abs(wanted.center[1]) > 85) && wanted.center.every(Number.isFinite)) {
+    // Again once the style has put the map on the globe.
+    map.jumpTo(wanted); map.once('style.load', () => map.jumpTo(wanted));
+  }
   map.on('styleimagemissing', event => {
     if (event.id.startsWith('context-')) {
       const icon = contextIcon(event.id,document);
