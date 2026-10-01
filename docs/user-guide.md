@@ -69,6 +69,8 @@ For sources and credits, use the map’s **?** help page or the [data and attrib
 
 Metric/imperial units are directly below Language. They apply to speed, dimensions, axle loads and mapped platform boarding-edge lengths. Platform lengths come from complete mapped boarding edges; they are not a guarantee of usable train length.
 
+The **Carto** background shows OpenStreetMap Standard beneath the railways. Railway colours, station labels and the legend follow your settings. Carto provides its own place labels; the terrain and contour toggle still applies. Carto tiles are for online viewing and are not saved for offline use.
+
 On phones and short landscape screens, the controls start as a floating app icon. Tap it to open the menu; the collapse button or Escape returns it to the icon.
 
 See [Axle load](axle-load.md) for the new view, national class distinctions, source references and the 28-day snapshot refresh.

@@ -97,4 +97,8 @@ Level crossings are shown from zoom 5, so they can be seen across a region hundr
 
 Platform boarding-edge lengths use the provider's `standard_railway_platform_edges` source and appear from zoom 19. A separate GeoJSON label source attaches the full edge length returned by `api/feature/openrailwaymap_standard/standard_railway_platform_edges/<way id>`. Values follow metric/imperial units. They are never measured from the clipped tile geometry and never inferred from a platform polygon's perimeter. Only visible edges are queried; requests are deduplicated, queued about one per second, cancelled when the edge leaves view, cached, and paused after a 429. Missing/invalid lengths receive no numeric label.
 
+### Carto background
+
+Carto uses the OSMF Standard raster tiles, with visible attribution and normal browser caching; the service worker never handles these tiles. The drawn basemap and its duplicate place/context labels are hidden, while railway overlays and optional relief/contours remain. Beyond the Mercator limit the existing polar data uses Carto land, water and ice colours; satellite/hybrid alone use black caps. The tile URL is centralized as `CARTO_TILES` in `map-model.mjs`. See the [tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
+
 See [Axle load](axle-load.md) for the new view, national class distinctions, source references and the 28-day snapshot refresh.
