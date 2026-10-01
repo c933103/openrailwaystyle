@@ -8,8 +8,9 @@ import earcut from 'earcut';
 import {CAP_RADIUS, MERCATOR_LIMIT, bandFor, decodeLine, fromPolar, toPolar} from './polar.mjs';
 
 // Style colours (world.style.json): land background, water, ice shelf
-// (hsl(47, 26%, 88%) at 0.8), runways, contours.
-const COLOURS = {land: '#f2f1e9', water: '#bfd8e0', iceShelf: '#e8e5d8', runway: '#ffffff', contourLand: '#927b5a', contourSeabed: '#467d9a'};
+// (hsl(47, 26%, 88%) at 0.8), runways, contours; and the caps under
+// satellite imagery.
+const COLOURS = {noImagery: '#000000', land: '#f2f1e9', water: '#bfd8e0', iceShelf: '#e8e5d8', runway: '#ffffff', contourLand: '#927b5a', contourSeabed: '#467d9a'};
 const rgba = (hex, alpha = 1) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).concat(alpha);
 // Opacity by zoom, as the style's contour layers: [zoom, opacity] stops.
 const ramp = (stops, zoom) => {
@@ -127,10 +128,12 @@ const FRAGMENT = `precision mediump float; uniform vec4 u_color; out vec4 fragCo
 
 // data: where the prepared files are; units(): 'metric' or 'imperial';
 // relief(): whether relief and contours are shown; places(features):
-// called with the named places in view, for labels.
+// called with the named places in view, for labels; imagery(): whether the
+// background is satellite imagery, which has no picture beyond 85.05°: the
+// caps are then plain black rather than a drawn map beside a photograph.
 export class PolarLayer {
-  constructor({data, units, relief = () => true, places = () => {}}) {
-    Object.assign(this, {id: 'polar-caps', type: 'custom', renderingMode: '2d', data, units, relief, places});
+  constructor({data, units, relief = () => true, places = () => {}, imagery = () => false}) {
+    Object.assign(this, {id: 'polar-caps', type: 'custom', renderingMode: '2d', data, units, relief, places, imagery});
     this.programs = new Map(); this.caps = {north: {}, south: {}}; this.tiles = new Map();
   }
   onAdd(map, gl) { this.map = map; this.gl = gl; }
@@ -312,11 +315,12 @@ export class PolarLayer {
     const fade = transition ** 4, units = this.units(), labels = [];
     // Line quads come in either winding, so nothing is culled.
     gl.disable(gl.CULL_FACE); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    const view = this.visible();
+    const view = this.visible(), imagery = this.imagery();
     for (const cap of ['north', 'south']) {
       if (!view[cap]) continue;
       this.loadCap(cap);
       const state = this.caps[cap];
+      if (imagery) { this.fill(state.disc, options.shaderData, projection, rgba(COLOURS.noImagery, fade)); continue; }
       this.fill(state.disc, options.shaderData, projection, rgba(cap === 'north' ? COLOURS.water : COLOURS.land, fade));
       this.fill(state.water, options.shaderData, projection, rgba(COLOURS.water, fade));
       this.fill(state.iceShelves, options.shaderData, projection, rgba(COLOURS.iceShelf, 0.8 * fade));
