@@ -26,7 +26,9 @@ export function panDirection(keys) {
 
 export function installKeyboardPan(map, {reducedMotion = () => false} = {}) {
   const container = map.getContainer(), held = new Map();
-  let frame = 0, last = 0, moved = 0, direction = [0, 0];
+  // The latest keydown goes with each pan as its originalEvent, so the map
+  // treats it as the user's (the location control stops following).
+  let frame = 0, last = 0, moved = 0, direction = [0, 0], keyEvent = null;
   const tick = now => {
     const keys = [...held.keys()];
     if (!keys.length) { frame = 0; return; }
@@ -35,24 +37,29 @@ export function installKeyboardPan(map, {reducedMotion = () => false} = {}) {
     const since = now - Math.min(...held.values()), {clientWidth: w, clientHeight: h} = container;
     direction = panDirection(keys);
     const distance = panSpeed(since, Math.min(w, h)) * dt / 1000;
-    if (distance > 0) { map.panBy([direction[0] * distance, direction[1] * distance], {animate: false}); moved += distance; }
+    if (distance > 0) { map.panBy([direction[0] * distance, direction[1] * distance], {animate: false}, {originalEvent: keyEvent}); moved += distance; }
     frame = requestAnimationFrame(tick);
   };
-  const stop = () => {
+  const stop = (topUp = true) => {
     held.clear(); cancelAnimationFrame(frame); frame = 0;
     // A short press moves at least one step, as MapLibre's did.
-    if (moved < STEP && (direction[0] || direction[1])) {
+    if (topUp && moved < STEP && (direction[0] || direction[1])) {
       const rest = STEP - moved;
-      map.panBy([direction[0] * rest, direction[1] * rest], {duration: reducedMotion() ? 0 : 160});
+      map.panBy([direction[0] * rest, direction[1] * rest], {duration: reducedMotion() ? 0 : 160}, {originalEvent: keyEvent});
     }
     moved = 0; direction = [0, 0];
   };
   // Capture: before MapLibre's own handler on the canvas inside.
   container.addEventListener('keydown', event => {
-    if (!DIRECTIONS[event.key] || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return;
+    // A modifier pressed during a pan (Shift turns or tilts) hands the keys
+    // back to MapLibre: the pan ends where it is.
+    const modified = event.shiftKey || event.altKey || event.ctrlKey || event.metaKey;
+    if (modified && held.size) stop(false);
+    if (!DIRECTIONS[event.key] || modified) return;
     event.preventDefault(); event.stopPropagation();
     if (held.has(event.key)) return;
     if (!held.size) { moved = 0; map.stop(); }
+    keyEvent = event;
     held.set(event.key, performance.now());
     direction = panDirection(held.keys());
     if (!frame) { last = performance.now(); frame = requestAnimationFrame(tick); }
