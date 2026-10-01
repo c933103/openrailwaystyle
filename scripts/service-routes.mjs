@@ -91,41 +91,52 @@ export function toTable(json) {
 const round = ([x, y]) => [Math.round(x * 1e6) / 1e6, Math.round(y * 1e6) / 1e6];
 
 // The table keeps, for each way and route, what each stage found: a way's
-// routes by stage (each response lists only the routes selected in its box,
-// so within a stage's pass they add up) and the stages that found a route.
-// A stage's refresh replaces only its own part, so routes another stage
-// found on a shared way stay. seen: the `w:<id>`/`r:<key>` met so far in the
-// stage's current pass.
-export function addResult(table, result, stage, seen) {
+// routes by stage and a route's relation id by stage. A stage's pass (which
+// may span runs) writes into `next`, adding up across its boxes (each
+// response lists only the routes selected in its box); when the pass is
+// complete, `next` replaces the stage's part (commitStage), or is dropped if
+// the refresh looks incomplete (discardStage). Parts other stages found stay
+// either way. Until then the tiles draw both.
+export function addResult(table, result, stage) {
   for (const route of result.routes) {
-    const previous = table.routes.get(route.key);
-    table.routes.set(route.key, {...route, relation: Math.min(previous?.relation ?? Infinity, route.relation),
-      stages: [...new Set([...(previous?.stages || []), stage])].sort()});
-    seen.add(`r:${route.key}`);
+    const previous = table.routes.get(route.key), next = {...(previous?.next || {})};
+    next[stage] = Math.min(next[stage] ?? Infinity, route.relation);
+    const {relation, ...props} = route;
+    table.routes.set(route.key, {...props, stages: previous?.stages || {}, next});
   }
   for (const way of result.ways) {
-    const previous = table.ways.get(way.id), byStage = {...(previous?.routes || {})};
-    byStage[stage] = [...new Set([...(seen.has(`w:${way.id}`) ? byStage[stage] || [] : []), ...way.routes])].sort();
-    table.ways.set(way.id, {id: way.id, lines: way.lines, routes: byStage});
-    seen.add(`w:${way.id}`);
+    const previous = table.ways.get(way.id), next = {...(previous?.next || {})};
+    next[stage] = [...new Set([...(next[stage] || []), ...way.routes])].sort();
+    table.ways.set(way.id, {id: way.id, lines: way.lines, routes: previous?.routes || {}, next});
   }
 }
-// What a complete pass of the stage no longer found: its routes and its
-// part of each way. Returns [kind, key] pairs.
-export const staleItems = (table, stage, seen) => [
-  ...[...table.routes.values()].filter(r => r.stages.includes(stage) && !seen.has(`r:${r.key}`)).map(r => ['r', r.key]),
-  ...[...table.ways.values()].filter(w => w.routes[stage] && !seen.has(`w:${w.id}`)).map(w => ['w', w.id]),
-];
-export const stageItems = (table, stage) => [...table.routes.values()].filter(r => r.stages.includes(stage)).length + [...table.ways.values()].filter(w => w.routes[stage]).length;
-// Drops the stage's part of those items; an item no stage holds goes.
-export function removeStale(table, stage, items) {
-  for (const [kind, key] of items) {
-    const map = kind === 'r' ? table.routes : table.ways, item = map.get(key);
-    if (kind === 'r') item.stages = item.stages.filter(s => s !== stage); else delete item.routes[stage];
-    if (kind === 'r' ? !item.stages.length : !Object.keys(item.routes).length) map.delete(key);
+const items = table => [...table.routes.values(), ...table.ways.values()];
+const partOf = item => item.stages || item.routes;
+// How much of the stage's committed part its pass did not find again, of
+// all that the stage holds or found.
+export function stageChange(table, stage) {
+  let stale = 0, total = 0;
+  for (const item of items(table)) {
+    const held = stage in partOf(item), found = stage in item.next;
+    if (held || found) total++;
+    if (held && !found) stale++;
+  }
+  return {stale, total};
+}
+function settle(table, stage, commit) {
+  for (const [map, key] of [[table.routes, 'key'], [table.ways, 'id']]) for (const item of [...map.values()]) {
+    const part = partOf(item);
+    if (commit) { if (stage in item.next) part[stage] = item.next[stage]; else delete part[stage]; }
+    delete item.next[stage];
+    if (!Object.keys(part).length && !Object.keys(item.next).length) map.delete(item[key]);
   }
 }
-const wayRoutes = way => [...new Set(Object.values(way.routes).flat())].sort();
+export const commitStage = (table, stage) => settle(table, stage, true);
+export const discardStage = (table, stage) => settle(table, stage, false);
+// What the tiles draw: committed and in-progress parts together.
+const wayRoutes = way => [...new Set([...Object.values(way.routes), ...Object.values(way.next)].flat())].sort();
+export const routeRelation = route => Math.min(...Object.values(route.stages), ...Object.values(route.next));
+export const routeStages = route => [...new Set([...Object.keys(route.stages), ...Object.keys(route.next)])];
 
 // The table (NDJSON): routes and ways, with the stages that found them.
 export const writeTable = ({routes, ways}) => [
@@ -186,8 +197,10 @@ export function buildTiles({routes, ways}) {
       // Names as name and name:xx, as the map's other labels, so they follow
       // the label language.
       list.forEach((route, i) => {
-        const properties = {id: `relation-${route.relation}`, name: route.label, ...route.names,
-          ref: route.ref, colour: route.colour, kind: route.kind, network: route.network, operator: route.operator, i, n: list.length};
+        const properties = {id: `relation-${routeRelation(route)}`, name: route.label, ...route.names,
+          ref: route.ref, colour: route.colour, kind: route.kind, network: route.network, operator: route.operator, i, n: list.length,
+          // Its place across the bundle (−(n−1) … n−1), for its name's offset.
+          slot: 2 * i - (list.length - 1)};
         const key = JSON.stringify(properties);
         if (!groups.has(key)) groups.set(key, {properties, lines: []});
         groups.get(key).lines.push(...lines);

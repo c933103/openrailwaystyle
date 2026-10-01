@@ -12,7 +12,7 @@
 import {mkdir, readFile, writeFile, rm, appendFile} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {STAGES, quarters} from './branch-lines.mjs';
-import {MIN_ZOOM, MAX_ZOOM, addResult, buildTiles, partQuery, readTable, removeStale, stageItems, staleItems, toTable, writeTable} from './service-routes.mjs';
+import {MIN_ZOOM, MAX_ZOOM, addResult, buildTiles, commitStage, discardStage, partQuery, readTable, routeStages, stageChange, toTable, writeTable} from './service-routes.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const previous = process.env.PREVIOUS_DATA ? new URL(`file://${process.env.PREVIOUS_DATA.replace(/\/?$/, '/')}`) : null;
@@ -68,7 +68,8 @@ if (!stage) {
   process.exit(0);
 }
 const current = info(stage.name);
-if (!current.pending?.length) { current.pending = stage.parts.map((part, index) => ({part: index, box: part.box})); current.seen = []; current.started = now; }
+// A new pass starts from nothing of its own in progress.
+if (!current.pending?.length) { current.pending = stage.parts.map((part, index) => ({part: index, box: part.box})); current.seen = []; current.started = now; discardStage(table, stage.name); }
 console.log(`Stage ${stage.name} (${stage.label}): ${current.pending.length} region(s) to fetch`);
 
 const BUDGET = Symbol('budget');
@@ -109,7 +110,6 @@ async function overpass(query) {
 }
 
 let fetchedBoxes = 0, splitBoxes = 0, stopped = null;
-const seen = new Set(current.seen);
 while (current.pending.length) {
   if (downloaded >= BUDGET_BYTES) { stopped = `download budget reached (${downloaded} bytes)`; break; }
   if (Date.now() - started > TIME_BUDGET_MS) { stopped = `time budget reached (${Math.round((Date.now() - started) / 60000)} minutes)`; break; }
@@ -129,23 +129,23 @@ while (current.pending.length) {
     continue;
   }
   fetchedBoxes++;
-  addResult(table, result, stage.name, seen);
+  addResult(table, result, stage.name);
   console.log(`Region ${item.box.join(',')}: ${result.routes.length} routes, ${result.ways.length} ways; ${downloaded} bytes, ${requests} requests this run`);
 }
-current.seen = [...seen];
 if (!current.pending.length) {
-  // A complete stage: the routes and memberships it no longer found were
-  // deleted or retagged (memberships other stages found stay).
-  const total = stageItems(table, stage.name), stale = staleItems(table, stage.name, seen);
-  // A refresh that would remove over a fifth of a stage's routes and ways
-  // points to an incomplete response: they stay, and the stage is tried
-  // again at its next refresh (the run's downloads are still recorded).
-  const suspicious = current.completed && total > 100 && stale.length > total * 0.2;
-  if (suspicious) console.warn(`Refresh of ${stage.name} would remove ${stale.length} of ${total} items; keeping them`);
-  else removeStale(table, stage.name, stale);
-  const routes = [...table.routes.values()].filter(r => r.stages.includes(stage.name)).length;
-  Object.assign(current, {completed: now, pending: null, seen: [], routes, kept: suspicious ? stale.length : 0});
-  console.log(`Stage ${stage.name} complete: ${routes} routes (${suspicious ? 0 : stale.length} items removed)`);
+  // A complete stage: what it found replaces its part, so routes and
+  // memberships it no longer found go (other stages' parts stay). A refresh
+  // that would remove over a fifth of the stage's items points to an
+  // incomplete response: it is dropped whole, the previous part stays, and
+  // the stage is tried again at its next refresh (the run's downloads are
+  // still recorded).
+  const {stale, total} = stageChange(table, stage.name);
+  const suspicious = current.completed && total > 100 && stale > total * 0.2;
+  if (suspicious) { console.warn(`Refresh of ${stage.name} would remove ${stale} of ${total} items; keeping the previous data`); discardStage(table, stage.name); }
+  else commitStage(table, stage.name);
+  const routes = [...table.routes.values()].filter(r => routeStages(r).includes(stage.name)).length;
+  Object.assign(current, {completed: now, pending: null, seen: [], routes, kept: suspicious ? stale : 0});
+  console.log(`Stage ${stage.name} complete: ${routes} routes (${suspicious ? 0 : stale} items removed)`);
 } else console.log(`Stage ${stage.name} continues next run (${current.pending.length} region(s) left): ${stopped}`);
 // With nothing fetched and no region split, an unavailable server leaves the
 // published data as it was; bytes it did download are still recorded (the
@@ -175,7 +175,7 @@ for (const [key, data] of buildTiles(table)) {
 await writeFile(new URL('index.json', out), JSON.stringify({tiles: index.sort()}));
 const manifest = {generated: new Date().toISOString(), routes: table.routes.size, ways: table.ways.size, tiles: index.length, tileBytes, zooms: [MIN_ZOOM, MAX_ZOOM],
   stages: STAGES.map(s => ({name: s.name, label: s.label, completed: info(s.name).completed, inProgress: Boolean(info(s.name).pending?.length),
-    routes: [...table.routes.values()].filter(r => r.stages.includes(s.name)).length})),
+    routes: [...table.routes.values()].filter(r => routeStages(r).includes(s.name)).length})),
   run: {stage: stage.name, requests, downloadedBytes: downloaded}, source: api,
   query: 'route relations (type=route) with route=subway, light_rail, tram or monorail, or route=train with service=commuter or urban, and their track ways, by region', license: 'ODbL-1.0',
   description: 'OpenStreetMap urban rail services (metro, light rail, tram, monorail and commuter rail routes) along the tracks they run on, for the Service view.'};
