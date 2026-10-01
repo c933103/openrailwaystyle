@@ -26,3 +26,18 @@ The fixes target verified retention/copy/initialisation behaviour, with determin
 Caches never remove tiles currently drawn by MapLibre; evicting raw responses or off-view polar meshes only means a later return may reload them. A polar view whose visible working set exceeds the budget is kept intact. The snapshots and label output are unchanged. New tests exercise byte eviction, worker transfers without detached cache entries, initial source visibility and polar disposal.
 
 Recheck on the current MapLibre release and on the Xperia with Chrome remote inspection before attributing any change in frame time or GPU memory to these fixes. Record network failures, wait for settled tiles, use one render listener, and compare identical views/settings with the same browser cache state.
+
+## Pending MapLibre 5.24 integration
+
+A second run used the same 5.24.0 library and globe compatibility code on both the old and updated cache implementations. All 131 integration tests passed, and desktop/portrait/landscape UI checks reported no page errors. A single render listener was used for all views.
+
+| View | Heap before / after (MiB) | Main-thread work before / after over 2 s (ms) | Cumulative failed requests before / after |
+| --- | ---: | ---: | ---: |
+| Globe | 35.25 / 36.67 | 0.75 / 0.70 | 22 / 22 |
+| Europe | 24.25 / 24.12 | 0.72 / 3.79 | 47 / 47 |
+| Hong Kong | 30.98 / 30.58 | 1.03 / 0.60 | 100 / 102 |
+| Tokyo | 33.34 / 37.50 | 0.83 / 2.97 | 122 / 191 |
+| Tokyo 50% | 46.05 / 35.07 | 0.96 / 163.21 | 144 / 266 |
+| Tokyo 25% | 37.89 / 38.51 | 0.90 / 1.39 | 165 / 298 |
+
+The two runs rendered the same feature counts at every sampled view and kept the same 1081×2401 canvas. Many API/tile requests failed or were still pending. Most samples recorded no repaints during the two-second window; the updated 50% sample recorded seven frames as work settled. These results show startup/compatibility and network limitations, not a measured frame-time improvement. The byte budgets and eliminated duplicate buffer copy above are deterministic; Xperia/PWA frame time and GPU-memory checks remain outstanding.

@@ -14,7 +14,7 @@ const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
 
-async function start({ failWebGL = false, delayLibraries = false, search = '', cookie = '' } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fetcher, search = '', cookie = '' } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -73,7 +73,7 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
     for (const script of window.document.head.querySelectorAll('script')) script.onload?.();
   };
   if (!delayLibraries) Object.assign(window, libraries);
-  window.fetch = async () => ({ok:true,json:async()=>structuredClone(style)});
+  window.fetch = fetcher || (async () => ({ok:true,json:async()=>structuredClone(style)}));
   window.matchMedia = () => ({matches:false});
   const context = dom.getInternalVMContext();
   const dependency = new vm.SyntheticModule(Object.keys(model), function() {
@@ -81,10 +81,14 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
   }, {context});
   const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','locate'],function(){this.setExport('installLabelProtocols',()=>{});this.setExport('localizeTile',x=>x);this.setExport('locate',()=>({atlas_han:'none',atlas_zh:''}));},{context});
   // The label code is imported on demand, after the controls are wired.
+  let loadLabels;
+  const labelsReady=new Promise(resolve=>{loadLabels=resolve;});
+  if(!delayLabels)loadLabels();
   const app = new vm.SourceTextModule(code, {
     context,
     initializeImportMeta(meta) { meta.url = 'https://example.org/openrailwaystyle/app.mjs'; },
     importModuleDynamically: async specifier => {
+      await labelsReady;
       if (!specifier.includes('tile-labels')) throw new Error(`Unexpected import ${specifier}`);
       if (protocols.status === 'unlinked') await protocols.link(() => {});
       if (protocols.status === 'linked') await protocols.evaluate();
@@ -109,7 +113,7 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
   await app.link(specifier => specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
-  return {dom,window,maps,errors,loadLibraries};
+  return {dom,window,maps,errors,loadLibraries,loadLabels};
 }
 
 test('app starts with the MapLibre 5 API and enables map controls', async () => {
@@ -311,4 +315,21 @@ test('saved hidden overlays are absent in the constructor before any tile reques
   for(const l of layers.filter(l=>/^terrain-|^inactive-|^station-|^context-/.test(l.id)||l.source==='trackCounts'||l.id==='speed-labels'))assert.equal(l.layout.visibility,'none',l.id);
   assert.equal(layers.find(l=>l.id==='speed-tracks').layout.visibility,'visible');
  }finally{dom.window.close();}
+});
+test('Causeway Bay search reaches both APIs before a delayed label bundle loads',async()=>{
+ const calls=[];
+ const places=[{osm_type:'way',osm_id:248971549,lat:'22.2802878',lon:'114.1841633',class:'railway',type:'station',name:'銅鑼灣 Causeway Bay',display_name:'銅鑼灣 Causeway Bay, Hong Kong',namedetails:{name:'銅鑼灣 Causeway Bay','name:en':'Causeway Bay'}}];
+ const {dom,window,maps,loadLabels}=await start({delayLabels:true,fetcher:async url=>{
+  calls.push(String(url));return {ok:true,json:async()=>String(url).includes('nominatim')?places:String(url).includes('/facility')?[]:structuredClone(style)};
+ }});
+ try {
+  assert.equal(maps.length,0,'map waits for labels');
+  window.document.getElementById('search-input').value='Causeway Bay';
+  window.document.getElementById('search-form').dispatchEvent(new window.Event('submit',{cancelable:true}));
+  for(let i=0;i<10;i++)await new Promise(r=>setTimeout(r,0));
+  assert.ok(calls.some(u=>u.startsWith(model.SEARCH_API)));
+  assert.ok(calls.some(u=>u.startsWith(model.PLACE_SEARCH_API)));
+  assert.match(window.document.getElementById('search-results').textContent,/Causeway Bay/);
+  assert.equal(window.document.getElementById('search-results').hidden,false);
+ }finally{loadLabels();for(let i=0;i<5;i++)await new Promise(r=>setTimeout(r,0));dom.window.close();}
 });
