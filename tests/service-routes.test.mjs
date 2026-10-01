@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import Pbf from 'pbf';
 import {VectorTile} from '@mapbox/vector-tile';
-import {addResult, buildTiles, commitStage, discardStage, joinLines, orient, routeRelation, stageChange, partQuery, readTable, routeLabel, routeOf, toTable, writeTable, LAYER} from '../scripts/service-routes.mjs';
+import {addResult, buildTiles, commitStage, discardStage, joinLines, orient, routeView, stageChange, partQuery, readTable, routeLabel, routeOf, toTable, writeTable, LAYER} from '../scripts/service-routes.mjs';
 
 test('service routes: names without their direction', () => {
   assert.equal(routeLabel('港鐵荃灣綫 MTR Tsuen Wan Line (南行 Southbound)'), '港鐵荃灣綫 MTR Tsuen Wan Line');
@@ -95,15 +95,16 @@ test('service routes: memberships add up within a pass, are kept per stage, and 
   addResult(table, {routes: [route('long', 6)], ways: [{id: 1, routes: ['long'], lines}]}, 'A');
   commitStage(table, 'A');
   assert.deepEqual(table.ways.get(1).routes, {A: ['local', 'long']});
-  assert.equal(routeRelation(table.routes.get('long')), 6, 'the lowest relation id of the pass');
+  assert.equal(routeView(table.routes.get('long')).relation, 6, 'the lowest relation id of the pass');
   // Stage B finds its own route on the same way.
   addResult(table, {routes: [route('cross', 9)], ways: [{id: 1, routes: ['cross'], lines}]}, 'B');
   commitStage(table, 'B');
-  // A rejected refresh of A (incomplete) leaves everything as it was.
-  addResult(table, {routes: [route('long', 6)], ways: [{id: 1, routes: ['long'], lines}]}, 'A');
+  // A rejected refresh of A (incomplete) leaves everything as it was, names too.
+  addResult(table, {routes: [{...route('long', 6), label: 'renamed'}], ways: [{id: 1, routes: ['long'], lines}]}, 'A');
   assert.deepEqual(stageChange(table, 'A'), {stale: 1, total: 3}, 'the local route was not found again');
   discardStage(table, 'A');
   assert.deepEqual(table.ways.get(1).routes, {A: ['local', 'long'], B: ['cross']});
+  assert.equal(routeView(table.routes.get('long')).label, 'long');
   assert.ok(table.routes.has('local'));
   // An accepted refresh: the local route goes, B's stays; the deleted
   // lower-id relation no longer gives the link.
@@ -111,7 +112,7 @@ test('service routes: memberships add up within a pass, are kept per stage, and 
   commitStage(table, 'A');
   assert.deepEqual(table.ways.get(1).routes, {A: ['long'], B: ['cross']});
   assert.ok(!table.routes.has('local') && table.routes.has('cross'));
-  assert.equal(routeRelation(table.routes.get('long')), 8);
+  assert.equal(routeView(table.routes.get('long')).relation, 8);
   // A way no stage holds any more goes.
   commitStage(table, 'A'); commitStage(table, 'B');
   assert.equal(table.ways.size, 0);

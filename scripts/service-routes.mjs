@@ -91,7 +91,8 @@ export function toTable(json) {
 const round = ([x, y]) => [Math.round(x * 1e6) / 1e6, Math.round(y * 1e6) / 1e6];
 
 // The table keeps, for each way and route, what each stage found: a way's
-// routes by stage and a route's relation id by stage. A stage's pass (which
+// routes by stage and a route (its lowest relation and what it says) by
+// stage. A stage's pass (which
 // may span runs) writes into `next`, adding up across its boxes (each
 // response lists only the routes selected in its box); when the pass is
 // complete, `next` replaces the stage's part (commitStage), or is dropped if
@@ -100,9 +101,10 @@ const round = ([x, y]) => [Math.round(x * 1e6) / 1e6, Math.round(y * 1e6) / 1e6]
 export function addResult(table, result, stage) {
   for (const route of result.routes) {
     const previous = table.routes.get(route.key), next = {...(previous?.next || {})};
-    next[stage] = Math.min(next[stage] ?? Infinity, route.relation);
-    const {relation, ...props} = route;
-    table.routes.set(route.key, {...props, stages: previous?.stages || {}, next});
+    // The pass's lowest relation, with what that relation says (name,
+    // translations, operator…).
+    if (!next[stage] || route.relation < next[stage].relation) next[stage] = route;
+    table.routes.set(route.key, {key: route.key, stages: previous?.stages || {}, next});
   }
   for (const way of result.ways) {
     const previous = table.ways.get(way.id), next = {...(previous?.next || {})};
@@ -135,7 +137,12 @@ export const commitStage = (table, stage) => settle(table, stage, true);
 export const discardStage = (table, stage) => settle(table, stage, false);
 // What the tiles draw: committed and in-progress parts together.
 const wayRoutes = way => [...new Set([...Object.values(way.routes), ...Object.values(way.next)].flat())].sort();
-export const routeRelation = route => Math.min(...Object.values(route.stages), ...Object.values(route.next));
+// A route as drawn: its committed part with the lowest relation, or before
+// any is committed, the in-progress one.
+export function routeView(route) {
+  const parts = Object.values(route.stages).length ? Object.values(route.stages) : Object.values(route.next);
+  return parts.reduce((a, b) => (b.relation < a.relation ? b : a));
+}
 export const routeStages = route => [...new Set([...Object.keys(route.stages), ...Object.keys(route.next)])];
 
 // The table (NDJSON): routes and ways, with the stages that found them.
@@ -189,7 +196,7 @@ export function joinLines(lines) {
 export function buildTiles({routes, ways}) {
   const out = new Map(), sets = [[new Map(), MIN_ZOOM, LOCAL_MIN_ZOOM - 1, r => !LOCAL_KINDS.includes(r.kind)], [new Map(), LOCAL_MIN_ZOOM, MAX_ZOOM, () => true]];
   for (const way of ways.values()) {
-    const all = wayRoutes(way).map(key => routes.get(key)).filter(Boolean)
+    const all = wayRoutes(way).map(key => routes.get(key)).filter(Boolean).map(routeView)
       .sort((a, b) => ORDER[a.kind] - ORDER[b.kind] || a.ref.localeCompare(b.ref, 'en', {numeric: true}) || a.label.localeCompare(b.label));
     const lines = way.lines.map(orient);
     for (const [groups, , , shown] of sets) {
@@ -197,7 +204,7 @@ export function buildTiles({routes, ways}) {
       // Names as name and name:xx, as the map's other labels, so they follow
       // the label language.
       list.forEach((route, i) => {
-        const properties = {id: `relation-${routeRelation(route)}`, name: route.label, ...route.names,
+        const properties = {id: `relation-${route.relation}`, name: route.label, ...route.names,
           ref: route.ref, colour: route.colour, kind: route.kind, network: route.network, operator: route.operator, i, n: list.length,
           // Its place across the bundle (−(n−1) … n−1), for its name's offset.
           slot: 2 * i - (list.length - 1)};
