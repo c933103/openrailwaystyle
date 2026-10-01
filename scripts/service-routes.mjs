@@ -44,7 +44,8 @@ export function routeLabel(name) {
 }
 const NAME_KEY = /^name:[a-z]{2,3}(-[A-Za-z]{2,4})?$/;
 // The same service in each direction (and in variants) is one route: the
-// same kind, network, reference and colour (and name, without a reference),
+// same kind, network, reference and colour (and name, without a reference
+// or without a network or operator),
 // in the same place. routeOf gives that group without the place;
 // serviceRoutes adds it, since networks are often named generically
 // ("Metro").
@@ -54,7 +55,10 @@ export function routeOf(rel) {
   if (!label) return null;
   const names = Object.fromEntries(Object.entries(t).filter(([k]) => NAME_KEY.test(k)).map(([k, v]) => [k, routeLabel(v)]).filter(([, v]) => v));
   const kind = t.route === 'train' ? 'commuter' : t.route;
-  return {key: [kind, t.network || t.operator || '', ref, colour(t.colour), ref ? '' : label].join('|'), kind,
+  // The name stays in the key without a reference or without a network or
+  // operator to scope the reference.
+  const scope = t.network || t.operator || '';
+  return {key: [kind, scope, ref, colour(t.colour), ref && scope ? '' : label].join('|'), kind,
     ref, label, colour: colour(t.colour), network: t.network || '', operator: t.operator || '', relation: rel.id, names};
 }
 

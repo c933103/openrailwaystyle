@@ -154,6 +154,11 @@ test('service routes: the same reference and network in two places are two route
   const apart = serviceRoutes(table([['A', [rel(6, 'Metro 1', [40]), rel(7, 'Metro 1', [41]), bent, inner]]]));
   assert.notEqual(apart.get('r6'), apart.get('r7'), 'extents overlap, tracks do not');
   assert.notEqual(routeOf({id: 3, tags: {route: 'tram', ref: '1', network: 'X', name: 'One'}}).key, routeOf({id: 4, tags: {route: 'subway', ref: '1', network: 'X', name: 'One'}}).key);
+  // Without a network or operator, the name tells a reference's services
+  // apart; both directions of one still share it.
+  const plain = (id, name) => routeOf({id, tags: {route: 'tram', ref: '1', colour: 'red', name}});
+  assert.notEqual(plain(5, 'Tram 1 Northtown').key, plain(6, 'Tram 1 Southville').key);
+  assert.equal(plain(7, 'Tram 1 Northtown: A → B').key, plain(8, 'Tram 1 Northtown: B → A').key);
 });
 
 test('service routes: relations of one line from different boxes or stages are one route, drawn once', () => {
