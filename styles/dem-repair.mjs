@@ -38,7 +38,8 @@ export const drop = z => 60 * 2 ** Math.max(0, 14 - z);
 const reach = z => Math.max(2, Math.round(10 * 2 ** (z - 13)));
 
 // How many contour lines lie between heights low and high in a terrain
-// tile of zoom z, in whichever units draw more of them (map-model.mjs):
+// tile of zoom z, in whichever units and family (land or seabed) draw
+// more of them (map-model.mjs):
 // land contours from zoom 7 (below sea level too at zooms 7 and 8, as the
 // style draws them); seabed contours from tiles one zoom coarser
 // (only above -200 m for tiles up to zoom 7), none beyond tile zoom 10.
@@ -56,7 +57,9 @@ const ringCounter = z => {
     // The land contours draw below sea level too below map zoom 9.
     const top = Math.min(high, 0) - 1e-9, bottom = z < 8 ? Math.max(low, -200) : low, ground = z < 9 ? low : Math.max(low, 0);
     let most = 0;
-    for (const [land, sea] of units) most = Math.max(most, between(land, ground, high) + between(sea, bottom, top));
+    // Each family on its own: the land contours of a tile draw at its own
+    // map zoom, its seabed contours one zoom further in.
+    for (const [land, sea] of units) most = Math.max(most, between(land, ground, high), between(sea, bottom, top));
     return most;
   };
 };

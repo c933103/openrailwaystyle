@@ -39,14 +39,15 @@ test('terrain repair: pits, a groove and a band go; real terrain stays', () => {
   assert.equal(repairPixels(tile(() => -14840), 256, 8, 0, 0, null), 0);
 });
 
-test('terrain repair: contour lines are counted in whichever units draw more', () => {
+test('terrain repair: contour lines are counted in whichever units and family draw more', () => {
   assert.equal(contourRings(9, -400, -20), 25); // 50 ft seabed lines (18 at 20 m)
   assert.equal(contourRings(9, -250, -20), 15); // 11 at 20 m: an imperial storm
-  assert.equal(contourRings(7, -400, -20), 6); // 150 ft above -200 m, and 500 ft land lines below the sea
+  assert.equal(contourRings(7, -400, -20), 4); // 150 ft above -200 m (2 land lines at 500 ft)
   assert.equal(contourRings(11, -400, -20), 0); // no seabed lines
   assert.equal(contourRings(13, 0, 250), 16); // 50 ft land lines (12 at 20 m)
-  assert.equal(contourRings(9, -100, 150), 7); // both: 250 ft, and 50 ft below the sea
-  assert.equal(contourRings(7, -2500, -20), 20); // land lines below sea level too at zoom 7 (16 at 500 ft), and the shelf's 4
+  assert.equal(contourRings(9, -100, 150), 6); // 50 ft below the sea; the land lines (1) draw at another zoom
+  assert.equal(contourRings(7, -2500, -20), 16); // land lines below sea level too at zoom 7 (500 ft)
+  assert.equal(contourRings(8, -170, -10), 11); // 50 ft seabed lines, not added to the land line among them
 });
 
 test('terrain repair: single-pixel contour storms go at coarse zooms; real holes stay', () => {
