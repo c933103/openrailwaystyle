@@ -31,6 +31,7 @@ test('keyboard panning: a held key is one movement, ended on release', () => {
     panBy(offset, options) { this.fire('movestart'); this.fire('move'); if (options.animate !== false) this.fire('move'); this.fire('moveend'); }
     stop() {}
     getContainer() { return container; }
+    getCanvasContainer() { return container; }
   }
   const map = new Camera(), key = name => ({key: name, preventDefault() {}, stopPropagation() {}});
   globalThis.window = {addEventListener() {}};

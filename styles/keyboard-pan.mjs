@@ -25,7 +25,9 @@ export function panDirection(keys) {
 }
 
 export function installKeyboardPan(map, {reducedMotion = () => false} = {}) {
-  const container = map.getContainer(), held = new Map();
+  // Keys are taken only from the map itself (its canvas container), not from
+  // the zoom, compass and other controls, whose arrow keys stay their own.
+  const container = map.getContainer(), surface = map.getCanvasContainer(), held = new Map();
   // The latest keydown goes with each pan as its originalEvent, so the map
   // treats it as the user's (the location control stops following).
   let frame = 0, last = 0, moved = 0, direction = [0, 0], keyEvent = null;
@@ -73,7 +75,7 @@ export function installKeyboardPan(map, {reducedMotion = () => false} = {}) {
     moved = 0; direction = [0, 0];
   };
   // Capture: before MapLibre's own handler on the canvas inside.
-  container.addEventListener('keydown', event => {
+  surface.addEventListener('keydown', event => {
     // A modifier pressed during a pan (Shift turns or tilts) hands the keys
     // back to MapLibre: the pan ends where it is.
     const modified = event.shiftKey || event.altKey || event.ctrlKey || event.metaKey;
@@ -87,11 +89,11 @@ export function installKeyboardPan(map, {reducedMotion = () => false} = {}) {
     direction = panDirection(held.keys());
     if (!frame) { last = performance.now(); frame = requestAnimationFrame(tick); }
   }, true);
-  container.addEventListener('keyup', event => {
+  surface.addEventListener('keyup', event => {
     if (!held.has(event.key)) return;
     event.preventDefault(); event.stopPropagation();
     held.delete(event.key);
     if (!held.size) stop();
   }, true);
-  for (const target of [window, container]) target.addEventListener(target === window ? 'blur' : 'focusout', () => { if (held.size) stop(); });
+  for (const target of [window, surface]) target.addEventListener(target === window ? 'blur' : 'focusout', () => { if (held.size) stop(); });
 }
