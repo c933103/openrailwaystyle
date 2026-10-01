@@ -102,10 +102,11 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
     for (const [key,value] of Object.entries(departuresModule)) this.setExport(key, key === 'stationDepartures' ? async () => ({stops: [], rows: []}) : value);
   }, {context});
   const globe = new vm.SyntheticModule(['installGlobeDrag','allowPolarCentres'], function() { this.setExport('installGlobeDrag', () => ({sync() {}, justDragged: () => false})); this.setExport('allowPolarCentres', () => ({refresh() {}})); }, {context});
+  const keyboard = new vm.SyntheticModule(['installKeyboardPan'], function() { this.setExport('installKeyboardPan', () => {}); }, {context});
   const contextModule = new vm.SyntheticModule(Object.keys(contextFeatures),function() {
     for (const [key,value] of Object.entries(contextFeatures)) this.setExport(key,value);
   },{context});
-  await app.link(specifier => specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : dependency);
+  await app.link(specifier => specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries};
