@@ -1,6 +1,10 @@
 // Moving the globe as a globe.
-// - Dragging turns the sphere under the pointer and carries on over the
-//   poles, the heading turning as it would on a real globe.
+// - Dragging keeps the direction of travel and the compass heading: a
+//   sideways drag runs along the parallel (from Japan to California, not
+//   along a great circle down to South America) and an up-and-down drag
+//   along the meridian, the same distance on the planet per pixel at the
+//   centre. Over a pole the meridian carries on down the far side; the map
+//   is then the other way up, as the ground under it is.
 // - The planet keeps its size while dragging: MapLibre's zoom is relative
 //   to the latitude of the centre (a zoom level shows a bigger planet
 //   nearer the poles), so the zoom is adjusted as the centre's latitude
@@ -28,16 +32,23 @@ export function startFrame(center, bearing) {
   const c = toVector(center), {north, east} = axes(c), β = rad(bearing);
   return {c, u: north.map((n, i) => n * Math.cos(β) + east[i] * Math.sin(β))};
 }
-// Turn the frame for a pointer movement of dx, dy pixels (right, down):
-// the globe follows the pointer, so the centre moves the other way.
-export function stepFrame({c, u}, dx, dy, radiansPerPixel) {
-  const b = dx * radiansPerPixel, a = dy * radiansPerPixel;
-  const r = cross(u, c); // screen right
-  const c1 = unit(c.map((v, i) => v * Math.cos(b) - r[i] * Math.sin(b)));
-  return {
-    c: unit(c1.map((v, i) => v * Math.cos(a) + u[i] * Math.sin(a))),
-    u: unit(u.map((v, i) => v * Math.cos(a) - c1[i] * Math.sin(a))),
-  };
+// The view after a pointer movement of dx, dy pixels (right, down) at a
+// constant heading: the centre moves the other way, by the pointer's
+// distance on the planet, north–south along the meridian and east–west
+// along the parallel; the bearing stays.
+export function stepView({center: [lng, lat], bearing}, dx, dy, radiansPerPixel) {
+  const β = rad(bearing), right = -dx * radiansPerPixel, up = dy * radiansPerPixel;
+  const north = up * Math.cos(β) - right * Math.sin(β), east = up * Math.sin(β) + right * Math.cos(β);
+  let φ = lat + deg(north);
+  // East–west at the mean latitude of the step, never closer to a pole
+  // than the centre may come (where a parallel is a point).
+  const mid = rad(clampLat((lat + φ) / 2));
+  let λ = lng + deg(east) / Math.cos(mid);
+  // Over a pole: on down the far meridian, the view turned round.
+  if (φ > 90 || φ < -90) { φ = Math.sign(φ) * 180 - φ; λ += 180; bearing += 180; }
+  λ = ((λ + 180) % 360 + 360) % 360 - 180;
+  bearing = ((bearing + 180) % 360 + 360) % 360 - 180;
+  return {center: [λ, φ], bearing};
 }
 export function frameView({c, u}) {
   const {north, east} = axes(c);
@@ -145,7 +156,7 @@ export function installGlobeDrag(map, {active, ignore = () => false}) {
     const p = at(e);
     if (ignore(p)) return;
     const c = map.getCenter();
-    drag = {start: p, last: p, moved: false, frame: startFrame([c.lng, c.lat], map.getBearing())};
+    drag = {start: p, last: p, moved: false, view: {center: [c.lng, c.lat], bearing: map.getBearing()}};
   });
   const release = e => { pointers.delete(e.pointerId); if (drag?.moved) quietUntil = Date.now() + 400; drag = null; };
   addEventListener('pointerup', release); addEventListener('pointercancel', release);
@@ -157,9 +168,9 @@ export function installGlobeDrag(map, {active, ignore = () => false}) {
     drag.moved = true;
     const scale = radiansPerPixel();
     if (!scale) return;
-    drag.frame = stepFrame(drag.frame, p.x - drag.last.x, p.y - drag.last.y, scale);
+    drag.view = stepView(drag.view, p.x - drag.last.x, p.y - drag.last.y, scale);
     drag.last = p;
-    const {center, bearing} = frameView(drag.frame), before = map.getCenter().lat;
+    const {center, bearing} = drag.view, before = map.getCenter().lat;
     map.jumpTo({center, bearing, zoom: zoomForLatitude(map.getZoom(), before, center[1])});
   });
   return {

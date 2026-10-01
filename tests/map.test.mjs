@@ -575,35 +575,35 @@ test('globe below zoom 4; flat map from zoom 4 unless the view is mostly polar',
   assert.equal(autoProjection(6, 0.7), null); // leave as is near the poles
 });
 
-test('dragging the globe carries the view over a pole, turning the heading', async () => {
-  const {startFrame, stepFrame, frameView, zoomForLatitude} = await import('../styles/globe-drag.mjs');
+test('dragging the globe keeps the direction and the heading; over a pole it carries on', async () => {
+  const {stepView, zoomForLatitude} = await import('../styles/globe-drag.mjs');
   const near = (a, b, tolerance = 1e-6) => Math.abs(a - b) < tolerance;
   const perDegree = Math.PI / 180; // 1 px = 1° for the test
   // No movement: no change.
-  let view = frameView(stepFrame(startFrame([10, 50], 30), 0, 0, perDegree));
+  let view = stepView({center: [10, 50], bearing: 30}, 0, 0, perDegree);
   assert.ok(near(view.center[0], 10) && near(view.center[1], 50) && near(view.bearing, 30), JSON.stringify(view));
-  // Dragging down moves the view north; dragging right moves it west.
-  view = frameView(stepFrame(startFrame([10, 0], 0), 0, 5, perDegree));
+  // Dragging down moves the view north; dragging left moves it east.
+  view = stepView({center: [10, 0], bearing: 0}, 0, 5, perDegree);
   assert.ok(near(view.center[0], 10) && near(view.center[1], 5), JSON.stringify(view));
-  view = frameView(stepFrame(startFrame([10, 0], 0), 5, 0, perDegree));
+  view = stepView({center: [10, 0], bearing: 0}, 5, 0, perDegree);
   assert.ok(near(view.center[0], 5) && near(view.center[1], 0), JSON.stringify(view));
-  // From 80° N heading north, 20° of dragging passes continuously over the
-  // pole: every step moves the same angle, and it ends at 80° N on the far
-  // meridian, heading south.
-  let frame = startFrame([20, 80], 0), previous = frame.c, steps = [];
-  for (let i = 0; i < 20; i++) {
-    frame = stepFrame(frame, 0, 1, perDegree);
-    steps.push(Math.acos(Math.min(1, previous.reduce((s, v, k) => s + v * frame.c[k], 0))) / perDegree);
-    previous = frame.c;
-  }
-  view = frameView(frame);
-  assert.ok(near(view.center[0], -160) && near(view.center[1], 80), JSON.stringify(view));
+  // From Japan, a long sideways drag stays on the parallel (to California,
+  // not down a great circle to South America), heading unchanged.
+  view = {center: [139.7, 35.7], bearing: 0};
+  for (let i = 0; i < 325; i++) view = stepView(view, -0.25, 0, perDegree);
+  assert.ok(near(view.center[1], 35.7) && near(view.bearing, 0), JSON.stringify(view));
+  assert.ok(view.center[0] < -115 && view.center[0] > -125, 'about California: ' + view.center[0]);
+  // A turned map: dragging along the screen keeps the screen direction.
+  view = stepView({center: [0, 0], bearing: 90}, 0, 5, perDegree);
+  assert.ok(near(view.center[0], 5) && near(view.center[1], 0) && near(view.bearing, 90), JSON.stringify(view));
+  // From 80° N heading north, 20° of dragging passes over the pole and ends
+  // at 80° N on the far meridian, the map the other way up; and back.
+  view = {center: [20, 80], bearing: 0};
+  for (let i = 0; i < 20; i++) view = stepView(view, 0, 1, perDegree);
+  assert.ok(near(view.center[0], -160) && near(view.center[1], 80, 1e-9), JSON.stringify(view));
   assert.ok(near(Math.abs(view.bearing), 180), JSON.stringify(view));
-  assert.ok(steps.every(step => near(step, 1, 1e-6)), 'even steps: ' + steps.map(s => s.toFixed(3)));
-  // And back.
-  for (let i = 0; i < 20; i++) frame = stepFrame(frame, 0, -1, perDegree);
-  view = frameView(frame);
-  assert.ok(near(view.center[0], 20) && near(view.center[1], 80) && near(view.bearing, 0), JSON.stringify(view));
+  for (let i = 0; i < 20; i++) view = stepView(view, 0, -1, perDegree);
+  assert.ok(near(view.center[0], 20) && near(view.center[1], 80, 1e-9) && near(view.bearing, 0), JSON.stringify(view));
   // The planet keeps its size: zoom falls as the centre nears a pole.
   assert.ok(near(zoomForLatitude(3, 0, 60), 2));
   assert.ok(near(zoomForLatitude(2, 60, 0), 3));
