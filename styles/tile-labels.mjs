@@ -1,3 +1,4 @@
+import {ByteCache} from './byte-cache.mjs';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import encode from 'vt-pbf';
@@ -65,7 +66,7 @@ export function localizeTile(data, lang, coordinates) {
 export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch, {dataRoot, timeout = 12000} = {}) {
   // Only current-view requests are made. Keep a bounded cache of successful
   // responses so language changes can reuse downloaded station tiles.
-  const cache = new Map();
+  const cache = new ByteCache();
   // Downloads still under way, shared by everyone asking for the same URL
   // (neighbouring track-count tiles ask for the same railway tiles at once).
   // Each request has its own 12-second limit; a download is cancelled only
@@ -75,7 +76,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   const loading = new Map();
   function get(url, request, json = false) {
     if (cache.has(url)) {
-      const data = cache.get(url); cache.delete(url); cache.set(url,data); return Promise.resolve(data);
+      return Promise.resolve(cache.get(url));
     }
     let entry = loading.get(url);
     if (!entry || Date.now() - entry.started >= timeout) {
@@ -85,7 +86,6 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
         if (!response.ok) throw new Error(`Map names returned ${response.status}`);
         const data = json ? await response.json() : await response.arrayBuffer();
         cache.set(url,data);
-        while(cache.size>240) cache.delete(cache.keys().next().value);
         return data;
       })()};
       loading.set(url, entry);
@@ -144,7 +144,8 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       return new Promise(resolve => {
         const id = nextJob++;
         trackJobs.set(id, resolve);
-        trackWorker.postMessage({id, tiles: copy(tiles), areas: own(areas), stations: own(stations), y});
+        const message={id,tiles:copy(tiles),areas:own(areas),stations:own(stations),y};
+        trackWorker.postMessage(message,[...message.tiles.map(t=>t.data),message.areas,message.stations].filter(Boolean));
       });
     })();
     counted.set(key, job);
@@ -211,7 +212,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   function axleValues() {
     axleList ||= (dataRoot ? fetcher(new URL('axle-load.json',dataRoot)) : Promise.reject(new Error('no data location')))
       .then(r=>{if(!r.ok) throw new Error(`HTTP ${r.status}`);return r.json();})
-      .then(decodeLoadingGauges).then(list=>new Map([...list].map(([id,value])=>[id,JSON.parse(value)])))
+      .then(data=>decodeLoadingGauges(data,value=>Object.freeze(JSON.parse(value))))
       // Do not repeatedly request a missing snapshot for every tile.
       .catch(error=>{console.warn('Axle load list unavailable:',error.message);return new Map();});
     return axleList;
@@ -344,4 +345,3 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   });
   return {axleTile};
 }
-

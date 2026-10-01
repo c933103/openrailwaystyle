@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-76';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-76';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-79';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-79';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-76';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-76';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-76';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-76';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-76';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-79';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-79';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-79';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-79';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-79';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -36,7 +36,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-76';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-79';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -225,6 +225,24 @@ const CHECKBOXES = ['stations', 'trackCounts', 'labels', 'inactive', 'relief', '
 // The drawn base map: hidden under satellite imagery.
 const isBaseMap = layer => layer.source === 'openmaptiles' || layer.id === 'background' || layer.id.startsWith('terrain-');
 const RUNTIME_LAYER = /^(drawing|measure)-|^polar-caps$/;
+// The initial frame and later setting changes use the same source visibility.
+function layerVisibility(layer) {
+    let visible = RUNTIME_LAYER.test(layer.id) ? undefined : true;
+    if (MODES.some(mode => layer.id.startsWith(`${mode}-`))) visible = layer.id.startsWith(`${settings.mode}-`) && (!VALUE_LABELS.test(layer.id) || settings.labels) && (layer.source !== 'trackCounts' || settings.trackCounts);
+    if (layer.id.startsWith('station-')) visible = settings.stations && (!layer.id.startsWith('station-former-') || settings.inactive);
+    if (layer.id.startsWith('inactive-')) visible = settings.inactive;
+    if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive);
+    if(layer.id==='platform-lengths')visible=settings.labels;
+    if (layer.id.startsWith('terrain-')) visible = settings.relief;
+    if (layer.id.startsWith('context-transport-')) visible = settings.transport;
+    if (layer.id.startsWith('context-destinations-')) visible = settings.destinations;
+    if (layer.id.startsWith('context-constraints-')) visible = settings.constraints;
+    // Satellite: the imagery alone; hybrid: the imagery under the railways.
+    if (layer.id === 'satellite') visible = settings.background !== 'map';
+    else if (settings.background === 'satellite' && !RUNTIME_LAYER.test(layer.id)) visible = false;
+    else if (settings.background === 'hybrid' && isBaseMap(layer)) visible = false;
+    return visible;
+}
 function applySettings() {
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
   document.querySelectorAll('[data-background]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.background === settings.background)));
@@ -236,21 +254,8 @@ function applySettings() {
   if (ready) for (const layer of map.getStyle().layers) {
     // Shown unless a setting hides it (a layer hidden under the imagery comes
     // back with the map).
-    let visible = RUNTIME_LAYER.test(layer.id) ? undefined : true;
-    if (MODES.some(mode => layer.id.startsWith(`${mode}-`))) visible = layer.id.startsWith(`${settings.mode}-`) && (!VALUE_LABELS.test(layer.id) || settings.labels) && (layer.source !== 'trackCounts' || settings.trackCounts);
-    if (layer.id.startsWith('station-')) visible = settings.stations && (!layer.id.startsWith('station-former-') || settings.inactive);
-    if (layer.id.startsWith('inactive-')) visible = settings.inactive;
-    if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive);
-    if(layer.id==='platform-lengths')visible=settings.labels;
-    if (layer.id.startsWith('terrain-')) visible = settings.relief;
-    if (layer.id.startsWith('context-transport-')) visible = settings.transport;
-    if (layer.id.startsWith('context-destinations-')) visible = settings.destinations;
-    if (layer.id.startsWith('context-constraints-')) visible = settings.constraints;
-    if (layer.id === 'polar-caps') map.triggerRepaint();
-    // Satellite: the imagery alone; hybrid: the imagery under the railways.
-    if (layer.id === 'satellite') visible = settings.background !== 'map';
-    else if (settings.background === 'satellite' && !RUNTIME_LAYER.test(layer.id)) visible = false;
-    else if (settings.background === 'hybrid' && isBaseMap(layer)) visible = false;
+    if(layer.id==='polar-caps')map.triggerRepaint();
+    const visible = layerVisibility(layer);
     if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
     if ((visible ?? true) && isClickable(layer.id)) clickable.push(layer.id);
@@ -895,15 +900,10 @@ async function initialize() {
   // share one elevation loader and tile cache.
   localizeStyle(style);
   style.sources.relief.tiles = [dem.sharedDemProtocolUrl];
-  // Show the chosen view from the first frame, without loading the tiles of
-  // the style's default view (applySettings covers the rest once loaded).
+  // Hidden sources must stay hidden before MapLibre starts its first requests.
   for (const layer of style.layers) {
-    let visible;
-    if (MODES.some(mode => layer.id.startsWith(`${mode}-`))) visible = layer.id.startsWith(`${settings.mode}-`);
-    if (layer.id === 'satellite') visible = settings.background !== 'map';
-    else if (settings.background === 'satellite' || (settings.background === 'hybrid' && isBaseMap(layer))) visible = false;
-    if(layer.id==='platform-lengths')visible=visible!==false&&settings.labels;
-    if (visible !== undefined) (layer.layout ||= {}).visibility = visible ? 'visible' : 'none';
+    const visible=layerVisibility(layer);
+    if(visible!==undefined)(layer.layout ||= {}).visibility=visible?'visible':'none';
   }
   // Reopen where the last visit ended, unless the link gives a position; start
   // on the globe (or as last left) so the first frame is not the flat map.

@@ -132,17 +132,20 @@ const FRAGMENT = `precision mediump float; uniform vec4 u_color; out vec4 fragCo
 // background is satellite imagery, which has no picture beyond 85.05°: the
 // caps are then plain black rather than a drawn map beside a photograph.
 export class PolarLayer {
-  constructor({data, units, relief = () => true, places = () => {}, imagery = () => false}) {
+  constructor({data, units, maxTileBytes=32*1024*1024, maxTiles=64, relief = () => true, places = () => {}, imagery = () => false}) {
     Object.assign(this, {id: 'polar-caps', type: 'custom', renderingMode: '2d', data, units, relief, places, imagery});
+    this.maxTileBytes=maxTileBytes;this.maxTiles=maxTiles;this.visibleKeys=new Set();this.generation=0;
     this.programs = new Map(); this.caps = {north: {}, south: {}}; this.tiles = new Map();
   }
-  onAdd(map, gl) { this.map = map; this.gl = gl; }
+  onAdd(map, gl) { this.map = map; this.gl = gl; this.generation++;this.pending=new AbortController(); }
   onRemove() {
+    this.generation++;this.pending?.abort();
     for (const tile of this.tiles.values()) this.freeMesh(tile);
     for (const cap of Object.values(this.caps)) {
       for (const mesh of Object.values(cap)) if (mesh?.buffers) this.freeMesh(mesh);
       if (cap.relief) this.gl.deleteTexture(cap.relief);
     }
+    for(const {program} of this.programs.values())this.gl.deleteProgram(program);
     this.tiles.clear(); this.caps = {north: {}, south: {}}; this.programs.clear();
   }
   program(kind, shaderData) {
@@ -150,14 +153,18 @@ export class PolarLayer {
     if (this.programs.has(key)) return this.programs.get(key);
     const gl = this.gl, compile = (type, source) => {
       const shader = gl.createShader(type); gl.shaderSource(shader, source); gl.compileShader(shader);
-      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)){const error=gl.getShaderInfoLog(shader);gl.deleteShader(shader);throw new Error(error);}
       return shader;
     };
     const program = gl.createProgram(), vertex = {line: LINE_VERTEX, fill: FILL_VERTEX, relief: RELIEF_VERTEX}[kind];
-    gl.attachShader(program, compile(gl.VERTEX_SHADER, `#version 300 es\n${shaderData.vertexShaderPrelude}\n${shaderData.define}\n${vertex}`));
-    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, `#version 300 es\n${{line: LINE_FRAGMENT, relief: RELIEF_FRAGMENT}[kind] || FRAGMENT}`));
-    gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+    let vertexShader,fragmentShader;
+    try {
+      vertexShader=compile(gl.VERTEX_SHADER, `#version 300 es\n${shaderData.vertexShaderPrelude}\n${shaderData.define}\n${vertex}`);
+      fragmentShader=compile(gl.FRAGMENT_SHADER, `#version 300 es\n${{line: LINE_FRAGMENT, relief: RELIEF_FRAGMENT}[kind] || FRAGMENT}`);
+      gl.attachShader(program,vertexShader);gl.attachShader(program,fragmentShader);gl.linkProgram(program);
+      if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program));
+    }catch(error){gl.deleteProgram(program);throw error;}
+    finally{if(vertexShader)gl.deleteShader(vertexShader);if(fragmentShader)gl.deleteShader(fragmentShader);}
     const uniforms = {};
     for (const name of ['u_projection_matrix', 'u_projection_fallback_matrix', 'u_projection_tile_mercator_coords', 'u_projection_clipping_plane', 'u_projection_transition', 'u_color', 'u_viewport', 'u_width',
       'u_image', 'u_grid', 'u_south', 'u_zoom', 'u_edge', 'u_light', 'u_shadow', 'u_highlight', 'u_accent', 'u_opacity'])
@@ -173,7 +180,7 @@ export class PolarLayer {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indices);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(mesh.indices), gl.STATIC_DRAW);
-    return {kind, buffers: [vertices, indices], count: mesh.indices.length};
+    return {kind,bytes:(data.length+mesh.indices.length)*4, buffers: [vertices, indices], count: mesh.indices.length};
   }
   freeMesh(mesh) { for (const b of mesh.buffers || []) this.gl.deleteBuffer(b); for (const m of mesh.parts || []) this.freeMesh(m); }
   // Draw a mesh; set(gl, uniforms) sets the uniforms of its kind.
@@ -211,9 +218,11 @@ export class PolarLayer {
     });
   }
   async image(name) {
-    const response = await fetch(new URL(name, this.data));
+    const generation=this.generation;
+    const response = await fetch(new URL(name, this.data),{signal:this.pending?.signal});
     if (!response.ok) throw new Error(`${name}: HTTP ${response.status}`);
     const bitmap = await createImageBitmap(await response.blob(), {premultiplyAlpha: 'none', colorSpaceConversion: 'none'});
+    if(generation!==this.generation){bitmap.close?.();return null;}
     const gl = this.gl, texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bitmap);
@@ -222,19 +231,20 @@ export class PolarLayer {
     return texture;
   }
   async json(name) {
-    const response = await fetch(new URL(name, this.data));
+    const response = await fetch(new URL(name, this.data),{signal:this.pending?.signal});
     if (!response.ok) throw new Error(`${name}: HTTP ${response.status}`);
     return response.json();
   }
   // Load once per cap: the disc, its index of contour tiles and its features.
   loadCap(cap) {
-    const state = this.caps[cap];
+    const state = this.caps[cap],generation=this.generation;
     if (state.loading) return;
     state.loading = true;
     const disc = discMesh(cap);
     state.disc = this.upload(disc, 'fill'); state.reliefMesh = this.upload(disc, 'relief');
-    this.image(`${cap}-relief.png`).then(texture => { state.relief = texture; this.map.triggerRepaint(); }).catch(() => {});
+    this.image(`${cap}-relief.png`).then(texture => { if(!texture)return;if(generation!==this.generation){this.gl.deleteTexture(texture);return;}state.relief = texture; this.map.triggerRepaint(); }).catch(() => {});
     Promise.all([this.json(`${cap}-index.json`), this.json(`${cap}-features.json`).catch(() => null)]).then(([index, features]) => {
+      if(generation!==this.generation)return;
       state.index = index;
       if (features) {
         const areas = list => this.upload(fillMesh(cap, (list || []).map(rings => rings.map(r => decodeLine(r)))), 'fill');
@@ -247,18 +257,29 @@ export class PolarLayer {
   }
   // Contour tile: four meshes (land/seabed, fine/emphasised).
   loadTile(key) {
-    if (this.tiles.has(key)) return this.tiles.get(key);
-    const tile = {loading: true};
+    if (this.tiles.has(key)){const tile=this.tiles.get(key);this.tiles.delete(key);this.tiles.set(key,tile);return tile;}
+    const tile = {loading: true},generation=this.generation;
     this.tiles.set(key, tile);
     const cap = key.split('-')[0];
     this.json(`${key}.json`).then(({lines}) => {
+      if(generation!==this.generation||this.tiles.get(key)!==tile)return;
       const groups = {landMinor: [], landMajor: [], seabedMinor: [], seabedMajor: []};
       for (const [level, major, ...values] of lines) groups[`${level > 0 ? 'land' : 'seabed'}${major ? 'Major' : 'Minor'}`].push(decodeLine(values));
       Object.assign(tile, Object.fromEntries(Object.entries(groups).map(([k, v]) => [k, this.upload(lineMesh(cap, v), 'line')])));
-      tile.parts = Object.keys(groups).map(k => tile[k]); tile.loading = false;
+      tile.parts = Object.keys(groups).map(k => tile[k]); tile.loading = false;tile.bytes=tile.parts.reduce((sum,m)=>sum+m.bytes,0);
+      this.pruneTiles();
       this.map.triggerRepaint();
     }).catch(() => { tile.failed = true; });
     return tile;
+  }
+  // Keep the visible working set; old views have a byte and count budget.
+  pruneTiles(active=this.visibleKeys) {
+    let bytes=[...this.tiles.values()].reduce((sum,t)=>sum+(t.bytes||0),0);
+    for(const [key,tile] of this.tiles) {
+      if(bytes<=this.maxTileBytes&&this.tiles.size<=this.maxTiles)break;
+      if(active.has(key))continue;
+      this.freeMesh(tile);this.tiles.delete(key);bytes-=tile.bytes||0;
+    }
   }
   // Which caps and contour tiles the view shows: screen points sampled,
   // those on the globe within a cap taken into its polar plane.
@@ -308,13 +329,14 @@ export class PolarLayer {
   renderCaps(gl, options) {
     const projection = options.defaultProjectionData, transition = projection.projectionTransition ?? 0;
     // Only on the globe: on the flat map there is nothing beyond 85.05°.
-    if (!(transition > 0.01) || this.map.getProjection?.()?.type !== 'globe') { this.places([]); return; }
+    if (!(transition > 0.01) || this.map.getProjection?.()?.type !== 'globe') { this.visibleKeys=new Set();this.pruneTiles();this.places([]); return; }
     const center = this.map.getCenter();
     // Zoom by the planet's size (MapLibre's zoom depends on the latitude).
     const zoom = this.map.getZoom() - Math.log2(Math.cos(Math.max(-89.9, Math.min(89.9, center.lat)) * Math.PI / 180));
     const fade = transition ** 4, units = this.units(), labels = [];
     // Line quads come in either winding, so nothing is culled.
     gl.disable(gl.CULL_FACE); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    this.visibleKeys=new Set();
     const view = this.visible(), imagery = this.imagery();
     for (const cap of ['north', 'south']) {
       if (!view[cap]) continue;
@@ -333,7 +355,8 @@ export class PolarLayer {
         for (const key of band.tiles) {
           const [tx, ty] = key.split('-').map(Number), bx = -CAP_RADIUS + tx * size, by = -CAP_RADIUS + ty * size;
           if (bx > x1 || bx + size < x0 || by > y1 || by + size < y0) continue;
-          const tile = this.loadTile(`${cap}-${units}-${bandIndex}-${key}`);
+          const tileKey=`${cap}-${units}-${bandIndex}-${key}`;this.visibleKeys.add(tileKey);
+          const tile = this.loadTile(tileKey);
           if (tile.loading || tile.failed) continue;
           for (const [part, kind, major] of [['seabedMinor', 'seabed', 0], ['seabedMajor', 'seabed', 1], ['landMinor', 'land', 0], ['landMajor', 'land', 1]]) {
             if (zoom < MIN_ZOOM[kind]) continue;
@@ -344,6 +367,7 @@ export class PolarLayer {
       if (zoom >= MIN_ZOOM.runway) this.line(state.runways, options.shaderData, projection, rgba(COLOURS.runway, fade), 2);
       if (zoom >= MIN_ZOOM.places && state.places) labels.push(...state.places.filter(p => !this.map.transform?.isLocationOccluded?.({lng: p.lngLat[0], lat: p.lngLat[1]})));
     }
+    this.pruneTiles();
     this.places(labels);
   }
 }
