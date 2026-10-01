@@ -364,6 +364,27 @@ function showDetails(feature) {
   }
   $('details').hidden = false;
 }
+// Of services found around a click, the one whose drawn line (its track
+// shifted sideways by its place in the bundle, as service-routes draws it)
+// passes nearest the point.
+function nearestService(services, point) {
+  const z = map.getZoom(), width = z <= 12 ? 2 + (Math.max(7, z) - 7) * 0.3 : 3.5 + (Math.min(16, z) - 12) * 0.375;
+  let best = services[0], bestDistance = Infinity;
+  for (const f of services) {
+    const offset = (f.properties.i - (f.properties.n - 1) / 2) * width;
+    const lines = f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.coordinates;
+    for (const line of lines) for (let k = 1; k < line.length; k++) {
+      const a = map.project(line[k - 1]), b = map.project(line[k]), dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+      if (!len) continue;
+      // The segment shifted to the right of its direction (screen y points down).
+      const nx = -dy / len * offset, ny = dx / len * offset;
+      const t = Math.max(0, Math.min(1, ((point.x - a.x - nx) * dx + (point.y - a.y - ny) * dy) / (len * len)));
+      const d = Math.hypot(a.x + nx + t * dx - point.x, a.y + ny + t * dy - point.y);
+      if (d < bestDistance) { bestDistance = d; best = f; }
+    }
+  }
+  return best;
+}
 // An urban rail service (Service view): the route, its network and operator.
 function showServiceDetails(feature) {
   const p = feature.properties, panel = $('detail-content'); panel.replaceChildren();
@@ -1050,6 +1071,9 @@ async function initialize() {
     const features = map.queryRenderedFeatures([[p.x - 7, p.y - 7], [p.x + 7, p.y + 7]], {layers: clickable})
       .sort((a,b) => featurePickRank(a)-featurePickRank(b) || stationRank(a.properties)-stationRank(b.properties));
     if (!features[0]) return;
+    // Services sharing a track are drawn side by side a few pixels apart:
+    // the one whose drawn line is nearest the click.
+    if (features[0].layer.id === 'service-routes') features.unshift(nearestService(features.filter(f => f.layer.id === 'service-routes'), p));
     // Operating-line tiles are not relabelled; locate them by the click.
     const {properties} = features[0];
     features[0].properties = properties.atlas_han ? properties : {...properties, ...locate(event.lngLat.lng, event.lngLat.lat)};

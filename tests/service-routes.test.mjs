@@ -84,6 +84,9 @@ test('service view: grey tracks under the services, side by side, named in the l
   assert.equal(routes.layout.visibility, 'none'); assert.equal(names.layout.visibility, 'none');
   assert.ok(names.id.endsWith('-names'), 'the label language applies to it as to the other names');
   assert.deepEqual(names.layout['text-offset'].slice(0, 2), ['match', ['get', 'slot']], 'names of services sharing a track stand apart');
+  const offsets = new Map(); const m = names.layout['text-offset'];
+  for (let k = 2; k < m.length - 1; k += 2) offsets.set(m[k], m[k + 1][1][1]);
+  for (const slot of [-63, -12, -1, 1, 12, 63]) assert.ok(Math.abs(offsets.get(slot) - slot * 0.65) < 1e-9, `slot ${slot} has its own offset`);
   assert.deepEqual(style.sources.serviceRoutes.tiles, ['servicetiles://{z}/{x}/{y}']);
 });
 
@@ -102,6 +105,9 @@ test('service routes: memberships add up within a pass, are kept per stage, and 
   // A rejected refresh of A (incomplete) leaves everything as it was, names too.
   addResult(table, {routes: [{...route('long', 6), label: 'renamed'}], ways: [{id: 1, routes: ['long'], lines}]}, 'A');
   assert.deepEqual(stageChange(table, 'A'), {stale: 1, total: 3}, 'the local route was not found again');
+  // What a pass newly finds does not dilute what it no longer found.
+  addResult(table, {routes: [route('extra', 20)], ways: [{id: 2, routes: ['extra'], lines}]}, 'A');
+  assert.deepEqual(stageChange(table, 'A'), {stale: 1, total: 3});
   discardStage(table, 'A');
   assert.deepEqual(table.ways.get(1).routes, {A: ['local', 'long'], B: ['cross']});
   assert.equal(routeView(table.routes.get('long')).label, 'long');

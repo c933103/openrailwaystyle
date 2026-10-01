@@ -115,13 +115,14 @@ export function addResult(table, result, stage) {
 const items = table => [...table.routes.values(), ...table.ways.values()];
 const partOf = item => item.stages || item.routes;
 // How much of the stage's committed part its pass did not find again, of
-// all that the stage holds or found.
+// that committed part (what the pass newly found does not count, so it
+// cannot mask an incomplete response).
 export function stageChange(table, stage) {
   let stale = 0, total = 0;
   for (const item of items(table)) {
-    const held = stage in partOf(item), found = stage in item.next;
-    if (held || found) total++;
-    if (held && !found) stale++;
+    const held = stage in partOf(item);
+    if (held) total++;
+    if (held && !(stage in item.next)) stale++;
   }
   return {stale, total};
 }
@@ -207,7 +208,7 @@ export function buildTiles({routes, ways}) {
         const properties = {id: `relation-${route.relation}`, name: route.label, ...route.names,
           ref: route.ref, colour: route.colour, kind: route.kind, network: route.network, operator: route.operator, i, n: list.length,
           // Its place across the bundle (−(n−1) … n−1), for its name's offset.
-          slot: 2 * i - (list.length - 1)};
+          slot: Math.max(-63, Math.min(63, 2 * i - (list.length - 1)))};
         const key = JSON.stringify(properties);
         if (!groups.has(key)) groups.set(key, {properties, lines: []});
         groups.get(key).lines.push(...lines);

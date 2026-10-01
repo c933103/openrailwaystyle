@@ -186,7 +186,11 @@ style.layers.push({id:'service-names', type:'symbol', source:'serviceRoutes', 's
   // Names of services sharing a track stand side by side across it, in the
   // order of their lines, so one does not hide another.
   layout:{'symbol-placement':'line', 'symbol-spacing':400, 'text-field':labelExpression('local'), 'text-font':['Noto Sans Bold'], 'text-size':['interpolate', ['linear'], ['zoom'], 9, 10.5, 14, 12.5], 'text-padding':6, 'text-max-angle':35,
-    'text-offset':['match', ['get', 'slot'], ...Array.from({length: 23}, (_, k) => k - 11).filter(k => k).flatMap(k => [k, ['literal', [0, k * 0.65]]]), ['literal', [0, 0]]]},
+    // Every slot a way can have in practice (styles cannot build the offset
+    // from a number, so each has its entry); beyond 64 services on one way,
+    // the outermost names share the last offset.
+    'text-offset':['match', ['get', 'slot'], ...Array.from({length: 127}, (_, k) => k - 63).filter(k => k).flatMap(k => [k, ['literal', [0, k * 0.65]]]),
+      ['literal', [0, 0]]]},
   paint:{'text-color':'#1c2b33', 'text-halo-color':'#ffffff', 'text-halo-width':2}});
 // Structural cues use shape as well as colour, in every view. A bridge has
 // dark parapets outside the track; tunnels use a pale dashed core. They start
