@@ -44,6 +44,8 @@ const style = {
     // Operating branch lines for the overview zooms (branch-lines.yml):
     // OpenRailwayMap's z0–6 tiles hold main lines only.
     branchLines: {type:'vector',tiles:['branchtiles://{z}/{x}/{y}'],minzoom:4,maxzoom:9,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
+    // Urban rail services along their tracks (scripts/service-routes.mjs).
+    serviceRoutes: {type:'vector',tiles:['servicetiles://{z}/{x}/{y}'],minzoom:7,maxzoom:12,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     streetRunning: {type:'vector',tiles:['streettiles://{z}/{x}/{y}'],minzoom:12,maxzoom:12,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     contours: {type:'vector',tiles:['atlas-contour://{z}/{x}/{y}'],minzoom:7,maxzoom:15},
     // Seabed contours (see contourOptions in map-model.mjs). The elevation
@@ -137,6 +139,7 @@ const dualOffset = sign => ['interpolate', ['linear'], ['zoom'],
 // Branch lines at zooms 4–7 are split the same way (the overview width).
 const branchHalfWidth = ['interpolate', ['linear'], ['zoom'], 4, ['case', isDual, 0.575, 1.15], 7, ['case', isDual, 0.9, 1.8]];
 const branchDualOffset = sign => ['interpolate', ['linear'], ['zoom'], 4, ['case', isDual, 0.2875 * sign, 0], 7, ['case', isDual, 0.45 * sign, 0]];
+const SERVICE_TRACK = '#b8c0c5';
 for (const [mode, source, sourceLayer, color] of [
   ['infrastructure', 'network', 'standard_railway_line_low', infrastructurePaint],
   ['speed', 'speed', 'speed_railway_line_low', speedPaint],
@@ -144,6 +147,8 @@ for (const [mode, source, sourceLayer, color] of [
   ['control', 'control', 'signals_railway_line_low', controlPaint()],
   ['gauge', 'gaugeLow', 'track_railway_line_low', gaugePaint()],
   ['loading', 'loadingLow', 'standard_railway_line_low', loadingPaint()],
+  // Service view: the infrastructure in grey, under the services.
+  ['service', 'network', 'standard_railway_line_low', SERVICE_TRACK],
 ]) {
   // Branch lines from zoom 4, under the main lines, in the same colours
   // (their tiles carry the fields of the detailed railway tiles).
@@ -170,6 +175,16 @@ style.layers.push({id:'gauge-dual', type:'line', source:'railway', 'source-layer
   layout:{'line-cap':'butt','line-join':'round'},
   paint:{'line-color':gaugePaint(1), 'line-width':trackWidth(0.5), 'line-offset':dualOffset(1),
     'line-opacity':['case', ['==', ['get', 'tunnel'], true], 0.65, 1]}});
+// Each service along the tracks it runs on, in its own colour, side by side
+// where several share a track (i of n, drawn with an offset), and its name.
+const serviceWidth = [2, 3.5, 5], serviceOffset = ['interpolate', ['linear'], ['zoom'],
+  ...[7, 12, 16].flatMap((z, k) => [z, ['*', ['-', ['get', 'i'], ['/', ['-', ['get', 'n'], 1], 2]], serviceWidth[k]]])];
+style.layers.push({id:'service-routes', type:'line', source:'serviceRoutes', 'source-layer':'service_routes', minzoom:7,
+  layout:{'line-cap':'butt','line-join':'round'},
+  paint:{'line-color':['to-color', ['get', 'colour'], '#5d6b73'], 'line-width':['interpolate', ['linear'], ['zoom'], 7, serviceWidth[0], 12, serviceWidth[1], 16, serviceWidth[2]], 'line-offset':serviceOffset}});
+style.layers.push({id:'service-names', type:'symbol', source:'serviceRoutes', 'source-layer':'service_routes', minzoom:9,
+  layout:{'symbol-placement':'line', 'symbol-spacing':400, 'text-field':labelExpression('local'), 'text-font':['Noto Sans Bold'], 'text-size':['interpolate', ['linear'], ['zoom'], 9, 10.5, 14, 12.5], 'text-padding':6, 'text-max-angle':35},
+  paint:{'text-color':'#1c2b33', 'text-halo-color':'#ffffff', 'text-halo-width':2}});
 // Structural cues use shape as well as colour, in every view. A bridge has
 // dark parapets outside the track; tunnels use a pale dashed core. They start
 // with the detailed railway tiles: the z0–6 overview tiles carry no structure.
@@ -435,7 +450,7 @@ const railwayNames = style.layers.filter(l => l.type === 'symbol' && l.id.endsWi
 const trackBadges = style.layers.filter(l => l.id === 'infrastructure-track-count' || l.id === 'infrastructure-station-tracks');
 style.layers = style.layers.filter(l => !stationNames.includes(l) && !railwayNames.includes(l) && !trackBadges.includes(l)).concat(railwayNames, trackBadges, stationNames);
 for (const l of style.layers) {
-  if (/^(infrastructure|electrification|control|gauge|loading)-/.test(l.id)) l.layout.visibility = 'none';
+  if (/^(infrastructure|electrification|control|gauge|loading|service)-/.test(l.id)) l.layout.visibility = 'none';
 }
 // Satellite imagery directly above the background, off unless chosen.
 style.layers.splice(style.layers.findIndex(l => l.id === 'background') + 1, 0, {id:'satellite', type:'raster', source:'satellite', layout:{visibility:'none'}, paint:{'raster-fade-duration':150}});

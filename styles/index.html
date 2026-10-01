@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Rail Atlas">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20261001-14" rel="stylesheet">
+  <link href="app.css?v=20261001-18" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -35,6 +35,7 @@
         <button data-mode="control" aria-pressed="false">Train control</button>
         <button data-mode="gauge" aria-pressed="false">Gauge</button>
         <button data-mode="loading" aria-pressed="false">Loading gauge</button>
+        <button data-mode="service" aria-pressed="false">Service</button>
       </div>
       <div class="background-picker" role="group" aria-label="Background"><button data-background="map" aria-pressed="true">Map</button><button data-background="satellite" aria-pressed="false" title="Satellite imagery only">Satellite</button><button data-background="hybrid" aria-pressed="false" title="Satellite imagery under the railways">Hybrid</button></div>
       <div id="legend" aria-live="polite"></div>
@@ -101,7 +102,7 @@
   <dialog id="about" aria-labelledby="about-title"><button class="close" id="about-close" aria-label="Close help">×</button><h2 id="about-title">Help, licences and terms of use</h2>
     <nav class="help-contents" aria-label="Contents"><a href="#help-start">Getting started</a> · <a href="#help-reading">Reading the map</a> · <a href="#help-names">Names and terrain</a> · <a href="#help-sources">Sources</a> · <a href="#help-licences">Licences</a> · <a href="#help-terms">Terms of use</a></nav>
     <h3 id="help-start" tabindex="-1">Getting started</h3>
-    <p>Search for a station or railway facility with the box at the top of the panel. The view buttons colour the railways by infrastructure, maximum speed, power, train control, gauge or loading gauge; Map, Satellite and Hybrid choose the background. Click a station, line, level crossing or transport facility to inspect it; its panel links to the object on OpenStreetMap.</p>
+    <p>Search for a station or railway facility with the box at the top of the panel. The view buttons colour the railways by infrastructure, maximum speed, power, train control, gauge or loading gauge, or show the urban rail services (metro, light rail, tram and commuter rail lines) along the tracks they run on; Map, Satellite and Hybrid choose the background. Click a station, line, level crossing or transport facility to inspect it; its panel links to the object on OpenStreetMap.</p>
     <p>At the foot of the panel: the link button copies a link to the current view, the satellite button copies the GPS coordinates of the map centre, the gear opens the settings (what is drawn, units, the coordinate readout and the automatic globe), and ? opens this page. Beside the map: compass, zoom, your location, ⊞ (more detail), ✎ (drawing), 📏 (measuring) and the globe/flat-map switch. With the map focused, the arrow keys pan the map and Shift with an arrow turns or tilts it.</p>
     <p>A station-first adaptation of <a href="https://github.com/c933103/openrailwaystyle">Open Railway Styles</a>, started at Hack4Rail. The background keeps roads and settlements subdued so railway infrastructure stands out.</p>
     <h3 id="help-reading" tabindex="-1">Reading the map</h3><p>Major stations are ranked by the provider’s mapped route importance, which is not a passenger-volume ranking. Coverage and station ranking depend on OpenStreetMap completeness.</p>
@@ -151,7 +152,7 @@
       status.textContent = 'The map could not load. Check your connection and reload the page.';
     }, true);
   </script>
-  <script type="module" src="app.mjs?v=20261001-14"></script>
+  <script type="module" src="app.mjs?v=20261001-18"></script>
 </body>
 </html>
 
