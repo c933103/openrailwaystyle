@@ -28,7 +28,7 @@ Caches never remove tiles currently drawn by MapLibre; evicting raw responses or
 
 Recheck on the current MapLibre release and on the Xperia with Chrome remote inspection before attributing any change in frame time or GPU memory to these fixes. Record network failures, wait for settled tiles, use one render listener, and compare identical views/settings with the same browser cache state.
 
-## Pending MapLibre 5.24 integration
+## MapLibre 5.24 integration
 
 A second run used the same 5.24.0 library and globe compatibility code on both the old and updated cache implementations. All 131 integration tests passed, and desktop/portrait/landscape UI checks reported no page errors. A single render listener was used for all views.
 

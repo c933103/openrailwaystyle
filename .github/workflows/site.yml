@@ -121,6 +121,8 @@ jobs:
         run: node scripts/check-context-browser.mjs
       - name: Verify actual WebGL rendering and zoom-7 panning
         run: node scripts/check-map-browser.mjs
+      - name: Verify platform length labels and main Units selector
+        run: node scripts/check-platform-browser.mjs
       - name: Save browser review
         if: always()
         uses: actions/upload-artifact@v4
