@@ -604,6 +604,12 @@ test('dragging the globe keeps the direction and the heading; over a pole it car
   assert.ok(near(Math.abs(view.bearing), 180), JSON.stringify(view));
   for (let i = 0; i < 20; i++) view = stepView(view, 0, -1, perDegree);
   assert.ok(near(view.center[0], 20) && near(view.center[1], 80, 1e-9) && near(view.bearing, 0), JSON.stringify(view));
+  // One long step over both poles: still a valid place, as many small steps.
+  const long = stepView({center: [0, 80], bearing: 0}, 0, 200, perDegree);
+  let small = {center: [0, 80], bearing: 0};
+  for (let i = 0; i < 200; i++) small = stepView(small, 0, 1, perDegree);
+  assert.ok(near(long.center[1], small.center[1], 1e-6) && near(long.center[0], small.center[0], 1e-6) && near(long.bearing, small.bearing), JSON.stringify({long, small}));
+  assert.ok(Math.abs(long.center[1]) <= 90);
   // The planet keeps its size: zoom falls as the centre nears a pole.
   assert.ok(near(zoomForLatitude(3, 0, 60), 2));
   assert.ok(near(zoomForLatitude(2, 60, 0), 3));

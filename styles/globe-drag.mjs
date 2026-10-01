@@ -44,8 +44,10 @@ export function stepView({center: [lng, lat], bearing}, dx, dy, radiansPerPixel)
   // than the centre may come (where a parallel is a point).
   const mid = rad(clampLat((lat + φ) / 2));
   let λ = lng + deg(east) / Math.cos(mid);
-  // Over a pole: on down the far meridian, the view turned round.
-  if (φ > 90 || φ < -90) { φ = Math.sign(φ) * 180 - φ; λ += 180; bearing += 180; }
+  // Over a pole: on down the far meridian, the view turned round; as often
+  // as a long step (a coalesced pointer movement on a small globe) crosses
+  // one.
+  while (φ > 90 || φ < -90) { φ = Math.sign(φ) * 180 - φ; λ += 180; bearing += 180; }
   λ = ((λ + 180) % 360 + 360) % 360 - 180;
   bearing = ((bearing + 180) % 360 + 360) % 360 - 180;
   return {center: [λ, φ], bearing};
