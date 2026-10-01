@@ -33,7 +33,7 @@ test('keyboard panning: a held key is one movement, ended on release', () => {
     getContainer() { return container; }
     getCanvasContainer() { return container; }
   }
-  const map = new Camera(), key = name => ({key: name, preventDefault() {}, stopPropagation() {}});
+  const map = new Camera(), key = name => ({key: name, preventDefault() {}, stopImmediatePropagation() {}});
   globalThis.window = {addEventListener() {}};
   installKeyboardPan(map, {reducedMotion: () => true});
   listeners.keydown(key('ArrowRight'));

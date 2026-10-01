@@ -81,7 +81,7 @@ export function installKeyboardPan(map, {reducedMotion = () => false} = {}) {
     const modified = event.shiftKey || event.altKey || event.ctrlKey || event.metaKey;
     if (modified && held.size) stop(false);
     if (!DIRECTIONS[event.key] || modified) return;
-    event.preventDefault(); event.stopPropagation();
+    event.preventDefault(); event.stopImmediatePropagation();
     if (held.has(event.key)) return;
     if (!held.size) { moved = 0; map.stop(); hold(); }
     keyEvent = event;
@@ -91,7 +91,7 @@ export function installKeyboardPan(map, {reducedMotion = () => false} = {}) {
   }, true);
   surface.addEventListener('keyup', event => {
     if (!held.has(event.key)) return;
-    event.preventDefault(); event.stopPropagation();
+    event.preventDefault(); event.stopImmediatePropagation();
     held.delete(event.key);
     if (!held.size) stop();
   }, true);
