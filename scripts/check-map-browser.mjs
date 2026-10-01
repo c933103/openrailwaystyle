@@ -83,12 +83,15 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') { console.log('Browser resource:',msg.text()); if(/DataCloneError|already detached/.test(msg.text())) errors.push(msg.text()); }});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261001-5&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261001-7&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
   assert.equal(await page.locator('dialog#about[open]').count(),1,'About must open before the map has loaded');
   assert.match(await page.locator('dialog#about').innerText(),/Licences[\s\S]*Terms of use[\s\S]*Restricted territories/,'help page holds the licences and the terms of use');
+  const hashBefore=await page.evaluate(()=>location.hash);
+  await page.locator('dialog#about .help-contents a[href="#help-terms"]').click();
+  assert.equal(await page.evaluate(()=>location.hash),hashBefore,'help contents links keep the map position in the address');
   await page.locator('#about-close').click();
   console.log(`PASS: About opened while loading (map ready at click: ${earlyReady})`);
   await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:120000});
