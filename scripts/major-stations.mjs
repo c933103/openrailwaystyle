@@ -1,5 +1,13 @@
 import {hanRegion,chineseArea} from '../styles/han-region.mjs';
 const rad=Math.PI/180;
+// Pixel spacing and label padding both relax as the overview gets closer.
+// These are density controls; minZoom remains the manually reviewed role.
+export const MAJOR_STATION_DENSITY=Object.freeze([
+ Object.freeze({zoom:3,spacing:150,padding:30}),
+ Object.freeze({zoom:4,spacing:110,padding:22}),
+ Object.freeze({zoom:5,spacing:80,padding:16}),
+ Object.freeze({zoom:6,spacing:48,padding:10}),
+]);
 export function distanceKm(a,b){const p=(b.lat-a.lat)*rad,l=(b.lon-a.lon)*rad,h=Math.sin(p/2)**2+Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin(l/2)**2;return 12742*Math.asin(Math.min(1,Math.sqrt(h)));}
 const mercator=p=>[(p.lon+180)/360, .5-Math.log(Math.tan(Math.PI/4+Math.max(-85.051129,Math.min(85.051129,p.lat))*rad/2))/(2*Math.PI)];
 export function separationPixels(a,b,z){const [x,y]=mercator(a),[u,v]=mercator(b),dx=Math.abs(x-u);return Math.hypot(Math.min(dx,1-dx),y-v)*512*2**z;}
@@ -12,10 +20,10 @@ export function stationOrder(entries){
 }
 export function selectMajorStations(entries){
  const ordered=stationOrder(entries),selected=[],tiers=new Map();
- for(let z=3;z<=6;z++)for(const e of ordered){
+ for(const {zoom:z,spacing} of MAJOR_STATION_DENSITY)for(const e of ordered){
   if(tiers.has(e.wikidata)||e.minZoom>z)continue;
   if(z<=4&&selected.some(p=>p.metro===e.metro&&p.country===e.country))continue;
-  if(selected.some(p=>z===3?distanceKm(e,p)<550:separationPixels(e,p,z)<78))continue;
+  if(selected.some(p=>separationPixels(e,p,z)<spacing||(z===3&&distanceKm(e,p)<550)))continue;
   tiers.set(e.wikidata,z);selected.push(e);
  }
  return entries.map(e=>({...e,tier:tiers.get(e.wikidata)??7}));
