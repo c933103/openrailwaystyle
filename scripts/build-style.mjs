@@ -7,7 +7,8 @@ import { CARTO_TILES, ORM, axlePaint, axleLabel, LIGHT_MODES, MINOR_MODES, LIFEC
 
 const majorStations=JSON.parse(await readFile(new URL('../styles/data-src/major-stations.json',import.meta.url)));
 validateStationCountries(majorStations);
-await writeFile(new URL('../styles/major-stations.geojson',import.meta.url),JSON.stringify(majorStationsGeoJSON(majorStations))+'\n');
+const majorStationData=majorStationsGeoJSON(majorStations);
+await writeFile(new URL('../styles/major-stations.geojson',import.meta.url),JSON.stringify(majorStationData)+'\n');
 // Keep the Hack4Rail base-map design and replace its Europe-only rail source.
 const original = JSON.parse(await readFile(new URL('../styles/default.style.json', import.meta.url)));
 const vector = (path, minzoom, maxzoom) => ({
@@ -41,7 +42,10 @@ const style = {
     // tiles (atlastracks protocol, tile-labels.mjs and track-tiles.mjs):
     // always from zoom-14 tiles, so the same at every zoom.
     trackCounts: {type: 'vector', tiles: ['atlastracks://{z}/{x}/{y}'], minzoom: 14, maxzoom: 14, attribution: '<a href="https://www.openrailwaymap.app/">OpenRailwayMap</a> · <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>'},
-    stationMajor:{type:'geojson',data:{type:'FeatureCollection',features:[]},attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a> · <a href="https://www.wikidata.org/">Wikidata, CC0</a>'},
+    // Older installed workers already cache the versioned style, even before
+    // they know the separate station asset. The app holds this data outside
+    // MapLibre until the overview needs it.
+    stationMajor:{type:'geojson',data:majorStationData,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a> · <a href="https://www.wikidata.org/">Wikidata, CC0</a>'},
     platformEdges:vector('standard_railway_platform_edges',19,22),
     platformLengths:{type:'geojson',data:{type:'FeatureCollection',features:[]}},
     stationLow: vector('standard_railway_text_stations_low', 4, 6),
@@ -496,4 +500,3 @@ style.layers.splice(style.layers.findIndex(l => l.id === 'background') + 1, 0, {
 for (const id of ['country_label-other', 'country_label']) style.layers.push(...style.layers.splice(style.layers.findIndex(l => l.id === id), 1));
 await writeFile(new URL('../styles/world.style.json', import.meta.url), JSON.stringify(style, null, 2) + '\n');
 console.log(`Built world.style.json: ${style.layers.length} layers`);
-
