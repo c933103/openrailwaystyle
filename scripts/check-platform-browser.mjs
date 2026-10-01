@@ -15,7 +15,14 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  if(await page.locator('#controls').isHidden()){const open=page.locator('#controls-open');if(await open.count())await open.click();else await page.locator('#collapse').click();}
  assert.equal(await page.locator('#units').evaluate(e=>e.closest('#main-view')!==null&&e.parentElement.previousElementSibling?.classList.contains('language-picker')),true);
  await page.selectOption('#units','imperial');await page.waitForFunction(()=>{const map=window.reviewMap;return JSON.stringify(map.getLayoutProperty('platform-lengths','text-field')).includes(' ft');});await ready();
- assert.equal(requests,1,'changing units reuses the full mapped length');await page.locator('#collapse').click();await page.screenshot({path:`browser-review/platform-${kind}-imperial.png`});
+ assert.equal(requests,1,'changing units reuses the full mapped length');
+ await page.evaluate(()=>window.reviewMap.setLayoutProperty('platform-lengths','visibility','none'));
+ const hit=await page.evaluate(()=>{const map=window.reviewMap,p=map.project([139.7663502,35.6815449]);return {x:p.x,y:p.y};});if(await page.locator('#controls').isVisible())await page.locator('#collapse').click();
+ await page.locator('#map canvas').click({position:hit});await page.waitForSelector('#details:not([hidden])');assert.match(await page.locator('#detail-content').innerText(),/810 ft/);assert.equal(await page.locator('#detail-content a[href="https://www.openstreetmap.org/way/349685435"]').count(),1);await page.locator('#details-close').click();
+ await page.evaluate(()=>window.reviewMap.setLayoutProperty('platform-lengths','visibility','visible'));
+ if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();
+ await page.locator('#collapse').click();await page.screenshot({path:`browser-review/platform-${kind}-imperial.png`});
+ if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();
  await page.selectOption('#units','metric');await page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);map.jumpTo({zoom:18});});
  await page.waitForFunction(()=>{const map=window.reviewMap;return map.queryRenderedFeatures({layers:['platform-lengths']}).length===0;});assert.equal(requests,1);console.log(`PASS: ${kind} platform length, unit conversion/cache and threshold`);await page.close();
 }}finally{await browser.close();}

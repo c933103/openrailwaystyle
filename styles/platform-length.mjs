@@ -42,5 +42,6 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
   draw();schedule();
  }
  function destroy(){disposed=true;clearTimeout(timer);clearTimeout(wakeTimer);controller?.abort();pending.clear();}
- return {update,destroy};
+ function enrich(feature){const id=platformIdentity(feature);if(!id)return feature;const p=feature.properties||{},length=cache.get(id);return {...feature,properties:{...p,osm_type:'way',osm_id:id,...(length>0?{platform_length:length}:{})}};}
+ return {update,destroy,enrich};
 }

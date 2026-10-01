@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {osmObject} from '../styles/map-model.mjs';
 import {createPlatformLengths,platformIdentity,platformAnchor,formatPlatformLength,platformLengthLabel} from '../styles/platform-length.mjs';
 const edge=(id=1)=>({properties:{id,ref:'2'},geometry:{type:'LineString',coordinates:[[0,0],[.001,0]]}});
 test('platform lengths convert m/ft and anchor on line geometry without measuring its clipped span',()=>{
@@ -10,7 +11,7 @@ test('platform lengths convert m/ft and anchor on line geometry without measurin
 test('platform API uses full length, deduplicates edge IDs, caches values and starts at 19',async()=>{
  let zoom=18,requests=0,data,features=[edge(),edge()];const map={getZoom:()=>zoom,queryRenderedFeatures:()=>features,getSource:()=>({setData:d=>data=d})};
  const p=createPlatformLengths(map,{delay:0,fetcher:async()=>{requests++;return {ok:true,json:async()=>({properties:{length:350}})};}});
- try{p.update();await new Promise(r=>setTimeout(r,10));assert.equal(requests,0);zoom=19;p.update();await new Promise(r=>setTimeout(r,20));assert.equal(requests,1);assert.equal(data.features[0].properties.platform_length,350);
+ try{p.update();await new Promise(r=>setTimeout(r,10));assert.equal(requests,0);zoom=19;p.update();await new Promise(r=>setTimeout(r,20));assert.equal(requests,1);assert.equal(data.features[0].properties.platform_length,350);const raw={...edge(),source:'platformEdges'},enriched=p.enrich(raw);assert.equal(enriched.properties.platform_length,350);assert.deepEqual(osmObject(raw),{type:'way',id:'1'});assert.deepEqual(osmObject(enriched),{type:'way',id:'1'});assert.equal(p.enrich({...edge(99),source:'platformEdges'}).properties.platform_length,undefined);
   p.update();await new Promise(r=>setTimeout(r,10));assert.equal(requests,1);features=[];p.update();assert.equal(data.features.length,0);
  }finally{p.destroy();}
 });
