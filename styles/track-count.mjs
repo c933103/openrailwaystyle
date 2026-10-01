@@ -399,6 +399,9 @@ export function shareLines(zones, lines, metres) {
 // the way keeps its direction in every tile. Pieces that cannot be joined
 // (the way leaves the tiles read) stay apart.
 const STITCH = 2 + SLACK;    // tile units: a piece's end this close to another piece lies on it
+// The ends of a way's joined pieces; a closed piece (a loop, its first and
+// last points one) has none, wherever its first node happens to lie.
+const wayEnds = pieces => pieces.filter(p => Math.hypot(p[0][0] - p.at(-1)[0], p[0][1] - p.at(-1)[1]) > STITCH).flatMap(p => [p[0], p.at(-1)]);
 export function stitchParts(parts, tolerance = STITCH) {
   let pieces = parts.filter(part => part.length > 1);
   // The first segment of b that point [x, y] lies on (its index + 1), or 0.
@@ -479,7 +482,7 @@ export function connectors(lines, metres) {
   };
   // Each way whole, though read in pieces from several tiles.
   const joined = lines.map(line => line && stitchParts(line.parts));
-  const ends = index => joined[index].flatMap(part => [part[0], part.at(-1)]);
+  const ends = index => wayEnds(joined[index]);
   // The ways meeting the point (x, y) other than `index`: does a turnout
   // join there (two or more ways, or one passing through)?
   const branches = (index, group, x, y) => {
@@ -606,7 +609,7 @@ export function stubs(lines, metres, extent = 4096, loaded = AROUND) {
   // Within margin of ground no loaded tile covers.
   const nearEdge = ([x, y]) => [-margin, 0, margin].some(ox => [-margin, 0, margin].some(oy => !loaded.has(`${Math.floor((x + ox) / extent)},${Math.floor((y + oy) / extent)}`)));
   const joined = lines.map(line => line && stitchParts(line.parts));
-  const endsOf = index => joined[index].flatMap(part => [part[0], part.at(-1)]);
+  const endsOf = index => wayEnds(joined[index]);
   lines.forEach((line, index) => {
     // A line tagged for a use (main, branch, industrial…) or with services on
     // it is no stub, however short: a branch to a terminus looks the same.

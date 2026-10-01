@@ -944,6 +944,10 @@ test('track counts: untagged crossovers and sidings are not running tracks', asy
   // may run on. (The tile west of the turnout at x = 0 is missing.)
   const westMissing = new Set(loaded); westMissing.add('0,-1'); westMissing.delete('-1,0');
   assert.deepEqual([...stubs(siding, 1, 1000, westMissing)], [2]);
+  // A siding leaving a closed way (a loop) at the loop's first and last
+  // node: the loop runs on through that node, so it is a turnout.
+  const loopWay = {group: 'rail', main: true, parts: [[[200, 200], [600, 200], [600, 600], [200, 600], [200, 200]]]};
+  assert.deepEqual([...stubs([loopWay, {group: 'rail', main: true, parts: [[[200, 200], [160, 195], [-100, 195]]]}], 1, 1000)], [1]);
   // A gentle (high-speed) crossover, 400 m long between tracks 5 m apart, is
   // one too: it never keeps a steady distance from either track.
   const gentle = [track(0, -1000, 0), track(0, 0, 400), track(0, 400, 1000), track(5, -1000, 0), track(5, 0, 400), track(5, 400, 1000), leg([0, 0], [400, 5])];
