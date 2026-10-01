@@ -126,11 +126,15 @@ const IN_VIEW = {
   loading: p => { const g = loadingGauge(p.loading_gauge); return g ? [g.color, g.name, g.rank, loadingDimensions(g, settings.units)] : null; },
   // Owners in view, most track first.
   owner: p => p.owner && p.owner_color ? [p.owner_color, p.owner, 0] : null,
+  // Services in view, by colour (a line's branches usually share one).
+  service: p => p.kind ? [p.colour || SERVICE_UNCOLOURED, displayName(p, settings.language) || p.ref, SERVICE_ORDER[p.kind]] : null,
 };
+const SERVICE_ORDER = {commuter: 0, subway: 1, monorail: 2, light_rail: 3, tram: 4}, SERVICE_UNCOLOURED = '#5d6b73';
+const SERVICE_KINDS = {commuter: 'Commuter rail', subway: 'Metro', monorail: 'Monorail', light_rail: 'Light rail', tram: 'Tram'};
 function updateInView() {
   const describe = IN_VIEW[settings.mode];
   if (!ready || !describe) return;
-  const layers = [`${settings.mode}-branch-overview`, `${settings.mode}-overview`, `${settings.mode}-tracks`, `${settings.mode}-metro-overview`].filter(id => map.getLayer(id));
+  const layers = settings.mode === 'service' ? ['service-routes'] : [`${settings.mode}-branch-overview`, `${settings.mode}-overview`, `${settings.mode}-tracks`, `${settings.mode}-metro-overview`].filter(id => map.getLayer(id));
   const counts = new Map();
   for (const f of map.queryRenderedFeatures({layers})) {
     const described = describe(f.properties);
@@ -157,13 +161,15 @@ function renderLegend() {
     axle: {title:'Axle load · in view',rows:listed(inView)},
     loading: { title: 'Loading gauge · in view', rows: listed(inView) },
     owner: { title: 'Infrastructure owner · in view', rows: listed(inView) },
+    service: { title: 'Urban rail services · in view', rows: listed(inView) },
   };
   const legend = legends[settings.mode];
   box.append(textNode('h2', legend.title));
   const grid = textNode('div', '', 'legend-grid');
   const rows = [...legend.rows];
   if (settings.mode === 'gauge') rows.push(['#1f5fbf', 'Dual gauge (one half per gauge)', 'dual']);
-  if (settings.mode !== 'infrastructure') rows.push([UNKNOWN_COLOR, 'Unknown']);
+  if (settings.mode === 'service') rows.push(['#b8c0c5', 'Other track']);
+  else if (settings.mode !== 'infrastructure') rows.push([UNKNOWN_COLOR, 'Unknown']);
   rows.push(['#2356b6','Bridge','bridge'], ['#2356b6','Tunnel','tunnel']);
   if (settings.mode === 'infrastructure') rows.push(['#b68f55','Shared roadway','street-running'], ['#63332c','Level crossing','level-crossing']);
   if (settings.inactive) rows.push(...INACTIVE_STATES.map(([state, color, label]) => [color, label, `inactive-${state}`]));
@@ -196,6 +202,7 @@ function renderLegend() {
     axle: 'Colour shows the mapped axle load or the load category’s reference axle load. Load per metre and additional operating restrictions also matter. Numeric US/Canadian classes describe speed, and Finnish superstructure classes do not give a single axle-load limit. Grey means not recorded.',
     loading: 'Colour follows the envelope’s height above rail, so equal sizes match across regions; Britain’s W gauges share one height and form their own ladder. Click a track for dimensions. Grey means not recorded.',
     owner: 'Each owner of the infrastructure, as recorded in OpenStreetMap, has its own colour, the same everywhere; the owner is not always the operator. Click a track for its owner and operator. Grey means no owner is recorded.',
+    service: 'Metro, light rail, tram, monorail and commuter rail services, each in its own colour along the tracks it runs on, side by side where they share a track; long-distance trains are not shown. Click a service for its details. Grey tracks have no such service mapped.',
     infrastructure: 'Numbers count the mapped tracks: running tracks side by side (not sidings, yards or crossovers), on the surface, on viaducts or in tunnels alike (grey-blue where all are in tunnels); at a station, every track there, sidings included. Ochre marks explicitly tagged shared roadway; level crossings are dark brown (road) or light brown (pedestrian).',
   };
   let note = notes[settings.mode];
@@ -231,7 +238,8 @@ function layerVisibility(layer) {
     if (MODES.some(mode => layer.id.startsWith(`${mode}-`))) visible = layer.id.startsWith(`${settings.mode}-`) && (!VALUE_LABELS.test(layer.id) || settings.labels) && (layer.source !== 'trackCounts' || settings.trackCounts);
     if (layer.id.startsWith('station-')) visible = settings.stations && (!layer.id.startsWith('station-former-') || settings.inactive);
     if (layer.id.startsWith('inactive-')) visible = settings.inactive;
-    if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive);
+    // Service names follow the names setting, in the Service view only.
+    if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive) && (!layer.id.startsWith('service-') || settings.mode === 'service');
     if(layer.id==='platform-lengths')visible=settings.labels;
     if (layer.id.startsWith('terrain-')) visible = settings.relief;
     if (layer.id.startsWith('context-transport-')) visible = settings.transport;
@@ -286,7 +294,7 @@ const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-
 // Clickable: stations, tracks, level crossings, inactive lines, and transport
 // and destination points; land-use areas, protected, heritage and other
 // planning areas, jurisdictions and buildings are drawn for context only.
-const isClickable = id => id.startsWith('platform-') || INFRASTRUCTURE_POINTS.includes(id) || /^context-(transport|destinations)-.+-label$/.test(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|axle|owner)-(tracks|overview|branch-overview|metro-overview)$/.test(id);
+const isClickable = id => id.startsWith('platform-') || INFRASTRUCTURE_POINTS.includes(id) || /^context-(transport|destinations)-.+-label$/.test(id) || id.startsWith('station-') || (id.startsWith('inactive-') && !id.includes('bridge')) || /^(speed|infrastructure|electrification|control|gauge|loading|axle|owner|service)-(tracks|overview|branch-overview|metro-overview)$/.test(id) || id === 'service-routes';
 function row(dl, label, value) {
   if (value === undefined || value === null || value === '') return;
   dl.append(textNode('dt', label), textNode('dd', String(value)));
@@ -329,6 +337,7 @@ function showDetails(feature) {
   currentFeature = feature;
   if (INFRASTRUCTURE_POINTS.includes(feature.layer?.id)) { showInfrastructureContext(feature); return; }
   if (feature.layer?.id.startsWith('context-')) { showContextDetails(feature); return; }
+  if (feature.layer?.id === 'service-routes') { showServiceDetails(feature); return; }
   const p = feature.properties;
   const isPlatform=feature.source==='platformLengths'||feature.source==='platformEdges';
   const isStation = feature.source?.startsWith('station') || feature.kind === 'station';
@@ -392,6 +401,41 @@ function showDetails(feature) {
     // current stop would otherwise show that stop's trains as its own.
     if (feature.geometry?.type === 'Point' && (!p.state || p.state === 'present')) showDepartures(panel, feature);
   }
+  $('details').hidden = false;
+}
+// Of services found around a click, the one whose drawn line (its track
+// shifted sideways by its place in the bundle, as service-routes draws it)
+// passes nearest the point.
+function nearestService(services, point) {
+  const z = map.getZoom(), width = z <= 12 ? 2 + (Math.max(7, z) - 7) * 0.3 : 3.5 + (Math.min(16, z) - 12) * 0.375;
+  let best = services[0], bestDistance = Infinity;
+  for (const f of services) {
+    const offset = (f.properties.i - (f.properties.n - 1) / 2) * width;
+    const lines = f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.coordinates;
+    for (const line of lines) for (let k = 1; k < line.length; k++) {
+      const a = map.project(line[k - 1]), b = map.project(line[k]), dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+      if (!len) continue;
+      // The segment shifted to the right of its direction (screen y points down).
+      const nx = -dy / len * offset, ny = dx / len * offset;
+      const t = Math.max(0, Math.min(1, ((point.x - a.x - nx) * dx + (point.y - a.y - ny) * dy) / (len * len)));
+      const d = Math.hypot(a.x + nx + t * dx - point.x, a.y + ny + t * dy - point.y);
+      if (d < bestDistance) { bestDistance = d; best = f; }
+    }
+  }
+  return best;
+}
+// An urban rail service (Service view): the route, its network and operator.
+function showServiceDetails(feature) {
+  const p = feature.properties, panel = $('detail-content'); panel.replaceChildren();
+  panel.append(textNode('div', 'RAIL SERVICE', 'eyebrow'), textNode('h2', displayName(p, settings.language) || p.ref || 'Unnamed service'));
+  const dl = document.createElement('dl');
+  row(dl, 'Type', SERVICE_KINDS[p.kind]);
+  row(dl, 'Reference', p.ref);
+  row(dl, 'Network', p.network);
+  row(dl, 'Operator', p.operator);
+  if (p.n > 1) row(dl, 'Services on this track', String(p.n));
+  panel.append(dl);
+  osmLink(panel, feature);
   $('details').hidden = false;
 }
 // Departures from Transitous, live where the operator publishes real-time
@@ -881,7 +925,7 @@ async function initialize() {
   dem = new mlcontour.DemSource({url:DEM_URL,encoding:'terrarium',maxzoom:15,worker:true,cacheSize:200,timeoutMs:20000,id:'atlas'});
   dem.setupMaplibre(maplibregl);
   // Level crossings and branch lines are served as stored (no label names).
-  for (const [scheme,folder,names = true] of [['railtiles','lifecycle'],['streettiles','street-running'],['crossingtiles','level-crossings',false],['branchtiles','branch-lines',false],['axlebranch','branch-lines',false]]) {
+  for (const [scheme,folder,names = true] of [['railtiles','lifecycle'],['streettiles','street-running'],['crossingtiles','level-crossings',false],['branchtiles','branch-lines',false],['axlebranch','branch-lines',false],['servicetiles','service-routes',false]]) {
   const lifecycleRoot = new URL(`./data/${folder}/`, import.meta.url);
   let tileIndex;
   maplibregl.addProtocol(scheme, async (params, controller) => {
@@ -1065,7 +1109,7 @@ async function initialize() {
   }});
   syncPanning = globeDrag.sync; globeDragged = globeDrag.justDragged;
   syncPanning();
-  map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'axleLow', 'axleRail', 'axleBranch', 'railway', 'branchLines'].includes(e.sourceId) && e.tile) scheduleLegend(); });
+  map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'axleLow', 'axleRail', 'axleBranch', 'railway', 'branchLines', 'serviceRoutes'].includes(e.sourceId) && e.tile) scheduleLegend(); });
   map.on('click', event => {
     // The release that ends a globe drag is not a click.
     if (globeDragged()) return;
@@ -1080,6 +1124,9 @@ async function initialize() {
     const features = map.queryRenderedFeatures([[p.x - 7, p.y - 7], [p.x + 7, p.y + 7]], {layers: clickable})
       .sort((a,b) => featurePickRank(a)-featurePickRank(b) || stationRank(a.properties)-stationRank(b.properties));
     if (!features[0]) return;
+    // Services sharing a track are drawn side by side a few pixels apart:
+    // the one whose drawn line is nearest the click.
+    if (features[0].layer.id === 'service-routes') features.unshift(nearestService(features.filter(f => f.layer.id === 'service-routes'), p));
     // Operating-line tiles are not relabelled; locate them by the click.
     const {properties} = features[0];
     features[0].properties = properties.atlas_han ? properties : {...properties, ...locate(event.lngLat.lng, event.lngLat.lat)};

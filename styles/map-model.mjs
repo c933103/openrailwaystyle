@@ -80,7 +80,7 @@ export function searchResults(facilities, places) {
 export const BACKGROUNDS = ['map', 'satellite', 'hybrid', 'carto'];
 // Standard OSM tiles: ordinary browser caching, no offline/prefetch support.
 export const CARTO_TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge', 'loading', 'axle', 'owner'];
+export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge', 'loading', 'axle', 'service', 'owner'];
 export const LANGUAGES = [
   ['local','Local names'], ['en','English'], ['ko','한국어'], ['ja','日本語'],
   ['zh-Hant','繁體中文'], ['zh-Hans','简体中文'], ['de','Deutsch'], ['fr','Français'],
