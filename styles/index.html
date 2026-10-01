@@ -13,8 +13,8 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Rail Atlas">
-  <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.1.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20261001-89" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet">
+  <link href="app.css?v=20261001-91" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -58,7 +58,7 @@
         <fieldset><legend>Railways</legend>
           <label><input type="checkbox" id="stations" checked> Station markers and names</label>
           <label><input type="checkbox" id="names" checked> Railway names along tracks</label>
-          <label><input type="checkbox" id="labels" checked> Values along tracks (speed, power, train control, gauges)</label>
+          <label><input type="checkbox" id="labels" checked> Value labels (speed, power, train control, gauges, axle loads and platform lengths)</label>
           <label><input type="checkbox" id="trackCounts" checked> Track counts in boxes (Infrastructure view)</label>
           <label><input type="checkbox" id="inactive" checked> Planned, construction and former railways</label>
         </fieldset>
@@ -154,7 +154,7 @@
       status.textContent = 'The map could not load. Check your connection and reload the page.';
     }, true);
   </script>
-  <script type="module" src="app.mjs?v=20261001-89"></script>
+  <script type="module" src="app.mjs?v=20261001-91"></script>
 </body>
 </html>
 

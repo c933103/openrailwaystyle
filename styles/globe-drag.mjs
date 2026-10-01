@@ -144,21 +144,19 @@ export const zoomForLatitude = (zoom, oldLat, newLat) => zoom + Math.log2(Math.c
 const LOWEST = -24;
 export function allowPolarCentres(map, LngLat, minZoom) {
   const isGlobe = transform => Boolean(transform?._verticalPerspectiveTransform);
-  const adjust = transform => {
-    if (!isGlobe(transform)) return;
-    for (const t of [transform, transform._verticalPerspectiveTransform]) {
-      if (t.__polarCentres || typeof t.getConstrained !== 'function') continue;
-      const constrain = t.getConstrained.bind(t);
-      t.getConstrained = (lngLat, zoom) => {
-        const result = constrain(lngLat, zoom);
-        if (transform.isGlobeRendering === false) return result;
-        const lat = Math.abs(lngLat.lat) > MERCATOR_LIMIT ? clampLat(lngLat.lat) : result.center.lat;
-        const lowest = minZoom() + Math.log2(Math.cos(rad(lat)));
-        return {center: new LngLat(result.center.lng, lat), zoom: Math.max(lowest, Math.min(t.maxZoom, +zoom))};
-      };
-      t.__polarCentres = true;
-    }
+  // One constrain for every transform (MapLibre's transformConstrain). On a
+  // projection change MapLibre copies it from the old transform to the new
+  // one and constrains the new one before the map uses it, so it works on
+  // the transform last handed over, not map.transform.
+  let current = map.transform;
+  const constrain = (lngLat, zoom) => {
+    const t = current, result = t.defaultConstrain(lngLat, zoom);
+    if (!isGlobe(t) || t.isGlobeRendering === false) return result;
+    const lat = Math.abs(lngLat.lat) > MERCATOR_LIMIT ? clampLat(lngLat.lat) : result.center.lat;
+    const lowest = minZoom() + Math.log2(Math.cos(rad(lat)));
+    return {center: new LngLat(result.center.lng, lat), zoom: Math.max(lowest, Math.min(t.maxZoom, +zoom))};
   };
+  const adjust = transform => { current = transform; transform.setConstrainOverride(constrain); };
   const refresh = () => { const t = map.transform; if (isGlobe(t)) t.setMinZoom(LOWEST); else if (t.minZoom !== minZoom()) map.setMinZoom(minZoom()); };
   // Zooming around the pointer: near a pole, MapLibre's globe zoom moves
   // the centre in longitude and latitude and clamps it at 85.05°, pulling
