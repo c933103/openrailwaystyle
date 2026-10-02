@@ -84,3 +84,89 @@ test('terrain repair: missing data is filled from zoom 4', () => {
   assert.equal(at(data, 50, 50), 120); assert.equal(at(data, 10, 80), 120);
   assert.equal(repairPixels(tile((x, y) => x === 5 ? -14840 : 120), 256, 3, 0, 0, null), 0);
 });
+
+test('terrain repair: faults a few pixels across go; islets, cliffs, coasts and plains stay', () => {
+  // The tile two zooms up, which tile 0/0 fills a quarter of.
+  const coarse = height => tile((x, y) => height(4 * x, 4 * y));
+  // East of Sha Tin at zoom 12: spikes beside pits on river flats, and a
+  // pit below the sea two pixels wide (zoom 11's), all in level land; the
+  // coarser tile has nothing standing up there.
+  const flats = (x, y) => 5 + x * 0.01;
+  const fault = {'72,157': 1820, '73,157': -508, '72,158': 2436, '73,158': -655, '72,159': 1260, '73,159': -335, '40,40': -353, '40,41': -261};
+  const shaTin = tile((x, y) => fault[`${x},${y}`] ?? flats(x, y));
+  repairPixels(shaTin, 256, 12, 0, 0, coarse(flats));
+  for (const key of Object.keys(fault)) { const [x, y] = key.split(',').map(Number); assert.ok(Math.abs(at(shaTin, x, y) - flats(x, y)) < 60, `${key}: ${at(shaTin, x, y)}`); }
+  // An islet in the sea, and a sea stack beside a fault pit: the coarser
+  // tile holds them (lower, as a coarser pixel averages them with the sea).
+  const sea = (x, y) => -30;
+  const islet = (x, y) => Math.max(0, 500 - 120 * Math.hypot(x - 150, y - 150));
+  const stacks = tile((x, y) => x === 200 && y === 100 ? 700 : x === 201 && y === 100 ? -1200 : Math.hypot(x - 150, y - 150) < 4.2 ? islet(x, y) : sea(x, y));
+  const coarser = tile((x, y) => (Math.abs(x - 37) <= 1 && Math.abs(y - 37) <= 1) || (Math.abs(x - 50) <= 1 && Math.abs(y - 25) <= 1) ? 420 : -30);
+  const before = stacks.slice();
+  repairPixels(stacks, 256, 12, 0, 0, coarser);
+  for (const [x, y] of [[150, 150], [151, 150], [150, 152], [200, 100]]) assert.equal(at(stacks, x, y), terrarium(...before.slice((y * 256 + x) * 4, (y * 256 + x) * 4 + 3)), `${x},${y} kept`);
+  assert.ok(at(stacks, 201, 100) > -100, `pit beside the stack: ${at(stacks, 201, 100)}`); // from the coarser tile
+  // A coast with a fault on the shore, and a stream bed below the sea in
+  // land: the sea and the stream stay.
+  const coast = (x, y) => x < 100 ? 150 : -20;
+  const shore = tile((x, y) => x === 98 && y === 50 ? 471 : x === 99 && y === 50 ? -79 : x === 60 && y === 120 ? -1.5 : coast(x, y));
+  repairPixels(shore, 256, 12, 0, 0, coarse(coast));
+  for (const [x, y] of [[100, 50], [101, 49], [100, 52], [102, 50]]) assert.equal(at(shore, x, y), -20, `sea at ${x},${y}`);
+  assert.equal(at(shore, 95, 50), 150); assert.equal(at(shore, 60, 120), -1.5);
+  assert.ok(Math.abs(at(shore, 98, 50) - 150) < 60, `spike on the shore: ${at(shore, 98, 50)}`);
+  // A patch of a fault at one wrong height round a missing pixel (zoom 14,
+  // no coarser tile to tell): it goes whole.
+  const patch = tile((x, y) => x === 60 && y === 60 ? -14840 : Math.abs(x - 60) <= 2 && Math.abs(y - 60) <= 2 ? 100 : 200);
+  repairPixels(patch, 256, 14, 0, 0, null);
+  for (const [x, y] of [[58, 58], [60, 59], [62, 62], [60, 60]]) assert.ok(at(patch, x, y) > 150, `patch at ${x},${y}: ${at(patch, x, y)}`);
+  // A real narrow summit in both tiles, with a fault a few pixels wide in
+  // this one: the coarser tile still repairs it.
+  const summit = (x, y) => Math.max(300, 1500 - 150 * Math.hypot(x - 100, y - 100));
+  const peak = tile((x, y) => Math.abs(x - 100) <= 2 && Math.abs(y - 100) <= 2 ? 300 : summit(x, y));
+  repairPixels(peak, 256, 14, 0, 0, tile((x, y) => Math.hypot(x - 24.5, y - 24.5) <= 1.2 ? 1450 : 300));
+  for (const [x, y] of [[100, 100], [101, 99]]) assert.ok(at(peak, x, y) > 1000, `summit at ${x},${y}: ${at(peak, x, y)}`);
+  // The same with a fault wider than 16 pixels over the summit's top:
+  // no sound summit pixel lies within eight, but the ground still rises.
+  const wide = (x, y) => Math.max(300, 1500 - 40 * Math.hypot(x - 100, y - 100));
+  const flat = tile((x, y) => Math.abs(x - 100) <= 10 && Math.abs(y - 100) <= 10 ? 300 : wide(x, y));
+  repairPixels(flat, 256, 14, 0, 0, tile((x, y) => wide(4 * x + 1.5, 4 * y + 1.5)));
+  assert.ok(at(flat, 100, 100) > 1000, `wide fault on the summit: ${at(flat, 100, 100)}`);
+  // And with the whole top corrupt, 65 pixels across: the coarser tile's
+  // summit is broad, unlike a coarser tile's own two-pixel fault.
+  const broad = (x, y) => Math.max(300, 1500 - 10 * Math.hypot(x - 100, y - 100));
+  const capped = tile((x, y) => Math.abs(x - 100) <= 32 && Math.abs(y - 100) <= 32 ? 300 : broad(x, y));
+  repairPixels(capped, 256, 14, 0, 0, tile((x, y) => broad(4 * x + 1.5, 4 * y + 1.5)));
+  assert.ok(at(capped, 100, 100) > 1000, `65-pixel fault on the summit: ${at(capped, 100, 100)}`);
+  // An ordinary dip beside a spike cluster is not part of the fault.
+  const dip = tile((x, y) => x === 120 && y === 120 ? 600 : x === 120 && y === 121 ? 1000 : x === 119 && y === 121 ? 90 : 100);
+  repairPixels(dip, 256, 12, 0, 0, coarse(() => 100));
+  assert.ok(at(dip, 120, 121) < 200, `spike: ${at(dip, 120, 121)}`);
+  assert.equal(at(dip, 119, 121), 90, 'the dip stays');
+  // A low bay under cliffs whose top holds a fault (Kalaupapa, zoom 14):
+  // the fault goes, the low ground keeps its height.
+  const cliff = (x, y) => y >= 100 && x >= 30 && x < 60 ? 5 : 390;
+  const plain = tile((x, y) => y === 99 && x >= 30 && x < 40 ? -9351 : cliff(x, y));
+  repairPixels(plain, 256, 14, 0, 0, coarse(cliff));
+  for (const x of [30, 35, 39]) assert.ok(at(plain, x, 99) > 0, `fault at ${x}: ${at(plain, x, 99)}`);
+  let raised = 0;
+  for (let y = 100; y < 256; y++) for (let x = 30; x < 60; x++) if (at(plain, x, y) > 50) raised++;
+  assert.ok(raised <= 2, `${raised} pixels of the bay raised`);
+  // A real hollow inside a rim, with a spike pair on the rim, both in the
+  // coarser tile: the spikes go, the hollow keeps its depth.
+  const rimmed = (x, y) => { const d = Math.max(Math.abs(x - 150), Math.abs(y - 150)); return d <= 2 ? 100 : d === 3 ? 150 : 200; };
+  const hollow = tile((x, y) => x === 153 && y === 150 ? 600 : x === 154 && y === 150 ? 1000 : rimmed(x, y));
+  repairPixels(hollow, 256, 14, 0, 0, coarse(rimmed));
+  assert.ok(at(hollow, 154, 150) < 300, `spike: ${at(hollow, 154, 150)}`);
+  for (const [x, y] of [[150, 150], [152, 150], [148, 152]]) assert.equal(at(hollow, x, y), 100, `hollow at ${x},${y}`);
+  // A real bowl below the sea in low land (a quarry), which the coarser tile
+  // holds too: it keeps its depth.
+  const quarry = (x, y) => x === 200 && y === 200 ? -50 : Math.abs(x - 200) <= 2 && Math.abs(y - 200) <= 2 ? -40 : 10;
+  const bowl = tile(quarry);
+  repairPixels(bowl, 256, 14, 0, 0, coarse(quarry));
+  for (const [x, y] of [[200, 200], [202, 200], [198, 202]]) assert.equal(at(bowl, x, y), quarry(x, y), `quarry at ${x},${y}`);
+  // Sound river flats at zoom 13 under a coarser tile holding the zoom 11
+  // fault east of Sha Tin: the flats keep their height.
+  const river = tile((x, y) => 11), towerTile = tile((x, y) => x >= 25 && x < 27 && y >= 25 && y < 27 ? [1442, 1058][(x + y) % 2] : 11);
+  repairPixels(river, 256, 13, 0, 0, towerTile);
+  for (const [x, y] of [[100, 100], [102, 104], [106, 106]]) assert.equal(at(river, x, y), 11, `river at ${x},${y}: ${at(river, x, y)}`);
+});

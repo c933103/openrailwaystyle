@@ -1,12 +1,12 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261002-54';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261002-54';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261002-80';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261002-80';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261002-54';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261002-54';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261002-54';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261002-54';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261002-54';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261002-54';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261002-80';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261002-80';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261002-80';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261002-80';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261002-80';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261002-80';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -33,11 +33,14 @@ const readCookie = name => { try { return decodeURIComponent(document.cookie.mat
 const writeCookie = (name, value) => { try { document.cookie = `${name}=${encodeURIComponent(value)}; max-age=31536000; path=/; SameSite=Lax`; } catch {} };
 const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_COOKIE) || '{}'); return value && typeof value === 'object' ? value : {}; } catch { return {}; } })();
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
+// The compact attribution/info control is UI state rather than a shareable map
+// setting. Keep it in the same settings cookie, closed on a first visit.
+settings.attributionOpen = typeof remembered.attributionOpen === 'boolean' ? remembered.attributionOpen : false;
 const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261002-54';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261002-80';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -215,7 +218,7 @@ function renderLegend() {
   box.append(help);
 }
 function saveSettings() {
-  writeCookie(SETTINGS_COOKIE, JSON.stringify(Object.fromEntries(SETTING_KEYS.map(key => [key, settings[key]]))));
+  writeCookie(SETTINGS_COOKIE, JSON.stringify({...Object.fromEntries(SETTING_KEYS.map(key => [key, settings[key]])), attributionOpen: settings.attributionOpen}));
   const url = new URL(location.href);
   if (SETTING_PARAMS.some(key => url.searchParams.has(key))) {
     for (const key of SETTING_PARAMS) url.searchParams.delete(key);
@@ -290,7 +293,7 @@ function applySettings() {
   renderLegend();
   if (ready) { scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update(); }
 }
-let attribution, attributionCarto, servedBuild;
+let attribution, attributionCarto, attributionStateObserver, servedBuild;
 function codeAttribution() {
   const span=document.createElement('span');span.className='atlas-build';
   span.append(`Build ${assetVersion} · `);
@@ -307,10 +310,27 @@ function updateAttribution() {
   if (!map) return;
   const carto = settings.background === 'carto';
   if (attribution && attributionCarto === carto) return;
+  attributionStateObserver?.disconnect(); attributionStateObserver = undefined;
   if (attribution) map.removeControl(attribution);
   attributionCarto = carto;
   attribution = new maplibregl.AttributionControl({compact: !carto, customAttribution: codeAttribution()});
   map.addControl(attribution, 'bottom-right');
+  // MapLibre 5.24 initially expands compact attribution. Restore the user's
+  // remembered state instead; with no cookie, start closed so only the ⓘ
+  // button occupies the corner. Carto deliberately uses non-compact credits.
+  const container = attribution._container;
+  if (!carto && container?.classList.contains('maplibregl-compact')) {
+    container.classList.toggle('maplibregl-compact-show', settings.attributionOpen);
+    container.toggleAttribute('open', settings.attributionOpen);
+    attributionStateObserver = new MutationObserver(() => {
+      if (!container.classList.contains('maplibregl-compact')) return;
+      const open = container.classList.contains('maplibregl-compact-show');
+      if (open === settings.attributionOpen) return;
+      settings.attributionOpen = open;
+      saveSettings();
+    });
+    attributionStateObserver.observe(container, {attributes:true, attributeFilter:['class']});
+  }
 }
 const featurePickRank = f => f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
@@ -334,10 +354,19 @@ function osmLink(panel, feature) {
     link.textContent = 'View location on OpenStreetMap ↗';
     link.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`;
     // A search result gives a bare OSM id without its type: the station tiles
-    // name it (node-…, way-…) once the map has drawn the place.
+    // name it (node-…, way-…) once the map has drawn the place. The first
+    // look runs before the link is in the panel, and often finds it then.
     if (feature.kind === 'station' && /^\d+$/.test(String(feature.properties?.osm_id ?? ''))) {
-      const resolve = () => { const found = ready && stationObject(feature.properties.osm_id); if (found && link.isConnected) toObject(found); return found; };
-      const lookUp = () => { if (!resolve()) map.once('idle', resolve); };
+      const resolve = () => { const found = ready && stationObject(feature.properties.osm_id); if (found) toObject(found); return found; };
+      // Otherwise as station tiles arrive: the map goes idle only once every
+      // tile (relief and contours too) has loaded, which can take long.
+      const lookUp = () => {
+        if (resolve()) return;
+        const stop = () => { map.off('sourcedata', onData); clearTimeout(timer); };
+        const onData = event => { if (event.tile && STATION_SOURCES.includes(event.sourceId) && resolve()) stop(); };
+        const timer = setTimeout(stop, 60_000);
+        map.on('sourcedata', onData);
+      };
       // After any queued action (a search result's fly-to), not instead of it.
       if (ready) lookUp(); else { const queued = pendingView; pendingView = () => { queued?.(); lookUp(); }; }
     }
@@ -345,10 +374,13 @@ function osmLink(panel, feature) {
   link.target = '_blank'; link.rel = 'noopener'; link.className = 'osm-link';
   panel.append(link);
 }
+const STATION_SOURCES = ['stations', 'stationMed', 'stationLow'];
 function stationObject(osmId) {
-  const pattern = new RegExp(`^(node|way|relation)-${osmId}(-|$)`);
+  const pattern = new RegExp(`^(node|way|relation)-${osmId}(-|$)`), seen = new Set();
   for (const layer of map.getStyle().layers) {
-    if (!layer.id.startsWith('station-') || !map.getSource(layer.source)) continue;
+    const key = `${layer.source}/${layer['source-layer']}`;
+    if (!layer.id.startsWith('station-') || !map.getSource(layer.source) || seen.has(key)) continue;
+    seen.add(key);
     for (const f of map.querySourceFeatures(layer.source, {sourceLayer: layer['source-layer']})) {
       const match = pattern.exec(String(f.properties.id ?? ''));
       if (match) return {type: match[1], id: String(osmId)};
@@ -946,7 +978,8 @@ async function initialize() {
   const protocol = new pmtiles.Protocol();
   protocol.tile = shareArchiveRequests(protocol.tile.bind(protocol));
   maplibregl.addProtocol('pmtiles', protocol.tile);
-  const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url)});
+  const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url),
+    basemapArchive: url => new pmtiles.PMTiles(labelCode.timedSource(new pmtiles.FetchSource(url), 20000))});
   // The contour worker with the terrain tiles' bad pixels repaired
   // (dem-worker.mjs); relief shading reads its tiles through it too.
   mlcontour.workerUrl = new URL(`vendor/dem-worker.js?v=${assetVersion}`, import.meta.url).href;
@@ -1408,8 +1441,17 @@ $('search-form').addEventListener('submit', async e => {
       Date.now() < searchPausedUntil ? Promise.reject(new Error('paused')) : json(facilityURL, facility.signal).finally(() => clearTimeout(facilityTimeout)),
       placeSearch(placeURL, json, controller.signal)]);
     if (controller !== searchController) return;
-    if (facilities.status === 'rejected' && places.status === 'rejected') throw facilities.reason;
-    const {rail, places: other} = searchResults(facilities.value || [], places.value || []);
+    // Stations the map has drawn whose name the search matches, for those
+    // neither service finds (stations mapped as areas, partial names).
+    // Below zoom 7 the curated principal stations are drawn too.
+    // Only what the station layers draw at this zoom (no tram stops at zoom 8).
+    const zoom = ready ? map.getZoom() : 0;
+    const drawn = ready ? drawnStationQueries(map.getStyle().layers, zoom).flatMap(({source, sourceLayer, filter}) =>
+      source === 'stationMajor' ? (majorStationData?.features || []).filter(f => (f.properties?.tier ?? 7) <= zoom)
+        : map.getSource(source) ? map.querySourceFeatures(source, {sourceLayer, filter}) : []) : [];
+    const local = ready ? tileStations(drawn, q, map.getCenter().toArray(), facilities.value || []) : [];
+    if (facilities.status === 'rejected' && places.status === 'rejected' && !local.length) throw facilities.reason;
+    const {rail, places: other} = searchResults([...(facilities.value || []), ...local], places.value || []);
     const results = $('search-results'); results.replaceChildren();
     const narrow = () => { results.hidden = true; $('search-status').hidden = true; if (matchMedia('(max-width: 650px)').matches && !$('controls').hidden) $('collapse').click(); };
     const entry = (title, detail, onClick) => {

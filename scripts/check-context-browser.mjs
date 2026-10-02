@@ -1,9 +1,10 @@
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
+import {waitUntil,setDefaultTimeout} from './wait-until.mjs';
 const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1});
-page.setDefaultTimeout(90000);
+setDefaultTimeout(page,90000);
 const errors=[];
 page.on('pageerror',e=>errors.push(e.message));
 page.on('console',msg=>{if(msg.type()==='error') { console.log('Browser resource:',msg.text()); if(/DataCloneError|already detached/.test(msg.text())) errors.push(msg.text()); }});
@@ -16,7 +17,7 @@ const evaluate=async(fn,arg)=>page.evaluate(async({source,arg})=>{
   return await (0,eval)('('+source+')')(map,arg);
 },{source:fn.toString(),arg});
 async function waitContext(group) {
-  await page.waitForFunction(async group=>{
+  await waitUntil(page,async group=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('context-'+group+'-')&&f.layer.type==='symbol');
   },group,{timeout:90000});
@@ -43,7 +44,7 @@ async function screenshot(name) {
 await mkdir('browser-review',{recursive:true});
 try {
   const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
-  await page.goto(base+'?v=20261002-54&mode=speed&language=en&relief=0&inactive=0#14/22.299/114.172',{waitUntil:'domcontentloaded'});
+  await page.goto(base+'?v=20261002-80&mode=speed&language=en&relief=0&inactive=0#14/22.299/114.172',{waitUntil:'domcontentloaded'});
   await page.waitForSelector('body[data-map-ready="true"]',{state:'attached'});
   await waitContext('transport');await waitContext('destinations');await settleContext();
   console.log('CONTEXT_DATA',JSON.stringify(await evaluate(map=>({
@@ -51,7 +52,7 @@ try {
     poiClasses:[...new Set(map.querySourceFeatures('openmaptiles',{sourceLayer:'poi'}).map(f=>f.properties.class+':'+f.properties.subclass))],
   }))));
   assert.ok(await evaluate(map=>map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('context-destinations-')&&f.layer.type==='fill')),'destination areas render');
-  await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('station-'));});
+  await waitUntil(page,async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('station-'));});
   await screenshot('hongkong');
   // A feature panel uses destination semantics, never railway speed/status.
   const point=await evaluate(map=>{
@@ -78,16 +79,16 @@ try {
   await page.locator('#settings-open').click();
   await page.locator('#transport').uncheck();await page.locator('#destinations').uncheck();await page.locator('#constraints').uncheck();
   assert.ok(await evaluate(map=>map.getStyle().layers.filter(l=>l.id.startsWith('context-')).every(l=>l.layout?.visibility==='none')),'both context groups are disabled');
-  await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return !map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('context-'));});
+  await waitUntil(page,async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return !map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('context-'));});
   assert.ok(await evaluate(map=>map.queryRenderedFeatures({layers:['building-footprints']}).length>0),'ordinary buildings remain visible with destinations disabled');
   await page.locator('#transport').check();await page.locator('#destinations').check();await page.locator('#constraints').check();
   await page.locator('#settings-close').click();
   await page.locator('#language').selectOption('zh-Hant');
-  await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('context-')&&f.properties.atlas_language==='zh-Hant');});
+  await waitUntil(page,async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('context-')&&f.properties.atlas_language==='zh-Hant');});
   await waitContext('transport');await settleContext();
   console.log('PASS: Hong Kong transport, destination labels/areas, shared language, toggles and inspection');
   await evaluate(map=>map.jumpTo({center:[-0.4543,51.47],zoom:10}));
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return map.queryRenderedFeatures({layers:['context-transport-airport-label']}).some(f=>f.properties.iata==='LHR'||/Heathrow/.test(f.properties.name));
   });

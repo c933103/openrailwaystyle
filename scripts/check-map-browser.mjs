@@ -1,10 +1,11 @@
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
+import {waitUntil,setDefaultTimeout} from './wait-until.mjs';
 const deadline=setTimeout(()=>{console.error('Browser validation exceeded ten minutes');process.exit(1);},600000);deadline.unref();
 const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1365,height:900},deviceScaleFactor:1});
-page.setDefaultTimeout(120000);
+setDefaultTimeout(page,120000);
 // Retain completed WebGL frames for reliable headless screenshots.
 await page.addInitScript(()=>{
   const getContext=HTMLCanvasElement.prototype.getContext;
@@ -63,7 +64,13 @@ async function moveTo(zoom,lng,lat){
 const errors=[],requests=[],pendingRequests=new Set();
 page.on('pageerror', e=>errors.push(e.message));
 const requestStart=new Map();
-page.on('request',req=>{requests.push(req.url());pendingRequests.add(req);requestStart.set(req,Date.now());});
+page.on('request',req=>{
+  requests.push(req.url());requestStart.set(req,Date.now());
+  // Cancelling a count terminates its worker. Chromium can omit the finish
+  // event for that worker's startup script; these entries never settle.
+  // Rendered count assertions below verify that required workers execute.
+  if(!/\/vendor\/track-worker\.js(?:\?|$)/.test(req.url()))pendingRequests.add(req);
+});
 // Glyph (font) ranges are needed before any label can be drawn.
 page.on('requestfailed',req=>{if(req.url().includes('/fonts/')) console.log('Font request failed',req.failure()?.errorText,req.url().slice(-60));});
 page.on('response',res=>{if(res.url().includes('/fonts/') && res.status()>=400) console.log('Font HTTP',res.status(),res.url().slice(-60));});
@@ -83,7 +90,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') { console.log('Browser resource:',msg.text()); if(/DataCloneError|already detached/.test(msg.text())) errors.push(msg.text()); }});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261002-54&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261002-80&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
@@ -96,11 +103,30 @@ try{
   console.log(`PASS: About opened while loading (map ready at click: ${earlyReady})`);
   await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:120000});
   await page.waitForFunction(()=>+document.querySelector('#map-status').dataset.renderedTracks>0,undefined,{timeout:120000});
+  // The bottom-right info/attribution control starts closed on a first visit,
+  // records manual open/close state in the settings cookie, and restores that
+  // state when the compact control is recreated.
+  const attributionState=()=>page.locator('.maplibregl-ctrl-attrib').evaluate(el=>({compact:el.classList.contains('maplibregl-compact'),open:el.classList.contains('maplibregl-compact-show')}));
+  assert.deepEqual(await attributionState(),{compact:true,open:false},'Attribution info starts compact and closed');
+  await page.locator('.maplibregl-ctrl-attrib-button').click();
+  assert.equal((await attributionState()).open,true,'The info button opens attribution');
+  let settingsCookie=(await page.context().cookies()).find(c=>c.name==='atlas_settings');
+  assert.equal(JSON.parse(decodeURIComponent(settingsCookie.value)).attributionOpen,true,'Open attribution is remembered in the settings cookie');
+  await page.locator('[data-background="carto"]').click();
+  assert.equal((await attributionState()).compact,false,'Carto keeps its full attribution');
+  await page.locator('[data-background="map"]').click();
+  assert.deepEqual(await attributionState(),{compact:true,open:true},'Remembered attribution state survives control recreation');
+  await page.locator('.maplibregl-ctrl-attrib-button').click();
+  assert.equal((await attributionState()).open,false,'The info button closes attribution');
+  settingsCookie=(await page.context().cookies()).find(c=>c.name==='atlas_settings');
+  assert.equal(JSON.parse(decodeURIComponent(settingsCookie.value)).attributionOpen,false,'Closed attribution is remembered in the settings cookie');
+  console.log('PASS: attribution info starts closed and remembers open/closed state');
   // Pan northwest at the SAME zoom before any visit to zoom 8.
   await moveTo(7,128.1,35.65);
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
-    return Math.abs(map.getCenter().lng-128.1)<0.01 && (map.getSource('inactiveRegional') && map.isSourceLoaded('inactiveRegional')) && document.querySelector('#map-status').dataset.lifecycleNames?.includes('남부내륙');
+    // The borders below come from the basemap, which can load after the railway.
+    return Math.abs(map.getCenter().lng-128.1)<0.01 && (map.getSource('inactiveRegional') && map.isSourceLoaded('inactiveRegional')) && map.isSourceLoaded('openmaptiles') && document.querySelector('#map-status').dataset.lifecycleNames?.includes('남부내륙');
   },undefined,{timeout:120000});
   console.log('PASS: 남부내륙선 rendered after pan at zoom 7, before visiting zoom 8');
   console.log('Inspecting rendered line extent, stations and borders');
@@ -124,7 +150,7 @@ try{
   await page.locator('#collapse').click();
   await page.selectOption('#language','en');
   await moveTo(10,128.12,35.17);
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return Math.abs(map.getZoom()-10)<0.01 && (map.getSource('railway') && map.isSourceLoaded('railway')) && map.queryRenderedFeatures().some(f=>f.layer.id.endsWith('-names') && !f.layer.id.startsWith('station-'));
   },undefined,{timeout:45000});
@@ -133,13 +159,13 @@ try{
   const detail=await page.screenshot({path:'browser-review/korea-z10.jpg',type:'jpeg',quality:55});
   console.log('DETAIL_IMAGE_START'+detail.toString('base64')+'DETAIL_IMAGE_END');
   await page.selectOption('#language','fr');
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return (map.getSource('stations') && map.isSourceLoaded('stations')) && map.queryRenderedFeatures().some(f=>f.source==='stations' && f.properties.atlas_language==='fr' && !f.properties['name:fr'] && f.properties['name:en'] && f.properties.atlas_name===f.properties['name:en']);
   },undefined,{timeout:120000});
   console.log('PASS: French station labels use fetched English names when French is absent');
   await page.locator('[data-mode="infrastructure"]').click();
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     const features=map.queryRenderedFeatures();
     return ['structure-bridge-edge','structure-tunnel'].every(id=>features.some(f=>f.layer.id===id));
@@ -197,7 +223,7 @@ try{
   console.log('PASS: loading gauge view');
   await page.locator('[data-mode="infrastructure"]').click();
   await moveTo(8,129.4,36.3);
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     const contours=map.queryRenderedFeatures().filter(f=>f.layer.id==='terrain-contours');
     return Math.abs(map.getCenter().lng-129.4)<0.01 && (map.getSource('contours') && map.isSourceLoaded('contours')) && contours.some(f=>f.properties.ele<0) && contours.some(f=>f.properties.ele>0);
@@ -236,13 +262,13 @@ try{
   await page.locator('#settings-open').click();
   assert.equal(await page.locator('#main-view').isHidden(),true,'settings replace the map controls');
   await page.locator('#inactive').uncheck();
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return map.getLayoutProperty('inactive-regional-construction','visibility')==='none' && !map.queryRenderedFeatures().some(f=>f.source==='inactiveRegional');
   },undefined,{timeout:30000});
   await page.locator('#inactive').check();
   await page.locator('#relief').uncheck();
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return map.getLayoutProperty('terrain-contours','visibility')==='none' && !map.queryRenderedFeatures().some(f=>f.source==='contours');
   },undefined,{timeout:30000});
@@ -253,7 +279,7 @@ try{
   assert.ok(requests.some(url=>url.includes('terrarium')),'Relief source requested');
   assert.ok(requests.some(url=>url.includes('standard_railway_text_stations')&&url.includes('lang=en')),'Translated station tiles requested');
   await page.selectOption('#language','zh-Hant');
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return (map.getSource('stations') && map.isSourceLoaded('stations')) && map.queryRenderedFeatures().some(f=>f.source==='stations' && f.properties.atlas_language==='zh-Hant' && /\p{Script=Hangul}/u.test(f.properties.name||'') && /\p{Script=Han}/u.test(f.properties.atlas_name||''));
   },undefined,{timeout:120000});
@@ -261,7 +287,7 @@ try{
   console.log('Checking China regional map');
   await page.selectOption('#language','zh-Hans');
   await moveTo(7,116.4,30.5);
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return Math.abs(map.getCenter().lng-116.4)<0.01 && Math.abs(map.getZoom()-7)<0.01 && !map.isMoving() && ['stationMed','openmaptiles','railway','relief'].every(id=>map.getSource(id) && map.isSourceLoaded(id)) && map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-') && f.geometry.type==='Point' && f.geometry.coordinates[0]>110 && f.geometry.coordinates[0]<125).length>5;
   },undefined,{timeout:120000});
@@ -277,7 +303,7 @@ try{
   // The panel stays collapsed from the China view until the units check.
   console.log('Checking mouse panning over a dense city, compass and units');
   await moveTo(12,139.765,35.68);
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return !map.isMoving() && ['stations','railway','openmaptiles'].every(id=>map.getSource(id) && map.isSourceLoaded(id)) && map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-')).length>10;
   },undefined,{timeout:120000});
@@ -294,14 +320,14 @@ try{
   assert.ok(compass && zoomIn && compass.y<zoomIn.y,'The compass sits above the zoom buttons');
   await page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);map.setBearing(40);});
   await page.locator('.maplibregl-ctrl-compass').click();
-  await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return Math.abs(map.getBearing())<0.5 && !map.isMoving();},undefined,{timeout:10000});
+  await waitUntil(page,async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return Math.abs(map.getBearing())<0.5 && !map.isMoving();},undefined,{timeout:10000});
   console.log('PASS: compass resets north');
   await page.locator('#collapse').click();
   await page.locator('[data-mode="speed"]').click();
   await page.selectOption('#units','imperial');
   assert.match(await page.locator('#legend').textContent(),/mph/);
   assert.match(await page.locator('.maplibregl-ctrl-scale').textContent(),/ft|mi/);
-  await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return JSON.stringify(map.getLayoutProperty('speed-labels','text-field')).includes('mph');},undefined,{timeout:10000});
+  await waitUntil(page,async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return JSON.stringify(map.getLayoutProperty('speed-labels','text-field')).includes('mph');},undefined,{timeout:10000});
   await page.selectOption('#units','metric');
   assert.match(await page.locator('.maplibregl-ctrl-scale').textContent(),/km|\bm\b/);
   console.log('PASS: units switch legend, scale bar and speed labels');
@@ -408,6 +434,21 @@ try{
     },'The South Pole cap must load its index, relief and contour tiles on the globe');
     console.log('PASS: polar cap drawn beyond 85° on the globe');
   } else console.log('SKIP: no polar cap data in this snapshot');
+  // Compact screens must keep the scale ruler on-screen. It sits above the
+  // coordinate readout, and the bottom-left control stack respects display
+  // safe-area insets instead of being hidden on phones.
+  await page.setViewportSize({width:412,height:915});
+  await page.waitForTimeout(150);
+  const compactControls=await page.evaluate(()=>{
+    const box=el=>{const r=el.getBoundingClientRect();return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height};};
+    const scale=document.querySelector('.maplibregl-ctrl-scale'),readout=document.querySelector('.map-readout');
+    return {display:getComputedStyle(scale).display,scale:box(scale),readout:readout.hidden?null:box(readout),viewport:{width:innerWidth,height:innerHeight}};
+  });
+  assert.notEqual(compactControls.display,'none','The scale ruler stays visible on compact screens');
+  assert.ok(compactControls.scale.left>=0 && compactControls.scale.top>=0 && compactControls.scale.right<=compactControls.viewport.width && compactControls.scale.bottom<=compactControls.viewport.height,'The compact scale ruler stays inside the visible viewport');
+  if(compactControls.readout) assert.ok(compactControls.scale.bottom<=compactControls.readout.top+1,'The scale ruler sits above the coordinate readout instead of being covered by it');
+  console.log('PASS: compact-screen scale ruler stays visible and above the bottom readout');
+  await page.setViewportSize({width:1365,height:900});
   assert.deepEqual(errors,[]);
   console.log('PASS: one shared language, name fallbacks, contours, structures and lifecycle controls; no JavaScript exceptions');
 } catch(error) {
@@ -443,4 +484,3 @@ try{
   console.log('FAIL_IMAGE_START'+failure.toString('base64')+'FAIL_IMAGE_END');
   throw error;
 } finally {await browser.close();}
-

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import encode from 'vt-pbf';
-import {readTile,localizeTile,installLabelProtocols,hanRegion,chineseArea} from '../styles/tile-labels.mjs';
+import {readTile,localizeTile,installLabelProtocols, timedSource,hanRegion,chineseArea} from '../styles/tile-labels.mjs';
 import {chooseName,readSettings,stationLanguages,stationPending,labelExpression} from '../styles/map-model.mjs';
 
 // Tiles give every feature its Han-name region; tests state it explicitly.
@@ -183,6 +183,49 @@ test('PMTiles wrapper localizes bytes and carries language through TileJSON temp
   const result=await protocols.atlasbase({url:'atlasbase://fr/https://example.org/world.pmtiles/7/1/1'},new AbortController());
   assert.equal(readTile(result.data).layers.stations.feature(0).properties.atlas_name,'Seoul');
 });
+test('a failed basemap request starts the archive afresh and is tried again',async()=>{
+  const protocols={},calls=[];
+  const pmtiles={tiles:new Map([['https://example.org/world.pmtiles',{}]]),tile:async p=>{
+    calls.push(p.url);
+    if(calls.length===1)throw new TypeError('Failed to fetch');
+    return {data:tile({name:'Seoul'})};
+  }};
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},pmtiles,fetch,{basemapRetries:[0,0]});
+  const result=await protocols.atlasbase({url:'atlasbase://en/https://example.org/world.pmtiles/7/1/1'},new AbortController());
+  assert.equal(readTile(result.data).layers.stations.feature(0).properties.atlas_name,'Seoul');
+  assert.equal(calls.length,2);
+  assert.equal(pmtiles.tiles.has('https://example.org/world.pmtiles'),false,'the cached failure is dropped');
+  // Three failures in a row reach the map; a cancelled request is not retried.
+  const failing={tiles:new Map(),tile:async()=>{calls.push('x');throw new TypeError('Failed to fetch');}};
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},failing,fetch,{basemapRetries:[0,0]});
+  calls.length=0;
+  await assert.rejects(protocols.atlasbase({url:'atlasbase://en/https://example.org/world.pmtiles/7/1/1'},new AbortController()),/Failed to fetch/);
+  assert.equal(calls.length,3);
+  const cancelled=new AbortController();cancelled.abort();calls.length=0;
+  await assert.rejects(protocols.atlasbase({url:'atlasbase://en/https://example.org/world.pmtiles/7/1/1'},cancelled));
+  assert.equal(calls.length,1);
+});
+test('basemap requests give up after a while, so a stalled one can be tried again',async()=>{
+  // An inner source that answers only when told, or fails when its signal aborts.
+  const stalled={getKey:()=>'k',getBytes:(o,l,signal)=>new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(new DOMException('aborted','AbortError'))))};
+  const started=Date.now();
+  await assert.rejects(timedSource(stalled,50).getBytes(0,10),/aborted/);
+  assert.ok(Date.now()-started>=45,'waited for the timeout');
+  const outer=new AbortController();setTimeout(()=>outer.abort(),10);
+  await assert.rejects(timedSource(stalled,5000).getBytes(0,10,outer.signal),/aborted/,'a cancelled tile cancels its request');
+  const quick={getKey:()=>'k',getBytes:async(o,l,signal)=>({data:new ArrayBuffer(l),aborted:signal.aborted})};
+  assert.deepEqual((await timedSource(quick,50).getBytes(0,4)).aborted,false);
+  assert.equal(timedSource(quick,50).getKey(),'k');
+  // The protocol makes the timed archive, and a fresh one after a failure.
+  const protocols={},made=[],pmtiles={tiles:new Map(),tile:async p=>{
+    if(made.length===1)throw new DOMException('aborted','AbortError');
+    return {data:tile({name:'Seoul'})};
+  }};
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},pmtiles,fetch,{basemapRetries:[0,0],basemapArchive:url=>{made.push(url);return {url};}});
+  const result=await protocols.atlasbase({url:'atlasbase://en/https://example.org/world.pmtiles/7/1/1'},new AbortController());
+  assert.equal(readTile(result.data).layers.stations.feature(0).properties.atlas_name,'Seoul');
+  assert.deepEqual(made,['https://example.org/world.pmtiles','https://example.org/world.pmtiles']);
+});
 test('station TileJSON can be capped by a URL fragment that is never requested',async()=>{
   const protocols={},requests=[];
   installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},async url=>{requests.push(url);return {ok:true,json:async()=>({maxzoom:8,tiles:['https://example.org/med/{z}/{x}/{y}']})};});
@@ -268,7 +311,7 @@ test('each request waiting on a shared download has its own time limit; a stuck 
   installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},(url,{signal})=>new Promise((resolve,reject)=>{
     fetches.push({signal,finish:()=>resolve({ok:true,arrayBuffer:async()=>Uint8Array.from(tile({name:'Track',tracks:2})).buffer})});
     signal.addEventListener('abort',()=>reject(signal.reason),{once:true});
-  }),{timeout:300});
+  }),{timeout:300,tileRetries:[]});
   const request={url:'atlasrail://https://example.org/railway/14/10/10'};
   const first=assert.rejects(protocols.atlasrail(request,new AbortController()),{name:'TimeoutError'});
   await wait(100);
@@ -282,6 +325,40 @@ test('each request waiting on a shared download has its own time limit; a stuck 
   assert.equal(fetches.length,2,'a download older than the limit is treated as stuck');
   fetches[0].finish();fetches[1].finish();
   for(const result of [await second,await third]) assert.equal(readTile(result.data).layers.stations.feature(0).properties.tracks,2);
+});
+test('a station tile that times out or fails is tried once more; a 4xx answer or a cancelled tile is not',async t=>{
+  const protocols={},fetches=[],wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const bytes=()=>Uint8Array.from(tile({name:'Track',tracks:2})).buffer;
+  let answers=[];
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},(url,{signal})=>new Promise((resolve,reject)=>{
+    fetches.push(url);const answer=answers.shift();
+    signal.addEventListener('abort',()=>reject(signal.reason),{once:true});
+    if(answer==='stuck') return;
+    if(answer==='down') reject(new TypeError('Failed to fetch'));
+    else if(typeof answer==='number') resolve({ok:false,status:answer});
+    else resolve({ok:true,arrayBuffer:async()=>bytes()});
+  }),{timeout:200,tileRetries:[50]});
+  const at=n=>({url:`atlasrail://https://example.org/railway/14/${n}/10`});
+  // AbortSignal.timeout does not keep Node's event loop alive.
+  const alive=setInterval(()=>{},20);t.after(()=>clearInterval(alive));
+  answers=['stuck','ok'];
+  assert.equal(readTile((await protocols.atlasrail(at(1),new AbortController())).data).layers.stations.feature(0).properties.tracks,2);
+  assert.equal(fetches.length,2,'a timed-out download is started afresh');
+  answers=[503,'ok'];
+  await protocols.atlasrail(at(2),new AbortController());
+  assert.equal(fetches.length,4,'a server error is tried again');
+  answers=['down','down'];
+  await assert.rejects(protocols.atlasrail(at(3),new AbortController()),TypeError);
+  assert.equal(fetches.length,6,'only once more');
+  answers=[404];
+  await assert.rejects(protocols.atlasrail(at(4),new AbortController()),/returned 404/);
+  assert.equal(fetches.length,7,'a 4xx answer stays as it is');
+  answers=['down','ok'];
+  const gone=new AbortController(),lost=protocols.atlasrail(at(5),gone);
+  await wait(10);gone.abort();
+  await assert.rejects(lost,{name:'AbortError'},'cancelled during the wait: not shown as a failure');
+  await wait(100);
+  assert.equal(fetches.length,8,'a tile no longer wanted is not fetched again');
 });
 test('generated Latin transliteration cannot replace a local name as English fallback',()=>{
   const japanese=at({name:'腰越三丁目','name:latin':'yao yue3ding mu'});

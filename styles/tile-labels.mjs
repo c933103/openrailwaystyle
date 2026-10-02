@@ -66,7 +66,22 @@ export function localizeTile(data, lang, coordinates) {
   }
 }
 
-export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch, {dataRoot, timeout = 12000} = {}) {
+// A PMTiles source whose byte-range requests (header, directories and tiles)
+// give up after `ms`. PMTiles sets no timeout of its own, so a request the
+// server never answers would stay open and its part of the map stay blank.
+export function timedSource(inner, ms) {
+  return {
+    getKey: () => inner.getKey(),
+    async getBytes(offset, length, signal, etag) {
+      const controller = new AbortController(), stop = () => controller.abort();
+      if (signal?.aborted) stop(); else signal?.addEventListener('abort', stop, {once: true});
+      const timer = setTimeout(stop, ms);
+      try { return await inner.getBytes(offset, length, controller.signal, etag); }
+      finally { clearTimeout(timer); signal?.removeEventListener('abort', stop); }
+    },
+  };
+}
+export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch, {dataRoot, timeout = 12000, basemapRetries = [500, 2000], basemapArchive, tileRetries = [1000]} = {}) {
   // Only current-view requests are made. Keep a bounded cache of successful
   // responses so language changes can reuse downloaded station tiles.
   const cache = new ByteCache();
@@ -77,7 +92,25 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   // One running longer than that limit counts as stuck: a new request starts
   // a fresh download rather than join it.
   const loading = new Map();
-  function get(url, request, json = false) {
+  // A download that runs out of time or fails (the server slow or down for
+  // a moment, a 5xx answer) is started afresh once more, so one slow answer
+  // does not leave its tile without stations or railways until the map
+  // moves. Not a cancelled tile, and not a 4xx answer.
+  async function get(url, request, json = false) {
+    for (let attempt = 0; ; attempt++) {
+      try { return await download(url, request, json); }
+      catch (error) {
+        if (request.aborted || attempt >= tileRetries.length || / returned 4\d\d$/.test(error?.message ?? '')) throw error;
+        // A tile cancelled during the wait ends as cancelled, not failed.
+        await new Promise((resolve, reject) => {
+          const cancel = () => { clearTimeout(timer); reject(request.reason ?? new DOMException('Aborted', 'AbortError')); };
+          const timer = setTimeout(() => { request.removeEventListener('abort', cancel); resolve(); }, tileRetries[attempt]);
+          request.addEventListener('abort', cancel, {once: true});
+        });
+      }
+    }
+  }
+  function download(url, request, json = false) {
     if (cache.has(url)) {
       return Promise.resolve(cache.get(url));
     }
@@ -239,7 +272,23 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   maplibregl.addProtocol('atlasbase',async (params,controller)=>{
     const [,lang,url] = /^atlasbase:\/\/([^/]+)\/(.+)$/.exec(params.url) || [];
     if (!url) throw new Error('Invalid basemap request');
-    const result = await pmtilesProtocol.tile({...params,url:`pmtiles://${url}`},controller);
+    // PMTiles keeps a failed header or directory request in its cache, so one
+    // dropped connection would fail every tile under it until a reload. On a
+    // failure the archive starts afresh (its header is read again) and the
+    // request is tried twice more.
+    // `basemapArchive` makes the archive (with timed requests) for its URL.
+    const archive = url.replace(/\/\d+\/\d+\/\d+$/,'');
+    let result;
+    for (let attempt = 0; ; attempt++) {
+      if (basemapArchive && !pmtilesProtocol.tiles.has(archive)) pmtilesProtocol.tiles.set(archive, basemapArchive(archive));
+      try { result = await pmtilesProtocol.tile({...params,url:`pmtiles://${url}`},controller); break; }
+      catch (error) {
+        if (controller.signal.aborted || attempt >= basemapRetries.length) throw error;
+        pmtilesProtocol.tiles?.delete(archive);
+        await new Promise(resolve => setTimeout(resolve, basemapRetries[attempt]));
+        if (controller.signal.aborted) throw error;
+      }
+    }
     if (params.type === 'json') return {...result,data:{...result.data,tiles:result.data.tiles.map(t=>t.replace('pmtiles://',`atlasbase://${lang}/`))}};
     return {...result,data:localizeTile(result.data,lang,tileCoordinates(url))};
   });
