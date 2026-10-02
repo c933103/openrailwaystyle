@@ -1,5 +1,5 @@
 import {chromium} from 'playwright';
-import {readFile,mkdir} from 'node:fs/promises';
+import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {chooseName} from '../styles/map-model.mjs';
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
@@ -76,6 +76,7 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
   assert.ok(before>0,`baseline labels must render at zoom ${zoom}`);
   assert.ok(after>=before*.95,`zoom ${zoom} must retain approximately the previous placed-label density: ${before} -> ${after}`);
  }
+ await writeFile(`browser-review/stations-${kind}-density.json`,JSON.stringify(density,null,2)+'\n');
  console.log('DENSITY',kind,JSON.stringify(density));
  await page.evaluate(()=>window.reviewMap.jumpTo({center:[141.35,43.07],zoom:4}));
  const target=await page.waitForFunction(()=>{const map=window.reviewMap,f=map.queryRenderedFeatures().find(f=>f.source==='stationMajor'&&f.properties.wikidata==='Q801404');if(!f)return false;const p=map.project(f.geometry.coordinates);return {x:p.x,y:p.y,osm:f.properties.osm_id};},undefined,{timeout:60000});const hit=await target.jsonValue();await page.locator('#map canvas').click({position:{x:hit.x,y:hit.y}});await page.waitForSelector('#details:not([hidden])');assert.match(await page.locator('#detail-content').innerText(),/Sapporo/);assert.ok(await page.locator(`#detail-content a[href="https://www.openstreetmap.org/node/${hit.osm}"]`).count());

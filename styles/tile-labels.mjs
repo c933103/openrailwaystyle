@@ -1,4 +1,5 @@
 import {ByteCache} from './byte-cache.mjs';
+import {createTrackCounter} from './track-work.mjs';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import encode from 'vt-pbf';
@@ -7,6 +8,7 @@ import {hanRegion, chineseArea} from './han-region.mjs';
 import {axleLoad} from './axle-load.mjs';
 import {decodeLoadingGauges, wayId} from './loading-gauge-list.mjs';
 export {hanRegion, chineseArea};
+export const buildInfo=typeof __ATLAS_BUILD_INFO__ === 'undefined' ? {version:'development',commit:''} : __ATLAS_BUILD_INFO__;
 
 export function readTile(data) {
   const tile = new VectorTile(new Pbf(new Uint8Array(data)));
@@ -111,17 +113,9 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   // the map shows at zoom 14) with their neighbours, station areas and
   // stations, all through the shared cache. MapLibre enlarges zoom-14 tiles
   // beyond, so a place has the same count at every zoom.
-  let trackWorker, nextJob = 0;
-  const trackJobs = new Map(), counted = new Map();
   const orm = path => `${ORM}/${path}`;
   const optional = promise => promise.catch(error => { if (error?.name === 'AbortError') throw error; return null; });
-  // Shared by the zoom-13 and zoom-14 tiles that need it, so not cancelled
-  // with any one request (get's own timeout still applies).
-  const never = new AbortController().signal;
-  function countZoom14(x, y) {
-    const signal = never, key = `${x}/${y}`;
-    if (counted.has(key)) return counted.get(key);
-    const job = (async () => {
+  const countZoom14=createTrackCounter(async(x,y,signal)=>{
       // This tile and the eight around it, of each source: tracks near the
       // edges are counted with those beside them, and a station area
       // reaching into a neighbour is seen whole, with all its stations.
@@ -135,35 +129,16 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       };
       const [tiles, areas, stations] = await Promise.all(['railway_line_high', 'standard_railway_grouped_station_areas', 'standard_railway_text_stations'].map(around));
       if (!tiles.some(t => t && !t.dx && !t.dy)) throw new Error('Railway tile unavailable');
-      if (!trackWorker) {
-        trackWorker = new Worker(new URL(`track-worker.js${new URL(import.meta.url).search}`, import.meta.url));
-        trackWorker.onmessage = ({data:{id,result,error}}) => {
-          const done = trackJobs.get(id); trackJobs.delete(id);
-          if (done) done(error ? Promise.reject(new Error(error)) : result);
-        };
-        trackWorker.onerror = event => { for (const done of trackJobs.values()) done(Promise.reject(new Error(event.message || 'Track worker failed'))); trackJobs.clear(); };
-      }
-      // Copies go to the worker: the cache keeps the originals.
-      const copy = list => list.filter(Boolean).map(t => ({...t, data: t.data.slice(0)}));
-      return new Promise(resolve => {
-        const id = nextJob++;
-        trackJobs.set(id, resolve);
-        const message={id,tiles:copy(tiles),areas:copy(areas),stations:copy(stations),y};
-        trackWorker.postMessage(message,[...message.tiles,...message.areas,...message.stations].map(t=>t.data));
-      });
-    })();
-    counted.set(key, job);
-    job.catch(() => counted.delete(key));
-    while (counted.size > 64) counted.delete(counted.keys().next().value);
-    return job;
-  }
+      return {tiles,areas,stations,y};
+  },()=>new Worker(new URL(`track-worker.js${new URL(import.meta.url).search}`, import.meta.url)));
   maplibregl.addProtocol('atlastracks', async (params, controller) => {
     const coordinates = tileCoordinates(params.url);
     if (!coordinates || typeof Worker === 'undefined') return {data: new ArrayBuffer(0)};
     const {z, x, y} = coordinates, features = [];
     let extent = 4096;
     if (z === 14) {
-      const result = await countZoom14(x, y);
+      const result = await countZoom14(x, y, controller.signal);
+      controller.signal.throwIfAborted();
       extent = result.extent;
       for (const p of result.points) features.push({x: p.x, y: p.y, p});
     }

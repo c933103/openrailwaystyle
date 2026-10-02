@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261002-10';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261002-10';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261002-50';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261002-50';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261002-10';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261002-10';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261002-10';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261002-10';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261002-10';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261002-50';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261002-50';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261002-50';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261002-50';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261002-50';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -36,7 +36,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261002-10';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261002-50';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -287,14 +287,26 @@ function applySettings() {
   renderLegend();
   if (ready) { scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update(); }
 }
-let attribution, attributionCarto;
+let attribution, attributionCarto, servedBuild;
+function codeAttribution() {
+  const span=document.createElement('span');span.className='atlas-build';
+  span.append(`Build ${assetVersion} · `);
+  if (servedBuild?.version && servedBuild.version !== assetVersion) span.append(`Label build ${servedBuild.version} · `);
+  if (/^[a-f0-9]{40}$/i.test(servedBuild?.commit || '')) {
+    const link=document.createElement(servedBuild.sourceUrl ? 'a' : 'span');
+    if(servedBuild.sourceUrl)link.href=servedBuild.sourceUrl;
+    link.textContent=`Code ${servedBuild.commit.slice(0,10)}`;link.title=servedBuild.commit;
+    link.target='_blank';link.rel='noopener';span.append(link);
+  } else span.append('Development build');
+  return span.outerHTML;
+}
 function updateAttribution() {
   if (!map) return;
   const carto = settings.background === 'carto';
   if (attribution && attributionCarto === carto) return;
   if (attribution) map.removeControl(attribution);
   attributionCarto = carto;
-  attribution = new maplibregl.AttributionControl({compact: !carto});
+  attribution = new maplibregl.AttributionControl({compact: !carto, customAttribution: codeAttribution()});
   map.addControl(attribution, 'bottom-right');
 }
 const featurePickRank = f => f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
@@ -922,6 +934,7 @@ async function initialize() {
   const [, labelCode] = await Promise.all([libraries, labels]);
   const {installLabelProtocols, localizeTile} = labelCode;
   locate = labelCode.locate;
+  servedBuild = labelCode.buildInfo;
   if (!window.maplibregl || !window.pmtiles) throw new Error('Map libraries could not load. Check your connection and reload.');
   // MapLibre 5 has no top-level supported() export. The Map constructor checks
   // WebGL itself; initialization errors are caught by the handler below.
