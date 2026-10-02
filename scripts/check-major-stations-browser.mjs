@@ -11,6 +11,10 @@ const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshade
 await mkdir('browser-review',{recursive:true});
 try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  const context=await browser.newContext({viewport:{width,height},hasTouch:kind==='mobile',deviceScaleFactor:kind==='mobile'?2.625:1,serviceWorkers:'block'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const pendingRequests=new Set();
+ context.on('request',r=>pendingRequests.add(r));
+ context.on('requestfinished',r=>pendingRequests.delete(r));
+ context.on('requestfailed',r=>pendingRequests.delete(r));
  // Both maps receive identical provider bytes, including the underzoomed
  // zoom-7 children used at zoom 6. Fetch only tiles the test views request.
  const stationResponses=new Map();
@@ -56,15 +60,30 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  await baseline.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:90000});
  await baseline.evaluate(async()=>{window.reviewMap=(await import(document.querySelector('script[type="module"]').src)).map;});
  const count=async(p,center,zoom)=>{
-  await p.evaluate(async({center,zoom})=>{const m=window.reviewMap;await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{m.off('idle',done);reject(new Error('Station comparison did not settle'));},60000),done=()=>{clearTimeout(timer);resolve();};m.once('idle',done);m.jumpTo({center,zoom});m.triggerRepaint();});},{center,zoom});
-  await p.waitForTimeout(500);
-  const value=await p.waitForFunction(()=>{
-   try {const m=window.reviewMap;if(!m.areTilesLoaded())return false;return {count:new Set(m.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-')&&f.layer.type==='symbol').map(f=>f.properties.wikidata||f.properties.id||f.properties.osm_id||f.properties.name)).size};}catch{return false;}
-  },undefined,{timeout:60000});return (await value.jsonValue()).count;
+  const active=await p.evaluate(({center,zoom})=>{
+   const m=window.reviewMap;m.jumpTo({center,zoom});m.triggerRepaint();delete window.densityPlacement;
+   const layers=m.getStyle().layers.filter(l=>l.id.startsWith('station-')&&l.type==='symbol'&&l.layout?.visibility!=='none'&&zoom>=(l.minzoom??0)&&zoom<(l.maxzoom??Infinity));
+   return {layers:layers.map(l=>l.id),sources:[...new Set(layers.map(l=>l.source))]};
+  },{center,zoom});
+  assert.ok(active.layers.length,'station layers must be active');
+  // Cancelled hidden sources can retain loading flags. Require the visible
+  // station sources, their glyphs, and a quiet network; keep all density tests.
+  try {await p.waitForFunction(sources=>sources.every(id=>window.reviewMap.isSourceLoaded(id)),active.sources,{timeout:120000});}
+  catch(error){console.error('DENSITY_NOT_READY',await p.evaluate(sources=>({zoom:window.reviewMap.getZoom(),sources:sources.map(id=>[id,window.reviewMap.isSourceLoaded(id)])}),active.sources));throw error;}
+  let quietSince;const until=Date.now()+120000;
+  while(Date.now()<until){if(!pendingRequests.size){quietSince??=Date.now();if(Date.now()-quietSince>=2000)break;}else quietSince=undefined;await p.waitForTimeout(200);}
+  assert.ok(quietSince&&Date.now()-quietSince>=2000,'comparison network must settle: '+[...pendingRequests].map(r=>r.url()).join(', '));
+  await p.evaluate(()=>new Promise(resolve=>{const m=window.reviewMap,timer=setTimeout(()=>{m.off('idle',done);resolve();},10000),done=()=>{clearTimeout(timer);resolve();};m.once('idle',done);m.triggerRepaint();}));
+  const value=await p.waitForFunction(layers=>{
+   const count=new Set(window.reviewMap.queryRenderedFeatures({layers}).map(f=>f.properties.wikidata||f.properties.id||f.properties.osm_id||f.properties.name)).size,now=Date.now();
+   if(window.densityPlacement?.count!==count)window.densityPlacement={count,since:now};
+   return now-window.densityPlacement.since>=1000?{count}:false;
+  },active.layers,{polling:100,timeout:60000});const result=(await value.jsonValue()).count;await value.dispose();return result;
  };
  for(const [region,center] of [['Europe',[12,50]],['Japan',[139,36]],['US',[-88,40]]])for(const zoom of [3,4,5,6]){
   const before=await count(baseline,center,zoom),after=await count(page,center,zoom);density.push({region,zoom,before,after});
   console.log('DENSITY_SAMPLE',kind,region,zoom,before,after);
+  await writeFile(`browser-review/stations-${kind}-density.json`,JSON.stringify(density,null,2)+'\n');
   if(region==='Europe'&&zoom>=4)await page.screenshot({path:`browser-review/stations-${kind}-density-${zoom}.png`});
  }
  await baseline.close();

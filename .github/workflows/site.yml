@@ -131,14 +131,14 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Start test server
         run: node scripts/serve.mjs &
+      - name: Verify curated station labels and details on the globe
+        run: node scripts/check-major-stations-browser.mjs
       - name: Verify roads, planning boundaries and rail-road interfaces
         run: node scripts/check-planning-browser.mjs
       - name: Verify transport and destination context
         run: node scripts/check-context-browser.mjs
       - name: Verify actual WebGL rendering and zoom-7 panning
         run: node scripts/check-map-browser.mjs
-      - name: Verify curated station labels and details on the globe
-        run: node scripts/check-major-stations-browser.mjs
       - name: Verify platform length labels and main Units selector
         run: node scripts/check-platform-browser.mjs
       - name: Verify served build information on desktop and touch
