@@ -1,6 +1,6 @@
-export {createPlatformLengths,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261001-102';
+export {createPlatformLengths,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261001-108';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261001-102';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261001-108';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -55,6 +55,38 @@ export function samePlaceName(a, b) {
 // Facility API results and geocoder results → {rail, places}. A geocoded
 // station joins the railway results unless the facility API already gave it
 // (the same node, or the same name within about 400 m).
+// Stations drawn in the map's own tiles whose name a search matches, for
+// the stations neither search service finds: the facility search holds
+// station nodes only, and the geocoder matches whole names ("Sha tin" finds
+// Sha Tin, not Sha Tin Wai). A Latin query must begin a word of the name;
+// one in other scripts may stand anywhere in it. Exact names come first,
+// then the nearest to `centre` ([lng, lat]); stations the facility search
+// already found are left out. Returned in the facility search's form, with
+// the OSM object named.
+const STATION_FEATURES = ['station', 'halt', 'tram_stop'];
+export function tileStations(features, query, centre, found = [], limit = 8) {
+  const q = String(query).trim().replace(/\s+/g, ' ');
+  if (q.length < 2) return [];
+  const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = LATIN.test(q) ? new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}`, 'iu') : new RegExp(escaped, 'iu');
+  const near = (a, b) => Math.abs(a.latitude - b.latitude) < 0.004 && Math.abs(a.longitude - b.longitude) * Math.cos(a.latitude * Math.PI / 180) < 0.004;
+  const namesOf = p => Object.entries(p).filter(([key, value]) => (key === 'name' || key.startsWith('name:') || key === 'localized_name' || key === 'atlas_name') && typeof value === 'string').map(([, value]) => value);
+  const [cx, cy] = centre || [0, 0], matches = new Map();
+  for (const feature of features) {
+    const p = feature.properties || {}, coordinates = feature.geometry?.coordinates;
+    if (feature.geometry?.type !== 'Point' || !STATION_FEATURES.includes(p.feature) || (p.state ?? 'present') !== 'present') continue;
+    const names = namesOf(p);
+    if (!names.some(n => pattern.test(n))) continue;
+    const object = /^(node|way|relation)-(\d+)/.exec(String(p.id ?? ''));
+    const [longitude, latitude] = coordinates, key = object ? object[0] : `${p.name}@${longitude.toFixed(4)},${latitude.toFixed(4)}`;
+    if (matches.has(key)) continue;
+    const item = {...p, latitude, longitude, railway: p.feature, ...(object && {osm_type: object[1], osm_id: Number(object[2])})};
+    if (found.some(r => (object && String(r.osm_id) === object[2]) || (near(r, item) && namesOf(r).some(n => names.some(m => samePlaceName(n, m)))))) continue;
+    const exact = names.some(n => samePlaceName(n, q)), distance = Math.hypot((longitude - cx) * Math.cos(latitude * Math.PI / 180), latitude - cy);
+    matches.set(key, {item, exact, distance});
+  }
+  return [...matches.values()].sort((a, b) => (b.exact - a.exact) || a.distance - b.distance).slice(0, limit).map(({item}) => item);
+}
 export function searchResults(facilities, places) {
   const located = item => Number.isFinite(item.longitude) && Number.isFinite(item.latitude);
   const rail = facilities.filter(located), others = [];

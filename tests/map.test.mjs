@@ -872,6 +872,33 @@ test('search: geocoded stations join the railway results unless already found; o
   assert.deepEqual(parkNearby.rail.map(r => r.osm_id), [1, 5]);
 });
 
+test('search: stations drawn in the tiles match a partial name; found ones are not repeated', async () => {
+  const {tileStations, searchResults, osmObject} = await import('../styles/map-model.mjs');
+  const station = (id, name, lng, lat, extra = {}) => ({geometry: {type: 'Point', coordinates: [lng, lat]}, properties: {id, name, feature: 'station', ...extra}});
+  const tiles = [
+    station('way-223848687-subway-subway-station', '沙田 Sha Tin', 114.1869, 22.3826),
+    station('way-187405865-subway-subway-station', '沙田圍 Sha Tin Wai', 114.1945, 22.3770),
+    station('way-187405865-subway-subway-station', '沙田圍 Sha Tin Wai', 114.1945, 22.3770), // the same, from a neighbouring tile
+    station('node-1-x', 'Sha Tin Depot', 114.2, 22.39, {feature: 'yard'}),
+    station('node-2-x', 'Grasha Tinker', 114.1, 22.3),
+    station('node-3-x', 'Sha Tin Old', 114.19, 22.38, {state: 'disused'}),
+    station('node-4-x', 'Sha Tin Far', 120, 30),
+    station('node-5-x', '沙田市中心', 114.188, 22.383, {feature: 'tram_stop'}),
+  ];
+  const found = tileStations(tiles, 'Sha tin', [114.19, 22.38]);
+  assert.deepEqual(found.map(s => s.name), ['沙田 Sha Tin', '沙田圍 Sha Tin Wai', 'Sha Tin Far'], 'the exact name first, then the nearest; a word must begin with the query; yards and disused stations left out');
+  assert.deepEqual(osmObject({properties: found[1]}), {type: 'way', id: '187405865'});
+  assert.deepEqual(tileStations(tiles, '沙田', [114.19, 22.38]).map(s => s.name), ['沙田 Sha Tin', '沙田市中心', '沙田圍 Sha Tin Wai'], 'Chinese matches anywhere in the name');
+  assert.deepEqual(tileStations(tiles, 'S', [0, 0]), []);
+  // Stations the facility search found are not repeated; the geocoder's
+  // copy of a tile station is dropped as before.
+  const facility = [{osm_id: 223848687, name: '沙田 Sha Tin', railway: 'station', latitude: 22.3826, longitude: 114.1869}];
+  const local = tileStations(tiles, 'Sha tin', [114.19, 22.38], facility);
+  assert.deepEqual(local.map(s => s.name), ['沙田圍 Sha Tin Wai', 'Sha Tin Far']);
+  const geocoded = [{osm_type: 'way', osm_id: 187405865, category: 'railway', type: 'station', lat: '22.3771', lon: '114.1946', display_name: '沙田圍 Sha Tin Wai', namedetails: {name: '沙田圍 Sha Tin Wai'}}];
+  assert.deepEqual(searchResults([...facility, ...local], geocoded).rail.map(r => r.osm_id), [223848687, 187405865, 4]);
+});
+
 test('country names to zoom 7 above station names; states and provinces from zoom 4', async () => {
   const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
   const ids = style.layers.map(l => l.id), last = ids.lastIndexOf.bind(ids);

@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-102';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-102';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-108';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-108';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-102';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-102';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-102';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-102';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-102';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-108';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-108';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-108';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-108';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-108';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -36,7 +36,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-102';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-108';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -330,6 +330,7 @@ function osmLink(panel, feature) {
   link.target = '_blank'; link.rel = 'noopener'; link.className = 'osm-link';
   panel.append(link);
 }
+const STATION_SOURCES = ['stations', 'stationMed', 'stationLow'];
 function stationObject(osmId) {
   const pattern = new RegExp(`^(node|way|relation)-${osmId}(-|$)`);
   for (const layer of map.getStyle().layers) {
@@ -1384,8 +1385,11 @@ $('search-form').addEventListener('submit', async e => {
       Date.now() < searchPausedUntil ? Promise.reject(new Error('paused')) : json(facilityURL, facility.signal).finally(() => clearTimeout(facilityTimeout)),
       placeSearch(placeURL, json, controller.signal)]);
     if (controller !== searchController) return;
-    if (facilities.status === 'rejected' && places.status === 'rejected') throw facilities.reason;
-    const {rail, places: other} = searchResults(facilities.value || [], places.value || []);
+    // Stations the map has drawn whose name the search matches, for those
+    // neither service finds (stations mapped as areas, partial names).
+    const local = ready ? tileStations(STATION_SOURCES.flatMap(id => map.getSource(id) ? map.querySourceFeatures(id, {sourceLayer: map.getStyle().layers.find(l => l.source === id)?.['source-layer']}) : []), q, map.getCenter().toArray(), facilities.value || []) : [];
+    if (facilities.status === 'rejected' && places.status === 'rejected' && !local.length) throw facilities.reason;
+    const {rail, places: other} = searchResults([...(facilities.value || []), ...local], places.value || []);
     const results = $('search-results'); results.replaceChildren();
     const narrow = () => { results.hidden = true; $('search-status').hidden = true; if (matchMedia('(max-width: 650px)').matches && !$('controls').hidden) $('collapse').click(); };
     const entry = (title, detail, onClick) => {
