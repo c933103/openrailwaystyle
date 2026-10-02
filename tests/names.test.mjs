@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import encode from 'vt-pbf';
-import {readTile,localizeTile,installLabelProtocols,hanRegion,chineseArea} from '../styles/tile-labels.mjs';
+import {readTile,localizeTile,installLabelProtocols, timedSource,hanRegion,chineseArea} from '../styles/tile-labels.mjs';
 import {chooseName,readSettings,stationLanguages,stationPending,labelExpression} from '../styles/map-model.mjs';
 
 // Tiles give every feature its Han-name region; tests state it explicitly.
@@ -204,6 +204,27 @@ test('a failed basemap request starts the archive afresh and is tried again',asy
   const cancelled=new AbortController();cancelled.abort();calls.length=0;
   await assert.rejects(protocols.atlasbase({url:'atlasbase://en/https://example.org/world.pmtiles/7/1/1'},cancelled));
   assert.equal(calls.length,1);
+});
+test('basemap requests give up after a while, so a stalled one can be tried again',async()=>{
+  // An inner source that answers only when told, or fails when its signal aborts.
+  const stalled={getKey:()=>'k',getBytes:(o,l,signal)=>new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(new DOMException('aborted','AbortError'))))};
+  const started=Date.now();
+  await assert.rejects(timedSource(stalled,50).getBytes(0,10),/aborted/);
+  assert.ok(Date.now()-started>=45,'waited for the timeout');
+  const outer=new AbortController();setTimeout(()=>outer.abort(),10);
+  await assert.rejects(timedSource(stalled,5000).getBytes(0,10,outer.signal),/aborted/,'a cancelled tile cancels its request');
+  const quick={getKey:()=>'k',getBytes:async(o,l,signal)=>({data:new ArrayBuffer(l),aborted:signal.aborted})};
+  assert.deepEqual((await timedSource(quick,50).getBytes(0,4)).aborted,false);
+  assert.equal(timedSource(quick,50).getKey(),'k');
+  // The protocol makes the timed archive, and a fresh one after a failure.
+  const protocols={},made=[],pmtiles={tiles:new Map(),tile:async p=>{
+    if(made.length===1)throw new DOMException('aborted','AbortError');
+    return {data:tile({name:'Seoul'})};
+  }};
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},pmtiles,fetch,{basemapRetries:[0,0],basemapArchive:url=>{made.push(url);return {url};}});
+  const result=await protocols.atlasbase({url:'atlasbase://en/https://example.org/world.pmtiles/7/1/1'},new AbortController());
+  assert.equal(readTile(result.data).layers.stations.feature(0).properties.atlas_name,'Seoul');
+  assert.deepEqual(made,['https://example.org/world.pmtiles','https://example.org/world.pmtiles']);
 });
 test('station TileJSON can be capped by a URL fragment that is never requested',async()=>{
   const protocols={},requests=[];

@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261002-66';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261002-66';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261002-72';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261002-72';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261002-66';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261002-66';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261002-66';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261002-66';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261002-66';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261002-72';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261002-72';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261002-72';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261002-72';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261002-72';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -39,7 +39,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261002-66';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261002-72';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -972,7 +972,8 @@ async function initialize() {
   // WebGL itself; initialization errors are caught by the handler below.
   const protocol = new pmtiles.Protocol();
   maplibregl.addProtocol('pmtiles', protocol.tile);
-  const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url)});
+  const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url),
+    basemapArchive: url => new pmtiles.PMTiles(labelCode.timedSource(new pmtiles.FetchSource(url), 20000))});
   // The contour worker with the terrain tiles' bad pixels repaired
   // (dem-worker.mjs); relief shading reads its tiles through it too.
   mlcontour.workerUrl = new URL(`vendor/dem-worker.js?v=${assetVersion}`, import.meta.url).href;
