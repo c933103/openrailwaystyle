@@ -113,7 +113,12 @@ test('terrain repair: faults a few pixels across go; islets, cliffs, coasts and 
   repairPixels(shore, 256, 12, 0, 0, coarse(coast));
   for (const [x, y] of [[100, 50], [101, 49], [100, 52], [102, 50]]) assert.equal(at(shore, x, y), -20, `sea at ${x},${y}`);
   assert.equal(at(shore, 95, 50), 150); assert.equal(at(shore, 60, 120), -1.5);
-  assert.ok(Math.abs(at(shore, 98, 50) - 150) < 60 && Math.abs(at(shore, 99, 50) - 150) < 200, `fault on the shore: ${at(shore, 98, 50)}, ${at(shore, 99, 50)}`);
+  assert.ok(Math.abs(at(shore, 98, 50) - 150) < 60, `spike on the shore: ${at(shore, 98, 50)}`);
+  // An ordinary dip beside a spike cluster is not part of the fault.
+  const dip = tile((x, y) => x === 120 && y === 120 ? 600 : x === 120 && y === 121 ? 1000 : x === 119 && y === 121 ? 90 : 100);
+  repairPixels(dip, 256, 12, 0, 0, coarse(() => 100));
+  assert.ok(at(dip, 120, 121) < 200, `spike: ${at(dip, 120, 121)}`);
+  assert.equal(at(dip, 119, 121), 90, 'the dip stays');
   // A low bay under cliffs whose top holds a fault (Kalaupapa, zoom 14):
   // the fault goes, the low ground keeps its height.
   const cliff = (x, y) => y >= 100 && x >= 30 && x < 60 ? 5 : 390;

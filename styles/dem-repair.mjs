@@ -243,9 +243,14 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
     return !Number.isNaN(top) && value - top > Math.max(limit / 2, (value - around) / 2);
   };
   const way = (px, py) => RING.every(([dx, dy]) => raw(px + dx, py + dy) < h[py * size + px]) ? 1 : -1;
+  // Sunk as a fault is: below the sea, by half a storm or, in land, by
+  // half of drop(z).
+  const sunk = (px, py, value, around) => value < 0 && !Number.isNaN(around) && (rings(value, around) >= RINGS / 2 || sunkInLand(px, py, value, around));
   // Grows a fault from its starting pixels; false if it is real ground.
   const grow = seeds => {
-    const kept = seeds.filter(([sx, sy]) => way(sx, sy) < 0 || unbacked(sx, sy, h[sy * size + sx], ground(sx, sy)));
+    // A starting pixel must stand out as a pixel joining it would: a low one
+    // below the sea (an ordinary dip beside a spike stays).
+    const kept = seeds.filter(([sx, sy]) => { const v = h[sy * size + sx], around = ground(sx, sy); return way(sx, sy) < 0 ? sunk(sx, sy, v, around) : unbacked(sx, sy, v, around); });
     if (!kept.length || kept.some(([sx, sy]) => cluster[sy * size + sx])) return;
     const members = kept.map(([sx, sy]) => sy * size + sx), ways = [...new Set(kept.map(([sx, sy]) => way(sx, sy)))];
     for (const m of members) cluster[m] = 1;
@@ -258,7 +263,7 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
           if (!on(nx, ny) || bad[n] || cluster[n]) continue;
           const around = ground(nx, ny);
           const joins = h[n] > around ? standsOut(h[n], around, ways) && unbacked(nx, ny, h[n], around)
-            : ways.includes(-1) && h[n] < 0 && (rings(h[n], around) >= RINGS / 2 || sunkInLand(nx, ny, h[n], around));
+            : ways.includes(-1) && sunk(nx, ny, h[n], around);
           if (!joins) continue;
           cluster[n] = 1; found.push(n);
         }
