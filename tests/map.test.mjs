@@ -912,3 +912,83 @@ test('owner view: a colour per owner name, the same everywhere; its own tile sou
   const {osmObject} = await import('../styles/map-model.mjs');
   for (const source of ['ownerRail', 'ownerLow']) assert.deepEqual(osmObject({source, properties: {id: '660796156-0'}}), {type: 'way', id: '660796156'});
 });
+
+test('track counts: untagged crossovers and sidings are not running tracks', async () => {
+  const {connectors, stitchParts, stubs, stationTracks} = await import('../styles/track-count.mjs');
+  // 1 unit = 1 m. Two parallel tracks 5 m apart, each split at the turnouts.
+  const track = (y, from, to) => ({group: 'rail', main: true, parts: [[[from, y], [to, y]]]});
+  const leg = (a, b) => ({group: 'rail', main: true, parts: [[a, b]]});
+  // A scissors crossover between x = 0 and x = 170 (Tuen Mun's TX32): two
+  // untagged legs crossing at the middle.
+  const scissors = [track(0, -1000, 0), track(0, 0, 170), track(0, 170, 1000), track(5, -1000, 0), track(5, 0, 170), track(5, 170, 1000),
+    leg([0, 0], [170, 5]), leg([0, 5], [170, 0])];
+  assert.deepEqual([...connectors(scissors, 1)].sort(), [6, 7]);
+  // Both tracks also split into two ways near the middle of the crossover:
+  // the pieces are one track each, and the crossover still swaps sides.
+  const splitTracks = [track(0, -1000, 0), track(0, 0, 90), track(0, 90, 170), track(0, 170, 1000), track(5, -1000, 0), track(5, 0, 80), track(5, 80, 170), track(5, 170, 1000), leg([0, 0], [170, 5])];
+  assert.deepEqual([...connectors(splitTracks, 1)], [8]);
+  // Even where a siding branches off at that split (a turnout there).
+  const branched = [...splitTracks, {group: 'rail', main: true, service: 'siding', parts: [[[90, 0], [130, -4], [300, -4]]]}];
+  assert.deepEqual([...connectors(branched, 1)], [8]);
+  // A loop beside a track, joined at both ends to the same track, and a
+  // siding between two tracks running beside them: tracks.
+  const loop = [track(0, -1000, 0), track(0, 0, 400), track(0, 400, 1000), {group: 'rail', main: true, parts: [[[0, 0], [40, 4], [360, 4], [400, 0]]]}];
+  assert.equal(connectors(loop, 1).size, 0);
+  const middle = [track(0, -1000, 0), track(0, 0, 1000), track(10, -1000, 400), track(10, 400, 1000), {group: 'rail', main: true, parts: [[[0, 0], [40, 5], [360, 5], [400, 10]]]}];
+  assert.equal(connectors(middle, 1).size, 0);
+  // A turning loop leaving a track heading east and rejoining it, turnouts
+  // in its middle, heading west sees the track on both sides, but is no
+  // crossover.
+  const turning = [track(0, -1000, 1000), {group: 'rail', main: true, parts: [[[0, 0], [40, 9], [200, 60], [400, 60], [450, 30], [340, 9], [300, 0]]]}];
+  assert.equal(connectors(turning, 1).size, 0);
+  // A dead-end siding off a turnout: not a running track; the track itself is.
+  // (The track runs on beyond the tiles read: extent 1000 covers −1000 to 2000.)
+  const siding = [track(0, -1000, 0), track(0, 0, 2000), {group: 'rail', main: true, parts: [[[0, 0], [40, 5], [300, 5]]]}];
+  assert.deepEqual([...stubs(siding, 1, 1000)], [2]);
+  // Unless its free end lies by a neighbouring tile that did not load (the
+  // one north of it here): the track may go on there.
+  const loaded = new Set([-1, 0, 1].flatMap(dx => [-1, 0, 1].map(dy => `${dx},${dy}`)));
+  loaded.delete('0,-1');
+  assert.equal(stubs(siding, 1, 1000, loaded).size, 0);
+  // The turnout end by a missing tile does not matter: only the free end
+  // may run on. (The tile west of the turnout at x = 0 is missing.)
+  const westMissing = new Set(loaded); westMissing.add('0,-1'); westMissing.delete('-1,0');
+  assert.deepEqual([...stubs(siding, 1, 1000, westMissing)], [2]);
+  // A siding leaving a closed way (a loop) at the loop's first and last
+  // node: the loop runs on through that node, so it is a turnout.
+  const loopWay = {group: 'rail', main: true, parts: [[[200, 200], [600, 200], [600, 600], [200, 600], [200, 200]]]};
+  assert.deepEqual([...stubs([loopWay, {group: 'rail', main: true, parts: [[[200, 200], [160, 195], [-100, 195]]]}], 1, 1000)], [1]);
+  // A gentle (high-speed) crossover, 400 m long between tracks 5 m apart, is
+  // one too: it never keeps a steady distance from either track.
+  const gentle = [track(0, -1000, 0), track(0, 0, 400), track(0, 400, 1000), track(5, -1000, 0), track(5, 0, 400), track(5, 400, 1000), leg([0, 0], [400, 5])];
+  assert.deepEqual([...connectors(gentle, 1)], [6]);
+  // A tagged siding with a crossover's shape keeps its tag.
+  const tagged = scissors.map((line, i) => i === 6 ? {...line, main: false, service: 'siding'} : line);
+  assert.deepEqual([...connectors(tagged, 1)], [7]);
+  // A way read in pieces from two tiles (overlapping at their margins) is
+  // still recognised, as a crossover or as a stub.
+  const split = scissors.map((line, i) => i === 6 ? {...line, parts: [[[0, 0], [100, 100 * 5 / 170]], [[90, 90 * 5 / 170], [170, 5]]]} : line);
+  assert.deepEqual([...connectors(split, 1)].sort(), [6, 7]);
+  const splitSiding = siding.map((line, i) => i === 2 ? {...line, parts: [[[0, 0], [40, 5], [200, 5]], [[180, 5], [300, 5]]]} : line);
+  assert.deepEqual([...stubs(splitSiding, 1, 1000)], [2]);
+  // A short branch to a terminus in use as a line (usage, or services on
+  // it) is no stub.
+  for (const extra of [{usage: 'branch'}, {usage: 'industrial'}, {routes: 2}]) assert.equal(stubs(siding.map((line, i) => i === 2 ? {...line, ...extra} : line), 1, 1000).size, 0);
+  // Nor is a diagonal tagged as a line, or with services, a crossover.
+  for (const extra of [{usage: 'main'}, {routes: 1}]) assert.deepEqual([...connectors(scissors.map((line, i) => i === 6 ? {...line, ...extra} : line), 1)], [7]);
+  assert.deepEqual(stitchParts([[[90, 0], [170, 0]], [[0, 0], [100, 0]]]), [[[0, 0], [100, 0], [170, 0]]]);
+  assert.equal(stitchParts([[[0, 0], [10, 0]], [[50, 0], [60, 0]]]).length, 2, 'pieces with a gap stay apart');
+  // A piece wholly on another (a neighbouring tile's margin repeating the
+  // way's tail) leaves the whole way, in either order.
+  assert.deepEqual(stitchParts([[[20, 0], [10, 0]], [[100, 0], [10, 0]]]), [[[100, 0], [10, 0]]]);
+  assert.deepEqual(stitchParts([[[100, 0], [10, 0]], [[20, 0], [10, 0]]]), [[[100, 0], [10, 0]]]);
+  // A closed way (a loop) keeps its whole ring when a neighbouring tile
+  // repeats a piece by its start and end, which are one point.
+  const ring = [[0, 0], [100, 0], [100, 100], [0, 100], [0, 0]];
+  assert.deepEqual(stitchParts([[[0, 0], [0, 10]], ring]), [ring]);
+  assert.deepEqual(stitchParts([ring, [[0, 0], [0, 10]]]), [ring]);
+  // A station across the scissors counts its two tracks, not four.
+  const zone = {inside: (x, y) => x >= -100 && x <= 300 && y >= -20 && y <= 25};
+  for (const i of connectors(scissors, 1)) Object.assign(scissors[i], {main: false, service: 'crossover'});
+  assert.equal(stationTracks(scissors, [zone], 1)[0].tracks, 2);
+});

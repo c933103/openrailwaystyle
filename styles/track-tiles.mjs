@@ -19,7 +19,7 @@
 //   station has no area, BARE_STATION metres around its point are left.
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
-import {countTracks, shareLines, stationGroup, stationTracks, trackLines, unitMetres} from './track-count.mjs';
+import {connectors, countTracks, shareLines, stationGroup, stationTracks, stubs, trackLines, unitMetres} from './track-count.mjs';
 export const COUNT_LAYER = 'atlas_track_counts';
 export const COUNT_ZOOM = 14;
 const BARE_STATION = 100;   // metres around a station point with no area
@@ -128,6 +128,12 @@ export function countTile({tiles, areas = null, stations = null}, y) {
   }
   for (const line of lines) line.inside = line.parts.some(part => part.some(([px, py]) => px >= 0 && py >= 0 && px < extent && py < extent));
   const metres = unitMetres(COUNT_ZOOM, y, extent);
+  // Crossovers mapped as plain track count neither as running tracks nor at
+  // stations, as those tagged service=crossover.
+  for (const index of connectors(lines, metres)) Object.assign(lines[index], {main: false, service: 'crossover'});
+  // Sidings and spurs mapped as plain track are not running tracks (they
+  // still count at stations).
+  for (const index of stubs(lines, metres, extent, new Set(tiles.filter(t => t && t.data).map(t => `${t.dx},${t.dy}`)))) lines[index].main = false;
   const {points} = countTracks(lines, metres, {probe: i => lines[i].inside});
   const {zones, bare} = stationZones(areas, stations, extent), radius = BARE_STATION / metres, dominated = DOMINATED / metres, repeat = REPEAT / metres;
   shareLines(zones, lines, metres);
