@@ -293,8 +293,8 @@ function codeAttribution() {
   span.append(`Build ${assetVersion} · `);
   if (servedBuild?.version && servedBuild.version !== assetVersion) span.append(`Label build ${servedBuild.version} · `);
   if (/^[a-f0-9]{40}$/i.test(servedBuild?.commit || '')) {
-    const link=document.createElement('a');
-    link.href=`https://github.com/c933103/openrailwaystyle/commit/${servedBuild.commit}`;
+    const link=document.createElement(servedBuild.sourceUrl ? 'a' : 'span');
+    if(servedBuild.sourceUrl)link.href=servedBuild.sourceUrl;
     link.textContent=`Code ${servedBuild.commit.slice(0,10)}`;link.title=servedBuild.commit;
     link.target='_blank';link.rel='noopener';span.append(link);
   } else span.append('Development build');

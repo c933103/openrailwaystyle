@@ -383,11 +383,11 @@ test('Causeway Bay search reaches both APIs before a delayed label bundle loads'
 });
 
 
-test('map info identifies the executing cached asset and its embedded source commit across backgrounds',async()=>{
- const commit='a'.repeat(40),{dom,window,maps}=await start({assetQuery:'?v=cached-42',labelBuild:{version:'cached-42',commit}});
+test('map info identifies the executing cached asset and links to its build repository across backgrounds',async()=>{
+ const commit='a'.repeat(40),sourceUrl=`https://git.example.test/fork/railway/commit/${commit}`,{dom,window,maps}=await start({assetQuery:'?v=cached-42',labelBuild:{version:'cached-42',commit,sourceUrl}});
  try {
   const attribution=()=>maps[0].controls.find(c=>c.options?.customAttribution)?.options;
-  let info=attribution();assert.equal(info.compact,true);assert.match(info.customAttribution,/Build cached-42/);assert.match(info.customAttribution,new RegExp('commit/'+commit));assert.match(info.customAttribution,/Code aaaaaaaaaa/);
+  let info=attribution();assert.equal(info.compact,true);assert.match(info.customAttribution,/Build cached-42/);assert.ok(info.customAttribution.includes(`href="${sourceUrl}"`));assert.match(info.customAttribution,/Code aaaaaaaaaa/);
   window.document.querySelector('[data-background="carto"]').click();info=attribution();assert.equal(info.compact,false);assert.match(info.customAttribution,/Build cached-42/);assert.match(info.customAttribution,new RegExp(commit));
  } finally {dom.window.close();}
 });

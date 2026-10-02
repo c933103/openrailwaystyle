@@ -16,7 +16,10 @@ try {
    const {buildInfo}=await import(new URL(`vendor/tile-labels.js?v=${version}`,src));
    return {version,...buildInfo};
   });
-  if(process.env.GITHUB_SHA)assert.equal(expected.commit,process.env.GITHUB_SHA.toLowerCase());
+  if(process.env.GITHUB_SHA){
+   assert.equal(expected.commit,process.env.GITHUB_SHA.toLowerCase());
+   assert.equal(expected.sourceUrl,`${(process.env.GITHUB_SERVER_URL||'https://github.com').replace(/\/$/,'')}/${process.env.GITHUB_REPOSITORY}/commit/${expected.commit}`);
+  }
   const information=page.locator('.maplibregl-ctrl-attrib');
   // MapLibre may initially show compact attribution while sources arrive.
   // Exercise the opening action from a known closed state.
@@ -24,7 +27,8 @@ try {
   await information.locator('.maplibregl-ctrl-attrib-button').click();
   assert.ok(await information.locator('.atlas-build').isVisible());
   assert.match(await information.innerText(),new RegExp(`Build ${expected.version.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}`));
-  if(expected.commit)assert.equal(await information.locator('.atlas-build a').getAttribute('href'),`https://github.com/c933103/openrailwaystyle/commit/${expected.commit}`);
+  if(expected.sourceUrl)assert.equal(await information.locator('.atlas-build a').getAttribute('href'),expected.sourceUrl);
+  else if(expected.commit)assert.match(await information.innerText(),new RegExp(expected.commit.slice(0,10)));
   else assert.match(await information.innerText(),/Development build/);
   await page.screenshot({path:`browser-review/build-${kind}-info.png`,timeout:120000});
   if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();

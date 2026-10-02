@@ -6,7 +6,12 @@ if(commit && !/^[a-f0-9]{40}$/i.test(commit))throw new Error('Invalid build comm
 const app=await readFile('styles/app.mjs','utf8');
 const version=/const assetVersion[^\n]+\|\| '([^']+)'/.exec(app)?.[1];
 if(!version)throw new Error('Missing application asset version');
-const buildInfo={version,commit:commit.toLowerCase()};
+const repository=process.env.GITHUB_REPOSITORY || '';
+if(repository && !/^[\w.-]+\/[\w.-]+$/.test(repository))throw new Error('Invalid build repository');
+const server=new URL(process.env.GITHUB_SERVER_URL || 'https://github.com');
+if(!['https:','http:'].includes(server.protocol) || server.username || server.password)throw new Error('Invalid build server');
+const sourceUrl=commit && repository ? `${server.href.replace(/\/$/,'')}/${repository}/commit/${commit.toLowerCase()}` : '';
+const buildInfo={version,commit:commit.toLowerCase(),sourceUrl};
 await mkdir('styles/vendor',{recursive:true});
 await build({entryPoints:['styles/track-worker.mjs'],outfile:'styles/vendor/track-worker.js',bundle:true,format:'iife',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await build({entryPoints:['styles/tile-labels.mjs'],outfile:'styles/vendor/tile-labels.js',define:{__ATLAS_BUILD_INFO__:JSON.stringify(buildInfo)},bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
