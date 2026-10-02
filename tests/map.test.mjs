@@ -914,6 +914,25 @@ test('search: stations drawn in the tiles match a partial name; found ones are n
   assert.deepEqual(tileStations(tagged, 'ロント', [114.19, 22.38]).map(s => s.name), ['Kowloon Tong']);
 });
 
+test('search: only stations the layers draw at the zoom are matched', async () => {
+  const {drawnStationQueries} = await import('../styles/map-model.mjs');
+  const {featureFilter} = await import('@maplibre/maplibre-gl-style-spec');
+  const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
+  // The tile's own zoom (0 here) must not matter: the map's is put in.
+  const drawn = (zoom, source, properties) => drawnStationQueries(style.layers, zoom).filter(q => q.source === source)
+    .some(q => featureFilter(q.filter).filter({zoom: 0}, {type: 1, properties}));
+  const tram = {feature: 'tram_stop', state: 'present', station_size: 'small'}, halt = {feature: 'halt', state: 'present', station_size: 'small'};
+  const station = {feature: 'station', state: 'present', station_size: 'small'};
+  assert.equal(drawn(9.5, 'stations', tram), false, 'tram stops from zoom 10');
+  assert.equal(drawn(10.5, 'stations', tram), true);
+  assert.equal(drawn(10.5, 'stations', halt), false, 'halts from zoom 11');
+  assert.equal(drawn(11.2, 'stations', halt), true);
+  assert.equal(drawn(9, 'stations', station), true);
+  assert.deepEqual(drawnStationQueries(style.layers, 5).map(q => q.source), ['stationMajor'], 'curated stations alone below zoom 6');
+  const hidden = style.layers.map(l => /^station-.*-names$/.test(l.id) ? {...l, layout: {...l.layout, visibility: 'none'}} : l);
+  assert.deepEqual(drawnStationQueries(hidden, 9), []);
+});
+
 test('country names to zoom 7 above station names; states and provinces from zoom 4', async () => {
   const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
   const ids = style.layers.map(l => l.id), last = ids.lastIndexOf.bind(ids);

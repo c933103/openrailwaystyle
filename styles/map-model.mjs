@@ -91,6 +91,21 @@ export function tileStations(features, query, centre, found = [], limit = 8) {
   }
   return [...matches.values()].sort((a, b) => (b.exact - a.exact) || a.distance - b.distance).slice(0, limit).map(({item}) => item);
 }
+// What the station name layers draw at this zoom, as querySourceFeatures
+// queries: each source with its layers' filters, the zoom put in (a source
+// query evaluates ['zoom'] at the tile's zoom, not the map's). As a literal,
+// so [">=", zoom, 10] is not read as a legacy filter.
+export function drawnStationQueries(layers, zoom) {
+  const at = v => !Array.isArray(v) || v[0] === 'literal' ? v : v.length === 1 && v[0] === 'zoom' ? ['literal', zoom] : v.map(at);
+  const queries = new Map();
+  for (const layer of layers) {
+    if (layer.type !== 'symbol' || !/^station-.*-names$/.test(layer.id) || layer.layout?.visibility === 'none' || zoom < (layer.minzoom ?? 0) || zoom >= (layer.maxzoom ?? 24)) continue;
+    const query = queries.get(layer.source) || {source: layer.source, sourceLayer: layer['source-layer'], filters: []};
+    query.filters.push(layer.filter ? at(layer.filter) : true);
+    queries.set(layer.source, query);
+  }
+  return [...queries.values()].map(({source, sourceLayer, filters}) => ({source, sourceLayer, filter: ['any', ...filters]}));
+}
 export function searchResults(facilities, places) {
   const located = item => Number.isFinite(item.longitude) && Number.isFinite(item.latitude);
   const rail = facilities.filter(located), others = [];
