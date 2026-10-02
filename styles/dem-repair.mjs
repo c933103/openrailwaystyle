@@ -333,18 +333,33 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
     // (a real summit both tiles hold, with a fault in this one below it).
     const top = Math.min(...corners.map(([v]) => v)), rise = top - median(round);
     if (rise > limit) {
-      // Inside a wide patch at one wrong height every sound pixel within
-      // eight may be as low as this one: look further (to 32). The coarser
-      // rise is unsupported only where the ground here rises neither halfway
-      // up to it nor much above this pixel (flats under a coarser tower, not
-      // a summit whose top here is corrupt).
-      let near = -Infinity;
-      for (let reach = 8; ; reach *= 2) {
-        for (let qy = py - reach; qy <= py + reach; qy++) for (let qx = px - reach; qx <= px + reach; qx++) { const v = sound(qx, qy); if (v > near) near = v; }
-        if (near >= value + limit || reach >= 32) break;
+      // The coarser rise is unsupported only where the ground here rises
+      // neither halfway up to it nor much above this pixel (flats under a
+      // coarser tower, not a summit whose top here is corrupt). Inside a wide
+      // patch at one wrong height every sound pixel within eight may be as
+      // low as this one, so look as far as the coarser tile's raised ground
+      // reaches: a summit is broad there too, the tower east of Sha Tin two
+      // pixels wide (looking further finds the real hills round Sha Tin).
+      const half = Math.max(limit, rise / 2), perCoarse = 256 * k / (scale * refSize);
+      let extent = 0;
+      for (let d = 1; d <= 64; d++) {
+        let raised = false;
+        for (let q = -d; q <= d && !raised; q++) for (const [qx, qy] of [[x0 + q, y0 - d], [x0 + q, y0 + d], [x0 - d, y0 + q], [x0 + d, y0 + q]]) {
+          if (qx < 0 || qy < 0 || qx >= refSize || qy >= refSize) continue;
+          if (r[qy * refSize + qx] >= value + half) { raised = true; break; }
+        }
+        if (!raised) break;
+        extent = d;
       }
-      const half = Math.max(limit, rise / 2);
-      if (near < top - half && near < value + half) continue;
+      const farthest = Math.min(size, Math.max(8, Math.ceil((extent + 1) * perCoarse)));
+      let near = -Infinity;
+      for (let reach = 8; ; reach = Math.min(farthest, reach * 2)) {
+        for (let qy = py - reach; qy <= py + reach; qy++) for (let qx = px - reach; qx <= px + reach; qx++) { const v = sound(qx, qy); if (v > near) near = v; }
+        if (near >= value + limit || reach >= farthest) break;
+      }
+      // A broad coarser rise (more than two of its pixels round) is real
+      // ground even where this tile's whole summit is corrupt.
+      if (extent <= 2 && near < top - half && near < value + half) continue;
     }
     const weight = corners.reduce((sum, [, f]) => sum + f, 0), replacement = weight > 0 ? corners.reduce((sum, [v, f]) => sum + v * f, 0) / weight : corners[0][0];
     mark(i, depth(px, py, replacement, true) > limit ? NaN : replacement);

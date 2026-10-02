@@ -131,6 +131,12 @@ test('terrain repair: faults a few pixels across go; islets, cliffs, coasts and 
   const flat = tile((x, y) => Math.abs(x - 100) <= 10 && Math.abs(y - 100) <= 10 ? 300 : wide(x, y));
   repairPixels(flat, 256, 14, 0, 0, tile((x, y) => wide(4 * x + 1.5, 4 * y + 1.5)));
   assert.ok(at(flat, 100, 100) > 1000, `wide fault on the summit: ${at(flat, 100, 100)}`);
+  // And with the whole top corrupt, 65 pixels across: the coarser tile's
+  // summit is broad, unlike a coarser tile's own two-pixel fault.
+  const broad = (x, y) => Math.max(300, 1500 - 10 * Math.hypot(x - 100, y - 100));
+  const capped = tile((x, y) => Math.abs(x - 100) <= 32 && Math.abs(y - 100) <= 32 ? 300 : broad(x, y));
+  repairPixels(capped, 256, 14, 0, 0, tile((x, y) => broad(4 * x + 1.5, 4 * y + 1.5)));
+  assert.ok(at(capped, 100, 100) > 1000, `65-pixel fault on the summit: ${at(capped, 100, 100)}`);
   // An ordinary dip beside a spike cluster is not part of the fault.
   const dip = tile((x, y) => x === 120 && y === 120 ? 600 : x === 120 && y === 121 ? 1000 : x === 119 && y === 121 ? 90 : 100);
   repairPixels(dip, 256, 12, 0, 0, coarse(() => 100));
