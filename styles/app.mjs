@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261002-40';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261002-40';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261002-62';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261002-62';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261002-40';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261002-40';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261002-40';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261002-40';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261002-40';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261002-62';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261002-62';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261002-62';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261002-62';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261002-62';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -39,7 +39,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261002-54';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261002-62';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -351,10 +351,19 @@ function osmLink(panel, feature) {
     link.textContent = 'View location on OpenStreetMap ↗';
     link.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`;
     // A search result gives a bare OSM id without its type: the station tiles
-    // name it (node-…, way-…) once the map has drawn the place.
+    // name it (node-…, way-…) once the map has drawn the place. The first
+    // look runs before the link is in the panel, and often finds it then.
     if (feature.kind === 'station' && /^\d+$/.test(String(feature.properties?.osm_id ?? ''))) {
-      const resolve = () => { const found = ready && stationObject(feature.properties.osm_id); if (found && link.isConnected) toObject(found); return found; };
-      const lookUp = () => { if (!resolve()) map.once('idle', resolve); };
+      const resolve = () => { const found = ready && stationObject(feature.properties.osm_id); if (found) toObject(found); return found; };
+      // Otherwise as station tiles arrive: the map goes idle only once every
+      // tile (relief and contours too) has loaded, which can take long.
+      const lookUp = () => {
+        if (resolve()) return;
+        const stop = () => { map.off('sourcedata', onData); clearTimeout(timer); };
+        const onData = event => { if (event.tile && STATION_SOURCES.includes(event.sourceId) && resolve()) stop(); };
+        const timer = setTimeout(stop, 60_000);
+        map.on('sourcedata', onData);
+      };
       // After any queued action (a search result's fly-to), not instead of it.
       if (ready) lookUp(); else { const queued = pendingView; pendingView = () => { queued?.(); lookUp(); }; }
     }
@@ -362,10 +371,13 @@ function osmLink(panel, feature) {
   link.target = '_blank'; link.rel = 'noopener'; link.className = 'osm-link';
   panel.append(link);
 }
+const STATION_SOURCES = ['stations', 'stationMed', 'stationLow'];
 function stationObject(osmId) {
-  const pattern = new RegExp(`^(node|way|relation)-${osmId}(-|$)`);
+  const pattern = new RegExp(`^(node|way|relation)-${osmId}(-|$)`), seen = new Set();
   for (const layer of map.getStyle().layers) {
-    if (!layer.id.startsWith('station-') || !map.getSource(layer.source)) continue;
+    const key = `${layer.source}/${layer['source-layer']}`;
+    if (!layer.id.startsWith('station-') || !map.getSource(layer.source) || seen.has(key)) continue;
+    seen.add(key);
     for (const f of map.querySourceFeatures(layer.source, {sourceLayer: layer['source-layer']})) {
       const match = pattern.exec(String(f.properties.id ?? ''));
       if (match) return {type: match[1], id: String(osmId)};

@@ -3,7 +3,7 @@
 // R × 256 + G + B / 256 − 32768 metres, seabed included). Zoom-14 tiles
 // (about 9.5 m a pixel at the equator) are finer than most of the source data.
 // Their bad pixels are repaired as for the map (dem-repair.mjs).
-import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels} from './dem-repair.mjs?v=20261002-40';
+import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels} from './dem-repair.mjs?v=20261002-62';
 export const ELEVATION_ZOOM = 14;
 const TILE = 256, CACHE = 64;
 
