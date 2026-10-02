@@ -11,6 +11,8 @@ const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshade
 await mkdir('browser-review',{recursive:true});
 try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  const context=await browser.newContext({viewport:{width,height},hasTouch:kind==='mobile',deviceScaleFactor:kind==='mobile'?2.625:1,serviceWorkers:'block'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const reportResource=msg=>{if(['warning','error'].includes(msg.type()))console.log('STATION_RESOURCE',msg.text().slice(0,1200));};
+ page.on('console',reportResource);
  const pendingRequests=new Set();
  // Terminated count workers can leave a startup request without an end event.
  context.on('request',r=>{if(!/\/vendor\/track-worker\.js(?:\?|$)/.test(r.url()))pendingRequests.add(r);});
@@ -45,7 +47,7 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  // Keep the original globe selection at 3. At 4–6 compare against the
  // complete provider layers before curation, not the reduced inventory
  // introduced by the first curated-station PR. No ranking API is involved.
- const density=[],baseline=await page.context().newPage();baseline.setDefaultTimeout(120000);
+ const density=[],baseline=await page.context().newPage();baseline.setDefaultTimeout(120000);baseline.on('console',reportResource);
  const baselineData=structuredClone(densityData);baselineData.features=baselineData.features.filter(f=>beforeTiers[f.id]).map(f=>({...f,properties:{...f.properties,tier:beforeTiers[f.id]}}));
  await baseline.route(base+'world.style.json**',async route=>{
   const style=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8'));
@@ -61,16 +63,20 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  await baseline.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:90000});
  await baseline.evaluate(async()=>{window.reviewMap=(await import(document.querySelector('script[type="module"]').src)).map;});
  const count=async(p,center,zoom)=>{
+  await p.bringToFront();
   const active=await p.evaluate(({center,zoom})=>{
-   const m=window.reviewMap;m.jumpTo({center,zoom});m.triggerRepaint();delete window.densityPlacement;
+   const m=window.reviewMap;window.densityFrame=false;m.once('render',()=>window.densityFrame=true);
+   m.jumpTo({center,zoom});m.triggerRepaint();delete window.densityPlacement;
+   // isSourceLoaded can still describe the previous camera until this frame
+   // updates the tile cover. Measure the view only after that update.
    const layers=m.getStyle().layers.filter(l=>l.id.startsWith('station-')&&l.type==='symbol'&&l.layout?.visibility!=='none'&&zoom>=(l.minzoom??0)&&zoom<(l.maxzoom??Infinity));
    return {layers:layers.map(l=>l.id),sources:[...new Set(layers.map(l=>l.source))]};
   },{center,zoom});
   assert.ok(active.layers.length,'station layers must be active');
   // Cancelled hidden sources can retain loading flags. Require the visible
   // station sources, their glyphs, and a quiet network; keep all density tests.
-  try {await p.waitForFunction(sources=>sources.every(id=>window.reviewMap.isSourceLoaded(id)),active.sources,{timeout:120000});}
-  catch(error){console.error('DENSITY_NOT_READY',await p.evaluate(sources=>({zoom:window.reviewMap.getZoom(),sources:sources.map(id=>[id,window.reviewMap.isSourceLoaded(id)])}),active.sources));throw error;}
+  try {await p.waitForFunction(sources=>window.densityFrame&&sources.every(id=>window.reviewMap.isSourceLoaded(id)),active.sources,{timeout:120000});}
+  catch(error){console.error('DENSITY_NOT_READY',await p.evaluate(sources=>({zoom:window.reviewMap.getZoom(),rendered:window.densityFrame,sources:sources.map(id=>[id,window.reviewMap.isSourceLoaded(id)])}),active.sources));throw error;}
   let quietSince;const until=Date.now()+120000;
   while(Date.now()<until){if(!pendingRequests.size){quietSince??=Date.now();if(Date.now()-quietSince>=2000)break;}else quietSince=undefined;await p.waitForTimeout(200);}
   assert.ok(quietSince&&Date.now()-quietSince>=2000,'comparison network must settle: '+[...pendingRequests].map(r=>r.url()).join(', '));
@@ -79,7 +85,15 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
    const count=new Set(window.reviewMap.queryRenderedFeatures({layers}).map(f=>f.properties.wikidata||f.properties.id||f.properties.osm_id||f.properties.name)).size,now=Date.now();
    if(window.densityPlacement?.count!==count)window.densityPlacement={count,since:now};
    return now-window.densityPlacement.since>=1000?{count}:false;
-  },active.layers,{polling:100,timeout:60000});const result=(await value.jsonValue()).count;await value.dispose();return result;
+  },active.layers,{polling:100,timeout:60000});const result=(await value.jsonValue()).count;await value.dispose();
+  console.log('DENSITY_STATE',kind,p===baseline?'before':'after',await p.evaluate(active=>{
+   const m=window.reviewMap,features=m.queryRenderedFeatures({layers:active.layers}),style=m.getStyle();
+   return {zoom:m.getZoom(),tilesLoaded:m.areTilesLoaded(),sources:active.sources.map(id=>{
+    const sourceLayers=[...new Set(style.layers.filter(l=>active.layers.includes(l.id)&&l.source===id).map(l=>l['source-layer']).filter(Boolean))];
+    const source=sourceLayers.length?sourceLayers.flatMap(sourceLayer=>m.querySourceFeatures(id,{sourceLayer})):m.querySourceFeatures(id);
+    return {id,loaded:m.isSourceLoaded(id),available:source.length,placed:features.filter(f=>f.source===id).length};
+   })};
+  },active));return result;
  };
  for(const [region,center] of [['Europe',[12,50]],['Japan',[139,36]],['US',[-88,40]]])for(const zoom of [3,4,5,6]){
   const before=await count(baseline,center,zoom),after=await count(page,center,zoom);density.push({region,zoom,before,after});
