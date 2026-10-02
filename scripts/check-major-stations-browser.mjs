@@ -66,6 +66,7 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
   await p.bringToFront();
   const active=await p.evaluate(({center,zoom})=>{
    const m=window.reviewMap;window.densityFrame=false;m.once('render',()=>window.densityFrame=true);
+   if(!window.densityRenders){window.densityRenders=1;m.on('render',()=>window.densityRenders++);}
    m.jumpTo({center,zoom});m.triggerRepaint();delete window.densityPlacement;
    // isSourceLoaded can still describe the previous camera until this frame
    // updates the tile cover. Measure the view only after that update.
@@ -81,10 +82,14 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
   while(Date.now()<until){if(!pendingRequests.size){quietSince??=Date.now();if(Date.now()-quietSince>=2000)break;}else quietSince=undefined;await p.waitForTimeout(200);}
   assert.ok(quietSince&&Date.now()-quietSince>=2000,'comparison network must settle: '+[...pendingRequests].map(r=>r.url()).join(', '));
   await p.evaluate(()=>new Promise(resolve=>{const m=window.reviewMap,timer=setTimeout(()=>{m.off('idle',done);resolve();},10000),done=()=>{clearTimeout(timer);resolve();};m.once('idle',done);m.triggerRepaint();}));
+  // Labels are placed again only as frames are drawn; without them the count
+  // can still be the previous zoom's (zoom 6 read as zoom 5's 28 + 23). Keep
+  // frames coming and require some drawn while the count holds.
   const value=await p.waitForFunction(layers=>{
+   window.reviewMap.triggerRepaint();
    const count=new Set(window.reviewMap.queryRenderedFeatures({layers}).map(f=>f.properties.wikidata||f.properties.id||f.properties.osm_id||f.properties.name)).size,now=Date.now();
-   if(window.densityPlacement?.count!==count)window.densityPlacement={count,since:now};
-   return now-window.densityPlacement.since>=1000?{count}:false;
+   if(window.densityPlacement?.count!==count)window.densityPlacement={count,since:now,renders:window.densityRenders};
+   return now-window.densityPlacement.since>=1000&&window.densityRenders-window.densityPlacement.renders>=10?{count}:false;
   },active.layers,{polling:100,timeout:60000});const result=(await value.jsonValue()).count;await value.dispose();
   console.log('DENSITY_STATE',kind,p===baseline?'before':'after',await p.evaluate(active=>{
    const m=window.reviewMap,features=m.queryRenderedFeatures({layers:active.layers}),style=m.getStyle();
