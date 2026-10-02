@@ -139,6 +139,13 @@ test('terrain repair: faults a few pixels across go; islets, cliffs, coasts and 
   let raised = 0;
   for (let y = 100; y < 256; y++) for (let x = 30; x < 60; x++) if (at(plain, x, y) > 50) raised++;
   assert.ok(raised <= 2, `${raised} pixels of the bay raised`);
+  // A real hollow inside a rim, with a spike pair on the rim, both in the
+  // coarser tile: the spikes go, the hollow keeps its depth.
+  const rimmed = (x, y) => { const d = Math.max(Math.abs(x - 150), Math.abs(y - 150)); return d <= 2 ? 100 : d === 3 ? 150 : 200; };
+  const hollow = tile((x, y) => x === 153 && y === 150 ? 600 : x === 154 && y === 150 ? 1000 : rimmed(x, y));
+  repairPixels(hollow, 256, 14, 0, 0, coarse(rimmed));
+  assert.ok(at(hollow, 154, 150) < 300, `spike: ${at(hollow, 154, 150)}`);
+  for (const [x, y] of [[150, 150], [152, 150], [148, 152]]) assert.equal(at(hollow, x, y), 100, `hollow at ${x},${y}`);
   // Sound river flats at zoom 13 under a coarser tile holding the zoom 11
   // fault east of Sha Tin: the flats keep their height.
   const river = tile((x, y) => 11), towerTile = tile((x, y) => x >= 25 && x < 27 && y >= 25 && y < 27 ? [1442, 1058][(x + y) % 2] : 11);

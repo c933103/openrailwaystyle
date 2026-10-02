@@ -323,7 +323,7 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
     mark(i, depth(px, py, replacement, true) > limit ? NaN : replacement);
   }
   // A fault's edges, shallower than the tests above: low pixels next to a
-  // bad one join it. The low pixels joined to them make a region: a small
+  // bad one below the ground join it. The low pixels joined to them make a region: a small
   // one (at most CLUSTER pixels, as a patch of a fault at one wrong height)
   // joins whole; a larger one is low ground that goes on (a coastal plain
   // under a cliff whose top holds a fault), of which only pixels more than
@@ -332,6 +332,9 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
   const seen = new Uint8Array(size * size);
   while (queue.length) {
     const i = queue.pop(), px = i % size, py = (i - px) / size;
+    // Only a fault below the ground has low edges: a hollow beside a spike
+    // is real ground.
+    if (h[i] >= ground(px, py)) continue;
     for (const [sx, sy] of [[px - 1, py], [px + 1, py], [px, py - 1], [px, py + 1]]) {
       if (!low(sx, sy) || seen[sy * size + sx]) continue;
       const region = [sy * size + sx];
