@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261002-51';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261002-51';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261002-62';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261002-62';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261002-51';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261002-51';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261002-51';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261002-51';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261002-51';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261002-62';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261002-62';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261002-62';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261002-62';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261002-62';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -32,11 +32,14 @@ const readCookie = name => { try { return decodeURIComponent(document.cookie.mat
 const writeCookie = (name, value) => { try { document.cookie = `${name}=${encodeURIComponent(value)}; max-age=31536000; path=/; SameSite=Lax`; } catch {} };
 const remembered = (() => { try { const value = JSON.parse(readCookie(SETTINGS_COOKIE) || '{}'); return value && typeof value === 'object' ? value : {}; } catch { return {}; } })();
 const settings = readSettings(location.search, {language: readCookie(LANGUAGE_COOKIE), ...remembered});
+// The compact attribution/info control is UI state rather than a shareable map
+// setting. Keep it in the same settings cookie, closed on a first visit.
+settings.attributionOpen = typeof remembered.attributionOpen === 'boolean' ? remembered.attributionOpen : false;
 const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261002-51';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261002-62';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -214,7 +217,7 @@ function renderLegend() {
   box.append(help);
 }
 function saveSettings() {
-  writeCookie(SETTINGS_COOKIE, JSON.stringify(Object.fromEntries(SETTING_KEYS.map(key => [key, settings[key]]))));
+  writeCookie(SETTINGS_COOKIE, JSON.stringify({...Object.fromEntries(SETTING_KEYS.map(key => [key, settings[key]])), attributionOpen: settings.attributionOpen}));
   const url = new URL(location.href);
   if (SETTING_PARAMS.some(key => url.searchParams.has(key))) {
     for (const key of SETTING_PARAMS) url.searchParams.delete(key);
@@ -287,7 +290,7 @@ function applySettings() {
   renderLegend();
   if (ready) { scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update(); }
 }
-let attribution, attributionCarto, servedBuild;
+let attribution, attributionCarto, attributionStateObserver, servedBuild;
 function codeAttribution() {
   const span=document.createElement('span');span.className='atlas-build';
   span.append(`Build ${assetVersion} · `);
@@ -304,10 +307,27 @@ function updateAttribution() {
   if (!map) return;
   const carto = settings.background === 'carto';
   if (attribution && attributionCarto === carto) return;
+  attributionStateObserver?.disconnect(); attributionStateObserver = undefined;
   if (attribution) map.removeControl(attribution);
   attributionCarto = carto;
   attribution = new maplibregl.AttributionControl({compact: !carto, customAttribution: codeAttribution()});
   map.addControl(attribution, 'bottom-right');
+  // MapLibre 5.24 initially expands compact attribution. Restore the user's
+  // remembered state instead; with no cookie, start closed so only the ⓘ
+  // button occupies the corner. Carto deliberately uses non-compact credits.
+  const container = attribution._container;
+  if (!carto && container?.classList.contains('maplibregl-compact')) {
+    container.classList.toggle('maplibregl-compact-show', settings.attributionOpen);
+    container.toggleAttribute('open', settings.attributionOpen);
+    attributionStateObserver = new MutationObserver(() => {
+      if (!container.classList.contains('maplibregl-compact')) return;
+      const open = container.classList.contains('maplibregl-compact-show');
+      if (open === settings.attributionOpen) return;
+      settings.attributionOpen = open;
+      saveSettings();
+    });
+    attributionStateObserver.observe(container, {attributes:true, attributeFilter:['class']});
+  }
 }
 const featurePickRank = f => f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
