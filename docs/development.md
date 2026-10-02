@@ -157,3 +157,7 @@ Deployment runs from `main` after validation, not from pull requests. URLs are
 relative so the repository subpath works. The workflow uploads a reviewable site
 artifact and browser screenshots, verifies deployed vector-tile bytes, and runs
 browser checks against the published map.
+
+## Served code version
+
+Expand the map's bottom-right information button to see the executing asset build and a link to its source commit. Carto keeps this attribution open. The commit and its repository URL are embedded into the existing cached label-code bundle by `scripts/build-browser.mjs` from CI's `GITHUB_SHA`, `GITHUB_REPOSITORY` and `GITHUB_SERVER_URL`; they are not fetched from the latest branch head. Fork builds link to their own repository. An older cached page therefore reports its own build. A mixed cached bundle reports both asset versions. Local builds without `GITHUB_SHA` say “Development build”; a commit supplied without a repository is shown without a link.
