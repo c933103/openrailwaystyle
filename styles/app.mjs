@@ -351,10 +351,19 @@ function osmLink(panel, feature) {
     link.textContent = 'View location on OpenStreetMap ↗';
     link.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`;
     // A search result gives a bare OSM id without its type: the station tiles
-    // name it (node-…, way-…) once the map has drawn the place.
+    // name it (node-…, way-…) once the map has drawn the place. The first
+    // look runs before the link is in the panel, and often finds it then.
     if (feature.kind === 'station' && /^\d+$/.test(String(feature.properties?.osm_id ?? ''))) {
-      const resolve = () => { const found = ready && stationObject(feature.properties.osm_id); if (found && link.isConnected) toObject(found); return found; };
-      const lookUp = () => { if (!resolve()) map.once('idle', resolve); };
+      const resolve = () => { const found = ready && stationObject(feature.properties.osm_id); if (found) toObject(found); return found; };
+      // Otherwise as station tiles arrive: the map goes idle only once every
+      // tile (relief and contours too) has loaded, which can take long.
+      const lookUp = () => {
+        if (resolve()) return;
+        const stop = () => { map.off('sourcedata', onData); clearTimeout(timer); };
+        const onData = event => { if (event.tile && STATION_SOURCES.includes(event.sourceId) && resolve()) stop(); };
+        const timer = setTimeout(stop, 60_000);
+        map.on('sourcedata', onData);
+      };
       // After any queued action (a search result's fly-to), not instead of it.
       if (ready) lookUp(); else { const queued = pendingView; pendingView = () => { queued?.(); lookUp(); }; }
     }
@@ -362,10 +371,13 @@ function osmLink(panel, feature) {
   link.target = '_blank'; link.rel = 'noopener'; link.className = 'osm-link';
   panel.append(link);
 }
+const STATION_SOURCES = ['stations', 'stationMed', 'stationLow'];
 function stationObject(osmId) {
-  const pattern = new RegExp(`^(node|way|relation)-${osmId}(-|$)`);
+  const pattern = new RegExp(`^(node|way|relation)-${osmId}(-|$)`), seen = new Set();
   for (const layer of map.getStyle().layers) {
-    if (!layer.id.startsWith('station-') || !map.getSource(layer.source)) continue;
+    const key = `${layer.source}/${layer['source-layer']}`;
+    if (!layer.id.startsWith('station-') || !map.getSource(layer.source) || seen.has(key)) continue;
+    seen.add(key);
     for (const f of map.querySourceFeatures(layer.source, {sourceLayer: layer['source-layer']})) {
       const match = pattern.exec(String(f.properties.id ?? ''));
       if (match) return {type: match[1], id: String(osmId)};
