@@ -183,6 +183,28 @@ test('PMTiles wrapper localizes bytes and carries language through TileJSON temp
   const result=await protocols.atlasbase({url:'atlasbase://fr/https://example.org/world.pmtiles/7/1/1'},new AbortController());
   assert.equal(readTile(result.data).layers.stations.feature(0).properties.atlas_name,'Seoul');
 });
+test('a failed basemap request starts the archive afresh and is tried again',async()=>{
+  const protocols={},calls=[];
+  const pmtiles={tiles:new Map([['https://example.org/world.pmtiles',{}]]),tile:async p=>{
+    calls.push(p.url);
+    if(calls.length===1)throw new TypeError('Failed to fetch');
+    return {data:tile({name:'Seoul'})};
+  }};
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},pmtiles,fetch,{basemapRetries:[0,0]});
+  const result=await protocols.atlasbase({url:'atlasbase://en/https://example.org/world.pmtiles/7/1/1'},new AbortController());
+  assert.equal(readTile(result.data).layers.stations.feature(0).properties.atlas_name,'Seoul');
+  assert.equal(calls.length,2);
+  assert.equal(pmtiles.tiles.has('https://example.org/world.pmtiles'),false,'the cached failure is dropped');
+  // Three failures in a row reach the map; a cancelled request is not retried.
+  const failing={tiles:new Map(),tile:async()=>{calls.push('x');throw new TypeError('Failed to fetch');}};
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},failing,fetch,{basemapRetries:[0,0]});
+  calls.length=0;
+  await assert.rejects(protocols.atlasbase({url:'atlasbase://en/https://example.org/world.pmtiles/7/1/1'},new AbortController()),/Failed to fetch/);
+  assert.equal(calls.length,3);
+  const cancelled=new AbortController();cancelled.abort();calls.length=0;
+  await assert.rejects(protocols.atlasbase({url:'atlasbase://en/https://example.org/world.pmtiles/7/1/1'},cancelled));
+  assert.equal(calls.length,1);
+});
 test('station TileJSON can be capped by a URL fragment that is never requested',async()=>{
   const protocols={},requests=[];
   installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},async url=>{requests.push(url);return {ok:true,json:async()=>({maxzoom:8,tiles:['https://example.org/med/{z}/{x}/{y}']})};});
