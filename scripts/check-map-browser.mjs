@@ -102,6 +102,24 @@ try{
   console.log(`PASS: About opened while loading (map ready at click: ${earlyReady})`);
   await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:120000});
   await page.waitForFunction(()=>+document.querySelector('#map-status').dataset.renderedTracks>0,undefined,{timeout:120000});
+  // The bottom-right info/attribution control starts closed on a first visit,
+  // records manual open/close state in the settings cookie, and restores that
+  // state when the compact control is recreated.
+  const attributionState=()=>page.locator('.maplibregl-ctrl-attrib').evaluate(el=>({compact:el.classList.contains('maplibregl-compact'),open:el.classList.contains('maplibregl-compact-show')}));
+  assert.deepEqual(await attributionState(),{compact:true,open:false},'Attribution info starts compact and closed');
+  await page.locator('.maplibregl-ctrl-attrib-button').click();
+  assert.equal((await attributionState()).open,true,'The info button opens attribution');
+  let settingsCookie=(await page.context().cookies()).find(c=>c.name==='atlas_settings');
+  assert.equal(JSON.parse(decodeURIComponent(settingsCookie.value)).attributionOpen,true,'Open attribution is remembered in the settings cookie');
+  await page.locator('[data-background="carto"]').click();
+  assert.equal((await attributionState()).compact,false,'Carto keeps its full attribution');
+  await page.locator('[data-background="map"]').click();
+  assert.deepEqual(await attributionState(),{compact:true,open:true},'Remembered attribution state survives control recreation');
+  await page.locator('.maplibregl-ctrl-attrib-button').click();
+  assert.equal((await attributionState()).open,false,'The info button closes attribution');
+  settingsCookie=(await page.context().cookies()).find(c=>c.name==='atlas_settings');
+  assert.equal(JSON.parse(decodeURIComponent(settingsCookie.value)).attributionOpen,false,'Closed attribution is remembered in the settings cookie');
+  console.log('PASS: attribution info starts closed and remembers open/closed state');
   // Pan northwest at the SAME zoom before any visit to zoom 8.
   await moveTo(7,128.1,35.65);
   await page.waitForFunction(async()=>{
@@ -414,6 +432,21 @@ try{
     },'The South Pole cap must load its index, relief and contour tiles on the globe');
     console.log('PASS: polar cap drawn beyond 85° on the globe');
   } else console.log('SKIP: no polar cap data in this snapshot');
+  // Compact screens must keep the scale ruler on-screen. It sits above the
+  // coordinate readout, and the bottom-left control stack respects display
+  // safe-area insets instead of being hidden on phones.
+  await page.setViewportSize({width:412,height:915});
+  await page.waitForTimeout(150);
+  const compactControls=await page.evaluate(()=>{
+    const box=el=>{const r=el.getBoundingClientRect();return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height};};
+    const scale=document.querySelector('.maplibregl-ctrl-scale'),readout=document.querySelector('.map-readout');
+    return {display:getComputedStyle(scale).display,scale:box(scale),readout:readout.hidden?null:box(readout),viewport:{width:innerWidth,height:innerHeight}};
+  });
+  assert.notEqual(compactControls.display,'none','The scale ruler stays visible on compact screens');
+  assert.ok(compactControls.scale.left>=0 && compactControls.scale.top>=0 && compactControls.scale.right<=compactControls.viewport.width && compactControls.scale.bottom<=compactControls.viewport.height,'The compact scale ruler stays inside the visible viewport');
+  if(compactControls.readout) assert.ok(compactControls.scale.bottom<=compactControls.readout.top+1,'The scale ruler sits above the coordinate readout instead of being covered by it');
+  console.log('PASS: compact-screen scale ruler stays visible and above the bottom readout');
+  await page.setViewportSize({width:1365,height:900});
   assert.deepEqual(errors,[]);
   console.log('PASS: one shared language, name fallbacks, contours, structures and lifecycle controls; no JavaScript exceptions');
 } catch(error) {
