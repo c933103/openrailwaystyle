@@ -14,7 +14,7 @@ const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fetcher, search = '', cookie = '', compact = false } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '' } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -80,14 +80,14 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const dependency = new vm.SyntheticModule(Object.keys(model), function() {
     for (const [key,value] of Object.entries(model)) this.setExport(key,value);
   }, {context});
-  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','locate'],function(){this.setExport('installLabelProtocols',()=>{});this.setExport('localizeTile',x=>x);this.setExport('locate',()=>({atlas_han:'none',atlas_zh:''}));},{context});
+  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','locate','buildInfo'],function(){this.setExport('buildInfo',labelBuild);this.setExport('installLabelProtocols',()=>{});this.setExport('localizeTile',x=>x);this.setExport('locate',()=>({atlas_han:'none',atlas_zh:''}));},{context});
   // The label code is imported on demand, after the controls are wired.
   let loadLabels;
   const labelsReady=new Promise(resolve=>{loadLabels=resolve;});
   if(!delayLabels)loadLabels();
   const app = new vm.SourceTextModule(code, {
     context,
-    initializeImportMeta(meta) { meta.url = 'https://example.org/openrailwaystyle/app.mjs'; },
+    initializeImportMeta(meta) { meta.url = 'https://example.org/openrailwaystyle/app.mjs'+assetQuery; },
     importModuleDynamically: async specifier => {
       await labelsReady;
       if (!specifier.includes('tile-labels')) throw new Error(`Unexpected import ${specifier}`);
@@ -380,4 +380,18 @@ test('Causeway Bay search reaches both APIs before a delayed label bundle loads'
   assert.match(window.document.getElementById('search-results').textContent,/Causeway Bay/);
   assert.equal(window.document.getElementById('search-results').hidden,false);
  }finally{loadLabels();for(let i=0;i<5;i++)await new Promise(r=>setTimeout(r,0));dom.window.close();}
+});
+
+
+test('map info identifies the executing cached asset and its embedded source commit across backgrounds',async()=>{
+ const commit='a'.repeat(40),{dom,window,maps}=await start({assetQuery:'?v=cached-42',labelBuild:{version:'cached-42',commit}});
+ try {
+  const attribution=()=>maps[0].controls.find(c=>c.options?.customAttribution)?.options;
+  let info=attribution();assert.equal(info.compact,true);assert.match(info.customAttribution,/Build cached-42/);assert.match(info.customAttribution,new RegExp('commit/'+commit));assert.match(info.customAttribution,/Code aaaaaaaaaa/);
+  window.document.querySelector('[data-background="carto"]').click();info=attribution();assert.equal(info.compact,false);assert.match(info.customAttribution,/Build cached-42/);assert.match(info.customAttribution,new RegExp(commit));
+ } finally {dom.window.close();}
+});
+test('map info exposes mismatched cached bundle versions and handles a missing commit',async()=>{
+ const {dom,maps}=await start({assetQuery:'?v=cached-42',labelBuild:{version:'cached-41',commit:''}});
+ try {const info=maps[0].controls.find(c=>c.options?.customAttribution).options.customAttribution;assert.match(info,/Build cached-42/);assert.match(info,/Label build cached-41/);assert.match(info,/Development build/);}finally{dom.window.close();}
 });

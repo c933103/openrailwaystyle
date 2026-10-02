@@ -1,8 +1,15 @@
 import {build} from 'esbuild';
-import {mkdir,copyFile} from 'node:fs/promises';
+import {mkdir,copyFile,readFile} from 'node:fs/promises';
+// Embedded in the cached code bundle: never fetch the current remote HEAD.
+const commit=process.env.GITHUB_SHA || '';
+if(commit && !/^[a-f0-9]{40}$/i.test(commit))throw new Error('Invalid build commit');
+const app=await readFile('styles/app.mjs','utf8');
+const version=/const assetVersion[^\n]+\|\| '([^']+)'/.exec(app)?.[1];
+if(!version)throw new Error('Missing application asset version');
+const buildInfo={version,commit:commit.toLowerCase()};
 await mkdir('styles/vendor',{recursive:true});
 await build({entryPoints:['styles/track-worker.mjs'],outfile:'styles/vendor/track-worker.js',bundle:true,format:'iife',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
-await build({entryPoints:['styles/tile-labels.mjs'],outfile:'styles/vendor/tile-labels.js',bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
+await build({entryPoints:['styles/tile-labels.mjs'],outfile:'styles/vendor/tile-labels.js',define:{__ATLAS_BUILD_INFO__:JSON.stringify(buildInfo)},bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await build({entryPoints:['styles/dem-worker.mjs'],outfile:'styles/vendor/dem-worker.js',bundle:true,format:'iife',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await build({entryPoints:['styles/polar-layer.mjs'],outfile:'styles/vendor/polar-layer.js',bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await copyFile('node_modules/earcut/LICENSE','styles/vendor/earcut-LICENSE.txt');

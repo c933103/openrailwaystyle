@@ -7,6 +7,7 @@ import {hanRegion, chineseArea} from './han-region.mjs';
 import {axleLoad} from './axle-load.mjs';
 import {decodeLoadingGauges, wayId} from './loading-gauge-list.mjs';
 export {hanRegion, chineseArea};
+export const buildInfo=typeof __ATLAS_BUILD_INFO__ === 'undefined' ? {version:'development',commit:''} : __ATLAS_BUILD_INFO__;
 
 export function readTile(data) {
   const tile = new VectorTile(new Pbf(new Uint8Array(data)));
