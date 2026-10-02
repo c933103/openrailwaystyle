@@ -1,10 +1,11 @@
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
+import {waitUntil,setDefaultTimeout} from './wait-until.mjs';
 const deadline=setTimeout(()=>{console.error('Browser validation exceeded ten minutes');process.exit(1);},600000);deadline.unref();
 const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1365,height:900},deviceScaleFactor:1});
-page.setDefaultTimeout(120000);
+setDefaultTimeout(page,120000);
 // Retain completed WebGL frames for reliable headless screenshots.
 await page.addInitScript(()=>{
   const getContext=HTMLCanvasElement.prototype.getContext;
@@ -116,9 +117,10 @@ try{
   console.log('PASS: attribution info starts closed and remembers open/closed state');
   // Pan northwest at the SAME zoom before any visit to zoom 8.
   await moveTo(7,128.1,35.65);
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
-    return Math.abs(map.getCenter().lng-128.1)<0.01 && (map.getSource('inactiveRegional') && map.isSourceLoaded('inactiveRegional')) && document.querySelector('#map-status').dataset.lifecycleNames?.includes('남부내륙');
+    // The borders below come from the basemap, which can load after the railway.
+    return Math.abs(map.getCenter().lng-128.1)<0.01 && (map.getSource('inactiveRegional') && map.isSourceLoaded('inactiveRegional')) && map.isSourceLoaded('openmaptiles') && document.querySelector('#map-status').dataset.lifecycleNames?.includes('남부내륙');
   },undefined,{timeout:120000});
   console.log('PASS: 남부내륙선 rendered after pan at zoom 7, before visiting zoom 8');
   console.log('Inspecting rendered line extent, stations and borders');
@@ -142,7 +144,7 @@ try{
   await page.locator('#collapse').click();
   await page.selectOption('#language','en');
   await moveTo(10,128.12,35.17);
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return Math.abs(map.getZoom()-10)<0.01 && (map.getSource('railway') && map.isSourceLoaded('railway')) && map.queryRenderedFeatures().some(f=>f.layer.id.endsWith('-names') && !f.layer.id.startsWith('station-'));
   },undefined,{timeout:45000});
@@ -151,13 +153,13 @@ try{
   const detail=await page.screenshot({path:'browser-review/korea-z10.jpg',type:'jpeg',quality:55});
   console.log('DETAIL_IMAGE_START'+detail.toString('base64')+'DETAIL_IMAGE_END');
   await page.selectOption('#language','fr');
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return (map.getSource('stations') && map.isSourceLoaded('stations')) && map.queryRenderedFeatures().some(f=>f.source==='stations' && f.properties.atlas_language==='fr' && !f.properties['name:fr'] && f.properties['name:en'] && f.properties.atlas_name===f.properties['name:en']);
   },undefined,{timeout:120000});
   console.log('PASS: French station labels use fetched English names when French is absent');
   await page.locator('[data-mode="infrastructure"]').click();
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     const features=map.queryRenderedFeatures();
     return ['structure-bridge-edge','structure-tunnel'].every(id=>features.some(f=>f.layer.id===id));
@@ -215,7 +217,7 @@ try{
   console.log('PASS: loading gauge view');
   await page.locator('[data-mode="infrastructure"]').click();
   await moveTo(8,129.4,36.3);
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     const contours=map.queryRenderedFeatures().filter(f=>f.layer.id==='terrain-contours');
     return Math.abs(map.getCenter().lng-129.4)<0.01 && (map.getSource('contours') && map.isSourceLoaded('contours')) && contours.some(f=>f.properties.ele<0) && contours.some(f=>f.properties.ele>0);
@@ -254,13 +256,13 @@ try{
   await page.locator('#settings-open').click();
   assert.equal(await page.locator('#main-view').isHidden(),true,'settings replace the map controls');
   await page.locator('#inactive').uncheck();
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return map.getLayoutProperty('inactive-regional-construction','visibility')==='none' && !map.queryRenderedFeatures().some(f=>f.source==='inactiveRegional');
   },undefined,{timeout:30000});
   await page.locator('#inactive').check();
   await page.locator('#relief').uncheck();
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return map.getLayoutProperty('terrain-contours','visibility')==='none' && !map.queryRenderedFeatures().some(f=>f.source==='contours');
   },undefined,{timeout:30000});
@@ -271,7 +273,7 @@ try{
   assert.ok(requests.some(url=>url.includes('terrarium')),'Relief source requested');
   assert.ok(requests.some(url=>url.includes('standard_railway_text_stations')&&url.includes('lang=en')),'Translated station tiles requested');
   await page.selectOption('#language','zh-Hant');
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return (map.getSource('stations') && map.isSourceLoaded('stations')) && map.queryRenderedFeatures().some(f=>f.source==='stations' && f.properties.atlas_language==='zh-Hant' && /\p{Script=Hangul}/u.test(f.properties.name||'') && /\p{Script=Han}/u.test(f.properties.atlas_name||''));
   },undefined,{timeout:120000});
@@ -279,7 +281,7 @@ try{
   console.log('Checking China regional map');
   await page.selectOption('#language','zh-Hans');
   await moveTo(7,116.4,30.5);
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return Math.abs(map.getCenter().lng-116.4)<0.01 && Math.abs(map.getZoom()-7)<0.01 && !map.isMoving() && ['stationMed','openmaptiles','railway','relief'].every(id=>map.getSource(id) && map.isSourceLoaded(id)) && map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-') && f.geometry.type==='Point' && f.geometry.coordinates[0]>110 && f.geometry.coordinates[0]<125).length>5;
   },undefined,{timeout:120000});
@@ -295,7 +297,7 @@ try{
   // The panel stays collapsed from the China view until the units check.
   console.log('Checking mouse panning over a dense city, compass and units');
   await moveTo(12,139.765,35.68);
-  await page.waitForFunction(async()=>{
+  await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return !map.isMoving() && ['stations','railway','openmaptiles'].every(id=>map.getSource(id) && map.isSourceLoaded(id)) && map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-')).length>10;
   },undefined,{timeout:120000});
@@ -312,14 +314,14 @@ try{
   assert.ok(compass && zoomIn && compass.y<zoomIn.y,'The compass sits above the zoom buttons');
   await page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);map.setBearing(40);});
   await page.locator('.maplibregl-ctrl-compass').click();
-  await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return Math.abs(map.getBearing())<0.5 && !map.isMoving();},undefined,{timeout:10000});
+  await waitUntil(page,async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return Math.abs(map.getBearing())<0.5 && !map.isMoving();},undefined,{timeout:10000});
   console.log('PASS: compass resets north');
   await page.locator('#collapse').click();
   await page.locator('[data-mode="speed"]').click();
   await page.selectOption('#units','imperial');
   assert.match(await page.locator('#legend').textContent(),/mph/);
   assert.match(await page.locator('.maplibregl-ctrl-scale').textContent(),/ft|mi/);
-  await page.waitForFunction(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return JSON.stringify(map.getLayoutProperty('speed-labels','text-field')).includes('mph');},undefined,{timeout:10000});
+  await waitUntil(page,async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return JSON.stringify(map.getLayoutProperty('speed-labels','text-field')).includes('mph');},undefined,{timeout:10000});
   await page.selectOption('#units','metric');
   assert.match(await page.locator('.maplibregl-ctrl-scale').textContent(),/km|\bm\b/);
   console.log('PASS: units switch legend, scale bar and speed labels');
