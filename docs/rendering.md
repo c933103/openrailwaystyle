@@ -48,6 +48,8 @@ Stations get their own amber badge: every track across the station's area (or wi
 
 Station areas and points are read from the same nine tiles as the tracks, so an area reaching into a neighbouring tile is seen whole.
 
+Ways mapped as plain track that are not tracks of their own are recognised from the geometry before counting, since such ways are often left without a `service` tag worldwide. A connector is a way whose ends both leave other tracks at turnouts and which moves across the parallel tracks beside it between its two ends: a single or scissors crossover up to 800 m long, longer than any real one, as a crossover is two turnouts end to end (Tuen Mun's TX32 legs, about 170 m long, were counted as two extra station tracks). It counts neither on the open line nor at a station, as `service=crossover` does. A longer way that ends up on the other side of a track, such as a flyover's approach or a third track, stays a track. A way that runs beside another for half its length or more stays a track, such as a loop or a siding between two tracks. A stub is a way without a `service` tag, shorter than 1.5 km, that leaves a track at a turnout and ends in nothing: a siding or spur. It does not count as a running track on the open line, but still counts at a station (a terminus's platform tracks). Ends at the edge of the tiles read are left alone. Tagging such ways in OpenStreetMap (`service=crossover`, `siding`, `spur`) remains the better fix.
+
 Checked against known track counts in Tokyo, Ōmiya, Takasaki, Nagoya, Hong Kong, Hualien, Berlin, Paris, London, New York, Zürich and on single-track lines; results follow how completely and consistently tracks are tagged in OpenStreetMap.
 
 ## Railway lifecycle
