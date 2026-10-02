@@ -29,9 +29,30 @@
 // draws a few rings, an atoll's lagoon spans many pixels. Pixels standing
 // above all round them are left alone: a steep islet in deep water draws as
 // many rings and is real.
+// Faults a few pixels across, as east of Sha Tin at zooms 10 to 12, mix
+// both: a pixel standing 2 400 m above the river flats beside one 650 m
+// below them. Such a fault starts at two pixels side by side that differ by
+// more than JUMP metres and by more than a cliff CLIFF times a pixel wide
+// could (no real cliff is that tall and that sheer at a pixel's width), one
+// of them above or below all eight pixels round it (a real cliff's top and
+// foot are not); or at a pixel more than half of drop(z) below the sea and
+// below all eight round it, in land a few pixels round nearly all above
+// the sea (a real hole in land that deep and that narrow stays above the
+// sea; holes in water, blue holes and lagoons, and the sea along a coast
+// are not judged so). It takes in the
+// pixels near it that stand out the way its starting pixels do: above the
+// ground a few pixels round, for one standing above all round it, by half
+// a storm (RINGS / 2 contour lines) or by drop(z); for one sunk below them,
+// below the sea by half a storm or, in such land, by half of drop(z). A real
+// hole beside a fault keeps its depth, and the foot of a real cliff (above
+// the sea) its height. Pixels standing up are taken only where the coarser tile has
+// nothing near that high (it holds a real islet or cliff top, such as
+// Ball's Pyramid or the sea cliffs of Molokai, at a lower but similar
+// height), so only from REFERENCE_FROM. A fault that grows beyond CLUSTER
+// pixels is real ground after all and left alone.
 // The tests against the coarser tile, and the narrower ones above, run from
 // REFERENCE_FROM.
-export const REPAIR_FROM = 4, REFERENCE_FROM = 9, LEVELS_UP = 2, MISSING = -11500, WALL = 1000, RINGS = 12;
+export const REPAIR_FROM = 4, REFERENCE_FROM = 9, LEVELS_UP = 2, MISSING = -11500, WALL = 1000, RINGS = 12, CLIFF = 6, JUMP = 500, CLUSTER = 64;
 export const drop = z => 60 * 2 ** Math.max(0, 14 - z);
 // How far to each side the WALL test looks, in pixels: about 190 m at the
 // equator, wider than the 120° E band.
@@ -160,6 +181,103 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
     if (!bad[i] && storm(px, py, h[i])) storms.push(i);
   }
   for (const i of storms) mark(i, NaN);
+  // Faults a few pixels across: from a jump no cliff makes, the pixels near
+  // it that stand out from the ground round them. A pixel's width in metres
+  // at the tile's middle.
+  const metres = 40075016.686 * Math.cos(Math.atan(Math.sinh(Math.PI * (1 - 2 * (y + 0.5) / 2 ** z)))) / (2 ** z * size);
+  const jump = Math.max(JUMP, CLIFF * metres);
+  // Judged on the tile's own heights, faults already set aside included.
+  const raw = (qx, qy) => on(qx, qy) ? h[qy * size + qx] : NaN;
+  const extreme = (px, py) => {
+    const ring = RING.map(([dx, dy]) => raw(px + dx, py + dy));
+    if (ring.some(v => Number.isNaN(v))) return false;
+    const v = h[py * size + px];
+    return v > Math.max(...ring) || v < Math.min(...ring);
+  };
+  const median = values => { values.sort((a, b) => a - b); return values.length % 2 ? values[values.length >> 1] : (values[values.length / 2 - 1] + values[values.length / 2]) / 2; };
+  const cluster = new Uint8Array(size * size), NEAR = 2, AROUND = 4;
+  // The ground round a pixel: the median of the sound pixels AROUND pixels
+  // away (the square's edge), leaving out the fault's own.
+  const ground = (px, py) => {
+    const edge = [], add = (qx, qy) => { const v = sound(qx, qy); if (!Number.isNaN(v) && !cluster[qy * size + qx]) edge.push(v); };
+    for (let d = -AROUND; d <= AROUND; d++) { add(px + d, py - AROUND); add(px + d, py + AROUND); }
+    for (let d = 1 - AROUND; d < AROUND; d++) { add(px - AROUND, py + d); add(px + AROUND, py + d); }
+    return edge.length >= 8 ? median(edge) : NaN;
+  };
+  // Land round a pixel: three in four of the sound pixels AROUND pixels
+  // away above the sea.
+  const inLand = (px, py) => {
+    let land = 0, all = 0;
+    for (let d = -AROUND; d <= AROUND; d++) for (const [qx, qy] of [[px + d, py - AROUND], [px + d, py + AROUND], ...(Math.abs(d) < AROUND ? [[px - AROUND, py + d], [px + AROUND, py + d]] : [])]) {
+      const v = sound(qx, qy);
+      if (Number.isNaN(v) || cluster[qy * size + qx]) continue;
+      all++; if (v >= 0) land++;
+    }
+    return all >= 8 && land >= all * 3 / 4;
+  };
+  // Below the sea in land, more than half of drop(z) under the ground round.
+  const sunkInLand = (px, py, value, around) => value < -limit / 2 && around >= 0 && inLand(px, py);
+  // A pit below the sea in land: the start of a fault.
+  const sunkIn = (px, py) => {
+    const v = h[py * size + px];
+    return v < -limit / 2 && extreme(px, py) && sunkInLand(px, py, v, ground(px, py));
+  };
+  // Standing out above (way 1) or below (way -1) the ground round it.
+  const standsOut = (value, around, ways) => !Number.isNaN(around) && ways.includes(Math.sign(value - around)) && (Math.abs(value - around) > limit || rings(Math.min(value, around), Math.max(value, around)) >= RINGS / 2);
+  // The highest of the coarser tile's pixels round this pixel's centre.
+  const coarserTop = (px, py) => {
+    if (!r || !referenced) return NaN;
+    const rx = (ox + (px + 0.5) * scale) / k * refSize / 256 - 0.5, ry = (oy + (py + 0.5) * scale) / k * refSize / 256 - 0.5;
+    let top = -Infinity;
+    for (let qy = Math.floor(ry) - 1; qy <= Math.floor(ry) + 2; qy++) for (let qx = Math.floor(rx) - 1; qx <= Math.floor(rx) + 2; qx++) {
+      const v = r[clamp(qy) * refSize + clamp(qx)];
+      if (!Number.isNaN(v)) top = Math.max(top, v);
+    }
+    return top === -Infinity ? NaN : top;
+  };
+  // A pixel standing up that the coarser tile does not: more than half its
+  // height over the ground round it above anything the coarser tile has
+  // there, and more than half of drop(z).
+  const unbacked = (px, py, value, around) => {
+    const top = coarserTop(px, py);
+    return !Number.isNaN(top) && value - top > Math.max(limit / 2, (value - around) / 2);
+  };
+  const way = (px, py) => RING.every(([dx, dy]) => raw(px + dx, py + dy) < h[py * size + px]) ? 1 : -1;
+  // Grows a fault from its starting pixels; false if it is real ground.
+  const grow = seeds => {
+    const kept = seeds.filter(([sx, sy]) => way(sx, sy) < 0 || unbacked(sx, sy, h[sy * size + sx], ground(sx, sy)));
+    if (!kept.length || kept.some(([sx, sy]) => cluster[sy * size + sx])) return;
+    const members = kept.map(([sx, sy]) => sy * size + sx), ways = [...new Set(kept.map(([sx, sy]) => way(sx, sy)))];
+    for (const m of members) cluster[m] = 1;
+    for (let next = members.slice(); next.length && members.length <= CLUSTER;) {
+      const found = [];
+      for (const m of next) {
+        const mx = m % size, my = (m - mx) / size;
+        for (let ny = my - NEAR; ny <= my + NEAR; ny++) for (let nx = mx - NEAR; nx <= mx + NEAR; nx++) {
+          const n = ny * size + nx;
+          if (!on(nx, ny) || bad[n] || cluster[n]) continue;
+          const around = ground(nx, ny);
+          const joins = h[n] > around ? standsOut(h[n], around, ways) && unbacked(nx, ny, h[n], around)
+            : ways.includes(-1) && h[n] < 0 && (rings(h[n], around) >= RINGS / 2 || sunkInLand(nx, ny, h[n], around));
+          if (!joins) continue;
+          cluster[n] = 1; found.push(n);
+        }
+      }
+      members.push(...found); next = found;
+    }
+    if (members.length > CLUSTER) { for (const m of members) cluster[m] = 0; return; }
+    for (const m of members) if (!bad[m]) mark(m, NaN);
+  };
+  // Most pixels fail the first, cheap test of each start.
+  for (let py = 0; py < size; py++) for (let px = 0; px < size; px++) {
+    const i = py * size + px, v = h[i];
+    if (cluster[i] || Number.isNaN(v)) continue;
+    if (px + 1 < size && Math.abs(v - h[i + 1]) > jump) grow([[px, py], [px + 1, py]].filter(([sx, sy]) => extreme(sx, sy)));
+    if (py + 1 < size && Math.abs(v - h[i + size]) > jump) grow([[px, py], [px, py + 1]].filter(([sx, sy]) => extreme(sx, sy)));
+    // A pit in land: first, land at two of the four pixels AROUND away
+    // straight across (the open sea, most pixels of a sea tile, is not).
+    if (v < -limit / 2 && !cluster[i] && (raw(px - AROUND, py) >= 0) + (raw(px + AROUND, py) >= 0) + (raw(px, py - AROUND) >= 0) + (raw(px, py + AROUND) >= 0) >= 2 && sunkIn(px, py)) grow([[px, py]]);
+  }
   // Then round them, until none is left: where two such faults cross, the
   // pixels where they meet stand out once the rest is set aside.
   for (let marked = storms; marked.length;) {
@@ -172,7 +290,10 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
     for (const i of marked) mark(i, NaN);
   }
   // Pits below the coarser tile: its height there, unless that shares the
-  // fault.
+  // fault. Not where the coarser tile itself stands up from the ground
+  // round it (its median two pixels round) by more than drop(z): there it
+  // holds a fault of its own (east of Sha Tin, zoom 11 rises 1 400 m from
+  // the river flats), which would raise sound ground here into a tower.
   if (r && referenced) for (let py = 0; py < size; py++) for (let px = 0; px < size; px++) {
     const i = py * size + px, value = h[i];
     if (bad[i]) continue;
@@ -181,17 +302,24 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
     const x0 = Math.floor(rx), y0 = Math.floor(ry), x1 = Math.min(refSize - 1, x0 + 1), y1 = Math.min(refSize - 1, y0 + 1), fx = rx - x0, fy = ry - y0;
     const corners = [[r[y0 * refSize + x0], (1 - fx) * (1 - fy)], [r[y0 * refSize + x1], fx * (1 - fy)], [r[y1 * refSize + x0], (1 - fx) * fy], [r[y1 * refSize + x1], fx * fy]].filter(([v]) => !Number.isNaN(v));
     if (!corners.length || value >= Math.min(...corners.map(([v]) => v)) - limit) continue;
+    const round = [];
+    for (let qy = y0 - 2; qy <= y0 + 3; qy++) for (let qx = x0 - 2; qx <= x0 + 3; qx++) { const v = r[clamp(qy) * refSize + clamp(qx)]; if (!Number.isNaN(v)) round.push(v); }
+    if (Math.min(...corners.map(([v]) => v)) - median(round) > limit) continue;
     const weight = corners.reduce((sum, [, f]) => sum + f, 0), replacement = weight > 0 ? corners.reduce((sum, [v, f]) => sum + v * f, 0) / weight : corners[0][0];
     mark(i, depth(px, py, replacement, true) > limit ? NaN : replacement);
   }
   // A fault's edges, shallower than the tests above: low pixels next to a
-  // bad one join it.
+  // bad one join it, if more than half of drop(z) below every sound pixel
+  // beside them. Low ground that goes on (a coastal plain under a cliff
+  // whose top holds a fault) does not: it is level with the next pixel of it.
   while (queue.length) {
     const i = queue.pop(), px = i % size, py = (i - px) / size;
     for (const [qx, qy] of [[px - 1, py], [px + 1, py], [px, py - 1], [px, py + 1]]) {
       if (qx < 0 || qy < 0 || qx >= size || qy >= size) continue;
       const j = qy * size + qx;
-      if (!bad[j] && depth(qx, qy, h[j], true) > limit) mark(j, NaN);
+      if (bad[j] || !(depth(qx, qy, h[j], true) > limit)) continue;
+      const beside = [[qx - 1, qy], [qx + 1, qy], [qx, qy - 1], [qx, qy + 1]].map(([bx, by]) => sound(bx, by)).filter(v => !Number.isNaN(v));
+      if (beside.length && beside.every(v => v - h[j] > limit / 2)) mark(j, NaN);
     }
   }
   // Where the coarser tile has nothing either: the sound neighbours' mean,

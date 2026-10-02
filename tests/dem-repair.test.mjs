@@ -84,3 +84,48 @@ test('terrain repair: missing data is filled from zoom 4', () => {
   assert.equal(at(data, 50, 50), 120); assert.equal(at(data, 10, 80), 120);
   assert.equal(repairPixels(tile((x, y) => x === 5 ? -14840 : 120), 256, 3, 0, 0, null), 0);
 });
+
+test('terrain repair: faults a few pixels across go; islets, cliffs, coasts and plains stay', () => {
+  // The tile two zooms up, which tile 0/0 fills a quarter of.
+  const coarse = height => tile((x, y) => height(4 * x, 4 * y));
+  // East of Sha Tin at zoom 12: spikes beside pits on river flats, and a
+  // pit below the sea two pixels wide (zoom 11's), all in level land; the
+  // coarser tile has nothing standing up there.
+  const flats = (x, y) => 5 + x * 0.01;
+  const fault = {'72,157': 1820, '73,157': -508, '72,158': 2436, '73,158': -655, '72,159': 1260, '73,159': -335, '40,40': -353, '40,41': -261};
+  const shaTin = tile((x, y) => fault[`${x},${y}`] ?? flats(x, y));
+  repairPixels(shaTin, 256, 12, 0, 0, coarse(flats));
+  for (const key of Object.keys(fault)) { const [x, y] = key.split(',').map(Number); assert.ok(Math.abs(at(shaTin, x, y) - flats(x, y)) < 60, `${key}: ${at(shaTin, x, y)}`); }
+  // An islet in the sea, and a sea stack beside a fault pit: the coarser
+  // tile holds them (lower, as a coarser pixel averages them with the sea).
+  const sea = (x, y) => -30;
+  const islet = (x, y) => Math.max(0, 500 - 120 * Math.hypot(x - 150, y - 150));
+  const stacks = tile((x, y) => x === 200 && y === 100 ? 700 : x === 201 && y === 100 ? -1200 : Math.hypot(x - 150, y - 150) < 4.2 ? islet(x, y) : sea(x, y));
+  const coarser = tile((x, y) => (Math.abs(x - 37) <= 1 && Math.abs(y - 37) <= 1) || (Math.abs(x - 50) <= 1 && Math.abs(y - 25) <= 1) ? 420 : -30);
+  const before = stacks.slice();
+  repairPixels(stacks, 256, 12, 0, 0, coarser);
+  for (const [x, y] of [[150, 150], [151, 150], [150, 152], [200, 100]]) assert.equal(at(stacks, x, y), terrarium(...before.slice((y * 256 + x) * 4, (y * 256 + x) * 4 + 3)), `${x},${y} kept`);
+  assert.ok(at(stacks, 201, 100) > -100, `pit beside the stack: ${at(stacks, 201, 100)}`); // from the coarser tile
+  // A coast with a fault on the shore, and a stream bed below the sea in
+  // land: the sea and the stream stay.
+  const coast = (x, y) => x < 100 ? 150 : -20;
+  const shore = tile((x, y) => x === 98 && y === 50 ? 471 : x === 99 && y === 50 ? -79 : x === 60 && y === 120 ? -1.5 : coast(x, y));
+  repairPixels(shore, 256, 12, 0, 0, coarse(coast));
+  for (const [x, y] of [[100, 50], [101, 49], [100, 52], [102, 50]]) assert.equal(at(shore, x, y), -20, `sea at ${x},${y}`);
+  assert.equal(at(shore, 95, 50), 150); assert.equal(at(shore, 60, 120), -1.5);
+  assert.ok(Math.abs(at(shore, 98, 50) - 150) < 60 && Math.abs(at(shore, 99, 50) - 150) < 200, `fault on the shore: ${at(shore, 98, 50)}, ${at(shore, 99, 50)}`);
+  // A low bay under cliffs whose top holds a fault (Kalaupapa, zoom 14):
+  // the fault goes, the low ground keeps its height.
+  const cliff = (x, y) => y >= 100 && x >= 30 && x < 60 ? 5 : 390;
+  const plain = tile((x, y) => y === 99 && x >= 30 && x < 40 ? -9351 : cliff(x, y));
+  repairPixels(plain, 256, 14, 0, 0, coarse(cliff));
+  for (const x of [30, 35, 39]) assert.ok(at(plain, x, 99) > 0, `fault at ${x}: ${at(plain, x, 99)}`);
+  let raised = 0;
+  for (let y = 100; y < 256; y++) for (let x = 30; x < 60; x++) if (at(plain, x, y) > 50) raised++;
+  assert.ok(raised <= 2, `${raised} pixels of the bay raised`);
+  // Sound river flats at zoom 13 under a coarser tile holding the zoom 11
+  // fault east of Sha Tin: the flats keep their height.
+  const river = tile((x, y) => 11), towerTile = tile((x, y) => x >= 25 && x < 27 && y >= 25 && y < 27 ? [1442, 1058][(x + y) % 2] : 11);
+  repairPixels(river, 256, 13, 0, 0, towerTile);
+  for (const [x, y] of [[100, 100], [102, 104], [106, 106]]) assert.equal(at(river, x, y), 11, `river at ${x},${y}: ${at(river, x, y)}`);
+});
