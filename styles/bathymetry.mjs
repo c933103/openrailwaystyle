@@ -143,19 +143,27 @@ export function maskOcean(context, polygons, size) {
 
 // A depth worker (depth-worker.mjs): send(message, signal) resolves with
 // its answer; forget(key) drops the polygons kept for a tile. A cancelled
-// tile's answer is discarded, and its polygons forgotten.
+// tile's answer is discarded, and its polygons forgotten. A worker that
+// fails (its script did not load, or it stopped) is not used again: its
+// waiting calls reject with `workerFailed`, and `failed` is set.
 function depthWorker(create) {
-  const worker = create(), waiting = new Map();
+  const worker = create(), waiting = new Map(), state = {failed: false};
   let next = 0;
-  const forget = key => worker.postMessage({key, drop: true});
+  const forget = key => { if (!state.failed) worker.postMessage({key, drop: true}); };
   worker.onmessage = ({data}) => {
     const call = waiting.get(data.id);
     if (!call) return;
     waiting.delete(data.id);
     if (data.error) call.reject(new Error(data.error)); else call.resolve(data);
   };
-  worker.onerror = event => { for (const call of waiting.values()) call.reject(new Error(event.message || 'Depth worker failed')); waiting.clear(); };
+  worker.onerror = event => {
+    state.failed = true;
+    worker.terminate?.();
+    for (const call of waiting.values()) call.reject(Object.assign(new Error(event?.message || 'Depth worker failed'), {workerFailed: true}));
+    waiting.clear();
+  };
   const send = (message, signal) => new Promise((resolve, reject) => {
+    if (state.failed) { reject(Object.assign(new Error('Depth worker failed'), {workerFailed: true})); return; }
     if (signal.aborted) { forget(message.key); reject(signal.reason); return; }
     const id = ++next;
     const abort = () => { waiting.delete(id); forget(message.key); reject(signal.reason || new DOMException('Cancelled', 'AbortError')); };
@@ -164,7 +172,7 @@ function depthWorker(create) {
     signal.addEventListener('abort', abort, {once: true});
     worker.postMessage({...message, id});
   });
-  return {send, forget};
+  return {send, forget, get failed() { return state.failed; }};
 }
 
 // waterTile reads the SAME PMTiles archive through the existing protocol.
@@ -175,7 +183,10 @@ function depthWorker(create) {
 // Keep only 32 encoded tiles; MapLibre retains the visible textures itself.
 export function installBathymetry(maplibre, dem, {waterTile, readTile, createWorker, keep = 32}) {
   const cache = new Map();
-  const worker = createWorker && typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined' ? depthWorker(createWorker) : null;
+  let worker = null;
+  // A worker that cannot even be created (blocked by the browser) leaves
+  // the drawing on the page.
+  if (createWorker && typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined') try { worker = depthWorker(createWorker); } catch { worker = null; }
   let blank;
   const empty = () => {
     if (!blank) {
@@ -197,30 +208,32 @@ export function installBathymetry(maplibre, dem, {waterTile, readTile, createWor
     }
     const water = await waterTile(z, x, y, controller);
     controller.signal.throwIfAborted();
-    let data;
-    if (worker) {
+    // In the worker while it works; on the page without one, or after it failed.
+    const inWorker = async () => {
       const {ocean} = await worker.send({key: url, water: water.data ?? new ArrayBuffer(0)}, controller.signal);
-      if (!ocean) data = await empty(); // No extra DEM request inland.
-      else {
-        const tile = depthTile(z, x, y);
-        let heights;
-        try { heights = await dem.getDemTile(tile.z, tile.x, tile.y, controller); controller.signal.throwIfAborted(); }
-        catch (error) { worker.forget(url); throw error; }
-        // A copy: the terrain cache keeps its own.
-        ({data} = await worker.send({key: url, tile, heights: {width: heights.width, height: heights.height, data: Float32Array.from(heights.data)}}, controller.signal));
-      }
-    } else {
+      if (!ocean) return empty(); // No extra DEM request inland.
+      const tile = depthTile(z, x, y);
+      let heights;
+      try { heights = await dem.getDemTile(tile.z, tile.x, tile.y, controller); controller.signal.throwIfAborted(); }
+      catch (error) { worker.forget(url); throw error; }
+      // A copy: the terrain cache keeps its own.
+      return (await worker.send({key: url, tile, heights: {width: heights.width, height: heights.height, data: Float32Array.from(heights.data)}}, controller.signal)).data;
+    };
+    const onPage = async () => {
       const polygons = water.data?.byteLength ? oceanPolygons(readTile(water.data)) : [];
-      if (!polygons.length) data = await empty(); // No extra DEM request inland.
-      else {
-        const tile = depthTile(z, x, y), heights = await dem.getDemTile(tile.z, tile.x, tile.y, controller);
-        controller.signal.throwIfAborted();
-        const image = canvas(256), context = image.getContext('2d');
-        context.putImageData(new ImageData(colourPixels(heights, tile), 256, 256), 0, 0);
-        maskOcean(context, polygons, 256);
-        data = await encodePng(image);
-      }
-    }
+      if (!polygons.length) return empty(); // No extra DEM request inland.
+      const tile = depthTile(z, x, y), heights = await dem.getDemTile(tile.z, tile.x, tile.y, controller);
+      controller.signal.throwIfAborted();
+      const image = canvas(256), context = image.getContext('2d');
+      context.putImageData(new ImageData(colourPixels(heights, tile), 256, 256), 0, 0);
+      maskOcean(context, polygons, 256);
+      return encodePng(image);
+    };
+    let data;
+    if (worker && !worker.failed) {
+      try { data = await inWorker(); }
+      catch (error) { if (!error?.workerFailed) throw error; data = await onPage(); }
+    } else data = await onPage();
     controller.signal.throwIfAborted();
     cache.set(url, data);
     while (cache.size > keep) cache.delete(cache.keys().next().value);

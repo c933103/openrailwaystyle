@@ -129,3 +129,31 @@ test('with a worker, depth tiles are drawn there: land needs no terrain, a cance
   await assert.rejects(pending, {name: 'AbortError'});
   assert.ok(posted.some(m => m.drop && m.key === 'atlas-depth://5/4/3'));
 });
+
+test('a depth worker that fails is not used again: its tiles and later ones are drawn on the page', async t => {
+  const had = [globalThis.OffscreenCanvas, globalThis.Worker, globalThis.ImageData];
+  globalThis.OffscreenCanvas = class { getContext() { return {putImageData() {}, drawImage() {}, getImageData() {}, beginPath() {}, moveTo() {}, lineTo() {}, closePath() {}, fill() {}}; } convertToBlob() { return Promise.resolve(new Blob([new Uint8Array([9])])); } };
+  globalThis.Worker ??= class {};
+  globalThis.ImageData ??= class { constructor(data, width, height) { Object.assign(this, {data, width, height}); } };
+  t.after(() => { [globalThis.OffscreenCanvas, globalThis.Worker, globalThis.ImageData] = had; });
+  let worker, created = 0, decoded = 0;
+  class DeadWorker { constructor() { created++; worker = this; this.posted = 0; } postMessage() { this.posted++; } terminate() { this.terminated = true; } }
+  let protocol;
+  const ocean = {layers: {water: {length: 1, extent: 4096, feature: () => ({type: 3, properties: {class: 'ocean'}, loadGeometry: () => [[{x: 0, y: 0}, {x: 4096, y: 0}, {x: 4096, y: 4096}]]})}}};
+  installBathymetry({addProtocol: (_, handler) => { protocol = handler; }}, {getDemTile: async () => ({width: 2, height: 2, data: new Float32Array([-10, -20, -30, -40])})}, {
+    waterTile: async () => ({data: new Uint8Array([1]).buffer}),
+    readTile: () => { decoded++; return ocean; },
+    createWorker: () => new DeadWorker(),
+  });
+  // The worker script fails to load while a tile waits on it.
+  const first = protocol({url: 'atlas-depth://5/2/3'}, new AbortController());
+  await new Promise(resolve => setTimeout(resolve));
+  worker.onerror({message: 'script failed'});
+  assert.deepEqual([...new Uint8Array((await first).data)], [9], 'the waiting tile is drawn on the page');
+  assert.ok(worker.terminated);
+  const posted = worker.posted;
+  await protocol({url: 'atlas-depth://5/3/3'}, new AbortController());
+  assert.equal(worker.posted, posted, 'later tiles are not sent to the failed worker');
+  assert.equal(decoded, 2);
+  assert.equal(created, 1);
+});
