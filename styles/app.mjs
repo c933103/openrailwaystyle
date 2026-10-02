@@ -1019,6 +1019,7 @@ async function initialize() {
   installBathymetry(maplibregl, dem, {
     waterTile: (z, x, y, controller) => protocol.tile({url: `${waterArchive}/${z}/${x}/${y}`, type: 'arrayBuffer'}, controller),
     readTile: data => labelCode.readTile(data, ['water']),
+    createWorker: () => new Worker(new URL(`vendor/depth-worker.js?v=${assetVersion}`, import.meta.url)),
   });
   for (const source of Object.values(style.sources)) {
     if (source.url?.startsWith('pmtiles://data/')) source.url = 'pmtiles://' + new URL(source.url.slice(10), styleURL).href;

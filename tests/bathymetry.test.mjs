@@ -85,3 +85,47 @@ test('depth shading stays below islands, contours and railways and respects the 
   for (const id of ['landcover-ice-shelf','terrain-relief','terrain-seabed-contours','speed-tracks']) assert.ok(ids.indexOf(id) > depth);
   assert.equal(style.sources.bathymetry.maxzoom,14);
 });
+
+test('with a worker, depth tiles are drawn there: land needs no terrain, a cancelled tile is dropped', async t => {
+  // Node has no OffscreenCanvas or Worker; minimal ones stand in (the
+  // canvas for the 1-pixel land tile the page encodes itself).
+  const had = [globalThis.OffscreenCanvas, globalThis.Worker];
+  globalThis.OffscreenCanvas = class { getContext() { return {}; } convertToBlob() { return Promise.resolve(new Blob([new Uint8Array([7])])); } };
+  globalThis.Worker ??= class {};
+  t.after(() => { [globalThis.OffscreenCanvas, globalThis.Worker] = had; });
+  const posted = [];
+  class FakeWorker {
+    postMessage(message) {
+      posted.push(message);
+      if (message.drop) return;
+      // Sea where the water tile has bytes; the PNG is the tile's key.
+      const answer = message.water ? {ocean: message.water.byteLength > 0} : {data: new TextEncoder().encode(message.key).buffer};
+      if (message.key.endsWith('/stall')) return;
+      setTimeout(() => this.onmessage({data: {id: message.id, ...answer}}));
+    }
+  }
+  let protocol, demRequests = 0;
+  installBathymetry({addProtocol: (_, handler) => { protocol = handler; }}, {getDemTile: async () => { demRequests++; return {width: 2, height: 2, data: new Float32Array([-10, -20, -30, -40])}; }}, {
+    waterTile: async (z, x) => ({data: x === 1 ? new ArrayBuffer(0) : new Uint8Array([1, 2]).buffer}),
+    readTile: () => { throw new Error('the page must not decode water tiles when a worker draws them'); },
+    createWorker: () => new FakeWorker(),
+  });
+  const land = await protocol({url: 'atlas-depth://5/1/3'}, new AbortController());
+  assert.deepEqual([...new Uint8Array(land.data)], [7]);
+  assert.equal(demRequests, 0, 'no terrain tile for land');
+  const sea = await protocol({url: 'atlas-depth://5/2/3'}, new AbortController());
+  assert.equal(new TextDecoder().decode(sea.data), 'atlas-depth://5/2/3');
+  assert.equal(demRequests, 1);
+  const paint = posted.find(m => m.heights);
+  assert.deepEqual([paint.heights.width, paint.heights.height, [...paint.heights.data]], [2, 2, [-10, -20, -30, -40]]);
+  assert.deepEqual(paint.tile, depthTile(5, 2, 3));
+  // A tile cancelled while the worker paints it: rejected as cancelled, and
+  // the worker forgets its polygons.
+  const original = FakeWorker.prototype.postMessage;
+  FakeWorker.prototype.postMessage = function (message) { if (message.heights) { posted.push(message); return; } original.call(this, message); };
+  const cancelled = new AbortController(), pending = protocol({url: 'atlas-depth://5/4/3'}, cancelled);
+  await new Promise(resolve => setTimeout(resolve, 20));
+  cancelled.abort();
+  await assert.rejects(pending, {name: 'AbortError'});
+  assert.ok(posted.some(m => m.drop && m.key === 'atlas-depth://5/4/3'));
+});

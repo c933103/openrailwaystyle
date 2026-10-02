@@ -120,6 +120,7 @@ const canvas = size => typeof OffscreenCanvas !== 'undefined' ? new OffscreenCan
   : Object.assign(document.createElement('canvas'), {width: size, height: size});
 const png = image => image.convertToBlob ? image.convertToBlob({type: 'image/png'})
   : new Promise((resolve, reject) => image.toBlob(blob => blob ? resolve(blob) : reject(new Error('Depth tile could not be encoded')), 'image/png'));
+export const encodePng = async image => (await png(image)).arrayBuffer();
 
 export function maskOcean(context, polygons, size) {
   const mask = canvas(size), ink = mask.getContext('2d');
@@ -140,11 +141,41 @@ export function maskOcean(context, polygons, size) {
   context.globalCompositeOperation = 'source-over';
 }
 
-// waterTile reads the SAME PMTiles archive through the existing protocol;
-// readTile is the already-loaded vector decoder. No new provider or worker.
+// A depth worker (depth-worker.mjs): send(message, signal) resolves with
+// its answer; forget(key) drops the polygons kept for a tile. A cancelled
+// tile's answer is discarded, and its polygons forgotten.
+function depthWorker(create) {
+  const worker = create(), waiting = new Map();
+  let next = 0;
+  const forget = key => worker.postMessage({key, drop: true});
+  worker.onmessage = ({data}) => {
+    const call = waiting.get(data.id);
+    if (!call) return;
+    waiting.delete(data.id);
+    if (data.error) call.reject(new Error(data.error)); else call.resolve(data);
+  };
+  worker.onerror = event => { for (const call of waiting.values()) call.reject(new Error(event.message || 'Depth worker failed')); waiting.clear(); };
+  const send = (message, signal) => new Promise((resolve, reject) => {
+    if (signal.aborted) { forget(message.key); reject(signal.reason); return; }
+    const id = ++next;
+    const abort = () => { waiting.delete(id); forget(message.key); reject(signal.reason || new DOMException('Cancelled', 'AbortError')); };
+    const settle = done => value => { signal.removeEventListener('abort', abort); done(value); };
+    waiting.set(id, {resolve: settle(resolve), reject: settle(reject)});
+    signal.addEventListener('abort', abort, {once: true});
+    worker.postMessage({...message, id});
+  });
+  return {send, forget};
+}
+
+// waterTile reads the SAME PMTiles archive through the existing protocol.
+// With a worker (createWorker: () => Worker running depth-worker.js) the
+// tiles are decoded, coloured and encoded there, so panning and zooming
+// over the sea stay smooth; without one (no Worker or OffscreenCanvas),
+// readTile, the page's vector decoder, does it here.
 // Keep only 32 encoded tiles; MapLibre retains the visible textures itself.
-export function installBathymetry(maplibre, dem, {waterTile, readTile, keep = 32}) {
+export function installBathymetry(maplibre, dem, {waterTile, readTile, createWorker, keep = 32}) {
   const cache = new Map();
+  const worker = createWorker && typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined' ? depthWorker(createWorker) : null;
   let blank;
   const empty = () => {
     if (!blank) {
@@ -166,16 +197,29 @@ export function installBathymetry(maplibre, dem, {waterTile, readTile, keep = 32
     }
     const water = await waterTile(z, x, y, controller);
     controller.signal.throwIfAborted();
-    const polygons = water.data?.byteLength ? oceanPolygons(readTile(water.data)) : [];
     let data;
-    if (!polygons.length) data = await empty(); // No extra DEM request inland.
-    else {
-      const tile = depthTile(z, x, y), heights = await dem.getDemTile(tile.z, tile.x, tile.y, controller);
-      controller.signal.throwIfAborted();
-      const image = canvas(256), context = image.getContext('2d');
-      context.putImageData(new ImageData(colourPixels(heights, tile), 256, 256), 0, 0);
-      maskOcean(context, polygons, 256);
-      data = await (await png(image)).arrayBuffer();
+    if (worker) {
+      const {ocean} = await worker.send({key: url, water: water.data ?? new ArrayBuffer(0)}, controller.signal);
+      if (!ocean) data = await empty(); // No extra DEM request inland.
+      else {
+        const tile = depthTile(z, x, y);
+        let heights;
+        try { heights = await dem.getDemTile(tile.z, tile.x, tile.y, controller); controller.signal.throwIfAborted(); }
+        catch (error) { worker.forget(url); throw error; }
+        // A copy: the terrain cache keeps its own.
+        ({data} = await worker.send({key: url, tile, heights: {width: heights.width, height: heights.height, data: Float32Array.from(heights.data)}}, controller.signal));
+      }
+    } else {
+      const polygons = water.data?.byteLength ? oceanPolygons(readTile(water.data)) : [];
+      if (!polygons.length) data = await empty(); // No extra DEM request inland.
+      else {
+        const tile = depthTile(z, x, y), heights = await dem.getDemTile(tile.z, tile.x, tile.y, controller);
+        controller.signal.throwIfAborted();
+        const image = canvas(256), context = image.getContext('2d');
+        context.putImageData(new ImageData(colourPixels(heights, tile), 256, 256), 0, 0);
+        maskOcean(context, polygons, 256);
+        data = await encodePng(image);
+      }
     }
     controller.signal.throwIfAborted();
     cache.set(url, data);

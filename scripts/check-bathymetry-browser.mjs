@@ -48,7 +48,8 @@ try {
     let depthProtocol;
     installBathymetry({addProtocol:(id,callback)=>{depthProtocol=callback;maplibregl.addProtocol(id,callback);}},dem,{
       waterTile:(z,x,y,c)=>protocol.tile({url:`${style.sources.openmaptiles.url}/${z}/${x}/${y}`,type:'arrayBuffer'},c),
-      readTile:data=>readTile(data,['water']),
+      readTile:()=>{throw new Error('depth tiles must be decoded in the worker');},
+      createWorker:()=>new Worker(base+'vendor/depth-worker.js'),
     });
     async function reviewTile(key) {
       const {data}=await depthProtocol({url:'atlas-depth://'+key},new AbortController());
@@ -80,7 +81,7 @@ try {
     assert.ok(tile.shallow>50,`${tile.key} must reveal shallow reefs`);
     assert.ok(tile.deep>1000,`${tile.key} must distinguish the deep basin`);
   }
-  console.log('PASS: real Bikini and Spratly depth tiles contain distinct shallow/deep colours',JSON.stringify(checks));
+  console.log('PASS: real Bikini and Spratly depth tiles, drawn in the depth worker, contain distinct shallow/deep colours',JSON.stringify(checks));
   await mkdir('browser-review',{recursive:true});
   async function frame() {
     await page.waitForFunction(()=>depthMap.isSourceLoaded('bathymetry'),undefined,{timeout:90000});

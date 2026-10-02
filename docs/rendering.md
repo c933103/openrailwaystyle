@@ -85,7 +85,10 @@ Depth tiles reuse the existing repaired DEM cache and stop at source zoom 10,
 because finer Mapzen tiles lose the seabed values. The basemap's ocean polygons
 mask the colour through zoom 14, keeping island holes, lakes and dry land clear.
 Only the ocean layer is decoded for this mask, and an inland tile adds no DEM
-request. Up to 32 encoded colour tiles are retained. Concurrent basemap/mask
+request. Decoding, colouring, masking and PNG encoding run in a background
+worker (`depth-worker.mjs`), so the page's main thread stays free for panning
+and zooming; browsers without workers or OffscreenCanvas draw them on the page.
+Up to 32 encoded colour tiles are retained. Concurrent basemap/mask
 requests share one archive read, with independent cancellation and byte buffers;
 no additional raw-vector cache is retained. The mask uses the existing
 PMTiles archive; there is no new tile provider or Overpass extraction.
