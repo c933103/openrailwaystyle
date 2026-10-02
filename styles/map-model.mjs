@@ -120,7 +120,8 @@ export function searchResults(facilities, places) {
     if (isRailPlace(place)) {
       const own = names(item);
       const sameName = r => [...names(r)].some(n => [...own].some(o => samePlaceName(n, o)));
-      if (rail.some(r => (place.osm_type === 'node' && r.osm_id === place.osm_id) || (near(r, item) && sameName(r)))) continue;
+      // The same OSM object, by type and number (facility results are nodes).
+      if (rail.some(r => (place.osm_type === (r.osm_type ?? 'node') && String(r.osm_id) === String(place.osm_id)) || (near(r, item) && sameName(r)))) continue;
       rail.push({...item, railway: ['station', 'train_station'].includes(place.type) ? 'station' : place.type});
     } else others.push({...item, place: place.addresstype || place.type});
   }

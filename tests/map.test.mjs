@@ -904,7 +904,11 @@ test('search: stations drawn in the tiles match a partial name; found ones are n
   const local = tileStations(tiles, 'Sha tin', [114.19, 22.38], facility);
   assert.deepEqual(local.map(s => s.name), ['沙田圍 Sha Tin Wai', 'Sha Tin Far']);
   const geocoded = [{osm_type: 'way', osm_id: 187405865, category: 'railway', type: 'station', lat: '22.3771', lon: '114.1946', display_name: '沙田圍 Sha Tin Wai', namedetails: {name: '沙田圍 Sha Tin Wai'}}];
-  assert.deepEqual(searchResults([...facility, ...local], geocoded).rail.map(r => r.osm_id), [223848687, 187405865, 4]);  // A way with the number of a found node is another object.
+  assert.deepEqual(searchResults([...facility, ...local], geocoded).rail.map(r => r.osm_id), [223848687, 187405865, 4]);
+  // A geocoded node is not dropped for a drawn way that shares its number.
+  const geocodedNode = [{osm_type: 'node', osm_id: 187405865, category: 'railway', type: 'station', lat: '40', lon: '10', display_name: 'Elsewhere', namedetails: {name: 'Elsewhere'}}];
+  assert.deepEqual(searchResults(local, geocodedNode).rail.map(r => [r.osm_type, r.osm_id]), [['way', 187405865], ['node', 4], ['node', 187405865]]);
+  // A way with the number of a found node is another object.
   const node = [{osm_id: 187405865, name: 'Elsewhere', railway: 'station', latitude: 40, longitude: 10}];
   assert.deepEqual(tileStations(tiles, 'Sha tin', [114.19, 22.38], node).map(s => s.name), ['沙田 Sha Tin', '沙田圍 Sha Tin Wai', 'Sha Tin Far']);
   // Only names match, not tags that merely start with name:.
