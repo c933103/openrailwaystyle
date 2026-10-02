@@ -315,9 +315,18 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
     // (a real summit both tiles hold, with a fault in this one below it).
     const top = Math.min(...corners.map(([v]) => v)), rise = top - median(round);
     if (rise > limit) {
+      // Inside a wide patch at one wrong height every sound pixel within
+      // eight may be as low as this one: look further (to 32). The coarser
+      // rise is unsupported only where the ground here rises neither halfway
+      // up to it nor much above this pixel (flats under a coarser tower, not
+      // a summit whose top here is corrupt).
       let near = -Infinity;
-      for (let qy = py - 8; qy <= py + 8; qy++) for (let qx = px - 8; qx <= px + 8; qx++) { const v = sound(qx, qy); if (v > near) near = v; }
-      if (near < top - Math.max(limit, rise / 2)) continue;
+      for (let reach = 8; ; reach *= 2) {
+        for (let qy = py - reach; qy <= py + reach; qy++) for (let qx = px - reach; qx <= px + reach; qx++) { const v = sound(qx, qy); if (v > near) near = v; }
+        if (near >= value + limit || reach >= 32) break;
+      }
+      const half = Math.max(limit, rise / 2);
+      if (near < top - half && near < value + half) continue;
     }
     const weight = corners.reduce((sum, [, f]) => sum + f, 0), replacement = weight > 0 ? corners.reduce((sum, [v, f]) => sum + v * f, 0) / weight : corners[0][0];
     mark(i, depth(px, py, replacement, true) > limit ? NaN : replacement);
