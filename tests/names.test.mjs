@@ -326,7 +326,7 @@ test('each request waiting on a shared download has its own time limit; a stuck 
   fetches[0].finish();fetches[1].finish();
   for(const result of [await second,await third]) assert.equal(readTile(result.data).layers.stations.feature(0).properties.tracks,2);
 });
-test('a station tile that times out or fails is tried once more; a 4xx answer or a cancelled tile is not',async()=>{
+test('a station tile that times out or fails is tried once more; a 4xx answer or a cancelled tile is not',async t=>{
   const protocols={},fetches=[],wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   const bytes=()=>Uint8Array.from(tile({name:'Track',tracks:2})).buffer;
   let answers=[];
@@ -340,7 +340,7 @@ test('a station tile that times out or fails is tried once more; a 4xx answer or
   }),{timeout:200,tileRetries:[50]});
   const at=n=>({url:`atlasrail://https://example.org/railway/14/${n}/10`});
   // AbortSignal.timeout does not keep Node's event loop alive.
-  const alive=setInterval(()=>{},20);
+  const alive=setInterval(()=>{},20);t.after(()=>clearInterval(alive));
   answers=['stuck','ok'];
   assert.equal(readTile((await protocols.atlasrail(at(1),new AbortController())).data).layers.stations.feature(0).properties.tracks,2);
   assert.equal(fetches.length,2,'a timed-out download is started afresh');
@@ -356,10 +356,9 @@ test('a station tile that times out or fails is tried once more; a 4xx answer or
   answers=['down','ok'];
   const gone=new AbortController(),lost=protocols.atlasrail(at(5),gone);
   await wait(10);gone.abort();
-  await assert.rejects(lost);
+  await assert.rejects(lost,{name:'AbortError'},'cancelled during the wait: not shown as a failure');
   await wait(100);
   assert.equal(fetches.length,8,'a tile no longer wanted is not fetched again');
-  clearInterval(alive);
 });
 test('generated Latin transliteration cannot replace a local name as English fallback',()=>{
   const japanese=at({name:'腰越三丁目','name:latin':'yao yue3ding mu'});

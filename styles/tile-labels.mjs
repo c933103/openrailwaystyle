@@ -100,8 +100,12 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       try { return await download(url, request, json); }
       catch (error) {
         if (request.aborted || attempt >= tileRetries.length || / returned 4\d\d$/.test(error?.message ?? '')) throw error;
-        await new Promise(resolve => setTimeout(resolve, tileRetries[attempt]));
-        if (request.aborted) throw error;
+        // A tile cancelled during the wait ends as cancelled, not failed.
+        await new Promise((resolve, reject) => {
+          const cancel = () => { clearTimeout(timer); reject(request.reason ?? new DOMException('Aborted', 'AbortError')); };
+          const timer = setTimeout(() => { request.removeEventListener('abort', cancel); resolve(); }, tileRetries[attempt]);
+          request.addEventListener('abort', cancel, {once: true});
+        });
       }
     }
   }
