@@ -10,14 +10,21 @@ export function setDefaultTimeout(page, timeout) {
 }
 export async function waitUntil(page, condition, arg, {timeout = defaults.get(page) ?? 30000, polling = 100} = {}) {
   const end = Date.now() + timeout;
+  const timedOut = () => new Error(`Timed out after ${timeout} ms waiting for ${String(condition).replace(/\s+/g, ' ').slice(0, 160)}`);
   for (;;) {
-    // A navigation can replace the page between polls; try again.
-    const value = await page.evaluate(condition, arg).catch(error => {
-      if (/Execution context was destroyed|Cannot find context/.test(error.message)) return false;
-      throw error;
-    });
+    // A navigation can replace the page between polls; try again. An
+    // evaluation that never settles (a stalled renderer) still ends at the
+    // deadline.
+    let timer;
+    const value = await Promise.race([
+      page.evaluate(condition, arg).catch(error => {
+        if (/Execution context was destroyed|Cannot find context/.test(error.message)) return false;
+        throw error;
+      }),
+      new Promise((resolve, reject) => { timer = setTimeout(() => reject(timedOut()), Math.max(0, end - Date.now())); }),
+    ]).finally(() => clearTimeout(timer));
     if (value) return value;
-    if (Date.now() > end) throw new Error(`Timed out after ${timeout} ms waiting for ${String(condition).replace(/\s+/g, ' ').slice(0, 160)}`);
+    if (Date.now() > end) throw timedOut();
     await new Promise(resolve => setTimeout(resolve, typeof polling === 'number' ? polling : 100));
   }
 }
