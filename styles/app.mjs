@@ -1422,7 +1422,7 @@ $('search-form').addEventListener('submit', async e => {
     // neither service finds (stations mapped as areas, partial names).
     // Below zoom 7 the curated principal stations are drawn too.
     // Only what the station layers draw at this zoom (no tram stops at zoom 8).
-    const zoom = map.getZoom();
+    const zoom = ready ? map.getZoom() : 0;
     const drawn = ready ? drawnStationQueries(map.getStyle().layers, zoom).flatMap(({source, sourceLayer, filter}) =>
       source === 'stationMajor' ? (majorStationData?.features || []).filter(f => (f.properties?.tier ?? 7) <= zoom)
         : map.getSource(source) ? map.querySourceFeatures(source, {sourceLayer, filter}) : []) : [];
