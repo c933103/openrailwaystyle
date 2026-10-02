@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261002-79';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261002-79';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261002-80';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261002-80';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261002-79';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261002-79';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261002-79';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261002-79';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261002-79';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261002-80';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261002-80';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261002-80';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261002-80';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261002-80';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -39,7 +39,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261002-79';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261002-80';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -290,7 +290,7 @@ function applySettings() {
   renderLegend();
   if (ready) { scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update(); }
 }
-let attribution, attributionCarto, attributionStateObserver, servedBuild;
+let attribution, attributionStateObserver, servedBuild;
 function codeAttribution() {
   const span=document.createElement('span');span.className='atlas-build';
   span.append(`Build ${assetVersion} · `);
@@ -304,30 +304,26 @@ function codeAttribution() {
   return span.outerHTML;
 }
 function updateAttribution() {
-  if (!map) return;
-  const carto = settings.background === 'carto';
-  if (attribution && attributionCarto === carto) return;
-  attributionStateObserver?.disconnect(); attributionStateObserver = undefined;
-  if (attribution) map.removeControl(attribution);
-  attributionCarto = carto;
-  attribution = new maplibregl.AttributionControl({compact: !carto, customAttribution: codeAttribution()});
+  if (!map || attribution) return;
+  attribution = new maplibregl.AttributionControl({compact: true, customAttribution: codeAttribution()});
   map.addControl(attribution, 'bottom-right');
-  // MapLibre 5.24 initially expands compact attribution. Restore the user's
-  // remembered state instead; with no cookie, start closed so only the ⓘ
-  // button occupies the corner. Carto deliberately uses non-compact credits.
-  const container = attribution._container;
-  if (!carto && container?.classList.contains('maplibregl-compact')) {
-    container.classList.toggle('maplibregl-compact-show', settings.attributionOpen);
-    container.toggleAttribute('open', settings.attributionOpen);
-    attributionStateObserver = new MutationObserver(() => {
-      if (!container.classList.contains('maplibregl-compact')) return;
-      const open = container.classList.contains('maplibregl-compact-show');
-      if (open === settings.attributionOpen) return;
-      settings.attributionOpen = open;
-      saveSettings();
-    });
-    attributionStateObserver.observe(container, {attributes:true, attributeFilter:['class']});
-  }
+  // Always use MapLibre's compact info control. The previous Carto exception
+  // replaced the ⓘ button with a full-width attribution bar, so a remembered
+  // Carto background looked as if the info button had disappeared.
+  const container = map.getContainer().querySelector('.maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib');
+  if (!container?.classList.contains('maplibregl-compact')) return;
+  // MapLibre initially expands compact attribution. Restore the state kept in
+  // atlas_settings; when the cookie has no state, attributionOpen is false.
+  container.classList.toggle('maplibregl-compact-show', settings.attributionOpen);
+  container.toggleAttribute('open', settings.attributionOpen);
+  attributionStateObserver = new MutationObserver(() => {
+    if (!container.classList.contains('maplibregl-compact')) return;
+    const open = container.classList.contains('maplibregl-compact-show');
+    if (open === settings.attributionOpen) return;
+    settings.attributionOpen = open;
+    saveSettings();
+  });
+  attributionStateObserver.observe(container, {attributes:true, attributeFilter:['class']});
 }
 const featurePickRank = f => f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
