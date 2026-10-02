@@ -65,7 +65,22 @@ export function localizeTile(data, lang, coordinates) {
   }
 }
 
-export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch, {dataRoot, timeout = 12000, basemapRetries = [500, 2000]} = {}) {
+// A PMTiles source whose byte-range requests (header, directories and tiles)
+// give up after `ms`. PMTiles sets no timeout of its own, so a request the
+// server never answers would stay open and its part of the map stay blank.
+export function timedSource(inner, ms) {
+  return {
+    getKey: () => inner.getKey(),
+    async getBytes(offset, length, signal, etag) {
+      const controller = new AbortController(), stop = () => controller.abort();
+      if (signal?.aborted) stop(); else signal?.addEventListener('abort', stop, {once: true});
+      const timer = setTimeout(stop, ms);
+      try { return await inner.getBytes(offset, length, controller.signal, etag); }
+      finally { clearTimeout(timer); signal?.removeEventListener('abort', stop); }
+    },
+  };
+}
+export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch, {dataRoot, timeout = 12000, basemapRetries = [500, 2000], basemapArchive} = {}) {
   // Only current-view requests are made. Keep a bounded cache of successful
   // responses so language changes can reuse downloaded station tiles.
   const cache = new ByteCache();
@@ -242,12 +257,15 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     // dropped connection would fail every tile under it until a reload. On a
     // failure the archive starts afresh (its header is read again) and the
     // request is tried twice more.
+    // `basemapArchive` makes the archive (with timed requests) for its URL.
+    const archive = url.replace(/\/\d+\/\d+\/\d+$/,'');
     let result;
     for (let attempt = 0; ; attempt++) {
+      if (basemapArchive && !pmtilesProtocol.tiles.has(archive)) pmtilesProtocol.tiles.set(archive, basemapArchive(archive));
       try { result = await pmtilesProtocol.tile({...params,url:`pmtiles://${url}`},controller); break; }
       catch (error) {
         if (controller.signal.aborted || attempt >= basemapRetries.length) throw error;
-        pmtilesProtocol.tiles?.delete(url.replace(/\/\d+\/\d+\/\d+$/,''));
+        pmtilesProtocol.tiles?.delete(archive);
         await new Promise(resolve => setTimeout(resolve, basemapRetries[attempt]));
         if (controller.signal.aborted) throw error;
       }
