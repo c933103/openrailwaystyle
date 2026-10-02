@@ -217,10 +217,11 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
   };
   // Below the sea in land, more than half of drop(z) under the ground round.
   const sunkInLand = (px, py, value, around) => value < -limit / 2 && around >= 0 && inLand(px, py);
-  // A pit below the sea in land: the start of a fault.
+  // A pit below the sea in land: the start of a fault, unless the coarser
+  // tile has a hollow about as low there (a real quarry or sinkhole).
   const sunkIn = (px, py) => {
-    const v = h[py * size + px];
-    return v < -limit / 2 && extreme(px, py) && sunkInLand(px, py, v, ground(px, py));
+    const v = h[py * size + px], around = ground(px, py);
+    return v < -limit / 2 && extreme(px, py) && sunkInLand(px, py, v, around) && !lowBacked(px, py, v, around);
   };
   // Standing out above (way 1) or below (way -1) the ground round it.
   const standsOut = (value, around, ways) => !Number.isNaN(around) && ways.includes(Math.sign(value - around)) && (Math.abs(value - around) > limit || rings(Math.min(value, around), Math.max(value, around)) >= RINGS / 2);
@@ -234,6 +235,23 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
       if (!Number.isNaN(v)) top = Math.max(top, v);
     }
     return top === -Infinity ? NaN : top;
+  };
+  // The lowest of the coarser tile's pixels round this pixel's centre.
+  const coarserBottom = (px, py) => {
+    if (!r || !referenced) return NaN;
+    const rx = (ox + (px + 0.5) * scale) / k * refSize / 256 - 0.5, ry = (oy + (py + 0.5) * scale) / k * refSize / 256 - 0.5;
+    let bottom = Infinity;
+    for (let qy = Math.floor(ry) - 1; qy <= Math.floor(ry) + 2; qy++) for (let qx = Math.floor(rx) - 1; qx <= Math.floor(rx) + 2; qx++) {
+      const v = r[clamp(qy) * refSize + clamp(qx)];
+      if (!Number.isNaN(v)) bottom = Math.min(bottom, v);
+    }
+    return bottom === Infinity ? NaN : bottom;
+  };
+  // A pixel sunk that the coarser tile is too: it has something within half
+  // the depth below the ground round it (and half of drop(z)) as low.
+  const lowBacked = (px, py, value, around) => {
+    const bottom = coarserBottom(px, py);
+    return !Number.isNaN(bottom) && bottom <= value + Math.max(limit / 2, (around - value) / 2);
   };
   // A pixel standing up that the coarser tile does not: more than half its
   // height over the ground round it above anything the coarser tile has

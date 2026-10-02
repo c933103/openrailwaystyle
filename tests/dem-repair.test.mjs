@@ -152,6 +152,12 @@ test('terrain repair: faults a few pixels across go; islets, cliffs, coasts and 
   repairPixels(hollow, 256, 14, 0, 0, coarse(rimmed));
   assert.ok(at(hollow, 154, 150) < 300, `spike: ${at(hollow, 154, 150)}`);
   for (const [x, y] of [[150, 150], [152, 150], [148, 152]]) assert.equal(at(hollow, x, y), 100, `hollow at ${x},${y}`);
+  // A real bowl below the sea in low land (a quarry), which the coarser tile
+  // holds too: it keeps its depth.
+  const quarry = (x, y) => x === 200 && y === 200 ? -50 : Math.abs(x - 200) <= 2 && Math.abs(y - 200) <= 2 ? -40 : 10;
+  const bowl = tile(quarry);
+  repairPixels(bowl, 256, 14, 0, 0, coarse(quarry));
+  for (const [x, y] of [[200, 200], [202, 200], [198, 202]]) assert.equal(at(bowl, x, y), quarry(x, y), `quarry at ${x},${y}`);
   // Sound river flats at zoom 13 under a coarser tile holding the zoom 11
   // fault east of Sha Tin: the flats keep their height.
   const river = tile((x, y) => 11), towerTile = tile((x, y) => x >= 25 && x < 27 && y >= 25 && y < 27 ? [1442, 1058][(x + y) % 2] : 11);
