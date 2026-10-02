@@ -885,6 +885,9 @@ test('search: stations drawn in the tiles match a partial name; found ones are n
     station('node-4-x', 'Sha Tin Far', 120, 30),
     station('node-5-x', '沙田市中心', 114.188, 22.383, {feature: 'tram_stop'}),
   ];
+  // Overview tiles (zooms 6 and 7) have no feature field: stations.
+  const overview = [{geometry: {type: 'Point', coordinates: [114.1945, 22.377]}, properties: {id: 'way-187405865-subway-subway-station', name: '沙田圍 Sha Tin Wai'}}];
+  assert.deepEqual(tileStations(overview, 'Sha tin', [114.19, 22.38]).map(s => [s.name, s.railway]), [['沙田圍 Sha Tin Wai', 'station']]);
   const found = tileStations(tiles, 'Sha tin', [114.19, 22.38]);
   assert.deepEqual(found.map(s => s.name), ['沙田 Sha Tin', '沙田圍 Sha Tin Wai', 'Sha Tin Far'], 'the exact name first, then the nearest; a word must begin with the query; yards and disused stations left out');
   assert.deepEqual(osmObject({properties: found[1]}), {type: 'way', id: '187405865'});

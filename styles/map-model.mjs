@@ -74,13 +74,15 @@ export function tileStations(features, query, centre, found = [], limit = 8) {
   const [cx, cy] = centre || [0, 0], matches = new Map();
   for (const feature of features) {
     const p = feature.properties || {}, coordinates = feature.geometry?.coordinates;
-    if (feature.geometry?.type !== 'Point' || !STATION_FEATURES.includes(p.feature) || (p.state ?? 'present') !== 'present') continue;
+    // The overview tiles leave out the feature field: stations, as the style draws them.
+    const kind = p.feature ?? 'station';
+    if (feature.geometry?.type !== 'Point' || !STATION_FEATURES.includes(kind) || (p.state ?? 'present') !== 'present') continue;
     const names = namesOf(p);
     if (!names.some(n => pattern.test(n))) continue;
     const object = /^(node|way|relation)-(\d+)/.exec(String(p.id ?? ''));
     const [longitude, latitude] = coordinates, key = object ? object[0] : `${p.name}@${longitude.toFixed(4)},${latitude.toFixed(4)}`;
     if (matches.has(key)) continue;
-    const item = {...p, latitude, longitude, railway: p.feature, ...(object && {osm_type: object[1], osm_id: Number(object[2])})};
+    const item = {...p, latitude, longitude, railway: kind, ...(object && {osm_type: object[1], osm_id: Number(object[2])})};
     if (found.some(r => (object && String(r.osm_id) === object[2]) || (near(r, item) && namesOf(r).some(n => names.some(m => samePlaceName(n, m)))))) continue;
     const exact = names.some(n => samePlaceName(n, q)), distance = Math.hypot((longitude - cx) * Math.cos(latitude * Math.PI / 180), latitude - cy);
     matches.set(key, {item, exact, distance});

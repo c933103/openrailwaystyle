@@ -1400,7 +1400,9 @@ $('search-form').addEventListener('submit', async e => {
     if (controller !== searchController) return;
     // Stations the map has drawn whose name the search matches, for those
     // neither service finds (stations mapped as areas, partial names).
-    const local = ready ? tileStations(STATION_SOURCES.flatMap(id => map.getSource(id) ? map.querySourceFeatures(id, {sourceLayer: map.getStyle().layers.find(l => l.source === id)?.['source-layer']}) : []), q, map.getCenter().toArray(), facilities.value || []) : [];
+    // Below zoom 7 the curated principal stations are drawn too.
+    const drawn = ready ? [...STATION_SOURCES.flatMap(id => map.getSource(id) ? map.querySourceFeatures(id, {sourceLayer: map.getStyle().layers.find(l => l.source === id)?.['source-layer']}) : []), ...(map.getZoom() < 7 ? majorStationData?.features || [] : [])] : [];
+    const local = ready ? tileStations(drawn, q, map.getCenter().toArray(), facilities.value || []) : [];
     if (facilities.status === 'rejected' && places.status === 'rejected' && !local.length) throw facilities.reason;
     const {rail, places: other} = searchResults([...(facilities.value || []), ...local], places.value || []);
     const results = $('search-results'); results.replaceChildren();
