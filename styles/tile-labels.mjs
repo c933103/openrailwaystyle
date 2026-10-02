@@ -229,7 +229,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       if(record) Object.assign(p,record);
       else if(['A','B1','B2','C2'].includes(p.track_class)) p.axle_system='unknown';
       const value=axleLoad(p);
-      if(value) {p.axle_tonnes=value.tonnes;if(value.perMetre!==null)p.axle_per_metre=value.perMetre;}
+      if(value) {p.axle_tonnes=value.tonnes;p.axle_native=value.nativeLabel;p.axle_units=value.nativeUnits;if(value.perMetre!==null)p.axle_per_metre=value.perMetre;}
     }
     const result=encode(tile);
     return result.buffer.slice(result.byteOffset,result.byteOffset+result.byteLength);
