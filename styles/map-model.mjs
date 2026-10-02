@@ -1,6 +1,6 @@
-export {createPlatformLengths,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261002-53';
+export {createPlatformLengths,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261002-64';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261002-53';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261002-64';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -70,7 +70,8 @@ export function tileStations(features, query, centre, found = [], limit = 8) {
   const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const pattern = LATIN.test(q) ? new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}`, 'iu') : new RegExp(escaped, 'iu');
   const near = (a, b) => Math.abs(a.latitude - b.latitude) < 0.004 && Math.abs(a.longitude - b.longitude) * Math.cos(a.latitude * Math.PI / 180) < 0.004;
-  const namesOf = p => Object.entries(p).filter(([key, value]) => (key === 'name' || key.startsWith('name:') || key === 'localized_name' || key === 'atlas_name') && typeof value === 'string').map(([, value]) => value);
+  // Names in a language (name:en, name:zh-Hant, name:ja_kana), not name:etymology and the like.
+  const namesOf = p => Object.entries(p).filter(([key, value]) => (/^name(:[a-z]{2,3}([-_][A-Za-z0-9]+)*)?$/.test(key) || key === 'localized_name' || key === 'atlas_name') && typeof value === 'string').map(([, value]) => value);
   const [cx, cy] = centre || [0, 0], matches = new Map();
   for (const feature of features) {
     const p = feature.properties || {}, coordinates = feature.geometry?.coordinates;
@@ -83,7 +84,8 @@ export function tileStations(features, query, centre, found = [], limit = 8) {
     const [longitude, latitude] = coordinates, key = object ? object[0] : `${p.name}@${longitude.toFixed(4)},${latitude.toFixed(4)}`;
     if (matches.has(key)) continue;
     const item = {...p, latitude, longitude, railway: kind, ...(object && {osm_type: object[1], osm_id: Number(object[2])})};
-    if (found.some(r => (object && String(r.osm_id) === object[2]) || (near(r, item) && namesOf(r).some(n => names.some(m => samePlaceName(n, m)))))) continue;
+    // The facility search returns nodes; a way or relation with the same number is another object.
+    if (found.some(r => (object && object[1] === (r.osm_type ?? 'node') && String(r.osm_id) === object[2]) || (near(r, item) && namesOf(r).some(n => names.some(m => samePlaceName(n, m)))))) continue;
     const exact = names.some(n => samePlaceName(n, q)), dx = ((longitude - cx) % 360 + 540) % 360 - 180, distance = Math.hypot(dx * Math.cos(latitude * Math.PI / 180), latitude - cy);
     matches.set(key, {item, exact, distance});
   }

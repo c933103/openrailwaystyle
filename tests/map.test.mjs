@@ -904,7 +904,14 @@ test('search: stations drawn in the tiles match a partial name; found ones are n
   const local = tileStations(tiles, 'Sha tin', [114.19, 22.38], facility);
   assert.deepEqual(local.map(s => s.name), ['沙田圍 Sha Tin Wai', 'Sha Tin Far']);
   const geocoded = [{osm_type: 'way', osm_id: 187405865, category: 'railway', type: 'station', lat: '22.3771', lon: '114.1946', display_name: '沙田圍 Sha Tin Wai', namedetails: {name: '沙田圍 Sha Tin Wai'}}];
-  assert.deepEqual(searchResults([...facility, ...local], geocoded).rail.map(r => r.osm_id), [223848687, 187405865, 4]);
+  assert.deepEqual(searchResults([...facility, ...local], geocoded).rail.map(r => r.osm_id), [223848687, 187405865, 4]);  // A way with the number of a found node is another object.
+  const node = [{osm_id: 187405865, name: 'Elsewhere', railway: 'station', latitude: 40, longitude: 10}];
+  assert.deepEqual(tileStations(tiles, 'Sha tin', [114.19, 22.38], node).map(s => s.name), ['沙田 Sha Tin', '沙田圍 Sha Tin Wai', 'Sha Tin Far']);
+  // Only names match, not tags that merely start with name:.
+  const tagged = [station('node-10-x', 'Kowloon Tong', 114.176, 22.337, {'name:etymology': 'Sha Tin Road', 'name:zh-Hant': '九龍塘', 'name:ja_kana': 'クーロントン'})];
+  assert.deepEqual(tileStations(tagged, 'Sha tin', [114.19, 22.38]), []);
+  assert.deepEqual(tileStations(tagged, '龍塘', [114.19, 22.38]).map(s => s.name), ['Kowloon Tong']);
+  assert.deepEqual(tileStations(tagged, 'ロント', [114.19, 22.38]).map(s => s.name), ['Kowloon Tong']);
 });
 
 test('country names to zoom 7 above station names; states and provinces from zoom 4', async () => {
