@@ -421,3 +421,100 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
   }
   return changed;
 }
+
+// A second opinion from the next finer zoom (the finest, MAX_ZOOM, asks the
+// next coarser one). The tiles of each zoom are made separately, so a fault
+// at one zoom is often absent at the next: east of Sha Tin a pit 322 m deep
+// at zoom 12 (and at zooms 8, 10 and 11) is level ground at zoom 13. A real
+// hole or summit is in the finer tile too, as the Dead Sea is at every zoom.
+// After the repairs above, a pixel below all eight round it by more than
+// a quarter of drop(z) under the ground three pixels away (or above them by more
+// than drop(z)) takes the finer tile's height there, where the finer tile
+// has no such pit (or summit): none of its pixels there reaches even half
+// way down (or up) to it. Repeated a few times, so a fault several pixels
+// across is worked in from its deepest pixel.
+export const MAX_ZOOM = 15, WITNESS_FROM = 10;
+const WITNESS_ROUNDS = 4;
+const witnessOf = z => z < MAX_ZOOM ? z + 1 : z - 1;
+// Pixels of tile z/x/y still standing out, as [px, py, value, ground].
+function outliers(data, size, z) {
+  const h = heightsOf(data, size), limit = drop(z), found = [];
+  for (let py = 1; py < size - 1; py++) for (let px = 1; px < size - 1; px++) {
+    const v = h[py * size + px];
+    if (Number.isNaN(v)) continue;
+    let below = true;
+    for (let dy = -1; dy <= 1 && below; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const u = h[(py + dy) * size + px + dx];
+      if (Number.isNaN(u) || u <= v) below = false;
+    }
+    if (!below) continue;
+    const far = [];
+    for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+      const qx = px + dx, qy = py + dy;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) === 3 && qx >= 0 && qy >= 0 && qx < size && qy < size && !Number.isNaN(h[qy * size + qx])) far.push(h[qy * size + qx]);
+    }
+    if (far.length < 12) continue;
+    far.sort((a, b) => a - b);
+    // Level ground round it: most of those pixels (all but the highest and
+    // lowest tenth) within half the pit's depth of each other. Not the foot
+    // of a cliff or the floor of a gorge, whose sides each zoom places a
+    // little differently.
+    // Nor in water (ground at or below sea level round it, or the pit at
+    // sea level itself): a finer tile may hold no seabed there and read
+    // 0 m, as over fjords and lagoons, or place the shore differently.
+    const ground = far[far.length >> 1], spread = far[Math.floor(far.length * 0.9)] - far[Math.floor(far.length * 0.1)];
+    if (ground >= 1 && Math.abs(v) >= 1 && ground - v > limit / 4 && spread <= (ground - v) / 2) found.push([px, py, v, ground]);
+  }
+  return found;
+}
+// Where a pixel of tile z/x/y lies at the witness zoom: the witness pixels
+// covering it (finer) or round it (coarser), as [tileX, tileY, px, py].
+function witnessPixels(z, x, y, px, py, size) {
+  const wz = witnessOf(z), gx = x * size + px, gy = y * size + py, list = [];
+  if (wz > z) { for (const [i, j] of [[0, 0], [1, 0], [0, 1], [1, 1]]) list.push([2 * gx + i, 2 * gy + j]); }
+  else { for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) list.push([(gx >> 1) + i, (gy >> 1) + j]); }
+  const n = 2 ** wz * size;
+  return list.filter(([wx, wy]) => wy >= 0 && wy < n).map(([wx, wy]) => { wx = (wx % n + n) % n; return [Math.floor(wx / size), Math.floor(wy / size), wx % size, wy % size]; });
+}
+// The witness tiles tile z/x/y needs, as {z, tiles: [[x, y], ...]}: none
+// where nothing stands out.
+export function witnessTiles(data, size, z, x, y) {
+  if (z < WITNESS_FROM) return {z: witnessOf(z), tiles: []};
+  const keys = new Map();
+  for (const [px, py] of outliers(data, size, z)) for (let dy = -3; dy <= 3; dy += 3) for (let dx = -3; dx <= 3; dx += 3) {
+    const qx = Math.max(0, Math.min(size - 1, px + dx)), qy = Math.max(0, Math.min(size - 1, py + dy));
+    for (const [tx, ty] of witnessPixels(z, x, y, qx, qy, size)) keys.set(`${tx}/${ty}`, [tx, ty]);
+  }
+  return {z: witnessOf(z), tiles: [...keys.values()]};
+}
+// Repairs RGBA pixels of tile z/x/y in place from the witness tiles
+// (witness(x, y): that witness tile's RGBA pixels, `size` across, or null).
+// Returns the number of pixels replaced.
+export function repairFromWitness(data, size, z, x, y, witness) {
+  if (z < WITNESS_FROM) return 0;
+  const decoded = new Map(), changedAt = new Set();
+  const heightAt = (tx, ty, px, py) => {
+    const key = `${tx}/${ty}`;
+    if (!decoded.has(key)) { const pixels = witness(tx, ty); decoded.set(key, pixels ? heightsOf(pixels, size) : null); }
+    const h = decoded.get(key);
+    return h ? h[py * size + px] : NaN;
+  };
+  for (let round = 0; round < WITNESS_ROUNDS; round++) {
+    let changed = 0;
+    for (const [px, py, v, ground] of outliers(data, size, z)) {
+      const heights = witnessPixels(z, x, y, px, py, size).map(p => heightAt(...p));
+      if (heights.some(u => Number.isNaN(u)) || !heights.length) continue;
+      // The finer tile must hold the ground round the pit there, every
+      // pixel of it within half the pit's depth: not a pit of its own, nor a
+      // cliff or reef it places a little further off.
+      const half = (ground - v) / 2;
+      if (heights.some(u => Math.abs(u - ground) > half)) continue;
+      const value = witnessOf(z) > z ? heights.reduce((a, b) => a + b, 0) / heights.length : heights[4];
+      data.set(encodeTerrarium(value), 4 * (py * size + px));
+      changedAt.add(py * size + px); changed++;
+    }
+    if (!changed) break;
+  }
+  return changedAt.size;
+}

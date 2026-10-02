@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {repairPixels, terrarium, encodeTerrarium, referenceTile, drop, contourRings} from '../styles/dem-repair.mjs';
+import {repairPixels, terrarium, encodeTerrarium, referenceTile, drop, contourRings, witnessTiles, repairFromWitness} from '../styles/dem-repair.mjs';
 
 const tile = height => {
   const data = new Uint8ClampedArray(256 * 256 * 4);
@@ -169,4 +169,38 @@ test('terrain repair: faults a few pixels across go; islets, cliffs, coasts and 
   const river = tile((x, y) => 11), towerTile = tile((x, y) => x >= 25 && x < 27 && y >= 25 && y < 27 ? [1442, 1058][(x + y) % 2] : 11);
   repairPixels(river, 256, 13, 0, 0, towerTile);
   for (const [x, y] of [[100, 100], [102, 104], [106, 106]]) assert.equal(at(river, x, y), 11, `river at ${x},${y}: ${at(river, x, y)}`);
+});
+
+test('terrain repair: a pit the finer zoom does not have takes its heights; one it has stays', () => {
+  // Zoom 12, tile 3347/1786: river flats a few metres high with a pit three
+  // pixels across, 322 m deep at its deepest, as east of Sha Tin (and as at
+  // zooms 8, 10 and 11, so no coarser tile can tell). Zoom 13 is level there.
+  const flats = (x, y) => 2 + (x + y) % 3;
+  const pit = {'66,158': -322, '65,158': -237, '66,157': -249, '65,157': -191, '65,159': -107};
+  const faulty = tile((x, y) => pit[`${x},${y}`] ?? flats(x, y));
+  const need = witnessTiles(faulty, 256, 12, 3347, 1786);
+  assert.deepEqual(need, {z: 13, tiles: [[6694, 3573]]}, 'only the finer tile under the pit is asked for');
+  const finer = tile((x, y) => 3);
+  assert.ok(repairFromWitness(faulty, 256, 12, 3347, 1786, () => finer) >= 5);
+  for (const key of Object.keys(pit)) { const [x, y] = key.split(',').map(Number); assert.ok(Math.abs(at(faulty, x, y) - 3) < 1, `${key}: ${at(faulty, x, y)}`); }
+  // The same pit in the finer tile too (a real hole, such as the Dead Sea
+  // at every zoom): kept.
+  const real = tile((x, y) => pit[`${x},${y}`] ?? flats(x, y)), copy = real.slice();
+  const finerPit = tile((x, y) => (x >= 130 && x <= 133 && y >= 60 && y <= 63) ? -300 : 3);
+  assert.equal(repairFromWitness(real, 256, 12, 3347, 1786, () => finerPit), 0);
+  assert.deepEqual(real, copy);
+  // No finer tile to ask (it could not load): nothing changes.
+  assert.equal(repairFromWitness(real, 256, 12, 3347, 1786, () => null), 0);
+  // Sound ground needs no finer tile at all, nor does a low point of the
+  // seabed (a finer tile may hold no seabed there).
+  assert.deepEqual(witnessTiles(tile(flats), 256, 12, 3347, 1786).tiles, []);
+  assert.deepEqual(witnessTiles(tile((x, y) => (x === 100 && y === 100) ? -150 : -100), 256, 14, 13388, 7145).tiles, []);
+});
+test('terrain repair: at the finest zoom the next coarser one is asked', () => {
+  const faulty = tile((x, y) => (x === 100 && y === 100) ? -561 : 10);
+  const need = witnessTiles(faulty, 256, 15, 26777, 14290);
+  assert.equal(need.z, 14);
+  assert.deepEqual(need.tiles, [[13388, 7145]]);
+  assert.equal(repairFromWitness(faulty, 256, 15, 26777, 14290, () => tile(() => 12)), 1);
+  assert.ok(Math.abs(at(faulty, 100, 100) - 12) < 1);
 });
