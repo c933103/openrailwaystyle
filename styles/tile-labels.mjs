@@ -80,7 +80,7 @@ export function timedSource(inner, ms) {
     },
   };
 }
-export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch, {dataRoot, timeout = 12000, basemapRetries = [500, 2000], basemapArchive} = {}) {
+export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch, {dataRoot, timeout = 12000, basemapRetries = [500, 2000], basemapArchive, tileRetries = [1000]} = {}) {
   // Only current-view requests are made. Keep a bounded cache of successful
   // responses so language changes can reuse downloaded station tiles.
   const cache = new ByteCache();
@@ -91,7 +91,25 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   // One running longer than that limit counts as stuck: a new request starts
   // a fresh download rather than join it.
   const loading = new Map();
-  function get(url, request, json = false) {
+  // A download that runs out of time or fails (the server slow or down for
+  // a moment, a 5xx answer) is started afresh once more, so one slow answer
+  // does not leave its tile without stations or railways until the map
+  // moves. Not a cancelled tile, and not a 4xx answer.
+  async function get(url, request, json = false) {
+    for (let attempt = 0; ; attempt++) {
+      try { return await download(url, request, json); }
+      catch (error) {
+        if (request.aborted || attempt >= tileRetries.length || / returned 4\d\d$/.test(error?.message ?? '')) throw error;
+        // A tile cancelled during the wait ends as cancelled, not failed.
+        await new Promise((resolve, reject) => {
+          const cancel = () => { clearTimeout(timer); reject(request.reason ?? new DOMException('Aborted', 'AbortError')); };
+          const timer = setTimeout(() => { request.removeEventListener('abort', cancel); resolve(); }, tileRetries[attempt]);
+          request.addEventListener('abort', cancel, {once: true});
+        });
+      }
+    }
+  }
+  function download(url, request, json = false) {
     if (cache.has(url)) {
       return Promise.resolve(cache.get(url));
     }
