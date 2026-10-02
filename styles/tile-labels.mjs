@@ -65,7 +65,7 @@ export function localizeTile(data, lang, coordinates) {
   }
 }
 
-export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch, {dataRoot, timeout = 12000} = {}) {
+export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch, {dataRoot, timeout = 12000, basemapRetries = [500, 2000]} = {}) {
   // Only current-view requests are made. Keep a bounded cache of successful
   // responses so language changes can reuse downloaded station tiles.
   const cache = new ByteCache();
@@ -238,7 +238,20 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   maplibregl.addProtocol('atlasbase',async (params,controller)=>{
     const [,lang,url] = /^atlasbase:\/\/([^/]+)\/(.+)$/.exec(params.url) || [];
     if (!url) throw new Error('Invalid basemap request');
-    const result = await pmtilesProtocol.tile({...params,url:`pmtiles://${url}`},controller);
+    // PMTiles keeps a failed header or directory request in its cache, so one
+    // dropped connection would fail every tile under it until a reload. On a
+    // failure the archive starts afresh (its header is read again) and the
+    // request is tried twice more.
+    let result;
+    for (let attempt = 0; ; attempt++) {
+      try { result = await pmtilesProtocol.tile({...params,url:`pmtiles://${url}`},controller); break; }
+      catch (error) {
+        if (controller.signal.aborted || attempt >= basemapRetries.length) throw error;
+        pmtilesProtocol.tiles?.delete(url.replace(/\/\d+\/\d+\/\d+$/,''));
+        await new Promise(resolve => setTimeout(resolve, basemapRetries[attempt]));
+        if (controller.signal.aborted) throw error;
+      }
+    }
     if (params.type === 'json') return {...result,data:{...result.data,tiles:result.data.tiles.map(t=>t.replace('pmtiles://',`atlasbase://${lang}/`))}};
     return {...result,data:localizeTile(result.data,lang,tileCoordinates(url))};
   });
