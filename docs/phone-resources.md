@@ -46,3 +46,16 @@ The two runs rendered the same feature counts at every sampled view and kept the
 The axle lookup optimisation was added after task 30 landed. A 4,096-way regression confirms one parse for a shared tag group and unchanged way-ID values. This removes the per-way object duplication from the new view as well as its temporary full array and second Map.
 
 The final combined station/platform build was also checked against MapLibre 5.24.0 with the merged upgrade’s globe compatibility module. Desktop and 412×915 touch checks passed for curated globe labels, station inspection, Japanese labels, polar panning, platform length arrival/conversion and immediate kg/lb axle legends. This is compatibility evidence; it adds no claim about device frame time or GPU memory.
+
+## Track-count cancellation follow-up
+
+The merged per-station counting implementation requests 27 neighbouring inputs per count: nine railway, nine station-area and nine station tiles. It shared jobs using a signal that never aborted. A twelve-tile fixture reproduced 324 downloads and twelve worker messages continuing after all map consumers cancelled; 5,184 bytes of private input buffers were transferred in this deliberately small 16-byte-per-input fixture. This is a queue/cancellation measurement, not an estimate of real-world tile sizes or device CPU.
+
+| Behaviour | Before | After |
+| --- | --- | --- |
+| Twelve ready count jobs, before cancelling their consumers | Twelve messages / 5,184 private bytes queued in the worker | One message / 432 private bytes; remaining copies wait until their job is needed |
+| All twelve consumers cancelled | All twelve counts continue | Running worker terminated; eleven queued counts discarded |
+| Final consumer cancels during its 27 downloads | Downloads continue until completion/timeout | All 27 subscriptions abort; shared downloads stop when no other tile needs them |
+| One of two consumers cancels the same count | Count continues | Count continues for the remaining consumer |
+
+Only completed results enter the 64-entry LRU cache; unfinished jobs remain shared and are not evicted into duplicate work. Worker copies still transfer ownership without detaching cached originals. Rendering, pixel ratio, terrain and contour defaults remain unchanged. Unit regressions cover actual protocol cancellation, shared consumers, worker restart, queued work and intact inputs. Physical-phone frame time, GPU memory and live installed-app verification remain outstanding.
