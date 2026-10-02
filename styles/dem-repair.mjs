@@ -314,16 +314,31 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
     mark(i, depth(px, py, replacement, true) > limit ? NaN : replacement);
   }
   // A fault's edges, shallower than the tests above: low pixels next to a
-  // bad one join it, if more than half of drop(z) below every sound pixel
-  // beside them. Low ground that goes on (a coastal plain under a cliff
-  // whose top holds a fault) does not: it is level with the next pixel of it.
+  // bad one join it. The low pixels joined to them make a region: a small
+  // one (at most CLUSTER pixels, as a patch of a fault at one wrong height)
+  // joins whole; a larger one is low ground that goes on (a coastal plain
+  // under a cliff whose top holds a fault), of which only pixels more than
+  // half of drop(z) below every sound pixel beside them join.
+  const low = (qx, qy) => on(qx, qy) && !bad[qy * size + qx] && depth(qx, qy, h[qy * size + qx], true) > limit;
+  const seen = new Uint8Array(size * size);
   while (queue.length) {
     const i = queue.pop(), px = i % size, py = (i - px) / size;
-    for (const [qx, qy] of [[px - 1, py], [px + 1, py], [px, py - 1], [px, py + 1]]) {
-      if (qx < 0 || qy < 0 || qx >= size || qy >= size) continue;
-      const j = qy * size + qx;
-      if (bad[j] || !(depth(qx, qy, h[j], true) > limit)) continue;
-      const beside = [[qx - 1, qy], [qx + 1, qy], [qx, qy - 1], [qx, qy + 1]].map(([bx, by]) => sound(bx, by)).filter(v => !Number.isNaN(v));
+    for (const [sx, sy] of [[px - 1, py], [px + 1, py], [px, py - 1], [px, py + 1]]) {
+      if (!low(sx, sy) || seen[sy * size + sx]) continue;
+      const region = [sy * size + sx];
+      seen[region[0]] = 1;
+      for (let k = 0; k < region.length && region.length <= CLUSTER; k++) {
+        const rx = region[k] % size, ry = (region[k] - rx) / size;
+        for (const [qx, qy] of [[rx - 1, ry], [rx + 1, ry], [rx, ry - 1], [rx, ry + 1]]) {
+          if (low(qx, qy) && !seen[qy * size + qx]) { seen[qy * size + qx] = 1; region.push(qy * size + qx); }
+        }
+      }
+      if (region.length <= CLUSTER) { for (const j of region) mark(j, NaN); continue; }
+      // Too large to be one fault: forget it, so pixels of it next to other
+      // bad ones are judged on their own below.
+      for (const j of region) seen[j] = 0;
+      const j = sy * size + sx;
+      const beside = [[sx - 1, sy], [sx + 1, sy], [sx, sy - 1], [sx, sy + 1]].map(([bx, by]) => sound(bx, by)).filter(v => !Number.isNaN(v));
       if (beside.length && beside.every(v => v - h[j] > limit / 2)) mark(j, NaN);
     }
   }

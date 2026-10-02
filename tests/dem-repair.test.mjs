@@ -114,6 +114,11 @@ test('terrain repair: faults a few pixels across go; islets, cliffs, coasts and 
   for (const [x, y] of [[100, 50], [101, 49], [100, 52], [102, 50]]) assert.equal(at(shore, x, y), -20, `sea at ${x},${y}`);
   assert.equal(at(shore, 95, 50), 150); assert.equal(at(shore, 60, 120), -1.5);
   assert.ok(Math.abs(at(shore, 98, 50) - 150) < 60, `spike on the shore: ${at(shore, 98, 50)}`);
+  // A patch of a fault at one wrong height round a missing pixel (zoom 14,
+  // no coarser tile to tell): it goes whole.
+  const patch = tile((x, y) => x === 60 && y === 60 ? -14840 : Math.abs(x - 60) <= 2 && Math.abs(y - 60) <= 2 ? 100 : 200);
+  repairPixels(patch, 256, 14, 0, 0, null);
+  for (const [x, y] of [[58, 58], [60, 59], [62, 62], [60, 60]]) assert.ok(at(patch, x, y) > 150, `patch at ${x},${y}: ${at(patch, x, y)}`);
   // An ordinary dip beside a spike cluster is not part of the fault.
   const dip = tile((x, y) => x === 120 && y === 120 ? 600 : x === 120 && y === 121 ? 1000 : x === 119 && y === 121 ? 90 : 100);
   repairPixels(dip, 256, 12, 0, 0, coarse(() => 100));
