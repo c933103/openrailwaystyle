@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261002-73';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261002-73';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261002-76';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261002-76';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261002-73';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261002-73';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261002-73';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261002-73';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261002-73';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261002-76';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261002-76';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261002-76';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261002-76';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261002-76';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -39,7 +39,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261002-73';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261002-76';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -1430,8 +1430,17 @@ $('search-form').addEventListener('submit', async e => {
       Date.now() < searchPausedUntil ? Promise.reject(new Error('paused')) : json(facilityURL, facility.signal).finally(() => clearTimeout(facilityTimeout)),
       placeSearch(placeURL, json, controller.signal)]);
     if (controller !== searchController) return;
-    if (facilities.status === 'rejected' && places.status === 'rejected') throw facilities.reason;
-    const {rail, places: other} = searchResults(facilities.value || [], places.value || []);
+    // Stations the map has drawn whose name the search matches, for those
+    // neither service finds (stations mapped as areas, partial names).
+    // Below zoom 7 the curated principal stations are drawn too.
+    // Only what the station layers draw at this zoom (no tram stops at zoom 8).
+    const zoom = ready ? map.getZoom() : 0;
+    const drawn = ready ? drawnStationQueries(map.getStyle().layers, zoom).flatMap(({source, sourceLayer, filter}) =>
+      source === 'stationMajor' ? (majorStationData?.features || []).filter(f => (f.properties?.tier ?? 7) <= zoom)
+        : map.getSource(source) ? map.querySourceFeatures(source, {sourceLayer, filter}) : []) : [];
+    const local = ready ? tileStations(drawn, q, map.getCenter().toArray(), facilities.value || []) : [];
+    if (facilities.status === 'rejected' && places.status === 'rejected' && !local.length) throw facilities.reason;
+    const {rail, places: other} = searchResults([...(facilities.value || []), ...local], places.value || []);
     const results = $('search-results'); results.replaceChildren();
     const narrow = () => { results.hidden = true; $('search-status').hidden = true; if (matchMedia('(max-width: 650px)').matches && !$('controls').hidden) $('collapse').click(); };
     const entry = (title, detail, onClick) => {

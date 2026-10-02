@@ -1,6 +1,6 @@
-export {createPlatformLengths,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261002-73';
+export {createPlatformLengths,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261002-76';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261002-73';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261002-76';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -55,6 +55,57 @@ export function samePlaceName(a, b) {
 // Facility API results and geocoder results → {rail, places}. A geocoded
 // station joins the railway results unless the facility API already gave it
 // (the same node, or the same name within about 400 m).
+// Stations drawn in the map's own tiles whose name a search matches, for
+// the stations neither search service finds: the facility search holds
+// station nodes only, and the geocoder matches whole names ("Sha tin" finds
+// Sha Tin, not Sha Tin Wai). A Latin query must begin a word of the name;
+// one in other scripts may stand anywhere in it. Exact names come first,
+// then the nearest to `centre` ([lng, lat]); stations the facility search
+// already found are left out. Returned in the facility search's form, with
+// the OSM object named.
+const STATION_FEATURES = ['station', 'halt', 'tram_stop'];
+export function tileStations(features, query, centre, found = [], limit = 8) {
+  const q = String(query).trim().replace(/\s+/g, ' ');
+  if (q.length < 2) return [];
+  const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = LATIN.test(q) ? new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}`, 'iu') : new RegExp(escaped, 'iu');
+  const near = (a, b) => Math.abs(a.latitude - b.latitude) < 0.004 && Math.abs(a.longitude - b.longitude) * Math.cos(a.latitude * Math.PI / 180) < 0.004;
+  // Names in a language (name:en, name:zh-Hant, name:ja_kana), not name:etymology and the like.
+  const namesOf = p => Object.entries(p).filter(([key, value]) => (/^name(:[a-z]{2,3}([-_][A-Za-z0-9]+)*)?$/.test(key) || key === 'localized_name' || key === 'atlas_name') && typeof value === 'string').map(([, value]) => value);
+  const [cx, cy] = centre || [0, 0], matches = new Map();
+  for (const feature of features) {
+    const p = feature.properties || {}, coordinates = feature.geometry?.coordinates;
+    // The overview tiles leave out the feature field: stations, as the style draws them.
+    const kind = p.feature ?? 'station';
+    if (feature.geometry?.type !== 'Point' || !STATION_FEATURES.includes(kind) || (p.state ?? 'present') !== 'present') continue;
+    const names = namesOf(p);
+    if (!names.some(n => pattern.test(n))) continue;
+    const object = /^(node|way|relation)-(\d+)/.exec(String(p.id ?? ''));
+    const [longitude, latitude] = coordinates, key = object ? object[0] : `${p.name}@${longitude.toFixed(4)},${latitude.toFixed(4)}`;
+    if (matches.has(key)) continue;
+    const item = {...p, latitude, longitude, railway: kind, ...(object && {osm_type: object[1], osm_id: Number(object[2])})};
+    // The facility search returns nodes; a way or relation with the same number is another object.
+    if (found.some(r => (object && object[1] === (r.osm_type ?? 'node') && String(r.osm_id) === object[2]) || (near(r, item) && namesOf(r).some(n => names.some(m => samePlaceName(n, m)))))) continue;
+    const exact = names.some(n => samePlaceName(n, q)), dx = ((longitude - cx) % 360 + 540) % 360 - 180, distance = Math.hypot(dx * Math.cos(latitude * Math.PI / 180), latitude - cy);
+    matches.set(key, {item, exact, distance});
+  }
+  return [...matches.values()].sort((a, b) => (b.exact - a.exact) || a.distance - b.distance).slice(0, limit).map(({item}) => item);
+}
+// What the station name layers draw at this zoom, as querySourceFeatures
+// queries: each source with its layers' filters, the zoom put in (a source
+// query evaluates ['zoom'] at the tile's zoom, not the map's). As a literal,
+// so [">=", zoom, 10] is not read as a legacy filter.
+export function drawnStationQueries(layers, zoom) {
+  const at = v => !Array.isArray(v) || v[0] === 'literal' ? v : v.length === 1 && v[0] === 'zoom' ? ['literal', zoom] : v.map(at);
+  const queries = new Map();
+  for (const layer of layers) {
+    if (layer.type !== 'symbol' || !/^station-.*-names$/.test(layer.id) || layer.layout?.visibility === 'none' || zoom < (layer.minzoom ?? 0) || zoom >= (layer.maxzoom ?? 24)) continue;
+    const query = queries.get(layer.source) || {source: layer.source, sourceLayer: layer['source-layer'], filters: []};
+    query.filters.push(layer.filter ? at(layer.filter) : true);
+    queries.set(layer.source, query);
+  }
+  return [...queries.values()].map(({source, sourceLayer, filters}) => ({source, sourceLayer, filter: ['any', ...filters]}));
+}
 export function searchResults(facilities, places) {
   const located = item => Number.isFinite(item.longitude) && Number.isFinite(item.latitude);
   const rail = facilities.filter(located), others = [];
@@ -69,7 +120,8 @@ export function searchResults(facilities, places) {
     if (isRailPlace(place)) {
       const own = names(item);
       const sameName = r => [...names(r)].some(n => [...own].some(o => samePlaceName(n, o)));
-      if (rail.some(r => (place.osm_type === 'node' && r.osm_id === place.osm_id) || (near(r, item) && sameName(r)))) continue;
+      // The same OSM object, by type and number (facility results are nodes).
+      if (rail.some(r => (place.osm_type === (r.osm_type ?? 'node') && String(r.osm_id) === String(place.osm_id)) || (near(r, item) && sameName(r)))) continue;
       rail.push({...item, railway: ['station', 'train_station'].includes(place.type) ? 'station' : place.type});
     } else others.push({...item, place: place.addresstype || place.type});
   }
