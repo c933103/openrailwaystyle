@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-96';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-96';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261001-102';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261001-102';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-96';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-96';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-96';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-96';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-96';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261001-102';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261001-102';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261001-102';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261001-102';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261001-102';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -36,7 +36,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-96';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261001-102';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -253,6 +253,15 @@ function layerVisibility(layer) {
     else if (settings.background === 'carto' && isBaseMap(layer) && !layer.id.startsWith('terrain-')) visible = false;
     return visible;
 }
+let majorStationData,majorStationsPromise;const majorStationLanguages=new WeakMap();
+function updateMajorStations(){
+ if(!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3||map.getZoom()>=7)return;
+ const source=map.getSource('stationMajor'),language=settings.language;if(!source||majorStationLanguages.get(source)===language)return;
+ majorStationsPromise ||= majorStationData ? Promise.resolve(majorStationData) : fetch(new URL(`major-stations.geojson?v=${assetVersion}`,import.meta.url)).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}).catch(error=>{majorStationsPromise=undefined;throw error;});
+ majorStationsPromise.then(data=>{if(!ready||language!==settings.language||source!==map.getSource('stationMajor')||majorStationLanguages.get(source)===language)return;
+  source.setData({...data,features:data.features.map(f=>({...f,properties:{...f.properties,atlas_name:chooseName(f.properties,language),atlas_language:language}}))});majorStationLanguages.set(source,language);
+ }).catch(error=>console.warn('Major station list unavailable:',error.message));
+}
 function applySettings() {
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
   document.querySelectorAll('[data-background]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.background === settings.background)));
@@ -276,7 +285,7 @@ function applySettings() {
   // would keep the old rows.
   inView = [];
   renderLegend();
-  if (ready) { scheduleLegend(); scheduleNearbyTransport();platformLengths?.update(); }
+  if (ready) { scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update(); }
 }
 let attribution, attributionCarto;
 function updateAttribution() {
@@ -351,8 +360,8 @@ function showDetails(feature) {
   if(isPlatform){row(dl,'Boarding edge length',formatPlatformLength(Number(p.platform_length),settings.units));row(dl,'Platform',p.ref);}
   else if (isStation) {
     row(dl, 'Station type', p.station);
-    row(dl, 'Mapped size', p.station_size);
-    if (p.station_size) panel.append(textNode('p', 'Size follows mapped route importance, not passenger numbers.', 'small'));
+    if(p.curated){row(dl,'Selection',p.basis);row(dl,'Mapped object',p.mapped_feature);}else if(!p.curated) row(dl, 'Mapped size', p.station_size);
+    if (p.station_size&&!p.curated) panel.append(textNode('p', 'Size follows mapped route importance, not passenger numbers.', 'small'));
   } else {
     const speed = formatSpeed(p, settings.units);
     if (!p.state || p.state === 'present') {
@@ -949,6 +958,11 @@ async function initialize() {
   const response = await fetch(styleURL);
   if (!response.ok) throw new Error('The map style could not load. Reload to try again.');
   const style = await response.json();
+  // Keep the style's version-matched station copy available during the first
+  // upgrade from a worker whose fixed precache does not know the new file.
+  // Parsing/rendering its GeoJSON in MapLibre remains deferred to the overview.
+  majorStationData=style.sources.stationMajor.data;
+  style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
   for (const source of Object.values(style.sources)) {
     if (source.url?.startsWith('pmtiles://data/')) source.url = 'pmtiles://' + new URL(source.url.slice(10), styleURL).href;
   }
@@ -1098,6 +1112,7 @@ async function initialize() {
   map.on('remove',()=>platformLengths.destroy());
   map.on('sourcedata',e=>{if(e.sourceId==='platformEdges'&&e.tile)platformLengths.update();});
   map.on('moveend', scheduleLegend);
+  map.on('moveend',updateMajorStations);
   map.on('moveend', scheduleNearbyTransport);
   map.on('sourcedata', e => { if (e.sourceId === 'openmaptiles' && e.isSourceLoaded) scheduleNearbyTransport(); });
   map.on('moveend', updatePolar);
@@ -1423,4 +1438,3 @@ initialize().catch(error => {
 // Named export lets integration tests inspect rendered features without
 // adding test controls or global variables to the map interface.
 export {map};
-

@@ -76,11 +76,20 @@ Each website build copies the tiles, `index.json`, `manifest.json` and the ODbL 
 | Location | Contents | Updated by |
 | --- | --- | --- |
 | `rail-data` branch | Lifecycle archive parts, manifest, loading-gauge list and optional polar assets | `snapshot.yml` |
+| `axle-data` branch | Compact railway axle capacity/load-category lookup and snapshot date | `axle-load.yml` |
 | `street-data` branch | Street-running static tiles, index, manifest and GeoJSON | `street-running.yml` |
 | `crossing-data` branch | Level-crossing table, region state, static tiles, index and manifest | `crossings.yml` |
 | `overpass-cache` release | Raw responses for rebuilding the lifecycle snapshot | `snapshot.yml` |
 | `styles/data/` in the built site | Assembled published snapshots | `site.yml` |
 
 Use the published snapshots for local development; [setup instructions](development.md#load-published-map-data) avoid a new worldwide extraction. The workflows are the executable source of truth for schedules and publishing steps; update this guide when they change.
+
+## Curated major stations
+
+The reviewed source is `styles/data-src/major-stations.json`; the build generates the versioned `styles/major-stations.geojson` and bundles the same data in `world.style.json` for the first upgrade from the previous installed worker. This initial list contains 181 independently checked candidates across ten regions; spacing selects 165 by zoom 6 (56, 47, 47 and 15 new labels at zooms 3, 4, 5 and 6). These are density-driven tiers, not quotas or passenger-volume rankings. It includes Chicago Union and New York Penn at zoom 3, and the verified Tokyo, Taipei, Beijing and Shanghai hubs. Nearby secondary terminals can remain deferred until the ordinary provider labels take over.
+
+For edits, choose a passenger-network role first, then verify the OSM object, its names/translations and an independently linked Wikidata identity/coordinate. `mappedFeature` records whether the object is a railway/public-transport station or a station building; never relabel a stop area, bus terminal or subway point as heavy rail. Coordinates come from OSM nodes or Wikidata CC0 for mapped areas/buildings. Keep the local name as mapped, type/ID aliases, country, metro, region, minimum eligibility zoom, manual priority, verification date and source/basis links. No passenger counts are asserted without a source. Cross-check the country against the station’s Wikidata `P17` claim and ISO country code (following a constituent country’s parent if needed); record `countryEvidence` and `countrySource`. The build rejects conflicts. Country checks cover every candidate. The Nigeria Lagos entry uses mapped Mobolaji Johnson Station; the unresolved Cusco candidate was excluded after a homonymous Philippine station was detected.
+
+Run `npm run build` and commit both generated files, then `npm test`. Review derived tiers and the Chicago/NY/Tokyo sanity checks after changes; a newly verified candidate can defer a nearby label. Check globe zoom 3, regional zooms 4–6, language switching, source release at zoom 7 and station inspection. The runtime makes no Overpass, Nominatim or facility API calls to rank or populate these labels. Cached one-time Wikidata, limited facility identity responses and direct OSM object/selected-station-area reads were used for this audit; unresolved candidates were excluded.
 
 See [Axle load](axle-load.md) for the new view, national class distinctions, source references and the 28-day snapshot refresh.
