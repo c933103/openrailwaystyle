@@ -1,11 +1,13 @@
 // The contour worker (maplibre-contour's own, built from its source) with
 // the terrain tiles repaired as they arrive (dem-repair.mjs), for both the
 // contours and the relief shading, which reads its tiles through this
-// worker. A tile that needs no repair is passed on as it came.
+// worker. A pixel still standing out after that is checked against the next
+// finer zoom, fetched only then. A tile that needs no repair is passed on as
+// it came.
 import Actor from '../node_modules/maplibre-contour/src/actor.ts';
 import WorkerDispatch from '../node_modules/maplibre-contour/src/worker-dispatch.ts';
 import {LocalDemManager} from '../node_modules/maplibre-contour/src/local-dem-manager.ts';
-import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels} from './dem-repair.mjs';
+import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs';
 
 const TILE = /\/(\d+)\/(\d+)\/(\d+)\.png(?=\?|$)/, KEEP = 32;
 const decode = async blob => {
@@ -14,7 +16,8 @@ const decode = async blob => {
   context.drawImage(image, 0, 0); image.close?.();
   return {canvas, context, pixels: context.getImageData(0, 0, canvas.width, canvas.height)};
 };
-// The coarser tiles, shared by the sixteen tiles each covers.
+// The coarser tiles, shared by the sixteen tiles each covers, and the few
+// finer ones asked for a second opinion.
 const references = new Map();
 function reference(url) {
   if (references.has(url)) { const kept = references.get(url); references.delete(url); references.set(url, kept); return kept; }
@@ -32,7 +35,13 @@ async function getTile(url, abortController) {
   try {
     const coarser = referenceTile(z, x, y);
     const [{canvas, context, pixels}, ref] = await Promise.all([decode(blob), z >= REFERENCE_FROM ? reference(url.replace(TILE, `/${coarser.z}/${coarser.x}/${coarser.y}.png`)) : null]);
-    if (!repairPixels(pixels.data, pixels.width, z, x, y, ref?.data, ref?.width)) return tile;
+    let changed = repairPixels(pixels.data, pixels.width, z, x, y, ref?.data, ref?.width);
+    const witness = witnessTiles(pixels.data, pixels.width, z, x, y);
+    if (witness.tiles.length) {
+      const found = new Map(await Promise.all(witness.tiles.map(async ([tx, ty]) => [`${tx}/${ty}`, await reference(url.replace(TILE, `/${witness.z}/${tx}/${ty}.png`))])));
+      changed += repairFromWitness(pixels.data, pixels.width, z, x, y, (tx, ty) => { const p = found.get(`${tx}/${ty}`); return p?.width === pixels.width ? p.data : null; });
+    }
+    if (!changed) return tile;
     context.putImageData(pixels, 0, 0);
     return {...tile, data: await canvas.convertToBlob({type: 'image/png'})};
   } catch {
