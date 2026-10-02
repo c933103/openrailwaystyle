@@ -1,10 +1,10 @@
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
-import {waitUntil} from './wait-until.mjs';
+import {waitUntil,setDefaultTimeout} from './wait-until.mjs';
 const deadline=setTimeout(()=>{console.error('Planning checks exceeded ten minutes');process.exit(1);},600000);deadline.unref();
 const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
-const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1});page.setDefaultTimeout(60000);
+const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1});setDefaultTimeout(page,60000);
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
 page.on('console',m=>{if(m.type()==='error'){console.log('RESOURCE',m.text());if(/DataCloneError|already detached/.test(m.text())) errors.push(m.text());}});
 await page.addInitScript(()=>{const f=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(k,o){return f.call(this,k,/^webgl2?$/.test(k)?{...o,preserveDrawingBuffer:true}:o);};});
