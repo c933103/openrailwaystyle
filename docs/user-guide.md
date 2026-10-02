@@ -4,7 +4,7 @@
 
 ## Find and inspect railways
 
-Use station search to locate a place and choose a railway view: infrastructure (the view on a first visit), maximum speed, power, train control, gauge, loading gauge or owner. Click a railway, station or level crossing to see what is recorded for it, with a link that opens that very object (node, way or relation) on OpenStreetMap.
+Use station search to locate a place and choose a railway view: infrastructure (the view on a first visit), maximum speed, power, train control, gauge, loading gauge, owner, or service (metro, light rail, tram, monorail and commuter rail lines drawn along the tracks they use, each in its own colour and named; long-distance trains are not shown). Click a railway, station or level crossing to see what is recorded for it, with a link that opens that very object (node, way or relation) on OpenStreetMap.
 
 A station's panel lists its next rail departures from [Transitous](https://transitous.org), which combines operators' published timetables (GTFS) with their live updates (GTFS-RT) where they publish any: live rows show the expected time and the delay, others the timetabled time, and cancellations are marked. Coverage follows what operators publish; the panel says when no timetable covers a station. “Journey from here” and “Journey to here” open the Transitous journey planner with the station filled in. Only opening a station sends its position to Transitous.
 
@@ -18,7 +18,7 @@ The shared language selector offers local names or 12 languages. It uses recorde
 
 Under the view buttons, the background can be the drawn map, satellite imagery alone, or hybrid: the imagery under the railways (and stations) of the chosen view, without the map's roads and labels. The imagery is EOxCloudless (Sentinel-2, 10 m per pixel): stations, yards and track corridors show, not single tracks.
 
-The gear button opens the settings, in place of the map controls (‹ returns): in three groups (railways, surroundings, map), they control the boxed track counts of the Infrastructure view, transport facilities, destinations, planning constraints, relief, metric or imperial units, and the readout under the scale bar: the coordinates under the cursor (the map's centre on a touch screen) and the zoom. With the map focused, the arrow keys pan smoothly while held (a short press moves one step); Shift with an arrow turns or tilts the map. On small screens the controls start folded away; the panel's title and its fold button stay in view when the panel scrolls. Under the legend, “How to read this view” explains the current view's colours.
+The gear button opens the settings, in place of the map controls (‹ returns): in three groups (railways, surroundings, map), they control the boxed track counts of the Infrastructure view, transport facilities, destinations, planning constraints, relief and the readout under the scale bar: the coordinates under the cursor (the map's centre on a touch screen) and the zoom. With the map focused, the arrow keys pan smoothly while held (a short press moves one step); Shift with an arrow turns or tilts the map. On small screens the controls start folded away; the panel's title and its fold button stay in view when the panel scrolls. Under the legend, “How to read this view” explains the current view's colours.
 
 ## Install as an app
 
@@ -66,3 +66,13 @@ Mapped speed limits are infrastructure information, not train operating speeds, 
 Community-hosted external services can be unavailable or change schema. The application shows loading failures rather than replacing missing speeds with guessed values. Station search uses the cross-origin-enabled `https://api.openrailwaymap.org/v2/facility` endpoint, which holds station nodes only, together with OpenStreetMap's Nominatim geocoder (`https://nominatim.openstreetmap.org/search`, one request per submitted search) for stations mapped as areas, such as Hong Kong's Sha Tin, and for ordinary place names, listed under the railway results; railway vectors continue to use `openrailwaymap.app`. Search requests are submitted only on demand and have cancellation and timeout handling. No personal location is requested automatically.
 
 For sources and credits, use the map’s **?** help page or the [data and attribution reference](data-maintenance.md#sources-and-attribution).
+
+Metric/imperial units are directly below Language. They apply to speed, dimensions, axle loads and mapped platform boarding-edge lengths. Platform lengths come from complete mapped boarding edges; they are not a guarantee of usable train length.
+
+The **Carto** background shows OpenStreetMap Standard beneath the railways. Railway colours, station labels and the legend follow your settings. Carto provides its own place labels; the terrain and contour toggle still applies. Carto tiles are for online viewing and are not saved for offline use.
+
+On phones and short landscape screens, the controls start as a floating app icon. Tap it to open the menu; the collapse button or Escape returns it to the icon.
+
+See [Axle load](axle-load.md) for the new view, national class distinctions, source references and the 28-day snapshot refresh.
+
+The Axle load button follows Service and Owner. Metric keeps mapped tonnes or kilograms; Imperial keeps mapped US short tons or pounds. A converted value is added only when the mapped unit belongs to the other system.

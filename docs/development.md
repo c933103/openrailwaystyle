@@ -50,6 +50,12 @@ if [ -d "$snapshot_dir/rail-data/polar" ]; then
   cp -R "$snapshot_dir/rail-data/polar" styles/data/
 fi
 
+# Optional axle-load lookup; no new extraction is needed.
+if git ls-remote --exit-code --heads https://github.com/c933103/openrailwaystyle.git axle-data; then
+  git clone --depth 1 --single-branch --branch axle-data https://github.com/c933103/openrailwaystyle.git "$snapshot_dir/axle-data"
+  cp "$snapshot_dir/axle-data/axle-load.json" styles/data/
+fi
+
 mkdir -p styles/data/street-running
 cp -R "$snapshot_dir/street-data/12" "$snapshot_dir/street-data/index.json" "$snapshot_dir/street-data/manifest.json" "$snapshot_dir/street-data/street-running.geojson.gz" styles/data/street-running/
 
@@ -78,7 +84,7 @@ Open [http://localhost:4173](http://localhost:4173). The local server serves
 | `styles/index.html`, `styles/app.mjs`, `styles/app.css` | Application page, controls and presentation |
 | `styles/map-model.mjs` | Map semantics and shared display rules |
 | `scripts/build-style.mjs` | Builds the worldwide style from `styles/default.style.json` |
-| `styles/world.style.json` | Generated style, committed and checked for reproducibility |
+| `styles/world.style.json`, `styles/major-stations.geojson` | Generated style and curated station labels, committed and checked for reproducibility |
 | `styles/tile-labels.mjs`, `styles/han-region.mjs` | Label selection and geographic name rules |
 | `styles/track-count.mjs`, `styles/track-tiles.mjs` | Track grouping and tile loading |
 | `scripts/` | Build tools, data preparation, preview server and browser checks |
@@ -114,13 +120,15 @@ npx playwright install --with-deps chromium
 node scripts/check-planning-browser.mjs
 node scripts/check-context-browser.mjs
 node scripts/check-map-browser.mjs
+node scripts/check-major-stations-browser.mjs
+node scripts/check-platform-browser.mjs
 ```
 
 The deployment gate checks real Chromium/WebGL rendering, including zoom-7 panning
 in the Japan–Korea view, visibility of 남부내륙선, line names and controls, and the
 absence of viewer Overpass requests. The context checks cover Hong Kong facilities,
 Heathrow at regional scale, language switching, inspection and toggles; planning
-checks cover roads, buildings, boundaries and rail-road interfaces. Screenshots
+checks cover roads, buildings, boundaries and rail-road interfaces. Curated station checks cover globe labels, language switching and OSM inspection on desktop and touch viewports. Platform checks cover full mapped boarding-edge lengths, asynchronous inspection, the main Units control and immediate kg/lb legend conversion. Screenshots
 are saved in `browser-review/` and uploaded by CI. These checks do not establish
 that every real-world railway is correctly mapped in OSM.
 

@@ -23,7 +23,7 @@ jobs:
       - name: Rebuild world style
         run: npm run build
       - name: Check committed style is reproducible
-        run: git diff --exit-code -- styles/world.style.json
+        run: git diff --exit-code -- styles/world.style.json styles/major-stations.geojson
       - name: Validate speed semantics and MapLibre style
         run: npm test
       - name: Check JavaScript syntax
@@ -57,6 +57,12 @@ jobs:
           python scripts/unpack-snapshot.py /tmp/lifecycle.pmtiles
           node scripts/build-overview-tiles.mjs
           cat lifecycle-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
+      - name: Load the published axle-load lookup
+        run: |
+          if git ls-remote --exit-code --heads origin axle-data; then
+            git fetch --depth=1 origin axle-data:refs/remotes/origin/axle-data
+            git show origin/axle-data:axle-load.json > styles/data/axle-load.json
+          fi
       - name: Wait for first street-running snapshot
         run: |
           for attempt in $(seq 1 40); do
@@ -105,6 +111,22 @@ jobs:
             echo "Could not look up the branch-data snapshot (git exit $status)"
             exit 1
           fi
+      # Urban rail services for the Service view (service-routes.yml), filled
+      # in region by region; without them the view shows the tracks only.
+      - name: Load urban rail services
+        run: |
+          mkdir -p styles/data/service-routes
+          status=0
+          git ls-remote --exit-code --heads origin service-data || status=$?
+          if [ "$status" = 0 ]; then
+            git fetch --depth=1 origin service-data
+            git archive FETCH_HEAD | tar -x -C styles/data/service-routes --exclude=state.json
+          elif [ "$status" = 2 ]; then
+            echo '{"tiles":[]}' > styles/data/service-routes/index.json
+          else
+            echo "Could not look up the service-data snapshot (git exit $status)"
+            exit 1
+          fi
       - name: Install test browser
         run: npx playwright install --with-deps chromium
       - name: Start test server
@@ -117,6 +139,10 @@ jobs:
         run: node scripts/check-context-browser.mjs
       - name: Verify actual WebGL rendering and zoom-7 panning
         run: node scripts/check-map-browser.mjs
+      - name: Verify curated station labels and details on the globe
+        run: node scripts/check-major-stations-browser.mjs
+      - name: Verify platform length labels and main Units selector
+        run: node scripts/check-platform-browser.mjs
       - name: Save browser review
         if: always()
         uses: actions/upload-artifact@v4

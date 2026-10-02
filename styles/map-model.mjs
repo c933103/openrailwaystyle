@@ -1,3 +1,6 @@
+export {createPlatformLengths,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261001-105';
+
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261001-105';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -74,8 +77,10 @@ export function searchResults(facilities, places) {
 }
 // Map background: the drawn base map, satellite imagery alone, or imagery
 // under the railways (hybrid).
-export const BACKGROUNDS = ['map', 'satellite', 'hybrid'];
-export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge', 'loading', 'owner'];
+export const BACKGROUNDS = ['map', 'satellite', 'hybrid', 'carto'];
+// Standard OSM tiles: ordinary browser caching, no offline/prefetch support.
+export const CARTO_TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge', 'loading', 'service', 'owner', 'axle'];
 export const LANGUAGES = [
   ['local','Local names'], ['en','English'], ['ko','한국어'], ['ja','日本語'],
   ['zh-Hant','繁體中文'], ['zh-Hans','简体中文'], ['de','Deutsch'], ['fr','Français'],
@@ -592,7 +597,7 @@ export function formatReadout({lng, lat}, zoom, detail = 0) {
 // id (planned and former lines, street running) or the crossing node id;
 // base-map features carry the id times ten plus 1, 2 or 3 for a node, way or
 // relation.
-const WAY_SOURCES = ['railway', 'network', 'speed', 'electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'inactiveRegional', 'streetRunning', 'branchLines'];
+const WAY_SOURCES = ['platformEdges','axleLow','axleRail','axleBranch','railway', 'network', 'speed', 'electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'inactiveRegional', 'streetRunning', 'branchLines'];
 export function osmObject(feature) {
   const p = feature?.properties || {};
   // Geocoder results name the type.
@@ -698,4 +703,3 @@ export function speedLabel(units) {
   const speed = ['to-number', ['coalesce', ['get', 'maxspeed'], -1], -1];
   return ['case', ['in', 'mph', label], label, ['>=', speed, 0], ['concat', ['to-string', ['round', ['/', speed, MPH]]], ' mph'], label];
 }
-

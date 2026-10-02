@@ -59,14 +59,37 @@ OpenRailwayMap's zoom 0–6 tiles hold main lines only (`usage=main`), so branch
 
 Each website build copies the tiles, `index.json`, `manifest.json` (stages, counts, last run) and the ODbL table `branch-lines.ndjson.gz` into `styles/data/branch-lines/`.
 
+## Urban rail services
+
+The Service view draws metro, light rail, tram, monorail and commuter rail services along the tracks they run on; no tile provider carries them. The workflow [service-routes.yml](../.github/workflows/service-routes.yml) keeps a worldwide table of OpenStreetMap route relations (`type=route` with `route=subway`, `light_rail`, `tram` or `monorail`, or `route=train` with `service=commuter` or `urban`; never other trains) and the track ways they list, and publishes it with tiles (z7–12, light rail, trams and monorails from z10) to `service-data`, one commit replaced each time (`scripts/service-routes.mjs`, `scripts/build-service-routes.mjs`).
+
+- Both directions and variants of a service are one route: the same kind, network, reference and colour (and name, without a reference), in the same place. Relations with that key that share a track or lie within about 10 km of each other are grouped when the tiles are made, from every relation any box or stage found, so two cities' "Metro" line 1 stay apart and a line whose branch was found in another box is still drawn once. Its name drops the direction ("(Southbound)", ": A → B"); it links to its lowest relation id.
+- A stage's pass stages everything it finds (memberships, route details, geometry) and commits it only when complete; a rejected refresh changes nothing.
+- The table records which stage found each route and each way's routes by stage; a stage's refresh replaces only its own part, so routes another stage found on a shared way stay.
+- Each tile feature is one route on one way, with its place (`i` of `n`) among the routes on that way, so the style draws routes sharing a track side by side; ways run west to east so that a route keeps its side from one way to the next.
+- Regions are fetched in the branch lines' stages and with the same mechanics (splitting, refresh every two weeks, the 20% guard), every six hours at minute 11, each run capped at 50 MB and no run once 100 MB were downloaded in 24 hours, so with the branch lines (up to 900 MB) the public server's guidance of about 1 GB a day holds.
+
+Each website build copies the tiles, `index.json`, `manifest.json` and the ODbL table `service-routes.ndjson.gz` into `styles/data/service-routes/`; until the first run publishes, the Service view shows the tracks only.
+
 ## Published data and caches
 
 | Location | Contents | Updated by |
 | --- | --- | --- |
 | `rail-data` branch | Lifecycle archive parts, manifest, loading-gauge list and optional polar assets | `snapshot.yml` |
+| `axle-data` branch | Compact railway axle capacity/load-category lookup and snapshot date | `axle-load.yml` |
 | `street-data` branch | Street-running static tiles, index, manifest and GeoJSON | `street-running.yml` |
 | `crossing-data` branch | Level-crossing table, region state, static tiles, index and manifest | `crossings.yml` |
 | `overpass-cache` release | Raw responses for rebuilding the lifecycle snapshot | `snapshot.yml` |
 | `styles/data/` in the built site | Assembled published snapshots | `site.yml` |
 
 Use the published snapshots for local development; [setup instructions](development.md#load-published-map-data) avoid a new worldwide extraction. The workflows are the executable source of truth for schedules and publishing steps; update this guide when they change.
+
+## Curated major stations
+
+The reviewed source is `styles/data-src/major-stations.json`; the build generates the versioned `styles/major-stations.geojson` and bundles the same data in `world.style.json` for the first upgrade from the previous installed worker. This initial list contains 181 independently checked candidates across ten regions; spacing selects 165 by zoom 6 (56, 47, 47 and 15 new labels at zooms 3, 4, 5 and 6). These are density-driven tiers, not quotas or passenger-volume rankings. It includes Chicago Union and New York Penn at zoom 3, and the verified Tokyo, Taipei, Beijing and Shanghai hubs. Nearby secondary terminals can remain deferred until the ordinary provider labels take over.
+
+For edits, choose a passenger-network role first, then verify the OSM object, its names/translations and an independently linked Wikidata identity/coordinate. `mappedFeature` records whether the object is a railway/public-transport station or a station building; never relabel a stop area, bus terminal or subway point as heavy rail. Coordinates come from OSM nodes or Wikidata CC0 for mapped areas/buildings. Keep the local name as mapped, type/ID aliases, country, metro, region, minimum eligibility zoom, manual priority, verification date and source/basis links. No passenger counts are asserted without a source. Cross-check the country against the station’s Wikidata `P17` claim and ISO country code (following a constituent country’s parent if needed); record `countryEvidence` and `countrySource`. The build rejects conflicts. Country checks cover every candidate. The Nigeria Lagos entry uses mapped Mobolaji Johnson Station; the unresolved Cusco candidate was excluded after a homonymous Philippine station was detected.
+
+Run `npm run build` and commit both generated files, then `npm test`. Review derived tiers and the Chicago/NY/Tokyo sanity checks after changes; a newly verified candidate can defer a nearby label. Check globe zoom 3, regional zooms 4–6, language switching, source release at zoom 7 and station inspection. The runtime makes no Overpass, Nominatim or facility API calls to rank or populate these labels. Cached one-time Wikidata, limited facility identity responses and direct OSM object/selected-station-area reads were used for this audit; unresolved candidates were excluded.
+
+See [Axle load](axle-load.md) for the new view, national class distinctions, source references and the 28-day snapshot refresh.

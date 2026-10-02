@@ -15,7 +15,7 @@ const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
 
-async function start({ failWebGL = false, delayLibraries = false, search = '', cookie = '' } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fetcher, search = '', cookie = '', compact = false } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -29,6 +29,7 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
     }
     once(name,handler) {this.handlers[name]=handler;}
     setStyle(style, options) {this.options.style=style;this.styleOptions=options;this.handlers['style.load']?.();}
+    removeControl(control) { this.controls = this.controls.filter(c => c !== control); }
     addControl(control) { (this.controls ||= []).push(control); }
     addImage(id, data, options) { this.image = {id,data,options}; }
     off(name) { delete this.handlers[name]; }
@@ -49,7 +50,7 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
     getCanvas() { return {style:{}}; }
     getCanvasContainer() { return this.canvasContainer ||= window.document.createElement('div'); }
     doubleClickZoom = {enable(){}, disable(){}};
-    queryRenderedFeatures() { return this.rendered || []; }
+    queryRenderedFeatures({layers}={}) {return (this.rendered||[]).filter(f=>!layers||layers.includes(f.layer?.id));}
     querySourceFeatures(id,{sourceLayer}) { return (this.sourceFeatures || []).filter(f=>f.sourceLayer===sourceLayer); }
     isSourceLoaded() { return true; }
     projection = {type:'mercator'};
@@ -64,7 +65,7 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
   // This is the MapLibre 5 public surface used by the app. In particular,
   // supported() is absent: older Mapbox examples must not gate startup.
   const libraries = {};
-  libraries.maplibregl = {Map, addProtocol(){}, NavigationControl:class { constructor(options) { maps.controls.push(options); } }, GeolocateControl:class { constructor(options) { maps.controls.push(options); } }, ScaleControl:class { constructor(options) { this.unit = options.unit; maps.scale = this; } setUnit(unit) { this.unit = unit; } }};
+  libraries.maplibregl = {Map, addProtocol(){}, NavigationControl:class { constructor(options) { maps.controls.push(options); } }, GeolocateControl:class { constructor(options) { maps.controls.push(options); } }, AttributionControl:class {constructor(options){this.options=options;}}, ScaleControl:class { constructor(options) { this.unit = options.unit; maps.scale = this; } setUnit(unit) { this.unit = unit; } }};
   maps.controls = [];
   libraries.pmtiles = {Protocol:class { tile() {} }};
   libraries.mlcontour = {DemSource:class {constructor(options){this.options=options; (maps.dems ||= []).push(options);} setupMaplibre(){} contourProtocolUrl(options){return `${this.options.id}-contour://${options.multiplier ? 'ft' : 'm'}/{z}/{x}/{y}`;} sharedDemProtocolUrl='atlas-shared://{z}/{x}/{y}';}};
@@ -74,18 +75,22 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
     for (const script of window.document.head.querySelectorAll('script')) script.onload?.();
   };
   if (!delayLibraries) Object.assign(window, libraries);
-  window.fetch = async () => ({ok:true,json:async()=>structuredClone(style)});
-  window.matchMedia = () => ({matches:false});
+  window.fetch = fetcher || (async () => ({ok:true,json:async()=>structuredClone(style)}));
+  window.matchMedia = () => ({matches:compact});
   const context = dom.getInternalVMContext();
   const dependency = new vm.SyntheticModule(Object.keys(model), function() {
     for (const [key,value] of Object.entries(model)) this.setExport(key,value);
   }, {context});
   const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','locate'],function(){this.setExport('installLabelProtocols',()=>{});this.setExport('localizeTile',x=>x);this.setExport('locate',()=>({atlas_han:'none',atlas_zh:''}));},{context});
   // The label code is imported on demand, after the controls are wired.
+  let loadLabels;
+  const labelsReady=new Promise(resolve=>{loadLabels=resolve;});
+  if(!delayLabels)loadLabels();
   const app = new vm.SourceTextModule(code, {
     context,
     initializeImportMeta(meta) { meta.url = 'https://example.org/openrailwaystyle/app.mjs'; },
     importModuleDynamically: async specifier => {
+      await labelsReady;
       if (!specifier.includes('tile-labels')) throw new Error(`Unexpected import ${specifier}`);
       if (protocols.status === 'unlinked') await protocols.link(() => {});
       if (protocols.status === 'linked') await protocols.evaluate();
@@ -113,7 +118,7 @@ async function start({ failWebGL = false, delayLibraries = false, search = '', c
   await app.link(specifier => specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
-  return {dom,window,maps,errors,loadLibraries};
+  return {dom,window,maps,errors,loadLibraries,loadLabels};
 }
 
 test('app starts with the MapLibre 5 API and enables map controls', async () => {
@@ -305,4 +310,78 @@ test('station inspection finds nearby interchanges and facility inspection avoid
     assert.doesNotMatch(detail.textContent,/Speed|Not recorded|RAILWAY INFRASTRUCTURE/);
     assert.equal(errors.length,0);
   } finally {dom.window.close();}
+});
+
+test('Carto shows railway overlays, honours terrain, hides duplicate basemap labels and keeps attribution open', async () => {
+  const {dom,window,maps} = await start({search:'?background=carto'});
+  try {
+    const map=maps[0], layer=id=>map.options.style.layers.find(l=>l.id===id);
+    assert.equal(layer('carto').layout.visibility,'visible');
+    assert.equal(layer('satellite').layout.visibility,'none');
+    assert.equal(layer('water').layout.visibility,'none');
+    assert.ok(map.controls.some(c=>c.options?.compact===false));
+    map.handlers['style.load']();
+    assert.equal(map.visibility['infrastructure-tracks'],'visible');
+    assert.equal(map.visibility['terrain-relief'],'visible');
+    assert.equal(map.visibility['water'],'none');
+    assert.equal(window.document.getElementById('legend').hidden,false);
+    window.document.getElementById('relief').click();
+    assert.equal(map.visibility['terrain-relief'],'none');
+    window.document.querySelector('[data-background="map"]').click();
+    assert.equal(map.visibility.carto,'none');
+    assert.equal(map.visibility.water,'visible');
+  } finally {dom.window.close();}
+});
+
+test('desktop brand announces collapse on its first activation',async()=>{
+ const {dom,window}=await start();try{const icon=window.document.getElementById('controls-open');assert.equal(icon.getAttribute('aria-label'),'Collapse map controls');icon.click();assert.equal(window.document.getElementById('controls').hidden,true);assert.equal(icon.getAttribute('aria-label'),'Open map controls');}finally{dom.window.close();}
+});
+
+test('compact controls open from the icon and return focus to it on collapse and Escape', async () => {
+  const {dom,window} = await start({compact:true});
+  try {
+    const d=window.document, icon=d.getElementById('controls-open'), collapse=d.getElementById('collapse'), panel=d.querySelector('.panel');
+    assert.equal(d.getElementById('controls').hidden,true);
+    assert.equal(panel.classList.contains('collapsed'),true);
+    icon.click();
+    assert.equal(d.getElementById('controls').hidden,false);
+    assert.equal(icon.getAttribute('aria-expanded'),'true');
+    assert.equal(d.activeElement,collapse);
+    assert.equal(icon.getAttribute('aria-label'),'Collapse map controls');
+    icon.click();
+    assert.equal(d.getElementById('controls').hidden,true);
+    icon.click();
+    collapse.click();
+    assert.equal(d.activeElement,icon);
+    assert.equal(icon.getAttribute('aria-expanded'),'false');
+    icon.click();collapse.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+    assert.equal(d.getElementById('controls').hidden,true);
+    assert.equal(d.activeElement,icon);
+  } finally { dom.window.close(); }
+});
+
+test('saved hidden overlays are absent in the constructor before any tile request',async()=>{
+ const {dom,maps}=await start({search:'?relief=0&inactive=0&stations=0&trackCounts=0&labels=0&transport=0&destinations=0&constraints=0&mode=speed'});
+ try {
+  const layers=maps[0].options.style.layers;
+  for(const l of layers.filter(l=>/^terrain-|^inactive-|^station-|^context-/.test(l.id)||l.source==='trackCounts'||l.id==='speed-labels'))assert.equal(l.layout.visibility,'none',l.id);
+  assert.equal(layers.find(l=>l.id==='speed-tracks').layout.visibility,'visible');
+ }finally{dom.window.close();}
+});
+test('Causeway Bay search reaches both APIs before a delayed label bundle loads',async()=>{
+ const calls=[];
+ const places=[{osm_type:'way',osm_id:248971549,lat:'22.2802878',lon:'114.1841633',class:'railway',type:'station',name:'銅鑼灣 Causeway Bay',display_name:'銅鑼灣 Causeway Bay, Hong Kong',namedetails:{name:'銅鑼灣 Causeway Bay','name:en':'Causeway Bay'}}];
+ const {dom,window,maps,loadLabels}=await start({delayLabels:true,fetcher:async url=>{
+  calls.push(String(url));return {ok:true,json:async()=>String(url).includes('nominatim')?places:String(url).includes('/facility')?[]:structuredClone(style)};
+ }});
+ try {
+  assert.equal(maps.length,0,'map waits for labels');
+  window.document.getElementById('search-input').value='Causeway Bay';
+  window.document.getElementById('search-form').dispatchEvent(new window.Event('submit',{cancelable:true}));
+  for(let i=0;i<10;i++)await new Promise(r=>setTimeout(r,0));
+  assert.ok(calls.some(u=>u.startsWith(model.SEARCH_API)));
+  assert.ok(calls.some(u=>u.startsWith(model.PLACE_SEARCH_API)));
+  assert.match(window.document.getElementById('search-results').textContent,/Causeway Bay/);
+  assert.equal(window.document.getElementById('search-results').hidden,false);
+ }finally{loadLabels();for(let i=0;i<5;i++)await new Promise(r=>setTimeout(r,0));dom.window.close();}
 });
