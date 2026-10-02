@@ -296,9 +296,11 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
   }
   // Pits below the coarser tile: its height there, unless that shares the
   // fault. Not where the coarser tile itself stands up from the ground
-  // round it (its median two pixels round) by more than drop(z): there it
-  // holds a fault of its own (east of Sha Tin, zoom 11 rises 1 400 m from
-  // the river flats), which would raise sound ground here into a tower.
+  // round it (its median two pixels round) by more than drop(z) and this
+  // tile's ground within eight pixels does not rise even halfway as high
+  // (a real summit both tiles hold does): there the coarser tile holds a fault of
+  // its own (east of Sha Tin, zoom 11 rises 1 400 m from the river flats),
+  // which would raise sound ground here into a tower.
   if (r && referenced) for (let py = 0; py < size; py++) for (let px = 0; px < size; px++) {
     const i = py * size + px, value = h[i];
     if (bad[i]) continue;
@@ -309,7 +311,14 @@ export function repairPixels(data, size, z, x, y, ref, refSize = 256) {
     if (!corners.length || value >= Math.min(...corners.map(([v]) => v)) - limit) continue;
     const round = [];
     for (let qy = y0 - 2; qy <= y0 + 3; qy++) for (let qx = x0 - 2; qx <= x0 + 3; qx++) { const v = r[clamp(qy) * refSize + clamp(qx)]; if (!Number.isNaN(v)) round.push(v); }
-    if (Math.min(...corners.map(([v]) => v)) - median(round) > limit) continue;
+    // ...unless the tile's own ground near this pixel rises that high too
+    // (a real summit both tiles hold, with a fault in this one below it).
+    const top = Math.min(...corners.map(([v]) => v)), rise = top - median(round);
+    if (rise > limit) {
+      let near = -Infinity;
+      for (let qy = py - 8; qy <= py + 8; qy++) for (let qx = px - 8; qx <= px + 8; qx++) { const v = sound(qx, qy); if (v > near) near = v; }
+      if (near < top - Math.max(limit, rise / 2)) continue;
+    }
     const weight = corners.reduce((sum, [, f]) => sum + f, 0), replacement = weight > 0 ? corners.reduce((sum, [v, f]) => sum + v * f, 0) / weight : corners[0][0];
     mark(i, depth(px, py, replacement, true) > limit ? NaN : replacement);
   }
