@@ -1,14 +1,15 @@
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
+import {waitUntil,setDefaultTimeout} from './wait-until.mjs';
 const deadline=setTimeout(()=>{console.error('Planning checks exceeded ten minutes');process.exit(1);},600000);deadline.unref();
 const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
-const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1});page.setDefaultTimeout(60000);
+const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1});setDefaultTimeout(page,60000);
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
 page.on('console',m=>{if(m.type()==='error'){console.log('RESOURCE',m.text());if(/DataCloneError|already detached/.test(m.text())) errors.push(m.text());}});
 await page.addInitScript(()=>{const f=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(k,o){return f.call(this,k,/^webgl2?$/.test(k)?{...o,preserveDrawingBuffer:true}:o);};});
 const evaluate=(fn,arg)=>page.evaluate(async({fn,arg})=>{const {map}=await import(document.querySelector('script[type="module"]').src);return (0,eval)('('+fn+')')(map,arg);},{fn:fn.toString(),arg});
-async function waitLayer(id){await page.waitForFunction(async id=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map?.getLayer(id)&&map.queryRenderedFeatures({layers:[id]}).length>0;},id);}
+async function waitLayer(id){await waitUntil(page,async id=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map?.getLayer(id)&&map.queryRenderedFeatures({layers:[id]}).length>0;},id);}
 async function move(center,zoom){await evaluate((map,{center,zoom})=>map.jumpTo({center,zoom}),{center,zoom});await page.waitForTimeout(1000);}
 async function settledFrame() {
   let stable=0;
