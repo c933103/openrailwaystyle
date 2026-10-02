@@ -34,7 +34,7 @@ try {
   if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();
   await page.locator('[data-background="carto"]').click();
   assert.ok(await page.locator('.maplibregl-ctrl-attrib .atlas-build').isVisible());
-  assert.ok(await page.locator('.maplibregl-ctrl-attrib a[href="https://www.openstreetmap.org/copyright"]').isVisible());
+  assert.ok(await page.locator('.maplibregl-ctrl-attrib a[href="https://www.openstreetmap.org/copyright"]').first().isVisible());
   assert.deepEqual(errors,[]);
   console.log('PASS build info',kind,JSON.stringify(expected));
   await page.close();
