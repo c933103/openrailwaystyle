@@ -84,7 +84,7 @@ export function tileStations(features, query, centre, found = [], limit = 8) {
     if (matches.has(key)) continue;
     const item = {...p, latitude, longitude, railway: kind, ...(object && {osm_type: object[1], osm_id: Number(object[2])})};
     if (found.some(r => (object && String(r.osm_id) === object[2]) || (near(r, item) && namesOf(r).some(n => names.some(m => samePlaceName(n, m)))))) continue;
-    const exact = names.some(n => samePlaceName(n, q)), distance = Math.hypot((longitude - cx) * Math.cos(latitude * Math.PI / 180), latitude - cy);
+    const exact = names.some(n => samePlaceName(n, q)), dx = ((longitude - cx) % 360 + 540) % 360 - 180, distance = Math.hypot(dx * Math.cos(latitude * Math.PI / 180), latitude - cy);
     matches.set(key, {item, exact, distance});
   }
   return [...matches.values()].sort((a, b) => (b.exact - a.exact) || a.distance - b.distance).slice(0, limit).map(({item}) => item);

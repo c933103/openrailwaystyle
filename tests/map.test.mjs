@@ -893,6 +893,11 @@ test('search: stations drawn in the tiles match a partial name; found ones are n
   assert.deepEqual(osmObject({properties: found[1]}), {type: 'way', id: '187405865'});
   assert.deepEqual(tileStations(tiles, '沙田', [114.19, 22.38]).map(s => s.name), ['沙田 Sha Tin', '沙田市中心', '沙田圍 Sha Tin Wai'], 'Chinese matches anywhere in the name');
   assert.deepEqual(tileStations(tiles, 'S', [0, 0]), []);
+  // Across the antimeridian, the nearer station by the short way round.
+  const dateline = [station('node-6-x', 'Lau East', 179.5, -17), station('node-7-x', 'Lau West', -179.6, -17)];
+  assert.deepEqual(tileStations(dateline, 'Lau', [-179.9, -17]).map(s => s.name), ['Lau West', 'Lau East']);
+  assert.deepEqual(tileStations(dateline, 'Lau', [179.9, -17]).map(s => s.name), ['Lau East', 'Lau West']);
+  assert.deepEqual(tileStations([station('node-8-x', 'Taveuni', -179.9, -16.8), station('node-9-x', 'Tavua', 170, -16.8)], 'Tav', [179.9, -16.8]).map(s => s.name), ['Taveuni', 'Tavua']);
   // Stations the facility search found are not repeated; the geocoder's
   // copy of a tile station is dropped as before.
   const facility = [{osm_id: 223848687, name: '沙田 Sha Tin', railway: 'station', latitude: 22.3826, longitude: 114.1869}];
