@@ -64,7 +64,13 @@ async function moveTo(zoom,lng,lat){
 const errors=[],requests=[],pendingRequests=new Set();
 page.on('pageerror', e=>errors.push(e.message));
 const requestStart=new Map();
-page.on('request',req=>{requests.push(req.url());pendingRequests.add(req);requestStart.set(req,Date.now());});
+page.on('request',req=>{
+  requests.push(req.url());requestStart.set(req,Date.now());
+  // Cancelling a count terminates its worker. Chromium can omit the finish
+  // event for that worker's startup script; these entries never settle.
+  // Rendered count assertions below verify that required workers execute.
+  if(!/\/vendor\/track-worker\.js(?:\?|$)/.test(req.url()))pendingRequests.add(req);
+});
 // Glyph (font) ranges are needed before any label can be drawn.
 page.on('requestfailed',req=>{if(req.url().includes('/fonts/')) console.log('Font request failed',req.failure()?.errorText,req.url().slice(-60));});
 page.on('response',res=>{if(res.url().includes('/fonts/') && res.status()>=400) console.log('Font HTTP',res.status(),res.url().slice(-60));});
@@ -84,7 +90,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') { console.log('Browser resource:',msg.text()); if(/DataCloneError|already detached/.test(msg.text())) errors.push(msg.text()); }});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261002-77&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261002-78&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
@@ -478,4 +484,3 @@ try{
   console.log('FAIL_IMAGE_START'+failure.toString('base64')+'FAIL_IMAGE_END');
   throw error;
 } finally {await browser.close();}
-

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateStationCountries,majorStationsGeoJSON,selectMajorStations,distanceKm,separationPixels,duplicatesMajorStation} from '../scripts/major-stations.mjs';
+import {MAJOR_STATION_DENSITY,validateStationCountries,majorStationsGeoJSON,selectMajorStations,distanceKm,separationPixels,duplicatesMajorStation,curatedStationFilter} from '../scripts/major-stations.mjs';
+import {createExpression} from '@maplibre/maplibre-gl-style-spec';
 import {readFile} from 'node:fs/promises';
 import {chooseName,osmObject} from '../styles/map-model.mjs';
 const entry=(id,lon,lat,extra={})=>({wikidata:`Q${id}`,osm:`node/${id}`,lon,lat,name:`Hub ${id}`,country:'X',metro:`City ${id}`,region:'Test',rank:id,minZoom:3,basis:'Curated passenger hub; https://www.wikidata.org/wiki/Q'+id,...extra});
@@ -8,13 +9,26 @@ test('station selection spreads hubs globally and postpones a second station in 
  const entries=[entry(1,139.767,35.681,{metro:'Tokyo'}),entry(2,139.7,35.69,{metro:'Tokyo',minZoom:5}),entry(3,-87.64,41.88,{metro:'Chicago'}),entry(4,-73.994,40.75,{metro:'New York'}),entry(5,-73.54,41.05,{metro:'Stamford',minZoom:6})];
  const picked=selectMajorStations(entries);
  assert.equal(picked[0].tier,3);assert.equal(picked[1].tier,7);assert.equal(picked[2].tier,3);assert.equal(picked[3].tier,3);assert.ok(picked[4].tier>picked[3].tier);
- for(let z=3;z<=6;z++){const visible=picked.filter(e=>e.tier<=z);for(let i=0;i<visible.length;i++)for(let j=0;j<i;j++)assert.ok(z===3?distanceKm(visible[i],visible[j])>=550:separationPixels(visible[i],visible[j],z)>=78);}
+ for(const {zoom:z,spacing} of MAJOR_STATION_DENSITY){const visible=picked.filter(e=>e.tier<=z);for(let i=0;i<visible.length;i++)for(let j=0;j<i;j++){if(z===3)assert.ok(distanceKm(visible[i],visible[j])>=550);else assert.ok(separationPixels(visible[i],visible[j],z)>=spacing);}}
 });
 test('spacing wraps the date line and stays finite at polar latitudes',()=>{
  assert.ok(distanceKm(entry(1,179.9,0),entry(2,-179.9,0))<23);
  assert.ok(separationPixels(entry(1,179.9,0),entry(2,-179.9,0),4)<5);
  assert.ok(Number.isFinite(separationPixels(entry(1,0,89.9),entry(2,90,89.9),4)));
  assert.equal(selectMajorStations([entry(1,179.9,0),entry(2,-179.9,0)])[1].tier,7);
+});
+test('overview density admits closer stations at each zoom without removing earlier hubs',async()=>{
+ const adjacent=selectMajorStations([entry(1,0,0),entry(2,64*360/(512*2**6),0,{minZoom:6})]);
+ assert.equal(adjacent[1].tier,6,'64 px is accepted at zoom 6 instead of the old 78 px threshold');
+ const regional=selectMajorStations([entry(1,0,0),entry(2,72*360/(512*2**4),0,{minZoom:4})]);
+ assert.equal(regional[1].tier,5,'72 px is too close at zoom 4 but can enter zoom 5');
+ const entries=JSON.parse(await readFile(new URL('../styles/data-src/major-stations.json',import.meta.url))),picked=selectMajorStations(entries);
+ let previous=0;
+ for(const {zoom:z,spacing,padding} of MAJOR_STATION_DENSITY){
+  const visible=picked.filter(e=>e.tier<=z);assert.ok(visible.length>previous,`more curated candidates at zoom ${z}`);previous=visible.length;
+  for(let i=0;i<visible.length;i++)for(let j=0;j<i;j++)assert.ok(z===3?distanceKm(visible[i],visible[j])>=550:separationPixels(visible[i],visible[j],z)>=spacing);
+  if(z>4){const prior=MAJOR_STATION_DENSITY[z-4];assert.ok(spacing<prior.spacing&&padding<prior.padding);}
+ }
 });
 test('GeoJSON retains OSM identity and recorded names for regional language helpers',()=>{
  const e=entry(1,139,35,{name:'東京','name:en':'Tokyo','name:ja':'東京','name:zh-Hant':'東京'}),data=majorStationsGeoJSON([e]),f=data.features[0];
@@ -40,4 +54,25 @@ test('station country evidence rejects homonymous foreign stations and keeps Lag
  const entries=JSON.parse(await readFile(new URL('../styles/data-src/major-stations.json',import.meta.url)));validateStationCountries(entries);
  const lagos=entries.find(e=>e.metro==='Lagos');assert.equal(lagos.osm,'node/12260658320');assert.equal(lagos.country,'NG');assert.ok(lagos.lon>3&&lagos.lon<4&&lagos.lat>6&&lagos.lat<7);
  assert.equal(entries.some(e=>e.wikidata==='Q17087683'||e.wikidata==='Q8780001'),false);assert.throws(()=>validateStationCountries([{name:'Lagos',country:'NG',countryEvidence:['PT']}]));
+});
+
+test('provider fill remains available across regional overview zooms beneath curated priorities',async()=>{
+ const style=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url)));
+ const fill=style.layers.filter(l=>l.source==='stationLow');assert.ok(fill.length);
+ for(const layer of fill){assert.equal(layer.minzoom,4);assert.equal(layer.maxzoom,7);assert.ok(style.layers.indexOf(layer)<style.layers.findIndex(l=>l.id==='station-major-6-names'));}
+ const baseline=JSON.parse(await readFile(new URL('./fixtures/stations-before-density.json',import.meta.url)));
+ const data=majorStationsGeoJSON(JSON.parse(await readFile(new URL('../styles/data-src/major-stations.json',import.meta.url))));
+ for(const f of data.features)if(baseline[f.id])assert.ok(f.properties.tier<=baseline[f.id],`${f.properties.name} must not be deferred`);
+ for(const id of Object.keys(baseline))assert.ok(data.features.some(f=>f.id===id),`${id} must retain overview coverage`);
+});
+
+test('provider duplicates remain eligible until their curated replacement enters',()=>{
+ const compiled=createExpression(curatedStationFilter([entry(1,0,0,{tier:3}),entry(2,10,0,{tier:6})]),{type:'boolean'});
+ assert.equal(compiled.result,'success');
+ const shown=(zoom,properties)=>compiled.value.evaluate({zoom},{type:1,properties});
+ assert.equal(shown(4,{id:'node-1-train-station'}),false);
+ assert.equal(shown(4,{id:'node-2-train-station'}),true);
+ assert.equal(shown(5,{wikidata:'Q2'}),true);
+ assert.equal(shown(6,{id:'node-2-train-station'}),false);
+ assert.equal(shown(6,{id:'node-3-train-station'}),true);
 });

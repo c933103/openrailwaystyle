@@ -83,7 +83,7 @@ test('regional stations have collision-aware markers and progressive size thresh
   const layers = style.layers.filter(l => l.id.startsWith('station-'));
   const shown = (zoom, properties) => layers.some(layer => visible(layer, zoom, {state:'present',feature:'station', ...properties}));
   assert.equal(shown(3.9, {station_size:'large'}),false);
-  assert.equal(shown(4, {station_size:'large'}),false,'provider fill starts at six');
+  assert.equal(shown(4, {station_size:'large'}),true,'provider fill starts at four beneath priority hubs');
   assert.equal(shown(3, {station_size:'large',tier:3,rank:1}),true,'curated principal hubs start at three');
   assert.equal(shown(5.9, {station_size:'normal'}),false);
   assert.equal(shown(6, {station_size:'normal'}),true);
@@ -932,7 +932,8 @@ test('search: only stations the layers draw at the zoom are matched', async () =
   assert.equal(drawn(10.5, 'stations', halt), false, 'halts from zoom 11');
   assert.equal(drawn(11.2, 'stations', halt), true);
   assert.equal(drawn(9, 'stations', station), true);
-  assert.deepEqual(drawnStationQueries(style.layers, 5).map(q => q.source), ['stationMajor'], 'curated stations alone below zoom 6');
+  assert.deepEqual(drawnStationQueries(style.layers, 3.5).map(q => q.source), ['stationMajor'], 'curated stations alone at zoom 3');
+  assert.deepEqual(drawnStationQueries(style.layers, 5).map(q => q.source), ['stationLow', 'stationMajor'], 'provider stations fill beneath the curated ones from zoom 4');
   const hidden = style.layers.map(l => /^station-.*-names$/.test(l.id) ? {...l, layout: {...l.layout, visibility: 'none'}} : l);
   assert.deepEqual(drawnStationQueries(hidden, 9), []);
 });
