@@ -460,8 +460,11 @@ function outliers(data, size, z) {
     // lowest tenth) within half the pit's depth of each other. Not the foot
     // of a cliff or the floor of a gorge, whose sides each zoom places a
     // little differently.
+    // Nor in water (ground at or below sea level round it, or the pit at
+    // sea level itself): a finer tile may hold no seabed there and read
+    // 0 m, as over fjords and lagoons, or place the shore differently.
     const ground = far[far.length >> 1], spread = far[Math.floor(far.length * 0.9)] - far[Math.floor(far.length * 0.1)];
-    if (below && ground - v > limit / 4 && spread <= (ground - v) / 2) found.push([px, py, v, ground]);
+    if (ground >= 1 && Math.abs(v) >= 1 && ground - v > limit / 4 && spread <= (ground - v) / 2) found.push([px, py, v, ground]);
   }
   return found;
 }
@@ -505,11 +508,8 @@ export function repairFromWitness(data, size, z, x, y, witness) {
       // The finer tile must hold the ground round the pit there, every
       // pixel of it within half the pit's depth: not a pit of its own, nor a
       // cliff or reef it places a little further off.
-      // Nor in water (ground at or below sea level round it, or the pit at
-      // sea level itself): a finer tile may hold no seabed there and read
-      // 0 m, as over fjords and lagoons, or place the shore differently.
       const half = (ground - v) / 2;
-      if (ground < 1 || Math.abs(v) < 1 || heights.some(u => Math.abs(u - ground) > half)) continue;
+      if (heights.some(u => Math.abs(u - ground) > half)) continue;
       const value = witnessOf(z) > z ? heights.reduce((a, b) => a + b, 0) / heights.length : heights[4];
       data.set(encodeTerrarium(value), 4 * (py * size + px));
       changedAt.add(py * size + px); changed++;

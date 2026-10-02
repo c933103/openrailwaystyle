@@ -191,8 +191,10 @@ test('terrain repair: a pit the finer zoom does not have takes its heights; one 
   assert.deepEqual(real, copy);
   // No finer tile to ask (it could not load): nothing changes.
   assert.equal(repairFromWitness(real, 256, 12, 3347, 1786, () => null), 0);
-  // Sound ground needs no finer tile at all.
+  // Sound ground needs no finer tile at all, nor does a low point of the
+  // seabed (a finer tile may hold no seabed there).
   assert.deepEqual(witnessTiles(tile(flats), 256, 12, 3347, 1786).tiles, []);
+  assert.deepEqual(witnessTiles(tile((x, y) => (x === 100 && y === 100) ? -150 : -100), 256, 14, 13388, 7145).tiles, []);
 });
 test('terrain repair: at the finest zoom the next coarser one is asked', () => {
   const faulty = tile((x, y) => (x === 100 && y === 100) ? -561 : 10);
