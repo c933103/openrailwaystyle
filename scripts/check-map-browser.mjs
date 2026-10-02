@@ -426,7 +426,22 @@ try{
     },'The South Pole cap must load its index, relief and contour tiles on the globe');
     console.log('PASS: polar cap drawn beyond 85° on the globe');
   } else console.log('SKIP: no polar cap data in this snapshot');
-  // Compact screens must keep the scale ruler on-screen. It sits above the\n  // coordinate readout, and the bottom-left control stack respects display\n  // safe-area insets instead of being hidden on phones.\n  await page.setViewportSize({width:412,height:915});\n  await page.waitForTimeout(150);\n  const compactControls=await page.evaluate(()=>{\n    const box=el=>{const r=el.getBoundingClientRect();return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height};};\n    const scale=document.querySelector('.maplibregl-ctrl-scale'),readout=document.querySelector('.map-readout');\n    return {display:getComputedStyle(scale).display,scale:box(scale),readout:readout.hidden?null:box(readout),viewport:{width:innerWidth,height:innerHeight}};\n  });\n  assert.notEqual(compactControls.display,'none','The scale ruler stays visible on compact screens');\n  assert.ok(compactControls.scale.left>=0 && compactControls.scale.top>=0 && compactControls.scale.right<=compactControls.viewport.width && compactControls.scale.bottom<=compactControls.viewport.height,'The compact scale ruler stays inside the visible viewport');\n  if(compactControls.readout) assert.ok(compactControls.scale.bottom<=compactControls.readout.top+1,'The scale ruler sits above the coordinate readout instead of being covered by it');\n  console.log('PASS: compact-screen scale ruler stays visible and above the bottom readout');\n  await page.setViewportSize({width:1365,height:900});\n  assert.deepEqual(errors,[]);
+  // Compact screens must keep the scale ruler on-screen. It sits above the
+  // coordinate readout, and the bottom-left control stack respects display
+  // safe-area insets instead of being hidden on phones.
+  await page.setViewportSize({width:412,height:915});
+  await page.waitForTimeout(150);
+  const compactControls=await page.evaluate(()=>{
+    const box=el=>{const r=el.getBoundingClientRect();return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height};};
+    const scale=document.querySelector('.maplibregl-ctrl-scale'),readout=document.querySelector('.map-readout');
+    return {display:getComputedStyle(scale).display,scale:box(scale),readout:readout.hidden?null:box(readout),viewport:{width:innerWidth,height:innerHeight}};
+  });
+  assert.notEqual(compactControls.display,'none','The scale ruler stays visible on compact screens');
+  assert.ok(compactControls.scale.left>=0 && compactControls.scale.top>=0 && compactControls.scale.right<=compactControls.viewport.width && compactControls.scale.bottom<=compactControls.viewport.height,'The compact scale ruler stays inside the visible viewport');
+  if(compactControls.readout) assert.ok(compactControls.scale.bottom<=compactControls.readout.top+1,'The scale ruler sits above the coordinate readout instead of being covered by it');
+  console.log('PASS: compact-screen scale ruler stays visible and above the bottom readout');
+  await page.setViewportSize({width:1365,height:900});
+  assert.deepEqual(errors,[]);
   console.log('PASS: one shared language, name fallbacks, contours, structures and lifecycle controls; no JavaScript exceptions');
 } catch(error) {
   console.log('Failure diagnostics',await page.evaluate(async()=>{
