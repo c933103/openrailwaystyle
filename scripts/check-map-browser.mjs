@@ -96,6 +96,24 @@ try{
   console.log(`PASS: About opened while loading (map ready at click: ${earlyReady})`);
   await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:120000});
   await page.waitForFunction(()=>+document.querySelector('#map-status').dataset.renderedTracks>0,undefined,{timeout:120000});
+  // The bottom-right info/attribution control starts closed on a first visit,
+  // records manual open/close state in the settings cookie, and restores that
+  // state when the compact control is recreated.
+  const attributionState=()=>page.locator('.maplibregl-ctrl-attrib').evaluate(el=>({compact:el.classList.contains('maplibregl-compact'),open:el.classList.contains('maplibregl-compact-show')}));
+  assert.deepEqual(await attributionState(),{compact:true,open:false},'Attribution info starts compact and closed');
+  await page.locator('.maplibregl-ctrl-attrib-button').click();
+  assert.equal((await attributionState()).open,true,'The info button opens attribution');
+  let settingsCookie=(await page.context().cookies()).find(c=>c.name==='atlas_settings');
+  assert.equal(JSON.parse(decodeURIComponent(settingsCookie.value)).attributionOpen,true,'Open attribution is remembered in the settings cookie');
+  await page.locator('[data-background="carto"]').click();
+  assert.equal((await attributionState()).compact,false,'Carto keeps its full attribution');
+  await page.locator('[data-background="map"]').click();
+  assert.deepEqual(await attributionState(),{compact:true,open:true},'Remembered attribution state survives control recreation');
+  await page.locator('.maplibregl-ctrl-attrib-button').click();
+  assert.equal((await attributionState()).open,false,'The info button closes attribution');
+  settingsCookie=(await page.context().cookies()).find(c=>c.name==='atlas_settings');
+  assert.equal(JSON.parse(decodeURIComponent(settingsCookie.value)).attributionOpen,false,'Closed attribution is remembered in the settings cookie');
+  console.log('PASS: attribution info starts closed and remembers open/closed state');
   // Pan northwest at the SAME zoom before any visit to zoom 8.
   await moveTo(7,128.1,35.65);
   await page.waitForFunction(async()=>{
