@@ -74,3 +74,5 @@ The **Carto** background shows OpenStreetMap Standard beneath the railways. Rail
 On phones and short landscape screens, the controls start as a floating app icon. Tap it to open the menu; the collapse button or Escape returns it to the icon.
 
 See [Axle load](axle-load.md) for the new view, national class distinctions, source references and the 28-day snapshot refresh.
+
+The Axle load button follows Service and Owner. Metric keeps mapped tonnes or kilograms; Imperial keeps mapped US short tons or pounds. A converted value is added only when the mapped unit belongs to the other system.

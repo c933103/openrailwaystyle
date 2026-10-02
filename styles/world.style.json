@@ -24414,26 +24414,69 @@
             0
           ],
           [
-            "concat",
+            "case",
+            [
+              "==",
+              [
+                "get",
+                "axle_units"
+              ],
+              "metric"
+            ],
             [
               "to-string",
               [
-                "/",
+                "coalesce",
                 [
-                  "round",
-                  [
-                    "*",
-                    [
-                      "get",
-                      "axle_tonnes"
-                    ],
-                    100
-                  ]
+                  "get",
+                  "axle_native"
                 ],
-                100
+                [
+                  "concat",
+                  [
+                    "to-string",
+                    [
+                      "/",
+                      [
+                        "round",
+                        [
+                          "*",
+                          [
+                            "get",
+                            "axle_tonnes"
+                          ],
+                          100
+                        ]
+                      ],
+                      100
+                    ]
+                  ],
+                  " t"
+                ]
               ]
             ],
-            " t"
+            [
+              "concat",
+              [
+                "to-string",
+                [
+                  "/",
+                  [
+                    "round",
+                    [
+                      "*",
+                      [
+                        "get",
+                        "axle_tonnes"
+                      ],
+                      100
+                    ]
+                  ],
+                  100
+                ]
+              ],
+              " t"
+            ]
           ],
           ""
         ],
