@@ -102,3 +102,5 @@ button.brand-mark:focus-visible{outline:3px solid #d58d13;outline-offset:3px}
   .panel.collapsed .brand-mark{width:48px;height:48px;min-width:48px;min-height:48px;margin:0;border-radius:11px;box-shadow:0 3px 12px #173e4759}
   .panel.collapsed .brand-mark svg{display:block;width:48px;height:48px}
 }
+
+.maplibregl-ctrl-attrib .atlas-build { display: block; }

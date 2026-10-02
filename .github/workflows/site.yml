@@ -141,6 +141,8 @@ jobs:
         run: node scripts/check-major-stations-browser.mjs
       - name: Verify platform length labels and main Units selector
         run: node scripts/check-platform-browser.mjs
+      - name: Verify served build information on desktop and touch
+        run: node scripts/check-build-browser.mjs
       - name: Save browser review
         if: always()
         uses: actions/upload-artifact@v4
@@ -225,4 +227,3 @@ jobs:
         with:
           name: published-map-review
           path: browser-review
-
