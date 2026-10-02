@@ -2,8 +2,9 @@
 // tiles the relief shading already uses (Mapzen Terrarium PNGs: height =
 // R × 256 + G + B / 256 − 32768 metres, seabed included). Zoom-14 tiles
 // (about 9.5 m a pixel at the equator) are finer than most of the source data.
-// Their bad pixels are repaired as for the map (dem-repair.mjs).
-import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels} from './dem-repair.mjs?v=20261002-78';
+// Their bad pixels are repaired as for the map (dem-repair.mjs), the finer
+// zoom included.
+import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261002-79';
 export const ELEVATION_ZOOM = 14;
 const TILE = 256, CACHE = 64;
 
@@ -60,6 +61,11 @@ export function createElevation(url, {zoom = ELEVATION_ZOOM, load = loadPixels} 
       const coarser = referenceTile(zoom, x, y), ref = zoom >= REFERENCE_FROM ? await fetchTile(coarser.z, coarser.x, coarser.y) : null;
       const data = Uint8ClampedArray.from(pixels.data);
       repairPixels(data, pixels.size, zoom, x, y, ref?.data, ref?.size);
+      const witness = witnessTiles(data, pixels.size, zoom, x, y);
+      if (witness.tiles.length) {
+        const found = new Map(await Promise.all(witness.tiles.map(async ([tx, ty]) => [`${tx}/${ty}`, await fetchTile(witness.z, tx, ty)])));
+        repairFromWitness(data, pixels.size, zoom, x, y, (tx, ty) => { const p = found.get(`${tx}/${ty}`); return p?.size === pixels.size ? p.data : null; });
+      }
       return {data, size: pixels.size};
     })();
     repaired.set(key, promise);
