@@ -12,7 +12,8 @@ await mkdir('browser-review',{recursive:true});
 try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  const context=await browser.newContext({viewport:{width,height},hasTouch:kind==='mobile',deviceScaleFactor:kind==='mobile'?2.625:1,serviceWorkers:'block'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  const pendingRequests=new Set();
- context.on('request',r=>pendingRequests.add(r));
+ // Terminated count workers can leave a startup request without an end event.
+ context.on('request',r=>{if(!/\/vendor\/track-worker\.js(?:\?|$)/.test(r.url()))pendingRequests.add(r);});
  context.on('requestfinished',r=>pendingRequests.delete(r));
  context.on('requestfailed',r=>pendingRequests.delete(r));
  // Both maps receive identical provider bytes, including the underzoomed
