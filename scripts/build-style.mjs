@@ -1,4 +1,4 @@
-import {validateStationCountries,majorStationsGeoJSON,curatedStationFilter} from './major-stations.mjs';
+import {MAJOR_STATION_DENSITY,validateStationCountries,majorStationsGeoJSON,selectMajorStations,curatedStationFilter} from './major-stations.mjs';
 import { readFile, writeFile } from 'node:fs/promises';
 import {roadLayers, constraintLayers} from './planning-style.mjs';
 import {contextLayers} from './context-style.mjs';
@@ -8,6 +8,7 @@ import { CARTO_TILES, ORM, axlePaint, axleLabel, LIGHT_MODES, MINOR_MODES, LIFEC
 const majorStations=JSON.parse(await readFile(new URL('../styles/data-src/major-stations.json',import.meta.url)));
 validateStationCountries(majorStations);
 const majorStationData=majorStationsGeoJSON(majorStations);
+const curatedFilter=curatedStationFilter(selectMajorStations(majorStations).filter(e=>e.tier<=6));
 await writeFile(new URL('../styles/major-stations.geojson',import.meta.url),JSON.stringify(majorStationData)+'\n');
 // Keep the Hack4Rail base-map design and replace its Europe-only rail source.
 const original = JSON.parse(await readFile(new URL('../styles/default.style.json', import.meta.url)));
@@ -377,23 +378,23 @@ const tiers = [ // bottom to top
   ['large', ['all', heavy, isStation, ['==', size, 'large']]],
 ];
 for (const [tier, filter] of tiers) for (const [source, layer, minzoom, maxzoom] of [
-  ['stationLow', 'standard_railway_text_stations_low', 6, 7],
+  ['stationLow', 'standard_railway_text_stations_low', 4, 7],
   ['stationMed', 'standard_railway_text_stations_med', 6, 8],
   ['stations', 'standard_railway_text_stations', 8, 12],
 ]) {
   style.layers.push({
     id: `station-${source}-${tier}-names`, type: 'symbol', source, 'source-layer': layer, minzoom, maxzoom,
-    filter: ['all', filter,...(source==='stations'?[]:[source==='stationMed'?['any',['>=',['zoom'],7],curatedStationFilter(majorStations)]:curatedStationFilter(majorStations)]), ...(source === 'stations' ? [stationSelection, stationFeatures] : source === 'stationMed' ? [zoom6Small] : [stationSelection])],
+    filter: ['all', filter,...(source==='stations'?[]:[source==='stationMed'?['any',['>=',['zoom'],7],curatedFilter]:curatedFilter]), ...(source === 'stations' ? [stationSelection, stationFeatures] : source === 'stationMed' ? [zoom6Small] : [stationSelection])],
     layout: { ...stationText, 'icon-image': 'station-dot', 'icon-size': ['interpolate', ['linear'], ['zoom'], 4, 0.8, 6, 0.95, 11, bySize(1.25, 1.15, 1.05, 0.9, 0.8)],
       'icon-padding': 12, 'icon-allow-overlap': false, 'icon-ignore-placement': false, 'icon-optional': false, 'text-optional': false },
     paint: stationInk,
   });
 }
-// Curated tiers lie above provider fill at zoom 6; principal hubs place first.
+// Curated tiers lie above provider fill at zooms 4–6; principal hubs place first.
 for(const tier of [6,5,4,3])style.layers.push({
  id:`station-major-${tier}-names`,type:'symbol',source:'stationMajor',minzoom:tier,maxzoom:7,
  filter:['==',['get','tier'],tier],
- layout:{...stationText,'symbol-sort-key':['get','rank'],'icon-image':'station-dot','icon-size':.85,'icon-padding':12,'icon-allow-overlap':false,'icon-ignore-placement':false,'icon-optional':false,'text-optional':false},paint:stationInk,
+ layout:{...stationText,'text-padding':['step',['zoom'],MAJOR_STATION_DENSITY[0].padding,...MAJOR_STATION_DENSITY.slice(1).flatMap(({zoom,padding})=>[zoom,padding])],'symbol-sort-key':['get','rank'],'icon-image':'station-dot','icon-size':.85,'icon-padding':12,'icon-allow-overlap':false,'icon-ignore-placement':false,'icon-optional':false,'text-optional':false},paint:stationInk,
 });
 style.layers.push({id:'platform-edges',type:'line',source:'platformEdges','source-layer':'standard_railway_platform_edges',minzoom:19,paint:{'line-color':'#527987','line-width':1.5}});
 style.layers.push({id:'platform-lengths',type:'symbol',source:'platformLengths',minzoom:19,layout:{'text-field':['concat',['to-string',['round',['get','platform_length']]],' m'],'text-font':['Noto Sans Bold'],'text-size':11,'text-padding':10,'text-allow-overlap':false},paint:{'text-color':'#214b5b','text-halo-color':'#fffef8','text-halo-width':2}});
