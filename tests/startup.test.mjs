@@ -8,6 +8,7 @@ import * as draw from '../styles/draw.mjs';
 import * as departuresModule from '../styles/departures.mjs';
 import * as elevationModule from '../styles/elevation.mjs';
 import * as contextFeatures from '../styles/context.mjs';
+import * as layerSemantics from '../styles/layer-semantics.mjs';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
 const appURL = new URL('../styles/app.mjs', import.meta.url);
@@ -111,7 +112,10 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const contextModule = new vm.SyntheticModule(Object.keys(contextFeatures),function() {
     for (const [key,value] of Object.entries(contextFeatures)) this.setExport(key,value);
   },{context});
-  await app.link(specifier => specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  const semantics = new vm.SyntheticModule(Object.keys(layerSemantics), function() {
+    for (const [key,value] of Object.entries(layerSemantics)) this.setExport(key,value);
+  }, {context});
+  await app.link(specifier => specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries,loadLabels};
@@ -440,7 +444,7 @@ test('every versioned file the page loads asks for the page version', async () =
   const found = [];
   // data-check.html is a page of its own, with its own version.
   for (const name of (await readdir(dir)).filter(n => /\.(mjs|html)$/.test(n) && !n.startsWith('data-check'))) {
-    for (const [, version] of (await readFile(new URL(name, dir), 'utf8')).matchAll(/\?v=(\d{8}-\d+)/g)) if (version !== page) found.push(`${name}: ${version}`);
+    for (const [, version] of (await readFile(new URL(name, dir), 'utf8')).matchAll(/\?v=([\w.-]+)/g)) if (version !== page) found.push(`${name}: ${version}`);
   }
   const fallback = (await readFile(new URL('app.mjs', dir), 'utf8')).match(/get\('v'\) \|\| '([\w.-]+)'/)[1];
   assert.deepEqual(found, [], `page version ${page}`);

@@ -66,6 +66,41 @@ test('platform reference and length requests share one queue and cancel when the
  try{p.update();await new Promise(r=>setTimeout(r,10));assert.equal(requests,1);p.update();assert.equal(requests,1);enabled=false;p.update();await new Promise(r=>setTimeout(r,10));assert.equal(requests,1);}finally{p.destroy();}
 });
 
+for(const interruption of ['pan','zoom'])test(`an edge reappearing before its ${interruption} abort settles is immediately requeued`,async t=>{
+ t.mock.timers.enable({apis:['setTimeout','Date'],now:1000});
+ let zoom=19,visible=true,requests=0,rejectCancelled,firstSignal,data;const lengths=[];
+ const map={getZoom:()=>zoom,getLayer:()=>undefined,queryRenderedFeatures:()=>visible?[edge()]:[],getSource:id=>id==='platformLengths'?{setData:d=>data=d}:null};
+ const p=createPlatformLengths(map,{delay:0,retryDelay:30000,onLength:(id,length)=>lengths.push([id,length]),fetcher:(url,{signal})=>{
+  requests++;if(requests===1){firstSignal=signal;return new Promise((resolve,reject)=>{rejectCancelled=()=>reject(signal.reason);});}
+  return {ok:true,json:async()=>({properties:{length:350}})};
+ }});
+ try{
+  p.update();t.mock.timers.tick(1);assert.equal(requests,1);
+  if(interruption==='pan')visible=false;else zoom=18;
+  p.update();assert.equal(firstSignal.aborted,true);
+  visible=true;zoom=19;p.update();assert.equal(requests,1,'old request still occupies the single request slot');
+  rejectCancelled();await new Promise(resolve=>setImmediate(resolve));
+  t.mock.timers.tick(1);await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(requests,2,'intentional cancellation must not impose failure backoff or lose the reappeared key');
+  assert.equal(data.features[0].properties.platform_length,350);assert.deepEqual(lengths,[['1',350]]);
+ }finally{p.destroy();}
+});
+
+test('request timeouts retain failure backoff before retrying a still-visible edge',async t=>{
+ t.mock.timers.enable({apis:['setTimeout','Date'],now:1000});
+ let requests=0,firstSignal,data;const map={getZoom:()=>19,getLayer:()=>undefined,queryRenderedFeatures:()=>[edge()],getSource:id=>id==='platformLengths'?{setData:d=>data=d}:null};
+ const p=createPlatformLengths(map,{delay:0,retryDelay:10000,fetcher:(url,{signal})=>{
+  requests++;if(requests===1){firstSignal=signal;return new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}));}
+  return {ok:true,json:async()=>({properties:{length:350}})};
+ }});
+ try{
+  p.update();t.mock.timers.tick(1);assert.equal(requests,1);
+  t.mock.timers.tick(5000);await new Promise(resolve=>setImmediate(resolve));assert.equal(firstSignal.aborted,true);
+  t.mock.timers.tick(9999);await new Promise(resolve=>setImmediate(resolve));assert.equal(requests,1,'timeout must retain retryDelay');
+  t.mock.timers.tick(2);await new Promise(resolve=>setImmediate(resolve));assert.equal(requests,2);assert.equal(data.features[0].properties.platform_length,350);
+ }finally{p.destroy();}
+});
+
 test('zooming below the length threshold cancels only the length request without delaying platform references',async()=>{
  let zoom=19,requests=0;
  const platform={properties:{id:'node-23'},geometry:{type:'Point',coordinates:[0,0]}};

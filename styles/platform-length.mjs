@@ -2,6 +2,7 @@
 // API. Tile geometry is clipped and cannot supply that length reliably.
 export const PLATFORM_SOURCE='standard_railway_platform_edges';
 export const PLATFORM_API='https://openrailwaymap.app/api/feature/openrailwaymap_standard/'+PLATFORM_SOURCE+'/';
+const OBSOLETE_REQUEST=Symbol('obsolete platform request');
 export function formatPlatformLength(metres,units='metric') {if(!(metres>0&&Number.isFinite(metres)))return '';return `${Math.round(units==='imperial'?metres/0.3048:metres)} ${units==='imperial'?'ft':'m'}`;}
 export function platformLengthLabel(units='metric') {
  const length=['concat',['to-string',['round',['*',['get','platform_length'],units==='imperial'?1/0.3048:1]]],units==='imperial'?' ft':' m'];
@@ -26,7 +27,7 @@ export function platformAnchor(feature){
 // request queue. Platform tiles contain name/id but deliberately omit ref;
 // edge tiles contain ref and can therefore label it before any API response.
 export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1100,maxEntries=512,cooldown=600000,retryDelay=30000,onLength=()=>{},onPlatform=()=>{}}={}){
- const cache=new Map(),pending=new Map(),drawn=new Map();let desired=new Map(),timer,wakeTimer,busy=false,disposed=false,controller,inflight,cancelled=false;let pausedUntil=0;
+ const cache=new Map(),pending=new Map(),drawn=new Map();let desired=new Map(),timer,wakeTimer,busy=false,disposed=false,controller,inflight;let pausedUntil=0;
  const remember=(key,properties)=>{cache.delete(key);cache.set(key,properties);while(cache.size>maxEntries)cache.delete(cache.keys().next().value);};
  const pause=duration=>{pausedUntil=Date.now()+duration;clearTimeout(wakeTimer);wakeTimer=setTimeout(()=>{wakeTimer=undefined;pausedUntil=0;update();},duration);};
  const draw=()=>{
@@ -51,10 +52,10 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
  };
  async function next(){
   if(busy||disposed||Date.now()<pausedUntil)return;const entry=pending.entries().next().value;if(!entry)return;
-  const [key,url]=entry,requested=desired.get(key);pending.delete(key);if(!requested){schedule();return;}busy=true;inflight=key;cancelled=false;controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),5000);
+  const [key,url]=entry,requested=desired.get(key);pending.delete(key);if(!requested){schedule();return;}busy=true;inflight=key;const requestController=new AbortController();controller=requestController;
+  const timeout=setTimeout(()=>requestController.abort(),5000);
   try {
-   const r=await fetcher(url,{signal:controller.signal});if(r.status===429){pause(cooldown);pending.clear();return;}
+   const r=await fetcher(url,{signal:requestController.signal});if(r.status===429){pause(cooldown);pending.clear();return;}
    if(r.status===404||r.status===410){remember(key,{});draw();return;}
    if(!r.ok)throw new Error(`HTTP ${r.status}`);
    const data=await r.json(),entry=requested;if(disposed)return;
@@ -63,14 +64,13 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
    remember(key,properties);draw();
    if(entry.kind==='edge')onLength(entry.id,properties.length);else onPlatform(entry.id,properties);
   }
-  catch(error){if(!cancelled&&desired.get(key)?.url&&!disposed)pause(retryDelay);}
-  finally{
-   clearTimeout(timeout);busy=false;inflight=undefined;
-   // A quick hide/show can restore this object before its aborted fetch
-   // settles. Resume it without treating a view cancellation as a failure.
-   if(cancelled&&!disposed&&desired.get(key)?.url&&!cache.has(key))pending.set(key,desired.get(key).url);
-   schedule();
-  }
+  // A pan, view change or temporary zoom reduction can hide and then reveal
+  // this same key before its abort rejection settles. That cancellation is
+  // not a provider failure; genuine failures and request timeouts still pause.
+  catch(error){if(requestController.signal.reason!==OBSOLETE_REQUEST&&desired.get(key)?.url&&!disposed)pause(retryDelay);}
+  // A reappearing key was skipped while it was inflight. Refresh desired and
+  // pending entries after releasing it so it can be requested without a move.
+  finally{clearTimeout(timeout);busy=false;inflight=undefined;controller=undefined;update();}
  }
  function schedule(){if(timer||busy||disposed||!pending.size||Date.now()<pausedUntil)return;timer=setTimeout(()=>{timer=undefined;next();},delay);}
  function update(){
@@ -88,10 +88,10 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
   }
   for(const key of pending.keys())if(!desired.get(key)?.url)pending.delete(key);
   for(const [key,entry] of desired)if(entry.url&&!cache.has(key)&&!pending.has(key)&&key!==inflight&&Date.now()>=pausedUntil)pending.set(key,entry.url);
-  if(inflight&&!desired.get(inflight)?.url){cancelled=true;controller?.abort();}
+  if(inflight&&!desired.get(inflight)?.url)controller?.abort(OBSOLETE_REQUEST);
   draw();schedule();
  }
- function destroy(){disposed=true;clearTimeout(timer);clearTimeout(wakeTimer);controller?.abort();pending.clear();}
+ function destroy(){disposed=true;clearTimeout(timer);clearTimeout(wakeTimer);controller?.abort(OBSOLETE_REQUEST);pending.clear();}
  function enrich(feature){
   const p=feature.properties||{},object=feature.source==='platforms'?platformObjectIdentity(feature):null,id=object?.key||platformIdentity(feature);if(!id)return feature;
   const values=cache.get((object?'platform/':'edge/')+id)||{},length=Number(values.length);
