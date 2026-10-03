@@ -1,3 +1,5 @@
+<p><img src="styles/atlas-icon.svg" width="72" height="72" alt="Railway Atlas icon"></p>
+
 # Railway Atlas
 
 A worldwide railway map built with MapLibre and OpenStreetMap data, with railway
@@ -33,6 +35,7 @@ data, validation and GitHub Pages deployment. Start with the
 | Understand symbols, zoom levels and data limits | [Rendering reference](docs/rendering.md) |
 | Understand language selection and regional fallback rules | [Label languages](docs/labels.md) |
 | Build, test or deploy the site | [Development guide](docs/development.md) |
+| Maintain the app name, icons or installed-app metadata | [Branding and app identity](docs/branding.md) |
 | Maintain snapshots or check sources and attribution | [Data maintenance](docs/data-maintenance.md) |
 | Explore the original Hack4Rail project and examples | [Upstream history](docs/upstream.md) |
 
