@@ -1,0 +1,126 @@
+name: Isolated PR 73 integration repair
+on:
+  push:
+    branches: [repair/pr73-integration-20261003]
+permissions:
+  contents: write
+concurrency:
+  group: isolated-pr73-repair
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 200
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Integrate current main without losing either side
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch --no-tags --depth=250 origin main:refs/remotes/origin/main
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess, re, tempfile
+          def git(*args, check=True):
+              return subprocess.run(['git',*args], check=check, text=True, capture_output=True)
+          base=git('merge-base','HEAD','origin/main').stdout.strip()
+          print('INTEGRATION_BASE',base,'MAIN',git('rev-parse','origin/main').stdout.strip(),flush=True)
+          result=git('merge','--no-ff','--no-commit','origin/main',check=False)
+          print(result.stdout, result.stderr, flush=True)
+          conflicts=git('diff','--name-only','--diff-filter=U').stdout.splitlines()
+          print('CONFLICTS',conflicts,flush=True)
+          version='20261003-104700'
+          generated={'styles/world.style.json','styles/major-stations.geojson'}
+          for path in conflicts:
+              if path in generated:
+                  git('checkout','--ours','--',path);git('add','--',path);continue
+              if path=='scripts/build-style.mjs':
+                  Path(path).write_text(git('show','origin/main:'+path).stdout)
+                  git('add','--',path);continue
+              with tempfile.TemporaryDirectory() as tmp:
+                  parts=[]
+                  for stage in [2,1,3]:
+                      p=Path(tmp)/str(stage)
+                      text=git('show',f':{stage}:{path}').stdout
+                      if (path.startswith('styles/') and not Path(path).name.startswith('data-check')) or path.startswith('scripts/check-'):
+                          text=re.sub(r'\b20\d{6}-\d+\b',version,text)
+                      p.write_text(text);parts.append(str(p))
+                  merged=git('merge-file','-p',*parts,check=False)
+                  if merged.returncode:
+                      lines=merged.stdout.splitlines();active=False
+                      for line in lines:
+                          if line.startswith('<<<<<<<'):active=True
+                          if active:print(path+': '+line,flush=True)
+                          if line.startswith('>>>>>>>'):active=False
+                      raise SystemExit('Unresolved semantic conflict: '+path)
+                  Path(path).write_text(merged.stdout)
+                  git('add','--',path)
+          # Keep main's new style composition; PR 73 leaves provider copies eligible.
+          build=Path('scripts/build-style.mjs')
+          text=build.read_text()
+          if "import {composeStyle}" not in text:raise SystemExit('Expected atlas-owned composition')
+          text=text.replace('validateStationCountries, majorStationsGeoJSON, selectMajorStations, curatedStationFilter','validateStationCountries, majorStationsGeoJSON')
+          text=re.sub(r'^const curatedFilter = curatedStationFilter\([^\n]+\);\n','',text,flags=re.M)
+          text=text.replace('composeStyle({majorStationData, curatedFilter})',"composeStyle({majorStationData, curatedFilter: ['literal', true]})")
+          build.write_text(text)
+          # All live shell imports must retain one version, not old-worker fixtures.
+          for root in ['styles','scripts']:
+              for p in Path(root).glob('*'):
+                  if not p.is_file() or p.suffix not in ['.mjs','.html']:continue
+                  if p.name.startswith('data-check'):continue
+                  if root=='scripts' and not p.name.startswith('check-'):continue
+                  text=p.read_text();updated=re.sub(r'\b20\d{6}-\d+\b',version,text)
+                  if updated!=text:p.write_text(updated)
+          app=Path('styles/app.mjs');text=app.read_text()
+          before='let majorStationData,majorStationsPromise,majorStationNamesPromise;'
+          after='let majorStationData,majorStationSearchData,majorStationsPromise,majorStationNamesPromise;'
+          if before not in text:raise SystemExit('Missing curated loader declaration')
+          text=text.replace(before,after,1)
+          before="source.setData({...data,features:data.features.map(f=>{const properties={...f.properties,...(names[majorStationObjectKey(f.properties)]||{})};return{...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language,atlas_name_source:'osm'}};})});majorStationLanguages.set(source,language);"
+          after="const hydrated={...data,features:data.features.map(f=>{const properties={...f.properties,...(names[majorStationObjectKey(f.properties)]||{})};return{...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language,atlas_name_source:'osm'}};})};majorStationSearchData=hydrated;source.setData(hydrated);majorStationLanguages.set(source,language);"
+          if before not in text:raise SystemExit('Missing curated hydration assignment')
+          text=text.replace(before,after,1)
+          before="source === 'stationMajor' ? (majorStationData?.features || [])"
+          after="source === 'stationMajor' ? (majorStationSearchData?.features || [])"
+          if before not in text:raise SystemExit('Missing local search data path')
+          text=text.replace(before,after,1)
+          before="if(!ready||language!==settings.language||source!==map.getSource('stationMajor')||majorStationLanguages.get(source)===language)return;"
+          after="if(!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3||map.getZoom()>=7||language!==settings.language||source!==map.getSource('stationMajor')||majorStationLanguages.get(source)===language)return;"
+          if before not in text:raise SystemExit('Missing asynchronous visibility guard')
+          text=text.replace(before,after,1)
+          app.write_text(text)
+          # Assert this integration has not restored name overrides or deleted new main features.
+          import json
+          source=json.loads(Path('styles/data-src/major-stations.json').read_text())
+          assert all(isinstance(e.get('name'),str) for e in source)
+          assert not any(k.startswith('name:') for e in source for k in e)
+          assert Path('scripts/style/compose-style.mjs').is_file()
+          assert Path('styles/layer-semantics.mjs').is_file()
+          assert not Path('styles/default.style.json').exists()
+          print('INTEGRATED_VERSION',version,flush=True)
+          PY
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Regenerate and validate
+        run: |
+          npm run build
+          npm test
+          node --check styles/app.mjs
+          git diff --check
+      - name: Save repaired tree only on the isolated branch
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/repair/pr73-integration-20261003
+          git add -u
+          git diff --cached --stat
+          git commit -m 'Integrate PR 73 with atlas-owned styles and restore hydrated station search'
+          git push origin HEAD:refs/heads/repair/pr73-integration-20261003
+          echo "REPAIRED_COMMIT=$(git rev-parse HEAD)"
+          echo "REPAIRED_TREE=$(git rev-parse HEAD^{tree})"
