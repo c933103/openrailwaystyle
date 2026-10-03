@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import {featureFilter} from '@maplibre/maplibre-gl-style-spec';
 import * as styleSpec from '@maplibre/maplibre-gl-style-spec';
 import { SPEED_BANDS, UNKNOWN_COLOR, numericSpeed, speedColor, formatSpeed, stationRank, readSettings, osmObject } from '../styles/map-model.mjs';
+import { CONTEXT_CATEGORIES, AREA_CATEGORIES } from '../styles/context.mjs';
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
 
 test('unknown speed is never turned into zero, low speed, or high-speed-class inference', () => {
@@ -65,6 +66,65 @@ test('more detail has three levels; older links and cookies hold true or 1 for t
   assert.equal(readSettings('?detail=yes').detail, 0);
   assert.equal(readSettings('?detail=9').detail, 2);
 });
+test('context layers cover every zoom continuously with global category/filter contracts', () => {
+  const byId = new Map(style.layers.filter(l=>l.id.startsWith('context-')).map(l=>[l.id,l]));
+  const visible = (layer, zoom, properties, type=1) =>
+    zoom >= (layer.minzoom ?? 0) && zoom < (layer.maxzoom ?? 24) &&
+    featureFilter(layer.filter).filter({zoom},{type,properties});
+  const zooms = [...new Set([
+    ...Array.from({length:45},(_,i)=>i/2),
+    ...CONTEXT_CATEGORIES.flatMap(c=>{
+      const z=c.id==='airport'?8:(c.zoom||12);
+      return [z-0.01,z,z+0.01];
+    }),
+    8-0.01,8,8.01,12-0.01,12,12.01,15-0.01,15,15.01,17-0.01,17,17.01,
+  ])].sort((a,b)=>a-b);
+
+  for(const category of CONTEXT_CATEGORIES){
+    const id=`context-${category.group}-${category.id}-label`, layer=byId.get(id);
+    assert.ok(layer,id);
+    const start=category.id==='airport'?8:(category.zoom||12);
+    assert.equal(layer.minzoom,start,`${id} starts at its category zoom`);
+    assert.equal(layer['source-layer'],category.id==='airport'?'aerodrome_label':'poi',`${id} uses the expected global basemap layer`);
+    const properties=category.id==='airport'
+      ? {class:'international',iata:'ZZZ'}
+      : category.values
+        ? {class:category.values[0],subclass:category.values[0]}
+        : {class:category.classes[0]};
+    for(const zoom of zooms) assert.equal(visible(layer,zoom,properties),zoom>=start,`${id} at zoom ${zoom}`);
+  }
+
+  const airport=byId.get('context-transport-airport-label');
+  for(const zoom of zooms){
+    assert.equal(visible(airport,zoom,{class:'regional',iata:''}),zoom>=12,`ordinary airport at zoom ${zoom}`);
+    assert.equal(visible(airport,zoom,{class:'military',iata:'MIL'}),false,`military airport excluded at zoom ${zoom}`);
+    assert.equal(visible(airport,zoom,{class:'private',iata:'PVT'}),false,`private airport excluded at zoom ${zoom}`);
+  }
+
+  for(const category of AREA_CATEGORIES){
+    const props={class:category.values[0]};
+    const area=byId.get(`context-destinations-${category.id}-area`);
+    const edge=byId.get(`context-destinations-${category.id}-edge`);
+    assert.ok(area&&edge,category.id);
+    for(const zoom of zooms){
+      assert.equal(visible(area,zoom,props,3),zoom>=10,`${area.id} at zoom ${zoom}`);
+      assert.equal(visible(edge,zoom,props,3),zoom>=12,`${edge.id} at zoom ${zoom}`);
+    }
+  }
+
+  const specials=[
+    ['context-transport-grounds',12,{class:'bus_station'},3],
+    ['context-transport-grounds-edge',12,{class:'railway'},3],
+    ['context-transport-airport-area',10,{class:'aerodrome'},3],
+    ['context-transport-airport-runways',10,{class:'runway'},2],
+    ['context-transport-ferry-routes',9,{class:'ferry'},2],
+  ];
+  for(const [id,start,properties,type] of specials){
+    const layer=byId.get(id);assert.ok(layer,id);
+    for(const zoom of zooms) assert.equal(visible(layer,zoom,properties,type),zoom>=start,`${id} at zoom ${zoom}`);
+  }
+});
+
 test('world map has no European rail source or geographic bounds', () => {
   assert.ok(!JSON.stringify(style).includes('europe-railway'));
   for (const source of Object.values(style.sources)) assert.equal(source.bounds, undefined);
