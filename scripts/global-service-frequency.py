@@ -209,9 +209,12 @@ class RemoteZip:
 
 def write_feed(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
-    data = (json.dumps(value, ensure_ascii=False, separators=(',', ':'))+'\n').encode()
     temporary = path.with_suffix('.tmp')
-    temporary.write_bytes(gzip.compress(data, compresslevel=9, mtime=0))
+    with temporary.open('wb') as raw:
+        with gzip.GzipFile(filename='', mode='wb', fileobj=raw, compresslevel=9, mtime=0) as compressed:
+            with io.TextIOWrapper(compressed, encoding='utf-8') as text:
+                json.dump(value, text, ensure_ascii=False, separators=(',', ':'))
+                text.write('\n')
     temporary.replace(path)
 
 
@@ -268,6 +271,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
             return {**entry, 'status': 'compiled', 'output': 'feeds/'+destination.name, 'sha256': digest,
                     'rail_routes': len(previous['routes']), 'mapped_segments': len(previous['segments']),
                     'unmapped_segments': len(previous.get('unmapped_segments', [])), 'source': previous['source']}
+        del previous  # stale national output must not coexist with recompilation.
     config = {'source': {'id': ident, 'name': entry['name'], 'url': row['source'],
                'processed_url': entry['processed_url'], 'catalogue_url': CATALOGUE,
                'license': row['spdx_license_identifier'],

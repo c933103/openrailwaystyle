@@ -42,6 +42,11 @@ trigger site assembly. PR runs create reviewable artifacts without publishing.
 The site uses the published worldwide snapshot; absent data remains unknown.
 The four earlier city datasets are now **test fixtures only**.
 
+National outputs can exceed JavaScript's single-string limit. The assembler
+streams and decodes their top-level array records, then compacts consecutive
+equal-profile edges before tile indexing. Python writes gzip JSON incrementally
+and releases stale cached outputs before recompilation.
+
 Coverage is not complete worldwide: a catalogue can omit operators, a feed can be
 expired/unlicensed/unavailable, and a geometry match can fail. The site's
 `data/service-frequency/inventory.json` records every outcome;

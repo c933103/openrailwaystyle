@@ -312,7 +312,9 @@ export function buildTiles({routes, ways}, {headways, timetable} = {}) {
     for(const feature of (minZoom===MIN_ZOOM?timetable?.overview:timetable?.local)||[]){
       const key=JSON.stringify(feature.properties);
       if(!groups.has(key))groups.set(key,{properties:feature.properties,lines:[]});
-      groups.get(key).lines.push(feature.geometry.coordinates);
+      if(feature.geometry.type==='LineString')groups.get(key).lines.push(feature.geometry.coordinates);
+      else if(feature.geometry.type==='MultiLineString')groups.get(key).lines.push(...feature.geometry.coordinates);
+      else throw new Error('Invalid timetable line geometry');
     }
     // Consecutive ways with the same route in the same place become one
     // line, long enough for its name.
