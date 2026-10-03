@@ -66,7 +66,7 @@ const style = {
     // OpenRailwayMap's z0–6 tiles hold main lines only.
     branchLines: {type:'vector',tiles:['branchtiles://{z}/{x}/{y}'],minzoom:4,maxzoom:9,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     // Urban rail services along their tracks (scripts/service-routes.mjs).
-    serviceRoutes: {type:'vector',tiles:['servicetiles://{z}/{x}/{y}'],minzoom:7,maxzoom:12,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
+    serviceRoutes: {type:'vector',tiles:['servicetiles://{z}/{x}/{y}'],minzoom:7,maxzoom:12,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a> · <a href="frequency-credits.html">Timetable sources</a>'},
     streetRunning: {type:'vector',tiles:['streettiles://{z}/{x}/{y}'],minzoom:12,maxzoom:12,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>'},
     contours: {type:'vector',tiles:['atlas-contour://{z}/{x}/{y}'],minzoom:7,maxzoom:15},
     // Seabed contours (see contourOptions in map-model.mjs). The elevation

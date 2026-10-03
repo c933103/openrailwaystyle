@@ -7,11 +7,26 @@
     "license": "CC-BY-4.0",
     "attribution": "© HSL 2026; timetable delivered 2026-10-02",
     "retrieved": "2026-10-03",
-    "note": "These are configured weekday reference windows, not claimed operator peak definitions. The current OSM service snapshot has no Helsinki routes, so no rates are attached to map lines yet."
+    "note": "Configured weekday reference windows in agency local time; derived scheduled frequencies on supplied rail shapes, not live service.",
+    "review_after_days": 30,
+    "region": "Europe"
   },
   "profiles": {
-    "am": {"start":"07:00:00","end":"09:00:00","definition":"Configured morning reference"},
-    "pm": {"start":"15:00:00","end":"18:00:00","definition":"Configured evening reference"},
-    "offpeak": {"start":"13:00:00","end":"14:00:00","definition":"Configured daytime reference"}
-  }
+    "am": {
+      "start": "07:00:00",
+      "end": "09:00:00",
+      "definition": "Configured morning reference"
+    },
+    "pm": {
+      "start": "15:00:00",
+      "end": "18:00:00",
+      "definition": "Configured evening reference"
+    },
+    "offpeak": {
+      "start": "13:00:00",
+      "end": "14:00:00",
+      "definition": "Configured daytime reference"
+    }
+  },
+  "max_stop_snap_metres": 200
 }

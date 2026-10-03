@@ -1,12 +1,12 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261003-frequency-2';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261003-frequency-2';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261003-frequency-2';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261003-frequency-3';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261003-frequency-3';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261003-frequency-3';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261003-frequency-2';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261003-frequency-2';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261003-frequency-2';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261003-frequency-2';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261003-frequency-2';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261003-frequency-3';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261003-frequency-3';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261003-frequency-3';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261003-frequency-3';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261003-frequency-3';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -40,7 +40,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths,frequencyExpiry;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261003-frequency-2';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261003-frequency-3';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -490,8 +490,8 @@ function showServiceDetails(feature) {
   row(dl, 'Network', p.network);
   row(dl, 'Operator', p.operator);
   for(const profile of ['am','pm','offpeak'])row(dl,FREQUENCY_LABELS[profile],frequencyDetails(p,profile)||'Frequency unavailable');
-  if(p.frequency_source){row(dl,'Frequency source',`${p.frequency_source} · checked ${p.frequency_checked}`);row(dl,'Period definitions',p.frequency_definition);}
-  if(p.frequency_url==='https://www.mtr.com.hk/en/customer/services/train_service_index.html'){const link=textNode('a','Published headways');link.href=p.frequency_url;link.target='_blank';link.rel='noopener';panel.append(link);}
+  if(p.frequency_source){row(dl,'Frequency source',`${p.frequency_source} · checked ${p.frequency_checked}`);row(dl,'Period definitions',p.frequency_definition);row(dl,'Source credit',p.frequency_credit);row(dl,'Licence',p.frequency_license);row(dl,'Schedule note',p.frequency_note);row(dl,'Geometry',p.geometry_source);}
+  if(/^https:\/\//.test(p.frequency_url||'')){const link=textNode('a','Timetable source and terms');link.href=p.frequency_url;link.target='_blank';link.rel='noopener';panel.append(link);}
   if (p.n > 1) row(dl, 'Services on this track', String(p.n));
   panel.append(dl);
   osmLink(panel, feature);
@@ -1492,7 +1492,7 @@ $('search-form').addEventListener('submit', async e => {
   } finally { clearTimeout(timeout); }
 });
 frequencyExpiry=installFrequencyExpiry({
-  active:()=>ready&&settings.mode==='service'&&settings.serviceWidth==='frequency',
+  active:()=>ready&&document.visibilityState!=='hidden'&&settings.mode==='service'&&settings.serviceWidth==='frequency',
   features:()=>map.querySourceFeatures('serviceRoutes',{sourceLayer:'service_routes'}),
   refresh:()=>{
     const p=serviceFrequencyPaint(settings);
@@ -1503,6 +1503,7 @@ frequencyExpiry=installFrequencyExpiry({
 });
 document.addEventListener('visibilitychange',()=>document.visibilityState==='visible'?frequencyExpiry.resume():frequencyExpiry.pause());
 addEventListener('pagehide',()=>frequencyExpiry.pause());
+addEventListener('pageshow',()=>frequencyExpiry.resume());
 applySettings();
 initialize().catch(error => {
   console.error(error);

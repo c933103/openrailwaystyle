@@ -30,6 +30,49 @@ class GTFSFrequency(unittest.TestCase):
                 text=io.StringIO();writer=csv.DictWriter(text,fieldnames=list(data[0]));writer.writeheader();writer.writerows(data);z.writestr(filename,text.getvalue())
         return path
 
+    def shape_feed(self, missing=False):
+        patterns={'t1':[('A','08:00:00'),('B','08:10:00'),('C','08:20:00')],
+                  't2':[('A','08:30:00'),('B','08:40:00'),('D','08:50:00')],
+                  't3':[('C','08:00:00'),('B','08:10:00'),('A','08:20:00')],
+                  't4':[('D','08:30:00'),('B','08:40:00'),('A','08:50:00')],
+                  'express':[('A','08:05:00'),('C','08:25:00')]}
+        path=self.feed(patterns,patterns)
+        with zipfile.ZipFile(path) as z: files={n:z.read(n) for n in z.namelist()}
+        def table(name,rows):
+            text=io.StringIO();writer=csv.DictWriter(text,fieldnames=list(rows[0]));writer.writeheader();writer.writerows(rows);files[name]=text.getvalue().encode()
+        stops={'A':(24,60),'B':(24,60.01),'C':(24,60.02),'D':(24.01,60.01)}
+        table('stops.txt',[{'stop_id':k,'stop_name':k,'stop_lat':v[1],'stop_lon':v[0]} for k,v in stops.items()])
+        shapes={'c':[(24,60),(24,60.01),(24.005,60.015),(24,60.02)],
+                'd':[(24,60),(24,60.005),(24,60.01),(24.01,60.01)],
+                'cr':[(24,60.02),(24.005,60.015),(24,60.01),(24,60.005),(24,60)],
+                'dr':[(24.01,60.01),(24,60.01),(24,60)]}
+        table('shapes.txt',[{'shape_id':k,'shape_pt_sequence':i,'shape_pt_lon':v[0],'shape_pt_lat':v[1]} for k,vs in shapes.items() for i,v in enumerate(vs)])
+        table('trips.txt',[{'trip_id':k,'route_id':'R','service_id':'W','shape_id':('absent' if missing and k=='express' else {'t1':'c','t2':'d','t3':'cr','t4':'dr','express':'c'}[k])} for k in patterns])
+        with zipfile.ZipFile(path,'w') as z:
+            for name,data in files.items():z.writestr(name,data)
+        return path
+
+    def test_shape_geometry_branches_express_and_reverse_density(self):
+        result=compiler.compile_feed(self.shape_feed(),CONFIG,'2026-10-05',geometry=True)
+        trunk=[s for s in result['segments'] if all(p[0]==24 and p[1]<=60.01 for p in s['geometry'])]
+        self.assertTrue(trunk)
+        # Three forward trains, two reverse trains over the common trunk.
+        for segment in trunk:
+            self.assertEqual(segment['profiles']['am']['forward_tph'],1.5)
+            self.assertEqual(segment['profiles']['am']['backward_tph'],1)
+            self.assertEqual(segment['profiles']['am']['display_tph'],1)
+        branch=[s for s in result['segments'] if any(p[0]>24.009 for p in s['geometry'])]
+        self.assertEqual(len(branch),1)
+        self.assertEqual(branch[0]['profiles']['am']['display_tph'],.5)
+        self.assertTrue(any((24.005,60.015) in s['geometry'] for s in result['segments']))
+        self.assertEqual(result['source']['geometry_audit']['withheld_trips'],{})
+        self.assertGreater(result['source']['valid_until'],0)
+
+    def test_missing_shape_does_not_create_chords_or_undercount_route(self):
+        result=compiler.compile_feed(self.shape_feed(missing=True),CONFIG,'2026-10-05',geometry=True)
+        self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'],['R'])
+        self.assertTrue(all(s['profiles']['am']['display_tph'] is None for s in result['segments']))
+
     def test_shared_trunk_branches_and_directions(self):
         patterns={'t1':[('A','08:00:00'),('B','08:10:00'),('C','08:20:00')],
                   't2':[('A','08:30:00'),('B','08:40:00'),('D','08:50:00')],

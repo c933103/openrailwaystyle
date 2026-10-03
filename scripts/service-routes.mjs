@@ -281,7 +281,7 @@ export function joinLines(lines) {
 // route on each way: its label, colour, kind and place (i of n) among the
 // routes drawn on that way (at zooms 7–9 metro and commuter routes only;
 // from zoom 10 all of them).
-export function buildTiles({routes, ways}, {headways} = {}) {
+export function buildTiles({routes, ways}, {headways, timetable} = {}) {
   const out = new Map(), sets = [[new Map(), MIN_ZOOM, LOCAL_MIN_ZOOM - 1, r => !LOCAL_KINDS.includes(r.kind)], [new Map(), LOCAL_MIN_ZOOM, MAX_ZOOM, () => true]];
   const service = serviceRoutes({routes, ways});
   for (const way of ways.values()) {
@@ -309,6 +309,11 @@ export function buildTiles({routes, ways}, {headways} = {}) {
   }
   for (const set of sets) {
     const [groups, minZoom, maxZoom] = set;
+    for(const feature of (minZoom===MIN_ZOOM?timetable?.overview:timetable?.local)||[]){
+      const key=JSON.stringify(feature.properties);
+      if(!groups.has(key))groups.set(key,{properties:feature.properties,lines:[]});
+      groups.get(key).lines.push(feature.geometry.coordinates);
+    }
     // Consecutive ways with the same route in the same place become one
     // line, long enough for its name.
     const features = [...groups.values()].map(({properties, lines}) => {

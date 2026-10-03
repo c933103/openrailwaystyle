@@ -53,7 +53,7 @@ def local_boundary(date, value, timezone):
     return candidates.pop()
 
 
-def compile_feed(path, config, date):
+def compile_feed(path, config, date, geometry=False):
     date = dt.date.fromisoformat(date)
     previous = date - dt.timedelta(days=1)
     z = zipfile.ZipFile(path)
@@ -62,7 +62,7 @@ def compile_feed(path, config, date):
         lo, hi = feed[0].get("feed_start_date"), feed[0].get("feed_end_date")
         if (lo and date.strftime("%Y%m%d") < lo) or (hi and date.strftime("%Y%m%d") > hi):
             raise ValueError("Selected date is outside the feed's validity")
-    agencies = {r["agency_id"]: r for r in read(z, "agency.txt")}
+    agencies = {r.get("agency_id") or "single-agency": r for r in read(z, "agency.txt")}
     if not agencies:
         raise ValueError("Missing agency metadata")
     routes = {r["route_id"]: r for r in read(z, "routes.txt") if rail_type(r["route_type"])}
@@ -100,6 +100,15 @@ def compile_feed(path, config, date):
     for row in read(z, "frequencies.txt"):
         if row["trip_id"] in trips:
             frequencies[row["trip_id"]].append(row)
+    excluded = {trip_id for trip_id, sequence in times.items() if any(stops[r['stop_id']].get('platform_code') in config.get('exclude_platform_codes', []) for r in sequence)}
+    trips = {key: value for key,value in trips.items() if key not in excluded}
+    paths = None
+    if geometry:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gtfs_shapes", Path(__file__).with_name("gtfs-shapes.py"))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        paths = module.ShapePaths(read(z, "shapes.txt"), trips, times, stops, config)
     segments = {}
     boundaries = {}
 
@@ -127,36 +136,25 @@ def compile_feed(path, config, date):
             raise ValueError("Missing or duplicate rail stop sequence")
         first = seconds(sequence[0].get("departure_time"))
         seen = set()
-        for upstream, downstream in zip(sequence, sequence[1:]):
-            a, b = station(upstream["stop_id"]), station(downstream["stop_id"])
-            if a == b:
-                continue
-            lo, hi = sorted((a, b))
-            direction = 0 if a == lo else 1
-            key = (route_id, lo, hi)
-            if (key, direction) in seen:
-                continue
-            seen.add((key, direction))
-            segment = segments.setdefault(key, {"route_id": route_id, "agency_id": agency_id,
-                     "stops": [lo, hi], "expected_directions": set(),
-                     "counts": {p: [0.0, 0.0] for p in windows},
-                     "unknown": {p: [False, False] for p in windows},
-                     "estimated": {p: False for p in windows}})
-            segment["expected_directions"].add(direction)
-            departure = seconds(upstream.get("departure_time"))
+        contributions = {}
+
+        def contribution(departure):
+            if departure in contributions:
+                return contributions[departure]
+            counts = {p: 0.0 for p in windows}
+            unknown, estimated = set(), set()
             for day in (previous, date):
                 if trip["service_id"] not in active[day]:
                     continue
                 origin = service_start(day, timezone)
                 if departure is None or (frequencies[trip_id] and first is None):
-                    for profile in windows:
-                        segment["unknown"][profile][direction] = True
+                    unknown.update(windows)
                     continue
                 if not frequencies[trip_id]:
                     timestamp = origin + departure
                     for profile, (start, end) in windows.items():
                         if start <= timestamp < end:
-                            segment["counts"][profile][direction] += 1
+                            counts[profile] += 1
                     continue
                 held = []
                 for frequency in frequencies[trip_id]:
@@ -174,34 +172,77 @@ def compile_feed(path, config, date):
                             timestamp = origin + event + anchor
                             for profile, (begin, finish) in windows.items():
                                 if begin <= timestamp < finish:
-                                    segment["counts"][profile][direction] += 1
+                                    counts[profile] += 1
                     else:
                         for profile, (begin, finish) in windows.items():
                             overlap = max(0, min(finish, origin + end + anchor) - max(begin, origin + start + anchor))
                             if overlap:
-                                segment["counts"][profile][direction] += overlap / headway
-                                segment["estimated"][profile] = True
+                                counts[profile] += overlap / headway
+                                estimated.add(profile)
+            contributions[departure] = counts, unknown, estimated
+            return contributions[departure]
 
+        mapped = []
+        if paths:
+            mapped = paths.segments(trip, sequence)
+        else:
+            for upstream, downstream in zip(sequence, sequence[1:]):
+                a, b = station(upstream["stop_id"]), station(downstream["stop_id"])
+                if a != b:
+                    lo, hi = sorted((a, b))
+                    mapped.append(((route_id, lo, hi), 0 if a == lo else 1, upstream, None))
+        for key, direction, upstream, coordinates in mapped:
+            if (key, direction) in seen:
+                continue
+            seen.add((key, direction))
+            segment = segments.setdefault(key, {"route_id": route_id, "agency_id": agency_id,
+                     "geometry": coordinates, "stops": list(key[1:]), "expected_directions": set(),
+                     "counts": {p: [0.0, 0.0] for p in windows},
+                     "unknown": {p: [False, False] for p in windows},
+                     "estimated": {p: False for p in windows}})
+            segment["expected_directions"].add(direction)
+            counts, unknown, estimated = contribution(seconds(upstream.get("departure_time")))
+            for profile in windows:
+                segment["counts"][profile][direction] += counts[profile]
+                segment["unknown"][profile][direction] |= profile in unknown
+                segment["estimated"][profile] |= profile in estimated
+
+    incomplete = set()
+    if paths:
+        for trip_id,trip in trips.items():
+            sequence = sorted(times[trip_id],key=lambda r:int(r['stop_sequence']))
+            if paths.patterns.get(paths.pattern_key(trip,sequence)) is None and any(trip['service_id'] in ids for ids in active.values()):
+                incomplete.add(trip['route_id'])
     output = []
     for key, segment in sorted(segments.items()):
         profiles = {}
         for profile, (start, end) in boundaries[segment["agency_id"]].items():
-            rates = [None if d not in segment["expected_directions"] or segment["unknown"][profile][d] else round(segment["counts"][profile][d] * 3600 / (end-start), 6) for d in (0, 1)]
+            rates = [None if d not in segment["expected_directions"] or (segment["unknown"][profile][d] or segment["route_id"] in incomplete) else round(segment["counts"][profile][d] * 3600 / (end-start), 6) for d in (0, 1)]
             required = [rates[d] for d in segment["expected_directions"]]
             display = None if None in required else min(required)
             profiles[profile] = {"forward_tph": rates[0], "backward_tph": rates[1], "display_tph": display,
                                  "quality": "unknown" if display is None else "headway_estimate" if segment["estimated"][profile] else "scheduled"}
         output.append({"route_id": segment["route_id"], "agency_id": segment["agency_id"], "stops": segment["stops"],
-                       "expected_directions": sorted(segment["expected_directions"]), "profiles": profiles})
+                       "expected_directions": sorted(segment["expected_directions"]), "profiles": profiles,
+                       **({"geometry": segment["geometry"]} if geometry else {})})
     digest = hashlib.sha256()
     with Path(path).open("rb") as file:
         while chunk := file.read(1_048_576):
             digest.update(chunk)
     source = {**config["source"], "sha256": digest.hexdigest(), "feed_info": feed[0] if feed else {},
-              "service_date": date.isoformat(), "day_type": days[date.weekday()], "osm_matching": "pending"}
+              "service_date": date.isoformat(), "day_type": days[date.weekday()], "geometry": "supplied GTFS shapes" if geometry else "unmatched stop pairs",
+              "count_anchor": "departure at the preceding served stop; no inferred pass times",
+              "geometry_audit": {"withheld_trips": dict(paths.rejected), "routes_with_incomplete_active_geometry": sorted(incomplete), "excluded_replacement_bus_trips": len(excluded)} if geometry else {}}
+    if feed and feed[0].get('feed_end_date'):
+        end_date=dt.datetime.strptime(feed[0]['feed_end_date'],'%Y%m%d').date()+dt.timedelta(days=1)
+        source['valid_until']=min(dt.datetime.combine(end_date,dt.time(),ZoneInfo(a['agency_timezone'])).timestamp() for a in agencies.values())-.001
+    else:
+        end_date=max([r['end_date'] for r in calendar.values()]+[r['date'] for r in exceptions])
+        end_date=dt.datetime.strptime(end_date,'%Y%m%d').date()+dt.timedelta(days=1)
+        source['valid_until']=min(dt.datetime.combine(end_date,dt.time(),ZoneInfo(a['agency_timezone'])).timestamp() for a in agencies.values())-.001
     return {"schema": 1, "source": source, "profiles": config["profiles"],
             "agencies": list(agencies.values()), "routes": [routes[key] for key in sorted(routes)],
-            "stops": [{"id": key, "name": stops[key]["stop_name"], "lat": float(stops[key]["stop_lat"]), "lon": float(stops[key]["stop_lon"])} for key in sorted({s for row in output for s in row["stops"]})],
+            "stops": [] if geometry else [{"id": key, "name": stops[key]["stop_name"], "lat": float(stops[key]["stop_lat"]), "lon": float(stops[key]["stop_lon"])} for key in sorted({s for row in output for s in row["stops"]})],
             "segments": output}
 
 
@@ -211,11 +252,12 @@ def main():
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--date", required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--geometry", action="store_true", help="Map profiles along supplied rail shapes")
     args = parser.parse_args()
-    result = compile_feed(args.zip, json.loads(args.config.read_text()), args.date)
+    result = compile_feed(args.zip, json.loads(args.config.read_text()), args.date, geometry=args.geometry)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
-    print(f"Compiled {len(result['routes'])} rail routes and {len(result['segments'])} directional stop-pair profiles for {args.date}; OSM matching remains explicit, pending.")
+    print(f"Compiled {len(result['routes'])} rail routes and {len(result['segments'])} profiles for {args.date}; geometry: {result['source']['geometry']}.")
 
 
 if __name__ == "__main__":
