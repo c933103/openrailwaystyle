@@ -67,7 +67,11 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const libraries = {};
   libraries.maplibregl = {Map, addProtocol(){}, NavigationControl:class { constructor(options) { maps.controls.push(options); } }, GeolocateControl:class { constructor(options) { maps.controls.push(options); } }, AttributionControl:class {constructor(options){this.options=options;}}, ScaleControl:class { constructor(options) { this.unit = options.unit; maps.scale = this; } setUnit(unit) { this.unit = unit; } }};
   maps.controls = [];
-  libraries.pmtiles = {Protocol:class { tile() {} }};
+  libraries.pmtiles = {
+    Protocol:class { constructor(){this.tiles=new Map();maps.pmtiles=this;} tile() {} },
+    FetchSource:class { constructor(url){this.url=url;} },
+    PMTiles:class { constructor(source){this.source=source;} },
+  };
   libraries.mlcontour = {DemSource:class {constructor(options){this.options=options; (maps.dems ||= []).push(options);} setupMaplibre(){} contourProtocolUrl(options){return `${this.options.id}-contour://${options.multiplier ? 'ft' : 'm'}/{z}/{x}/{y}`;} sharedDemProtocolUrl='atlas-shared://{z}/{x}/{y}';}};
   // Delayed libraries are provided later by loadLibraries().
   const loadLibraries = () => {
@@ -81,7 +85,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const dependency = new vm.SyntheticModule(Object.keys(model), function() {
     for (const [key,value] of Object.entries(model)) this.setExport(key,value);
   }, {context});
-  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','locate','buildInfo'],function(){this.setExport('buildInfo',labelBuild);this.setExport('installLabelProtocols',()=>{});this.setExport('localizeTile',x=>x);this.setExport('locate',()=>({atlas_han:'none',atlas_zh:''}));},{context});
+  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','locate','buildInfo','timedSource'],function(){this.setExport('buildInfo',labelBuild);this.setExport('installLabelProtocols',()=>({}));this.setExport('localizeTile',x=>x);this.setExport('locate',()=>({atlas_han:'none',atlas_zh:''}));this.setExport('timedSource',(inner,ms)=>({inner,ms,getKey:()=>inner.url}));},{context});
   // The label code is imported on demand, after the controls are wired.
   let loadLabels;
   const labelsReady=new Promise(resolve=>{loadLabels=resolve;});
@@ -126,6 +130,13 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
   try {
     assert.equal(maps.length,1,'startup must reach the map constructor');
     assert.equal(errors.length,0);
+    // Bathymetry must not win a startup race by making the basemap PMTiles
+    // archive with PMTiles' untimed default FetchSource.
+    assert.equal(maps.pmtiles.tiles.size,1);
+    const [[basemapKey,basemap]]=[...maps.pmtiles.tiles];
+    assert.match(basemapKey,/planet\.pmtiles$/);
+    assert.equal(basemap.source.ms,20000);
+    assert.equal(basemap.source.inner.url,basemapKey);
     assert.equal(maps[0].options.style.sources.inactiveRegional.tiles[0],'railtiles://{z}/{x}/{y}?lang=local');
     maps[0].handlers.styleimagemissing({id:'station-dot'});
     assert.equal(maps[0].image.id,'station-dot');
