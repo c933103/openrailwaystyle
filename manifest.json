@@ -1,0 +1,91 @@
+{
+  "generated": "2026-10-03T21:47:03.724Z",
+  "lines": 288838,
+  "tiles": 1540,
+  "tileBytes": 11867431,
+  "zooms": [
+    4,
+    9
+  ],
+  "stages": [
+    {
+      "name": "japan",
+      "label": "Japan",
+      "completed": "2026-10-01T03:42:48Z",
+      "inProgress": false,
+      "lines": 16573
+    },
+    {
+      "name": "east-asia",
+      "label": "Koreas, Taiwan, Hong Kong, Macau and Guangdong",
+      "completed": "2026-10-01T06:33:05Z",
+      "inProgress": false,
+      "lines": 5755
+    },
+    {
+      "name": "china",
+      "label": "Rest of China",
+      "completed": "2026-10-01T13:54:15Z",
+      "inProgress": false,
+      "lines": 24356
+    },
+    {
+      "name": "russia",
+      "label": "Russia",
+      "completed": "2026-10-02T06:12:57Z",
+      "inProgress": false,
+      "lines": 5796
+    },
+    {
+      "name": "europe",
+      "label": "Rest of Europe",
+      "completed": "2026-10-02T13:10:44Z",
+      "inProgress": false,
+      "lines": 151240
+    },
+    {
+      "name": "india",
+      "label": "India",
+      "completed": "2026-10-02T22:33:32Z",
+      "inProgress": false,
+      "lines": 6457
+    },
+    {
+      "name": "asia",
+      "label": "Rest of Asia",
+      "completed": "2026-10-03T05:44:18Z",
+      "inProgress": false,
+      "lines": 5706
+    },
+    {
+      "name": "north-america",
+      "label": "US and Canada",
+      "completed": "2026-10-03T12:01:41Z",
+      "inProgress": false,
+      "lines": 62367
+    },
+    {
+      "name": "americas",
+      "label": "Rest of the Americas",
+      "completed": "2026-10-03T16:42:57Z",
+      "inProgress": false,
+      "lines": 6322
+    },
+    {
+      "name": "world",
+      "label": "Rest of the world",
+      "completed": "2026-10-03T21:45:41Z",
+      "inProgress": false,
+      "lines": 4266
+    }
+  ],
+  "run": {
+    "stage": "world",
+    "requests": 3,
+    "downloadedBytes": 11964875
+  },
+  "source": "https://overpass-api.de/api/interpreter",
+  "query": "way[railway~\"^(rail|narrow_gauge)$\"][usage=branch][!service] and way[railway=subway][!service], by region",
+  "license": "ODbL-1.0",
+  "description": "OpenStreetMap operating branch lines (usage=branch) for zooms 4–6 and metro lines (railway=subway) for zooms 7–9, where OpenRailwayMap shows neither."
+}
