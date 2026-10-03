@@ -28,6 +28,25 @@ class GTFSFrequency(unittest.TestCase):
         boundary=compiler.local_boundary(compiler.dt.date(2026,10,5),'07:00:00',compiler.ZoneInfo('Europe/Helsinki'))
         self.assertAlmostEqual(result['source']['valid_until'],boundary+600-.001,places=3)
 
+    def test_declared_feed_end_retains_multi_day_departures_and_bounds_service_days(self):
+        patterns={'late':[('A','00:00:00'),('B','103:00:00'),('C','103:10:00')]}
+        path=self.feed(patterns,patterns)
+        with zipfile.ZipFile(path) as z:files={n:z.read(n) for n in z.namelist()}
+        # Leave the calendar extending past the metadata's final service day.
+        files['feed_info.txt']=files['feed_info.txt'].replace(b'20261231',b'20261001')
+        with zipfile.ZipFile(path,'w') as z:
+            for name,data in files.items():z.writestr(name,data)
+        result=compiler.compile_feed(path,CONFIG,'2026-10-05')
+        segment=next(s for s in result['segments'] if s['stops']==['B','C'])
+        self.assertEqual(segment['profiles']['am']['display_tph'],.5)
+        # A Monday trip outside feed validity must not contribute at A.
+        first=next(s for s in result['segments'] if s['stops']==['A','B'])
+        self.assertEqual(first['profiles']['am']['display_tph'],0)
+        boundary=compiler.local_boundary(compiler.dt.date(2026,10,5),'07:00:00',compiler.ZoneInfo('Europe/Helsinki'))
+        self.assertAlmostEqual(result['source']['valid_until'],boundary+600-.001,places=3)
+        with self.assertRaisesRegex(ValueError,'calendar horizon'):
+            compiler.compile_feed(path,CONFIG,'2026-10-06')
+
     def test_obsolete_calendar_without_feed_end_is_not_a_future_zero_frequency(self):
         patterns={'t':[('A','08:00:00'),('B','08:10:00')]}
         path=self.feed(patterns,patterns)
