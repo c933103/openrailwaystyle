@@ -5,6 +5,7 @@ import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {readFile, mkdir, writeFile} from 'node:fs/promises';
 import {waitUntil} from './wait-until.mjs';
+import {clickVisibleControl} from './click-visible-control.mjs';
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const style=JSON.parse(await readFile('styles/world.style.json','utf8'));
 style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
@@ -97,10 +98,10 @@ try{
           assert.equal(await page.locator('.map-readout').isVisible(),readout);
           await check(`${size.width}x${size.height}, menu=${expanded}, readout=${readout}, detail=${detail}`);
           const next=(detail+1)%3;
-          // This action changes the same-document map hash, not the page.
-          // Wait for the actual detail state/cookie instead of Playwright's
-          // generic navigation barrier, which stalled after a completed click.
-          await page.locator('button.atlas-ctrl[title^="More detail:"]').click({noWaitAfter:true});
+          // Hit-test the visible counter-scaled control before real pointer
+          // input. Automatic scroll-into-view hung before clicking this
+          // already-visible target in CI; forced or DOM clicks are not used.
+          await clickVisibleControl(page,'button.atlas-ctrl[title^="More detail:"]');
           await waitUntil(page,expected=>{
             const map=document.querySelector('#map'),button=document.querySelector('button.atlas-ctrl[title^="More detail:"]');
             const level=map.classList.contains('detail-2')?2:map.classList.contains('detail')?1:0;
@@ -125,7 +126,10 @@ try{
   await page.screenshot({path:'browser-review/map-controls-mobile.png'});
   await page.setViewportSize({width:800,height:400});
   if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();
-  await check('expanded short landscape');await page.screenshot({path:'browser-review/map-controls-landscape.png'});
+  await check('expanded short landscape');
+  await page.evaluate(()=>{document.querySelector('#details').hidden=false;document.querySelector('#detail-content').innerHTML='<h2>Station details</h2><p>Details requiring scrolling</p>'.repeat(20);});
+  await check('expanded short landscape with tall right details');
+  await page.screenshot({path:'browser-review/map-controls-landscape.png'});
   assert.deepEqual(errors,[],'UI lifecycle has no JavaScript exceptions');
   console.log(`PASS: ${results.length} real-app UI layout/state cases; original polar resize; cookie reload; keyboard toggles`);
 } catch(error){
