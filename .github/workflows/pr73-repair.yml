@@ -1,0 +1,45 @@
+name: PR73 integration diagnostics
+on:
+  push:
+    branches: [feat/curated-station-colour]
+    paths: [.github/workflows/pr73-repair.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.repository == 'c933103/openrailwaystyle' && github.ref == 'refs/heads/feat/curated-station-colour'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 150
+      - name: Inspect merge without publishing changes
+        run: |
+          git config user.name 'PR73 integration check'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch --no-tags --depth=150 origin main:refs/remotes/origin/main
+          echo '=== HEADS ==='
+          git rev-parse HEAD origin/main
+          git merge --no-commit --no-ff origin/main || true
+          echo '=== CONFLICTS ==='
+          git diff --name-only --diff-filter=U
+          echo '=== NON-GENERATED CONFLICT HUNKS ==='
+          git diff --cc -- . ':!styles/world.style.json' ':!styles/major-stations.geojson'
+          echo '=== PACKAGE ==='
+          cat package.json
+          echo '=== CURRENT MAIN APP RELEVANT SECTIONS ==='
+          git show origin/main:styles/app.mjs > /tmp/main-app.mjs
+          python - <<'PY'
+          from pathlib import Path
+          lines=Path('/tmp/main-app.mjs').read_text().splitlines()
+          needles=['const CHECKBOXES','function updateMajorStations','function applySettings','function localizeStyle','majorStationData=','Hidden sources','const features = queries','majorStationData.features','styleReady =','function reloadLanguage']
+          indexes=set()
+          for i,line in enumerate(lines):
+              if any(n in line for n in needles): indexes.update(range(max(0,i-3),min(len(lines),i+24)))
+          for i in sorted(indexes): print(f'{i+1}: {lines[i]}')
+          PY
+          echo '=== MAIN STYLE BUILDER STATION SECTIONS ==='
+          git show origin/main:scripts/build-style.mjs | grep -n -E -C 5 'majorStations|curatedFilter|station-major|stationLow|stationInk'
+          echo '=== COMMITTED FILE CHANGE SUMMARY ==='
+          git diff --stat HEAD origin/main
