@@ -23,8 +23,11 @@ try {
       return {rect:[r.x,r.y,r.width,r.height],visible:[...document.querySelectorAll('.panel,.maplibregl-control-container,.maplibregl-ctrl,.detail-panel,.map-status,#draw-toolbar,#measure-toolbar,#watch-menu')].filter(visible).map(e=>e.id||e.className)};
     });
     assert.deepEqual(idle.rect,[0,0,size,size]);assert.deepEqual(idle.visible,[],'idle map has zero visible UI controls');
-    await page.mouse.move(size/2,size/2);await page.mouse.down();await page.waitForTimeout(760);await page.mouse.up();
-    await page.locator('#watch-menu').waitFor({state:'visible'});
+    await page.mouse.move(size/2,size/2);await page.mouse.down();
+    // Keep the physical press held until the browser handles its timer. A
+    // fixed 760 ms release can overtake a delayed timer during tile rendering.
+    try {await page.locator('#watch-menu').waitFor({state:'visible',timeout:5000});}
+    finally {await page.mouse.up();}
     const box=await page.locator('#watch-content').boundingBox();
     for(const [x,y] of [[box.x,box.y],[box.x+box.width,box.y],[box.x,box.y+box.height],[box.x+box.width,box.y+box.height]])assert.ok(Math.hypot(x-size/2,y-size/2)<=size/2,'controls fit inside a round watch face');
     await page.locator('#watch-content select[aria-label="Map options"]').selectOption('frequency');

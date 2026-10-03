@@ -170,6 +170,36 @@ class GTFSFrequency(unittest.TestCase):
         result=compiler.compile_feed(path,{**CONFIG,'profiles':{'early':{'start':'01:00:00','end':'02:00:00'}}},'2026-10-05')
         self.assertEqual(result['segments'][0]['profiles']['early']['display_tph'],1)
 
+    def test_shapeless_modes_sharing_stops_keep_separate_paths_and_unmapped_rates(self):
+        patterns={key:[('A','08:00:00'),('B','08:10:00')] for key in ['rail','subway']}
+        path=self.feed(patterns,patterns)
+        with zipfile.ZipFile(path) as z:files={n:z.read(n) for n in z.namelist()}
+        files['routes.txt']=b'route_id,route_type,agency_id\nrail,2,A\nsubway,1,A\n'
+        files['trips.txt']=b'trip_id,route_id,service_id\nrail,rail,W\nsubway,subway,W\n'
+        with zipfile.ZipFile(path,'w') as z:
+            for name,data in files.items():z.writestr(name,data)
+        graph=path.parent/'graph.ndjson.gz'
+        def write_graph(modes):
+            with gzip.open(graph,'wt') as file:
+                for mode in modes:
+                    midpoint=24.001 if mode=='rail' else 23.999
+                    file.write(json.dumps({'type':'Feature','properties':{'feature':mode},'geometry':{'type':'LineString','coordinates':[[24,60],[midpoint,60.005],[24,60.01]]}})+'\n')
+        config={**CONFIG,'rail_graph':str(graph),'include_unmapped':True}
+        write_graph(['rail','subway'])
+        result=compiler.compile_feed(path,config,'2026-10-05',geometry=True)
+        self.assertEqual({s['route_id'] for s in result['segments']},{'rail','subway'})
+        for mode,midpoint in [('rail',24.001),('subway',23.999)]:
+            segments=[s for s in result['segments'] if s['route_id']==mode]
+            self.assertTrue(any((midpoint,60.005) in s['geometry'] for s in segments))
+            self.assertTrue(all(s['profiles']['am']['display_tph']==.5 for s in segments))
+        self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'],[])
+        write_graph(['rail'])
+        result=compiler.compile_feed(path,config,'2026-10-05',geometry=True)
+        self.assertEqual({s['route_id'] for s in result['segments']},{'rail'})
+        self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'],['subway'])
+        self.assertEqual({s['route_id'] for s in result['unmapped_segments']},{'subway'})
+        self.assertTrue(all(s['profiles']['am']['display_tph']==.5 for s in result['unmapped_segments']))
+
     def test_long_frequency_template_includes_anchor_delay_in_prior_day_bound(self):
         patterns={'t':[('A','00:00:00'),('B','50:00:00'),('C','50:10:00')]}
         frequency=[{'trip_id':'t','start_time':'00:00:00','end_time':'49:00:00','headway_secs':'3600','exact_times':'1'}]
