@@ -1,0 +1,92 @@
+{
+  "generated": "2026-10-03T23:47:30.625Z",
+  "routes": 3484,
+  "ways": 56238,
+  "tiles": 4966,
+  "tileBytes": 4495386,
+  "zooms": [
+    7,
+    12
+  ],
+  "stages": [
+    {
+      "name": "japan",
+      "label": "Japan",
+      "completed": "2026-10-01T21:00:15Z",
+      "inProgress": false,
+      "routes": 309
+    },
+    {
+      "name": "east-asia",
+      "label": "Koreas, Taiwan, Hong Kong, Macau and Guangdong",
+      "completed": "2026-10-02T00:43:30Z",
+      "inProgress": false,
+      "routes": 587
+    },
+    {
+      "name": "china",
+      "label": "Rest of China",
+      "completed": "2026-10-02T09:40:29Z",
+      "inProgress": false,
+      "routes": 779
+    },
+    {
+      "name": "russia",
+      "label": "Russia",
+      "completed": "2026-10-02T19:55:46Z",
+      "inProgress": false,
+      "routes": 1123
+    },
+    {
+      "name": "europe",
+      "label": "Rest of Europe",
+      "completed": null,
+      "inProgress": true,
+      "routes": 686
+    },
+    {
+      "name": "india",
+      "label": "India",
+      "completed": null,
+      "inProgress": false,
+      "routes": 0
+    },
+    {
+      "name": "asia",
+      "label": "Rest of Asia",
+      "completed": null,
+      "inProgress": false,
+      "routes": 0
+    },
+    {
+      "name": "north-america",
+      "label": "US and Canada",
+      "completed": null,
+      "inProgress": false,
+      "routes": 0
+    },
+    {
+      "name": "americas",
+      "label": "Rest of the Americas",
+      "completed": null,
+      "inProgress": false,
+      "routes": 0
+    },
+    {
+      "name": "world",
+      "label": "Rest of the world",
+      "completed": null,
+      "inProgress": false,
+      "routes": 0
+    }
+  ],
+  "run": {
+    "stage": "europe",
+    "requests": 2,
+    "downloadedBytes": 17459390
+  },
+  "source": "https://overpass-api.de/api/interpreter",
+  "query": "route relations (type=route) with route=subway, light_rail, tram or monorail, or route=train with service=commuter or urban, and their track ways, by region",
+  "license": "ODbL-1.0",
+  "description": "OpenStreetMap urban rail services (metro, light rail, tram, monorail and commuter rail routes) along the tracks they run on, for the Service view."
+}
