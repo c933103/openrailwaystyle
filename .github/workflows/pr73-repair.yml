@@ -9,37 +9,26 @@ jobs:
   inspect:
     if: github.repository == 'c933103/openrailwaystyle' && github.ref == 'refs/heads/feat/curated-station-colour'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 150
-      - name: Inspect merge without publishing changes
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare credential-free source snapshots
         run: |
-          git config user.name 'PR73 integration check'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git fetch --no-tags --depth=150 origin main:refs/remotes/origin/main
-          echo '=== HEADS ==='
-          git rev-parse HEAD origin/main
-          git merge --no-commit --no-ff origin/main || true
-          echo '=== CONFLICTS ==='
-          git diff --name-only --diff-filter=U
-          echo '=== NON-GENERATED CONFLICT HUNKS ==='
-          git diff --cc -- . ':!styles/world.style.json' ':!styles/major-stations.geojson'
-          echo '=== PACKAGE ==='
-          cat package.json
-          echo '=== CURRENT MAIN APP RELEVANT SECTIONS ==='
-          git show origin/main:styles/app.mjs > /tmp/main-app.mjs
-          python - <<'PY'
-          from pathlib import Path
-          lines=Path('/tmp/main-app.mjs').read_text().splitlines()
-          needles=['const CHECKBOXES','function updateMajorStations','function applySettings','function localizeStyle','majorStationData=','Hidden sources','const features = queries','majorStationData.features','styleReady =','function reloadLanguage']
-          indexes=set()
-          for i,line in enumerate(lines):
-              if any(n in line for n in needles): indexes.update(range(max(0,i-3),min(len(lines),i+24)))
-          for i in sorted(indexes): print(f'{i+1}: {lines[i]}')
-          PY
-          echo '=== MAIN STYLE BUILDER STATION SECTIONS ==='
-          git show origin/main:scripts/build-style.mjs | grep -n -E -C 5 'majorStations|curatedFilter|station-major|stationLow|stationInk'
-          echo '=== COMMITTED FILE CHANGE SUMMARY ==='
-          git diff --stat HEAD origin/main
+          mkdir -p /tmp/pr73-sources
+          git rev-parse HEAD origin/main $(git merge-base HEAD origin/main) > /tmp/pr73-sources/refs.txt
+          git archive --format=tar.gz --output=/tmp/pr73-sources/head.tar.gz HEAD
+          git archive --format=tar.gz --output=/tmp/pr73-sources/main.tar.gz origin/main
+          git archive --format=tar.gz --output=/tmp/pr73-sources/base.tar.gz $(git merge-base HEAD origin/main)
+          npm ci --ignore-scripts --no-audit --no-fund
+          tar -czf /tmp/pr73-sources/dependencies.tar.gz node_modules
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr73-source-snapshots
+          path: /tmp/pr73-sources
+          retention-days: 1
