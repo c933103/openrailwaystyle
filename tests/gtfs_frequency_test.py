@@ -15,6 +15,19 @@ CONFIG = {'source':{'id':'fixture'},'profiles':{'am':{'start':'07:00:00','end':'
 
 
 class GTFSFrequency(unittest.TestCase):
+    def test_calendar_horizon_retains_multi_day_departures_after_final_service_day(self):
+        patterns={'late':[('A','00:00:00'),('B','103:00:00'),('C','103:10:00')]}
+        path=self.feed(patterns,patterns)
+        with zipfile.ZipFile(path) as z:files={n:z.read(n) for n in z.namelist() if n!='feed_info.txt'}
+        files['calendar.txt']=files['calendar.txt'].replace(b'20261231',b'20261001')
+        with zipfile.ZipFile(path,'w') as z:
+            for name,data in files.items():z.writestr(name,data)
+        result=compiler.compile_feed(path,CONFIG,'2026-10-05')
+        segment=next(s for s in result['segments'] if s['stops']==['B','C'])
+        self.assertEqual(segment['profiles']['am']['display_tph'],.5)
+        boundary=compiler.local_boundary(compiler.dt.date(2026,10,5),'07:00:00',compiler.ZoneInfo('Europe/Helsinki'))
+        self.assertAlmostEqual(result['source']['valid_until'],boundary+600-.001,places=3)
+
     def test_obsolete_calendar_without_feed_end_is_not_a_future_zero_frequency(self):
         patterns={'t':[('A','08:00:00'),('B','08:10:00')]}
         path=self.feed(patterns,patterns)

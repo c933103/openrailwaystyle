@@ -18,16 +18,23 @@ export function mergeInventories(inventories){
   if(shards.size!==first.shards||ids.size!==first.catalogue_entries)throw new Error('Incomplete worldwide scan; refusing to publish a partial shard collection');
   return {...first,shard:undefined,entries:entries.sort((a,b)=>a.id.localeCompare(b.id))};
 }
+export async function pruneFrequencyOutputs(directory,entries){
+  const wanted=new Set(entries.filter(e=>e.status==='compiled').map(e=>e.output));
+  if([...wanted].some(path=>typeof path!=='string'||!/^feeds\/[A-Za-z0-9_.-]+\.json\.gz$/.test(path)))throw new Error('Invalid compiled feed path');
+  let files;try{files=await readdir(join(directory,'feeds'));}catch(error){if(error.code==='ENOENT')return;throw error;}
+  for(const file of files)if(!wanted.has('feeds/'+file))await rm(join(directory,'feeds',file),{recursive:true,force:true});
+}
 export async function assemble(directory){
   const names=(await readdir(directory)).filter(n=>/^inventory-\d+\.json$/.test(n));
   const inventory=mergeInventories(await Promise.all(names.map(async name=>JSON.parse(await readFile(join(directory,name),'utf8')))));
+  await pruneFrequencyOutputs(directory,inventory.entries);
   const tileRoot=join(directory,'tiles');await rm(tileRoot,{recursive:true,force:true});await mkdir(tileRoot,{recursive:true});
   const keys=new Set(),summary=[],counts={};
   for(const entry of inventory.entries){
     counts[entry.status]=(counts[entry.status]||0)+1;
     if(entry.status!=='compiled')continue;
     const feed=await readFrequencyFeed(join(directory,entry.output));
-    if(feed.source.sha256!==entry.sha256||feed.source.service_date!==inventory.service_date)throw new Error(`Unverified feed ${entry.id}`);
+    if(feed.source.id!==entry.id||feed.source.sha256!==entry.sha256||feed.source.service_date!==inventory.service_date)throw new Error(`Unverified feed ${entry.id}`);
     const data=timetableFeatures([feed]),tiles=buildTiles(readTable(''),{timetable:data});
     summary.push(...data.summary);
     for(const [key,bytes]of tiles){

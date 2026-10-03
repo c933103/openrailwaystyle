@@ -116,8 +116,6 @@ def compile_feed(path, config, date, geometry=False):
     if not calendar and not exceptions:
         raise ValueError("No service calendar")
     horizon=max([r['end_date'] for r in calendar.values()]+[r['date'] for r in exceptions])
-    if not (feed and feed[0].get('feed_end_date')) and date.strftime('%Y%m%d')>horizon:
-        raise ValueError("Selected date is beyond the declared service calendar horizon")
     known_services = set(calendar) | {r["service_id"] for r in exceptions}
     if any(t["service_id"] not in known_services for t in trips.values()):
         raise ValueError("Trip references an absent service calendar")
@@ -148,6 +146,9 @@ def compile_feed(path, config, date, geometry=False):
     prior_days = max(1, max_time//86400+1)
     if prior_days > 366:
         raise ValueError('Service time exceeds one-year processing budget')
+    last_calendar_day=dt.datetime.strptime(horizon,'%Y%m%d').date()
+    if not (feed and feed[0].get('feed_end_date')) and date>last_calendar_day+dt.timedelta(days=max_time//86400):
+        raise ValueError("Selected date is beyond the declared service calendar horizon")
     service_days = [date-dt.timedelta(days=i) for i in range(prior_days+1)]
     active = {}
     for day in service_days:
@@ -300,9 +301,9 @@ def compile_feed(path, config, date, geometry=False):
         end_date=dt.datetime.strptime(feed[0]['feed_end_date'],'%Y%m%d').date()+dt.timedelta(days=1)
         source['valid_until']=min(dt.datetime.combine(end_date,dt.time(),ZoneInfo(a['agency_timezone'])).timestamp() for a in agencies.values())-.001
     else:
-        end_date=max([r['end_date'] for r in calendar.values()]+[r['date'] for r in exceptions])
-        end_date=dt.datetime.strptime(end_date,'%Y%m%d').date()+dt.timedelta(days=1)
-        source['valid_until']=min(dt.datetime.combine(end_date,dt.time(),ZoneInfo(a['agency_timezone'])).timestamp() for a in agencies.values())-.001
+        # A final service day can contribute multi-day GTFS departures after
+        # the calendar's last date. Use the same noon-minus-12h time anchor.
+        source['valid_until']=min(dt.datetime.combine(last_calendar_day,dt.time(12),ZoneInfo(a['agency_timezone'])).timestamp()-12*3600+max(86400,max_time) for a in agencies.values())-.001
     result = {"schema": 1, "source": source, "profiles": config["profiles"],
             "agencies": list(agencies.values()), "routes": [routes[key] for key in sorted(routes)],
             "stops": [] if geometry else [{"id": key, "name": stops[key]["stop_name"], "lat": float(stops[key]["stop_lat"]), "lon": float(stops[key]["stop_lon"])} for key in sorted({s for row in output for s in row["stops"]})],

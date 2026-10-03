@@ -251,6 +251,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
         remote = RemoteZip(entry['processed_url'], max_bytes)
         rail = [r for r in csv.DictReader(io.StringIO(remote.table('routes.txt').decode('utf-8-sig'))) if compiler.rail_type(r['route_type'])]
         if not rail:
+            (output/'feeds'/(ident+'.json.gz')).unlink(missing_ok=True)
             return {**entry, 'status': 'no_rail', 'rail_routes': 0}
         path.write_bytes(remote.download())
         meta = {'etag': remote.identity, 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
