@@ -25,6 +25,16 @@ test('local services rebundle independently and shared geometry retains every se
   assert.equal(local.length,2);assert.ok(local.every(f=>f.properties.n===2));
   assert.notEqual(local[0].properties.frequency_offset_am,local[1].properties.frequency_offset_am);
 });
+test('national feeds compact consecutive equal-profile edges while keeping disconnected paths',()=>{
+  const expanded=structuredClone(feed),base=expanded.segments[0];
+  expanded.segments=[base,{...base,geometry:[[24.01,60.01],[24.02,60.02]]},{...base,geometry:[[25,60],[25.01,60.01]]}];
+  const data=timetableFeatures([expanded],now);
+  assert.equal(data.local.length,1);assert.equal(data.overview.length,1);
+  assert.equal(data.local[0].geometry.type,'MultiLineString');
+  assert.deepEqual(data.local[0].geometry.coordinates,[[[24,60],[24.01,60.01],[24.02,60.02]],[[25,60],[25.01,60.01]]]);
+  const tiles=buildTiles(readTable(''),{timetable:data});
+  assert.ok(tiles.size>0);assert.equal(data.summary[0].availableSegments,3);
+});
 test('dated multi-region fixtures supply actual mapped rail shapes and profiles',async()=>{
   const {feeds,registry}=await loadTimetableServices(new URL('./fixtures/service-frequency/registry.json',import.meta.url));
   assert.ok(feeds.length>=4);assert.ok(new Set(feeds.map(f=>f.source.region)).size>=3);

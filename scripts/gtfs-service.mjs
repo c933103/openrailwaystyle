@@ -3,6 +3,7 @@
 import {readFile} from 'node:fs/promises';
 import {gunzipSync} from 'node:zlib';
 import {profileBundle} from '../styles/service-frequency.mjs';
+import {joinLines} from './service-routes.mjs';
 const round=n=>Math.round(n*1e6)/1e6;
 const kind=type=>[12,405].includes(Number(type))?'monorail':[7,1400].includes(Number(type))?'funicular':[0,5].includes(Number(type))||(Number(type)>=900&&Number(type)<1000)?'tram':Number(type)===1||(Number(type)>=400&&Number(type)<500)?'subway':'rail';
 export async function loadTimetableServices(registryPath=new URL('../styles/data-src/service-frequency-sources.json',import.meta.url)) {
@@ -41,10 +42,21 @@ export function timetableFeatures(feeds,now=Date.now()) {
   }
   // Rejoin adjacent equal-property edges in service-routes after offsets have
   // been assigned. Zoom-level filtering must rebundle, just as OSM routes do.
-  const make=includeLocal=>[...edges.values()].flatMap(({coordinates,records})=>{
-    const shown=records.filter(r=>includeLocal||!['tram','light_rail','monorail','funicular'].includes(r.properties.kind)).sort((a,b)=>a.properties.id.localeCompare(b.properties.id));
-    const bundled=profileBundle(shown);
-    return shown.map((r,i)=>({type:'Feature',properties:{...r.properties,...bundled[i],i,n:shown.length,slot:Math.max(-63,Math.min(63,2*i-(shown.length-1)))},geometry:{type:'LineString',coordinates}}));
-  });
+  const make=includeLocal=>{
+    const groups=new Map();
+    for(const {coordinates,records} of edges.values()){
+      const shown=records.filter(r=>includeLocal||!['tram','light_rail','monorail','funicular'].includes(r.properties.kind)).sort((a,b)=>a.properties.id.localeCompare(b.properties.id));
+      const bundled=profileBundle(shown);
+      shown.forEach((r,i)=>{
+        const properties={...r.properties,...bundled[i],i,n:shown.length,slot:Math.max(-63,Math.min(63,2*i-(shown.length-1)))},key=JSON.stringify(properties);
+        if(!groups.has(key))groups.set(key,{properties,lines:[]});
+        groups.get(key).lines.push(coordinates);
+      });
+    }
+    return [...groups.values()].map(({properties,lines})=>{
+      const joined=joinLines(lines);
+      return {type:'Feature',properties,geometry:joined.length===1?{type:'LineString',coordinates:joined[0]}:{type:'MultiLineString',coordinates:joined}};
+    });
+  };
   return {overview:make(false),local:make(true),summary};
 }

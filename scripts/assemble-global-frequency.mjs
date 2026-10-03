@@ -6,6 +6,7 @@ import {gunzipSync,gzipSync} from 'node:zlib';
 import {buildTiles,readTable} from './service-routes.mjs';
 import {timetableFeatures} from './gtfs-service.mjs';
 import {mergeServiceTiles} from './merge-service-tiles.mjs';
+import {readFrequencyFeed} from './read-frequency-feed.mjs';
 export function mergeInventories(inventories){
   if(!inventories.length)throw new Error('No worldwide inventory');
   const first=inventories[0],ids=new Set(),shards=new Set(),entries=[];
@@ -25,7 +26,7 @@ export async function assemble(directory){
   for(const entry of inventory.entries){
     counts[entry.status]=(counts[entry.status]||0)+1;
     if(entry.status!=='compiled')continue;
-    const feed=JSON.parse(gunzipSync(await readFile(join(directory,entry.output))));
+    const feed=await readFrequencyFeed(join(directory,entry.output));
     if(feed.source.sha256!==entry.sha256||feed.source.service_date!==inventory.service_date)throw new Error(`Unverified feed ${entry.id}`);
     const data=timetableFeatures([feed]),tiles=buildTiles(readTable(''),{timetable:data});
     summary.push(...data.summary);
