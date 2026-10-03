@@ -10,15 +10,15 @@
 // libraries from the CDN are kept too: their addresses carry the version, so
 // a saved copy never goes stale and is used first. Map tiles and data files
 // are not handled here.
-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}7`, KEEP_VERSIONS = 2;
-// Shell 7 refreshes branding metadata and icon aliases while migrate() keeps
-// the previous app's versioned modules. Stored user settings are not touched.
+const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}8`, KEEP_VERSIONS = 2;
+// Shell 8 includes layer semantics while migrate() keeps the previous app's
+// versioned modules. Stored user settings are not touched.
 // Keep in step with loadScript in app.mjs and the stylesheet in index.html.
 const LIBRARIES = ['https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js', 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css', 'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js'];
 const SHELL = /\/(app\.css|[\w-]+\.mjs|vendor\/[\w-]+\.js|world\.style\.json|major-stations\.geojson|manifest\.webmanifest|atlas-icon[\w-]*\.(?:png|svg))$/;
 // Saved at installation, so an app installed on the first visit (before this
 // worker controlled the page) also opens offline.
-const PRECACHE = ['./', 'app.css', 'app.mjs', 'map-model.mjs', 'platform-length.mjs', 'context.mjs', 'draw.mjs', 'elevation.mjs', 'dem-repair.mjs', 'globe-drag.mjs', 'keyboard-pan.mjs', 'departures.mjs', 'polar.mjs', 'track-count.mjs', 'track-tiles.mjs', 'han-region.mjs', 'han-region-data.mjs', 'loading-gauge-list.mjs', 'axle-load.mjs', 'vendor/tile-labels.js', 'vendor/track-worker.js', 'vendor/polar-layer.js', 'vendor/maplibre-contour.js', 'vendor/dem-worker.js', 'world.style.json', 'major-stations.geojson', 'manifest.webmanifest', 'atlas-icon.svg', 'atlas-icon-192.png', 'atlas-icon-512.png', 'atlas-icon-maskable-512.png', 'atlas-icon-touch-180.png'];
+const PRECACHE = ['./', 'app.css', 'app.mjs', 'map-model.mjs', 'layer-semantics.mjs', 'platform-length.mjs', 'context.mjs', 'draw.mjs', 'elevation.mjs', 'dem-repair.mjs', 'globe-drag.mjs', 'keyboard-pan.mjs', 'departures.mjs', 'polar.mjs', 'track-count.mjs', 'track-tiles.mjs', 'han-region.mjs', 'han-region-data.mjs', 'loading-gauge-list.mjs', 'axle-load.mjs', 'vendor/tile-labels.js', 'vendor/track-worker.js', 'vendor/polar-layer.js', 'vendor/maplibre-contour.js', 'vendor/dem-worker.js', 'world.style.json', 'major-stations.geojson', 'manifest.webmanifest', 'atlas-icon.svg', 'atlas-icon-192.png', 'atlas-icon-512.png', 'atlas-icon-maskable-512.png', 'atlas-icon-touch-180.png'];
 
 // The version the page asks for, read from its module script.
 const pageVersion = html => html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1] ?? null;
@@ -35,6 +35,12 @@ async function saveVersion(cache, version, page) {
     if (saved) return [key, saved];
     const response = await fetch(versioned(key, version), {cache: 'no-cache'});
     if (!response.ok) throw new Error(`${path} returned ${response.status}`);
+    // A fetch resolves at headers. Installing workers throttle outstanding
+    // requests; consume this body now rather than leaving every slot occupied
+    // while Promise.all waits for the remaining fetches. Retain the original
+    // Response (including URL/type/headers) for cache.put below. A truncated
+    // body rejects before any of this version's files are published.
+    await response.clone().arrayBuffer();
     return [key, response];
   }));
   for (const [key, response] of files) {
@@ -99,6 +105,8 @@ self.addEventListener('install', event => event.waitUntil((async () => {
     if (await cache.match(url)) return null;
     const library = await fetch(url, {mode: 'cors'});
     if (!library.ok) throw new Error(`${url} returned ${library.status}`);
+    // Release the installing worker's network slot before fetching the shell.
+    await library.clone().arrayBuffer();
     return [url, library];
   }));
   await saveVersion(cache, version, response);
