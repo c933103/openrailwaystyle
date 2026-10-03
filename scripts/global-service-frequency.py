@@ -255,9 +255,15 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
         path.write_bytes(remote.download())
         meta = {'etag': remote.identity, 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
         del remote
+    # Reinspect changed conditional 200 responses and cached 304 revisions.
+    with zipfile.ZipFile(path) as archive:
+        has_rail=any(compiler.rail_type(r['route_type']) for r in compiler.read(archive,'routes.txt'))
     meta['checked'] = dt.datetime.now(dt.timezone.utc).date().isoformat()
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
     atomic_json(meta_path, meta)
+    if not has_rail:
+        (output/'feeds'/(ident+'.json.gz')).unlink(missing_ok=True)
+        return {**entry, 'status': 'no_rail', 'rail_routes': 0}
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
     signature=hashlib.sha256(json.dumps({'catalogue':row,'profiles':profiles,
         'graph':file_hash(str(graph)) if graph else None,
         'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['global-service-frequency.py','gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()

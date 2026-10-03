@@ -18,9 +18,8 @@ class ShapePaths:
         for row in rows:
             if row['shape_id'] in wanted:
                 source[row['shape_id']].append(row)
-        latitudes = [float(r['shape_pt_lat']) for rs in source.values() for r in rs]
-        self.sx = 111320 * math.cos(math.radians(sum(latitudes) / len(latitudes))) if latitudes else 111320
-        self.sy = 111320
+        # Uniform angular index cells; local latitude determines distances.
+        self.sx = self.sy = 111320
         self.shapes, self.patterns, self.rejected = {}, {}, defaultdict(int)
         self.max_snap = config.get('max_stop_snap_metres', 200)
         for key, rs in source.items():
@@ -97,14 +96,16 @@ class ShapePaths:
                     # Query cells along the segment, not a large diagonal box.
                     cells = set()
                     steps = max(abs(x1-x0), abs(y1-y0), 1)
+                    radius_x,_ = self.radii((0,max(abs(a[1]),abs(b[1]))),.15)
                     for step in range(steps+1):
                         c = self.cell((lo[0]+(hi[0]-lo[0])*step/steps, lo[1]+(hi[1]-lo[1])*step/steps))
-                        cells.update((c[0]+dx, c[1]+dy) for dx in (-1,0,1) for dy in (-1,0,1))
-                    for cell in cells:
-                        for p in grid.get(cell, ()):
-                            t, error = self.project_segment(p, lo, hi)
-                            if 1e-8 < t < 1-1e-8 and error <= .15:
-                                cuts.append((t, p))
+                        if radius_x<=256:
+                            cells.update((c[0]+dx, c[1]+dy) for dx in range(-radius_x,radius_x+1) for dy in (-1,0,1))
+                    candidates=vertices if radius_x>256 else {p for cell in cells for p in grid.get(cell, ())}
+                    for p in candidates:
+                        t, error = self.project_segment(p, lo, hi)
+                        if 1e-8 < t < 1-1e-8 and error <= .15:
+                            cuts.append((t, p))
                     cuts.sort()
                     split_cache[key] = cuts
                 cuts = split_cache[key]
@@ -123,12 +124,19 @@ class ShapePaths:
         x,y = self.xy(p); return math.floor(x/100),math.floor(y/100)
 
     def distance(self, a, b):
-        return math.hypot((b[0]-a[0])*self.sx,(b[1]-a[1])*self.sy)
+        sx = self.sx*math.cos(math.radians((a[1]+b[1])/2))
+        return math.hypot((b[0]-a[0])*sx,(b[1]-a[1])*self.sy)
+
+    def radii(self, p, metres):
+        cosine=max(1e-12,abs(math.cos(math.radians(p[1]))))
+        return math.ceil(metres/(100*cosine))+1,math.ceil(metres/100)+1
 
     def project_segment(self, p, a, b):
-        ax,ay = self.xy(a); bx,by = self.xy(b); px,py = self.xy(p)
+        sx = self.sx*math.cos(math.radians(p[1]))
+        ax,ay = a[0]*sx,a[1]*self.sy; bx,by = b[0]*sx,b[1]*self.sy; px,py = p[0]*sx,p[1]*self.sy
         dx,dy = bx-ax,by-ay
-        t = max(0,min(1,((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy)))
+        length=dx*dx+dy*dy
+        t = max(0,min(1,((px-ax)*dx+(py-ay)*dy)/length)) if length>1e-18 else 0
         return t,math.hypot(px-ax-t*dx,py-ay-t*dy)
 
     def pattern_key(self, trip, sequence):
@@ -167,8 +175,8 @@ class ShapePaths:
                         cells={self.cell((a[0]+(b[0]-a[0])*j/steps,a[1]+(b[1]-a[1])*j/steps)) for j in range(steps+1)}
                         for cell in cells:lookup[cell].append(i)
                     shape['lookup']=lookup
-                x,y=self.cell(p);radius=math.ceil(self.max_snap/100)+1
-                indices={i for dx in range(-radius,radius+1) for dy in range(-radius,radius+1) for i in shape['lookup'].get((x+dx,y+dy),())}
+                x,y=self.cell(p);radius_x,radius_y=self.radii(p,self.max_snap)
+                indices=range(len(shape['points'])-1) if radius_x>256 else {i for dx in range(-radius_x,radius_x+1) for dy in range(-radius_y,radius_y+1) for i in shape['lookup'].get((x+dx,y+dy),())}
                 for i in indices:
                     a,b=shape['points'][i:i+2]
                     t,error = self.project_segment(p,a,b)

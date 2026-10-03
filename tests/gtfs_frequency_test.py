@@ -15,6 +15,28 @@ CONFIG = {'source':{'id':'fixture'},'profiles':{'am':{'start':'07:00:00','end':'
 
 
 class GTFSFrequency(unittest.TestCase):
+    def test_obsolete_calendar_without_feed_end_is_not_a_future_zero_frequency(self):
+        patterns={'t':[('A','08:00:00'),('B','08:10:00')]}
+        path=self.feed(patterns,patterns)
+        with zipfile.ZipFile(path) as z:files={n:z.read(n) for n in z.namelist() if n!='feed_info.txt'}
+        files['calendar.txt']=files['calendar.txt'].replace(b'20261231',b'20261002')
+        with zipfile.ZipFile(path,'w') as z:
+            for name,data in files.items():z.writestr(name,data)
+        with self.assertRaisesRegex(ValueError,'calendar horizon'):
+            compiler.compile_feed(path,CONFIG,'2026-10-05')
+
+    def test_shape_snap_distances_are_local_even_with_unrelated_latitudes(self):
+        spec=importlib.util.spec_from_file_location('shape_paths',Path(__file__).parent.parent/'scripts/gtfs-shapes.py')
+        shapes=importlib.util.module_from_spec(spec);spec.loader.exec_module(shapes)
+        rows=[{'shape_id':key,'shape_pt_sequence':i,'shape_pt_lon':0,'shape_pt_lat':lat+i*.01} for key,lat in [('north',80),('equator',0)] for i in range(2)]
+        trips={key:{'shape_id':key,'route_id':key} for key in ['north','equator']}
+        times={key:[{'stop_id':key+str(i),'stop_sequence':i} for i in range(2)] for key in trips}
+        stops={key+str(i):{'stop_lon':.01 if key=='north' else .002,'stop_lat':lat+i*.01} for key,lat in [('north',80),('equator',0)] for i in range(2)}
+        paths=shapes.ShapePaths(rows,trips,times,stops,{'max_stop_snap_metres':200})
+        self.assertIsNotNone(paths.patterns[paths.pattern_key(trips['north'],times['north'])])
+        self.assertIsNone(paths.patterns[paths.pattern_key(trips['equator'],times['equator'])])
+        self.assertAlmostEqual(paths.distance((0,80),(.01,80)),193.305,places=2)
+
     def test_global_rail_modes_exclude_buses_and_aerial_lifts(self):
         for value in [0,1,2,5,7,12,100,109,400,405,900,906,1400]:
             self.assertTrue(compiler.rail_type(str(value)), value)

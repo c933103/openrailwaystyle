@@ -44,9 +44,10 @@ class GlobalFrequency(unittest.TestCase):
         return data.getvalue()
 
     def server(self,data,ranges=True,change=False):
-        held={'requests':[],'etag':'"one"'}
+        held={'requests':[],'etag':'"one"','data':data}
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self):
+                data=held['data']
                 range_value=self.headers.get('Range');held['requests'].append(range_value)
                 if self.headers.get('If-None-Match')==held['etag']:
                     self.send_response(304);self.end_headers();return
@@ -94,6 +95,20 @@ class GlobalFrequency(unittest.TestCase):
         retrieved=feed['source']['retrieved']
         result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
         self.assertEqual(result['source']['retrieved'],retrieved)
+
+    def test_changed_cached_rail_archive_is_reclassified_when_bus_only(self):
+        cache,output=self.root/'cache',self.root/'out';cache.mkdir()
+        row={'filename':'eg_rail.gtfs.zip','source':'https://example.org/feed.zip','country_code':'EG','spdx_license_identifier':'CC-BY-4.0'}
+        entry=pipeline.discover([row],{})[0]
+        entry['processed_url'],held=self.server(self.archive())
+        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(result['status'],'compiled')
+        held['data']=self.archive(rail=False);held['etag']='"two"'
+        for _ in range(2):
+            result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+            self.assertEqual(result['status'],'no_rail')
+            self.assertFalse((output/'feeds/eg_rail.json.gz').exists())
+        self.assertEqual(json.loads((cache/'eg_rail.meta.json').read_text())['etag'],'"two"')
 
     def test_geometry_timeout_preserves_computed_national_frequencies(self):
         cache,output=self.root/'cache',self.root/'out';cache.mkdir()
