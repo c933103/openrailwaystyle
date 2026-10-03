@@ -36,3 +36,20 @@ test('reviewed multi-region registry supplies actual mapped rail shapes and prof
   }
   assert.ok(registry.gaps.some(g=>g.region==='Africa'));
 });
+
+test('assembly succeeds when the OSM service-data branch supplies no table',async()=>{
+  const {mkdtemp,readFile,rm}=await import('node:fs/promises');
+  const {tmpdir}=await import('node:os');
+  const {join}=await import('node:path');
+  const {spawnSync}=await import('node:child_process');
+  const directory=await mkdtemp(join(tmpdir(),'atlas-timetable-only-'));
+  try {
+    const run=spawnSync(process.execPath,['scripts/rebuild-service-frequency.mjs',directory,join(directory,'credits.html')],{encoding:'utf8'});
+    assert.equal(run.status,0,run.stderr);
+    const index=JSON.parse(await readFile(join(directory,'index.json'),'utf8'));
+    assert.ok(index.tiles.length>0,'official paths remain usable without the OSM snapshot');
+    const manifest=JSON.parse(await readFile(join(directory,'frequency-manifest.json'),'utf8'));
+    assert.equal(manifest.feeds.length,4);assert.ok(manifest.feeds.every(f=>f.mappedRoutes>0));
+    assert.match(await readFile(join(directory,'credits.html'),'utf8'),/MassDOT|Auckland Transport/);
+  } finally {await rm(directory,{recursive:true,force:true});}
+});

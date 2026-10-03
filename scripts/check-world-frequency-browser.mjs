@@ -33,16 +33,32 @@ try {
       counts.push([profile,new Set(result.map(r=>r.ref)).size]);
     }
     // Click a rendered supplied-shape path and confirm generic source details.
-    const detail=await page.evaluate(()=>{
-      const f=testMap.queryRenderedFeatures({layers:['service-routes']}).find(f=>f.properties.frequency_source&&f.properties.frequency_date);
-      const lines=f.geometry.type==='LineString'?[f.geometry.coordinates]:f.geometry.coordinates;
-      const line=lines.find(l=>l.length>=2),points=line.map(p=>testMap.project(p));
-      const pair=points.slice(1).map((b,i)=>[points[i],b]).find(([a,b])=>a.x>330&&a.x<700&&b.x>330&&b.x<700&&a.y>20&&a.y<550&&b.y>20&&b.y<550);
-      if(!pair)return {skipped:true};
-      const p={x:(pair[0].x+pair[1].x)/2,y:(pair[0].y+pair[1].y)/2};testMap.fire('click',{point:p,lngLat:testMap.unproject(p),originalEvent:{}});
+    const detail=await page.evaluate(async id=>{
+      const module=await import('./service-frequency.mjs');
+      const candidates=testMap.queryRenderedFeatures({layers:['service-routes']}).filter(f=>f.properties.id.startsWith(`gtfs:${id}:`)&&f.properties.frequency_date);
+      let point;
+      for(const f of candidates){
+        const lines=f.geometry.type==='LineString'?[f.geometry.coordinates]:f.geometry.coordinates;
+        const offset=module.frequencyOffset(f.properties,testMap.getZoom(),{serviceWidth:'frequency',frequencyPeriod:'offpeak'});
+        for(const line of lines)for(let i=1;i<line.length&&!point;i++){
+          const a=testMap.project(line[i-1]),b=testMap.project(line[i]),dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);
+          if(!len)continue;
+          for(const fraction of [.25,.5,.75]){
+            const p={x:a.x+dx*fraction-dy/len*offset,y:a.y+dy*fraction+dx/len*offset};
+            if(p.x<330||p.x>700||p.y<20||p.y>550)continue;
+            // Station inspection intentionally has priority in the product.
+            // Choose a route interior outside every station's click tolerance.
+            if(testMap.queryRenderedFeatures([[p.x-12,p.y-12],[p.x+12,p.y+12]]).some(f=>f.layer.id.startsWith('station-')))continue;
+            point=p;break;
+          }
+        }
+        if(point)break;
+      }
+      if(!point)throw new Error(`No unobscured route interior for ${id}`);
+      testMap.fire('click',{point,lngLat:testMap.unproject(point),originalEvent:{}});
       return {text:document.getElementById('detail-content').textContent,href:document.querySelector('#detail-content a[href^="https:"]')?.href};
-    });
-    if(!detail.skipped){assert.match(detail.text,/scheduled|Frequency unavailable/);assert.match(detail.text,/Source credit/);assert.ok(detail.href);}
+    },example.id);
+    assert.match(detail.text,/scheduled|Frequency unavailable/);assert.match(detail.text,/Source credit/);assert.ok(detail.href);
     await page.screenshot({path:`browser-review/world-frequency-${example.id}.png`});
     console.log(`${example.id}: actual supplied-shape tiles render AM/PM/off-peak`,JSON.stringify(counts));
   }

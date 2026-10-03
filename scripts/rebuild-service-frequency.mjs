@@ -7,7 +7,7 @@ import {writeFrequencyCredits} from './frequency-credits.mjs';
 const directory=process.argv[2] || 'styles/data/service-routes';
 const catalog=JSON.parse(await readFile(new URL('../styles/service-headways.json',import.meta.url),'utf8'));
 let raw;
-try{raw=await readFile(`${directory}/service-routes.ndjson.gz`);}catch(error){if(error.code==='ENOENT'){raw=gzipSync('');}throw error;}
+try{raw=await readFile(`${directory}/service-routes.ndjson.gz`);}catch(error){if(error.code==='ENOENT'){raw=gzipSync('');}else throw error;}
 const {registry,feeds}=await loadTimetableServices(),timetable=timetableFeatures(feeds);
 const table=readTable(gunzipSync(raw).toString()),tiles=buildTiles(table,{headways:catalog,timetable});
 const keys=[];let bytes=0;
@@ -19,4 +19,4 @@ await writeFile(`${directory}/index.json`,JSON.stringify({tiles:keys.sort()}));
 await writeFile(`${directory}/frequency-manifest.json`,JSON.stringify({schema:2,headways:{source:catalog.source,matchedWholeRouteProfiles:catalog.routes.filter(r=>r.match).length},feeds:timetable.summary,gaps:registry.gaps,tiles:keys.length,tileBytes:bytes,scope:'Scheduled path profiles along supplied rail shapes plus audited published headways. Regional coverage is partial; other routes unknown. No new extraction.'},null,2)+'\n');
 console.log(`Rebuilt ${keys.length} service tiles from cached OSM and official timetable shapes (${bytes} bytes) with peak/off-peak profiles; no extraction.`);
 
-await writeFrequencyCredits(timetable.summary,registry.gaps,catalog);
+await writeFrequencyCredits(timetable.summary,registry.gaps,catalog,process.argv[3]);
