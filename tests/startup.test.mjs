@@ -68,7 +68,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   libraries.maplibregl = {Map, addProtocol(){}, NavigationControl:class { constructor(options) { maps.controls.push(options); } }, GeolocateControl:class { constructor(options) { maps.controls.push(options); } }, AttributionControl:class {constructor(options){this.options=options;}}, ScaleControl:class { constructor(options) { this.unit = options.unit; maps.scale = this; } setUnit(unit) { this.unit = unit; } }};
   maps.controls = [];
   libraries.pmtiles = {
-    Protocol:class { constructor(){this.tiles=new Map();maps.pmtiles=this;} tile() {} },
+    Protocol:class { constructor(){this.tiles=new globalThis.Map();maps.pmtiles=this;} tile() {} },
     FetchSource:class { constructor(url){this.url=url;} },
     PMTiles:class { constructor(source){this.source=source;} },
   };
