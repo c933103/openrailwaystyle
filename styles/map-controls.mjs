@@ -39,19 +39,24 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
     set('--map-info-right', f.right - right + Math.max(10, sr));
     set('--map-info-bottom', f.bottom - low);
     set('--map-info-width', Math.max(1, right - left - Math.max(10, sl) - Math.max(10, sr)));
-    set('--map-info-height', Math.max(1, low - high - 48));
+    const corner = mapElement.querySelector('.maplibregl-ctrl-bottom-left');
+    if (!corner) return;
+    // Measure the actual stack after its available width is applied. A long
+    // readout can wrap; its height is not a fixed 80-pixel clearance.
+    const stack = corner.getBoundingClientRect(), height = stack.height;
+    const stackTop = narrow && menu ? Math.max(high, menu.top + 48 + gap) : high;
+    // The credits popover ends 40px above the info button's bottom. Reserve
+    // space above it for the ruler/readout and the narrow menu's header, so
+    // long credits scroll instead of pushing the controls above the viewport.
+    set('--map-info-height', Math.max(1, low - 40 - stackTop - height - gap));
     // Keep the status pill and its padding below both ruler and readout.
     let floor = Math.min(low, visible(status)?.top - gap || low);
     // Bottom sheets and the expanded credits are real obstacles as well.
     for (const obstacle of [visible(details), visible(mapElement.querySelector('.maplibregl-ctrl-attrib-inner'))]) {
-      if (obstacle && obstacle.left < x + available && obstacle.right > x && obstacle.bottom > floor - 80)
+      if (obstacle && obstacle.left < x + stack.width + gap && obstacle.right > x - gap && obstacle.top < floor + gap && obstacle.bottom > floor - height - gap)
         floor = Math.min(floor, obstacle.top - gap);
     }
-    const corner = mapElement.querySelector('.maplibregl-ctrl-bottom-left');
-    if (!corner) return;
     set('--map-control-bottom', f.bottom - floor);
-    // Measure after applying the available width: a long readout can wrap.
-    const height = corner.getBoundingClientRect().height;
     // On narrow screens there is no side lane. Reserve the bottom controls'
     // measured height and let the expanded menu scroll above that area.
     set('--map-panel-height', narrow && menu ? Math.max(48, floor - height - gap - menu.top) : Math.max(48, bottom - (menu?.top || high) - Math.max(10, sb)));
