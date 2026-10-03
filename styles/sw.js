@@ -35,6 +35,12 @@ async function saveVersion(cache, version, page) {
     if (saved) return [key, saved];
     const response = await fetch(versioned(key, version), {cache: 'no-cache'});
     if (!response.ok) throw new Error(`${path} returned ${response.status}`);
+    // A fetch resolves at headers. Installing workers throttle outstanding
+    // requests; consume this body now rather than leaving every slot occupied
+    // while Promise.all waits for the remaining fetches. Retain the original
+    // Response (including URL/type/headers) for cache.put below. A truncated
+    // body rejects before any of this version's files are published.
+    await response.clone().arrayBuffer();
     return [key, response];
   }));
   for (const [key, response] of files) {
@@ -99,6 +105,8 @@ self.addEventListener('install', event => event.waitUntil((async () => {
     if (await cache.match(url)) return null;
     const library = await fetch(url, {mode: 'cors'});
     if (!library.ok) throw new Error(`${url} returned ${library.status}`);
+    // Release the installing worker's network slot before fetching the shell.
+    await library.clone().arrayBuffer();
     return [url, library];
   }));
   await saveVersion(cache, version, response);
