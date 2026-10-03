@@ -19,5 +19,12 @@
     "after": "1bf08327432f443d881149dfbf54807bde1e0a7925559beebcb0a20d25551bcd",
     "find": "  // Resetting north is the behaviour under test. On software WebGL, unrelated\n  // source/terrain work can keep MapLibre's broad isMoving() flag true after\n  // the bearing has already reached north, so do not make that a false failure.\n  await waitUntil(page,async()=>{const {map}=await import(document.querySelector('script[type=\"module\"]').src);return Math.abs(map.getBearing())<0.5;},undefined,{timeout:30000});\n  await page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type=\"module\"]').src);map.stop();});",
     "replace": "  // A compass reset must finish its camera movement as well as reach north.\n  // Do not stop the camera from the test or relax the movement assertion.\n  await waitUntil(page,async()=>{const {map}=await import(document.querySelector('script[type=\"module\"]').src);return Math.abs(map.getBearing())<0.5 && !map.isMoving();},undefined,{timeout:30000});"
+  },
+  {
+    "path": "scripts/check-map-controls-browser.mjs",
+    "before": "2f1c2619a010cd64f8e9c16a2894367411914f27a76f8f918695a4dc9d5c5430",
+    "after": "ea38cbb752a620c42371894aea6fcd1b09b5af9999321d20295c7d2507d15ca9",
+    "find": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=",
+    "replace": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg=="
   }
 ]
