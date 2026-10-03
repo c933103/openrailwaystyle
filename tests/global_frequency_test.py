@@ -110,6 +110,18 @@ class GlobalFrequency(unittest.TestCase):
             self.assertFalse((output/'feeds/eg_rail.json.gz').exists())
         self.assertEqual(json.loads((cache/'eg_rail.meta.json').read_text())['etag'],'"two"')
 
+    def test_bus_only_revision_removes_old_output_without_cache_metadata(self):
+        cache,output=self.root/'cache',self.root/'out';cache.mkdir()
+        row={'filename':'eg_rail.gtfs.zip','source':'https://example.org/feed.zip','country_code':'EG','spdx_license_identifier':'CC-BY-4.0'}
+        entry=pipeline.discover([row],{})[0]
+        entry['processed_url'],held=self.server(self.archive())
+        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(result['status'],'compiled')
+        (cache/'eg_rail.meta.json').unlink();held['data']=self.archive(rail=False)
+        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(result['status'],'no_rail')
+        self.assertFalse((output/'feeds/eg_rail.json.gz').exists())
+
     def test_geometry_timeout_preserves_computed_national_frequencies(self):
         cache,output=self.root/'cache',self.root/'out';cache.mkdir()
         row={'filename':'eg_rail.gtfs.zip','source':'https://example.org/feed.zip','country_code':'EG','spdx_license_identifier':'CC-BY-4.0'}

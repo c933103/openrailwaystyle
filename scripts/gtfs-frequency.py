@@ -101,9 +101,10 @@ def compile_feed(path, config, date, geometry=False):
     z = zipfile.ZipFile(path)
     feed = list(read(z, "feed_info.txt"))
     attributions = list(read(z, 'attributions.txt'))
+    lo, hi = None, None
     if feed:
         lo, hi = feed[0].get("feed_start_date"), feed[0].get("feed_end_date")
-        if (lo and date.strftime("%Y%m%d") < lo) or (hi and date.strftime("%Y%m%d") > hi):
+        if lo and date.strftime("%Y%m%d") < lo:
             raise ValueError("Selected date is outside the feed's validity")
     agencies = {r.get("agency_id") or "single-agency": r for r in read(z, "agency.txt")}
     if not agencies:
@@ -116,8 +117,6 @@ def compile_feed(path, config, date, geometry=False):
     if not calendar and not exceptions:
         raise ValueError("No service calendar")
     horizon=max([r['end_date'] for r in calendar.values()]+[r['date'] for r in exceptions])
-    if not (feed and feed[0].get('feed_end_date')) and date.strftime('%Y%m%d')>horizon:
-        raise ValueError("Selected date is beyond the declared service calendar horizon")
     known_services = set(calendar) | {r["service_id"] for r in exceptions}
     if any(t["service_id"] not in known_services for t in trips.values()):
         raise ValueError("Trip references an absent service calendar")
@@ -148,10 +147,16 @@ def compile_feed(path, config, date, geometry=False):
     prior_days = max(1, max_time//86400+1)
     if prior_days > 366:
         raise ValueError('Service time exceeds one-year processing budget')
+    last_calendar_day=dt.datetime.strptime(hi or horizon,'%Y%m%d').date()
+    if date>last_calendar_day+dt.timedelta(days=max_time//86400):
+        raise ValueError("Selected date is outside the feed's validity (beyond the service calendar horizon)" if hi else "Selected date is beyond the declared service calendar horizon")
     service_days = [date-dt.timedelta(days=i) for i in range(prior_days+1)]
     active = {}
     for day in service_days:
         value = day.strftime('%Y%m%d')
+        if (lo and value < lo) or (hi and value > hi):
+            active[day] = set()
+            continue
         ids = {key for key, row in calendar.items() if row['start_date'] <= value <= row['end_date'] and row[days[day.weekday()]] == '1'}
         for row in exceptions:
             if row['date'] == value:
@@ -296,13 +301,9 @@ def compile_feed(path, config, date, geometry=False):
               "count_anchor": "departure at the preceding served stop; no inferred pass times",
               "feed_attributions": attributions,
               "geometry_audit": {"withheld_trips": dict(paths.rejected), "routes_with_incomplete_active_geometry": sorted(incomplete), "excluded_replacement_bus_trips": len(excluded), "invalid_rail_stop_sequences": invalid_sequences, "matched_railway_patterns": len(getattr(paths, 'rail_patterns', set()))} if geometry else {}}
-    if feed and feed[0].get('feed_end_date'):
-        end_date=dt.datetime.strptime(feed[0]['feed_end_date'],'%Y%m%d').date()+dt.timedelta(days=1)
-        source['valid_until']=min(dt.datetime.combine(end_date,dt.time(),ZoneInfo(a['agency_timezone'])).timestamp() for a in agencies.values())-.001
-    else:
-        end_date=max([r['end_date'] for r in calendar.values()]+[r['date'] for r in exceptions])
-        end_date=dt.datetime.strptime(end_date,'%Y%m%d').date()+dt.timedelta(days=1)
-        source['valid_until']=min(dt.datetime.combine(end_date,dt.time(),ZoneInfo(a['agency_timezone'])).timestamp() for a in agencies.values())-.001
+    # Final service-day departures can continue beyond a declared feed end
+    # date as well as a calendar end date. Both use the GTFS time anchor.
+    source['valid_until']=min(service_start(last_calendar_day,ZoneInfo(a['agency_timezone']))+max(86400,max_time) for a in agencies.values())-.001
     result = {"schema": 1, "source": source, "profiles": config["profiles"],
             "agencies": list(agencies.values()), "routes": [routes[key] for key in sorted(routes)],
             "stops": [] if geometry else [{"id": key, "name": stops[key]["stop_name"], "lat": float(stops[key]["stop_lat"]), "lon": float(stops[key]["stop_lon"])} for key in sorted({s for row in output for s in row["stops"]})],

@@ -35,6 +35,8 @@ Unicode feed names have stable filesystem IDs and remain in the inventory.
 
 Every entry ends as excluded, no rail, compiled or failed. The assembler refuses
 missing batches, duplicate feed IDs or inconsistent catalogue/reference dates.
+It removes cached outputs absent from the current compiled inventory before
+publishing, including retired/failed/excluded feeds and interrupted writes.
 It builds static service tiles one feed and one encoded tile at a time; the viewer
 never downloads feeds or queries an extraction API. Scheduled main-branch runs
 publish the complete snapshot in the `service-frequency-data` data release and
@@ -106,6 +108,8 @@ Missing times stay unknown. Broken references, overlapping frequency intervals,
 invalid dates and ambiguous/nonexistent DST boundaries fail explicitly.
 A reference beyond an obsolete calendar's horizon, with no declared feed end,
 fails explicitly instead of becoming a future zero-frequency profile.
+Multi-day departures extending the final service day are included in that
+horizon and expiry calculation.
 
 Counts are divided by the window duration. Width uses the lower directional rate
 when both path directions are represented; a single-direction path retains its

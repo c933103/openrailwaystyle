@@ -369,6 +369,40 @@ test('station inspection finds nearby interchanges and facility inspection avoid
   } finally {dom.window.close();}
 });
 
+test('close infrastructure details follow the mode, labels and background on the initial frame and after switching',async()=>{
+ const {dom,window,maps}=await start({search:'?mode=speed&names=0'});
+ try{
+  const map=maps[0],ids=['platform-areas','platform-outlines','platform-points','platform-edges','platform-numbers','platform-lengths','infrastructure-signal-points','infrastructure-signal-references','infrastructure-entrance-points','infrastructure-entrance-references'];
+  for(const id of ids)assert.equal(map.options.style.layers.find(l=>l.id===id).layout.visibility,'none',id);
+  map.handlers['style.load']();window.document.querySelector('[data-mode="infrastructure"]').click();
+  for(const id of ids)assert.equal(map.visibility[id],'visible',id);
+  window.document.getElementById('labels').click();
+  for(const id of ['platform-numbers','platform-lengths','infrastructure-signal-references','infrastructure-entrance-references'])assert.equal(map.visibility[id],'none',id);
+  for(const id of ['platform-edges','infrastructure-signal-points','infrastructure-entrance-points'])assert.equal(map.visibility[id],'visible',id);
+  window.document.querySelector('[data-background="satellite"]').click();for(const id of ids)assert.equal(map.visibility[id],'none',id);
+  window.document.querySelector('[data-background="hybrid"]').click();assert.equal(map.visibility['infrastructure-entrance-points'],'visible');
+  window.document.querySelector('[data-mode="control"]').click();for(const id of ids)assert.equal(map.visibility[id],'none',id);
+ }finally{dom.window.close();}
+});
+
+test('signals and entrances inspect their mapped node and avoid track/timetable fields',async()=>{
+ const {dom,window,maps,errors}=await start();
+ try{
+  const map=maps[0];map.handlers['style.load']();map.zoom=19;
+  for(const feature of [
+   {source:'railwaySignals',sourceLayer:'railway_signals',layer:{id:'infrastructure-signal-points'},properties:{id:123,railway:'signal',ref:'S12',category0:'main',category1:'distant',deactivated1:true,direction_both:true},geometry:{type:'Point',coordinates:[0,0]}},
+   {source:'stationEntrances',sourceLayer:'standard_station_entrances',layer:{id:'infrastructure-entrance-points'},properties:{id:456,label:'Exit A8'},geometry:{type:'Point',coordinates:[0,0]}}
+  ]){
+   map.rendered=[feature];map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+   const detail=window.document.getElementById('detail-content');assert.match(detail.textContent,feature.source==='railwaySignals'?/Signal S12/:/Exit A8/);
+   assert.equal(detail.querySelector(`a[href="https://www.openstreetmap.org/node/${feature.properties.id}"]`)?.textContent,'Open this node on OpenStreetMap ↗');
+   assert.doesNotMatch(detail.textContent,/Speed label|Train protection|Departures|Track in shared roadway/);
+   if(feature.source==='railwaySignals'){assert.match(detail.textContent,/main, distant/);assert.match(detail.textContent,/Inactive componentsdistant/);assert.match(detail.textContent,/Both directions/);}
+  }
+  assert.equal(errors.length,0);
+ }finally{dom.window.close();}
+});
+
 test('Carto shows railway overlays, honours terrain, hides duplicate basemap labels and keeps attribution open', async () => {
   const {dom,window,maps} = await start({search:'?background=carto'});
   try {
