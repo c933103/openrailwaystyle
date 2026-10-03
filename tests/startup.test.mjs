@@ -141,17 +141,19 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
     assert.equal(maps[0].visibility['speed-tracks'],'none');
     assert.equal(maps[0].visibility['infrastructure-tracks'],'visible');
     assert.equal(maps[0].visibility['station-stations-dots'],'visible');
-    const curated = window.document.getElementById('curatedStationColor');
-    assert.equal(curated.checked,false,'curated colour is off by default');
-    curated.checked = true; curated.dispatchEvent(new window.Event('change'));
-    assert.equal(maps[0].paint['station-major-3-names'],'#8b2f6d');
-    assert.equal(maps[0].layout['station-major-3-names'],'station-dot-curated');
-    maps[0].handlers.styleimagemissing({id:'station-dot-curated'});
-    assert.equal(maps[0].image.id,'station-dot-curated');
-    assert.match(decodeURIComponent(window.document.cookie),/"curatedStationColor":true/);
-    curated.checked = false; curated.dispatchEvent(new window.Event('change'));
-    assert.equal(JSON.stringify(maps[0].paint['station-major-3-names']),JSON.stringify(['match',['get','station_size'],'large','#123e52','#0865c0']));
-    assert.equal(maps[0].layout['station-major-3-names'],'station-dot');
+    const importanceColours = window.document.getElementById('stationImportanceColors');
+    assert.equal(importanceColours.checked,false,'low-zoom importance colours are off by default');
+    const uniformLowZoom=['step',['zoom'],'#123e52',7,['match',['get','station_size'],'large','#123e52','#0865c0']];
+    assert.equal(JSON.stringify(maps[0].paint['station-major-3-names']),JSON.stringify(uniformLowZoom));
+    assert.equal(JSON.stringify(maps[0].paint['station-stationLow-large-names']),JSON.stringify(uniformLowZoom));
+    assert.equal(JSON.stringify(maps[0].paint['station-stationMed-normal-names']),JSON.stringify(uniformLowZoom));
+    importanceColours.checked = true; importanceColours.dispatchEvent(new window.Event('change'));
+    const importance=['match',['get','station_size'],'large','#123e52','#0865c0'];
+    assert.equal(JSON.stringify(maps[0].paint['station-major-3-names']),JSON.stringify(importance));
+    assert.equal(JSON.stringify(maps[0].paint['station-stationLow-large-names']),JSON.stringify(importance));
+    assert.equal(JSON.stringify(maps[0].paint['station-stationMed-normal-names']),JSON.stringify(importance));
+    assert.match(decodeURIComponent(window.document.cookie),/"stationImportanceColors":true/);
+    assert.equal(JSON.stringify(maps[0].options.style.layers.find(l=>l.id==='station-detail-large-names').paint['text-color']),JSON.stringify(importance),'detailed station colours are unchanged');
     // Track-count boxes can be switched off.
     assert.equal(maps[0].visibility['infrastructure-track-count'],'visible');
     const counts = window.document.getElementById('trackCounts');
@@ -262,15 +264,15 @@ test('settings are remembered in a cookie; a shared link applies once and leaves
     try { assert.match(maps[0].options.style.sources.stations.url, new RegExp(`atlasstation://${expected}/`)); }
     finally {dom.window.close();}
   }
-  const saved = encodeURIComponent(JSON.stringify({mode:'electrification', relief:false, curatedStationColor:true, units:'imperial', detail:true, language:'ko'}));
+  const saved = encodeURIComponent(JSON.stringify({mode:'electrification', relief:false, stationImportanceColors:true, units:'imperial', detail:true, language:'ko'}));
   {
     const {dom,window,maps} = await start({cookie:`atlas_settings=${saved}`});
     try {
       assert.match(maps[0].options.style.sources.stations.url, /atlasstation:\/\/ko\//);
       assert.equal(window.document.querySelector('[data-mode="electrification"]').getAttribute('aria-pressed'),'true');
       assert.equal(window.document.getElementById('relief').checked,false);
-      assert.equal(window.document.getElementById('curatedStationColor').checked,true);
-      assert.equal(maps[0].options.style.layers.find(l=>l.id==='station-major-3-names').paint['text-color'],'#8b2f6d','saved curated colour applies before first render');
+      assert.equal(window.document.getElementById('stationImportanceColors').checked,true);
+      assert.equal(JSON.stringify(maps[0].options.style.layers.find(l=>l.id==='station-major-3-names').paint['text-color']),JSON.stringify(['match',['get','station_size'],'large','#123e52','#0865c0']),'saved importance colours apply before first render');
       assert.equal(window.document.getElementById('units').value,'imperial');
       assert.equal(window.document.getElementById('map').classList.contains('detail'),true);
     } finally {dom.window.close();}
