@@ -21,6 +21,16 @@ jobs:
         run: node --test tests/branding.test.mjs
       - name: Install full Chromium
         run: npx playwright install --with-deps chromium
+      - name: Reload the uncontrolled first-install page in the test fixture
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          const file='scripts/check-branding-browser.mjs', source=readFileSync(file,'utf8');
+          const marker='  await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);';
+          if(source.split(marker).length!==2)throw new Error('First-install wait marker changed');
+          const code=`  console.log('REGISTRATION',await page.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();return {scope:r?.scope,active:r?.active?.state,controller:navigator.serviceWorker.controller?.scriptURL,caches:await caches.keys()};}));\n  await page.reload();\n${marker}`;
+          writeFileSync(file,source.replace(marker,()=>code));
+          JS
       - name: Test browser-managed installation and cache migration
         timeout-minutes: 2
         env:
@@ -31,5 +41,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: branding-migration-review
-          path: browser-review/branding/
+          path: |
+            browser-review/branding/
+            scripts/check-branding-browser.mjs
           if-no-files-found: warn
