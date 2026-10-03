@@ -1,0 +1,20 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {JSDOM} from 'jsdom';
+import {rememberAttribution} from '../styles/map-controls.mjs';
+const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
+for(const initial of [undefined,null,'true',false,true])test(`attribution default/restoration: ${initial}`,async()=>{
+  const dom=new JSDOM('<details class="maplibregl-ctrl-attrib maplibregl-compact maplibregl-compact-show" open><summary class="maplibregl-ctrl-attrib-button"></summary><div>Credits</div></details>');
+  const element=dom.window.document.querySelector('details'),button=element.querySelector('summary'),changes=[];
+  const dispose=rememberAttribution(element,{open:initial,changed:value=>changes.push(value)});
+  const check=value=>{assert.equal(element.open,value);assert.equal(element.classList.contains('maplibregl-compact-show'),value);assert.equal(button.getAttribute('aria-expanded'),String(value));};
+  check(initial===true);assert.deepEqual(changes,[],'initialization must not overwrite the settings cookie');
+  button.click();check(initial!==true);assert.deepEqual(changes,[initial!==true]);
+  element.classList.remove('maplibregl-compact-show');element.removeAttribute('open');await tick();check(initial!==true);
+  assert.deepEqual(changes,[initial!==true],'drag/data/resize events cannot erase a user choice');
+  if(initial===true)button.click();
+  check(true);button.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));check(false);
+  assert.equal(dom.window.document.activeElement,button);
+  dispose();element.classList.add('maplibregl-compact-show');await tick();assert.equal(element.classList.contains('maplibregl-compact-show'),true,'observer removed');
+  dom.window.close();
+});
