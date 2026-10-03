@@ -100,6 +100,7 @@ def compile_feed(path, config, date, geometry=False):
     date = dt.date.fromisoformat(date)
     z = zipfile.ZipFile(path)
     feed = list(read(z, "feed_info.txt"))
+    attributions = list(read(z, 'attributions.txt'))
     if feed:
         lo, hi = feed[0].get("feed_start_date"), feed[0].get("feed_end_date")
         if (lo and date.strftime("%Y%m%d") < lo) or (hi and date.strftime("%Y%m%d") > hi):
@@ -159,9 +160,11 @@ def compile_feed(path, config, date, geometry=False):
         spec = importlib.util.spec_from_file_location("gtfs_shapes", Path(__file__).with_name("gtfs-shapes.py"))
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        paths = module.ShapePaths(read(z, "shapes.txt"), trips, times, stops, config)
+        paths = module.ShapePaths(read(z, "shapes.txt"), trips, times, stops,
+                                  {**config, 'rail_route_types': {key: value['route_type'] for key, value in routes.items()}})
     segments = {}
     boundaries = {}
+    invalid_sequences, invalid_active = 0, set()
 
     def station(stop_id):
         if stop_id not in stops:
@@ -184,7 +187,10 @@ def compile_feed(path, config, date, geometry=False):
             raise ValueError("Reference windows must have positive duration")
         sequence = sorted(times.get(trip_id, []), key=lambda row: int(row["stop_sequence"]))
         if len(sequence) < 2 or len({r["stop_sequence"] for r in sequence}) != len(sequence):
-            raise ValueError("Missing or duplicate rail stop sequence")
+            invalid_sequences += 1
+            if any(trip['service_id'] in ids for ids in active.values()):
+                invalid_active.add(route_id)
+            continue
         first = seconds(sequence[0].get("departure_time"))
         contributions = {}
 
@@ -254,7 +260,7 @@ def compile_feed(path, config, date, geometry=False):
                 segment["unknown"][profile][direction] |= profile in unknown
                 segment["estimated"][profile] |= profile in estimated
 
-    incomplete = set()
+    incomplete = set(invalid_active)
     if paths:
         for trip_id,trip in trips.items():
             sequence = sorted(times[trip_id],key=lambda r:int(r['stop_sequence']))
@@ -279,7 +285,8 @@ def compile_feed(path, config, date, geometry=False):
     source = {**config["source"], "sha256": digest.hexdigest(), "feed_info": feed[0] if feed else {},
               "service_date": date.isoformat(), "day_type": days[date.weekday()], "geometry": "supplied GTFS shapes / matched published railway graph" if geometry and getattr(paths, 'rail', None) else "supplied GTFS shapes" if geometry else "unmatched stop pairs",
               "count_anchor": "departure at the preceding served stop; no inferred pass times",
-              "geometry_audit": {"withheld_trips": dict(paths.rejected), "routes_with_incomplete_active_geometry": sorted(incomplete), "excluded_replacement_bus_trips": len(excluded), "matched_railway_patterns": len(getattr(paths, 'rail_patterns', set()))} if geometry else {}}
+              "feed_attributions": attributions,
+              "geometry_audit": {"withheld_trips": dict(paths.rejected), "routes_with_incomplete_active_geometry": sorted(incomplete), "excluded_replacement_bus_trips": len(excluded), "invalid_rail_stop_sequences": invalid_sequences, "matched_railway_patterns": len(getattr(paths, 'rail_patterns', set()))} if geometry else {}}
     if feed and feed[0].get('feed_end_date'):
         end_date=dt.datetime.strptime(feed[0]['feed_end_date'],'%Y%m%d').date()+dt.timedelta(days=1)
         source['valid_until']=min(dt.datetime.combine(end_date,dt.time(),ZoneInfo(a['agency_timezone'])).timestamp() for a in agencies.values())-.001
@@ -295,6 +302,9 @@ def compile_feed(path, config, date, geometry=False):
         audit = compile_feed(path, {**config, 'include_unmapped': False}, date.isoformat(), geometry=False)
         result['unmapped_segments'] = [s for s in audit['segments'] if s['route_id'] in incomplete]
         result['unmapped_stops'] = audit['stops']
+    if geometry and getattr(paths, 'rail_patterns', {}):
+        source['geometry_license'] = 'ODbL-1.0'
+        source['geometry_attribution'] = '© OpenStreetMap contributors; matched against an already published branch/metro railway snapshot'
     z.close()
     return result
 

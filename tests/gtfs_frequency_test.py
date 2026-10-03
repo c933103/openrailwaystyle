@@ -1,6 +1,8 @@
 import csv
+import gzip
 import importlib.util
 import io
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -72,6 +74,56 @@ class GTFSFrequency(unittest.TestCase):
         result=compiler.compile_feed(self.shape_feed(missing=True),CONFIG,'2026-10-05',geometry=True)
         self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'],['R'])
         self.assertTrue(all(s['profiles']['am']['display_tph'] is None for s in result['segments']))
+
+    def test_shapeless_feed_follows_existing_curved_tracks_and_keeps_unmapped_rates(self):
+        path=self.shape_feed()
+        with zipfile.ZipFile(path) as z:files={n:z.read(n) for n in z.namelist() if n!='shapes.txt'}
+        with zipfile.ZipFile(path,'w') as z:
+            for name,data in files.items():z.writestr(name,data)
+        graph=path.parent/'graph.ndjson.gz'
+        lines=[[(24,60),(24,60.01),(24.005,60.015),(24,60.02)],[(24,60.01),(24.01,60.01)]]
+        with gzip.open(graph,'wt') as file:
+            for points in lines:file.write(json.dumps({'type':'Feature','properties':{'feature':'subway','state':'present'},'geometry':{'type':'LineString','coordinates':points}})+'\n')
+        config={**CONFIG,'rail_graph':str(graph),'include_unmapped':True}
+        result=compiler.compile_feed(path,config,'2026-10-05',geometry=True)
+        self.assertTrue(result['segments'])
+        self.assertTrue(any((24.005,60.015) in s['geometry'] for s in result['segments']))
+        self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'],[])
+        self.assertGreater(result['source']['geometry_audit']['matched_railway_patterns'],0)
+        # A rail feed cannot be mapped onto metro infrastructure.
+        with gzip.open(graph,'wt') as file:
+            for points in lines:file.write(json.dumps({'type':'Feature','properties':{'feature':'rail','state':'present'},'geometry':{'type':'LineString','coordinates':points}})+'\n')
+        result=compiler.compile_feed(path,config,'2026-10-05',geometry=True)
+        self.assertEqual(result['segments'],[])
+        self.assertTrue(result['unmapped_segments'])
+        self.assertTrue(any(s['profiles']['am']['display_tph'] is not None for s in result['unmapped_segments']))
+
+    def test_service_times_over_48_hours_include_older_days(self):
+        patterns={'t':[('A','49:00:00'),('B','49:10:00')]}
+        path=self.feed(patterns,patterns)
+        # Enable Saturday; the Monday 01:00 event belongs to Saturday's trip.
+        with zipfile.ZipFile(path) as z:files={n:z.read(n) for n in z.namelist()}
+        text=files['calendar.txt'].decode().replace(',1,1,1,1,1,0,1,',',1,1,1,1,1,1,1,')
+        files['calendar.txt']=text.encode()
+        with zipfile.ZipFile(path,'w') as z:
+            for name,data in files.items():z.writestr(name,data)
+        result=compiler.compile_feed(path,{**CONFIG,'profiles':{'early':{'start':'01:00:00','end':'02:00:00'}}},'2026-10-05')
+        self.assertEqual(result['segments'][0]['profiles']['early']['display_tph'],1)
+
+    def test_calendar_route_variants_consolidate_but_disconnected_names_do_not(self):
+        routes={key:{'route_id':key,'route_type':'1','agency_id':'A','route_short_name':'1'} for key in ['a','b','other']}
+        trips={key:{'route_id':key} for key in routes}
+        times={'a':[{'stop_id':'A'},{'stop_id':'B'}],'b':[{'stop_id':'B'},{'stop_id':'C'}],'other':[{'stop_id':'D'},{'stop_id':'E'}]}
+        result=compiler.canonical_routes(routes,trips,times,{key:{} for key in 'ABCDE'})
+        self.assertEqual(set(result),{'a','other'})
+        self.assertEqual(result['a']['source_route_ids'],['a','b'])
+        self.assertEqual(trips['b']['route_id'],'a')
+
+    def test_incomplete_single_stop_trip_withholds_affected_route_instead_of_entire_feed(self):
+        patterns={'valid':[('A','08:00:00'),('B','08:10:00')],'bad':[('A','08:30:00')]}
+        result=compiler.compile_feed(self.feed(patterns,patterns),CONFIG,'2026-10-05')
+        self.assertTrue(result['segments'])
+        self.assertIsNone(result['segments'][0]['profiles']['am']['display_tph'])
 
     def test_shared_trunk_branches_and_directions(self):
         patterns={'t1':[('A','08:00:00'),('B','08:10:00'),('C','08:20:00')],

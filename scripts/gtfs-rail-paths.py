@@ -18,7 +18,7 @@ def distance(a, b):
 
 
 class RailPaths:
-    def __init__(self, path, trips, times, stops, max_snap=200):
+    def __init__(self, path, trips, times, stops, max_snap=200, mode='rail'):
         self.patterns, self.rejected, self.graph = {}, defaultdict(int), defaultdict(dict)
         self.max_snap = max_snap
         used = {row['stop_id'] for seq in times.values() for row in seq}
@@ -36,6 +36,8 @@ class RailPaths:
                     continue
                 p = item.get('properties', {})
                 if p.get('state', 'present') != 'present' or p.get('service'):
+                    continue
+                if p.get('feature') not in ({'rail', 'narrow_gauge'} if mode == 'rail' else {'tram', 'light_rail'} if mode == 'tram' else {mode}):
                     continue
                 coords = [tuple(round(float(v), 6) for v in point) for point in item['geometry']['coordinates']]
                 for a, b in zip(coords, coords[1:]):
@@ -60,6 +62,17 @@ class RailPaths:
             chain = sorted({a, b, *points}, key=lambda p: distance(a, p))
             for lo, hi in zip(chain, chain[1:]):
                 self.graph[lo][hi] = self.graph[hi][lo] = distance(lo, hi)
+        self.components = {}
+        for start in self.graph:
+            if start in self.components:
+                continue
+            number, pending = len(self.components), [start]
+            self.components[start] = number
+            while pending:
+                node = pending.pop()
+                for nxt in self.graph[node]:
+                    if nxt not in self.components:
+                        self.components[nxt] = number; pending.append(nxt)
         self.pairs = {}
         for trip_id, trip in trips.items():
             sequence = sorted(times.get(trip_id, []), key=lambda row: int(row['stop_sequence']))
@@ -126,6 +139,9 @@ class RailPaths:
         key = (a, b)
         if key in self.pairs:
             return self.pairs[key]
+        if self.components.get(a) != self.components.get(b):
+            self.pairs[key] = None
+            return None
         budget = max(1000, distance(a, b)*3)
         result = self.shortest(a, b, budget)
         path = result[1] if result else None

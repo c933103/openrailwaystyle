@@ -51,19 +51,25 @@ class ShapePaths:
                 self.patterns[key] = self.project_pattern(trip, sequence, stops)
             if self.patterns[key] is None:
                 self.rejected['missing_or_unusable_shape'] += 1
-        self.rail, self.rail_patterns = None, set()
+        self.rail, self.rail_patterns = {}, {}
         if config.get('rail_graph'):
             missing = {key: trip for key, trip in trips.items() if self.patterns[self.pattern_key(trip, sorted(times.get(key, []), key=lambda r: int(r['stop_sequence'])))] is None}
             if missing:
                 spec = importlib.util.spec_from_file_location('gtfs_rail_paths', Path(__file__).with_name('gtfs-rail-paths.py'))
                 module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
-                self.rail = module.RailPaths(config['rail_graph'], missing, {key: times[key] for key in missing}, stops, self.max_snap)
+                def mode(trip):
+                    value = int(config['rail_route_types'][trip['route_id']])
+                    return 'subway' if value == 1 or 400 <= value < 500 else 'tram' if value == 0 or 900 <= value < 1000 else 'monorail' if value == 12 else 'funicular' if value == 7 else 'rail'
+                for kind in {mode(trip) for trip in missing.values()}:
+                    selected = {key: trip for key, trip in missing.items() if mode(trip) == kind}
+                    self.rail[kind] = module.RailPaths(config['rail_graph'], selected, {key: times[key] for key in selected}, stops, self.max_snap, kind)
                 for key, trip in missing.items():
                     sequence = sorted(times[key], key=lambda r: int(r['stop_sequence']))
                     pattern = self.pattern_key(trip, sequence)
-                    if self.rail.patterns.get(self.rail.pattern_key(trip, sequence)) is not None:
+                    matcher = self.rail[mode(trip)]
+                    if matcher.patterns.get(matcher.pattern_key(trip, sequence)) is not None:
                         self.patterns[pattern] = 'rail'
-                        self.rail_patterns.add(pattern)
+                        self.rail_patterns[pattern] = mode(trip)
                         self.rejected['missing_or_unusable_shape'] -= 1
                 if not self.rejected['missing_or_unusable_shape']:
                     del self.rejected['missing_or_unusable_shape']
@@ -172,7 +178,7 @@ class ShapePaths:
     def segments(self, trip, sequence):
         key = self.pattern_key(trip, sequence)
         if key in self.rail_patterns:
-            return self.rail.segments(trip, sequence)
+            return self.rail[self.rail_patterns[key]].segments(trip, sequence)
         positions = self.patterns.get(key)
         if positions is None:
             return []

@@ -25,8 +25,8 @@ test('local services rebundle independently and shared geometry retains every se
   assert.equal(local.length,2);assert.ok(local.every(f=>f.properties.n===2));
   assert.notEqual(local[0].properties.frequency_offset_am,local[1].properties.frequency_offset_am);
 });
-test('reviewed multi-region registry supplies actual mapped rail shapes and profiles',async()=>{
-  const {feeds,registry}=await loadTimetableServices();
+test('dated multi-region fixtures supply actual mapped rail shapes and profiles',async()=>{
+  const {feeds,registry}=await loadTimetableServices(new URL('./fixtures/service-frequency/registry.json',import.meta.url));
   assert.ok(feeds.length>=4);assert.ok(new Set(feeds.map(f=>f.source.region)).size>=3);
   for(const f of feeds){
     assert.ok(f.source.sha256.match(/^[a-f0-9]{64}$/));assert.ok(f.source.valid_until>now/1000);
@@ -37,14 +37,14 @@ test('reviewed multi-region registry supplies actual mapped rail shapes and prof
   assert.ok(registry.gaps.some(g=>g.region==='Africa'));
 });
 
-test('assembly succeeds when the OSM service-data branch supplies no table',async()=>{
+test('fixture assembly succeeds when the OSM service-data branch supplies no table',async()=>{
   const {mkdtemp,readFile,rm}=await import('node:fs/promises');
   const {tmpdir}=await import('node:os');
   const {join}=await import('node:path');
   const {spawnSync}=await import('node:child_process');
   const directory=await mkdtemp(join(tmpdir(),'atlas-timetable-only-'));
   try {
-    const run=spawnSync(process.execPath,['scripts/rebuild-service-frequency.mjs',directory,join(directory,'credits.html')],{encoding:'utf8'});
+    const run=spawnSync(process.execPath,['scripts/rebuild-service-frequency.mjs',directory,join(directory,'credits.html'),'--fixtures'],{encoding:'utf8'});
     assert.equal(run.status,0,run.stderr);
     const index=JSON.parse(await readFile(join(directory,'index.json'),'utf8'));
     assert.ok(index.tiles.length>0,'official paths remain usable without the OSM snapshot');
@@ -52,4 +52,18 @@ test('assembly succeeds when the OSM service-data branch supplies no table',asyn
     assert.equal(manifest.feeds.length,4);assert.ok(manifest.feeds.every(f=>f.mappedRoutes>0));
     assert.match(await readFile(join(directory,'credits.html'),'utf8'),/MassDOT|Auckland Transport/);
   } finally {await rm(directory,{recursive:true,force:true});}
+});
+
+test('production frequency registry has no city feed fallback',async()=>{
+  const {feeds,registry}=await loadTimetableServices();
+  assert.equal(feeds.length,0);assert.equal(registry.schema,2);
+  assert.match(registry.catalogue,/transitous/);
+  assert.match(registry.snapshot,/service-frequency\/manifest/);
+});
+
+test('successful revalidation keeps unchanged annual feeds fresh without changing retrieval date',()=>{
+  const annual=structuredClone(feed);annual.source.retrieved='2026-01-01';annual.source.checked='2026-10-03';
+  assert.equal(timetableFeatures([annual],now).summary[0].routesWithProfiles,1);
+  delete annual.source.checked;
+  assert.equal(timetableFeatures([annual],now).summary[0].routesWithProfiles,0);
 });

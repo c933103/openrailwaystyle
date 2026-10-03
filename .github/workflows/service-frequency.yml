@@ -1,5 +1,15 @@
 name: Build worldwide service frequencies
 on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/global-service-frequency.py
+      - scripts/gtfs-frequency.py
+      - scripts/gtfs-shapes.py
+      - scripts/gtfs-rail-paths.py
+      - scripts/assemble-global-frequency.mjs
+      - styles/data-src/frequency-source-rules.json
+      - .github/workflows/service-frequency.yml
   workflow_dispatch:
     inputs:
       service_date:
@@ -24,6 +34,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   catalogue:
+    if: github.event_name != 'pull_request' || github.event.pull_request.base.ref == github.event.repository.default_branch
     runs-on: ubuntu-latest
     outputs:
       service_date: ${{ steps.date.outputs.value }}
@@ -73,7 +84,9 @@ jobs:
           fi
       - uses: actions/cache@v4
         with:
-          path: frequency-cache
+          path: |
+            frequency-cache
+            frequency-output/feeds
           key: worldwide-gtfs-${{ matrix.shard }}-${{ needs.catalogue.outputs.service_date }}-${{ github.run_id }}
           restore-keys: worldwide-gtfs-${{ matrix.shard }}-
       - name: Compile every eligible feed in this worldwide shard
@@ -109,3 +122,32 @@ jobs:
           name: worldwide-frequency-snapshot
           path: frequency-output/
           retention-days: 14
+  publish:
+    needs: assemble
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: worldwide-frequency-snapshot
+          path: frequency-output
+      - name: Publish the complete data snapshot independently of application code
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          tar -czf frequency-snapshot.tar.gz -C frequency-output manifest.json inventory.json feeds tiles
+          # One data release, with the current snapshot. No force pushes or
+          # changes to other workers' snapshot branches or application PRs.
+          status=0
+          gh api "repos/$GH_REPO/releases/tags/service-frequency-data" > /tmp/frequency-release.json 2>/tmp/frequency-release-error || status=$?
+          if [ "$status" != 0 ]; then
+            if ! rg -q '404' /tmp/frequency-release-error; then cat /tmp/frequency-release-error; exit "$status"; fi
+            gh release create service-frequency-data --title 'Worldwide service-frequency data' --notes 'Catalogue-wide GTFS frequency profiles and path geometry. Inventory records missing licences, failed downloads and unmatched paths.'
+          fi
+          gh release upload service-frequency-data frequency-snapshot.tar.gz frequency-output/manifest.json frequency-output/inventory.json --clobber
+          gh workflow run site.yml --ref main

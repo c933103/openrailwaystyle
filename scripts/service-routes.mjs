@@ -11,7 +11,7 @@ import {frequencyBundle} from '../styles/service-frequency.mjs';
 
 export const MIN_ZOOM = 7, LOCAL_MIN_ZOOM = 10, MAX_ZOOM = 12, LAYER = 'service_routes';
 // Light rail, trams and monorails from zoom 10, as in the other views.
-export const LOCAL_KINDS = ['light_rail', 'tram', 'monorail'];
+export const LOCAL_KINDS = ['light_rail', 'tram', 'monorail', 'funicular'];
 
 const areaFilter = spec => { const [key, value] = spec.split('='); return `area["${key}"="${value}"]`; };
 const SELECTS = ['rel[type=route][route~"^(subway|light_rail|tram|monorail)$"]', 'rel[type=route][route=train][service~"^(commuter|urban)$"]'];
@@ -254,7 +254,7 @@ export function orient(line) {
   const [a, b] = [line[0], line.at(-1)];
   return b[0] < a[0] || (b[0] === a[0] && b[1] < a[1]) ? [...line].reverse() : line;
 }
-const ORDER = {commuter: 0, subway: 1, monorail: 2, light_rail: 3, tram: 4};
+const ORDER = {rail:0,commuter: 0, subway: 1, monorail: 2, light_rail: 3, tram: 4,funicular:5};
 // Joins lines where one ends at the point the next starts (never reversing
 // one, which would put its route on the other side).
 export function joinLines(lines) {

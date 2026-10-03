@@ -14,11 +14,11 @@ import hashlib
 import importlib.util
 import io
 import json
+from functools import lru_cache
 from pathlib import Path
 import re
-import shutil
+import signal
 import struct
-import tempfile
 from urllib.error import HTTPError
 from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
@@ -32,7 +32,7 @@ PROCESSED = 'https://api.transitous.org/gtfs/'
 # the fact that a download is public. URL-only licences need an explicit rule.
 LICENSES = {'CC0-1.0', 'CC-BY-1.0', 'CC-BY-2.5', 'CC-BY-3.0', 'CC-BY-4.0',
             'CC-BY-SA-4.0', 'ODbL-1.0', 'ODC-By-1.0', 'OGL-UK-3.0',
-            'etalab-2.0', 'NLOD-1.0', 'MIT'}
+            'etalab-2.0', 'NLOD-1.0', 'MIT', 'LicenseRef-MTA-Data', 'LicenseRef-MassDOT-Developers'}
 EXCLUDED = {'CN', 'RU', 'IR', 'KP'}
 PROFILES = {'am': {'start': '07:00:00', 'end': '09:00:00'},
             'pm': {'start': '16:00:00', 'end': '18:00:00'},
@@ -77,7 +77,9 @@ def discover(rows, rules):
     out, seen = [], set()
     for original in rows:
         row = dict(original)
-        row.update(rules.get('sources', {}).get(row.get('filename'), {}))
+        rule = rules.get('sources', {}).get(row.get('filename'), {})
+        if rule and rule.get('expected_source') == row.get('source'):
+            row.update({key: value for key,value in rule.items() if key!='expected_source'})
         try:
             ident = source_id(row)
         except ValueError:
@@ -213,7 +215,15 @@ def write_feed(path, value):
     temporary.replace(path)
 
 
-def compile_entry(entry, cache, output, date, graph, max_bytes, profiles):
+@lru_cache(maxsize=8)
+def file_hash(path):
+    digest=hashlib.sha256()
+    with Path(path).open('rb') as file:
+        while chunk:=file.read(1_048_576):digest.update(chunk)
+    return digest.hexdigest()
+
+
+def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_seconds=600):
     import csv
     ident, row = entry['id'], entry['catalogue']
     path, meta_path = cache/(ident+'.zip'), cache/(ident+'.meta.json')
@@ -240,13 +250,19 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles):
             return {**entry, 'status': 'no_rail', 'rail_routes': 0}
         path.write_bytes(remote.download())
         meta = {'etag': remote.identity, 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
+    meta['checked'] = dt.datetime.now(dt.timezone.utc).date().isoformat()
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     atomic_json(meta_path, meta)
+    signature=hashlib.sha256(json.dumps({'catalogue':row,'profiles':profiles,
+        'graph':file_hash(str(graph)) if graph else None,
+        'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()
     destination = output/'feeds'/(ident+'.json.gz')
     if destination.exists():
         with gzip.open(destination, 'rt') as file:
             previous = json.load(file)
-        if previous['source']['sha256'] == digest and previous['source']['service_date'] == date and previous['profiles'] == profiles and previous['source'].get('compiler_version') == 2:
+        if previous['source']['sha256'] == digest and previous['source']['service_date'] == date and previous['source'].get('input_signature') == signature:
+            previous['source']['checked'] = meta['checked']
+            write_feed(destination, previous)
             return {**entry, 'status': 'compiled', 'output': 'feeds/'+destination.name, 'sha256': digest,
                     'rail_routes': len(previous['routes']), 'mapped_segments': len(previous['segments']),
                     'unmapped_segments': len(previous.get('unmapped_segments', [])), 'source': previous['source']}
@@ -255,15 +271,23 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles):
                'license': row['spdx_license_identifier'],
                'terms_url': row.get('license_url') or f"https://spdx.org/licenses/{row['spdx_license_identifier']}.html",
                'attribution': row.get('attribution_text') or row.get('publisher', {}).get('name') or entry['name'],
-               'catalogue_attribution': row, 'retrieved': meta['retrieved'],
+               'catalogue_attribution': row, 'retrieved': meta['retrieved'], 'checked': meta['checked'],
+               'rail_graph_sha256': file_hash(str(graph)) if graph else None,
                'country': entry['country'], 'region': row.get('country_name', entry['country']),
-               'review_after_days': 30, 'compiler_version': 2,
+               'review_after_days': 30, 'compiler_version': 2, 'input_signature': signature,
                'note': 'Configured AM/PM/daytime windows in each agency timezone. Scheduled service, not live departures.'},
               'profiles': profiles, 'canonical_routes': True, 'include_unmapped': True,
               'rail_graph': str(graph) if graph else None, 'exclude_platform_codes': ['R-Bus']}
-    result = compiler.compile_feed(path, config, date, geometry=True)
+    def timeout(*_):
+        raise TimeoutError('Feed exceeded compilation time budget')
+    previous_handler = signal.signal(signal.SIGALRM, timeout)
+    signal.alarm(max_seconds)
+    try:
+        result = compiler.compile_feed(path, config, date, geometry=True)
+    finally:
+        signal.alarm(0); signal.signal(signal.SIGALRM, previous_handler)
     source = result['source']
-    source['attribution'] = '; '.join(dict.fromkeys([source['attribution']]+[a['agency_name'] for a in result['agencies']]))
+    source['attribution'] = '; '.join(dict.fromkeys([source['attribution']]+[a['agency_name'] for a in result['agencies']]+[a.get('organization_name','') for a in source['feed_attributions']]))
     write_feed(destination, result)
     return {**entry, 'status': 'compiled', 'output': 'feeds/'+destination.name, 'sha256': digest,
             'rail_routes': len(result['routes']), 'mapped_segments': len(result['segments']),
@@ -281,9 +305,10 @@ def main():
     parser.add_argument('--shard', type=int, default=0)
     parser.add_argument('--shards', type=int, default=1)
     parser.add_argument('--max-feed-bytes', type=int, default=600_000_000)
+    parser.add_argument('--max-compile-seconds', type=int, default=600)
     parser.add_argument('--inventory-only', action='store_true')
     args = parser.parse_args()
-    if not 0 <= args.shard < args.shards or args.max_feed_bytes <= 0:
+    if not 0 <= args.shard < args.shards or args.max_feed_bytes <= 0 or args.max_compile_seconds <= 0:
         parser.error('Invalid shard or byte budget')
     dt.date.fromisoformat(args.date)
     args.cache.mkdir(parents=True, exist_ok=True)
@@ -303,7 +328,7 @@ def main():
             continue
         if entry['status'] == 'pending' and not args.inventory_only:
             try:
-                entry = compile_entry(entry, args.cache, args.output, args.date, args.rail_graph, args.max_feed_bytes, rules.get('profiles', PROFILES))
+                entry = compile_entry(entry, args.cache, args.output, args.date, args.rail_graph, args.max_feed_bytes, rules.get('profiles', PROFILES), args.max_compile_seconds)
             except Exception as error:
                 entry = {**entry, 'status': 'failed', 'reason': f'{type(error).__name__}: {error}'}
         outcomes.append(entry)
