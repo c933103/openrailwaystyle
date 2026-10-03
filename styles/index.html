@@ -3,16 +3,33 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="Explore railways worldwide, with prominent stations, maximum speeds and electrification. Built on OpenStreetMap and Open Railway Styles.">
+  <meta name="description" content="Railway Atlas: explore railways worldwide, with prominent stations, infrastructure, maximum speeds, electrification and gauges. Built on OpenStreetMap.">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="theme-color" content="#173e47">
   <title>Railway Atlas · Worldwide rail map</title>
-  <link rel="icon" href="atlas-icon.svg" type="image/svg+xml">
+  <meta name="application-name" content="Railway Atlas">
+  <meta property="og:site_name" content="Railway Atlas">
+  <meta property="og:title" content="Railway Atlas · Worldwide rail map">
+  <meta property="og:description" content="The world, by rail. Explore stations and railway infrastructure worldwide with OpenStreetMap data.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://c933103.github.io/openrailwaystyle/">
+  <meta property="og:image" content="https://c933103.github.io/openrailwaystyle/atlas-icon-512.png?rev=3eac3367ae0f">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:image:alt" content="Railway Atlas: golden rails receding towards a teal horizon">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Railway Atlas · Worldwide rail map">
+  <meta name="twitter:description" content="The world, by rail. Explore stations and railway infrastructure worldwide with OpenStreetMap data.">
+  <meta name="twitter:image" content="https://c933103.github.io/openrailwaystyle/atlas-icon-512.png?rev=3eac3367ae0f">
+  <meta name="twitter:image:alt" content="Railway Atlas: golden rails receding towards a teal horizon">
+  <link rel="icon" href="atlas-icon-192.png?rev=1b3a87900a12" type="image/png" sizes="192x192">
+  <link rel="icon" href="atlas-icon.svg?rev=69d552ce10e7" type="image/svg+xml" sizes="any">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="apple-touch-icon" href="atlas-icon-touch-180.png">
+  <link rel="apple-touch-icon" href="atlas-icon-touch-180.png?rev=3d88aa125da7" sizes="180x180">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Rail Atlas">
+  <meta name="apple-mobile-web-app-title" content="Railway Atlas">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet">
   <link href="app.css?v=20261002-79" rel="stylesheet">
 </head>
@@ -106,7 +123,7 @@
     <h3 id="help-start" tabindex="-1">Getting started</h3>
     <p>Search for a station, railway facility or place with the box at the top of the panel. The view buttons colour the railways by infrastructure, maximum speed, power, train control, gauge, loading gauge, axle load or owner, or show the urban rail services (metro, light rail, tram and commuter rail lines) along the tracks they run on; Map, Satellite, Hybrid and Carto choose the background. Click a station, line, level crossing or transport facility to inspect it; its panel links to the object on OpenStreetMap.</p>
     <p>At the foot of the panel: the link button copies a link to the current view, the satellite button copies the GPS coordinates of the map centre, the gear opens the settings (what is drawn, the coordinate readout and the automatic globe), and ? opens this page. Beside the map: compass, zoom, your location, ⊞ (more detail), ✎ (drawing), 📏 (measuring) and the globe/flat-map switch. With the map focused, the arrow keys pan the map and Shift with an arrow turns or tilts it.</p>
-    <p>A station-first adaptation of <a href="https://github.com/c933103/openrailwaystyle">Open Railway Styles</a>, started at Hack4Rail. The background keeps roads and settlements subdued so railway infrastructure stands out.</p>
+    <p><strong>Railway Atlas</strong> is a station-first adaptation of <a href="https://github.com/OpenRail-Playground/openrailwaystyle">Open Railway Styles</a>, started at Hack4Rail. The background keeps roads and settlements subdued so railway infrastructure stands out.</p>
     <h3 id="help-reading" tabindex="-1">Reading the map</h3><p>Major stations are ranked by the provider’s mapped route importance, which is not a passenger-volume ranking. Coverage and station ranking depend on OpenStreetMap completeness.</p>
     <p>Speed colours use the provider’s numeric limit in km/h. Where directions differ, this is the preferred-direction limit, or the larger directional limit when no preferred direction is mapped. Track labels retain original units: bare numbers are km/h; mph is written explicitly. “A / B” means forward / backward; “A (B)” means preferred / opposite direction. A dash means missing data. These directions refer to the underlying OSM way.</p>
     <p>Grey means no numeric speed is available. Railways under construction are drawn with long dashes, proposed ones with spaced round dots, disused ones with dash-dot lines, and abandoned or removed ones with sparse pairs of short dashes; they are not presented as operating lines. In the speed view they take the colour of their recorded (planned or former) limit where one is mapped. Bridges (dark edges) and tunnels (pale dashed core or faded line) are marked in every view. Recorded infrastructure limits are not train running speeds or a timetable.</p>
