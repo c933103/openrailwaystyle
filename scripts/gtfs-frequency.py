@@ -161,12 +161,17 @@ def compile_feed(path, config, date, geometry=False):
     last_calendar_day=dt.datetime.strptime(min(hi,horizon) if hi else horizon,'%Y%m%d').date()
     if date>last_calendar_day+dt.timedelta(days=max_time//86400):
         raise ValueError("Selected date is outside the feed's validity (beyond the service calendar horizon)" if hi else "Selected date is beyond the declared service calendar horizon")
+    service_starts={key:row['start_date'] for key,row in calendar.items() if key in rail_services}
     service_ends={key:row['end_date'] for key,row in calendar.items() if key in rail_services}
     for row in exceptions:
         key=row['service_id']
-        if key in rail_services and row['exception_type']=='1':service_ends[key]=max(service_ends.get(key,row['date']),row['date'])
+        if key in rail_services and row['exception_type']=='1':
+            service_starts[key]=min(service_starts.get(key,row['date']),row['date'])
+            service_ends[key]=max(service_ends.get(key,row['date']),row['date'])
+    service_days_start={key:dt.datetime.strptime(max(lo,start) if lo else start,'%Y%m%d').date() for key,start in service_starts.items()}
     service_days_end={key:dt.datetime.strptime(min(hi,end) if hi else end,'%Y%m%d').date() for key,end in service_ends.items()}
     expired_routes={trip['route_id'] for trip in trips.values()}
+    future_routes=set(expired_routes)
     for key in expired_routes:routes[key]['valid_until']=0
     # Capture constituent validity before replacing calendar-specific route IDs.
     for trip in trips.values():
@@ -175,13 +180,21 @@ def compile_feed(path, config, date, geometry=False):
         if agency_id not in agencies:raise ValueError('Ambiguous route agency')
         timezone=ZoneInfo(agencies[agency_id]['agency_timezone'])
         end=service_days_end.get(trip['service_id'])
+        start=service_days_start.get(trip['service_id'])
         trip['_calendar_until']=service_start(end,timezone)+max(86400,trip['_max_time'])-.001 if end else 0
         trip['_calendar_expired']=end is None or date>end+dt.timedelta(days=trip['_max_time']//86400)
+        trip['_calendar_future']=start is None or date<start
         route['valid_until']=max(route['valid_until'],trip['_calendar_until'])
         if not trip['_calendar_expired']:expired_routes.discard(key)
+        if not trip['_calendar_future']:future_routes.discard(key)
     expired_patterns=sum(trip['_calendar_expired'] for trip in trips.values())
+    future_patterns=sum(trip['_calendar_future'] for trip in trips.values())
     if expired_patterns==len(trips):
         raise ValueError('Selected date is beyond every retained rail service calendar horizon')
+    if future_patterns==len(trips):
+        raise ValueError('Selected date is before every retained rail service calendar start')
+    if all(trip['_calendar_expired'] or trip['_calendar_future'] for trip in trips.values()):
+        raise ValueError('Selected date is outside every retained rail service calendar')
     if config.get('canonical_routes'):
         routes = canonical_routes(routes, trips, times, stops)
     service_days = [date-dt.timedelta(days=i) for i in range(prior_days+1)]
@@ -307,7 +320,7 @@ def compile_feed(path, config, date, geometry=False):
             counts, unknown, estimated = contribution(seconds(upstream.get("departure_time")))
             for profile in windows:
                 segment["counts"][profile][direction] += counts[profile]
-                segment["unknown"][profile][direction] |= profile in unknown or trip['_calendar_expired']
+                segment["unknown"][profile][direction] |= profile in unknown or trip['_calendar_expired'] or trip['_calendar_future']
                 segment["estimated"][profile] |= profile in estimated
 
     incomplete = set(invalid_active)
@@ -336,7 +349,8 @@ def compile_feed(path, config, date, geometry=False):
     source = {**config["source"], "sha256": digest.hexdigest(), "feed_info": feed[0] if feed else {},
               "service_date": date.isoformat(), "day_type": days[date.weekday()], "geometry": "supplied GTFS shapes / matched published railway graph" if geometry and getattr(paths, 'rail', None) else "supplied GTFS shapes" if geometry else "unmatched stop pairs",
               "count_anchor": "departure at the preceding served stop; no inferred pass times",
-              "calendar_audit": {"routes_beyond_service_horizon": sorted(expired_routes), "trip_patterns_beyond_service_horizon": expired_patterns},
+              "calendar_audit": {"routes_beyond_service_horizon": sorted(expired_routes), "trip_patterns_beyond_service_horizon": expired_patterns,
+                                 "routes_before_service_start": sorted(future_routes), "trip_patterns_before_service_start": future_patterns},
               "feed_attributions": attributions,
               "geometry_audit": {"withheld_trips": dict(paths.rejected), "routes_with_incomplete_active_geometry": sorted(incomplete), "excluded_replacement_bus_trips": len(excluded), "invalid_rail_stop_sequences": invalid_sequences, "matched_railway_patterns": len(getattr(paths, 'rail_patterns', set()))} if geometry else {}}
     # Final service-day departures can continue beyond a declared feed end

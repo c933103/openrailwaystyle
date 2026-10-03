@@ -44,16 +44,17 @@ class GlobalFrequency(unittest.TestCase):
         return data.getvalue()
 
     def server(self,data,ranges=True,change=False,last_modified=False):
-        held={'requests':[],'conditional_requests':[],'etag':None if last_modified else '"one"','last_modified':'Mon, 01 Jun 2026 00:00:00 GMT' if last_modified else None,'data':data}
+        held={'requests':[],'conditional_requests':[],'range_validators':[],'etag':None if last_modified else '"one"','last_modified':'Mon, 01 Jun 2026 00:00:00 GMT' if last_modified else None,'data':data}
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self):
                 data=held['data']
                 range_value=self.headers.get('Range');held['requests'].append(range_value)
+                validator=self.headers.get('If-Range');held['range_validators'].append(validator)
                 held['conditional_requests'].append((self.headers.get('If-None-Match'),self.headers.get('If-Modified-Since')))
                 if held['etag'] and self.headers.get('If-None-Match')==held['etag'] or held['last_modified'] and self.headers.get('If-Modified-Since')==held['last_modified']:
                     self.send_response(304);self.end_headers();return
                 if change and len(held['requests'])>1:held['etag']='"two"'
-                if ranges and range_value:
+                if ranges and range_value and (not validator or not validator.startswith('W/') and validator in [held['etag'],held['last_modified']]):
                     value=range_value.split('=')[1]
                     if value.startswith('-'):start,end=max(0,len(data)-int(value[1:])),len(data)-1
                     else:start,end=map(int,value.split('-'));end=min(end,len(data)-1)
@@ -100,6 +101,25 @@ class GlobalFrequency(unittest.TestCase):
         result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
         self.assertEqual(result['source']['retrieved'],retrieved)
 
+    def test_weak_etags_use_date_ranges_or_a_bounded_whole_revision(self):
+        data=self.archive()
+        for date_validator in [False,True]:
+            with self.subTest(date_validator=date_validator):
+                url,held=self.server(data,last_modified=date_validator)
+                held['etag']='W/"one"'
+                remote=pipeline.RemoteZip(url,1_000_000)
+                self.assertIn(b'National',remote.table('agency.txt'))
+                self.assertEqual(remote.download(),data)
+                self.assertEqual(remote.etag,'W/"one"')
+                self.assertFalse(any(v and v.startswith('W/') for v in held['range_validators']))
+                if date_validator:
+                    self.assertIn(held['last_modified'],held['range_validators'])
+                else:
+                    self.assertEqual(held['requests'],['bytes=-65557',None])
+        # The fallback retains the same byte budget as a range-capable feed.
+        with self.assertRaisesRegex(ValueError,'budget'):
+            pipeline.RemoteZip(url,100)
+
     def test_changed_cached_rail_archive_is_reclassified_when_bus_only(self):
         cache,output=self.root/'cache',self.root/'out';cache.mkdir()
         row={'filename':'eg_rail.gtfs.zip','source':'https://example.org/feed.zip','country_code':'EG','spdx_license_identifier':'CC-BY-4.0'}
@@ -133,6 +153,21 @@ class GlobalFrequency(unittest.TestCase):
             self.assertEqual(result['status'],'no_rail')
         self.assertEqual(held['conditional_requests'][-1],(None,held['last_modified']))
         self.assertEqual(json.loads((cache/'eg_rail.meta.json').read_text())['last_modified'],held['last_modified'])
+
+    def test_cached_304_response_is_closed_immediately(self):
+        from urllib.error import HTTPError
+        cache,output=self.root/'cache',self.root/'out';cache.mkdir()
+        row={'filename':'eg_rail.gtfs.zip','source':'https://example.org/feed.zip','country_code':'EG','spdx_license_identifier':'CC-BY-4.0'}
+        entry=pipeline.discover([row],{})[0]
+        entry['processed_url'],_=self.server(self.archive())
+        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        stream=io.BytesIO()
+        error=HTTPError(entry['processed_url'],304,'Not Modified',{},stream)
+        self.addCleanup(stream.close)
+        with patch.object(pipeline,'get',side_effect=error):
+            result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(result['status'],'compiled')
+        self.assertTrue(stream.closed)
 
     def test_bus_only_revision_removes_old_output_without_cache_metadata(self):
         cache,output=self.root/'cache',self.root/'out';cache.mkdir()
