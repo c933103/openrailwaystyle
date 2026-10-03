@@ -37,12 +37,14 @@ data, validation and GitHub Pages deployment. Start with the
 | Build, test or deploy the site | [Development guide](docs/development.md) |
 | Maintain the app name, icons or installed-app metadata | [Branding and app identity](docs/branding.md) |
 | Maintain snapshots or check sources and attribution | [Data maintenance](docs/data-maintenance.md) |
-| Explore the original Hack4Rail project and examples | [Upstream history](docs/upstream.md) |
+| Check project origins and the retained upstream code | [Project origins](docs/upstream.md) |
 
 ## Credits and licence
 
-This is a fork of **Open Railway Styles**, initiated at Hack4Rail 2025. Its
-original examples and Europe extractor remain in the repository.
+Railway Atlas is developed in this repository. It originated as a fork of
+**[Open Railway Styles](https://github.com/OpenRail-Playground/openrailwaystyle)**,
+an upstream project initiated at Hack4Rail 2025. See [project origins](docs/upstream.md)
+for the remaining shared code and historical examples.
 
 Repository code is licensed under [Apache 2.0](LICENSE). Map data and third-party
 assets retain their own licences; see [sources and attribution](docs/data-maintenance.md#sources-and-attribution)

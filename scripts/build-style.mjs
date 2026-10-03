@@ -18,7 +18,7 @@ const vector = (path, minzoom, maxzoom) => ({
 });
 const style = {
   version: 8, name: 'Railway Atlas — world',
-  metadata: { description: 'Worldwide station-first adaptation of Open Railway Styles', 'openrailwaystyle:rail-data': ORM },
+  metadata: { description: 'Railway Atlas: a worldwide railway map with prominent stations and infrastructure', 'openrailwaystyle:rail-data': ORM },
   glyphs: original.glyphs,
   sources: {
     openmaptiles: { ...original.sources.openmaptiles, attribution: '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a> · <a href="https://tuiles.enliberte.fr/">En Liberté tiles</a>' },

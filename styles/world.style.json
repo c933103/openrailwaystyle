@@ -2,7 +2,7 @@
   "version": 8,
   "name": "Railway Atlas — world",
   "metadata": {
-    "description": "Worldwide station-first adaptation of Open Railway Styles",
+    "description": "Railway Atlas: a worldwide railway map with prominent stations and infrastructure",
     "openrailwaystyle:rail-data": "https://openrailwaymap.app"
   },
   "glyphs": "https://tuiles.enliberte.fr/fonts/{fontstack}/{range}.pbf",

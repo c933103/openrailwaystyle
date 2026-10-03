@@ -90,7 +90,7 @@ Open [http://localhost:4173](http://localhost:4173). The local server serves
 | `scripts/` | Build tools, data preparation, preview server and browser checks |
 | `tests/` | Automated tests |
 | `.github/workflows/` | Validation, Pages deployment and snapshot maintenance |
-| `ProcessRailway.java`, `justfile`, original example styles | Original Europe extractor and Hack4Rail demos; see [upstream history](upstream.md) |
+| `ProcessRailway.java`, `justfile`, original example styles | Legacy Europe extractor and Hack4Rail demos, unused by Atlas; see [project origins](upstream.md#inherited-code-audit) |
 
 For worldwide style changes, edit the builder and relevant source modules, run
 `npm run build`, and commit the resulting `styles/world.style.json` with the
