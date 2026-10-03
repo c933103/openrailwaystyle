@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createExpression,validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
-import {frequencyWidth,matchHeadway,frequencyBundle,serviceFrequencyPaint,frequencyOffset,frequencyDetails,nearestServiceFeature} from '../styles/service-frequency.mjs';
+import {frequencyWidth,matchHeadway,frequencyBundle,serviceFrequencyPaint,frequencyOffset,frequencyDetails,nearestServiceFeature,installFrequencyExpiry} from '../styles/service-frequency.mjs';
 import {readSettings,settingsQuery} from '../styles/map-model.mjs';
 const catalog=JSON.parse(await readFile(new URL('../styles/service-headways.json',import.meta.url)));
 const now=Date.parse('2026-10-05T12:00:00Z'),line=[[[114.12,22.28],[114.13,22.29]]];
@@ -87,4 +87,15 @@ test('route clicks select the visible line after a profile changes its bundle po
       assert.equal(nearestServiceFeature([...features].reverse(),point,p=>({x:p[0],y:p[1]}),12,settings,now),f);
     }
   }
+});
+
+test('loaded profiles expire without a reload and resume refreshes deferred paints',()=>{
+  let stamp=0,visible=true,refreshes=0,scheduled,cleared=0;
+  const expiry=installFrequencyExpiry({features:()=>[{properties:{frequency_until:1}},{properties:{frequency_until:4}},{properties:{}}],active:()=>visible,refresh:()=>refreshes++,now:()=>stamp,setTimer:(fn,delay)=>(scheduled={fn,delay}),clearTimer:()=>cleared++});
+  expiry.update();assert.equal(scheduled.delay,1001);assert.equal(refreshes,0);
+  stamp=1001;scheduled.fn();assert.equal(refreshes,1);assert.equal(scheduled.delay,3000);
+  const settings={serviceWidth:'frequency'},properties={frequency_until:1};
+  assert.equal(evaluate(serviceFrequencyPaint(settings,stamp).opacity,properties),.45,'the stroke is unavailable immediately after expiry');
+  visible=false;expiry.pause();stamp=5000;visible=true;expiry.resume();assert.equal(refreshes,2,'resuming a suspended tab reevaluates freshness');
+  assert.ok(cleared>0);expiry.pause();
 });
