@@ -4,6 +4,9 @@ on:
     branches: [test/branding-migration-20261003]
 permissions:
   contents: read
+concurrency:
+  group: branding-migration-audit
+  cancel-in-progress: true
 jobs:
   branding:
     runs-on: ubuntu-latest
@@ -19,6 +22,9 @@ jobs:
       - name: Install full Chromium
         run: npx playwright install --with-deps chromium
       - name: Test browser-managed installation and cache migration
+        timeout-minutes: 2
+        env:
+          DEBUG: pw:api
         run: node scripts/check-branding-browser.mjs
       - name: Save migration evidence and social-preview asset
         if: always()
