@@ -467,7 +467,7 @@ test('every versioned file the page loads asks for the page version', async () =
   const found = [];
   // data-check.html is a page of its own, with its own version.
   for (const name of (await readdir(dir)).filter(n => /\.(mjs|html)$/.test(n) && !n.startsWith('data-check'))) {
-    for (const [, version] of (await readFile(new URL(name, dir), 'utf8')).matchAll(/\?v=(\d{8}-\d+)/g)) if (version !== page) found.push(`${name}: ${version}`);
+    for (const [, version] of (await readFile(new URL(name, dir), 'utf8')).matchAll(/\?v=(\d{8}-[\w.-]+)/g)) if (version !== page) found.push(`${name}: ${version}`);
   }
   const fallback = (await readFile(new URL('app.mjs', dir), 'utf8')).match(/get\('v'\) \|\| '([\w.-]+)'/)[1];
   assert.deepEqual(found, [], `page version ${page}`);

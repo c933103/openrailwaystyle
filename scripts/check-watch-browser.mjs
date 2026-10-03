@@ -49,6 +49,15 @@ try {
   await page.waitForTimeout(760);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
   assert.equal(await page.locator('#watch-menu').isVisible(),false,'pinch never opens controls');
   assert.ok((await page.evaluate(()=>testMap.getZoom()))>pinchStart,'pinch still zooms');
+  // A pan has cancelled the first hold but its finger remains active. A
+  // stationary second finger must not acquire a new hold during the pinch.
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:100,y:140,id:1}]});
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:120,y:140,id:1}]});
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:120,y:140,id:1},{x:180,y:140,id:2}]});
+  for(const x of [125,130,135]){await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:140,id:1},{x:180,y:140,id:2}]});await page.waitForTimeout(20);}
+  await page.waitForTimeout(760);
+  assert.equal(await page.locator('#watch-menu').isVisible(),false,'pan-to-pinch with a stationary second finger never opens controls');
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
   await page.goto(root+'/?ui=standard#15/22.405/113.98',{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.body.dataset.mapReady==='true',{},{timeout:60000});
   assert.equal(await page.locator('.panel').isVisible(),true,'ordinary narrow phones retain controls');

@@ -19,24 +19,38 @@ export function matchHeadway(route, lines, catalog) {
   return catalog.routes.find(r=>r.scope==='whole_route' && r.match?.ref===route.ref && r.match.network===route.network && r.match.kind===route.kind) || null;
 }
 const rounded = n=>Math.round(n*1e6)/1e6;
-export function frequencyBundle(routes, lines, catalog) {
-  const records=routes.map(r=>matchHeadway(r,lines,catalog));
-  const until=records.some(Boolean)?Date.parse(catalog.source.checked+'T00:00:00Z')/1000+catalog.source.review_after_days*86400:0;
-  const out=records.map(r=>r?{frequency_id:r.id,frequency_source:catalog.source.name,frequency_url:catalog.source.url,frequency_checked:catalog.source.checked,frequency_quality:catalog.source.quality,frequency_definition:catalog.source.period_definition}:{});
+// All sources share the scale and bundle spacing. A bundle expires together
+// at its earliest source expiry so widths and offsets cannot disagree.
+export function profileBundle(records) {
+  const until=Math.min(...records.map(r=>r?.properties.frequency_until||0));
+  const out=records.map(r=>({...r?.properties,frequency_until:Number.isFinite(until)?until:0}));
   for(const profile of FREQUENCY_PROFILES){
-    const rates=records.map(r=>r?.profiles[profile]?.minutes || null);
-    const widths=rates.map(r=>frequencyWidth(r?60/r[1]:null));
-    // A small separation only in frequency mode. The default equal-width
-    // paint/labels retain their existing geometry.
-    const gap=records.some(Boolean)?0.5:0,total=widths.reduce((a,b)=>a+b,0)+Math.max(0,routes.length-1)*gap;
+    const rates=records.map(r=>r?.profiles[profile]?.rate ?? null);
+    const widths=rates.map(frequencyWidth);
+    const gap=records.some(Boolean)?0.5:0,total=widths.reduce((a,b)=>a+b,0)+Math.max(0,records.length-1)*gap;
     let used=0;
     widths.forEach((width,i)=>{
       const offset=used+width/2-total/2;used+=width+gap;
-      Object.assign(out[i],{frequency_until:until,[`frequency_width_${profile}`]:rounded(width),[`frequency_offset_${profile}`]:rounded(offset),[`frequency_label_${profile}`]:Math.max(-255,Math.min(255,Math.round(offset*4)))});
-      if(rates[i])Object.assign(out[i],{[`frequency_${profile}`]:rounded(60/rates[i][1]),[`frequency_high_${profile}`]:rounded(60/rates[i][0]),[`headway_${profile}`]:records[i].profiles[profile].reported});
+      Object.assign(out[i],{[`frequency_width_${profile}`]:rounded(width),[`frequency_offset_${profile}`]:rounded(offset),[`frequency_label_${profile}`]:Math.max(-255,Math.min(255,Math.round(offset*4)))});
+      const p=records[i]?.profiles[profile];
+      if(rates[i]!==null){Object.assign(out[i],{[`frequency_${profile}`]:rounded(rates[i]),[`frequency_high_${profile}`]:rounded(p.high??rates[i]),[`frequency_quality_${profile}`]:p.quality||'headway_estimate'});
+        if(p.headway)out[i][`headway_${profile}`]=p.headway;
+        for(const d of ['forward','backward'])if(p[d]!==undefined&&p[d]!==null)out[i][`frequency_${d}_${profile}`]=p[d];
+      }
     });
   }
   return out;
+}
+export function frequencyBundle(routes, lines, catalog) {
+  const until=Date.parse(catalog.source.checked+'T00:00:00Z')/1000+catalog.source.review_after_days*86400;
+  const records=routes.map(route=>{
+    const r=matchHeadway(route,lines,catalog);if(!r)return null;
+    return {properties:{frequency_id:r.id,frequency_source:catalog.source.name,frequency_url:catalog.source.url,frequency_checked:catalog.source.checked,frequency_quality:catalog.source.quality,frequency_definition:catalog.source.period_definition,frequency_until:until},
+      profiles:Object.fromEntries(FREQUENCY_PROFILES.map(p=>[p,r.profiles[p]?.minutes?{rate:60/r.profiles[p].minutes[1],high:60/r.profiles[p].minutes[0],headway:r.profiles[p].reported,quality:'headway_estimate'}:{}]))};
+  });
+  // Unknown peers must retain the source expiry so known routes in a mixed
+  // OSM bundle remain usable; unknown width is still the baseline.
+  return profileBundle(records.map(r=>r||{properties:{frequency_until:records.some(Boolean)?until:0},profiles:{}}));
 }
 const legacyOffset=['*',['-',['get','i'],['/',['-',['get','n'],1],2]],3.5];
 const zoomScale=value=>['interpolate',['linear'],['zoom'],7,['*',value,2/3.5],12,value,16,['*',value,5/3.5]];
@@ -62,7 +76,12 @@ export function frequencyDetails(properties,profile,now=Date.now()) {
   const low=properties[`frequency_${profile}`],high=properties[`frequency_high_${profile}`];
   if(low===undefined||low===null||!Number.isFinite(Number(low))||Number(properties.frequency_until)*1000<now)return null;
   const format=n=>Number(n).toLocaleString('en',{maximumFractionDigits:1});
-  return `${format(low)}${Number(high)!==Number(low)?'–'+format(high):''}/h/direction (estimated from ${properties[`headway_${profile}`]} min)`;
+  const rate=`${format(low)}${Number(high)!==Number(low)?'–'+format(high):''}/h/direction`;
+  if(properties[`headway_${profile}`])return `${rate} (estimated from ${properties[`headway_${profile}`]} min)`;
+  const quality=properties[`frequency_quality_${profile}`]==='headway_estimate'?'headway estimate':'scheduled';
+  const forward=properties[`frequency_forward_${profile}`],backward=properties[`frequency_backward_${profile}`];
+  const directions=forward!==undefined&&backward!==undefined?`; directions ${format(forward)} / ${format(backward)}; width uses the lower rate`:'';
+  return `${rate} (${quality}${properties.frequency_date?' · '+properties.frequency_date:''}${directions})`;
 }
 
 export function nearestServiceFeature(services, point, project, z, settings, now=Date.now()) {

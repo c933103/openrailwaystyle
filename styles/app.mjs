@@ -1,13 +1,13 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261003-watch-2';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261003-watch-2';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261003-watch-2';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261003-watch-4';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261003-watch-4';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261003-watch-4';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261003-watch-2';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261003-watch-2';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261003-watch-2';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261003-watch-2';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261003-watch-2';
-import { installWatchGesture } from './watch-map.mjs?v=20261003-watch-2';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261003-watch-4';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261003-watch-4';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261003-watch-4';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261003-watch-4';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261003-watch-4';
+import { installWatchGesture } from './watch-map.mjs?v=20261003-watch-4';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -41,7 +41,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths,frequencyExpiry;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261003-watch-2';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261003-watch-4';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -134,8 +134,8 @@ const IN_VIEW = {
   // Services in view, by colour (a line's branches usually share one).
   service: p => p.kind ? [p.colour || SERVICE_UNCOLOURED, displayName(p, settings.language) || p.ref, SERVICE_ORDER[p.kind]] : null,
 };
-const SERVICE_ORDER = {commuter: 0, subway: 1, monorail: 2, light_rail: 3, tram: 4}, SERVICE_UNCOLOURED = '#5d6b73';
-const SERVICE_KINDS = {commuter: 'Commuter rail', subway: 'Metro', monorail: 'Monorail', light_rail: 'Light rail', tram: 'Tram'};
+const SERVICE_ORDER = {rail:0,commuter: 0, subway: 1, monorail: 2, light_rail: 3, tram: 4,funicular:5}, SERVICE_UNCOLOURED = '#5d6b73';
+const SERVICE_KINDS = {rail:'Rail',commuter: 'Commuter rail', subway: 'Metro', monorail: 'Monorail', light_rail: 'Light rail', tram: 'Tram',funicular:'Funicular'};
 function updateInView() {
   const describe = IN_VIEW[settings.mode];
   if (!ready || !describe) return;
@@ -213,7 +213,7 @@ function renderLegend() {
     axle: 'Colour shows the mapped axle load or the load category’s reference axle load. Load per metre and additional operating restrictions also matter. Numeric US/Canadian classes describe speed, and Finnish superstructure classes do not give a single axle-load limit. Grey means not recorded.',
     loading: 'Colour follows the envelope’s height above rail, so equal sizes match across regions; Britain’s W gauges share one height and form their own ladder. Click a track for dimensions. Grey means not recorded.',
     owner: 'Each owner of the infrastructure, as recorded in OpenStreetMap, has its own colour, the same everywhere; the owner is not always the operator. Click a track for its owner and operator. Grey means no owner is recorded.',
-    service: 'Metro, light rail, tram, monorail and commuter rail services, each in its own colour along the tracks it runs on, side by side where they share a track; long-distance trains are not shown. Click a service for its details. Grey tracks have no such service mapped.',
+    service: 'Scheduled rail services from the worldwide feed catalogue, plus mapped urban services, each in its own colour along its path. Click a service for its dated frequencies and sources. Coverage depends on available timetables and geometry; grey tracks have no service mapped.',
     infrastructure: 'Numbers count the mapped tracks: running tracks side by side (not sidings, yards or crossovers), on the surface, on viaducts or in tunnels alike (grey-blue where all are in tunnels); at a station, every track there, sidings included. Ochre marks explicitly tagged shared roadway; level crossings are dark brown (road) or light brown (pedestrian).',
   };
   let note = notes[settings.mode];
@@ -492,8 +492,8 @@ function showServiceDetails(feature) {
   row(dl, 'Network', p.network);
   row(dl, 'Operator', p.operator);
   for(const profile of ['am','pm','offpeak'])row(dl,FREQUENCY_LABELS[profile],frequencyDetails(p,profile)||'Frequency unavailable');
-  if(p.frequency_source){row(dl,'Frequency source',`${p.frequency_source} · checked ${p.frequency_checked}`);row(dl,'Period definitions',p.frequency_definition);}
-  if(p.frequency_url==='https://www.mtr.com.hk/en/customer/services/train_service_index.html'){const link=textNode('a','Published headways');link.href=p.frequency_url;link.target='_blank';link.rel='noopener';panel.append(link);}
+  if(p.frequency_source){row(dl,'Frequency source',`${p.frequency_source} · checked ${p.frequency_checked}`);row(dl,'Period definitions',p.frequency_definition);row(dl,'Source credit',p.frequency_credit);row(dl,'Licence',p.frequency_license);row(dl,'Schedule note',p.frequency_note);row(dl,'Geometry',p.geometry_source);}
+  if(/^https:\/\//.test(p.frequency_url||'')){const link=textNode('a','Timetable source and terms');link.href=p.frequency_url;link.target='_blank';link.rel='noopener';panel.append(link);}
   if (p.n > 1) row(dl, 'Services on this track', String(p.n));
   panel.append(dl);
   osmLink(panel, feature);
@@ -1534,9 +1534,9 @@ function openWatchMenu(page='main') {
       if(status.classList.contains('error'))scroll.append(textNode('p',status.textContent));
       scroll.append(textNode('p','Hold the map for controls. Drag to pan; pinch or double tap to zoom.'));
       if(settings.mode==='service'&&settings.serviceWidth==='frequency'){
-        scroll.append(textNode('p',`${FREQUENCY_LABELS[selectedFrequencyProfile(settings)]}. Width estimates departures per hour per direction from published headways. Subdued routes have no matched current frequency.`));
+        scroll.append(textNode('p',`${FREQUENCY_LABELS[selectedFrequencyProfile(settings)]}. Widths show dated scheduled rates or published headway estimates per direction. Subdued routes have no current frequency.`));
         const p=map?.queryRenderedFeatures({layers:['service-routes']}).find(f=>f.properties.frequency_source)?.properties;
-        if(p?.frequency_url==='https://www.mtr.com.hk/en/customer/services/train_service_index.html'){const a=textNode('a',`${p.frequency_source} · checked ${p.frequency_checked}`);a.href=p.frequency_url;a.target='_blank';a.rel='noopener';scroll.append(a);}
+        if(/^https:\/\//.test(p?.frequency_url||'')){const a=textNode('a',`${p.frequency_source} · checked ${p.frequency_checked}`);a.href=p.frequency_url;a.target='_blank';a.rel='noopener';scroll.append(a);if(p.frequency_credit)scroll.append(textNode('p',p.frequency_credit));}
       }
     }
   }
@@ -1549,7 +1549,7 @@ $('watch-menu').addEventListener('keydown',event=>{
   if(event.key==='Tab'){const items=Array.from($('watch-content').querySelectorAll('select,button,a[href]'));const first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}
 });
 frequencyExpiry=installFrequencyExpiry({
-  active:()=>ready&&settings.mode==='service'&&settings.serviceWidth==='frequency',
+  active:()=>ready&&document.visibilityState!=='hidden'&&settings.mode==='service'&&settings.serviceWidth==='frequency',
   features:()=>map.querySourceFeatures('serviceRoutes',{sourceLayer:'service_routes'}),
   refresh:()=>{
     const p=serviceFrequencyPaint(settings);
@@ -1560,6 +1560,7 @@ frequencyExpiry=installFrequencyExpiry({
 });
 document.addEventListener('visibilitychange',()=>document.visibilityState==='visible'?frequencyExpiry.resume():frequencyExpiry.pause());
 addEventListener('pagehide',()=>frequencyExpiry.pause());
+addEventListener('pageshow',()=>frequencyExpiry.resume());
 applySettings();
 initialize().catch(error => {
   console.error(error);

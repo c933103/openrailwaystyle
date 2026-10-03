@@ -1,6 +1,8 @@
 import csv
+import gzip
 import importlib.util
 import io
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -13,6 +15,12 @@ CONFIG = {'source':{'id':'fixture'},'profiles':{'am':{'start':'07:00:00','end':'
 
 
 class GTFSFrequency(unittest.TestCase):
+    def test_global_rail_modes_exclude_buses_and_aerial_lifts(self):
+        for value in [0,1,2,5,7,12,100,109,400,405,900,906,1400]:
+            self.assertTrue(compiler.rail_type(str(value)), value)
+        for value in [3,4,6,700,714,1000,1300,1302,1500]:
+            self.assertFalse(compiler.rail_type(str(value)), value)
+
     def feed(self, trips, patterns, frequencies=None, exceptions=None, blank=False):
         rows={
           'agency.txt':[{'agency_id':'A','agency_name':'Fixture','agency_timezone':'Europe/Helsinki'}],
@@ -29,6 +37,108 @@ class GTFSFrequency(unittest.TestCase):
             for filename,data in rows.items():
                 text=io.StringIO();writer=csv.DictWriter(text,fieldnames=list(data[0]));writer.writeheader();writer.writerows(data);z.writestr(filename,text.getvalue())
         return path
+
+    def shape_feed(self, missing=False):
+        patterns={'t1':[('A','08:00:00'),('B','08:10:00'),('C','08:20:00')],
+                  't2':[('A','08:30:00'),('B','08:40:00'),('D','08:50:00')],
+                  't3':[('C','08:00:00'),('B','08:10:00'),('A','08:20:00')],
+                  't4':[('D','08:30:00'),('B','08:40:00'),('A','08:50:00')],
+                  'express':[('A','08:05:00'),('C','08:25:00')]}
+        path=self.feed(patterns,patterns)
+        with zipfile.ZipFile(path) as z: files={n:z.read(n) for n in z.namelist()}
+        def table(name,rows):
+            text=io.StringIO();writer=csv.DictWriter(text,fieldnames=list(rows[0]));writer.writeheader();writer.writerows(rows);files[name]=text.getvalue().encode()
+        stops={'A':(24,60),'B':(24,60.01),'C':(24,60.02),'D':(24.01,60.01)}
+        table('stops.txt',[{'stop_id':k,'stop_name':k,'stop_lat':v[1],'stop_lon':v[0]} for k,v in stops.items()])
+        shapes={'c':[(24,60),(24,60.01),(24.005,60.015),(24,60.02)],
+                'd':[(24,60),(24,60.005),(24,60.01),(24.01,60.01)],
+                'cr':[(24,60.02),(24.005,60.015),(24,60.01),(24,60.005),(24,60)],
+                'dr':[(24.01,60.01),(24,60.01),(24,60)]}
+        table('shapes.txt',[{'shape_id':k,'shape_pt_sequence':i,'shape_pt_lon':v[0],'shape_pt_lat':v[1]} for k,vs in shapes.items() for i,v in enumerate(vs)])
+        table('trips.txt',[{'trip_id':k,'route_id':'R','service_id':'W','shape_id':('absent' if missing and k=='express' else {'t1':'c','t2':'d','t3':'cr','t4':'dr','express':'c'}[k])} for k in patterns])
+        with zipfile.ZipFile(path,'w') as z:
+            for name,data in files.items():z.writestr(name,data)
+        return path
+
+    def test_shape_geometry_branches_express_and_reverse_density(self):
+        result=compiler.compile_feed(self.shape_feed(),CONFIG,'2026-10-05',geometry=True)
+        trunk=[s for s in result['segments'] if all(p[0]==24 and p[1]<=60.01 for p in s['geometry'])]
+        self.assertTrue(trunk)
+        # Three forward trains, two reverse trains over the common trunk.
+        for segment in trunk:
+            self.assertEqual(segment['profiles']['am']['forward_tph'],1.5)
+            self.assertEqual(segment['profiles']['am']['backward_tph'],1)
+            self.assertEqual(segment['profiles']['am']['display_tph'],1)
+        branch=[s for s in result['segments'] if any(p[0]>24.009 for p in s['geometry'])]
+        self.assertEqual(len(branch),1)
+        self.assertEqual(branch[0]['profiles']['am']['display_tph'],.5)
+        self.assertTrue(any((24.005,60.015) in s['geometry'] for s in result['segments']))
+        self.assertEqual(result['source']['geometry_audit']['withheld_trips'],{})
+        self.assertGreater(result['source']['valid_until'],0)
+
+    def test_missing_shape_does_not_create_chords_or_undercount_route(self):
+        result=compiler.compile_feed(self.shape_feed(missing=True),CONFIG,'2026-10-05',geometry=True)
+        self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'],['R'])
+        self.assertTrue(all(s['profiles']['am']['display_tph'] is None for s in result['segments']))
+
+    def test_shapeless_feed_follows_existing_curved_tracks_and_keeps_unmapped_rates(self):
+        path=self.shape_feed()
+        with zipfile.ZipFile(path) as z:files={n:z.read(n) for n in z.namelist() if n!='shapes.txt'}
+        with zipfile.ZipFile(path,'w') as z:
+            for name,data in files.items():z.writestr(name,data)
+        graph=path.parent/'graph.ndjson.gz'
+        lines=[[(24,60),(24,60.01),(24.005,60.015),(24,60.02)],[(24,60.01),(24.01,60.01)]]
+        with gzip.open(graph,'wt') as file:
+            for points in lines:file.write(json.dumps({'type':'Feature','properties':{'feature':'subway','state':'present'},'geometry':{'type':'LineString','coordinates':points}})+'\n')
+        config={**CONFIG,'rail_graph':str(graph),'include_unmapped':True}
+        result=compiler.compile_feed(path,config,'2026-10-05',geometry=True)
+        self.assertTrue(result['segments'])
+        self.assertTrue(any((24.005,60.015) in s['geometry'] for s in result['segments']))
+        self.assertEqual(result['source']['geometry_audit']['routes_with_incomplete_active_geometry'],[])
+        self.assertGreater(result['source']['geometry_audit']['matched_railway_patterns'],0)
+        # A rail feed cannot be mapped onto metro infrastructure.
+        with gzip.open(graph,'wt') as file:
+            for points in lines:file.write(json.dumps({'type':'Feature','properties':{'feature':'rail','state':'present'},'geometry':{'type':'LineString','coordinates':points}})+'\n')
+        result=compiler.compile_feed(path,config,'2026-10-05',geometry=True)
+        self.assertEqual(result['segments'],[])
+        self.assertTrue(result['unmapped_segments'])
+        self.assertTrue(any(s['profiles']['am']['display_tph'] is not None for s in result['unmapped_segments']))
+
+    def test_service_times_over_48_hours_include_older_days(self):
+        patterns={'t':[('A','49:00:00'),('B','49:10:00')]}
+        path=self.feed(patterns,patterns)
+        # Enable Saturday; the Monday 01:00 event belongs to Saturday's trip.
+        with zipfile.ZipFile(path) as z:files={n:z.read(n) for n in z.namelist()}
+        text=files['calendar.txt'].decode().replace(',1,1,1,1,1,0,1,',',1,1,1,1,1,1,1,')
+        files['calendar.txt']=text.encode()
+        with zipfile.ZipFile(path,'w') as z:
+            for name,data in files.items():z.writestr(name,data)
+        result=compiler.compile_feed(path,{**CONFIG,'profiles':{'early':{'start':'01:00:00','end':'02:00:00'}}},'2026-10-05')
+        self.assertEqual(result['segments'][0]['profiles']['early']['display_tph'],1)
+
+    def test_long_frequency_template_includes_anchor_delay_in_prior_day_bound(self):
+        patterns={'t':[('A','00:00:00'),('B','50:00:00'),('C','50:10:00')]}
+        frequency=[{'trip_id':'t','start_time':'00:00:00','end_time':'49:00:00','headway_secs':'3600','exact_times':'1'}]
+        config={**CONFIG,'profiles':{'early':{'start':'01:00:00','end':'02:00:00'}}}
+        # Friday's instance is removed; Thursday's delayed train is the only event.
+        result=compiler.compile_feed(self.feed(patterns,patterns,frequency,exceptions=[{'service_id':'W','date':'20261002','exception_type':'2'}]),config,'2026-10-05')
+        segment=next(s for s in result['segments'] if s['stops']==['B','C'])
+        self.assertEqual(segment['profiles']['early']['display_tph'],1)
+
+    def test_calendar_route_variants_consolidate_but_disconnected_names_do_not(self):
+        routes={key:{'route_id':key,'route_type':'1','agency_id':'A','route_short_name':'1'} for key in ['a','b','other']}
+        trips={key:{'route_id':key} for key in routes}
+        times={'a':[{'stop_id':'A'},{'stop_id':'B'}],'b':[{'stop_id':'B'},{'stop_id':'C'}],'other':[{'stop_id':'D'},{'stop_id':'E'}]}
+        result=compiler.canonical_routes(routes,trips,times,{key:{} for key in 'ABCDE'})
+        self.assertEqual(set(result),{'a','other'})
+        self.assertEqual(result['a']['source_route_ids'],['a','b'])
+        self.assertEqual(trips['b']['route_id'],'a')
+
+    def test_incomplete_single_stop_trip_withholds_affected_route_instead_of_entire_feed(self):
+        patterns={'valid':[('A','08:00:00'),('B','08:10:00')],'bad':[('A','08:30:00')]}
+        result=compiler.compile_feed(self.feed(patterns,patterns),CONFIG,'2026-10-05')
+        self.assertTrue(result['segments'])
+        self.assertIsNone(result['segments'][0]['profiles']['am']['display_tph'])
 
     def test_shared_trunk_branches_and_directions(self):
         patterns={'t1':[('A','08:00:00'),('B','08:10:00'),('C','08:20:00')],

@@ -2,98 +2,138 @@
 
 [Documentation index](README.md)
 
-In Service view, choose **Route width → By frequency**, then **Peak** or
-**Off-peak**. Peak offers Morning and Evening separately. The same width scale
-applies to all profiles. Equal width remains the default. These settings persist
-in the existing cookie and shared map links.
+Service view offers **Route width → By frequency**, then **Peak → Morning / Evening**
+or **Off-peak**. Equal width remains the default. One shared scale applies across
+regions and periods. Settings persist in shared links. Unknown is not zero.
 
-## Current coverage
+## Worldwide discovery and updates
 
-The first matched source is [MTR's published average train headways](https://www.mtr.com.hk/en/customer/services/train_service_index.html),
-retrieved on 3 October 2026. [The numerical dataset](../styles/service-headways.json)
-retains all 28 published rows, including weekend values. Seventeen whole-route
-rows can currently be matched: Island, Tsuen Wan, South Island, Tuen Ma,
-Disneyland Resort and Airport Express, plus Light Rail 505, 507, 610, 614, 614P,
-615, 615P, 705, 706, 751 and 761P.
+The production source is a catalogue-wide pipeline, not a city allow-list.
+[`global-service-frequency.py`](../scripts/global-service-frequency.py) discovers
+**every GTFS schedule entry** in the [Transitous worldwide catalogue](https://github.com/public-transport/transitous/blob/main/website/data/license.json).
+A local inventory on 3 October 2026 found 2,039 entries; the registry changes over
+time. Eligibility is determined by redistribution permission and provider policy,
+then actual rail route types, rather than a choice of cities or continents.
 
-These are estimated hourly rates from published headways, not exact timetable
-departure counts. Both ends of a range are retained; width uses `60 / longest
-reported interval`, the lower hourly bound. AM and PM peak are separate. The
-operator's categories are retained without inventing their clock windows.
-Non-peak excludes the source's early-morning/late-night exceptions. Disneyland's
-park-closed interval is a separate condition, not covered by its normal profile.
-751P's own interval is unpublished and remains unknown; 751's profile does not
-add its supplementary trains.
+[Transitous publishes processed GTFS files](https://transitous.org/sources/) with
+syntax/semantic repairs and agency overlap removal. Those processed files are the
+pipeline input. The catalogue, original/processed URLs, licence, publisher credits,
+GTFS attributions, ZIP hash, reference date, agency timezones and match outcomes are
+retained. URL-only/unknown permissions are reported for review, not inferred from
+public accessibility. The two previously reviewed MTA/MassDOT permissions are bound
+to their exact source URLs in [licence rules](../styles/data-src/frequency-source-rules.json);
+these rules do not select which cities to process. Provider jurisdictions/domains
+CN, RU, IR and KP are excluded; existing geographic map data stays available.
 
-Kwun Tong, Tseung Kwan O, Tung Chung and East Rail have section/branch-specific
-rows. They are retained in the dataset but remain unmapped until their track
-segments have been audited. They must not receive a single trunk value across
-every branch. A matching reference alone is insufficient: the importer checks
-network, railway kind and Hong Kong geometry as well. No OSM relation count is
-interpreted as a number of trains.
+[The worldwide workflow](../.github/workflows/service-frequency.yml) pins one
+catalogue and processes every entry in eight deterministic batches. Byte-range
+ZIP inspection reads route metadata before downloading bus-only feeds. Servers
+without ranges use a bounded download. Downloads, compilation time and per-feed
+failures have explicit budgets/outcomes. Conditional revalidation and content/input
+hashes support repeated runs; a failed refresh never advances retrieval timestamps.
+Unicode feed names have stable filesystem IDs and remain in the inventory.
 
-The [HSL GTFS-derived dataset](../styles/hsl-frequency.json) contains 47 rail
-routes and 1,298 stop-pair segments for Monday 5 October 2026, from feed version
-`2026-10-02 04:54:09`, valid 1 October–29 November. It preserves both directions,
-branches, zeros and unavailable values. Its reference windows are configured
-07:00–09:00, 15:00–18:00 and 13:00–14:00 in Europe/Helsinki; these are not claimed
-operator peak definitions. Helsinki has no routes in the current published OSM
-service snapshot, so this dataset is prepared but explicitly unmatched and does
-not determine map widths. Stop-pair endpoints are auditing data, not straight
-lines to paint as railway geometry. HSL supplies the feed under
-[CC BY 4.0](https://www.hsl.fi/en/hsl/open-data): © HSL 2026, timetable delivered
-2 October 2026. The original feed URL, hash, version and date are preserved.
+Every entry ends as excluded, no rail, compiled or failed. The assembler refuses
+missing batches, duplicate feed IDs or inconsistent catalogue/reference dates.
+It builds static service tiles one feed and one encoded tile at a time; the viewer
+never downloads feeds or queries an extraction API. Scheduled main-branch runs
+publish the complete snapshot in the `service-frequency-data` data release and
+trigger site assembly. PR runs create reviewable artifacts without publishing.
+The site uses the published worldwide snapshot; absent data remains unknown.
+The four earlier city datasets are now **test fixtures only**.
 
-## Rendering and availability
+Coverage is not complete worldwide: a catalogue can omit operators, a feed can be
+expired/unlicensed/unavailable, and a geometry match can fail. The site's
+`data/service-frequency/inventory.json` records every outcome;
+`data/service-frequency/manifest.json` records the actual mapped sources and counts.
+`frequency-credits.html`, downloadable per-feed data and route details preserve
+provenance. An inventory entry or an unmatched frequency is not mapped coverage.
 
-Reference widths at the existing middle map scale are 1.5px at 1 departure/h,
-2px at 2/h, 2.5px at 4/h, 3px at 6/h, 4px at 12/h, 5px at 24/h and 5.5px at
-30/h or above, with interpolation and the existing zoom scaling. This bounded
-scale is not proportional stroke area. The same rate receives the same width
-across profiles; the scale is never normalized to the busiest visible route.
+## Geometry and service identity
 
-Unmatched or missing profiles use a subdued 3.5px baseline, with an explicit
-unavailable detail state, rather than zero or a different period. Published
-MTR headways become unavailable after their 30-day review interval. This is a
-freshness rule, not a claim that the operator guarantees a 30-day timetable.
-Old tiles without frequency properties remain usable. Route colours retain
-identity. Shared-track offsets are calculated from the actual widths and a
-small gap; names and click selection change with the chosen profile too.
+Supplied GTFS shapes are clipped to served stops and split at station projections
+and source vertices. Collinear vertices within 15 cm are reconciled; differently
+densified express/reverse paths can therefore share atomic intervals. Adjacent
+tracks are not identified merely by proximity. Timetable paths do not identify
+individual physical tracks. Station coordinates are never connected with invented
+straight lines, and GTFS records never acquire fabricated OSM relation IDs.
 
-Site assembly rebuilds tiles from the already published OSM table using
-`scripts/rebuild-service-frequency.mjs`. It makes no Overpass requests, changes
-no snapshot branch, and creates no per-route or per-viewport timetable calls.
+For missing/unusable shapes, the same compiler can match ordered stop patterns
+against the **already published** OSM branch/metro geometry. No new Overpass
+requests are made. Rail, metro, tram, monorail and funicular infrastructure are
+kept separate. Station snap errors, disconnected graphs, excessive detours and
+near-equivalent alternative paths are withheld. The existing snapshot is not a
+complete mainline graph; matching therefore cannot fill every shapeless feed.
+Matched OSM geometry retains its ODbL licence/attribution.
 
-## Reproduce and refresh
+If geometry compilation exceeds its budget, a separately bounded timetable-only
+pass retains the source frequencies with an explicit geometry timeout audit.
+Unmatched routes retain their computed parent-station-pair frequency data and
+stops in the downloadable dataset, with no map geometry. If any active trip in a
+route remains unmapped, the route's mapped frequency is unknown, avoiding an
+undercount from its successfully matched subset.
+
+Calendar/direction route IDs are consolidated only with the same agency,
+reference/name, mode and colour **and connected served stations**. Disconnected
+networks with the same name stay separate. Original IDs remain in metadata.
+Encoded tile merging deduplicates exact path/operator/reference/mode matches;
+conflicting duplicate-source rates are withheld. Approximate OSM/GTFS paths can
+still appear as separate services: proximity alone is not enough to reconcile them.
+Explicit `R-Bus` replacement platforms are excluded; other misclassified replacement
+services depend on upstream route typing and appear in source audit limitations.
+
+## Counts, windows and expiry
+
+The default reference is the next Monday, or an explicitly supplied date. AM is
+07:00–09:00, PM 16:00–18:00 and off-peak 12:00–14:00 in **each agency timezone**.
+These are configured comparison windows, not asserted operator peak definitions.
+Calendar exceptions can make the reference date a holiday. They are scheduled,
+dated profiles, not live departures or a guarantee of service.
+
+Each traversal contributes at the departure from the preceding served stop;
+pass times between stops are not inferred. Repeated traversals are retained.
+Calendar exceptions, all relevant prior service days (including GTFS times beyond
+48 hours), half-open windows, timezone/DST boundaries and GTFS frequencies are
+applied. Exact templates expand once; non-exact headways are labelled estimates.
+Missing times stay unknown. Broken references, overlapping frequency intervals,
+invalid dates and ambiguous/nonexistent DST boundaries fail explicitly.
+
+Counts are divided by the window duration. Width uses the lower directional rate
+when both path directions are represented; a single-direction path retains its
+own rate. Details retain both directional rates. At the existing middle zoom,
+1/h → 1.5px, 2/h → 2px, 4/h → 2.5px, 6/h → 3px, 12/h → 4px, 24/h → 5px and
+30/h or above → 5.5px, with interpolation and existing zoom scaling. The scale is
+bounded per service and never normalized to the busiest visible route.
+
+Shared-path offsets, labels and click selection follow actual widths. Local
+tram/light-rail/monorail/funicular bundles are recalculated at zoom 10. GTFS
+profiles expire at the earlier of feed validity in local time and the 30-day
+successful source-verification interval. The original retrieval date stays separate; a confirmed HTTP 304 can verify an unchanged annual feed. Bundles expire together to keep offsets consistent.
+Unknown/expired profiles use subdued baseline widths; known zero stays distinct.
+Loaded tabs reevaluate expiry on their timer and on resume.
+
+The pre-existing MTR headway table remains a separate dated estimate source.
+Only its 17 audited whole-route rows match OSM geometry; section-specific rows stay
+unmatched. Their published AM/PM/non-peak categories have no invented clock windows.
+No OSM relation count is interpreted as a train count.
+
+## Reproduce
+
+Use the whole catalogue, with an optional local copy for reproducible discovery:
 
 ```sh
-# Download/parse the official headway page once; abort if its schema changes.
-python3 scripts/import-service-headways.py
-# Or reuse the downloaded page with an explicit retrieval date.
-python3 scripts/import-service-headways.py --html /path/to/page.html --checked YYYY-MM-DD
-
-# Download the licensed HSL ZIP from the URL recorded in the config, then:
-python3 scripts/gtfs-frequency.py /path/to/hsl.zip \
-  --config styles/data-src/hsl-frequency-config.json \
-  --date 2026-10-05 --out styles/hsl-frequency.json
-
-# After loading the published service-data snapshot:
-node scripts/rebuild-service-frequency.mjs
-npm run build
-npm test
+python3 scripts/global-service-frequency.py --cache /path/to/gtfs-cache \
+  --output /path/to/frequency-output --date 2026-10-05 \
+  --rail-graph /path/to/published/branch-lines.ndjson.gz
+node scripts/assemble-global-frequency.mjs /path/to/frequency-output
 ```
 
-For a new HSL extraction, choose a documented service date within the feed's
-validity and update its retrieval/attribution metadata. The compiler streams
-stop times and retains rail trips only. It applies calendar exceptions, prior
-service days, half-open windows and upstream-anchor offsets. Exact frequency
-templates are expanded without double counting; non-exact headways are labelled
-estimates. Missing times remain unknown. Overlapping frequency intervals,
-broken references, invalid dates and ambiguous/nonexistent DST window boundaries
-fail explicitly rather than silently creating rates.
+`--inventory-only` records eligibility without requesting feeds; `--shard N
+--shards 8` reproduces a worker. All eight inventories must be present before
+assembly. The manifest fixes catalogue/input hashes and actual outcomes.
 
-Future feeds need source permission, documented windows and audited
-route/pattern/track matching before their values can be rendered. Prepared data
-does not mean worldwide mapped coverage. Refresh numerical sources and derived
-data in a reviewed PR; do not change the freshness timestamp without fetching
-the source again.
+For a published snapshot, `python3 scripts/load-frequency-snapshot.py` followed
+by `node scripts/rebuild-service-frequency.mjs` merges its static tiles into the
+existing OSM service tiles. `npm run build` and `npm test` validate the app.
+`--fixtures` is reserved for the actual-feed browser regression tests, and those
+tiles are restored to the production snapshot after testing.
