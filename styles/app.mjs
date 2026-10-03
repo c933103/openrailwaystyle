@@ -1,11 +1,12 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261003-83';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261003-83';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261003-110100';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261003-110100';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261003-83';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261003-83';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261003-83';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261003-83';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261003-83';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261003-110100';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261003-110100';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261003-110100';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261003-110100';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261003-110100';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261003-110100';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -39,7 +40,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261003-83';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261003-110100';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -174,7 +175,7 @@ function renderLegend() {
   if (settings.mode === 'service') rows.push(['#b8c0c5', 'Other track']);
   else if (settings.mode !== 'infrastructure') rows.push([UNKNOWN_COLOR, 'Unknown']);
   rows.push(['#2356b6','Bridge','bridge'], ['#2356b6','Tunnel','tunnel']);
-  if (settings.mode === 'infrastructure') rows.push(['#b68f55','Shared roadway','street-running'], ['#63332c','Level crossing','level-crossing']);
+  if (settings.mode === 'infrastructure') rows.push(['#b68f55','Shared roadway','street-running'], ['#63332c','Level crossing','level-crossing'],['#765484','Signal'],['#167a78','Station entrance']);
   if (settings.inactive) rows.push(...INACTIVE_STATES.map(([state, color, label]) => [color, label, `inactive-${state}`]));
   for (const [color, label, extra] of rows) {
     const row = textNode('div', '', 'legend-item');
@@ -206,7 +207,7 @@ function renderLegend() {
     loading: 'Colour follows the envelope’s height above rail, so equal sizes match across regions; Britain’s W gauges share one height and form their own ladder. Click a track for dimensions. Grey means not recorded.',
     owner: 'Each owner of the infrastructure, as recorded in OpenStreetMap, has its own colour, the same everywhere; the owner is not always the operator. Click a track for its owner and operator. Grey means no owner is recorded.',
     service: 'Metro, light rail, tram, monorail and commuter rail services, each in its own colour along the tracks it runs on, side by side where they share a track; long-distance trains are not shown. Click a service for its details. Grey tracks have no such service mapped.',
-    infrastructure: 'Numbers count the mapped tracks: running tracks side by side (not sidings, yards or crossovers), on the surface, on viaducts or in tunnels alike (grey-blue where all are in tunnels); at a station, every track there, sidings included. Ochre marks explicitly tagged shared roadway; level crossings are dark brown (road) or light brown (pedestrian).',
+    infrastructure: 'Numbers in boxes count mapped tracks: running tracks side by side (not sidings, yards or crossovers), on every level; at a station, sidings are included. Ochre marks shared roadway; crossings are brown. Zoom in for platform references and complete boarding-edge lengths, purple signal locations and teal station entrances. Signal markers do not show a live aspect.',
   };
   let note = notes[settings.mode];
   if (settings.inactive && settings.mode === 'speed') note += ' Planned and former lines take the colour of their recorded limit, if any.';
@@ -238,70 +239,111 @@ const isLowZoomStationLayer = id => id.endsWith('-names') && (id.startsWith('sta
 const lowZoomStationTextColor = () => settings.stationImportanceColors
   ? DEFAULT_STATION_TEXT_COLOR
   : ['step', ['zoom'], LOW_ZOOM_STATION_TEXT_COLOR, 7, DEFAULT_STATION_TEXT_COLOR];
-// The drawn base map: hidden under satellite imagery.
-const isBaseMap = layer => layer.source === 'openmaptiles' || layer.id === 'background' || layer.id.startsWith('terrain-');
-const RUNTIME_LAYER = /^(drawing|measure)-|^polar-caps$/;
-// The initial frame and later setting changes use the same source visibility.
-function layerVisibility(layer) {
-    let visible = RUNTIME_LAYER.test(layer.id) ? undefined : true;
-    if (MODES.some(mode => layer.id.startsWith(`${mode}-`))) visible = layer.id.startsWith(`${settings.mode}-`) && (!VALUE_LABELS.test(layer.id) || settings.labels) && (layer.source !== 'trackCounts' || settings.trackCounts);
-    if (layer.id.startsWith('station-')) visible = settings.stations && (!layer.id.startsWith('station-former-') || settings.inactive);
-    if (layer.id.startsWith('inactive-')) visible = settings.inactive;
-    // Service names follow the names setting, in the Service view only.
-    if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive) && (!layer.id.startsWith('service-') || settings.mode === 'service');
-    if(layer.id==='platform-lengths')visible=settings.labels;
-    if (layer.id.startsWith('terrain-')) visible = settings.relief;
-    if (layer.id.startsWith('context-transport-')) visible = settings.transport;
-    if (layer.id.startsWith('context-destinations-')) visible = settings.destinations;
-    if (layer.id.startsWith('context-constraints-')) visible = settings.constraints;
-    // Satellite: the imagery alone; hybrid: the imagery under the railways.
-    if (layer.id === 'carto') visible = settings.background === 'carto';
-    else if (layer.id === 'satellite') visible = ['satellite','hybrid'].includes(settings.background);
-    else if (settings.background === 'satellite' && !RUNTIME_LAYER.test(layer.id)) visible = false;
-    else if (settings.background === 'hybrid' && isBaseMap(layer)) visible = false;
-    else if (settings.background === 'carto' && isBaseMap(layer) && !layer.id.startsWith('terrain-')) visible = false;
-    return visible;
-}
-const OSM_API='https://api.openstreetmap.org/api/0.6',MAJOR_STATION_NAME_CACHE='atlas_major_station_osm_names_v1',MAJOR_STATION_NAME_MAX_AGE=7*24*60*60*1000;
-let majorStationData,majorStationsPromise,majorStationNamesPromise;const majorStationLanguages=new WeakMap();
+const OSM_API='https://api.openstreetmap.org/api/0.6';
+const MAJOR_STATION_NAME_CACHE='atlas_major_station_osm_names_v2';
+const MAJOR_STATION_NAME_MAX_AGE=7*24*60*60*1000;
+let majorStationData,majorStationSearchData,majorStationsPromise,majorStationNamesPromise;
+let majorStationNameMemory,majorStationNextRefreshAt=0,majorStationRequestId=0;
+const majorStationLanguages=new WeakMap();
 const majorStationObjectKey=p=>`${p.osm_type}/${p.osm_id}`;
-function readMajorStationNameCache(){try{const value=JSON.parse(localStorage.getItem(MAJOR_STATION_NAME_CACHE)||'null');return value&&typeof value==='object'&&value.names&&typeof value.names==='object'?value:null;}catch{return null;}}
-function writeMajorStationNameCache(names){try{localStorage.setItem(MAJOR_STATION_NAME_CACHE,JSON.stringify({fetchedAt:Date.now(),names}));}catch{}}
-async function fetchOSMObjects(type,ids){
- const plural=`${type}s`;
- const request=async group=>{
-  if(!group.length)return[];
-  const url=new URL(`${OSM_API}/${plural}.json`);url.searchParams.set(plural,group.join(','));
-  const response=await fetch(url,{headers:{Accept:'application/json'}});
-  if(response.ok)return (await response.json()).elements||[];
-  // One deleted/redacted object must not make the whole fixed identity list fail.
-  if(response.status===404&&group.length>1){const half=Math.ceil(group.length/2);return[...await request(group.slice(0,half)),...await request(group.slice(half))];}
-  if(response.status===404)return[];
-  throw new Error(`OpenStreetMap ${plural} returned ${response.status}`);
- };
- return request(ids);
-}
-async function majorStationNameTags(data){
- const wanted=new Set(data.features.map(f=>majorStationObjectKey(f.properties))),cached=readMajorStationNameCache();
- const complete=cache=>cache&&[...wanted].every(key=>Object.prototype.hasOwnProperty.call(cache.names,key));
- if(complete(cached)&&Date.now()-Number(cached.fetchedAt||0)<MAJOR_STATION_NAME_MAX_AGE)return cached.names;
+const stationNameTags=tags=>Object.fromEntries(Object.entries(tags||{}).filter(([key,value])=>(key==='name'||key.startsWith('name:'))&&typeof value==='string'));
+function readMajorStationNameCache(){
+ if(majorStationNameMemory)return majorStationNameMemory;
+ const records=Object.create(null),now=Date.now();
  try{
-  const groups={node:[],way:[],relation:[]};
-  for(const f of data.features){const p=f.properties;if(groups[p.osm_type])groups[p.osm_type].push(String(p.osm_id));}
-  const elements=(await Promise.all(Object.entries(groups).map(([type,ids])=>fetchOSMObjects(type,ids)))).flat(),names={};
-  for(const element of elements){const key=`${element.type}/${element.id}`;if(!wanted.has(key))continue;names[key]=Object.fromEntries(Object.entries(element.tags||{}).filter(([tag])=>tag==='name'||tag.startsWith('name:')));}
-  for(const key of wanted)names[key]??={};
-  writeMajorStationNameCache(names);return names;
- }catch(error){if(complete(cached))return cached.names;throw error;}
+  const cached=JSON.parse(localStorage.getItem(MAJOR_STATION_NAME_CACHE)||'null');
+  if(cached?.version===2&&cached.records&&typeof cached.records==='object'&&!Array.isArray(cached.records)){
+   for(const [key,record] of Object.entries(cached.records)){
+    if(!/^(node|way|relation)\/[1-9]\d*$/.test(key)||!record||!Number.isFinite(record.fetchedAt)||record.fetchedAt<0||record.fetchedAt>now||!record.tags||typeof record.tags!=='object'||Array.isArray(record.tags))continue;
+    records[key]={fetchedAt:record.fetchedAt,tags:stationNameTags(record.tags)};
+   }
+  }
+ }catch{}
+ return majorStationNameMemory=records;
+}
+function writeMajorStationNameCache(records){
+ majorStationNameMemory=records;
+ try{localStorage.setItem(MAJOR_STATION_NAME_CACHE,JSON.stringify({version:2,records}));}catch{}
+}
+// Cache each successful OSM object separately. An omitted object is not a
+// successful empty name, and a failed relation request cannot erase node names.
+async function majorStationNameTags(data,{timeout=8000}={}){
+ const wanted=new Set(data.features.map(f=>majorStationObjectKey(f.properties)));
+ const existing=readMajorStationNameCache(),records=Object.create(null),now=Date.now();
+ for(const key of wanted)if(existing[key])records[key]=existing[key];
+ const fresh=key=>records[key]&&now-records[key].fetchedAt<MAJOR_STATION_NAME_MAX_AGE;
+ const groups={node:[],way:[],relation:[]};
+ for(const key of wanted){
+  const [type,id]=key.split('/');
+  if(!groups[type]||!/^[1-9]\d*$/.test(id))continue;
+  if(!fresh(key))groups[type].push(id);
+ }
+ if(Object.values(groups).some(ids=>ids.length)){
+  const controller=new AbortController();
+  let budget=32,timer;
+  // The deadline covers both response headers and body parsing, even for a
+  // transport which does not honour AbortSignal. Late bodies cannot modify records.
+  const expired=new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(new Error('Station name request timed out'));},timeout);});
+  const request=async(type,ids)=>{
+   if(!ids.length)return;
+   if(controller.signal.aborted||budget--<=0)throw new Error('Station name request budget exhausted');
+   const plural=`${type}s`,url=new URL(`${OSM_API}/${plural}.json`);
+   url.searchParams.set(plural,ids.join(','));
+   const answer=await Promise.race([expired,(async()=>{
+    const response=await fetch(url,{headers:{Accept:'application/json'},signal:controller.signal});
+    return{ok:response.ok,status:response.status,body:response.ok?await response.json():null};
+   })()]);
+   if(controller.signal.aborted)throw new Error('Station name request cancelled');
+   if(answer.status===404){
+    if(ids.length===1){delete records[`${type}/${ids[0]}`];return;}
+    const half=Math.ceil(ids.length/2);
+    // Preserve successful halves even if the other half fails.
+    await Promise.allSettled([request(type,ids.slice(0,half)),request(type,ids.slice(half))]);
+    return;
+   }
+   if(!answer.ok)throw new Error(`OpenStreetMap ${plural} returned ${answer.status}`);
+   if(!Array.isArray(answer.body?.elements))throw new Error('Invalid OpenStreetMap station response');
+   const requested=new Set(ids);
+   for(const element of answer.body.elements){
+    if(element?.type!==type||!requested.has(String(element.id)))continue;
+    const key=`${type}/${element.id}`;
+    if(element.visible===false){delete records[key];continue;}
+    if(element.tags!==undefined&&(!element.tags||typeof element.tags!=='object'||Array.isArray(element.tags)))continue;
+    records[key]={fetchedAt:Date.now(),tags:stationNameTags(element.tags)};
+   }
+  };
+  try{
+   const tasks=[];
+   for(const [type,ids] of Object.entries(groups))for(let i=0;i<ids.length;i+=100)tasks.push(request(type,ids.slice(i,i+100)));
+   const results=await Promise.allSettled(tasks);
+   if(results.some(result=>result.status==='rejected'))console.warn('Some station names could not refresh; retaining available OSM names.');
+  }finally{clearTimeout(timer);}
+ }
+ writeMajorStationNameCache(records);
+ const checkedAt=Date.now(),expires=[...wanted].map(key=>records[key]?.fetchedAt+MAJOR_STATION_NAME_MAX_AGE);
+ // Retry missing/failed objects on a later interaction, not every move event.
+ majorStationNextRefreshAt=expires.some(time=>!Number.isFinite(time)||time<=checkedAt)?checkedAt+30000:Math.min(...expires);
+ return Object.fromEntries(Object.entries(records).map(([key,record])=>[key,record.tags]));
 }
 function updateMajorStations(){
  if(!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3||map.getZoom()>=7)return;
- const source=map.getSource('stationMajor'),language=settings.language;if(!source||majorStationLanguages.get(source)===language)return;
- majorStationsPromise ||= majorStationData ? Promise.resolve(majorStationData) : fetch(new URL(`major-stations.geojson?v=${assetVersion}`,import.meta.url)).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}).catch(error=>{majorStationsPromise=undefined;throw error;});
- majorStationNamesPromise ||= majorStationsPromise.then(majorStationNameTags).catch(error=>{majorStationNamesPromise=undefined;throw error;});
- Promise.all([majorStationsPromise,majorStationNamesPromise]).then(([data,names])=>{if(!ready||language!==settings.language||source!==map.getSource('stationMajor')||majorStationLanguages.get(source)===language)return;
-  source.setData({...data,features:data.features.map(f=>{const properties={...f.properties,...(names[majorStationObjectKey(f.properties)]||{})};return{...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language,atlas_name_source:'osm'}};})});majorStationLanguages.set(source,language);
- }).catch(error=>console.warn('Major station names unavailable:',error.message));
+ const source=map.getSource('stationMajor'),language=settings.language;
+ if(!source||(majorStationLanguages.get(source)===language&&Date.now()<majorStationNextRefreshAt))return;
+ const requestId=++majorStationRequestId;
+ majorStationsPromise ||= majorStationData?Promise.resolve(majorStationData):fetch(new URL(`major-stations.geojson?v=${assetVersion}`,import.meta.url)).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}).catch(error=>{majorStationsPromise=undefined;throw error;});
+ const namesPromise=majorStationNamesPromise ||= majorStationsPromise.then(data=>majorStationNameTags(data));
+ Promise.all([majorStationsPromise,namesPromise]).then(([data,names])=>{
+  if(requestId!==majorStationRequestId||!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3||map.getZoom()>=7||language!==settings.language||source!==map.getSource('stationMajor'))return;
+  const hydrated={...data,features:data.features.map(f=>{
+   // Strip any legacy name fields as well: only fetched OSM tags may name a hub.
+   const metadata=Object.fromEntries(Object.entries(f.properties).filter(([key])=>key!=='name'&&!key.startsWith('name:')&&!['atlas_name','label','ref'].includes(key)));
+   const properties={...metadata,...(names[majorStationObjectKey(metadata)]||{})};
+   return{...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language,atlas_name_source:'osm'}};
+  }).filter(f=>f.properties.atlas_name)};
+  majorStationSearchData=hydrated;
+  source.setData(hydrated);
+  majorStationLanguages.set(source,language);
+ }).catch(error=>console.warn('Major station names unavailable:',error.message)).finally(()=>{if(majorStationNamesPromise===namesPromise)majorStationNamesPromise=undefined;});
 }
 function applySettings() {
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
@@ -316,7 +358,7 @@ function applySettings() {
     // Shown unless a setting hides it (a layer hidden under the imagery comes
     // back with the map).
     if(layer.id==='polar-caps')map.triggerRepaint();
-    const visible = layerVisibility(layer);
+    const visible = layerVisibility(layer, settings);
     if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
     if (isLowZoomStationLayer(layer.id)) map.setPaintProperty(layer.id, 'text-color', lowZoomStationTextColor());
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
@@ -368,9 +410,8 @@ function updateAttribution() {
     attributionStateObserver.observe(container, {attributes:true, attributeFilter:['class']});
   }
 }
-const featurePickRank = f => f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
-const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
-const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-crossing-overview','infrastructure-crossing-dots','infrastructure-crossing-marks','infrastructure-street-running'];
+const featurePickRank = f => ['railwaySignals','stationEntrances'].includes(f.source) ? -1 : f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
+const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-crossing-overview','infrastructure-crossing-dots','infrastructure-crossing-marks','infrastructure-street-running','infrastructure-signal-points','infrastructure-signal-references','infrastructure-entrance-points','infrastructure-entrance-references'];
 // Clickable: stations, tracks, level crossings, inactive lines, and transport
 // and destination points; land-use areas, protected, heritage and other
 // planning areas, jurisdictions and buildings are drawn for context only.
@@ -425,13 +466,14 @@ function stationObject(osmId) {
   return null;
 }
 function showDetails(feature) {
-  if(feature.source==='platformEdges')feature=platformLengths?.enrich(feature)||feature;
+  if(['platformEdges','platforms'].includes(feature.source))feature=platformLengths?.enrich(feature)||feature;
   currentFeature = feature;
+  if(['railwaySignals','stationEntrances'].includes(feature.source)){showRailwayPointDetails(feature);return;}
   if (INFRASTRUCTURE_POINTS.includes(feature.layer?.id)) { showInfrastructureContext(feature); return; }
   if (feature.layer?.id.startsWith('context-')) { showContextDetails(feature); return; }
   if (feature.layer?.id === 'service-routes') { showServiceDetails(feature); return; }
   const p = feature.properties;
-  const isPlatform=feature.source==='platformLengths'||feature.source==='platformEdges';
+  const isPlatform=['platformLengths','platformEdges','platforms','platformNumbers'].includes(feature.source);
   const isStation = feature.source?.startsWith('station') || feature.kind === 'station';
   const panel = $('detail-content'); panel.replaceChildren();
   panel.append(textNode('div', isPlatform?'RAILWAY PLATFORM':isStation ? 'RAILWAY STATION' : 'RAILWAY INFRASTRUCTURE', 'eyebrow'));
@@ -618,6 +660,23 @@ function crossingTags(id) {
   }).catch(error=>{crossingCache.delete(id);throw error;}));
   return crossingCache.get(id);
 }
+function showRailwayPointDetails(feature) {
+  const p=feature.properties,signal=feature.source==='railwaySignals',panel=$('detail-content');
+  panel.replaceChildren(textNode('div',signal?'RAILWAY SIGNAL':'STATION ENTRANCE','eyebrow'));
+  panel.append(textNode('h2',signal?(p.ref?`Signal ${p.ref}`:'Railway signal'):(p.label||'Station entrance')));
+  const dl=document.createElement('dl');
+  row(dl,signal?'Reference':'Entrance label',signal?p.ref:p.label);
+  if(signal){
+    row(dl,'Caption',p.caption);
+    const categories=[...new Set(Array.from({length:12},(_,i)=>p[`category${i}`]).filter(Boolean))];
+    row(dl,'Mapped functions',categories.map(v=>String(v).replaceAll('_',' ')).join(', '));
+    const inactive=[...new Set(Array.from({length:12},(_,i)=>p[`deactivated${i}`]===true?p[`category${i}`]:null).filter(Boolean))];
+    row(dl,'Inactive components',inactive.map(v=>String(v).replaceAll('_',' ')).join(', '));
+    row(dl,'Facing',p.direction_both===true?'Both directions':typeof p.azimuth==='number'&&Number.isFinite(p.azimuth)?`${Math.round(((p.azimuth%360)+360)%360)}° clockwise from north`:undefined);
+  }
+  panel.append(dl,textNode('p',signal?'A mapped signal location and its recorded functions. The marker does not show a live signal aspect.':'A station entrance recorded in OpenStreetMap.','small'));
+  osmLink(panel,feature);$('details').hidden=false;
+}
 function showInfrastructureContext(feature) {
   const p=feature.properties,crossing=feature.sourceLayer==='points_of_interest';
   const panel=$('detail-content');panel.replaceChildren(textNode('div','RAILWAY INFRASTRUCTURE','eyebrow'));
@@ -767,8 +826,7 @@ function updateStatus() {
 const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg|owner|axle):\/\//,'');
 function localizeStyle(style) {
   for (const layer of style.layers) {
-    if (layer.type !== 'symbol' || layer.id === 'speed-labels' || layer.id==='platform-lengths' || layer.id.startsWith('terrain-')) continue;
-    if (layer.source === 'openmaptiles' || layer.id.startsWith('station-') || layer.id.endsWith('-names')) layer.layout['text-field'] = labelExpression(settings.language);
+    if (shouldLocalizeLayer(layer)) layer.layout['text-field'] = labelExpression(settings.language);
   }
   style.sources.openmaptiles.url = `atlasbase://${settings.language}/${unwrap(style.sources.openmaptiles.url).replace(/^pmtiles:\/\//,'')}`;
   for(const id of ['stationLow','stationMed','stations']) style.sources[id].url = `atlasstation://${settings.language}/${unwrap(style.sources[id].url)}`;
@@ -1059,7 +1117,7 @@ async function initialize() {
   style.sources.relief.tiles = [dem.sharedDemProtocolUrl];
   // Hidden sources must stay hidden before MapLibre starts its first requests.
   for (const layer of style.layers) {
-    const visible=layerVisibility(layer);
+    const visible=layerVisibility(layer, settings);
     if(visible!==undefined)(layer.layout ||= {}).visibility=visible?'visible':'none';
     if (isLowZoomStationLayer(layer.id)) (layer.paint ||= {})['text-color'] = lowZoomStationTextColor();
   }
@@ -1193,10 +1251,17 @@ async function initialize() {
   };
   if (map.isStyleLoaded?.()) styleReady(); else map.once('style.load', styleReady);
   map.on('idle', updateStatus);
-  platformLengths=createPlatformLengths(map,{active:()=>ready&&settings.labels&&settings.background!=='satellite',onLength:(id,length)=>{if(length>0&&currentFeature?.source==='platformEdges'&&String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);}});
+  platformLengths=createPlatformLengths(map,{active:()=>ready&&settings.mode==='infrastructure'&&settings.labels&&settings.background!=='satellite',onLength:(id,length)=>{if(length>0&&currentFeature?.source==='platformEdges'&&String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);},onPlatform:(id)=>{if(currentFeature?.source==='platforms'&&String(currentFeature.properties.id)===id)showDetails(currentFeature);}});
   map.on('moveend',()=>platformLengths.update());
   map.on('remove',()=>platformLengths.destroy());
-  map.on('sourcedata',e=>{if(e.sourceId==='platformEdges'&&e.tile)platformLengths.update();});
+  let platformFramePending=false;
+  map.on('sourcedata',e=>{
+    if(!['platformEdges','platforms'].includes(e.sourceId)||!e.tile||platformFramePending)return;
+    // A loaded tile is queryable after the next render, even if no other tile
+    // arrives and the map remains stationary. Coalesce neighbouring tiles.
+    platformFramePending=true;
+    map.once('render',()=>{platformFramePending=false;platformLengths.update();});
+  });
   map.on('moveend', scheduleLegend);
   map.on('moveend',updateMajorStations);
   map.on('moveend', scheduleNearbyTransport);
@@ -1476,7 +1541,7 @@ $('search-form').addEventListener('submit', async e => {
     // Only what the station layers draw at this zoom (no tram stops at zoom 8).
     const zoom = ready ? map.getZoom() : 0;
     const drawn = ready ? drawnStationQueries(map.getStyle().layers, zoom).flatMap(({source, sourceLayer, filter}) =>
-      source === 'stationMajor' ? (majorStationData?.features || []).filter(f => (f.properties?.tier ?? 7) <= zoom)
+      source === 'stationMajor' ? (majorStationSearchData?.features || []).filter(f => (f.properties?.tier ?? 7) <= zoom)
         : map.getSource(source) ? map.querySourceFeatures(source, {sourceLayer, filter}) : []) : [];
     const local = ready ? tileStations(drawn, q, map.getCenter().toArray(), facilities.value || []) : [];
     if (facilities.status === 'rejected' && places.status === 'rejected' && !local.length) throw facilities.reason;

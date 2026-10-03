@@ -4,6 +4,25 @@
 
 For loading gauge view, see the [dimension reference and sources](loading-gauges.md).
 
+## Style and source architecture
+
+Railway Atlas owns the MapLibre style; data providers supply geometry and attributes. `scripts/build-style.mjs` prepares curated station data and calls `scripts/style/compose-style.mjs`. The composition declares the complete bottom-to-top rendering order, including label placement priority, without copying or editing an upstream style.
+
+| Component | Definition | Role |
+| --- | --- | --- |
+| Basemap | `scripts/style/sources/basemap.mjs` | En Liberté OpenMapTiles-compatible vector geometry and glyphs |
+| Railway detail | `scripts/style/sources/railway.mjs` | Shared logical ORM datasets and separate transformed source variants |
+| Atlas data | `scripts/style/sources/atlas.mjs` | Published snapshots, curated stations and derived annotations |
+| Terrain and imagery | `scripts/style/sources/terrain.mjs` | DEM, contours, satellite and Carto providers |
+| Cartography | `scripts/style/layers/` | Atlas-owned land, water, boundaries, terrain, rail views, stations and infrastructure |
+| Composition | `scripts/style/compose-style.mjs` | Ordered stack, initial defaults and source-contract enforcement |
+
+`source-contract.mjs` declares the vector source layers and attribute names consumed by the style after adapters enrich them. The build rejects undeclared dependencies. Attributes may be absent on individual features, and this static check does not establish provider availability or completeness. Changing to another OpenMapTiles-compatible provider requires confirming the actual schema and coverage as well as updating its URL and attribution.
+
+Layer metadata declares groups, view restrictions, setting requirements, background suppression and whether text can be localized. The application reads those declarations; a compatibility adapter handles previously cached styles without metadata. Separate owner, axle-load and loading-gauge sources retain their independent loading and shared byte-cache behavior.
+
+The migration regression manifest in `tests/fixtures/style-composition-baseline.json` records ordered layer hashes, source hashes and root rendering settings. Changes to paint, filters, zoom limits, label placement, embedded station data or ordering require deliberate review and baseline updates; `atlas:*` metadata and the project description are excluded. Browser checks complement this definition-level comparison with actual rendering. The initial refactor preserves the reviewed Infrastructure integration's cartography.
+
 ## Speed and units
 
 Maximum-speed colouring uses eight bands plus an explicit unknown category.
@@ -107,7 +126,13 @@ Infrastructure view adds level crossings and ochre roadbeds for explicitly mappe
 Level crossings are shown from zoom 5, so they can be seen across a region hundreds of kilometres wide: dark brown for road crossings (`railway=level_crossing`), light brown for pedestrian ones (`railway=crossing`). They come from the project's own [worldwide crossing tiles](data-maintenance.md#level-crossing-snapshot): an overview set (zoom-5 tiles, each crossing placed within about 150 m, crossings on the same spot drawn once) up to zoom 8, then one clickable point per crossing, linking to its OpenStreetMap node: dots to zoom 10 (a cross cannot be read at that size, and those of a busy network would run together), then a small × for every crossing to zoom 14 (all drawn, none hidden by label placement). Crossings only on tram, light rail, funicular, miniature, service or street-running (`embedded=yes`) tracks are left out of the dots and appear with the × symbols from zoom 11. From zoom 15 the provider's `points_of_interest` tiles draw × symbols whose details give the mapped equipment. Clicking a crossing below zoom 15 reads its tags (barriers, lights, bells, activation and so on) from the OpenStreetMap API; an overview dot (zooms 5–8, where crossings are merged per tile) opens the nearest crossing in the zoom-9 detail tiles.
 
 
-Platform boarding-edge lengths use the provider's `standard_railway_platform_edges` source and appear from zoom 19. A separate GeoJSON label source attaches the full edge length returned by `api/feature/openrailwaymap_standard/standard_railway_platform_edges/<way id>`. Values follow metric/imperial units. They are never measured from the clipped tile geometry and never inferred from a platform polygon's perimeter. Only visible edges are queried; requests are deduplicated, queued about one per second, cancelled when the edge leaves view, cached, and paused after a 429. Missing/invalid lengths receive no numeric label.
+Infrastructure view shows platform outlines, platform numbers and boarding-edge references from zoom 17. Platform geometry comes from `standard_railway_platforms`; these tiles contain names and typed OSM IDs but omit references. A separate GeoJSON source adds the references returned by `api/feature/openrailwaymap_standard/standard_railway_platforms/<node-, way- or relation-ID>`. Multiple references are shown together; no number is inferred from a platform name or nearby track.
+
+Boarding edges use `standard_railway_platform_edges`. Their references remain visible independently of the full-length lookup, including before a response and when it supplies no valid length. From zoom 19 the edge label also shows its complete length from `api/feature/openrailwaymap_standard/standard_railway_platform_edges/<way id>`, following metric/imperial units. Lengths are never measured from clipped tile geometry or inferred from a platform polygon's perimeter. Platform and edge lookups share one bounded queue of about one request per second, deduplicate objects, cancel when hidden or panned away, cache results, and pause after a 429. Hiding value labels or leaving Infrastructure view stops these lookups.
+
+Mapped railway signals and station entrances appear from zoom 16, using the dedicated `railway_signals` and `standard_station_entrances` sources. Entrance labels appear from zoom 17; signal references/captions from zoom 18. Purple signal and teal entrance markers use neutral location symbols. Signal inspection shows recorded functions, inactive components and facing direction where supplied; it does not report a live signal aspect. Each point links to its exact OSM node. The value-label setting hides their text while keeping the location markers.
+
+These layers are independent of the original demo styles and are shown only in Infrastructure view (also over Hybrid/Carto backgrounds; Satellite hides overlays). Coverage follows the provider's import: entrances tagged `railway=subway_entrance` or `train_station_entrance`, and signals retained by its signal/direction processing. Other entrance tags and signals omitted by that processing can be missing. The verified source schemas are [tile views](https://github.com/hiddewie/OpenRailwayMap-vector/blob/3c8942fa5c9403fe66fa91485ccec8c9e33a5436/import/sql/tile_views.sql), [signal processing](https://github.com/hiddewie/OpenRailwayMap-vector/blob/3c8942fa5c9403fe66fa91485ccec8c9e33a5436/import/sql/signal_features.sql.mjs) and [entrance import tests](https://github.com/hiddewie/OpenRailwayMap-vector/blob/3c8942fa5c9403fe66fa91485ccec8c9e33a5436/import/test/test_import_entrance.lua).
 
 ### Carto background
 
