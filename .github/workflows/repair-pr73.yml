@@ -51,6 +51,12 @@ jobs:
                       text=git('show',f':{stage}:{path}').stdout
                       if (path.startswith('styles/') and not Path(path).name.startswith('data-check')) or path.startswith('scripts/check-'):
                           text=re.sub(r'\b20\d{6}-\d+\b',version,text)
+                      # Main moved this exact legacy visibility block into layer-semantics.mjs.
+                      # Delete it from both the merge base and our side, retaining our new
+                      # colour helpers and OSM loader and main's imported visibility function.
+                      if path=='styles/app.mjs' and stage in [1,2]:
+                          text,count=re.subn(r'// The drawn base map: hidden under satellite imagery\.\n.*?(?=const OSM_API=|let majorStationData)', '',text,flags=re.S)
+                          if count!=1:raise SystemExit('Expected one retired visibility block')
                       p.write_text(text);parts.append(str(p))
                   merged=git('merge-file','-p',*parts,check=False)
                   if merged.returncode:
@@ -96,7 +102,6 @@ jobs:
           if before not in text:raise SystemExit('Missing asynchronous visibility guard')
           text=text.replace(before,after,1)
           app.write_text(text)
-          # Assert this integration has not restored name overrides or deleted new main features.
           import json
           source=json.loads(Path('styles/data-src/major-stations.json').read_text())
           assert all(isinstance(e.get('name'),str) for e in source)
