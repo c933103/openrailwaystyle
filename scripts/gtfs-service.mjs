@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {gunzipSync} from 'node:zlib';
 import {profileBundle} from '../styles/service-frequency.mjs';
 const round=n=>Math.round(n*1e6)/1e6;
-const kind=type=>Number(type)===12?'monorail':Number(type)===7?'funicular':Number(type)===0||(Number(type)>=900&&Number(type)<1000)?'tram':Number(type)===1||(Number(type)>=400&&Number(type)<500)?'subway':'rail';
+const kind=type=>[12,405].includes(Number(type))?'monorail':[7,1400].includes(Number(type))?'funicular':[0,5].includes(Number(type))||(Number(type)>=900&&Number(type)<1000)?'tram':Number(type)===1||(Number(type)>=400&&Number(type)<500)?'subway':'rail';
 export async function loadTimetableServices(registryPath=new URL('../styles/data-src/service-frequency-sources.json',import.meta.url)) {
   const registry=JSON.parse(await readFile(registryPath,'utf8'));
   const base=typeof registryPath==='string'?new URL(`file://${registryPath.startsWith('/')?registryPath:process.cwd()+'/'+registryPath}`):registryPath;

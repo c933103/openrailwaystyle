@@ -237,6 +237,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
             with get(entry['processed_url'], headers) as response:
                 data = RemoteZip.read_bounded(type('Budget', (), {'max_bytes': max_bytes})(), response)
                 path.write_bytes(data)
+                del data
                 meta = {'etag': response.headers.get('ETag'), 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
                 fresh = True
         except HTTPError as error:
@@ -250,6 +251,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
             return {**entry, 'status': 'no_rail', 'rail_routes': 0}
         path.write_bytes(remote.download())
         meta = {'etag': remote.identity, 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
+        del remote
     meta['checked'] = dt.datetime.now(dt.timezone.utc).date().isoformat()
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     atomic_json(meta_path, meta)

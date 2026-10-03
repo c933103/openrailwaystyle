@@ -67,3 +67,11 @@ test('successful revalidation keeps unchanged annual feeds fresh without changin
   delete annual.source.checked;
   assert.equal(timetableFeatures([annual],now).summary[0].routesWithProfiles,0);
 });
+
+test('global route types preserve cable trams, extended monorails and funiculars',()=>{
+  for(const [type,kind] of [[2,'rail'],[5,'tram'],[7,'funicular'],[12,'monorail'],[405,'monorail'],[1400,'funicular']]){
+    const variant=structuredClone(feed);variant.routes[0].route_type=String(type);
+    const features=timetableFeatures([variant],now);
+    assert.equal((features.local[0]||features.overview[0]).properties.kind,kind);
+  }
+});

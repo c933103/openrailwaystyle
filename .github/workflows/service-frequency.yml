@@ -8,6 +8,10 @@ on:
       - scripts/gtfs-shapes.py
       - scripts/gtfs-rail-paths.py
       - scripts/assemble-global-frequency.mjs
+      - scripts/gtfs-service.mjs
+      - scripts/service-routes.mjs
+      - scripts/merge-service-tiles.mjs
+      - styles/service-frequency.mjs
       - styles/data-src/frequency-source-rules.json
       - .github/workflows/service-frequency.yml
   workflow_dispatch:
@@ -25,13 +29,18 @@ on:
       - scripts/gtfs-rail-paths.py
       - scripts/assemble-global-frequency.mjs
       - scripts/gtfs-service.mjs
+      - scripts/service-routes.mjs
+      - scripts/merge-service-tiles.mjs
+      - styles/service-frequency.mjs
       - styles/data-src/frequency-source-rules.json
       - .github/workflows/service-frequency.yml
 permissions:
   contents: read
 concurrency:
   group: worldwide-frequency-${{ github.head_ref || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Preserve costly catalogue scans; a later revision queues behind the
+  # running build and can reuse its successfully verified feed cache.
+  cancel-in-progress: false
 jobs:
   catalogue:
     if: github.event_name != 'pull_request' || github.event.pull_request.base.ref == github.event.repository.default_branch

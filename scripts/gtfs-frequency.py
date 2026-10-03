@@ -35,7 +35,7 @@ def read(z, name):
 
 def rail_type(value):
     number = int(value)
-    return number in (0, 1, 2, 7, 12) or 100 <= number < 200 or 400 <= number < 500 or 900 <= number < 1000
+    return number in (0, 1, 2, 5, 7, 12, 1400) or 100 <= number < 200 or 400 <= number < 500 or 900 <= number < 1000
 
 
 def canonical_routes(routes, trips, times, stops):
@@ -135,8 +135,13 @@ def compile_feed(path, config, date, geometry=False):
         routes = canonical_routes(routes, trips, times, stops)
     # GTFS permits hours beyond 24 (including beyond 48). Include every prior
     # service day that can contribute; one previous day is not sufficient.
-    max_time = max([seconds(r.get('departure_time')) or 0 for key in trips for r in times[key]]+
-                   [seconds(r.get('end_time')) or 0 for key in trips for r in frequencies[key]]+[0])
+    max_time = max((seconds(r.get('departure_time')) or 0 for key in trips for r in times[key]), default=0)
+    for key in trips:
+        sequence=sorted(times[key],key=lambda row:int(row['stop_sequence']))
+        known=[seconds(row.get('departure_time')) for row in sequence if row.get('departure_time')]
+        if known and sequence[0].get('departure_time'):
+            anchor=max(known)-seconds(sequence[0]['departure_time'])
+            max_time=max(max_time,max((seconds(r.get('end_time'))+anchor for r in frequencies[key]),default=0))
     prior_days = max(1, max_time//86400+1)
     if prior_days > 366:
         raise ValueError('Service time exceeds one-year processing budget')
@@ -186,7 +191,8 @@ def compile_feed(path, config, date, geometry=False):
         if any(end <= start for start, end in windows.values()):
             raise ValueError("Reference windows must have positive duration")
         sequence = sorted(times.get(trip_id, []), key=lambda row: int(row["stop_sequence"]))
-        if len(sequence) < 2 or len({r["stop_sequence"] for r in sequence}) != len(sequence):
+        known_times=[seconds(row.get('departure_time')) for row in sequence if row.get('departure_time')]
+        if len(sequence) < 2 or len({r["stop_sequence"] for r in sequence}) != len(sequence) or any(b<a for a,b in zip(known_times,known_times[1:])):
             invalid_sequences += 1
             if any(trip['service_id'] in ids for ids in active.values()):
                 invalid_active.add(route_id)
@@ -298,13 +304,16 @@ def compile_feed(path, config, date, geometry=False):
             "agencies": list(agencies.values()), "routes": [routes[key] for key in sorted(routes)],
             "stops": [] if geometry else [{"id": key, "name": stops[key]["stop_name"], "lat": float(stops[key]["stop_lat"]), "lon": float(stops[key]["stop_lon"])} for key in sorted({s for row in output for s in row["stops"]})],
             "segments": output}
-    if geometry and config.get('include_unmapped') and incomplete:
-        audit = compile_feed(path, {**config, 'include_unmapped': False}, date.isoformat(), geometry=False)
-        result['unmapped_segments'] = [s for s in audit['segments'] if s['route_id'] in incomplete]
-        result['unmapped_stops'] = audit['stops']
     if geometry and getattr(paths, 'rail_patterns', {}):
         source['geometry_license'] = 'ODbL-1.0'
         source['geometry_attribution'] = '© OpenStreetMap contributors; matched against an already published branch/metro railway snapshot'
+    if geometry and config.get('include_unmapped') and incomplete:
+        # Do not hold two national stop-time/graph datasets during the audit
+        # pass. The mapped result and its provenance are already finalized.
+        del times, frequencies, trips, stops, paths
+        audit = compile_feed(path, {**config, 'include_unmapped': False}, date.isoformat(), geometry=False)
+        result['unmapped_segments'] = [s for s in audit['segments'] if s['route_id'] in incomplete]
+        result['unmapped_stops'] = audit['stops']
     z.close()
     return result
 

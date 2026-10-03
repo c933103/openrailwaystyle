@@ -42,7 +42,7 @@ class ShapePaths:
             measures = [float(v) for v in distances] if all(distances) else None
             if measures and any(b <= a for a, b in zip(measures, measures[1:])):
                 measures = None
-            self.shapes[key] = {'points': points, 'lengths': lengths, 'measures': measures, 'anchors': {}}
+            self.shapes[key] = {'points': points, 'lengths': lengths, 'measures': measures, 'anchors': {}, 'lookup': None}
         # One projection per stop pattern, rather than once per train.
         for trip_id, trip in sorted(trips.items()):
             sequence = sorted(times.get(trip_id, []), key=lambda r: int(r['stop_sequence']))
@@ -59,7 +59,7 @@ class ShapePaths:
                 module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
                 def mode(trip):
                     value = int(config['rail_route_types'][trip['route_id']])
-                    return 'subway' if value == 1 or 400 <= value < 500 else 'tram' if value == 0 or 900 <= value < 1000 else 'monorail' if value == 12 else 'funicular' if value == 7 else 'rail'
+                    return 'monorail' if value in (12, 405) else 'funicular' if value in (7, 1400) else 'subway' if value == 1 or 400 <= value < 500 else 'tram' if value in (0, 5) or 900 <= value < 1000 else 'rail'
                 for kind in {mode(trip) for trip in missing.values()}:
                     selected = {key: trip for key, trip in missing.items() if mode(trip) == kind}
                     self.rail[kind] = module.RailPaths(config['rail_graph'], selected, {key: times[key] for key in selected}, stops, self.max_snap, kind)
@@ -73,6 +73,10 @@ class ShapePaths:
                         self.rejected['missing_or_unusable_shape'] -= 1
                 if not self.rejected['missing_or_unusable_shape']:
                     del self.rejected['missing_or_unusable_shape']
+        # Projection indices are no longer needed once every pattern is fixed.
+        # Free them before building the shared-edge split index.
+        for shape in self.shapes.values():
+            shape.pop('lookup', None)
         # Every stop/vertex from every pattern is a split candidate. This also
         # handles express trips skipping stops and unequal vertex densities.
         grid, vertices = defaultdict(set), set()
@@ -155,7 +159,18 @@ class ShapePaths:
                     return None
             else:
                 candidates = []
-                for i,(a,b) in enumerate(zip(shape['points'],shape['points'][1:])):
+                if shape['lookup'] is None:
+                    lookup = defaultdict(list)
+                    for i,(a,b) in enumerate(zip(shape['points'],shape['points'][1:])):
+                        x0,y0=self.cell(a);x1,y1=self.cell(b)
+                        steps=max(1,abs(x1-x0),abs(y1-y0))
+                        cells={self.cell((a[0]+(b[0]-a[0])*j/steps,a[1]+(b[1]-a[1])*j/steps)) for j in range(steps+1)}
+                        for cell in cells:lookup[cell].append(i)
+                    shape['lookup']=lookup
+                x,y=self.cell(p);radius=math.ceil(self.max_snap/100)+1
+                indices={i for dx in range(-radius,radius+1) for dy in range(-radius,radius+1) for i in shape['lookup'].get((x+dx,y+dy),())}
+                for i in indices:
+                    a,b=shape['points'][i:i+2]
                     t,error = self.project_segment(p,a,b)
                     position = shape['lengths'][i]+t*(shape['lengths'][i+1]-shape['lengths'][i])
                     if position >= previous-.15:

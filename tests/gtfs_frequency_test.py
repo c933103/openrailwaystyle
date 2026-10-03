@@ -15,6 +15,12 @@ CONFIG = {'source':{'id':'fixture'},'profiles':{'am':{'start':'07:00:00','end':'
 
 
 class GTFSFrequency(unittest.TestCase):
+    def test_global_rail_modes_exclude_buses_and_aerial_lifts(self):
+        for value in [0,1,2,5,7,12,100,109,400,405,900,906,1400]:
+            self.assertTrue(compiler.rail_type(str(value)), value)
+        for value in [3,4,6,700,714,1000,1300,1302,1500]:
+            self.assertFalse(compiler.rail_type(str(value)), value)
+
     def feed(self, trips, patterns, frequencies=None, exceptions=None, blank=False):
         rows={
           'agency.txt':[{'agency_id':'A','agency_name':'Fixture','agency_timezone':'Europe/Helsinki'}],
@@ -109,6 +115,15 @@ class GTFSFrequency(unittest.TestCase):
             for name,data in files.items():z.writestr(name,data)
         result=compiler.compile_feed(path,{**CONFIG,'profiles':{'early':{'start':'01:00:00','end':'02:00:00'}}},'2026-10-05')
         self.assertEqual(result['segments'][0]['profiles']['early']['display_tph'],1)
+
+    def test_long_frequency_template_includes_anchor_delay_in_prior_day_bound(self):
+        patterns={'t':[('A','00:00:00'),('B','50:00:00'),('C','50:10:00')]}
+        frequency=[{'trip_id':'t','start_time':'00:00:00','end_time':'49:00:00','headway_secs':'3600','exact_times':'1'}]
+        config={**CONFIG,'profiles':{'early':{'start':'01:00:00','end':'02:00:00'}}}
+        # Friday's instance is removed; Thursday's delayed train is the only event.
+        result=compiler.compile_feed(self.feed(patterns,patterns,frequency,exceptions=[{'service_id':'W','date':'20261002','exception_type':'2'}]),config,'2026-10-05')
+        segment=next(s for s in result['segments'] if s['stops']==['B','C'])
+        self.assertEqual(segment['profiles']['early']['display_tph'],1)
 
     def test_calendar_route_variants_consolidate_but_disconnected_names_do_not(self):
         routes={key:{'route_id':key,'route_type':'1','agency_id':'A','route_short_name':'1'} for key in ['a','b','other']}
