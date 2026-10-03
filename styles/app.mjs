@@ -1,12 +1,12 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261003-112900';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261003-112900';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261003-115500';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261003-115500';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261003-112900';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261003-112900';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261003-112900';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261003-112900';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261003-112900';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261003-112900';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261003-115500';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261003-115500';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261003-115500';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261003-115500';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261003-115500';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261003-115500';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -40,7 +40,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261003-112900';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261003-115500';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -246,9 +246,11 @@ let majorStationData,majorStationSearchData,majorStationsPromise,majorStationNam
 let majorStationNameMemory,majorStationNextRefreshAt=0,majorStationRequestId=0;
 const majorStationLanguages=new WeakMap();
 const majorStationObjectKey=p=>`${p.osm_type}/${p.osm_id}`;
+// Match language-name syntax used by tileStations, plus two supported legacy aliases.
+const isStationNameTag=key=>/^name(:[a-z]{2,3}([-_][A-Za-z0-9]+)*)?$/.test(key)||key==='name:ko:hanja'||key==='name:vi:nom';
 const stationNameTags=tags=>{
  if(!tags||typeof tags!=='object'||Array.isArray(tags))return null;
- const entries=Object.entries(tags).filter(([key])=>key==='name'||key.startsWith('name:'));
+ const entries=Object.entries(tags).filter(([key])=>isStationNameTag(key));
  // Invalid name values are not evidence of a genuinely nameless object.
  if(entries.some(([,value])=>typeof value!=='string'))return null;
  return Object.fromEntries(entries);
@@ -264,7 +266,7 @@ function readMajorStationNameCache(){
     const tags=stationNameTags(record.tags);
     if(tags===null){
      // A malformed translation invalidates freshness, not valid sibling names.
-     const fallback=Object.fromEntries(Object.entries(record.tags).filter(([tag,value])=>(tag==='name'||tag.startsWith('name:'))&&typeof value==='string'));
+     const fallback=Object.fromEntries(Object.entries(record.tags).filter(([tag,value])=>isStationNameTag(tag)&&typeof value==='string'));
      if(Object.keys(fallback).length)records[key]={fetchedAt:0,tags:fallback};
      continue;
     }
@@ -344,6 +346,9 @@ function updateMajorStations(){
  if(!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3||map.getZoom()>=7)return;
  const source=map.getSource('stationMajor'),language=settings.language;
  if(!source||(majorStationLanguages.get(source)===language&&Date.now()<majorStationNextRefreshAt))return;
+ // A cache refresh may finish while hidden. Until applied, the rendered
+ // source must not be marked current merely because the cache is fresh.
+ majorStationLanguages.delete(source);
  const requestId=++majorStationRequestId;
  majorStationsPromise ||= majorStationData?Promise.resolve(majorStationData):fetch(new URL(`major-stations.geojson?v=${assetVersion}`,import.meta.url)).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}).catch(error=>{majorStationsPromise=undefined;throw error;});
  const namesPromise=majorStationNamesPromise ||= majorStationsPromise.then(data=>majorStationNameTags(data));
