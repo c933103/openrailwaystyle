@@ -90,7 +90,7 @@ Open [http://localhost:4173](http://localhost:4173). The local server serves
 | `scripts/` | Build tools, data preparation, preview server and browser checks |
 | `tests/` | Automated tests |
 | `.github/workflows/` | Validation, Pages deployment and snapshot maintenance |
-| `ProcessRailway.java`, `justfile`, original example styles | Legacy Europe extractor and Hack4Rail demos, unused by Atlas; see [project origins](upstream.md#inherited-code-audit) |
+| `ProcessRailway.java`, `justfile` | Standalone legacy Europe extractor, unused by Atlas; see [project origins](upstream.md#inherited-code-audit) |
 
 For worldwide style changes, edit the builder and relevant source modules, run
 `npm run build`, and commit the resulting `styles/world.style.json` with the
@@ -122,6 +122,7 @@ node scripts/check-context-browser.mjs
 node scripts/check-map-browser.mjs
 node scripts/check-major-stations-browser.mjs
 node scripts/check-platform-browser.mjs
+node scripts/check-infrastructure-browser.mjs
 ```
 
 The deployment gate checks real Chromium/WebGL rendering, including zoom-7 panning

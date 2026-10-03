@@ -29,14 +29,16 @@ coverage depends on published data and is not a complete worldwide timetable.
 ## Inherited code audit
 
 The audit on 3 October 2026 follows the npm build, `.github/workflows/`, the
-application in `styles/`, and the published `styles/` directory. The following
-legacy files remain in the repository; this audit does not remove them.
+application in `styles/`, and the published `styles/` directory. A legacy
+Europe-only extractor remains in the repository. The three standalone demo pages and
+their styles have been removed after integrating their useful railway detail
+features into Atlas's Infrastructure view.
 
 | Inherited item | Current use | Assessment |
 | --- | --- | --- |
 | [`styles/default.style.json`](../styles/default.style.json) | Read by [`scripts/build-style.mjs`](../scripts/build-style.mjs); supplies the OpenMapTiles source, glyph URL and 23 land, water, boundary and place-label layers | Required build input. Its other 32 railway, station, road and airport layers, Europe railway source, sprite URL and editor metadata are discarded by the builder. Those unused definitions can be pruned while preserving the generated style. |
 | [`ProcessRailway.java`](../ProcessRailway.java) and [`justfile`](../justfile) | Standalone Europe OSM download/filter/Planetiler pipeline; no current npm build, workflow or app reference | Unused by Atlas. They can be removed if the old extractor is no longer offered as a separate example. |
-| `styles/infra_viewers.{html,style.json}`, `styles/european_train_spotter.{html,style.json}`, `styles/openstreet_trainsformer.{html,style.json}` | Three standalone upstream demos; no Atlas import or build dependency | Unused by Atlas, but still independently accessible because Pages publishes all of `styles/`. Removing them would retire those demo URLs. |
+| The three original standalone demo pages and styles | Removed from this fork; historical examples are linked below | Platform/boarding-edge references, signals and entrances now use Atlas's own layers and worldwide sources. The old bus-route layer is not retained. |
 | [`img/hack4rail-logo.jpg`](../img/hack4rail-logo.jpg) | Former history-page illustration; no application or build dependency | Unused artwork; the written origin credit does not need it. |
 | [`MAINTAINERS.md`](../MAINTAINERS.md) | An empty inherited maintainer-list template | No functional dependency or maintainer information. |
 
@@ -53,7 +55,7 @@ Historical demos remain available at the upstream project's site:
 - [European Train Spotter](https://openrail-playground.github.io/openrailwaystyle/european_train_spotter.html): a network overview emphasising main, branch and high-speed lines, with station markers and labels and subdued tram/narrow-gauge lines.
 - [Openstreet Trainsformer](https://openrail-playground.github.io/openrailwaystyle/openstreet_trainsformer.html): close-zoom passenger transport context, including rail, tram and bus routes/stops, platform references and platform-edge labels.
 
-These emphases are inferred from the retained styles' rendering rules; the
+These emphases are inferred from the original styles' rendering rules; the
 upstream README does not set out a detailed design brief for each team.
 
 These are upstream examples, not descriptions of current Atlas functionality.

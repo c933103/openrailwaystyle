@@ -12,6 +12,7 @@ stations and infrastructure at the centre of the map.
 
 - Railway views for track type, maximum speed, electrification, infrastructure and loading gauge.
 - Station search, prominent railway labels, and distinct construction, proposed and former lines.
+- Close-zoom platform references and boarding-edge lengths, railway signals and station entrances in Infrastructure view.
 - Transport interchanges, passenger destinations and planning context over subdued roads and buildings.
 - Land and seabed relief, elevation contours, and flat-map or globe navigation including the poles.
 - Recorded names in local languages or 12 selectable languages, with shared label settings.

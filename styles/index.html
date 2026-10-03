@@ -31,7 +31,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20261003-upstream1" rel="stylesheet">
+  <link href="app.css?v=20261003-infrastructure1" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -76,7 +76,7 @@
         <fieldset><legend>Railways</legend>
           <label><input type="checkbox" id="stations" checked> Station markers and names</label>
           <label><input type="checkbox" id="names" checked> Railway names along tracks</label>
-          <label><input type="checkbox" id="labels" checked> Value labels (speed, power, train control, gauges, axle loads and platform lengths)</label>
+          <label><input type="checkbox" id="labels" checked> Value labels (speed, power, train control, gauges, axle loads, platforms, signals and entrances)</label>
           <label><input type="checkbox" id="trackCounts" checked> Track counts in boxes (Infrastructure view)</label>
           <label><input type="checkbox" id="inactive" checked> Planned, construction and former railways</label>
         </fieldset>
@@ -135,6 +135,7 @@
     <p>Brown contours show land elevation; blue contours show negative elevation below sea level. Labels are signed metres. Heavier index contours are labelled. Seabed depth data is much coarser than land elevation. Around the poles on the globe, relief and contours come from NOAA ETOPO 2022 (about 1.85 km resolution).</p>
     <p>Roads, cycling paths and walking trails remain visible beneath the railway network. Protected areas, military grounds, religious institutions and heritage sites provide context for drawing proposals. Purple boundaries show Indigenous territories where mapped as non-administrative jurisdictions, separately from administrative and conservation boundaries. The map does not establish legal boundaries or permission to build.</p>
     <p>Infrastructure view marks level crossings (dark brown for road crossings, light brown for pedestrian ones), with their mapped equipment; they come from a worldwide OSM table refreshed weekly: <a href="data/level-crossings/manifest.json">snapshot date and counts</a>; <a href="data/level-crossings/crossings.tsv.gz">download the ODbL table</a>. It marks explicitly tagged street-running track with an ochre roadbed. Street running is refreshed weekly from OSM: <a href="data/street-running/manifest.json">snapshot date and query</a>; <a href="data/street-running/street-running.geojson.gz">download the ODbL extract</a>. It is not inferred from every tramway or a nearby road.</p>
+    <p>Zoom in on Infrastructure view for platforms and their boarding edges. Platform numbers and edge references appear from zoom 17; from zoom 19 an edge label pairs its reference with the length of the complete mapped boarding edge, in metres or feet. Platform numbers and lengths can take a moment to load. Signals (purple) and mapped train or subway station entrances (teal) appear from zoom 16; click them for mapped details and an OpenStreetMap link. Signal markers identify their location, not their current aspect. Coverage depends on the provider’s mapped data. Value labels hides their text while keeping the mapped shapes and markers.</p>
     <p>Carto background: <a href="https://www.openstreetmap.org/">OpenStreetMap Standard</a>, under the <a href="https://operations.osmfoundation.org/policies/tiles/">OSMF tile usage policy</a>. <a href="https://www.openstreetmap.org/fixthemap">Report a map issue</a>.</p>
     <h3 id="help-sources" tabindex="-1">Sources</h3><p>Railway tiles: <a href="https://openrailwaymap.app/">OpenRailwayMap vector</a>. Station search: <a href="https://www.openrailwaymap.org/">OpenRailwayMap public API</a>; place search: <a href="https://nominatim.org/">Nominatim</a> (OpenStreetMap data). Departures and journey planning: <a href="https://transitous.org">Transitous</a> (<a href="https://transitous.org/sources/">timetable sources and licences</a>). Regional planned, construction and former lines: <a href="data/manifest.json">published OSM snapshot</a>, extracted with <a href="https://overpass-api.de/">Overpass (FOSSGIS)</a>; <a href="data/lifecycle.geojson.gz">download the ODbL database</a>. Relief: <a href="terrain-credits.html">Mapzen Terrain Tiles / AWS, including NOAA ETOPO1 seabed data</a>. Base map: <a href="https://tuiles.enliberte.fr/">En Liberté</a>. Satellite imagery: <a href="https://cloudless.eox.at">EOxCloudless https://cloudless.eox.at</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2025), <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>. Map data: <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>. Name regions: <a href="https://www.naturalearthdata.com/">Natural Earth</a>, <a href="https://github.com/evansiroky/timezone-boundary-builder">timezone-boundary-builder</a> (OSM, ODbL) and OSM boundary relations and <a href="https://www.geoboundaries.org/">geoBoundaries</a> (Myanmar Analytics Project, CC BY 4.0; Royal Thai Survey Department / OCHA ROAP, CC BY 3.0 IGO). Renderer: <a href="https://maplibre.org/">MapLibre</a>.</p>
     <p>Project origins: Railway Atlas began as a fork of <a href="https://github.com/OpenRail-Playground/openrailwaystyle">Open Railway Styles</a>, the Hack4Rail 2025 project. Atlas's current application and worldwide data pipeline are developed in this repository.</p>
@@ -173,6 +174,6 @@
       status.textContent = 'The map could not load. Check your connection and reload the page.';
     }, true);
   </script>
-  <script type="module" src="app.mjs?v=20261003-upstream1"></script>
+  <script type="module" src="app.mjs?v=20261003-infrastructure1"></script>
 </body>
 </html>
