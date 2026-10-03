@@ -6,7 +6,9 @@ This is a path frequency, not an inference about individual physical tracks.
 """
 from bisect import bisect_right
 from collections import defaultdict
+import importlib.util
 import math
+from pathlib import Path
 
 
 class ShapePaths:
@@ -49,6 +51,22 @@ class ShapePaths:
                 self.patterns[key] = self.project_pattern(trip, sequence, stops)
             if self.patterns[key] is None:
                 self.rejected['missing_or_unusable_shape'] += 1
+        self.rail, self.rail_patterns = None, set()
+        if config.get('rail_graph'):
+            missing = {key: trip for key, trip in trips.items() if self.patterns[self.pattern_key(trip, sorted(times.get(key, []), key=lambda r: int(r['stop_sequence'])))] is None}
+            if missing:
+                spec = importlib.util.spec_from_file_location('gtfs_rail_paths', Path(__file__).with_name('gtfs-rail-paths.py'))
+                module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+                self.rail = module.RailPaths(config['rail_graph'], missing, {key: times[key] for key in missing}, stops, self.max_snap)
+                for key, trip in missing.items():
+                    sequence = sorted(times[key], key=lambda r: int(r['stop_sequence']))
+                    pattern = self.pattern_key(trip, sequence)
+                    if self.rail.patterns.get(self.rail.pattern_key(trip, sequence)) is not None:
+                        self.patterns[pattern] = 'rail'
+                        self.rail_patterns.add(pattern)
+                        self.rejected['missing_or_unusable_shape'] -= 1
+                if not self.rejected['missing_or_unusable_shape']:
+                    del self.rejected['missing_or_unusable_shape']
         # Every stop/vertex from every pattern is a split candidate. This also
         # handles express trips skipping stops and unequal vertex densities.
         grid, vertices = defaultdict(set), set()
@@ -152,7 +170,10 @@ class ShapePaths:
         return positions if positions[-1] > positions[0]+.15 else None
 
     def segments(self, trip, sequence):
-        positions = self.patterns.get(self.pattern_key(trip,sequence))
+        key = self.pattern_key(trip, sequence)
+        if key in self.rail_patterns:
+            return self.rail.segments(trip, sequence)
+        positions = self.patterns.get(key)
         if positions is None:
             return []
         shape = self.shapes[trip['shape_id']]

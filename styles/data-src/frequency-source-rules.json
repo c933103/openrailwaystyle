@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "catalogue_url": "https://raw.githubusercontent.com/public-transport/transitous/main/website/data/license.json",
+  "sources": {},
+  "profiles": {
+    "am": {"start": "07:00:00", "end": "09:00:00", "definition": "Configured morning reference"},
+    "pm": {"start": "16:00:00", "end": "18:00:00", "definition": "Configured evening reference"},
+    "offpeak": {"start": "12:00:00", "end": "14:00:00", "definition": "Configured daytime reference"}
+  }
+}

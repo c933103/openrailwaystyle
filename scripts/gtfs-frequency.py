@@ -35,7 +35,50 @@ def read(z, name):
 
 def rail_type(value):
     number = int(value)
-    return number in (0, 1, 2) or 100 <= number < 200 or 400 <= number < 500 or 900 <= number < 1000
+    return number in (0, 1, 2, 7, 12) or 100 <= number < 200 or 400 <= number < 500 or 900 <= number < 1000
+
+
+def canonical_routes(routes, trips, times, stops):
+    """Consolidate calendar/direction IDs only within a connected service.
+
+    Agency + reference + mode + colour scopes identity. Routes in disconnected
+    networks retain separate IDs even when their short names are identical.
+    A shared parent station supplies the connection; names alone never do.
+    """
+    groups, served = defaultdict(list), defaultdict(set)
+    for trip_id, trip in trips.items():
+        for row in times.get(trip_id, []):
+            stop = stops[row['stop_id']]
+            served[trip['route_id']].add(stop.get('parent_station', '').strip() or row['stop_id'])
+    for key, route in routes.items():
+        label = route.get('route_short_name', '').strip() or route.get('route_long_name', '').strip() or key
+        groups[(route.get('agency_id', ''), label, route['route_type'], route.get('route_color', ''))].append(key)
+    aliases, out = {}, {}
+    for members in groups.values():
+        parent = {key: key for key in members}
+        def find(key):
+            while parent[key] != key:
+                parent[key] = parent[parent[key]]
+                key = parent[key]
+            return key
+        station_routes = {}
+        for key in sorted(members):
+            for station in served[key]:
+                if station in station_routes:
+                    a, b = sorted((find(key), find(station_routes[station])))
+                    parent[b] = a
+                station_routes[station] = key
+        components = defaultdict(list)
+        for key in members:
+            components[find(key)].append(key)
+        for component in components.values():
+            ident = min(component)
+            out[ident] = {**routes[ident], 'source_route_ids': sorted(component)}
+            for key in component:
+                aliases[key] = ident
+    for trip in trips.values():
+        trip['route_id'] = aliases[trip['route_id']]
+    return out
 
 
 def service_start(date, timezone):
@@ -55,7 +98,6 @@ def local_boundary(date, value, timezone):
 
 def compile_feed(path, config, date, geometry=False):
     date = dt.date.fromisoformat(date)
-    previous = date - dt.timedelta(days=1)
     z = zipfile.ZipFile(path)
     feed = list(read(z, "feed_info.txt"))
     if feed:
@@ -76,21 +118,7 @@ def compile_feed(path, config, date, geometry=False):
     if any(t["service_id"] not in known_services for t in trips.values()):
         raise ValueError("Trip references an absent service calendar")
 
-    active = {}
     days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-    for day in (previous, date):
-        value = day.strftime("%Y%m%d")
-        ids = {key for key, row in calendar.items() if row["start_date"] <= value <= row["end_date"] and row[days[day.weekday()]] == "1"}
-        for row in exceptions:
-            if row["date"] == value:
-                if row["exception_type"] == "1":
-                    ids.add(row["service_id"])
-                elif row["exception_type"] == "2":
-                    ids.discard(row["service_id"])
-                else:
-                    raise ValueError("Invalid calendar exception")
-        active[day] = ids
-
     times = defaultdict(list)
     # Stream the full table; retain rail trips only, not the bus timetable.
     for row in read(z, "stop_times.txt"):
@@ -102,6 +130,29 @@ def compile_feed(path, config, date, geometry=False):
             frequencies[row["trip_id"]].append(row)
     excluded = {trip_id for trip_id, sequence in times.items() if any(stops[r['stop_id']].get('platform_code') in config.get('exclude_platform_codes', []) for r in sequence)}
     trips = {key: value for key,value in trips.items() if key not in excluded}
+    if config.get('canonical_routes'):
+        routes = canonical_routes(routes, trips, times, stops)
+    # GTFS permits hours beyond 24 (including beyond 48). Include every prior
+    # service day that can contribute; one previous day is not sufficient.
+    max_time = max([seconds(r.get('departure_time')) or 0 for key in trips for r in times[key]]+
+                   [seconds(r.get('end_time')) or 0 for key in trips for r in frequencies[key]]+[0])
+    prior_days = max(1, max_time//86400+1)
+    if prior_days > 366:
+        raise ValueError('Service time exceeds one-year processing budget')
+    service_days = [date-dt.timedelta(days=i) for i in range(prior_days+1)]
+    active = {}
+    for day in service_days:
+        value = day.strftime('%Y%m%d')
+        ids = {key for key, row in calendar.items() if row['start_date'] <= value <= row['end_date'] and row[days[day.weekday()]] == '1'}
+        for row in exceptions:
+            if row['date'] == value:
+                if row['exception_type'] == '1':
+                    ids.add(row['service_id'])
+                elif row['exception_type'] == '2':
+                    ids.discard(row['service_id'])
+                else:
+                    raise ValueError('Invalid calendar exception')
+        active[day] = ids
     paths = None
     if geometry:
         import importlib.util
@@ -135,7 +186,6 @@ def compile_feed(path, config, date, geometry=False):
         if len(sequence) < 2 or len({r["stop_sequence"] for r in sequence}) != len(sequence):
             raise ValueError("Missing or duplicate rail stop sequence")
         first = seconds(sequence[0].get("departure_time"))
-        seen = set()
         contributions = {}
 
         def contribution(departure):
@@ -143,7 +193,7 @@ def compile_feed(path, config, date, geometry=False):
                 return contributions[departure]
             counts = {p: 0.0 for p in windows}
             unknown, estimated = set(), set()
-            for day in (previous, date):
+            for day in service_days:
                 if trip["service_id"] not in active[day]:
                     continue
                 origin = service_start(day, timezone)
@@ -192,9 +242,6 @@ def compile_feed(path, config, date, geometry=False):
                     lo, hi = sorted((a, b))
                     mapped.append(((route_id, lo, hi), 0 if a == lo else 1, upstream, None))
         for key, direction, upstream, coordinates in mapped:
-            if (key, direction) in seen:
-                continue
-            seen.add((key, direction))
             segment = segments.setdefault(key, {"route_id": route_id, "agency_id": agency_id,
                      "geometry": coordinates, "stops": list(key[1:]), "expected_directions": set(),
                      "counts": {p: [0.0, 0.0] for p in windows},
@@ -230,9 +277,9 @@ def compile_feed(path, config, date, geometry=False):
         while chunk := file.read(1_048_576):
             digest.update(chunk)
     source = {**config["source"], "sha256": digest.hexdigest(), "feed_info": feed[0] if feed else {},
-              "service_date": date.isoformat(), "day_type": days[date.weekday()], "geometry": "supplied GTFS shapes" if geometry else "unmatched stop pairs",
+              "service_date": date.isoformat(), "day_type": days[date.weekday()], "geometry": "supplied GTFS shapes / matched published railway graph" if geometry and getattr(paths, 'rail', None) else "supplied GTFS shapes" if geometry else "unmatched stop pairs",
               "count_anchor": "departure at the preceding served stop; no inferred pass times",
-              "geometry_audit": {"withheld_trips": dict(paths.rejected), "routes_with_incomplete_active_geometry": sorted(incomplete), "excluded_replacement_bus_trips": len(excluded)} if geometry else {}}
+              "geometry_audit": {"withheld_trips": dict(paths.rejected), "routes_with_incomplete_active_geometry": sorted(incomplete), "excluded_replacement_bus_trips": len(excluded), "matched_railway_patterns": len(getattr(paths, 'rail_patterns', set()))} if geometry else {}}
     if feed and feed[0].get('feed_end_date'):
         end_date=dt.datetime.strptime(feed[0]['feed_end_date'],'%Y%m%d').date()+dt.timedelta(days=1)
         source['valid_until']=min(dt.datetime.combine(end_date,dt.time(),ZoneInfo(a['agency_timezone'])).timestamp() for a in agencies.values())-.001
@@ -240,10 +287,16 @@ def compile_feed(path, config, date, geometry=False):
         end_date=max([r['end_date'] for r in calendar.values()]+[r['date'] for r in exceptions])
         end_date=dt.datetime.strptime(end_date,'%Y%m%d').date()+dt.timedelta(days=1)
         source['valid_until']=min(dt.datetime.combine(end_date,dt.time(),ZoneInfo(a['agency_timezone'])).timestamp() for a in agencies.values())-.001
-    return {"schema": 1, "source": source, "profiles": config["profiles"],
+    result = {"schema": 1, "source": source, "profiles": config["profiles"],
             "agencies": list(agencies.values()), "routes": [routes[key] for key in sorted(routes)],
             "stops": [] if geometry else [{"id": key, "name": stops[key]["stop_name"], "lat": float(stops[key]["stop_lat"]), "lon": float(stops[key]["stop_lon"])} for key in sorted({s for row in output for s in row["stops"]})],
             "segments": output}
+    if geometry and config.get('include_unmapped') and incomplete:
+        audit = compile_feed(path, {**config, 'include_unmapped': False}, date.isoformat(), geometry=False)
+        result['unmapped_segments'] = [s for s in audit['segments'] if s['route_id'] in incomplete]
+        result['unmapped_stops'] = audit['stops']
+    z.close()
+    return result
 
 
 def main():

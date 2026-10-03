@@ -1,0 +1,111 @@
+name: Build worldwide service frequencies
+on:
+  workflow_dispatch:
+    inputs:
+      service_date:
+        description: 'Reference date (YYYY-MM-DD); blank uses next Monday'
+        required: false
+  schedule:
+    - cron: '41 2 * * 1'
+  pull_request:
+    paths:
+      - scripts/global-service-frequency.py
+      - scripts/gtfs-frequency.py
+      - scripts/gtfs-shapes.py
+      - scripts/gtfs-rail-paths.py
+      - scripts/assemble-global-frequency.mjs
+      - scripts/gtfs-service.mjs
+      - styles/data-src/frequency-source-rules.json
+      - .github/workflows/service-frequency.yml
+permissions:
+  contents: read
+concurrency:
+  group: worldwide-frequency-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  catalogue:
+    runs-on: ubuntu-latest
+    outputs:
+      service_date: ${{ steps.date.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: date
+        env:
+          REQUESTED_DATE: ${{ inputs.service_date }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import datetime as dt, os
+          today=dt.datetime.now(dt.timezone.utc).date()
+          reference=os.environ.get('REQUESTED_DATE') or (today+dt.timedelta(days=(-today.weekday())%7)).isoformat()
+          dt.date.fromisoformat(reference)
+          print('value='+reference)
+          PY
+      - name: Pin one worldwide catalogue for every worker
+        run: |
+          mkdir -p catalogue
+          curl --fail --retry 3 --location https://raw.githubusercontent.com/public-transport/transitous/main/website/data/license.json --output catalogue/license.json
+          python3 scripts/global-service-frequency.py --catalogue catalogue/license.json --cache /tmp/frequency-cache --output catalogue --date '${{ steps.date.outputs.value }}' --inventory-only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: worldwide-frequency-catalogue
+          path: catalogue/
+          retention-days: 14
+  compile:
+    needs: catalogue
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: worldwide-frequency-catalogue
+          path: catalogue
+      - name: Load existing published branch and metro geometry
+        run: |
+          mkdir -p railway-graph
+          if git ls-remote --exit-code --heads origin branch-data; then
+            git fetch --depth=1 origin branch-data
+            git show FETCH_HEAD:branch-lines.ndjson.gz > railway-graph/branch-lines.ndjson.gz
+          fi
+      - uses: actions/cache@v4
+        with:
+          path: frequency-cache
+          key: worldwide-gtfs-${{ matrix.shard }}-${{ needs.catalogue.outputs.service_date }}-${{ github.run_id }}
+          restore-keys: worldwide-gtfs-${{ matrix.shard }}-
+      - name: Compile every eligible feed in this worldwide shard
+        run: |
+          graph=()
+          if [ -f railway-graph/branch-lines.ndjson.gz ]; then graph=(--rail-graph railway-graph/branch-lines.ndjson.gz); fi
+          python3 scripts/global-service-frequency.py --catalogue catalogue/license.json --cache frequency-cache --output frequency-output --date '${{ needs.catalogue.outputs.service_date }}' --shards 8 --shard '${{ matrix.shard }}' "${graph[@]}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: worldwide-frequency-shard-${{ matrix.shard }}
+          path: frequency-output/
+          retention-days: 14
+  assemble:
+    needs: [catalogue, compile]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: worldwide-frequency-shard-*
+          path: frequency-output
+          merge-multiple: true
+      - name: Validate complete inventory and assemble bounded tile batches
+        run: node --max-old-space-size=5500 scripts/assemble-global-frequency.mjs frequency-output
+      - uses: actions/upload-artifact@v4
+        with:
+          name: worldwide-frequency-snapshot
+          path: frequency-output/
+          retention-days: 14
