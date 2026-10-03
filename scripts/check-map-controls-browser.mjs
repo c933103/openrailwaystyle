@@ -6,14 +6,19 @@ import assert from 'node:assert/strict';
 import {readFile, mkdir, writeFile} from 'node:fs/promises';
 import {waitUntil} from './wait-until.mjs';
 import {clickVisibleControl} from './click-visible-control.mjs';
+import {rendererFixture} from './browser-renderer-fixture.mjs';
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const style=JSON.parse(await readFile('styles/world.style.json','utf8'));
 style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
+const renderer=await rendererFixture();
 const browser=await chromium.launch({headless:true,...(process.env.BROWSER_PATH?{executablePath:process.env.BROWSER_PATH}:{}),args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const context=await browser.newContext({viewport:{width:1365,height:900},serviceWorkers:'block'});
 const page=await context.newPage();
 page.setDefaultTimeout(10000);
-const errors=[],results=[];
+const errors=[],results=[],pending=new Set(),requestFailures=[];
+page.on('request',r=>pending.add(r));
+page.on('requestfinished',r=>pending.delete(r));
+page.on('requestfailed',r=>{pending.delete(r);requestFailures.push({url:r.url(),error:r.failure()?.errorText});});
 page.on('pageerror',e=>errors.push(e.message));
 page.on('console',m=>{if(m.type()==='error'&&m.text().includes('Map resource error:'))errors.push(m.text());});
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg==','base64');
@@ -26,10 +31,8 @@ await page.addInitScript(()=>{
 });
 await context.route('**/*',async route=>{
   const url=new URL(route.request().url()),path=url.pathname;
-  if(url.hostname==='cdn.jsdelivr.net' && path.includes('maplibre-gl@5.24.0')){
-    const local=await readFile(`node_modules/maplibre-gl/dist/${path.split('/').at(-1)}`).catch(()=>null);
-    return local ? route.fulfill({contentType:path.endsWith('.css')?'text/css':'text/javascript',body:local}) : route.continue();
-  }
+  const asset=renderer.get(url.href);
+  if(asset)return route.fulfill(asset);
   if(url.href.startsWith(base)){
     if(path.endsWith('/major-stations.geojson'))return route.fulfill({json:{type:'FeatureCollection',features:[]}});
     if(path.endsWith('/world.style.json'))return route.fulfill({json:style});
@@ -51,7 +54,7 @@ const geometry=()=>page.evaluate(()=>{
   const rect=el=>{if(!el||el.hidden)return null;const r=el.getBoundingClientRect(),s=getComputedStyle(el);if(s.display==='none'||s.visibility==='hidden'||!r.width||!r.height)return null;return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
   const element=s=>document.querySelector(s),ruler=element('.maplibregl-ctrl-scale'),info=element('.maplibregl-ctrl-attrib-button');
   const hit=el=>{const r=rect(el);return r&&el.contains(document.elementFromPoint((r.left+r.right)/2,(r.top+r.bottom)/2));};
-  return{view:{width:innerWidth,height:innerHeight},ruler:rect(ruler),readout:rect(element('.map-readout')),panel:rect(element('.panel')),status:rect(element('.map-status')),info:rect(info),popover:rect(element('.maplibregl-ctrl-attrib-inner')),sheet:rect(element('#details')),hitRuler:hit(ruler),hitInfo:hit(info),text:ruler.textContent};
+  return{view:{width:innerWidth,height:innerHeight},ruler:rect(ruler),readout:rect(element('.map-readout')),panel:rect(element('.panel')),status:rect(element('.map-status')),info:rect(info),popover:rect(element('.maplibregl-ctrl-attrib-inner')),sheet:rect(element('#details')),hitRuler:hit(ruler),hitInfo:hit(info),text:ruler?.textContent};
 });
 const intersects=(a,b)=>!!(a&&b&&a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top);
 function valid(g){
@@ -133,7 +136,10 @@ try{
   assert.deepEqual(errors,[],'UI lifecycle has no JavaScript exceptions');
   console.log(`PASS: ${results.length} real-app UI layout/state cases; original polar resize; cookie reload; keyboard toggles`);
 } catch(error){
-  console.error(error.stack);console.error('UI_PAGE_ERRORS',JSON.stringify(errors));console.error('UI_GEOMETRY',JSON.stringify(await geometry().catch(()=>null)));
+  console.error(error.stack);console.error('UI_PAGE_ERRORS',JSON.stringify(errors));
+  console.error('UI_PENDING_REQUESTS',JSON.stringify([...pending].map(r=>r.url())));
+  console.error('UI_REQUEST_FAILURES',JSON.stringify(requestFailures));
+  console.error('UI_GEOMETRY',JSON.stringify(await geometry().catch(()=>null)));
   await mkdir('browser-review',{recursive:true});await page.screenshot({path:'browser-review/map-controls-failure.png',timeout:5000}).catch(()=>{});throw error;
 } finally{
   await mkdir('browser-review',{recursive:true});await writeFile('browser-review/map-controls.json',JSON.stringify(results,null,2));await browser.close();
