@@ -1,4 +1,4 @@
-import {MAJOR_STATION_DENSITY,validateStationCountries,majorStationsGeoJSON,selectMajorStations,curatedStationFilter} from './major-stations.mjs';
+import {MAJOR_STATION_DENSITY,validateStationCountries,majorStationsGeoJSON} from './major-stations.mjs';
 import { readFile, writeFile } from 'node:fs/promises';
 import {roadLayers, constraintLayers} from './planning-style.mjs';
 import {contextLayers} from './context-style.mjs';
@@ -8,7 +8,6 @@ import { CARTO_TILES, ORM, axlePaint, axleLabel, LIGHT_MODES, MINOR_MODES, LIFEC
 const majorStations=JSON.parse(await readFile(new URL('../styles/data-src/major-stations.json',import.meta.url)));
 validateStationCountries(majorStations);
 const majorStationData=majorStationsGeoJSON(majorStations);
-const curatedFilter=curatedStationFilter(selectMajorStations(majorStations).filter(e=>e.tier<=6));
 await writeFile(new URL('../styles/major-stations.geojson',import.meta.url),JSON.stringify(majorStationData)+'\n');
 // Keep the Hack4Rail base-map design and replace its Europe-only rail source.
 const original = JSON.parse(await readFile(new URL('../styles/default.style.json', import.meta.url)));
@@ -384,7 +383,7 @@ for (const [tier, filter] of tiers) for (const [source, layer, minzoom, maxzoom]
 ]) {
   style.layers.push({
     id: `station-${source}-${tier}-names`, type: 'symbol', source, 'source-layer': layer, minzoom, maxzoom,
-    filter: ['all', filter,...(source==='stations'?[]:[source==='stationMed'?['any',['>=',['zoom'],7],curatedFilter]:curatedFilter]), ...(source === 'stations' ? [stationSelection, stationFeatures] : source === 'stationMed' ? [zoom6Small] : [stationSelection])],
+    filter: ['all', filter, ...(source === 'stations' ? [stationSelection, stationFeatures] : source === 'stationMed' ? [zoom6Small] : [stationSelection])],
     layout: { ...stationText, 'icon-image': 'station-dot', 'icon-size': ['interpolate', ['linear'], ['zoom'], 4, 0.8, 6, 0.95, 11, bySize(1.25, 1.15, 1.05, 0.9, 0.8)],
       'icon-padding': 12, 'icon-allow-overlap': false, 'icon-ignore-placement': false, 'icon-optional': false, 'text-optional': false },
     paint: stationInk,
