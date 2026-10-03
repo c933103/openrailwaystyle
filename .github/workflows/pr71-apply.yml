@@ -2,7 +2,7 @@ name: PR71 apply verified repair
 on:
   push:
     branches: [fix/attribution-info-compact]
-    paths: ['.github/pr71-edits.json', '.github/workflows/pr71-apply.yml']
+    paths: ['.github/pr71-edits.json', '.github/pr71-post-edits.json', '.github/workflows/pr71-apply.yml']
   workflow_dispatch:
 permissions:
   contents: write
@@ -22,6 +22,7 @@ jobs:
         run: |
           set -euo pipefail
           cp .github/pr71-edits.json /tmp/pr71-edits.json
+          cp .github/pr71-post-edits.json /tmp/pr71-post-edits.json
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git fetch --no-tags --depth=200 origin main
@@ -62,9 +63,18 @@ jobs:
                   if hashlib.sha256(text.encode()).hexdigest()!=item['after']: raise SystemExit('After hash mismatch '+str(p))
                   p.write_text(text)
               subprocess.run(['git','add','-A','--',str(p)],check=True)
+          for item in json.loads(pathlib.Path('/tmp/pr71-post-edits.json').read_text()):
+              p=pathlib.Path(item['path'])
+              if item['path'] not in {'scripts/check-map-browser.mjs','scripts/check-map-controls-browser.mjs'}: raise SystemExit('Unexpected post-edit')
+              old=p.read_text()
+              if hashlib.sha256(old.encode()).hexdigest()!=item['before'] or old.count(item['find'])!=1: raise SystemExit('Post-edit before mismatch '+str(p))
+              new=old.replace(item['find'],item['replace'])
+              if hashlib.sha256(new.encode()).hexdigest()!=item['after']: raise SystemExit('Post-edit after mismatch '+str(p))
+              p.write_text(new)
+              subprocess.run(['git','add','--',str(p)],check=True)
           PY
           test -z "$(git diff --name-only --diff-filter=U)"
-          git rm .github/pr71-edits.json .github/workflows/pr71-apply.yml
+          git rm .github/pr71-edits.json .github/pr71-post-edits.json .github/workflows/pr71-apply.yml
           git diff --cached --check
           git diff --cached --stat
       - name: Build and unit regression tests
