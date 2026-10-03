@@ -257,7 +257,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
     atomic_json(meta_path, meta)
     signature=hashlib.sha256(json.dumps({'catalogue':row,'profiles':profiles,
         'graph':file_hash(str(graph)) if graph else None,
-        'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()
+        'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['global-service-frequency.py','gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()
     destination = output/'feeds'/(ident+'.json.gz')
     if destination.exists():
         with gzip.open(destination, 'rt') as file:
@@ -285,7 +285,18 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
     previous_handler = signal.signal(signal.SIGALRM, timeout)
     signal.alarm(max_seconds)
     try:
-        result = compiler.compile_feed(path, config, date, geometry=True)
+        try:
+            result = compiler.compile_feed(path, config, date, geometry=True)
+        except TimeoutError:
+            # An expensive geometry match must not discard valid national
+            # timetable data. Retry only the stop-pair calculation, retaining
+            # the same explicit time budget and no invented map geometry.
+            signal.alarm(max_seconds)
+            result = compiler.compile_feed(path, {**config, 'include_unmapped': False, 'rail_graph': None}, date, geometry=False)
+            result['unmapped_segments'] = result.pop('segments')
+            result['unmapped_stops'] = result.pop('stops')
+            result['segments'], result['stops'] = [], []
+            result['source']['geometry_audit'] = {'reason': 'Geometry compilation exceeded time budget; frequencies retained as unmatched stop pairs'}
     finally:
         signal.alarm(0); signal.signal(signal.SIGALRM, previous_handler)
     source = result['source']

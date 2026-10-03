@@ -66,6 +66,8 @@ near-equivalent alternative paths are withheld. The existing snapshot is not a
 complete mainline graph; matching therefore cannot fill every shapeless feed.
 Matched OSM geometry retains its ODbL licence/attribution.
 
+If geometry compilation exceeds its budget, a separately bounded timetable-only
+pass retains the source frequencies with an explicit geometry timeout audit.
 Unmatched routes retain their computed parent-station-pair frequency data and
 stops in the downloadable dataset, with no map geometry. If any active trip in a
 route remains unmapped, the route's mapped frequency is unknown, avoiding an

@@ -6,6 +6,7 @@ from pathlib import Path
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -93,6 +94,25 @@ class GlobalFrequency(unittest.TestCase):
         retrieved=feed['source']['retrieved']
         result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
         self.assertEqual(result['source']['retrieved'],retrieved)
+
+    def test_geometry_timeout_preserves_computed_national_frequencies(self):
+        cache,output=self.root/'cache',self.root/'out';cache.mkdir()
+        row={'filename':'eg_rail.gtfs.zip','source':'https://example.org/feed.zip','country_code':'EG','spdx_license_identifier':'CC-BY-4.0'}
+        entry=pipeline.discover([row],{})[0]
+        entry['processed_url'],_=self.server(self.archive())
+        compile_feed=pipeline.compiler.compile_feed
+        def bounded(path,config,date,geometry=False):
+            if geometry:raise TimeoutError('geometry budget')
+            return compile_feed(path,config,date,geometry)
+        with patch.object(pipeline.compiler,'compile_feed',side_effect=bounded):
+            result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        import gzip
+        with gzip.open(output/result['output'],'rt') as file:feed=json.load(file)
+        self.assertEqual(result['status'],'compiled')
+        self.assertEqual(feed['segments'],[])
+        self.assertEqual(feed['unmapped_segments'][0]['profiles']['am']['display_tph'],.5)
+        self.assertIn('time budget',feed['source']['geometry_audit']['reason'])
+        self.assertEqual(len(feed['unmapped_stops']),2)
 
 
 if __name__=='__main__':unittest.main()
