@@ -67,6 +67,17 @@ class GTFSFrequency(unittest.TestCase):
         boundary=compiler.local_boundary(compiler.dt.date(2026,10,5),'07:00:00',compiler.ZoneInfo('Europe/Helsinki'))
         self.assertAlmostEqual(result['source']['valid_until'],boundary+600-.001,places=3)
 
+    def test_old_long_trip_cannot_extend_a_different_calendar_on_the_same_route(self):
+        patterns={'old':[('A','00:00:00'),('B','103:00:00')],'recent':[('B','08:00:00'),('C','08:10:00')]}
+        path=self.feed(patterns,patterns)
+        with zipfile.ZipFile(path) as z:files={n:z.read(n) for n in z.namelist() if n!='feed_info.txt'}
+        files['calendar.txt']=files['calendar.txt'].replace(b'20261231',b'20260920')+b'NEW,1,1,1,1,1,1,1,20260101,20261004\n'
+        files['trips.txt']=b'trip_id,route_id,service_id\nold,R,W\nrecent,R,NEW\n'
+        with zipfile.ZipFile(path,'w') as z:
+            for name,data in files.items():z.writestr(name,data)
+        with self.assertRaisesRegex(ValueError,'every retained rail service calendar horizon'):
+            compiler.compile_feed(path,{**CONFIG,'canonical_routes':True},'2026-10-05')
+
     def test_declared_feed_end_retains_multi_day_departures_and_bounds_service_days(self):
         patterns={'late':[('A','00:00:00'),('B','103:00:00'),('C','103:10:00')]}
         path=self.feed(patterns,patterns)
