@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261003-82';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261003-82';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261003-83';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261003-83';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261003-82';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261003-82';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261003-82';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261003-82';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261003-82';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261003-83';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261003-83';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261003-83';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261003-83';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261003-83';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -39,7 +39,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261003-82';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261003-83';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -262,14 +262,46 @@ function layerVisibility(layer) {
     else if (settings.background === 'carto' && isBaseMap(layer) && !layer.id.startsWith('terrain-')) visible = false;
     return visible;
 }
-let majorStationData,majorStationsPromise;const majorStationLanguages=new WeakMap();
+const OSM_API='https://api.openstreetmap.org/api/0.6',MAJOR_STATION_NAME_CACHE='atlas_major_station_osm_names_v1',MAJOR_STATION_NAME_MAX_AGE=7*24*60*60*1000;
+let majorStationData,majorStationsPromise,majorStationNamesPromise;const majorStationLanguages=new WeakMap();
+const majorStationObjectKey=p=>`${p.osm_type}/${p.osm_id}`;
+function readMajorStationNameCache(){try{const value=JSON.parse(localStorage.getItem(MAJOR_STATION_NAME_CACHE)||'null');return value&&typeof value==='object'&&value.names&&typeof value.names==='object'?value:null;}catch{return null;}}
+function writeMajorStationNameCache(names){try{localStorage.setItem(MAJOR_STATION_NAME_CACHE,JSON.stringify({fetchedAt:Date.now(),names}));}catch{}}
+async function fetchOSMObjects(type,ids){
+ const plural=`${type}s`;
+ const request=async group=>{
+  if(!group.length)return[];
+  const url=new URL(`${OSM_API}/${plural}.json`);url.searchParams.set(plural,group.join(','));
+  const response=await fetch(url,{headers:{Accept:'application/json'}});
+  if(response.ok)return (await response.json()).elements||[];
+  // One deleted/redacted object must not make the whole fixed identity list fail.
+  if(response.status===404&&group.length>1){const half=Math.ceil(group.length/2);return[...await request(group.slice(0,half)),...await request(group.slice(half))];}
+  if(response.status===404)return[];
+  throw new Error(`OpenStreetMap ${plural} returned ${response.status}`);
+ };
+ return request(ids);
+}
+async function majorStationNameTags(data){
+ const wanted=new Set(data.features.map(f=>majorStationObjectKey(f.properties))),cached=readMajorStationNameCache();
+ const complete=cache=>cache&&[...wanted].every(key=>Object.prototype.hasOwnProperty.call(cache.names,key));
+ if(complete(cached)&&Date.now()-Number(cached.fetchedAt||0)<MAJOR_STATION_NAME_MAX_AGE)return cached.names;
+ try{
+  const groups={node:[],way:[],relation:[]};
+  for(const f of data.features){const p=f.properties;if(groups[p.osm_type])groups[p.osm_type].push(String(p.osm_id));}
+  const elements=(await Promise.all(Object.entries(groups).map(([type,ids])=>fetchOSMObjects(type,ids)))).flat(),names={};
+  for(const element of elements){const key=`${element.type}/${element.id}`;if(!wanted.has(key))continue;names[key]=Object.fromEntries(Object.entries(element.tags||{}).filter(([tag])=>tag==='name'||tag.startsWith('name:')));}
+  for(const key of wanted)names[key]??={};
+  writeMajorStationNameCache(names);return names;
+ }catch(error){if(complete(cached))return cached.names;throw error;}
+}
 function updateMajorStations(){
  if(!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3||map.getZoom()>=7)return;
  const source=map.getSource('stationMajor'),language=settings.language;if(!source||majorStationLanguages.get(source)===language)return;
  majorStationsPromise ||= majorStationData ? Promise.resolve(majorStationData) : fetch(new URL(`major-stations.geojson?v=${assetVersion}`,import.meta.url)).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}).catch(error=>{majorStationsPromise=undefined;throw error;});
- majorStationsPromise.then(data=>{if(!ready||language!==settings.language||source!==map.getSource('stationMajor')||majorStationLanguages.get(source)===language)return;
-  source.setData({...data,features:data.features.map(f=>({...f,properties:{...f.properties,atlas_name:chooseName(f.properties,language),atlas_language:language}}))});majorStationLanguages.set(source,language);
- }).catch(error=>console.warn('Major station list unavailable:',error.message));
+ majorStationNamesPromise ||= majorStationsPromise.then(majorStationNameTags).catch(error=>{majorStationNamesPromise=undefined;throw error;});
+ Promise.all([majorStationsPromise,majorStationNamesPromise]).then(([data,names])=>{if(!ready||language!==settings.language||source!==map.getSource('stationMajor')||majorStationLanguages.get(source)===language)return;
+  source.setData({...data,features:data.features.map(f=>{const properties={...f.properties,...(names[majorStationObjectKey(f.properties)]||{})};return{...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language,atlas_name_source:'osm'}};})});majorStationLanguages.set(source,language);
+ }).catch(error=>console.warn('Major station names unavailable:',error.message));
 }
 function applySettings() {
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
