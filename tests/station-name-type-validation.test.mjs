@@ -15,9 +15,9 @@ function harness(tags,fetchedAt,answer){
   const api=vm.runInNewContext(loaderCode+'\n({majorStationNameTags});',{
     URL,AbortController,setTimeout,clearTimeout,console,
     localStorage:{getItem:k=>values.get(k),setItem:(k,v)=>values.set(k,v)},
-    fetch:async()=>{requests++;return {ok:true,status:200,json:async()=>answer};}
+    fetch:async()=>{requests++;if(answer instanceof Error)throw answer;if(typeof answer==='function')return answer();return {ok:true,status:200,json:async()=>answer};}
   });
-  return {load:()=>api.majorStationNameTags(station,{timeout:100}),saved:()=>JSON.parse(values.get(key)).records,requests:()=>requests};
+  return {load:(timeout=100)=>api.majorStationNameTags(station,{timeout}),next:value=>{answer=value;},saved:()=>JSON.parse(values.get(key)).records,requests:()=>requests};
 }
 test('malformed successful OSM name fields cannot erase or freshen a valid prior name',async()=>{
   for(const invalid of [null,123,true,[],{}]){
@@ -40,4 +40,28 @@ test('a genuinely nameless OSM object remains valid and clears a removed source 
   const names=await h.load();
   assert.equal(Object.keys(names['node/1']).length,0);
   assert.ok(h.saved()['node/1'].fetchedAt>stale);
+});
+
+test('mixed cache name fields preserve usable OSM values as stale fallback when refresh fails',async()=>{
+  for(const invalid of [null,123,true,[],{}]){
+    const h=harness({name:'Cached native name','name:de':'Cached German name','name:en':invalid},Date.now(),new Error('offline'));
+    const names=await h.load();
+    assert.equal(names['node/1'].name,'Cached native name');
+    assert.equal(names['node/1']['name:de'],'Cached German name');
+    assert.equal('name:en' in names['node/1'],false);
+    assert.ok(h.saved()['node/1'].fetchedAt<=Date.now()-7*86400000,'salvage must not become fresh');
+    h.next({elements:[{type:'node',id:1,tags:{name:'Updated native name','name:en':'Updated English name'}}]});
+    const updated=await h.load();
+    assert.equal(h.requests(),2,'invalid cache freshness forces a later refresh');
+    assert.equal(updated['node/1']['name:en'],'Updated English name');
+    await h.load();
+    assert.equal(h.requests(),2,'successful refresh restores normal freshness');
+  }
+});
+test('mixed cache name fields survive a timed-out refresh without becoming fresh empty data',async()=>{
+  const h=harness({name:'Cached native name','name:en':123},Date.now(),()=>new Promise(()=>{}));
+  const names=await h.load(20);
+  assert.equal(names['node/1'].name,'Cached native name');
+  assert.equal('name:en' in names['node/1'],false);
+  assert.ok(h.saved()['node/1'].fetchedAt<=Date.now()-7*86400000);
 });
