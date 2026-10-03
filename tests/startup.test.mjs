@@ -150,7 +150,7 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
     assert.equal(maps[0].image.id,'station-dot-curated');
     assert.match(decodeURIComponent(window.document.cookie),/"curatedStationColor":true/);
     curated.checked = false; curated.dispatchEvent(new window.Event('change'));
-    assert.deepEqual(maps[0].paint['station-major-3-names'],['match',['get','station_size'],'large','#123e52','#0865c0']);
+    assert.equal(JSON.stringify(maps[0].paint['station-major-3-names']),JSON.stringify(['match',['get','station_size'],'large','#123e52','#0865c0']));
     assert.equal(maps[0].layout['station-major-3-names'],'station-dot');
     // Track-count boxes can be switched off.
     assert.equal(maps[0].visibility['infrastructure-track-count'],'visible');
