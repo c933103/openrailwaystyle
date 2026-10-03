@@ -30,7 +30,8 @@ jobs:
       - name: Regenerate and validate
         run: |
           npm run build
-          npm test > /tmp/pr73-tests.log 2>&1 || { tail -180 /tmp/pr73-tests.log; exit 1; }
+          node .github/repair-pr73-baseline.mjs
+          npm test > /tmp/pr73-tests.log 2>&1 || { grep -A45 -B3 'not ok' /tmp/pr73-tests.log; tail -12 /tmp/pr73-tests.log; exit 1; }
           tail -12 /tmp/pr73-tests.log
           node --check styles/app.mjs
           git diff --check
