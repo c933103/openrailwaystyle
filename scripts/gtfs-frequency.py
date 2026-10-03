@@ -115,6 +115,9 @@ def compile_feed(path, config, date, geometry=False):
     exceptions = list(read(z, "calendar_dates.txt"))
     if not calendar and not exceptions:
         raise ValueError("No service calendar")
+    horizon=max([r['end_date'] for r in calendar.values()]+[r['date'] for r in exceptions])
+    if not (feed and feed[0].get('feed_end_date')) and date.strftime('%Y%m%d')>horizon:
+        raise ValueError("Selected date is beyond the declared service calendar horizon")
     known_services = set(calendar) | {r["service_id"] for r in exceptions}
     if any(t["service_id"] not in known_services for t in trips.values()):
         raise ValueError("Trip references an absent service calendar")

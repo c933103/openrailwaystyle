@@ -70,6 +70,8 @@ kept separate. Station snap errors, disconnected graphs, excessive detours and
 near-equivalent alternative paths are withheld. The existing snapshot is not a
 complete mainline graph; matching therefore cannot fill every shapeless feed.
 Matched OSM geometry retains its ODbL licence/attribution.
+Shape distances and snap searches use local latitude, so unrelated equatorial
+and northern shapes cannot alter each other's 200 m acceptance threshold.
 
 If geometry compilation exceeds its budget, a separately bounded timetable-only
 pass retains the source frequencies with an explicit geometry timeout audit.
@@ -102,6 +104,8 @@ Calendar exceptions, all relevant prior service days (including GTFS times beyon
 applied. Exact templates expand once; non-exact headways are labelled estimates.
 Missing times stay unknown. Broken references, overlapping frequency intervals,
 invalid dates and ambiguous/nonexistent DST boundaries fail explicitly.
+A reference beyond an obsolete calendar's horizon, with no declared feed end,
+fails explicitly instead of becoming a future zero-frequency profile.
 
 Counts are divided by the window duration. Width uses the lower directional rate
 when both path directions are represented; a single-direction path retains its
