@@ -17,26 +17,33 @@ jobs:
         with:
           node-version: '22'
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Test response-body draining against the installation stall
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          const swFile='styles/sw.js';let sw=readFileSync(swFile,'utf8');
+          for(const [marker,body] of [['return [key, response];','await response.clone().arrayBuffer();\n    return [key, response];'],['return [url, library];','await library.clone().arrayBuffer();\n    return [url, library];']]){
+            if(sw.split(marker).length!==2)throw new Error('Expected one fetch return: '+marker);
+            sw=sw.replace(marker,()=>body);
+          }
+          writeFileSync(swFile,sw);
+          const file='scripts/check-branding-browser.mjs';let source=readFileSync(file,'utf8');
+          const marker='  const cdp=await context.newCDPSession(page);';
+          if(source.split(marker).length!==2)throw new Error('CDP setup marker changed');
+          const poll=`  const poll=async(fn,arg)=>{const until=Date.now()+20000;while(Date.now()<until){if(await page.evaluate(fn,arg))return;await new Promise(r=>setTimeout(r,100));}throw new Error('Asynchronous browser state did not settle');};\n`;
+          source=source.replace(marker,()=>poll+marker).replaceAll('page.waitForFunction(async','poll(async');
+          writeFileSync(file,source);
+          JS
       - name: Validate branding assets and metadata
         run: node --test tests/branding.test.mjs
       - name: Install full Chromium
         run: npx playwright install --with-deps chromium
-      - name: Reload the uncontrolled first-install page in the test fixture
-        run: |
-          node --input-type=module <<'JS'
-          import {readFileSync,writeFileSync} from 'node:fs';
-          const file='scripts/check-branding-browser.mjs', source=readFileSync(file,'utf8');
-          const marker='  await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);';
-          if(source.split(marker).length!==2)throw new Error('First-install wait marker changed');
-          const code=`  console.log('REGISTRATION',await page.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();return {scope:r?.scope,active:r?.active?.state,controller:navigator.serviceWorker.controller?.scriptURL,caches:await caches.keys()};}));\n  await page.reload();\n${marker}`;
-          writeFileSync(file,source.replace(marker,()=>code));
-          JS
       - name: Test browser-managed installation and cache migration
         timeout-minutes: 2
         env:
           DEBUG: pw:api
         run: node scripts/check-branding-browser.mjs
-      - name: Save migration evidence and social-preview asset
+      - name: Save exact tested sources and migration evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -44,4 +51,5 @@ jobs:
           path: |
             browser-review/branding/
             scripts/check-branding-browser.mjs
+            styles/sw.js
           if-no-files-found: warn
