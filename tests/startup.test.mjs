@@ -308,14 +308,14 @@ test('station inspection finds nearby interchanges and facility inspection avoid
   } finally {dom.window.close();}
 });
 
-test('Carto shows railway overlays, honours terrain, hides duplicate basemap labels and keeps attribution open', async () => {
+test('Carto shows railway overlays, honours terrain, hides duplicate basemap labels and keeps compact attribution', async () => {
   const {dom,window,maps} = await start({search:'?background=carto'});
   try {
     const map=maps[0], layer=id=>map.options.style.layers.find(l=>l.id===id);
     assert.equal(layer('carto').layout.visibility,'visible');
     assert.equal(layer('satellite').layout.visibility,'none');
     assert.equal(layer('water').layout.visibility,'none');
-    assert.ok(map.controls.some(c=>c.options?.compact===false));
+    assert.ok(map.controls.some(c=>c.options?.compact===true),'Carto keeps the same compact info control');
     map.handlers['style.load']();
     assert.equal(map.visibility['infrastructure-tracks'],'visible');
     assert.equal(map.visibility['terrain-relief'],'visible');
@@ -388,7 +388,7 @@ test('map info identifies the executing cached asset and links to its build repo
  try {
   const attribution=()=>maps[0].controls.find(c=>c.options?.customAttribution)?.options;
   let info=attribution();assert.equal(info.compact,true);assert.match(info.customAttribution,/Build cached-42/);assert.ok(info.customAttribution.includes(`href="${sourceUrl}"`));assert.match(info.customAttribution,/Code aaaaaaaaaa/);
-  window.document.querySelector('[data-background="carto"]').click();info=attribution();assert.equal(info.compact,false);assert.match(info.customAttribution,/Build cached-42/);assert.match(info.customAttribution,new RegExp(commit));
+  window.document.querySelector('[data-background="carto"]').click();info=attribution();assert.equal(info.compact,true);assert.match(info.customAttribution,/Build cached-42/);assert.match(info.customAttribution,new RegExp(commit));
  } finally {dom.window.close();}
 });
 test('map info exposes mismatched cached bundle versions and handles a missing commit',async()=>{
