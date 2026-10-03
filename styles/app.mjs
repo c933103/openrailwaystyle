@@ -1,12 +1,12 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261003-110100';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261003-110100';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261003-112000';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261003-112000';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261003-110100';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261003-110100';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261003-110100';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261003-110100';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261003-110100';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261003-110100';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261003-112000';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261003-112000';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261003-112000';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261003-112000';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261003-112000';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261003-112000';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -40,7 +40,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261003-110100';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261003-112000';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -246,7 +246,13 @@ let majorStationData,majorStationSearchData,majorStationsPromise,majorStationNam
 let majorStationNameMemory,majorStationNextRefreshAt=0,majorStationRequestId=0;
 const majorStationLanguages=new WeakMap();
 const majorStationObjectKey=p=>`${p.osm_type}/${p.osm_id}`;
-const stationNameTags=tags=>Object.fromEntries(Object.entries(tags||{}).filter(([key,value])=>(key==='name'||key.startsWith('name:'))&&typeof value==='string'));
+const stationNameTags=tags=>{
+ if(!tags||typeof tags!=='object'||Array.isArray(tags))return null;
+ const entries=Object.entries(tags).filter(([key])=>key==='name'||key.startsWith('name:'));
+ // Invalid name values are not evidence of a genuinely nameless object.
+ if(entries.some(([,value])=>typeof value!=='string'))return null;
+ return Object.fromEntries(entries);
+};
 function readMajorStationNameCache(){
  if(majorStationNameMemory)return majorStationNameMemory;
  const records=Object.create(null),now=Date.now();
@@ -255,7 +261,9 @@ function readMajorStationNameCache(){
   if(cached?.version===2&&cached.records&&typeof cached.records==='object'&&!Array.isArray(cached.records)){
    for(const [key,record] of Object.entries(cached.records)){
     if(!/^(node|way|relation)\/[1-9]\d*$/.test(key)||!record||!Number.isFinite(record.fetchedAt)||record.fetchedAt<0||record.fetchedAt>now||!record.tags||typeof record.tags!=='object'||Array.isArray(record.tags))continue;
-    records[key]={fetchedAt:record.fetchedAt,tags:stationNameTags(record.tags)};
+    const tags=stationNameTags(record.tags);
+    if(tags===null)continue;
+    records[key]={fetchedAt:record.fetchedAt,tags};
    }
   }
  }catch{}
@@ -309,7 +317,9 @@ async function majorStationNameTags(data,{timeout=8000}={}){
     const key=`${type}/${element.id}`;
     if(element.visible===false){delete records[key];continue;}
     if(element.tags!==undefined&&(!element.tags||typeof element.tags!=='object'||Array.isArray(element.tags)))continue;
-    records[key]={fetchedAt:Date.now(),tags:stationNameTags(element.tags)};
+    const tags=stationNameTags(element.tags===undefined?{}:element.tags);
+    if(tags===null)continue;
+    records[key]={fetchedAt:Date.now(),tags};
    }
   };
   try{
