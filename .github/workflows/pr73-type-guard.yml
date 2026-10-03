@@ -1,0 +1,120 @@
+name: PR73 strict name tag verification
+on:
+  push:
+    branches: [fix/pr73-strict-name-tags]
+    paths: [.github/workflows/pr73-type-guard.yml]
+permissions:
+  contents: write
+jobs:
+  verify:
+    if: github.repository == 'c933103/openrailwaystyle' && github.ref == 'refs/heads/fix/pr73-strict-name-tags'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Reproduce malformed name field regression
+        run: |
+          cat > tests/station-name-type-validation.test.mjs <<'JS'
+          import test from 'node:test';
+          import assert from 'node:assert/strict';
+          import vm from 'node:vm';
+          import {readFile} from 'node:fs/promises';
+          const app=await readFile(new URL('../styles/app.mjs',import.meta.url),'utf8');
+          const begin=app.indexOf("const OSM_API="),end=app.indexOf('function updateMajorStations()',begin);
+          assert.ok(begin>=0&&end>begin,'exercise the actual OSM name loader');
+          const loaderCode=app.slice(begin,end);
+          const key='atlas_major_station_osm_names_v2';
+          const station={type:'FeatureCollection',features:[{properties:{osm_type:'node',osm_id:'1'}}]};
+          const stale=Date.now()-8*86400000;
+          function harness(tags,fetchedAt,answer){
+            const values=new Map([[key,JSON.stringify({version:2,records:{'node/1':{fetchedAt,tags}}})]]);
+            let requests=0;
+            const api=vm.runInNewContext(loaderCode+'\n({majorStationNameTags});',{
+              URL,AbortController,setTimeout,clearTimeout,console,
+              localStorage:{getItem:k=>values.get(k),setItem:(k,v)=>values.set(k,v)},
+              fetch:async()=>{requests++;return {ok:true,status:200,json:async()=>answer};}
+            });
+            return {load:()=>api.majorStationNameTags(station,{timeout:100}),saved:()=>JSON.parse(values.get(key)).records,requests:()=>requests};
+          }
+          test('malformed successful OSM name fields cannot erase or freshen a valid prior name',async()=>{
+            for(const invalid of [null,123,true,[],{}]){
+              const h=harness({name:'Retained OSM name'},stale,{elements:[{type:'node',id:1,tags:{name:invalid}}]});
+              const names=await h.load();
+              assert.equal(names['node/1'].name,'Retained OSM name');
+              assert.equal(h.saved()['node/1'].fetchedAt,stale);
+            }
+          });
+          test('malformed fresh cache name fields are rejected and refreshed rather than treated as verified empty',async()=>{
+            for(const invalid of [null,123,true,[],{}]){
+              const h=harness({'name:en':invalid},Date.now(),{elements:[{type:'node',id:1,tags:{name:'Current OSM name'}}]});
+              const names=await h.load();
+              assert.equal(h.requests(),1);
+              assert.equal(names['node/1'].name,'Current OSM name');
+            }
+          });
+          test('a genuinely nameless OSM object remains valid and clears a removed source name',async()=>{
+            const h=harness({name:'Removed OSM name'},stale,{elements:[{type:'node',id:1,tags:{railway:'station'}}]});
+            const names=await h.load();
+            assert.equal(Object.keys(names['node/1']).length,0);
+            assert.ok(h.saved()['node/1'].fetchedAt>stale);
+          });
+          JS
+          if node --test tests/station-name-type-validation.test.mjs > /tmp/name-type-before.log 2>&1; then
+            cat /tmp/name-type-before.log
+            echo 'Expected regression is already fixed; do not change application code.'
+            exit 1
+          fi
+          tail -15 /tmp/name-type-before.log
+      - name: Apply only strict type guards and a new asset version
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('styles/app.mjs');s=p.read_text()
+          old="const stationNameTags=tags=>Object.fromEntries(Object.entries(tags||{}).filter(([key,value])=>(key==='name'||key.startsWith('name:'))&&typeof value==='string'));"
+          new="""const stationNameTags=tags=>{
+           if(!tags||typeof tags!=='object'||Array.isArray(tags))return null;
+           const entries=Object.entries(tags).filter(([key])=>key==='name'||key.startsWith('name:'));
+           // Invalid name values are not evidence of a genuinely nameless object.
+           if(entries.some(([,value])=>typeof value!=='string'))return null;
+           return Object.fromEntries(entries);
+          };"""
+          replacements=[(old,new),
+           ("    records[key]={fetchedAt:record.fetchedAt,tags:stationNameTags(record.tags)};","    const tags=stationNameTags(record.tags);\n    if(tags===null)continue;\n    records[key]={fetchedAt:record.fetchedAt,tags};"),
+           ("    records[key]={fetchedAt:Date.now(),tags:stationNameTags(element.tags)};","    const tags=stationNameTags(element.tags===undefined?{}:element.tags);\n    if(tags===null)continue;\n    records[key]={fetchedAt:Date.now(),tags};")]
+          for old,new in replacements:
+            assert s.count(old)==1,old
+            s=s.replace(old,new)
+          p.write_text(s)
+          for folder in ['styles','scripts']:
+            for f in Path(folder).rglob('*'):
+              if f.suffix not in ['.mjs','.html','.js'] or 'vendor' in f.parts:continue
+              original=f.read_text();updated=original.replace('20261003-110100','20261003-112000')
+              if updated!=original:f.write_text(updated)
+          PY
+          npm run build
+          git diff --exit-code -- styles/world.style.json styles/major-stations.geojson
+          npm test
+          node --check styles/app.mjs
+          git diff --check
+      - name: Publish tested isolated fix, without changing PR or main
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/pr73-type-guard.yml
+          git add styles/app.mjs styles/map-model.mjs styles/elevation.mjs styles/layer-semantics.mjs styles/index.html scripts/check-map-browser.mjs scripts/check-context-browser.mjs tests/station-name-type-validation.test.mjs
+          git commit -m 'Reject malformed OSM name values without erasing valid cache records'
+          git push origin HEAD:refs/heads/fix/pr73-strict-name-tags
+          echo "TESTED_COMMIT=$(git rev-parse HEAD)"
+          echo "TESTED_TREE=$(git rev-parse HEAD^{tree})"
+          git archive --format=tar.gz --output=/tmp/pr73-name-type-source.tar.gz HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr73-name-type-source
+          path: /tmp/pr73-name-type-source.tar.gz
+          retention-days: 1
