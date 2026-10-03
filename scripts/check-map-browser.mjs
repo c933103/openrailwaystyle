@@ -139,7 +139,12 @@ try{
   await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     // The borders below come from the basemap, which can load after the railway.
-    return Math.abs(map.getCenter().lng-128.1)<0.01 && (map.getSource('inactiveRegional') && map.isSourceLoaded('inactiveRegional')) && map.isSourceLoaded('openmaptiles') && document.querySelector('#map-status').dataset.lifecycleNames?.includes('남부내륙');
+    return Math.abs(map.getCenter().lng-128.1)<0.01
+      && (map.getSource('inactiveRegional') && map.isSourceLoaded('inactiveRegional'))
+      && map.isSourceLoaded('openmaptiles')
+      && map.queryRenderedFeatures({layers:['regional-borders']}).length>0
+      && map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('station-'))
+      && document.querySelector('#map-status').dataset.lifecycleNames?.includes('남부내륙');
   },undefined,{timeout:120000});
   console.log('PASS: 남부내륙선 rendered after pan at zoom 7, before visiting zoom 8');
   console.log('Inspecting rendered line extent, stations and borders');
@@ -333,7 +338,11 @@ try{
   assert.ok(compass && zoomIn && compass.y<zoomIn.y,'The compass sits above the zoom buttons');
   await page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);map.setBearing(40);});
   await page.locator('.maplibregl-ctrl-compass').click();
-  await waitUntil(page,async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return Math.abs(map.getBearing())<0.5 && !map.isMoving();},undefined,{timeout:10000});
+  // Resetting north is the behaviour under test. On software WebGL, unrelated
+  // source/terrain work can keep MapLibre's broad isMoving() flag true after
+  // the bearing has already reached north, so do not make that a false failure.
+  await waitUntil(page,async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return Math.abs(map.getBearing())<0.5;},undefined,{timeout:30000});
+  await page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);map.stop();});
   console.log('PASS: compass resets north');
   await page.locator('#collapse').click();
   await page.locator('[data-mode="speed"]').click();
