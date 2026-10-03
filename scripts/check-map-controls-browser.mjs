@@ -15,7 +15,7 @@ page.setDefaultTimeout(10000);
 const errors=[],results=[];
 page.on('pageerror',e=>errors.push(e.message));
 page.on('console',m=>{if(m.type()==='error'&&m.text().includes('Map resource error:'))errors.push(m.text());});
-const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=','base64');
+const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg==','base64');
 await page.addInitScript(()=>{
   // PMTiles is a provider boundary here, not a renderer/UI mock.
   window.pmtiles={Protocol:class{
@@ -96,7 +96,17 @@ try{
           await page.evaluate(()=>{document.querySelector('#map-status').textContent='Some map data could not load. Check your connection or reload to retry. A longer status message must wrap without covering the ruler or coordinates.';});
           assert.equal(await page.locator('.map-readout').isVisible(),readout);
           await check(`${size.width}x${size.height}, menu=${expanded}, readout=${readout}, detail=${detail}`);
-          await page.locator('button.atlas-ctrl[title^="More detail:"]').click();
+          const next=(detail+1)%3;
+          // This action changes the same-document map hash, not the page.
+          // Wait for the actual detail state/cookie instead of Playwright's
+          // generic navigation barrier, which stalled after a completed click.
+          await page.locator('button.atlas-ctrl[title^="More detail:"]').click({noWaitAfter:true});
+          await waitUntil(page,expected=>{
+            const map=document.querySelector('#map'),button=document.querySelector('button.atlas-ctrl[title^="More detail:"]');
+            const level=map.classList.contains('detail-2')?2:map.classList.contains('detail')?1:0;
+            return level===expected && button.title.startsWith(`More detail: map drawn at ${100/2**expected}%.`);
+          },next,{timeout:5000});
+          assert.equal((await cookie()).detail,next,'detail click persists the actual next level');
         }
       }
     }
@@ -119,7 +129,7 @@ try{
   assert.deepEqual(errors,[],'UI lifecycle has no JavaScript exceptions');
   console.log(`PASS: ${results.length} real-app UI layout/state cases; original polar resize; cookie reload; keyboard toggles`);
 } catch(error){
-  console.error(error.stack);console.error('UI_GEOMETRY',JSON.stringify(await geometry().catch(()=>null)));
+  console.error(error.stack);console.error('UI_PAGE_ERRORS',JSON.stringify(errors));console.error('UI_GEOMETRY',JSON.stringify(await geometry().catch(()=>null)));
   await mkdir('browser-review',{recursive:true});await page.screenshot({path:'browser-review/map-controls-failure.png',timeout:5000}).catch(()=>{});throw error;
 } finally{
   await mkdir('browser-review',{recursive:true});await writeFile('browser-review/map-controls.json',JSON.stringify(results,null,2));await browser.close();

@@ -37,7 +37,15 @@ async function finishFrame(){
   // tiles, placement and transitions are all complete.
   await page.evaluate(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
-    await Promise.race([new Promise(resolve=>{map.once('idle',resolve);map.triggerRepaint();}),new Promise(resolve=>setTimeout(resolve,30000))]);
+    // A map which is already idle need not emit another idle event. The
+    // previous unconditional listener added a 30-second wait to such captures.
+    if (map.loaded() && !map.isMoving()) return;
+    await new Promise(resolve => {
+      let timer;
+      const done=()=>{clearTimeout(timer);map.off('idle',done);resolve();};
+      map.once('idle',done);timer=setTimeout(done,30000);
+      if (map.loaded() && !map.isMoving()) done(); else map.triggerRepaint();
+    });
   });
   // Finish fades first, then submit and finish the final GPU frame immediately
   // before capture, rather than letting another asynchronous frame replace it.
@@ -90,7 +98,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') { console.log('Browser resource:',msg.text()); if(/DataCloneError|already detached/.test(msg.text())) errors.push(msg.text()); }});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261003-83&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261003-ui1&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
@@ -349,11 +357,9 @@ try{
   assert.ok(compass && zoomIn && compass.y<zoomIn.y,'The compass sits above the zoom buttons');
   await page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);map.setBearing(40);});
   await page.locator('.maplibregl-ctrl-compass').click();
-  // Resetting north is the behaviour under test. On software WebGL, unrelated
-  // source/terrain work can keep MapLibre's broad isMoving() flag true after
-  // the bearing has already reached north, so do not make that a false failure.
-  await waitUntil(page,async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return Math.abs(map.getBearing())<0.5;},undefined,{timeout:30000});
-  await page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);map.stop();});
+  // A compass reset must finish its camera movement as well as reach north.
+  // Do not stop the camera from the test or relax the movement assertion.
+  await waitUntil(page,async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return Math.abs(map.getBearing())<0.5 && !map.isMoving();},undefined,{timeout:30000});
   console.log('PASS: compass resets north');
   await page.locator('#collapse').click();
   await page.locator('[data-mode="speed"]').click();
@@ -471,7 +477,12 @@ try{
   // coordinate readout, and the bottom-left control stack respects display
   // safe-area insets instead of being hidden on phones.
   await page.setViewportSize({width:412,height:915});
-  await page.waitForTimeout(150);
+  await waitUntil(page,()=>{
+    const scale=document.querySelector('.maplibregl-ctrl-scale'),status=document.querySelector('.map-status');
+    if(!scale||!status)return false;
+    const a=scale.getBoundingClientRect(),b=status.getBoundingClientRect();
+    return a.width>0&&a.height>0&&a.left>=0&&a.top>=0&&a.right<=innerWidth&&a.bottom<=innerHeight&&a.bottom<b.top;
+  },undefined,{timeout:10000});
   const compactControls=await page.evaluate(()=>{
     const box=el=>{const r=el.getBoundingClientRect();return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height};};
     const scale=document.querySelector('.maplibregl-ctrl-scale'),readout=document.querySelector('.map-readout'),status=document.querySelector('#map-status');
@@ -486,35 +497,23 @@ try{
   assert.deepEqual(errors,[]);
   console.log('PASS: one shared language, name fallbacks, contours, structures and lifecycle controls; no JavaScript exceptions');
 } catch(error) {
-  console.log('Failure diagnostics',await page.evaluate(async()=>{
-    const {map}=await import(document.querySelector('script[type="module"]').src);
-    return {zoom:map.getZoom(),stationSources:['stationLow','stationMed','stations'].map(id=>({id,loaded:map.isSourceLoaded(id),url:map.getStyle().sources[id].url,features:map.querySourceFeatures(id).slice(0,3).map(f=>f.properties)})),renderedStations:map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-')).slice(0,10).map(f=>({source:f.source,properties:f.properties})),status:document.querySelector('#map-status').dataset, layers:map.getStyle().layers.filter(l=>l.id.endsWith('-names') && !l.id.startsWith('station-')), named:map.queryRenderedFeatures().filter(f=>['inactiveRegional','railway'].includes(f.source)&&f.properties.name).slice(0,12).map(f=>({layer:f.layer.id,name:f.properties.name}))};
-  }));
-  // MapLibre internals: which tiles each source holds and whether they can
-  // still be queried. Compare queries before and after a forced redraw.
-  const internals=async()=>page.evaluate(async()=>{
-    const {map}=await import(document.querySelector('script[type="module"]').src);
-    const caches=map.style.sourceCaches||map.style.tileManagers||{};
-    const sources={};
-    for(const id of ['railway','stationMed','stations','openmaptiles','inactiveRegional']) {
-      const cache=caches[id];
-      const tiles=Object.values(cache?._tiles||{});
-      sources[id]={loaded:cache?.loaded(),tiles:tiles.map(t=>`${t.tileID.canonical.z}/${t.tileID.canonical.x}/${t.tileID.canonical.y} ${t.state}${t.latestFeatureIndex?'':' no-index'}${t.latestFeatureIndex&&!t.latestFeatureIndex.rawTileData?' no-raw':''}`).slice(0,12),
-        queried:map.queryRenderedFeatures().filter(f=>f.source===id).length};
-    }
-    return {mapLoaded:map.loaded(),styleLoaded:map.isStyleLoaded(),moving:map.isMoving(),language:new URL(location.href).searchParams.get('language'),sources};
-  });
-  console.log('Page errors so far',JSON.stringify(errors));
-  console.log('Requests still pending',JSON.stringify([...pendingRequests].map(r=>`${Math.round((Date.now()-requestStart.get(r))/1000)}s ${r.url().slice(0,160)}`)));
-  console.log('Font requests made',requests.filter(u=>u.includes('/fonts/')).length);
-  console.log('Map internals',JSON.stringify(await internals()));
-  await page.evaluate(async()=>{
-    const {map}=await import(document.querySelector('script[type="module"]').src);
-    await new Promise(resolve=>{map.once('render',resolve);map.triggerRepaint();});
-  });
-  await page.waitForTimeout(5000);
-  console.log('Map internals after redraw',JSON.stringify(await internals()));
-  const failure=await page.screenshot({path:'browser-review/failure.jpg',type:'jpeg',quality:45});
-  console.log('FAIL_IMAGE_START'+failure.toString('base64')+'FAIL_IMAGE_END');
+  console.error('BROWSER_ASSERTION_FAILURE',error.stack||String(error));
+  console.error('Page errors',JSON.stringify(errors));
+  console.error('Pending requests',JSON.stringify([...pendingRequests].map(r=>r.url()).slice(0,20)));
+  let timer;
+  try {
+    await Promise.race([
+      (async()=>{
+        console.log('Failure diagnostics',await page.evaluate(async()=>{
+          const {map}=await import(document.querySelector('script[type="module"]').src);
+          const box=selector=>{const e=document.querySelector(selector);if(!e)return null;const r=e.getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height,display:getComputedStyle(e).display};};
+          return {zoom:map.getZoom(),mapLoaded:map.loaded(),moving:map.isMoving(),viewport:[innerWidth,innerHeight],scale:box('.maplibregl-ctrl-scale'),readout:box('.map-readout'),menu:box('.panel'),status:box('.map-status')};
+        }));
+        await page.screenshot({path:'browser-review/failure.jpg',type:'jpeg',quality:45,timeout:5000});
+      })(),
+      new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Diagnostic capture exceeded five seconds')),5000);}),
+    ]);
+  } catch(diagnosticError) { console.error('Diagnostic capture:',diagnosticError.message); }
+  finally { clearTimeout(timer); }
   throw error;
-} finally {await browser.close();}
+} finally {clearTimeout(deadline);await browser.close();}
