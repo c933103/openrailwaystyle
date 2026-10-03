@@ -57,6 +57,40 @@ class GTFSFrequency(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'calendar horizon'):
             compiler.compile_feed(path,CONFIG,'2026-10-05')
 
+    def test_bus_calendars_and_exceptions_do_not_extend_obsolete_rail_validity(self):
+        patterns={'t':[('A','08:00:00'),('B','08:10:00')]}
+        for declared_end in [False,True]:
+            for bus_calendar in [False,True]:
+                with self.subTest(declared_end=declared_end,bus_calendar=bus_calendar):
+                    path=self.feed(patterns,patterns)
+                    with zipfile.ZipFile(path) as z:files={n:z.read(n) for n in z.namelist() if declared_end or n!='feed_info.txt'}
+                    files['calendar.txt']=files['calendar.txt'].replace(b'20261231',b'20261002')
+                    if bus_calendar:
+                        files['calendar.txt']+=b'BUS,1,1,1,1,1,1,1,20260101,20261231\n'
+                    files['calendar_dates.txt']=b'service_id,date,exception_type\nBUS,20261231,1\n'
+                    with zipfile.ZipFile(path,'w') as z:
+                        for name,data in files.items():z.writestr(name,data)
+                    with self.assertRaisesRegex(ValueError,'calendar horizon'):
+                        compiler.compile_feed(path,CONFIG,'2026-10-05')
+
+    def test_current_rail_route_does_not_refresh_an_expired_rail_route(self):
+        patterns={key:[('A','08:00:00'),('B','08:10:00')] for key in ['old','current']}
+        path=self.feed(patterns,patterns)
+        with zipfile.ZipFile(path) as z:files={n:z.read(n) for n in z.namelist() if n!='feed_info.txt'}
+        files['calendar.txt']=files['calendar.txt'].replace(b'20261231',b'20261002')+b'NEW,1,1,1,1,1,1,1,20260101,20261231\n'
+        files['routes.txt']=b'route_id,route_type,agency_id\nold,2,A\ncurrent,2,A\n'
+        files['trips.txt']=b'trip_id,route_id,service_id\nold,old,W\ncurrent,current,NEW\n'
+        with zipfile.ZipFile(path,'w') as z:
+            for name,data in files.items():z.writestr(name,data)
+        result=compiler.compile_feed(path,CONFIG,'2026-10-05')
+        for segment in result['segments']:
+            self.assertEqual(segment['profiles']['am']['display_tph'],None if segment['route_id']=='old' else .5)
+        routes={r['route_id']:r for r in result['routes']}
+        now=compiler.local_boundary(compiler.dt.date(2026,10,5),'00:00:00',compiler.ZoneInfo('Europe/Helsinki'))
+        self.assertLess(routes['old']['valid_until'],now)
+        self.assertGreater(routes['current']['valid_until'],now)
+        self.assertEqual(result['source']['calendar_audit']['routes_beyond_service_horizon'],['old'])
+
     def test_shape_snap_distances_are_local_even_with_unrelated_latitudes(self):
         spec=importlib.util.spec_from_file_location('shape_paths',Path(__file__).parent.parent/'scripts/gtfs-shapes.py')
         shapes=importlib.util.module_from_spec(spec);spec.loader.exec_module(shapes)

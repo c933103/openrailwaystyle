@@ -106,8 +106,10 @@ Calendar exceptions, all relevant prior service days (including GTFS times beyon
 applied. Exact templates expand once; non-exact headways are labelled estimates.
 Missing times stay unknown. Broken references, overlapping frequency intervals,
 invalid dates and ambiguous/nonexistent DST boundaries fail explicitly.
-A reference beyond an obsolete calendar's horizon, with no declared feed end,
-fails explicitly instead of becoming a future zero-frequency profile.
+A reference beyond every retained rail calendar's horizon fails explicitly
+instead of becoming a future zero-frequency profile. Unrelated bus calendars
+and feed-wide metadata cannot extend that horizon. Within a current feed,
+expired rail routes remain unknown and are listed in the calendar audit.
 Multi-day departures extending the final service day are included in that
 horizon and expiry calculation.
 
@@ -120,7 +122,7 @@ bounded per service and never normalized to the busiest visible route.
 
 Shared-path offsets, labels and click selection follow actual widths. Local
 tram/light-rail/monorail/funicular bundles are recalculated at zoom 10. GTFS
-profiles expire at the earlier of feed validity in local time and the 30-day
+profiles expire at the earlier of their route's calendar/feed validity in local time and the 30-day
 successful source-verification interval. The original retrieval date stays separate; a confirmed HTTP 304 can verify an unchanged annual feed. Bundles expire together to keep offsets consistent.
 Unknown/expired profiles use subdued baseline widths; known zero stays distinct.
 Loaded tabs reevaluate expiry on their timer and on resume.
