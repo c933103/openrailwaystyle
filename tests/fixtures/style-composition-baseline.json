@@ -1,0 +1,2158 @@
+{
+  "baseline": {
+    "commit": "16a2f248ee022293be9722e18cdd8b8c213dac68",
+    "workingIntegration": "PR #77 infrastructure integration, captured before style composition migration; integration changes were uncommitted at capture.",
+    "approvedIntegrationChanges": {
+      "addedLayers": [
+        "platform-areas",
+        "platform-outlines",
+        "platform-points",
+        "platform-numbers",
+        "infrastructure-signal-points",
+        "infrastructure-signal-references",
+        "infrastructure-entrance-points",
+        "infrastructure-entrance-references"
+      ],
+      "changedLayers": [
+        "platform-edges",
+        "platform-lengths"
+      ],
+      "addedSources": [
+        "platforms",
+        "platformNumbers",
+        "railwaySignals",
+        "stationEntrances"
+      ],
+      "changedSources": [
+        "platformEdges"
+      ]
+    },
+    "rawStyleSha256": "9765c104c4afed6769c4859d14dc462cbd8f8cac0f71e6a9554e9c1252482095",
+    "purpose": "Reviewed pre-migration rendering contract including the separately requested infrastructure integration. Update deliberately after reviewing intended visual/source changes; this is not a generated build artifact.",
+    "normalization": "SHA-256 of recursively key-sorted JSON, preserving arrays; remove atlas:* metadata keys and empty metadata. Root description correction is explicitly excluded."
+  },
+  "root": {
+    "glyphs": "https://tuiles.enliberte.fr/fonts/{fontstack}/{range}.pbf",
+    "metadata": {
+      "openrailwaystyle:rail-data": "https://openrailwaymap.app"
+    },
+    "name": "Railway Atlas — world",
+    "version": 8
+  },
+  "sources": [
+    {
+      "id": "openmaptiles",
+      "type": "vector",
+      "url": "pmtiles://https://tuiles.enliberte.fr/planet.pmtiles",
+      "sha256": "7ef3cd10c92c72cc8bbdbc981e49c26b8c741aaee59b36956cbe1e72d45b001b"
+    },
+    {
+      "id": "network",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/standard_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 6,
+      "sha256": "158f76bf960651d0e0b106a8efc4b6a83501450dbe71e1c861d3ff085e10a996"
+    },
+    {
+      "id": "speed",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/speed_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 6,
+      "sha256": "75d23b844a724d4d28adc41036de3f7cfe882c48aea8e91c60a6ce8d132686ac"
+    },
+    {
+      "id": "electric",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/electrification_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 6,
+      "sha256": "36a06eddac436c867c514f1243c109e711f5bcc3f00a9503477723df23761b62"
+    },
+    {
+      "id": "control",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/signals_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 6,
+      "sha256": "3ebb806d26bb9d8fb827f3beca8c8b1aec5963792f54ccc5af85e368e7e5ae79"
+    },
+    {
+      "id": "gaugeLow",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/track_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 6,
+      "sha256": "5b141bbe9768cbb795de0e15e1fd85ed5526374a964d146bb5652393ac8a9ff1"
+    },
+    {
+      "id": "loadingLow",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/standard_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 6,
+      "sha256": "158f76bf960651d0e0b106a8efc4b6a83501450dbe71e1c861d3ff085e10a996"
+    },
+    {
+      "id": "ownerLow",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/operator_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 6,
+      "sha256": "0880804652e07419daecd9cfafd048fb387508db99716a58c574452722af6583"
+    },
+    {
+      "id": "ownerRail",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/railway_line_high",
+      "minzoom": 7,
+      "maxzoom": 16,
+      "sha256": "62d90b3b468a3bcf6659225a0a2eb575129b231fd8dc53ea8f34be98287f990e"
+    },
+    {
+      "id": "axleLow",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/standard_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 6,
+      "sha256": "158f76bf960651d0e0b106a8efc4b6a83501450dbe71e1c861d3ff085e10a996"
+    },
+    {
+      "id": "axleRail",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/railway_line_high",
+      "minzoom": 7,
+      "maxzoom": 16,
+      "sha256": "62d90b3b468a3bcf6659225a0a2eb575129b231fd8dc53ea8f34be98287f990e"
+    },
+    {
+      "id": "axleBranch",
+      "type": "vector",
+      "tiles": [
+        "axlebranch://{z}/{x}/{y}"
+      ],
+      "minzoom": 4,
+      "maxzoom": 9,
+      "sha256": "6ffe59c5f0c884f1b5ac6664638f1846574d7b9e77b11274358b265b00edc893"
+    },
+    {
+      "id": "railway",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/railway_line_high",
+      "minzoom": 7,
+      "maxzoom": 16,
+      "sha256": "62d90b3b468a3bcf6659225a0a2eb575129b231fd8dc53ea8f34be98287f990e"
+    },
+    {
+      "id": "trackCounts",
+      "type": "vector",
+      "tiles": [
+        "atlastracks://{z}/{x}/{y}"
+      ],
+      "minzoom": 14,
+      "maxzoom": 14,
+      "sha256": "ef500b02a1cae687c27866cd588528894c3e25900cb179344d7523962c077439"
+    },
+    {
+      "id": "stationMajor",
+      "type": "geojson",
+      "featureCount": 167,
+      "sha256": "bd73bb5c2ad2ed1161f872d36098e5f5ae00656fa5480ce54b6db0d500e7c65f"
+    },
+    {
+      "id": "platforms",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/standard_railway_platforms",
+      "minzoom": 17,
+      "maxzoom": 22,
+      "sha256": "cda0dd6e15744befab99548c4d27c0841d1c97a65c9bf0b1eb853d1d0b763abe"
+    },
+    {
+      "id": "platformEdges",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/standard_railway_platform_edges",
+      "minzoom": 17,
+      "maxzoom": 22,
+      "sha256": "9d17f2a875cb93fcdd125baba8927d37db728a68d2ea800f6a1aac3ede3c5f57"
+    },
+    {
+      "id": "platformLengths",
+      "type": "geojson",
+      "featureCount": 0,
+      "sha256": "9e208a44678d56bd26f7082eeec3e1d75fbb6a4d1746a519c34719eaf0a0a3fd"
+    },
+    {
+      "id": "platformNumbers",
+      "type": "geojson",
+      "featureCount": 0,
+      "sha256": "9e208a44678d56bd26f7082eeec3e1d75fbb6a4d1746a519c34719eaf0a0a3fd"
+    },
+    {
+      "id": "railwaySignals",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/railway_signals",
+      "minzoom": 16,
+      "maxzoom": 22,
+      "sha256": "6ba8dfd62b2227ab87102fa471095fc95b091b4a059c985379ad792d0a0c85ca"
+    },
+    {
+      "id": "stationEntrances",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/standard_station_entrances",
+      "minzoom": 16,
+      "maxzoom": 22,
+      "sha256": "df42f4de73cc307f780267ac56a5e5a23a858873c8d65f00ef7c4ec472514e23"
+    },
+    {
+      "id": "stationLow",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/standard_railway_text_stations_low",
+      "minzoom": 4,
+      "maxzoom": 6,
+      "sha256": "19e78da3494cf44222372addc9093a2dad8bf6f379bb45229830c20566c088e1"
+    },
+    {
+      "id": "stationMed",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/standard_railway_text_stations_med#minzoom=6&maxzoom=7&underzoom=7",
+      "minzoom": 6,
+      "maxzoom": 7,
+      "sha256": "95e0bfed33cd1cd884bf57efc053ebe5ee65151462753118430953dcf770fecc"
+    },
+    {
+      "id": "stations",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/standard_railway_text_stations",
+      "minzoom": 8,
+      "maxzoom": 16,
+      "sha256": "454dddffea0ae7ad75841593a29bc404b3a0e29ebe6fb4ea0356b51d3b7432a5"
+    },
+    {
+      "id": "inactiveRegional",
+      "type": "vector",
+      "tiles": [
+        "railtiles://{z}/{x}/{y}"
+      ],
+      "minzoom": 0,
+      "maxzoom": 10,
+      "sha256": "e1c945ab01fae0209c60345f14282cd73b48bf167818b19c113b93e086dbdc82"
+    },
+    {
+      "id": "crossings",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/points_of_interest",
+      "minzoom": 15,
+      "maxzoom": 18,
+      "sha256": "79282d270c0fdb0f1501b61b80a4cf8c93878fe227cecb4a5dae900b0ea89ec5"
+    },
+    {
+      "id": "crossingsOverview",
+      "type": "vector",
+      "tiles": [
+        "crossingtiles://{z}/{x}/{y}"
+      ],
+      "minzoom": 5,
+      "maxzoom": 5,
+      "sha256": "8f0b0ab3c8cba0fbd87e20f6aa36bc943b56fa4691af135b2d3e90c6aaf5981d"
+    },
+    {
+      "id": "crossingsDetail",
+      "type": "vector",
+      "tiles": [
+        "crossingtiles://{z}/{x}/{y}"
+      ],
+      "minzoom": 9,
+      "maxzoom": 9,
+      "sha256": "b429dda8734ba7c021a93dbe34468f1fc5536f622816fe9c1f27e86b5b873c56"
+    },
+    {
+      "id": "branchLines",
+      "type": "vector",
+      "tiles": [
+        "branchtiles://{z}/{x}/{y}"
+      ],
+      "minzoom": 4,
+      "maxzoom": 9,
+      "sha256": "250579c225066b52c51e09b1ccff8ec6e844c638ce4acb8b118627f80fdea1de"
+    },
+    {
+      "id": "serviceRoutes",
+      "type": "vector",
+      "tiles": [
+        "servicetiles://{z}/{x}/{y}"
+      ],
+      "minzoom": 7,
+      "maxzoom": 12,
+      "sha256": "52acda9c61eec79b8afec2323563d3b6288c4607bd17316048ada11e832859e7"
+    },
+    {
+      "id": "streetRunning",
+      "type": "vector",
+      "tiles": [
+        "streettiles://{z}/{x}/{y}"
+      ],
+      "minzoom": 12,
+      "maxzoom": 12,
+      "sha256": "94d4300d59c2aafb5ad0cb35a5d8a2bf8c1ddcc315a182b2f37fbc8a796c9fa5"
+    },
+    {
+      "id": "contours",
+      "type": "vector",
+      "tiles": [
+        "atlas-contour://{z}/{x}/{y}"
+      ],
+      "minzoom": 7,
+      "maxzoom": 15,
+      "sha256": "39c0f8eaa60ef71493f963c8d174256b03809930d8c291d5e90fbadc485f3276"
+    },
+    {
+      "id": "seabedContours",
+      "type": "vector",
+      "tiles": [
+        "atlas-contour://{z}/{x}/{y}"
+      ],
+      "minzoom": 5,
+      "maxzoom": 10,
+      "sha256": "5db9f7200160a739e1699e28a15fece9e6c9e750bf1be5c846692bd755ef0916"
+    },
+    {
+      "id": "seabedContoursClose",
+      "type": "vector",
+      "tiles": [
+        "atlas-contour://{z}/{x}/{y}"
+      ],
+      "minzoom": 11,
+      "maxzoom": 11,
+      "sha256": "304d8acd5148a7d008528c625facb673458f686f1cf0ad936ee18add10cb24db"
+    },
+    {
+      "id": "satellite",
+      "type": "raster",
+      "tiles": [
+        "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2025_3857/default/g/{z}/{y}/{x}.jpg"
+      ],
+      "maxzoom": 14,
+      "sha256": "11e05948ce3c81f660f52e49e35554cfbfa8ec89568d659ad65474d35fa24955"
+    },
+    {
+      "id": "carto",
+      "type": "raster",
+      "tiles": [
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+      ],
+      "maxzoom": 19,
+      "sha256": "ecc69abd6156ae9090a5f8df5e93df9ea5e943ba2c73ec0854b382ce9faf4a23"
+    },
+    {
+      "id": "relief",
+      "type": "raster-dem",
+      "tiles": [
+        "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
+      ],
+      "maxzoom": 15,
+      "sha256": "996d4821b51e1a6ece384a47c7434c439dcd98084f647ab09a4678a258b67b56"
+    }
+  ],
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "sha256": "5e73327b8d3776c12604bce7e7d668220cd2863976330e4023f9947a0f7f74ba"
+    },
+    {
+      "id": "carto",
+      "type": "raster",
+      "source": "carto",
+      "sha256": "333b524f3f21c3acaa66ca076ee265173b071d5b25aaeca077be83e30f9671c4"
+    },
+    {
+      "id": "satellite",
+      "type": "raster",
+      "source": "satellite",
+      "sha256": "2dd4d4f05067af13fe7770c47145ee78a6e58a4aa536000f3cda6c406abc6c54"
+    },
+    {
+      "id": "landuse-residential",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 9,
+      "sha256": "de487aa1f1d5a31135ec7d2a7b1c597e486c5b4cc30bf720275d3fdf24ea08d9"
+    },
+    {
+      "id": "landcover_grass",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "landcover",
+      "sha256": "1572a51b7042254c29bb0047e348c06b5c0268b3260bbe32517109d92a8b7d4b"
+    },
+    {
+      "id": "landcover_wood",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "landcover",
+      "sha256": "ac5b903ffc38c56ce034b09e450d9203349d2f0bff9d604288e3586d6928cd62"
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "water",
+      "sha256": "8252b2042dddae0e97f3f123285aa8d85ec9a8ad66d8c11e81420b62aaec0b13"
+    },
+    {
+      "id": "water_intermittent",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "water",
+      "sha256": "85bac36b90411a15b02153350af6db0b10289b065c266a630296c1010b3f4c31"
+    },
+    {
+      "id": "landcover-ice-shelf",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "landcover",
+      "sha256": "1ba7cf3a7cea8868482d5abc19e7c7c222b8261f1a7c03c5d32ff47aa1c4e25c"
+    },
+    {
+      "id": "landcover_sand",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "landcover",
+      "sha256": "0177ab3008a0077f381aa67fdaa988dffab76b991654373cdd073d8e14989e69"
+    },
+    {
+      "id": "landuse",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "sha256": "ba219e2675f89de169323cbb73c77219c71ab77932171523c96aadf2ac724ec2"
+    },
+    {
+      "id": "landuse_overlay_national_park",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "landcover",
+      "sha256": "2d62999e8e07425223a55cf9d619b50aaa8c66326c94f3f240c481f67d5b19a4"
+    },
+    {
+      "id": "terrain-relief",
+      "type": "hillshade",
+      "source": "relief",
+      "sha256": "ac2d6f9fa2503d69b774a22a67f38b3bfb547ded64811d316a63fcbba2b51b97"
+    },
+    {
+      "id": "context-destinations-employment-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 10,
+      "sha256": "e64ae22f34dac4762d3adbfb6a0c5d4411fbb27612a61c8beac3de972fd7457b"
+    },
+    {
+      "id": "context-destinations-shopping-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 10,
+      "sha256": "aae2cc973159f47c14eda3d8ad34e3b9932555813e79ea37bdcf9589557becd4"
+    },
+    {
+      "id": "context-destinations-hospital-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 10,
+      "sha256": "e8da1ad2e1a4e6c6f21052924535432101c23c59fcd969af0832f5fa3961f71f"
+    },
+    {
+      "id": "context-destinations-education-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 10,
+      "sha256": "dd94ab1add66ea5de1290a976a3e2b71580acfaabf4c1555145059084dda3854"
+    },
+    {
+      "id": "context-destinations-visitor-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 10,
+      "sha256": "3686ed83c3d9df44e6f13b37e3c01a84cb23482d4bcc6d25963fa29f855960ec"
+    },
+    {
+      "id": "context-transport-grounds",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 12,
+      "sha256": "7da68c9c3d1e48c80ce9edcdd066cf708ba96bdf3b9377ca5883d4dcef98bfa1"
+    },
+    {
+      "id": "context-transport-airport-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "aeroway",
+      "minzoom": 10,
+      "sha256": "4d87b09e9a38d90609d83fb617b3ff957d45e056c588b23c0e83df85e61fcb50"
+    },
+    {
+      "id": "context-constraints-protected-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "park",
+      "minzoom": 6,
+      "sha256": "c5c90ea44707bac7692c3a11c0d986ce9ced0859b160931bef46c366131ceed8"
+    },
+    {
+      "id": "context-constraints-heritage-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "park",
+      "minzoom": 10,
+      "sha256": "5de71916ec36f1521e2b3e51d33b6db24c604645c1962c9e5a1fc8ccb7f0d431"
+    },
+    {
+      "id": "context-constraints-indigenous-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "boundary",
+      "minzoom": 4,
+      "sha256": "2aa3bea28e683bd22c47ca27c6688f3b72a5875ae6a3d33a19c3ea2676edaefe"
+    },
+    {
+      "id": "context-constraints-indigenous-park-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "park",
+      "minzoom": 6,
+      "sha256": "10def5d57e80627d2dd205a24af8520e867922304b0d1fcd428b11bd0047f364"
+    },
+    {
+      "id": "context-constraints-military-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 8,
+      "sha256": "15454ed9b8ae5f7e7a301027bb55c1a7369bc5bb259df958358f8849125cbfcc"
+    },
+    {
+      "id": "context-constraints-religious-area",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 12,
+      "sha256": "b20db7990d0a6709490c7da014625009ceb94d01296ff8d71c0482a999f205df"
+    },
+    {
+      "id": "building-footprints",
+      "type": "fill",
+      "source": "openmaptiles",
+      "sourceLayer": "building",
+      "minzoom": 13,
+      "sha256": "7d22a509dd3e556149f4652b752cfb0cfbd09e8ffa3bd5bf478b13004bd2d3d6"
+    },
+    {
+      "id": "building-outlines",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "building",
+      "minzoom": 15,
+      "sha256": "76f4996ef44c195624a3c2fcf7419a3bd8aeaf35208f815db564b278fad4c6b2"
+    },
+    {
+      "id": "context-destinations-employment-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 12,
+      "sha256": "efbf31923ac9d80aaa9ce677bed41359e11281ea2afc0899457a60385806bd5e"
+    },
+    {
+      "id": "context-destinations-shopping-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 12,
+      "sha256": "3066833b735301d7a83ab02d95fa76dbe056d3efeb977e47f4da7e413e8b6ae9"
+    },
+    {
+      "id": "context-destinations-hospital-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 12,
+      "sha256": "f6e8277546c38d5a165c6def3c7c1c2c6b959a0ee3d16ee9e5d2c910e28d674f"
+    },
+    {
+      "id": "context-destinations-education-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 12,
+      "sha256": "d444b851fb8fafa23b31e4071a485ed25d849d976655bc2251e8e7f384d7e8db"
+    },
+    {
+      "id": "context-destinations-visitor-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 12,
+      "sha256": "5d44b19b750c2337f3bbbcf61ef3cbb1544e83e45ed9169b8f414470923425dc"
+    },
+    {
+      "id": "context-transport-grounds-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 12,
+      "sha256": "766935cff5df9004b6bc9cac7913394b23d4f8c1ca1fc71b26669f283d205a58"
+    },
+    {
+      "id": "context-transport-airport-runways",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "aeroway",
+      "minzoom": 10,
+      "sha256": "623783424a29a39e0006bd1a14134e7b8d4c47b511b0705e80830ea5ca2b6524"
+    },
+    {
+      "id": "context-transport-ferry-routes",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "transportation",
+      "minzoom": 9,
+      "sha256": "b02a35e70a8aff80a9b2a2ebe2ec45d67e9ff5f95df055db55c2e4d45286aba6"
+    },
+    {
+      "id": "context-constraints-protected-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "park",
+      "minzoom": 6,
+      "sha256": "e0ddb19ef127974fbb40e916d90d839871d67c493113294dd958a40735aa7a41"
+    },
+    {
+      "id": "context-constraints-heritage-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "park",
+      "minzoom": 10,
+      "sha256": "89715b5e183f72196928cb9c1fe634d136a80dafac6af8e0846dbf3c7dceda19"
+    },
+    {
+      "id": "context-constraints-indigenous-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "boundary",
+      "minzoom": 4,
+      "sha256": "8b62c61bc618cc3112a7ae275254f9c2d810061c31ba62e6ef54afed1a7c16ed"
+    },
+    {
+      "id": "context-constraints-indigenous-park-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "park",
+      "minzoom": 6,
+      "sha256": "e29f8a0718a3e355e7ec3d73a6b928186f96d0e12f5643ce17be2681a47caa63"
+    },
+    {
+      "id": "context-constraints-military-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 8,
+      "sha256": "20390ac6a464c3162bbea4cee422030923a15dee7aa740630197d50061f2a92d"
+    },
+    {
+      "id": "context-constraints-religious-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 12,
+      "sha256": "0744fdc21544d2224a0f7bb8eb7c6aa275e26c9507e303b8f74c3040c7121c13"
+    },
+    {
+      "id": "terrain-contours",
+      "type": "line",
+      "source": "contours",
+      "sourceLayer": "contours",
+      "minzoom": 7,
+      "sha256": "9644c6595a17aebed5d55bc7482fcdedba6120ecf435bf5807607f48ca0f7c2a"
+    },
+    {
+      "id": "terrain-seabed-contours",
+      "type": "line",
+      "source": "seabedContours",
+      "sourceLayer": "contours",
+      "minzoom": 5,
+      "maxzoom": 11,
+      "sha256": "933905e87008e38a12575c483816bbf5650ad4d56a5dbc3f4ef568fa9b7477c6"
+    },
+    {
+      "id": "terrain-seabed-contours-close",
+      "type": "line",
+      "source": "seabedContoursClose",
+      "sourceLayer": "contours",
+      "minzoom": 11,
+      "sha256": "d747dc59d7a063a77dfaaffd9920c9c0c591393e3bc40d9c380f6c6ed088357c"
+    },
+    {
+      "id": "waterway-tunnel",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "waterway",
+      "sha256": "c17b59058c0a1847c1a1a4b66b7119adb485888391c4e2b59c5b872b3cc32ac4"
+    },
+    {
+      "id": "waterway",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "waterway",
+      "minzoom": 5,
+      "sha256": "2be6c1b90bf58f131bc05fc4dd0e49b37c4ae078372f374e0b5c8c24c7decf23"
+    },
+    {
+      "id": "waterway_intermittent",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "waterway",
+      "sha256": "1e68b8ffb2cf5c311764734569578d3384ae4b82dda689a0af6b36687a4f5709"
+    },
+    {
+      "id": "waterway-bridge-case",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "waterway",
+      "sha256": "463a58429070d0e386b2032eb5d1c6f99dfc3ef541162f8ac8b853adb1e3bdd2"
+    },
+    {
+      "id": "waterway-bridge",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "waterway",
+      "sha256": "651ffdf7bf59b5ffe833f28c777a64e997d5a87489fbb9ca47f29c4e1683e9dc"
+    },
+    {
+      "id": "admin_sub",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "boundary",
+      "minzoom": 0,
+      "maxzoom": 2,
+      "sha256": "ee4e1db02ab5e06b3ca3b799e2983033afa92cc6ad26ed39f368f3b131870582"
+    },
+    {
+      "id": "admin_country_z0-4",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "boundary",
+      "minzoom": 0,
+      "maxzoom": 5,
+      "sha256": "5a30c63b4f51421b05c4358b5e19665e1482301b88dc13fa54d52923ac9861d5"
+    },
+    {
+      "id": "admin_country_z5-",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "boundary",
+      "minzoom": 5,
+      "sha256": "19ef6711bc913d64ef28f409467615268918d03b483a3d3bc953cc7404684c5c"
+    },
+    {
+      "id": "woods-ouline",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "landcover",
+      "sha256": "57cca355b4e0e52fbf3d731e0de36e52f6ccb2f6f48732feafe6828124d9a0f0"
+    },
+    {
+      "id": "regional-border-casing",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "boundary",
+      "minzoom": 3,
+      "sha256": "d3138a61e16442d43288879ad331a1afb916b278fd8fb4d8b202b4f57b7c02a4"
+    },
+    {
+      "id": "regional-borders",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "boundary",
+      "minzoom": 3,
+      "sha256": "f0b96de330c2d8a9f4df33b7740ab5cc804bbc02bfd59aef1c2b7abb804271a1"
+    },
+    {
+      "id": "terrain-contour-labels",
+      "type": "symbol",
+      "source": "contours",
+      "sourceLayer": "contours",
+      "minzoom": 8,
+      "sha256": "7ec5e1e9206a11863fa2650761ec9506932fb8a37b7d8b083e75ba48d08d5173"
+    },
+    {
+      "id": "terrain-seabed-contour-labels",
+      "type": "symbol",
+      "source": "seabedContours",
+      "sourceLayer": "contours",
+      "minzoom": 6,
+      "maxzoom": 11,
+      "sha256": "789904f7fadf0a5aaa5a95196fc083cdfd899949dc16ce039e6081cb20919170"
+    },
+    {
+      "id": "terrain-seabed-contour-labels-close",
+      "type": "symbol",
+      "source": "seabedContoursClose",
+      "sourceLayer": "contours",
+      "minzoom": 11,
+      "sha256": "223e852696e031d6fd6de63120dc1b3ac195171a2e3ce4bee7bd6ed4065d764d"
+    },
+    {
+      "id": "infrastructure-branch-overview",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "be44461cbc3800bae61b5a4dd98207e79f450d9646d7691838fbaa934df43434"
+    },
+    {
+      "id": "road-major",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "transportation",
+      "minzoom": 5,
+      "sha256": "585de95753e2e5b9277e061667f89859a116c3cbc8c0639acec7a8b2b8404997"
+    },
+    {
+      "id": "road-secondary",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "transportation",
+      "minzoom": 9,
+      "sha256": "403355ae55683b5d9ed7267ee614b6bef6da2415169363e1026d75953e9fce09"
+    },
+    {
+      "id": "road-local",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "transportation",
+      "minzoom": 12,
+      "sha256": "b49bf30af77230cfde40e59bea693f70e4b7e655cb0904ea7281679c18a6a471"
+    },
+    {
+      "id": "road-track",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "transportation",
+      "minzoom": 13,
+      "sha256": "ce58304042c62816b29ad644bee5c4f3fc89a29707b8557e7019ac063c19a672"
+    },
+    {
+      "id": "road-cycle",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "transportation",
+      "minzoom": 13,
+      "sha256": "da1f56283d44467eb9ff873f9e797069cabe868836414223068b670faab852b3"
+    },
+    {
+      "id": "road-walk",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "transportation",
+      "minzoom": 13,
+      "sha256": "cc08f9466b070904dbc890397396e6d7cd1de82c292122b0fe821ef9bd6d2a09"
+    },
+    {
+      "id": "road-other-path",
+      "type": "line",
+      "source": "openmaptiles",
+      "sourceLayer": "transportation",
+      "minzoom": 13,
+      "sha256": "9e1e784cb03f8f99fa3404d5cbd3cdadc61959e207b609d500b640fa92b12ce3"
+    },
+    {
+      "id": "infrastructure-overview",
+      "type": "line",
+      "source": "network",
+      "sourceLayer": "standard_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 7,
+      "sha256": "f9da641a0496f8e0fdf5e0b0f5d2dc9f6b9661e9e5f8d1e7afe94d025f54184d"
+    },
+    {
+      "id": "structure-bridge-edge",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 7,
+      "sha256": "52bb4787411ebbd2e1ceb4e4608a22efb67718a46ccc52cc683575f43f7c4ddd"
+    },
+    {
+      "id": "structure-bridge-deck",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 7,
+      "sha256": "018c571222e67b37289789aa9627c0e63e487a442e33beb48456ab3caab5f824"
+    },
+    {
+      "id": "structure-metro-bridge-edge",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 7,
+      "maxzoom": 10,
+      "sha256": "55439c9fa1337f7af66fe4fa134ed6547650dd30d3e83170379215455118e415"
+    },
+    {
+      "id": "structure-metro-bridge-deck",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 7,
+      "maxzoom": 10,
+      "sha256": "e51cb139056b5db2a0c13ba7fc8e55566e32caadbee208843deef714694150ac"
+    },
+    {
+      "id": "infrastructure-street-running",
+      "type": "line",
+      "source": "streetRunning",
+      "sourceLayer": "street_running",
+      "minzoom": 13,
+      "sha256": "844d6f97fe8c5f956971f1c579837cac2b2961feb3e6b43dcde64e478a0048c5"
+    },
+    {
+      "id": "infrastructure-tracks",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 7,
+      "sha256": "58081acd90fb3831b70b5d3906f780b6d232885bfe69b225d02ff7235b218ad3"
+    },
+    {
+      "id": "infrastructure-metro-overview",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 7,
+      "maxzoom": 10,
+      "sha256": "15ef19c177d600ba8f8bf0e7ba48488535bd07e01c4ddff83f591411a54fca69"
+    },
+    {
+      "id": "speed-branch-overview",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "c2ea8757fbc4973f3c8eaa51670e07f92cdfb85d8a99c9f80e0a828fe5200b03"
+    },
+    {
+      "id": "speed-overview",
+      "type": "line",
+      "source": "speed",
+      "sourceLayer": "speed_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 7,
+      "sha256": "ecc6dc4b674fa48fd06e4551adb08b474afb22bcf114551bf79dffee91ec85bc"
+    },
+    {
+      "id": "speed-tracks",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 7,
+      "sha256": "98662c829bf035de1b970c05ac399d9dd4e860471572a35f203e40dc573798c0"
+    },
+    {
+      "id": "speed-metro-overview",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 7,
+      "maxzoom": 10,
+      "sha256": "a4096e8cfaaca71861c148d5c034c0a75b9ad76adfe5038fd4be972b639bc3ef"
+    },
+    {
+      "id": "electrification-branch-overview",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "7cd24af8558c9d0be3b683c2c4d0b5bae107d53413789d2aaba0829bb7d7b960"
+    },
+    {
+      "id": "electrification-overview",
+      "type": "line",
+      "source": "electric",
+      "sourceLayer": "electrification_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 7,
+      "sha256": "b70d63190a8cea33102113d9fe1ab68ea62116faf6c61d12d25e98fbedda1914"
+    },
+    {
+      "id": "electrification-tracks",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 7,
+      "sha256": "d6459836ac3d4ca046ab93fb3f5c9796c78b6d46475f1ead6424d33c2a8a6466"
+    },
+    {
+      "id": "electrification-metro-overview",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 7,
+      "maxzoom": 10,
+      "sha256": "89e8451a7ea49594450e25d08475623036df16ff71506c4c76fd9685ea85fa36"
+    },
+    {
+      "id": "control-branch-overview",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "c12b9f4d22584c53febf7aab734f157a1237a3618b29ae90c31743dc683b3353"
+    },
+    {
+      "id": "control-overview",
+      "type": "line",
+      "source": "control",
+      "sourceLayer": "signals_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 7,
+      "sha256": "cfb5052b4dccf28fcf4d29a8f9297e204b0e3333eb1944d7f7272c220543e61f"
+    },
+    {
+      "id": "control-tracks",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 7,
+      "sha256": "bd41fe8ef77c368981aaa3d81e3d833d979c4d09093f231e263ce76c4dcc1a27"
+    },
+    {
+      "id": "control-metro-overview",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 7,
+      "maxzoom": 10,
+      "sha256": "e8a1ded93b93971f3e1218fb47ab6c783854a6333ec65b3ed251b02520ae2dcf"
+    },
+    {
+      "id": "gauge-branch-overview",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "8199d2f0bbfc3b18a1e1f4d50882865231c41122aa3c4daa3715cccb0eb6400d"
+    },
+    {
+      "id": "gauge-branch-dual",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "ac5529dcc6c08b82944452594edbf13d6371b5cfdfa8519dd36aafb6a183bc25"
+    },
+    {
+      "id": "gauge-overview",
+      "type": "line",
+      "source": "gaugeLow",
+      "sourceLayer": "track_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 7,
+      "sha256": "79cd220e30c8a16137fd7f3c5209cda21ffede3b2dee0320c2a7114e57366b42"
+    },
+    {
+      "id": "gauge-tracks",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 7,
+      "sha256": "d3dfec74c747569b7338f466276a33fa7f9a33c459ab7f236de96695cf47d10a"
+    },
+    {
+      "id": "gauge-metro-overview",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 7,
+      "maxzoom": 10,
+      "sha256": "be41dbf49a5bb406e34dbbb7404e77e22b48678a220c6fb19a0c47d14c56b5bc"
+    },
+    {
+      "id": "loading-branch-overview",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "3e33a1d9551bdbd8af1b83e768ea8e48ff68c612358a91a8c54c719f06697e78"
+    },
+    {
+      "id": "loading-overview",
+      "type": "line",
+      "source": "loadingLow",
+      "sourceLayer": "standard_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 7,
+      "sha256": "b8bc4e6999fbb4fc3c01d2c4438c6fd1dfb8225f15ad39fe22ba419021487a62"
+    },
+    {
+      "id": "loading-tracks",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 7,
+      "sha256": "3d6d93d9c68b36fe8b769c8c44f84ce18ea4cced572bf4bac4a1654e566bab11"
+    },
+    {
+      "id": "loading-metro-overview",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 7,
+      "maxzoom": 10,
+      "sha256": "8bede0ebdbef709b709c5fdc96f0f85015b2cf4d6695d32022afe5c7b4ef4585"
+    },
+    {
+      "id": "axle-branch-overview",
+      "type": "line",
+      "source": "axleBranch",
+      "sourceLayer": "branch_lines",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "190a18e66826f5202a611a8800408759426b63e4311d65b2e799e8de5c1a4b0e"
+    },
+    {
+      "id": "axle-overview",
+      "type": "line",
+      "source": "axleLow",
+      "sourceLayer": "standard_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 7,
+      "sha256": "2ace70e99cfaaa7945261179b74baf4c75aea9ae5fc0d7fb5026883d074bd00c"
+    },
+    {
+      "id": "axle-tracks",
+      "type": "line",
+      "source": "axleRail",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 7,
+      "sha256": "4208defe9ffe33b781bc925827abf65930cd4e7ad63c1b721c8c5d581bcfceca"
+    },
+    {
+      "id": "axle-metro-overview",
+      "type": "line",
+      "source": "axleBranch",
+      "sourceLayer": "branch_lines",
+      "minzoom": 7,
+      "maxzoom": 10,
+      "sha256": "e0561f654f4bf9f5b9816deb9642c1f8657c40bae57da0bb5f45b8e29535d15d"
+    },
+    {
+      "id": "owner-branch-overview",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "7da2e8e8b9856bc317b30a3d87e684ca32af7f3c21008751054d5c98fd01c814"
+    },
+    {
+      "id": "owner-overview",
+      "type": "line",
+      "source": "ownerLow",
+      "sourceLayer": "operator_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 7,
+      "sha256": "cb77de0a8db8949b7e124c0523ba71c3e3c75644344635fdb8c613b1861a293b"
+    },
+    {
+      "id": "owner-tracks",
+      "type": "line",
+      "source": "ownerRail",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 7,
+      "sha256": "91b7d74b39f1adfd25ef4209a5b8be9827a8141b2a72660b45afe9d12ac9984f"
+    },
+    {
+      "id": "owner-metro-overview",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 7,
+      "maxzoom": 10,
+      "sha256": "8cc8a235e8a005fe030de4f188ffcb78ad37a2eb7564b74a05618552d7eb5bb3"
+    },
+    {
+      "id": "service-branch-overview",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "adf865b423224659e4e290bf2038fbfaab25b7d8df8ef5093e903f0fe35b5f4b"
+    },
+    {
+      "id": "service-overview",
+      "type": "line",
+      "source": "network",
+      "sourceLayer": "standard_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 7,
+      "sha256": "9d48fea3c481faf389477717be6eb050ff75a78b3b997315c9e1998cb126b37d"
+    },
+    {
+      "id": "service-tracks",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 7,
+      "sha256": "d0391277f7209ff5e12ca3a3403e0357a9b671740df82fdb97456b27fb283709"
+    },
+    {
+      "id": "service-metro-overview",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 7,
+      "maxzoom": 10,
+      "sha256": "96ceab0b5e4ca5b841d980c98a8eb191cb2e1bee5b5404bc657214a6819c3834"
+    },
+    {
+      "id": "gauge-dual",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 7,
+      "sha256": "d5768714c8e53d256ceb34597747d8c41432f05dd02ba13239cf5235741dcfe9"
+    },
+    {
+      "id": "service-routes",
+      "type": "line",
+      "source": "serviceRoutes",
+      "sourceLayer": "service_routes",
+      "minzoom": 7,
+      "sha256": "138a90c72872654fb82fa857eed10600c83c3b6a816d1d13c50ac0a6d57e9acf"
+    },
+    {
+      "id": "structure-tunnel",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 7,
+      "sha256": "297e095cd5f362f7e05f35ca3bce608a10e804cc3ae61e6d21596f7532121c3f"
+    },
+    {
+      "id": "gauge-metro-dual",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 7,
+      "maxzoom": 10,
+      "sha256": "d8157bcf4a8d671e5534039ccf449c4b089f6fe73f913caa3ccb14f91bcae413"
+    },
+    {
+      "id": "structure-metro-tunnel",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 7,
+      "maxzoom": 10,
+      "sha256": "98be7f2adc7cbb487ff368af85b8051c3f41099da4b3021d762455a56125837d"
+    },
+    {
+      "id": "inactive-regional-bridge-edge",
+      "type": "line",
+      "source": "inactiveRegional",
+      "sourceLayer": "lifecycle",
+      "minzoom": 7,
+      "maxzoom": 12,
+      "sha256": "4684e5e71708eb76d7585b3483c9d9b2b6f602c679de4378031079e361f77808"
+    },
+    {
+      "id": "inactive-regional-bridge-deck",
+      "type": "line",
+      "source": "inactiveRegional",
+      "sourceLayer": "lifecycle",
+      "minzoom": 7,
+      "maxzoom": 12,
+      "sha256": "edc433bda406f48e5b48e6e777cebe009706df8b024ad3626c866779e2781d64"
+    },
+    {
+      "id": "inactive-bridge-edge",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 12,
+      "sha256": "07ab69eec7e305269912e98903d5a2ece414ebd34bd36b57c519ba8ed7ff6d80"
+    },
+    {
+      "id": "inactive-bridge-deck",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 12,
+      "sha256": "d35bcbce9bffe5990ecd466ae032fe1c886197b3d5fc9e11235625275a835c66"
+    },
+    {
+      "id": "inactive-regional-former",
+      "type": "line",
+      "source": "inactiveRegional",
+      "sourceLayer": "lifecycle",
+      "minzoom": 0,
+      "maxzoom": 12,
+      "sha256": "07bb593a81c26742f1b7f775baded1a2ca69f352b1deac84b71673f28ea7e117"
+    },
+    {
+      "id": "inactive-railways-former",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 12,
+      "sha256": "5c98d2c4ae159ea57d57135c62acd53e8ca71e5f243af4030a351c6b0530acdb"
+    },
+    {
+      "id": "inactive-regional-disused",
+      "type": "line",
+      "source": "inactiveRegional",
+      "sourceLayer": "lifecycle",
+      "minzoom": 0,
+      "maxzoom": 12,
+      "sha256": "074e867dac6df5c194baa8915f9134076ad063cfb1ca42d14c81bde255cc388c"
+    },
+    {
+      "id": "inactive-railways-disused",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 12,
+      "sha256": "50073408b90fbebfe73778a743d77c7ac684e1081c59489823a31f932062c56c"
+    },
+    {
+      "id": "inactive-regional-proposed",
+      "type": "line",
+      "source": "inactiveRegional",
+      "sourceLayer": "lifecycle",
+      "minzoom": 0,
+      "maxzoom": 12,
+      "sha256": "679eba73fc49ceb8054f3a4d5ca4a4a1ee1623cf1b0dd6d5b5048f21e89d6337"
+    },
+    {
+      "id": "inactive-railways-proposed",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 12,
+      "sha256": "553f05ba6f6e0e0ceb8897b26828c52253762778826c39e647696aa87de9e26f"
+    },
+    {
+      "id": "inactive-regional-construction",
+      "type": "line",
+      "source": "inactiveRegional",
+      "sourceLayer": "lifecycle",
+      "minzoom": 0,
+      "maxzoom": 12,
+      "sha256": "bade121094a9df6a906be145e95617ef2240d6f4baa6698b19029e8f3c191db6"
+    },
+    {
+      "id": "inactive-railways-construction",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 12,
+      "sha256": "1aba849a5fb0daaef05475233c292876f9621bba11fc147cd1f689c3f97060e1"
+    },
+    {
+      "id": "speed-labels",
+      "type": "symbol",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 10,
+      "sha256": "f1dd038e93fa23be1147349e2ad3fb03738a0274eae2a20d694b410ee1affc64"
+    },
+    {
+      "id": "electrification-labels",
+      "type": "symbol",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 10,
+      "sha256": "b3f1fe04d29c07350e7e8809f812ae462d00ba55315b8d2c0c735d343c61894c"
+    },
+    {
+      "id": "control-labels",
+      "type": "symbol",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 10,
+      "sha256": "f7d65e4ae671f93c0153022e9f260d77cef6c3a6b7aa2b8bbf6c3ffab0c35e65"
+    },
+    {
+      "id": "gauge-labels",
+      "type": "symbol",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 10,
+      "sha256": "ba2d7654ba46d83e9696137d09e72e3af398c8d9d0e6db6796ff6197fe96db3a"
+    },
+    {
+      "id": "loading-labels",
+      "type": "symbol",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 10,
+      "sha256": "1d7b84a1416a4730846c93fb28ec8239ef61700d3a3ca65df44db1ef0c6402f6"
+    },
+    {
+      "id": "axle-labels",
+      "type": "symbol",
+      "source": "axleRail",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 10,
+      "sha256": "af8a034aac75994982f649f6ba07758431af42cee7ec20be27a9f1147fe6b80a"
+    },
+    {
+      "id": "owner-labels",
+      "type": "symbol",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 10,
+      "sha256": "93878c0ddc1b1da91efbfcdf95fbbdf614785f4b7ecf1e2e01d994a813d7829d"
+    },
+    {
+      "id": "platform-areas",
+      "type": "fill",
+      "source": "platforms",
+      "sourceLayer": "standard_railway_platforms",
+      "minzoom": 17,
+      "sha256": "ea4ebe8dbdd0c6c460170ff239caa891d3daeeec3186d3f5d34d953be418639b"
+    },
+    {
+      "id": "platform-outlines",
+      "type": "line",
+      "source": "platforms",
+      "sourceLayer": "standard_railway_platforms",
+      "minzoom": 17,
+      "sha256": "4f5fafeaab723ed9b9af8c9deabb64cbd4654ce42f9782c6320c8154641a85a2"
+    },
+    {
+      "id": "platform-points",
+      "type": "circle",
+      "source": "platforms",
+      "sourceLayer": "standard_railway_platforms",
+      "minzoom": 17,
+      "sha256": "aec45b0da1a8ad5d31ddcbb4c20722b353aecad2126030a4e1d1c360065de220"
+    },
+    {
+      "id": "platform-edges",
+      "type": "line",
+      "source": "platformEdges",
+      "sourceLayer": "standard_railway_platform_edges",
+      "minzoom": 17,
+      "sha256": "4554b94c2515da21bf3309cee640ba28c4ab8c85e0dac539625446a3b47977de"
+    },
+    {
+      "id": "platform-numbers",
+      "type": "symbol",
+      "source": "platformNumbers",
+      "minzoom": 17,
+      "sha256": "d3755babf7d69f286e009a489dfca3b26de6c1283596dc44a107f23f98c013fa"
+    },
+    {
+      "id": "platform-lengths",
+      "type": "symbol",
+      "source": "platformLengths",
+      "minzoom": 17,
+      "sha256": "519225248aa3bdc055c874b2c31b70479300131840ad3b4df9489b2e1201415f"
+    },
+    {
+      "id": "infrastructure-signal-points",
+      "type": "circle",
+      "source": "railwaySignals",
+      "sourceLayer": "railway_signals",
+      "minzoom": 16,
+      "sha256": "5488327bb3d2dab9ff030f7f05c038edac18577376bd928b98e7512d0082514b"
+    },
+    {
+      "id": "infrastructure-signal-references",
+      "type": "symbol",
+      "source": "railwaySignals",
+      "sourceLayer": "railway_signals",
+      "minzoom": 18,
+      "sha256": "016eff7e14cc9654827b14ba95b8d1e1a15c6fc8b98d9da7a8c9cb6ebacf4d46"
+    },
+    {
+      "id": "infrastructure-entrance-points",
+      "type": "circle",
+      "source": "stationEntrances",
+      "sourceLayer": "standard_station_entrances",
+      "minzoom": 16,
+      "sha256": "03d5f5f5089598a31a8b2cb8c216ddedf93c3e4a61fd811ab7ad01ca122ceafd"
+    },
+    {
+      "id": "infrastructure-entrance-references",
+      "type": "symbol",
+      "source": "stationEntrances",
+      "sourceLayer": "standard_station_entrances",
+      "minzoom": 17,
+      "sha256": "ec3a346f39da64da389fc83d94671c577f0f183d68077d0ca9f54a5ba1a378c3"
+    },
+    {
+      "id": "station-former-dots",
+      "type": "circle",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 12,
+      "sha256": "147476ddd0da6273665a698f2709e1a2fc78f7d538a80789646e18a0e4a641ff"
+    },
+    {
+      "id": "station-stations-dots",
+      "type": "circle",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 12,
+      "sha256": "7724bec24aa4403aae5c4ca647c081192175999a034765f37071f410ee872e83"
+    },
+    {
+      "id": "place_label_city",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "place",
+      "minzoom": 5,
+      "maxzoom": 16,
+      "sha256": "ff5b0e85ce3c8b8bb48f24a72db7bd53dce55c2428bf3a519ff0b606fe35b999"
+    },
+    {
+      "id": "place_label_other",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "place",
+      "minzoom": 8,
+      "sha256": "0d5e8baa42f40c919998f4f5c4458c6cf3a179691f0fede59c489dc7a3fa8201"
+    },
+    {
+      "id": "state_label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "place",
+      "minzoom": 4,
+      "maxzoom": 10,
+      "sha256": "3a4ed979f46ed33be0f979741d1b89b18bbe35b6d1e10916efe60440a494b3b1"
+    },
+    {
+      "id": "infrastructure-crossing-overview",
+      "type": "circle",
+      "source": "crossingsOverview",
+      "sourceLayer": "level_crossings",
+      "minzoom": 5,
+      "maxzoom": 9,
+      "sha256": "565ee3183db5fe74b2823d1d45d0c4d4b47e65d9ffaed6f8f47a3192750be5bf"
+    },
+    {
+      "id": "infrastructure-crossing-dots",
+      "type": "circle",
+      "source": "crossingsDetail",
+      "sourceLayer": "level_crossings",
+      "minzoom": 9,
+      "maxzoom": 11,
+      "sha256": "831c4a2e44952876da33c03f157f3732adda80550ac0cde3de8294776ea082ee"
+    },
+    {
+      "id": "infrastructure-crossing-marks",
+      "type": "symbol",
+      "source": "crossingsDetail",
+      "sourceLayer": "level_crossings",
+      "minzoom": 11,
+      "maxzoom": 15,
+      "sha256": "937245ee6fc83b2580e5eb819270055261ee3e78ea2596191f10abe66fff77ff"
+    },
+    {
+      "id": "infrastructure-level-crossings",
+      "type": "symbol",
+      "source": "crossings",
+      "sourceLayer": "points_of_interest",
+      "minzoom": 15,
+      "sha256": "1e26a100367dc2d6329e2784b6adc274ec25d014ac7c0d6a51d0367f91f5a3fe"
+    },
+    {
+      "id": "road-labels",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "transportation_name",
+      "minzoom": 15,
+      "sha256": "fe83e9cba80e337ae57cb14ae6b91762c723c1b3b9d22f3fb1b8fc06c755845a"
+    },
+    {
+      "id": "context-constraints-protected-area-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "park",
+      "minzoom": 7,
+      "sha256": "6bd8104cef6f13c5acfd48481a2dd77fe5c99851645de0f3f9f7f9d4a1688c6a"
+    },
+    {
+      "id": "context-constraints-heritage-area-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "park",
+      "minzoom": 11,
+      "sha256": "227b3c410203412adbbc3bf22e85c840d881ccd617d3a0fd486dbe5c5f98f1d0"
+    },
+    {
+      "id": "context-constraints-indigenous-area-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "boundary",
+      "minzoom": 5,
+      "sha256": "a6646f4a87b10eec3d41bf3b3d3913ce4d9997a4e7b4e309a5b154a7e0741efd"
+    },
+    {
+      "id": "context-constraints-indigenous-park-area-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "park",
+      "minzoom": 7,
+      "sha256": "6d948e13accb44211d72baf64103dc809d46d9587d2a2134f7eb57f62ac07ed8"
+    },
+    {
+      "id": "context-constraints-military-area-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 9,
+      "sha256": "25ddc19bac81baeac104a291d96c4455ecdfa734bbfee932f5cfd8ea80b35c0c"
+    },
+    {
+      "id": "context-constraints-religious-area-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "landuse",
+      "minzoom": 13,
+      "sha256": "4a461b91748416d032f16f10307d285693c1158e26e7bb0991aa697bfcd0d863"
+    },
+    {
+      "id": "context-constraints-religious-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 13,
+      "sha256": "3e17223ee5f66a71ba931456a3e428110f2968fcda81b04b88096d71258d2195"
+    },
+    {
+      "id": "context-constraints-heritage-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 12,
+      "sha256": "2de0f00864d6aaf14473cec16d5edc73b82e31467b706cfb1b2dfec74f4dd3a9"
+    },
+    {
+      "id": "context-destinations-hospital-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 12,
+      "sha256": "acfb7a28e33cb772a4b679e5623bbf16d8c8937861fbaf0071f952095df27cd0"
+    },
+    {
+      "id": "context-destinations-university-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 12,
+      "sha256": "d2d001c6e68c2b99b09ef3a6d724f85665804e5a1fb015c0b67a816104d48ab0"
+    },
+    {
+      "id": "context-destinations-school-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 14,
+      "sha256": "a1385be6caf1495e2b9d6764e3652d0487dd34a3b0f261f956560c5df004ed57"
+    },
+    {
+      "id": "context-destinations-shopping-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 12,
+      "sha256": "be744f82368033138ed0558ef6d17f301e0a62c45a21109af950d6e317244634"
+    },
+    {
+      "id": "context-destinations-sport-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 12,
+      "sha256": "e9eee5407d4216caf89c1eeb239be3ca34325216df7cdf835c20d8e9bc934eed"
+    },
+    {
+      "id": "context-destinations-visitor-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 12,
+      "sha256": "6a0796c8d150e091b399704403ffc1c0eacfeb09065662235c43a4fcb41083df"
+    },
+    {
+      "id": "context-destinations-hotel-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 14,
+      "sha256": "1a31deaf95eed5670c8a6d3c0f337ea089bcdef6ec62e31766a9a27db427d174"
+    },
+    {
+      "id": "context-destinations-culture-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 13,
+      "sha256": "558645e1576dab9a679732229a457b7725ccb97e74eb2bced6677cf81ec162cb"
+    },
+    {
+      "id": "context-destinations-civic-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 13,
+      "sha256": "1a1d830e589f43fb0b28f0a72edaa1a5444fb624eeeaa02bf014c97950a4dd3d"
+    },
+    {
+      "id": "context-transport-bike-parking-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 17,
+      "sha256": "f374c37cddfbf85cdfd0fe14b1a11084c35d9bd3e0fedd0c50bde01df3f6ca52"
+    },
+    {
+      "id": "context-transport-bus-stop-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 15,
+      "sha256": "ecc1371ec1d60d22d76ef04460a5ea64cf6d48908dc8adc9c20f68647a18edfb"
+    },
+    {
+      "id": "context-transport-taxi-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 15,
+      "sha256": "3c5ef2d94737799472e00571e67f88c8bfc879efbdcfc1b675eff685b18760bf"
+    },
+    {
+      "id": "context-transport-bike-rental-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 15,
+      "sha256": "2bded0e9d741f14f52a1ab3c0a0e96e50213eb500742ecc4fcbd0c4e6439d2af"
+    },
+    {
+      "id": "context-transport-airport-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "aerodrome_label",
+      "minzoom": 8,
+      "sha256": "3c5dc4435d24055825a3d97fea16be5e0d44549442f44528ae2e35a2470466e0"
+    },
+    {
+      "id": "context-transport-bus-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 12,
+      "sha256": "4d56126965c6ecca69f4715fb2d103be721293ba3ef4649011ea28db817077e1"
+    },
+    {
+      "id": "context-transport-ferry-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 12,
+      "sha256": "cafce451c7c89800f7767fcea21de3c6f6195f0e3effbea3ad6742fd41e3098a"
+    },
+    {
+      "id": "context-transport-aerialway-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 12,
+      "sha256": "97b9f9167384b9edbc9f8eddb5efbe1f7200ea51a7d25459216cda2b8570c22b"
+    },
+    {
+      "id": "context-transport-port-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "poi",
+      "minzoom": 15,
+      "sha256": "6b8fff0b6b4c01209973ab37a6744b22d09540ee02465a3d4c3c73b9081d3e51"
+    },
+    {
+      "id": "service-names",
+      "type": "symbol",
+      "source": "serviceRoutes",
+      "sourceLayer": "service_routes",
+      "minzoom": 9,
+      "sha256": "48f1da8e7e9e18c1cf57512139bb11bab9b7e96e103d4c5c1c1d60f2e8ae26e0"
+    },
+    {
+      "id": "railway-names",
+      "type": "symbol",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 9,
+      "sha256": "34c913d0fe2733b046fca6df7ca924c9d7ed808d0eaff3e748e13ab74bc7aec7"
+    },
+    {
+      "id": "inactive-names",
+      "type": "symbol",
+      "source": "inactiveRegional",
+      "sourceLayer": "lifecycle",
+      "minzoom": 9,
+      "maxzoom": 12,
+      "sha256": "49167c51607fcb99a3515981a6b2199534acc18e69acd7b8e0d05bec93a73cf0"
+    },
+    {
+      "id": "inactive-detail-names",
+      "type": "symbol",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 12,
+      "sha256": "977eab45cb1fac60e96a71a8ec2fa489fc3eb4ca9c35f68044f2619bd224ffa0"
+    },
+    {
+      "id": "infrastructure-track-count",
+      "type": "symbol",
+      "source": "trackCounts",
+      "sourceLayer": "atlas_track_counts",
+      "minzoom": 14,
+      "sha256": "206f2ff30fb2ca63cf60325fe417c76e0e4df8f1dabdc26cd2134aadadbbec8f"
+    },
+    {
+      "id": "infrastructure-station-tracks",
+      "type": "symbol",
+      "source": "trackCounts",
+      "sourceLayer": "atlas_track_counts",
+      "minzoom": 14,
+      "sha256": "77d3eb8028a8e748eeb15d11e71d7334eab5a22cc35834720e7b72119310274e"
+    },
+    {
+      "id": "station-stationLow-mover-names",
+      "type": "symbol",
+      "source": "stationLow",
+      "sourceLayer": "standard_railway_text_stations_low",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "a3f4786caf1e354fa4f176034f29f5867735da8ca7d81c5d9c7cd9f573f995c2"
+    },
+    {
+      "id": "station-stationMed-mover-names",
+      "type": "symbol",
+      "source": "stationMed",
+      "sourceLayer": "standard_railway_text_stations_med",
+      "minzoom": 6,
+      "maxzoom": 8,
+      "sha256": "589f1e16d88bd91a82da5f1e54ae76d8c4daf08d32b3f0cd910dc9ea87f89d3a"
+    },
+    {
+      "id": "station-stations-mover-names",
+      "type": "symbol",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 8,
+      "maxzoom": 12,
+      "sha256": "efc8979fd45bb27a40ab193b1b535e2ec819b9714bef4f5bd1f0e89eaac6da1c"
+    },
+    {
+      "id": "station-stationLow-light-rail-names",
+      "type": "symbol",
+      "source": "stationLow",
+      "sourceLayer": "standard_railway_text_stations_low",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "9004cf0417e353f5b4bc071935e273fd8d7e6082785e070507611eaca61a1092"
+    },
+    {
+      "id": "station-stationMed-light-rail-names",
+      "type": "symbol",
+      "source": "stationMed",
+      "sourceLayer": "standard_railway_text_stations_med",
+      "minzoom": 6,
+      "maxzoom": 8,
+      "sha256": "64797bbfe3639a34034cd54c22dc6eb725ce632520abcb13ded5c962ca9e7ade"
+    },
+    {
+      "id": "station-stations-light-rail-names",
+      "type": "symbol",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 8,
+      "maxzoom": 12,
+      "sha256": "ef7b1e92e2b3bd4254098688175e076d6bcd286ebc33a951dad1d5915097442f"
+    },
+    {
+      "id": "station-stationLow-metro-names",
+      "type": "symbol",
+      "source": "stationLow",
+      "sourceLayer": "standard_railway_text_stations_low",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "d384b3128f430e73d72d4a28ab11c81bddac75ed58245e2c832427fd9234b7ca"
+    },
+    {
+      "id": "station-stationMed-metro-names",
+      "type": "symbol",
+      "source": "stationMed",
+      "sourceLayer": "standard_railway_text_stations_med",
+      "minzoom": 6,
+      "maxzoom": 8,
+      "sha256": "51acfe44a50c2e9b97e413933525397596e7403413032d4391d135ff07451da4"
+    },
+    {
+      "id": "station-stations-metro-names",
+      "type": "symbol",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 8,
+      "maxzoom": 12,
+      "sha256": "5682713c17ca25b7ddadc6998b8c63bf87d1fd2ef26c4d84e963adfd780f1d31"
+    },
+    {
+      "id": "station-stationLow-halt-names",
+      "type": "symbol",
+      "source": "stationLow",
+      "sourceLayer": "standard_railway_text_stations_low",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "12368be1d32a1c95371dc3372c76e7b57e8ef0e612a063a995287c0b01e6713f"
+    },
+    {
+      "id": "station-stationMed-halt-names",
+      "type": "symbol",
+      "source": "stationMed",
+      "sourceLayer": "standard_railway_text_stations_med",
+      "minzoom": 6,
+      "maxzoom": 8,
+      "sha256": "a4b541ca2db4a8a73169b80040122396e6e662d0abcec6a98760d7400a686378"
+    },
+    {
+      "id": "station-stations-halt-names",
+      "type": "symbol",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 8,
+      "maxzoom": 12,
+      "sha256": "cdf5954f14587ac2afafe5012dfba12bd87f9fdb6f35536a89cc32bb63bff71d"
+    },
+    {
+      "id": "station-stationLow-small-names",
+      "type": "symbol",
+      "source": "stationLow",
+      "sourceLayer": "standard_railway_text_stations_low",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "f26a3bbaa0f12671e8818e921577a43feb1b7c27f69e8092323b8b5a6029d3c5"
+    },
+    {
+      "id": "station-stationMed-small-names",
+      "type": "symbol",
+      "source": "stationMed",
+      "sourceLayer": "standard_railway_text_stations_med",
+      "minzoom": 6,
+      "maxzoom": 8,
+      "sha256": "701e77f07774e81da650fe97611c2c16db1ecfc2e44bd44a31df0e67b5439fb5"
+    },
+    {
+      "id": "station-stations-small-names",
+      "type": "symbol",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 8,
+      "maxzoom": 12,
+      "sha256": "58ee6bc5f11adbbfa377bfff173035d9681a3b3c9e6fdb09057dfabc508fac16"
+    },
+    {
+      "id": "station-stationLow-normal-names",
+      "type": "symbol",
+      "source": "stationLow",
+      "sourceLayer": "standard_railway_text_stations_low",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "b4781864fd548792d7c34544a5b576c4a7d85b4c7eb74554aca2c4b54d70fda7"
+    },
+    {
+      "id": "station-stationMed-normal-names",
+      "type": "symbol",
+      "source": "stationMed",
+      "sourceLayer": "standard_railway_text_stations_med",
+      "minzoom": 6,
+      "maxzoom": 8,
+      "sha256": "5015d8a35412acfc9126dcfc6d3e4ec065f769e13f7df4ba4e8790d9d83d6590"
+    },
+    {
+      "id": "station-stations-normal-names",
+      "type": "symbol",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 8,
+      "maxzoom": 12,
+      "sha256": "3c5237a96e1735af2e28c6dfd7f3506448dfbfd673e00766cc158e25b1bc34c8"
+    },
+    {
+      "id": "station-stationLow-large-names",
+      "type": "symbol",
+      "source": "stationLow",
+      "sourceLayer": "standard_railway_text_stations_low",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "3f84bdb07fc593f58f3c105389177a065674f2aaa8ba4e7fe85cb23cbbe7b809"
+    },
+    {
+      "id": "station-stationMed-large-names",
+      "type": "symbol",
+      "source": "stationMed",
+      "sourceLayer": "standard_railway_text_stations_med",
+      "minzoom": 6,
+      "maxzoom": 8,
+      "sha256": "f1cb328bbc819d4e3695721d72c9c0975c3b806e75215e761151be81aa24a808"
+    },
+    {
+      "id": "station-stations-large-names",
+      "type": "symbol",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 8,
+      "maxzoom": 12,
+      "sha256": "aca8eae66f428da7e24d31786bc7560c8a55d30cddab6825a7decfc32810a732"
+    },
+    {
+      "id": "station-major-6-names",
+      "type": "symbol",
+      "source": "stationMajor",
+      "minzoom": 6,
+      "maxzoom": 7,
+      "sha256": "088e65261ceda8f85f5b225e749e21d01e34cf8c5d3b3be3441128cec4017320"
+    },
+    {
+      "id": "station-major-5-names",
+      "type": "symbol",
+      "source": "stationMajor",
+      "minzoom": 5,
+      "maxzoom": 7,
+      "sha256": "0fd32e4fcd6652c30076795a7a5848ebcbe1f225feffec42d315db0987d94c5c"
+    },
+    {
+      "id": "station-major-4-names",
+      "type": "symbol",
+      "source": "stationMajor",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "f6e6d8f61ac8a475cc0e8226d02f0412ebb1c19f5ba1721c868e59b1ab8e7f10"
+    },
+    {
+      "id": "station-major-3-names",
+      "type": "symbol",
+      "source": "stationMajor",
+      "minzoom": 3,
+      "maxzoom": 7,
+      "sha256": "9ee28cda441d3bc75fc6ee523c97af7d844e00d5728b5b1952e55a2705d8eb94"
+    },
+    {
+      "id": "station-former-names",
+      "type": "symbol",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 12,
+      "sha256": "93b40120fa781b1dab3af83f702bc970f1f945b659af35b6805dab1c7f8d3fc3"
+    },
+    {
+      "id": "station-detail-mover-names",
+      "type": "symbol",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 12,
+      "sha256": "2138f99afc9b15c84c2fb65b15c346d98992390ff8d9b5c8615817c75a76b683"
+    },
+    {
+      "id": "station-detail-light-rail-names",
+      "type": "symbol",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 12,
+      "sha256": "f96c683311bb27f5489913eea5896f0e507687efd3d7273200552506517a6b2d"
+    },
+    {
+      "id": "station-detail-metro-names",
+      "type": "symbol",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 12,
+      "sha256": "a3ab30efcdf80986f4596d073eb7db53ce05e784ec94bd97761e28f537dc7a07"
+    },
+    {
+      "id": "station-detail-halt-names",
+      "type": "symbol",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 12,
+      "sha256": "93cfcf2e16643edb148e597fd116a82b510075bcf620ecc3906e571481b42fd7"
+    },
+    {
+      "id": "station-detail-small-names",
+      "type": "symbol",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 12,
+      "sha256": "a90fd5f567d29fa0823c66f1282d363180f872debd39e200add68e32b64aecc2"
+    },
+    {
+      "id": "station-detail-normal-names",
+      "type": "symbol",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 12,
+      "sha256": "0af2fb4bd7134536837cddb933c14ec48aba6e781a3741c56df548b44a1026c6"
+    },
+    {
+      "id": "station-detail-large-names",
+      "type": "symbol",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 12,
+      "sha256": "533ceab5eb16cd40f05359ea6c6057f712c4bac5287935a2cd145ee390d7ab7e"
+    },
+    {
+      "id": "country_label-other",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "place",
+      "minzoom": 1,
+      "maxzoom": 8,
+      "sha256": "56cc5264148dcf221e15bb501c96a802ab7bd4781d30b45a6914d2da06598219"
+    },
+    {
+      "id": "country_label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "sourceLayer": "place",
+      "minzoom": 1,
+      "maxzoom": 8,
+      "sha256": "4255373d45d823c6f8ae88cbb6b400b59842e8d6f91954a687f83d7a37a597d4"
+    }
+  ]
+}
