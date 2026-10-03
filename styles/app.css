@@ -119,5 +119,5 @@ button.brand-mark:focus-visible{outline:3px solid #d58d13;outline-offset:3px}
 .maplibregl-ctrl-bottom-right>.maplibregl-ctrl{margin:0}
 /* The info button remains a button even when its credit popover is open. */
 .maplibregl-ctrl-attrib.maplibregl-compact{width:32px;height:32px;min-height:32px;padding:0;border-radius:50%}
-.maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button{width:32px;height:32px;right:0;top:0}
+.maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button{width:32px;height:32px;right:0;top:0;background-repeat:no-repeat;background-position:center}
 .maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-inner{position:absolute;bottom:40px;right:0;width:330px;max-width:var(--map-info-width,calc(100vw - 20px));max-height:var(--map-info-height,calc(100dvh - 70px));overflow:auto;overflow-wrap:anywhere;white-space:normal;padding:12px;background:var(--paper);border-radius:9px;box-shadow:0 3px 15px #173e4740;text-align:left}
