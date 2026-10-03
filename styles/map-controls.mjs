@@ -5,6 +5,7 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
   const inset = document.createElement('div');
   inset.className = 'map-control-insets'; inset.setAttribute('aria-hidden', 'true');
   document.body.append(inset);
+  const originalDetailsHeight = details?.style.maxHeight || '';
   let disposed = false, queued;
   const request = window.requestAnimationFrame?.bind(window) || (fn => window.setTimeout(fn, 16));
   const cancel = window.cancelAnimationFrame?.bind(window) || window.clearTimeout.bind(window);
@@ -44,7 +45,12 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
     // Measure the actual stack after its available width is applied. A long
     // readout can wrap; its height is not a fixed 80-pixel clearance.
     const stack = corner.getBoundingClientRect(), height = stack.height;
-    const stackTop = narrow && menu ? Math.max(high, menu.top + 48 + gap) : high;
+    const detail = visible(details);
+    const bottomSheet = window.matchMedia ? window.matchMedia('(max-width:650px)').matches : window.innerWidth <= 650;
+    const horizontalOverlap = rect => rect && rect.left < x + stack.width + gap && rect.right > x - gap;
+    const desktopDetail = !bottomSheet && horizontalOverlap(detail);
+    let stackTop = narrow && menu ? Math.max(high, menu.top + 48 + gap) : high;
+    if (desktopDetail) stackTop = Math.max(stackTop, detail.top + 48 + gap);
     // The credits popover ends 40px above the info button's bottom. Reserve
     // space above it for the ruler/readout and the narrow menu's header, so
     // long credits scroll instead of pushing the controls above the viewport.
@@ -52,11 +58,17 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
     // Keep the status pill and its padding below both ruler and readout.
     let floor = Math.min(low, visible(status)?.top - gap || low);
     // Bottom sheets and the expanded credits are real obstacles as well.
-    for (const obstacle of [visible(details), visible(mapElement.querySelector('.maplibregl-ctrl-attrib-inner'))]) {
-      if (obstacle && obstacle.left < x + stack.width + gap && obstacle.right > x - gap && obstacle.top < floor + gap && obstacle.bottom > floor - height - gap)
+    for (const obstacle of [bottomSheet ? detail : null, visible(mapElement.querySelector('.maplibregl-ctrl-attrib-inner'))]) {
+      if (horizontalOverlap(obstacle) && obstacle.top < floor + gap && obstacle.bottom > floor - height - gap)
         floor = Math.min(floor, obstacle.top - gap);
     }
     set('--map-control-bottom', f.bottom - floor);
+    // A top-anchored desktop panel must scroll above the footer, not push the
+    // footer above its top edge. Restore the CSS bottom-sheet cap on phones.
+    if (details) {
+      const cap = desktopDetail ? `${Math.max(48, Math.min(f.height - 80, floor - height - gap - detail.top))}px` : originalDetailsHeight;
+      if (details.style.maxHeight !== cap) details.style.maxHeight = cap;
+    }
     // On narrow screens there is no side lane. Reserve the bottom controls'
     // measured height and let the expanded menu scroll above that area.
     set('--map-panel-height', narrow && menu ? Math.max(48, floor - height - gap - menu.top) : Math.max(48, bottom - (menu?.top || high) - Math.max(10, sb)));
@@ -81,6 +93,7 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
   return {update, destroy() {
     disposed = true; if (queued !== undefined) cancel(queued);
     resizer?.disconnect(); changes.disconnect(); inset.remove();
+    if (details) details.style.maxHeight = originalDetailsHeight;
     window.removeEventListener('resize', schedule);
     window.visualViewport?.removeEventListener('resize', schedule);
     window.visualViewport?.removeEventListener('scroll', schedule);
