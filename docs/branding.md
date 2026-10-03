@@ -31,7 +31,7 @@ together. Then run:
 
 ```sh
 node scripts/sync-branding.mjs
-node --test tests/branding.test.mjs
+node --test tests/branding.test.mjs tests/sw-install.test.mjs
 node scripts/sync-branding.mjs --check
 ```
 
@@ -55,17 +55,41 @@ local storage, saved drawings or user preferences. The `?rev=` URLs can fall
 back to precached plain icon aliases offline; JavaScript's separate `?v=`
 versioning remains unchanged.
 
+### Avoid an installation deadlock
+
+The service worker consumes each fetched response body before waiting for all
+shell downloads to finish. A fetch promise resolves at headers, not at the end
+of its body; waiting for every fetch before consuming any body can exhaust an
+installing worker's network slots. Keep this handling for both CDN libraries
+and application files. Reading a clone retains the original response metadata
+for the cache and rejects truncated downloads before publishing that version.
+
+`tests/sw-install.test.mjs` models a three-request limit with real streaming
+Response objects. It checks complete installation, truncated library and module
+responses, cache migration, previous-version modules and revised icons offline.
+This test exercises the worker's real event handlers; it is not an Android or
+iOS launcher test. Changing `sw.js` triggers the normal browser worker-update
+check without changing the app's identity or deleting user data.
+
 ## Existing installations
 
 An installed app's name and icon are managed by the browser and operating system,
 separately from the page's favicon. Deploying changed manifest entries and icon
 URLs makes the new branding available, but cannot force every existing shortcut
-to update immediately. Reopen the installed app online and allow its platform's
-update process to run; do not erase site data merely to refresh an icon.
+to update immediately. Reopen the installed app online; do not erase site data
+merely to refresh an icon.
 
-See Google's [manifest-update documentation](https://web.dev/articles/manifest-updates)
-for Chrome's update process and diagnostic pages. Other browsers and manually
-created home-screen shortcuts may behave differently. Test both a fresh install
+For Chrome 144 and later, Google's [January 2026 update documentation](https://developer.chrome.com/blog/improvements-to-web-app-updates)
+explains that name and significant icon changes can be held for approval through
+**Review app update** in the installed app's menu. Unchanged icon metadata and
+URLs can prevent an icon download, which is why the content revisions above
+matter. Refreshing the service worker is not the same as approving an identity
+change. The site cannot make that user decision on an existing installation.
+
+Other browsers and manually created home-screen shortcuts may behave differently.
+The older [manifest-update guide](https://web.dev/articles/manifest-updates)
+contains platform-specific diagnostic information, but its older desktop update
+rules should not override the Chrome 144 documentation. Test both a fresh install
 and an existing install on the actual target device before claiming launcher
 migration has been verified.
 
