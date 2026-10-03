@@ -87,38 +87,135 @@ try {
   await waitUntil(page,async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('context-')&&f.properties.atlas_language==='zh-Hant');});
   await waitContext('transport');await settleContext();
   console.log('PASS: Hong Kong transport, destination labels/areas, shared language, toggles and inspection');
-  // Exercise the context renderer across the world and across each major
-  // zoom band. Named-place assertions are deliberately avoided here: symbol
-  // collision and language changes may choose a different nearby label, while
-  // the invariant we need is that the globally generated context layers keep
-  // loading and placing features after repeated pan/zoom changes.
-  const contextSamples=[
-    {name:'Western Europe overview',center:[-0.4543,51.47],zoom:8,group:'transport'},
-    {name:'East Asia regional',center:[139.7798,35.5494],zoom:10,group:'transport'},
-    {name:'North America city',center:[-73.9857,40.7484],zoom:12},
-    {name:'South America city',center:[-46.6333,-23.5505],zoom:13},
-    {name:'Oceania local',center:[151.2093,-33.8688],zoom:15},
-    {name:'Southeast Asia street',center:[103.8519,1.2903],zoom:17},
+  // Discover and render every context layer from real worldwide basemap
+  // features. This is category-specific rather than merely asking whether
+  // "some context" rendered in each region. The deterministic style tests
+  // separately exercise every zoom threshold; this browser matrix proves that
+  // every generated layer can consume real provider data and render it.
+  const discoverySamples=[
+    {name:'London',center:[-0.1276,51.5072],zoom:17},
+    {name:'Paris',center:[2.3522,48.8566],zoom:17},
+    {name:'Amsterdam',center:[4.9041,52.3676],zoom:17},
+    {name:'Rome',center:[12.4964,41.9028],zoom:17},
+    {name:'Zermatt',center:[7.7491,46.0207],zoom:16},
+    {name:'Rotterdam port',center:[4.287,51.90],zoom:16},
+    {name:'Tokyo',center:[139.7671,35.6812],zoom:17},
+    {name:'Hong Kong',center:[114.1694,22.3193],zoom:17},
+    {name:'Hong Kong harbour',center:[114.1588,22.2876],zoom:17},
+    {name:'Singapore',center:[103.8519,1.2903],zoom:17},
+    {name:'Singapore port',center:[103.75,1.27],zoom:16},
+    {name:'New York',center:[-73.9857,40.7484],zoom:17},
+    {name:'San Francisco',center:[-122.4194,37.7749],zoom:17},
+    {name:'Cambridge MA',center:[-71.1167,42.3770],zoom:17},
+    {name:'Orlando theme parks',center:[-81.5639,28.3852],zoom:16},
+    {name:'São Paulo',center:[-46.6333,-23.5505],zoom:17},
+    {name:'Cape Town',center:[18.4241,-33.9249],zoom:17},
+    {name:'Sydney',center:[151.2093,-33.8688],zoom:17},
+    {name:'Heathrow',center:[-0.4543,51.47],zoom:14},
+    {name:'Haneda',center:[139.7798,35.5494],zoom:14},
+    {name:'Dubai airport',center:[55.3644,25.2532],zoom:14},
   ];
-  const sweep=[];
-  for(const sample of contextSamples){
+  const targetInfo=await evaluate(async map=>{
+    const {CONTEXT_CATEGORIES,AREA_CATEGORIES}=await import(new URL('./context.mjs',document.querySelector('script[type="module"]').src));
+    const targets=[];
+    for(const category of CONTEXT_CATEGORIES) targets.push({id:`context-${category.group}-${category.id}-label`,kind:'label'});
+    for(const area of AREA_CATEGORIES){
+      targets.push({id:`context-destinations-${area.id}-area`,kind:'area'});
+      targets.push({id:`context-destinations-${area.id}-edge`,kind:'area-edge'});
+    }
+    targets.push(
+      {id:'context-transport-grounds',kind:'transport-area'},
+      {id:'context-transport-grounds-edge',kind:'transport-area-edge'},
+      {id:'context-transport-airport-area',kind:'airport-area'},
+      {id:'context-transport-airport-runways',kind:'airport-runway'},
+      {id:'context-transport-ferry-routes',kind:'ferry-route'},
+    );
+    return {targets,categories:CONTEXT_CATEGORIES.map(c=>({id:c.id,group:c.group,zoom:c.id==='airport'?8:(c.zoom||12)})),areas:AREA_CATEGORIES};
+  });
+  const candidates=new Map();
+  for(const sample of discoverySamples){
     await evaluate((map,s)=>map.jumpTo({center:s.center,zoom:s.zoom}),sample);
-    await waitUntil(page,async sample=>{
+    await waitUntil(page,async()=>{
       const {map}=await import(document.querySelector('script[type="module"]').src);
-      if(!map.getSource('openmaptiles')||!map.isSourceLoaded('openmaptiles'))return false;
-      const features=map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('context-')&&(!sample.group||f.layer.id.startsWith('context-'+sample.group+'-')));
-      return features.length?{count:features.length,layers:[...new Set(features.map(f=>f.layer.id))].slice(0,12)}:false;
-    },sample,{timeout:120000});
-    const result=await evaluate((map,s)=>{
-      const features=map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('context-')&&(!s.group||f.layer.id.startsWith('context-'+s.group+'-')));
-      return {name:s.name,zoom:map.getZoom(),count:features.length,layers:[...new Set(features.map(f=>f.layer.id))].slice(0,12)};
+      return map.getSource('openmaptiles')&&map.isSourceLoaded('openmaptiles');
+    },undefined,{timeout:120000});
+    const found=await evaluate(async(map,sample)=>{
+      const {CONTEXT_CATEGORIES,AREA_CATEGORIES,contextCategory}=await import(new URL('./context.mjs',document.querySelector('script[type="module"]').src));
+      const styleLayers=new Map(map.getStyle().layers.map(l=>[l.id,l]));
+      const representative=geometry=>{
+        const points=[];
+        const walk=value=>{
+          if(Array.isArray(value)&&value.length>=2&&typeof value[0]==='number'&&typeof value[1]==='number')points.push(value);
+          else if(Array.isArray(value))for(const child of value)walk(child);
+        };
+        walk(geometry?.coordinates);
+        if(!points.length)return null;
+        const xs=points.map(p=>p[0]),ys=points.map(p=>p[1]);
+        return [(Math.min(...xs)+Math.max(...xs))/2,(Math.min(...ys)+Math.max(...ys))/2];
+      };
+      const add=(out,id,feature)=>{
+        if(!styleLayers.has(id))return;
+        const center=representative(feature.geometry);if(!center)return;
+        out.push({id,center,zoom:sample.zoom,sample:sample.name,sourceLayer:feature.sourceLayer||feature.layer?.['source-layer']||''});
+      };
+      const out=[];
+      for(const sourceLayer of ['poi','aerodrome_label']){
+        for(const f of map.querySourceFeatures('openmaptiles',{sourceLayer})){
+          const category=contextCategory(f.properties,sourceLayer);
+          if(category)add(out,`context-${category.group}-${category.id}-label`,{...f,sourceLayer});
+        }
+      }
+      for(const f of map.querySourceFeatures('openmaptiles',{sourceLayer:'landuse'})){
+        for(const area of AREA_CATEGORIES)if(area.values.includes(f.properties.class)){
+          add(out,`context-destinations-${area.id}-area`,{...f,sourceLayer:'landuse'});
+          add(out,`context-destinations-${area.id}-edge`,{...f,sourceLayer:'landuse'});
+        }
+        if(['bus_station','railway'].includes(f.properties.class)){
+          add(out,'context-transport-grounds',{...f,sourceLayer:'landuse'});
+          add(out,'context-transport-grounds-edge',{...f,sourceLayer:'landuse'});
+        }
+      }
+      for(const f of map.querySourceFeatures('openmaptiles',{sourceLayer:'aeroway'})){
+        if(['aerodrome','apron','terminal','runway','taxiway'].includes(f.properties.class)&&f.geometry?.type!=='LineString')
+          add(out,'context-transport-airport-area',{...f,sourceLayer:'aeroway'});
+        if(['runway','taxiway'].includes(f.properties.class)&&/LineString/.test(f.geometry?.type||''))
+          add(out,'context-transport-airport-runways',{...f,sourceLayer:'aeroway'});
+      }
+      for(const f of map.querySourceFeatures('openmaptiles',{sourceLayer:'transportation'}))
+        if(f.properties.class==='ferry')add(out,'context-transport-ferry-routes',{...f,sourceLayer:'transportation'});
+      return out;
     },sample);
-    assert.ok(result.count>0,`${sample.name}: context renders at zoom ${sample.zoom}`);
-    sweep.push(result);
+    for(const item of found)if(!candidates.has(item.id))candidates.set(item.id,item);
+    if(candidates.size===targetInfo.targets.length)break;
   }
-  console.log('PASS: context survives world/zoom sweep',JSON.stringify(sweep));
-  await settleContext();
-  await screenshot('world-sweep');
+  const missingTargets=targetInfo.targets.map(t=>t.id).filter(id=>!candidates.has(id));
+  console.log('CONTEXT_DISCOVERY',JSON.stringify({found:[...candidates.values()],missing:missingTargets}));
+  assert.deepEqual(missingTargets,[],'real worldwide samples supply every generated context layer');
+
+  // Centre each real source feature and force only collision-overlap options on
+  // the target layer, so this checks data/filter/render integration rather than
+  // failing because another label won a collision in that particular frame.
+  const renderedMatrix=[];
+  for(const target of targetInfo.targets){
+    const candidate=candidates.get(target.id);
+    await evaluate((map,item)=>{
+      map.jumpTo({center:item.center,zoom:item.zoom});
+      const layer=map.getStyle().layers.find(l=>l.id===item.id);
+      if(layer?.type==='symbol'){
+        map.setLayoutProperty(item.id,'icon-allow-overlap',true);
+        map.setLayoutProperty(item.id,'text-allow-overlap',true);
+      }
+    },{...candidate,id:target.id});
+    await waitUntil(page,async item=>{
+      const {map}=await import(document.querySelector('script[type="module"]').src);
+      return map.getSource('openmaptiles')&&map.isSourceLoaded('openmaptiles')&&map.queryRenderedFeatures({layers:[item.id]}).length>0;
+    },{id:target.id},{timeout:120000});
+    const result=await evaluate((map,item)=>({id:item.id,zoom:map.getZoom(),count:map.queryRenderedFeatures({layers:[item.id]}).length}),{id:target.id});
+    assert.ok(result.count>0,`${target.id} renders real provider data`);
+    renderedMatrix.push({...result,sample:candidate.sample});
+  }
+  console.log('PASS: every context layer renders real worldwide provider data',JSON.stringify(renderedMatrix));
+  await screenshot('category-matrix');
   assert.deepEqual(errors,[]);
 } catch(error) {
   console.log('CONTEXT_FAILURE',await evaluate(map=>({zoom:map.getZoom(),layers:Object.keys(map.getStyle().sources),poi:map.querySourceFeatures('openmaptiles',{sourceLayer:'poi'}).slice(0,25).map(f=>f.properties),rendered:map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('context-')).slice(0,20).map(f=>({layer:f.layer.id,p:f.properties}))})).catch(e=>String(e)));
