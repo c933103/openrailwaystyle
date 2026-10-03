@@ -2,7 +2,7 @@
   "version": 8,
   "name": "Railway Atlas — world",
   "metadata": {
-    "description": "Railway Atlas: a worldwide railway map with prominent stations and infrastructure",
+    "description": "Worldwide railway atlas with independent cartography and multiple data providers",
     "openrailwaystyle:rail-data": "https://openrailwaymap.app"
   },
   "glyphs": "https://tuiles.enliberte.fr/fonts/{fontstack}/{range}.pbf",
@@ -5893,6 +5893,19 @@
       "type": "background",
       "paint": {
         "background-color": "#f2f1e9"
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "background",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -5904,6 +5917,19 @@
       },
       "paint": {
         "raster-fade-duration": 150
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "background",
+        "atlas:category": "carto",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": "carto",
+        "atlas:localize": false
       }
     },
     {
@@ -5915,6 +5941,19 @@
       },
       "paint": {
         "raster-fade-duration": 150
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "background",
+        "atlas:category": "satellite",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": "satellite",
+        "atlas:localize": false
       }
     },
     {
@@ -5944,6 +5983,19 @@
       "paint": {
         "fill-color": "hsl(47, 13%, 86%)",
         "fill-opacity": 0.7
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "landuse",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -5970,6 +6022,19 @@
             ]
           ]
         }
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "landcover",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -5997,6 +6062,19 @@
             ]
           ]
         }
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "landcover",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6027,6 +6105,19 @@
       },
       "paint": {
         "fill-color": "#bfd8e0"
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "water",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6053,6 +6144,19 @@
       "paint": {
         "fill-color": "hsl(205, 56%, 73%)",
         "fill-opacity": 0.7
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "water",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6071,12 +6175,37 @@
       "paint": {
         "fill-color": "hsl(47, 26%, 88%)",
         "fill-opacity": 0.8
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "landcover",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
       "id": "landcover_sand",
       "type": "fill",
-      "metadata": {},
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "landcover",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
+      },
       "source": "openmaptiles",
       "source-layer": "landcover",
       "filter": [
@@ -6108,6 +6237,19 @@
       },
       "paint": {
         "fill-color": "#eae0d0"
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "landuse",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6135,6 +6277,19 @@
             ]
           ]
         }
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "landcover",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6148,6 +6303,21 @@
         "hillshade-accent-color": "#738978",
         "hillshade-illumination-anchor": "map",
         "hillshade-illumination-direction": 315
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "terrain",
+        "atlas:category": "hillshade",
+        "atlas:views": [],
+        "atlas:settings": [
+          "relief"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": true,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6176,6 +6346,21 @@
       "paint": {
         "fill-color": "#937ca2",
         "fill-opacity": 0.12
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6203,6 +6388,21 @@
       "paint": {
         "fill-color": "#bf985c",
         "fill-opacity": 0.12
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6230,6 +6430,21 @@
       "paint": {
         "fill-color": "#c18188",
         "fill-opacity": 0.12
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6261,6 +6476,21 @@
       "paint": {
         "fill-color": "#909ec5",
         "fill-opacity": 0.12
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6291,6 +6521,21 @@
       "paint": {
         "fill-color": "#a1ad73",
         "fill-opacity": 0.12
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6319,6 +6564,21 @@
       "paint": {
         "fill-color": "#6ca6a8",
         "fill-opacity": 0.2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "transport",
+        "atlas:views": [],
+        "atlas:settings": [
+          "transport"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6360,6 +6620,21 @@
       "paint": {
         "fill-color": "#929bc2",
         "fill-opacity": 0.25
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "transport",
+        "atlas:views": [],
+        "atlas:settings": [
+          "transport"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6425,6 +6700,21 @@
       "paint": {
         "fill-color": "#59845b",
         "fill-opacity": 0.1
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6465,6 +6755,21 @@
       "paint": {
         "fill-color": "#956837",
         "fill-opacity": 0.1
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6502,6 +6807,21 @@
       "paint": {
         "fill-color": "#91689b",
         "fill-opacity": 0.045
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6539,6 +6859,21 @@
       "paint": {
         "fill-color": "#91689b",
         "fill-opacity": 0.045
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6576,6 +6911,21 @@
       "paint": {
         "fill-color": "#b36765",
         "fill-opacity": 0.1
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6614,6 +6964,21 @@
       "paint": {
         "fill-color": "#968575",
         "fill-opacity": 0.1
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6639,6 +7004,19 @@
           17,
           0.34
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "building",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6663,6 +7041,19 @@
           18,
           0.22
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "building",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6692,6 +7083,21 @@
         "line-color": "#937ca2",
         "line-width": 0.65,
         "line-opacity": 0.35
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6720,6 +7126,21 @@
         "line-color": "#bf985c",
         "line-width": 0.65,
         "line-opacity": 0.35
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6748,6 +7169,21 @@
         "line-color": "#c18188",
         "line-width": 0.65,
         "line-opacity": 0.35
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6780,6 +7216,21 @@
         "line-color": "#909ec5",
         "line-width": 0.65,
         "line-opacity": 0.35
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6811,6 +7262,21 @@
         "line-color": "#a1ad73",
         "line-width": 0.65,
         "line-opacity": 0.35
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6840,6 +7306,21 @@
         "line-color": "#4d8d91",
         "line-width": 1,
         "line-opacity": 0.65
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "transport",
+        "atlas:views": [],
+        "atlas:settings": [
+          "transport"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6960,6 +7441,21 @@
           ]
         ],
         "line-opacity": 0.85
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "transport",
+        "atlas:views": [],
+        "atlas:settings": [
+          "transport"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -6992,6 +7488,21 @@
           4,
           3
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "transport",
+        "atlas:views": [],
+        "atlas:settings": [
+          "transport"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -7074,6 +7585,21 @@
           6,
           2
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -7131,6 +7657,21 @@
           6,
           2
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -7187,6 +7728,21 @@
           1,
           2
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -7243,6 +7799,21 @@
           1,
           2
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -7297,6 +7868,21 @@
           2,
           2
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -7352,6 +7938,21 @@
           6,
           2
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -7432,6 +8033,21 @@
           12,
           0.65
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "terrain",
+        "atlas:category": "line",
+        "atlas:views": [],
+        "atlas:settings": [
+          "relief"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": true,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -7513,6 +8129,21 @@
           12,
           0.65
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "terrain",
+        "atlas:category": "line",
+        "atlas:views": [],
+        "atlas:settings": [
+          "relief"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": true,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -7572,6 +8203,21 @@
           12,
           0.65
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "terrain",
+        "atlas:category": "line",
+        "atlas:views": [],
+        "atlas:settings": [
+          "relief"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": true,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -7627,6 +8273,19 @@
             ]
           ]
         }
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "waterway",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -7673,6 +8332,19 @@
             ]
           ]
         }
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "waterway",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -7722,6 +8394,19 @@
             ]
           ]
         }
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "waterway",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -7774,6 +8459,19 @@
             ]
           ]
         }
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "waterway",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -7813,6 +8511,19 @@
             ]
           ]
         }
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "waterway",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -7851,6 +8562,19 @@
           3,
           3
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "boundary",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -7901,6 +8625,19 @@
           12,
           2.3
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "boundary",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -7946,6 +8683,19 @@
           12,
           2.3
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "boundary",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -7965,6 +8715,19 @@
         "line-color": "hsl(82, 46%, 72%)",
         "line-blur": 25,
         "line-width": 5
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "landcover",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -8000,6 +8763,19 @@
           12,
           3.4
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "boundary",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -8039,6 +8815,19 @@
           5,
           2
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "boundary",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -8120,6 +8909,21 @@
         ],
         "text-halo-color": "#f2f1e9",
         "text-halo-width": 1
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "terrain",
+        "atlas:category": "symbol",
+        "atlas:views": [],
+        "atlas:settings": [
+          "relief"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": true,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -8202,6 +9006,21 @@
         ],
         "text-halo-color": "#f2f1e9",
         "text-halo-width": 1
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "terrain",
+        "atlas:category": "symbol",
+        "atlas:views": [],
+        "atlas:settings": [
+          "relief"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": true,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -8265,6 +9084,21 @@
         ],
         "text-halo-color": "#f2f1e9",
         "text-halo-width": 1
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "terrain",
+        "atlas:category": "symbol",
+        "atlas:views": [],
+        "atlas:settings": [
+          "relief"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": true,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -8383,6 +9217,21 @@
           20,
           7
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -8444,6 +9293,19 @@
           0.4,
           0.8
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "transportation",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -8503,6 +9365,19 @@
           0.4,
           0.8
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "transportation",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -8564,6 +9439,19 @@
           0.4,
           0.8
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "transportation",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -8620,6 +9508,19 @@
           0.4,
           0.8
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "transportation",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -8683,6 +9584,19 @@
           2
         ],
         "line-opacity": 0.85
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "transportation",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -8751,6 +9665,19 @@
           2
         ],
         "line-opacity": 0.85
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "transportation",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -8811,6 +9738,19 @@
           1,
           2
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "transportation",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -8929,6 +9869,21 @@
           20,
           7
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "standard_railway_line_low",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -9033,6 +9988,19 @@
           18,
           12
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -9137,6 +10105,19 @@
           18,
           10
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -9192,6 +10173,19 @@
           18,
           12
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -9247,6 +10241,19 @@
           18,
           10
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -9276,6 +10283,21 @@
           14
         ],
         "line-opacity": 0.65
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "street_running",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -9464,6 +10486,21 @@
           7
         ],
         "line-opacity": 1
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -9611,6 +10648,21 @@
           7
         ],
         "line-opacity": 1
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -9719,6 +10771,21 @@
           20,
           7
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "speed"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -9827,6 +10894,21 @@
           20,
           7
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "speed_railway_line_low",
+        "atlas:views": [
+          "speed"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -10017,6 +11099,21 @@
           0.65,
           1
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [
+          "speed"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -10166,6 +11263,21 @@
           0.65,
           1
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "speed"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -10580,6 +11692,21 @@
           20,
           7
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -10994,6 +12121,21 @@
           20,
           7
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "electrification_railway_line_low",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -11490,6 +12632,21 @@
           0.65,
           1
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -11945,6 +13102,21 @@
           0.65,
           1
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -12126,6 +13298,21 @@
           20,
           7
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "control"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -12307,6 +13494,21 @@
           20,
           7
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "signals_railway_line_low",
+        "atlas:views": [
+          "control"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -12570,6 +13772,21 @@
           0.65,
           1
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [
+          "control"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -12792,6 +14009,21 @@
           0.65,
           1
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "control"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -13018,6 +14250,21 @@
             0
           ]
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "gauge"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -13260,6 +14507,21 @@
             0
           ]
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "gauge"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -13401,6 +14663,21 @@
           20,
           7
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "track_railway_line_low",
+        "atlas:views": [
+          "gauge"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -13873,6 +15150,21 @@
             0
           ]
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [
+          "gauge"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -14304,6 +15596,21 @@
             0
           ]
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "gauge"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -15264,6 +16571,21 @@
           20,
           7
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "loading"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -16224,6 +17546,21 @@
           20,
           7
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "standard_railway_line_low",
+        "atlas:views": [
+          "loading"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -17266,6 +18603,21 @@
           0.65,
           1
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [
+          "loading"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -18267,6 +19619,21 @@
           0.65,
           1
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "loading"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -18380,6 +19747,21 @@
           20,
           7
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "axle"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -18493,6 +19875,21 @@
           20,
           7
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "standard_railway_line_low",
+        "atlas:views": [
+          "axle"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -18688,6 +20085,21 @@
           0.65,
           1
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [
+          "axle"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -18842,6 +20254,21 @@
           0.65,
           1
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "axle"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -18909,6 +20336,21 @@
           20,
           7
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "owner"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -18976,6 +20418,21 @@
           20,
           7
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "operator_railway_line_low",
+        "atlas:views": [
+          "owner"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -19125,6 +20582,21 @@
           0.65,
           1
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [
+          "owner"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -19233,6 +20705,21 @@
           0.65,
           1
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "owner"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -19293,6 +20780,21 @@
           20,
           7
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "service"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -19353,6 +20855,21 @@
           20,
           7
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "standard_railway_line_low",
+        "atlas:views": [
+          "service"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -19495,6 +21012,21 @@
           0.65,
           1
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [
+          "service"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -19596,6 +21128,21 @@
           0.65,
           1
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "service"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -19964,6 +21511,21 @@
           0.65,
           1
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [
+          "gauge"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -20099,6 +21661,21 @@
           ]
         ],
         "line-opacity": 1
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "service_routes",
+        "atlas:views": [
+          "service"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -20207,6 +21784,19 @@
           3,
           2
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -20526,7 +22116,22 @@
           1
         ]
       },
-      "maxzoom": 10
+      "maxzoom": 10,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [
+          "gauge"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
+      }
     },
     {
       "type": "line",
@@ -20585,6 +22190,19 @@
           3,
           2
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "branch_lines",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -20670,6 +22288,21 @@
           20,
           8.5
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "lifecycle",
+        "atlas:category": "lifecycle",
+        "atlas:views": [],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -20755,6 +22388,21 @@
           20,
           6.2
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "lifecycle",
+        "atlas:category": "lifecycle",
+        "atlas:views": [],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -20820,6 +22468,21 @@
           20,
           8.5
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "lifecycle",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -20885,6 +22548,21 @@
           20,
           6.2
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "lifecycle",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -21124,6 +22802,21 @@
           0.4,
           0.75
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "lifecycle",
+        "atlas:category": "lifecycle",
+        "atlas:views": [],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -21304,6 +22997,21 @@
           0.4,
           0.75
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "lifecycle",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -21533,6 +23241,21 @@
           0.4,
           0.95
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "lifecycle",
+        "atlas:category": "lifecycle",
+        "atlas:views": [],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -21703,6 +23426,21 @@
           0.4,
           0.95
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "lifecycle",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -21930,6 +23668,21 @@
           0.4,
           0.95
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "lifecycle",
+        "atlas:category": "lifecycle",
+        "atlas:views": [],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -22098,6 +23851,21 @@
           0.4,
           0.95
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "lifecycle",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -22325,6 +24093,21 @@
           0.4,
           0.95
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "lifecycle",
+        "atlas:category": "lifecycle",
+        "atlas:views": [],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -22493,6 +24276,21 @@
           0.4,
           0.95
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "lifecycle",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [],
+        "atlas:settings": [
+          "inactive"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -22587,6 +24385,23 @@
         "text-color": "#26363d",
         "text-halo-color": "#ffffff",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [
+          "speed"
+        ],
+        "atlas:settings": [
+          "labels"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -22964,6 +24779,23 @@
         "text-color": "#26363d",
         "text-halo-color": "#ffffff",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [
+          "electrification"
+        ],
+        "atlas:settings": [
+          "labels"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -23453,6 +25285,23 @@
         "text-color": "#26363d",
         "text-halo-color": "#ffffff",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [
+          "control"
+        ],
+        "atlas:settings": [
+          "labels"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -23580,6 +25429,23 @@
         "text-color": "#26363d",
         "text-halo-color": "#ffffff",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [
+          "gauge"
+        ],
+        "atlas:settings": [
+          "labels"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -24424,6 +26290,23 @@
         "text-color": "#26363d",
         "text-halo-color": "#ffffff",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [
+          "loading"
+        ],
+        "atlas:settings": [
+          "labels"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -24604,6 +26487,23 @@
         "text-color": "#26363d",
         "text-halo-color": "#ffffff",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [
+          "axle"
+        ],
+        "atlas:settings": [
+          "labels"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -24699,6 +26599,23 @@
         "text-color": "#26363d",
         "text-halo-color": "#ffffff",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railway_line_high",
+        "atlas:views": [
+          "owner"
+        ],
+        "atlas:settings": [
+          "labels"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -24717,6 +26634,21 @@
       "paint": {
         "fill-color": "#cad6d1",
         "fill-opacity": 0.55
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "platforms",
+        "atlas:category": "geometry",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -24740,6 +26672,21 @@
       "paint": {
         "line-color": "#879e96",
         "line-width": 1
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "platforms",
+        "atlas:category": "geometry",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -24760,6 +26707,21 @@
         "circle-radius": 3,
         "circle-stroke-color": "#527987",
         "circle-stroke-width": 1
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "platforms",
+        "atlas:category": "geometry",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -24771,6 +26733,21 @@
       "paint": {
         "line-color": "#527987",
         "line-width": 1.5
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "platforms",
+        "atlas:category": "geometry",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -24794,6 +26771,23 @@
         "text-color": "#214b5b",
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "platforms",
+        "atlas:category": "references",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [
+          "labels"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -24890,6 +26884,23 @@
         "text-color": "#214b5b",
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "platforms",
+        "atlas:category": "references",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [
+          "labels"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -24921,6 +26932,21 @@
         "circle-radius": 3,
         "circle-stroke-color": "#fffef8",
         "circle-stroke-width": 1.5
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "geometry",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       },
       "layout": {
         "visibility": "none"
@@ -24980,6 +27006,23 @@
         "text-color": "#765484",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.5
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "references",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [
+          "labels"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -25000,6 +27043,21 @@
         "circle-radius": 4,
         "circle-stroke-color": "#fffef8",
         "circle-stroke-width": 1.5
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "geometry",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       },
       "layout": {
         "visibility": "none"
@@ -25044,6 +27102,23 @@
         "text-color": "#167a78",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.5
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "references",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [
+          "labels"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -25100,6 +27175,22 @@
           17,
           4.5
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "former",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations",
+          "inactive"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -25444,6 +27535,21 @@
             ]
           ]
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -25491,6 +27597,19 @@
         "text-halo-blur": 0,
         "text-halo-color": "hsla(0, 0%, 100%, 0.75)",
         "text-halo-width": 1
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "place",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -25555,6 +27674,19 @@
             ]
           ]
         }
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "place",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -25627,6 +27759,19 @@
           10,
           0
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "place",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -25688,6 +27833,21 @@
           0.8
         ],
         "circle-opacity": 0.9
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "level_crossings",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -25749,6 +27909,21 @@
           0.8
         ],
         "circle-opacity": 0.9
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "level_crossings",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -25793,6 +27968,21 @@
         "icon-halo-color": "#fffef8",
         "icon-halo-width": 1.2,
         "icon-opacity": 0.95
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "level_crossings",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -25823,6 +28013,21 @@
         "text-color": "#63332c",
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "points_of_interest",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -25984,6 +28189,19 @@
         "text-color": "#827e74",
         "text-halo-color": "#f5f3eb",
         "text-halo-width": 1.4
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "transportation_name",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -26168,6 +28386,21 @@
         "text-color": "#59845b",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.5
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -26327,6 +28560,21 @@
         "text-color": "#956837",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.5
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -26483,6 +28731,21 @@
         "text-color": "#91689b",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.5
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -26639,6 +28902,21 @@
         "text-color": "#91689b",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.5
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -26795,6 +29073,21 @@
         "text-color": "#b36765",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.5
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -26952,6 +29245,21 @@
         "text-color": "#968575",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.5
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -27167,6 +29475,21 @@
         "text-color": "#89705c",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.8
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -27371,6 +29694,21 @@
         "text-color": "#956837",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.8
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -27573,6 +29911,21 @@
         "text-halo-width": 1,
         "icon-opacity": 0.7,
         "text-opacity": 0.85
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -27776,6 +30129,21 @@
         "text-halo-width": 1,
         "icon-opacity": 0.7,
         "text-opacity": 0.85
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -27979,6 +30347,21 @@
         "text-halo-width": 1,
         "icon-opacity": 0.7,
         "text-opacity": 0.85
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -28183,6 +30566,21 @@
         "text-halo-width": 1,
         "icon-opacity": 0.7,
         "text-opacity": 0.85
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -28386,6 +30784,21 @@
         "text-halo-width": 1,
         "icon-opacity": 0.7,
         "text-opacity": 0.85
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -28592,6 +31005,21 @@
         "text-halo-width": 1,
         "icon-opacity": 0.7,
         "text-opacity": 0.85
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -28797,6 +31225,21 @@
         "text-halo-width": 1,
         "icon-opacity": 0.7,
         "text-opacity": 0.85
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -29004,6 +31447,21 @@
         "text-halo-width": 1,
         "icon-opacity": 0.7,
         "text-opacity": 0.85
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -29213,6 +31671,21 @@
         "text-halo-width": 1,
         "icon-opacity": 0.7,
         "text-opacity": 0.85
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "destinations",
+        "atlas:views": [],
+        "atlas:settings": [
+          "destinations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -29411,6 +31884,21 @@
         "text-color": "#54886d",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.8
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "transport",
+        "atlas:views": [],
+        "atlas:settings": [
+          "transport"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -29609,6 +32097,21 @@
         "text-color": "#438487",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.8
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "transport",
+        "atlas:views": [],
+        "atlas:settings": [
+          "transport"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -29807,6 +32310,21 @@
         "text-color": "#927326",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.8
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "transport",
+        "atlas:views": [],
+        "atlas:settings": [
+          "transport"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -30005,6 +32523,21 @@
         "text-color": "#54886d",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.8
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "transport",
+        "atlas:views": [],
+        "atlas:settings": [
+          "transport"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -30241,6 +32774,21 @@
         "text-color": "#52639a",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.8
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "transport",
+        "atlas:views": [],
+        "atlas:settings": [
+          "transport"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -30439,6 +32987,21 @@
         "text-color": "#007b83",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.8
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "transport",
+        "atlas:views": [],
+        "atlas:settings": [
+          "transport"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -30637,6 +33200,21 @@
         "text-color": "#007b83",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.8
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "transport",
+        "atlas:views": [],
+        "atlas:settings": [
+          "transport"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -30831,6 +33409,21 @@
         "text-color": "#007b83",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.8
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "transport",
+        "atlas:views": [],
+        "atlas:settings": [
+          "transport"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -31033,6 +33626,21 @@
         "text-color": "#397a8f",
         "text-halo-color": "#fffef8",
         "text-halo-width": 1.8
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "transport",
+        "atlas:views": [],
+        "atlas:settings": [
+          "transport"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -32208,6 +34816,23 @@
         "text-color": "#1c2b33",
         "text-halo-color": "#ffffff",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "names",
+        "atlas:views": [
+          "service"
+        ],
+        "atlas:settings": [
+          "names"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -32429,6 +35054,21 @@
         "text-color": "#4a453f",
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "names",
+        "atlas:views": [],
+        "atlas:settings": [
+          "names"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -32628,6 +35268,22 @@
         "text-color": "#4a453f",
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "lifecycle",
+        "atlas:category": "names",
+        "atlas:views": [],
+        "atlas:settings": [
+          "names",
+          "inactive"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -32810,6 +35466,22 @@
         "text-color": "#4a453f",
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "lifecycle",
+        "atlas:category": "names",
+        "atlas:views": [],
+        "atlas:settings": [
+          "names",
+          "inactive"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -32918,6 +35590,23 @@
           "#4b626a",
           "#173e47"
         ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "atlas_track_counts",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [
+          "trackCounts"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -32977,6 +35666,23 @@
       },
       "paint": {
         "text-color": "#7a4a08"
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "atlas_track_counts",
+        "atlas:views": [
+          "infrastructure"
+        ],
+        "atlas:settings": [
+          "trackCounts"
+        ],
+        "atlas:initial-hidden": true,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
       }
     },
     {
@@ -34229,6 +36935,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -35499,6 +38220,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -36153,6 +38889,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -37387,6 +40138,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -38639,6 +41405,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -39275,6 +42056,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -40509,6 +43305,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -41761,6 +44572,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -42397,6 +45223,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -43669,6 +46510,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -44959,6 +47815,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -45633,6 +48504,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -46922,6 +49808,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -48229,6 +51130,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -48920,6 +51836,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -50201,6 +53132,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -51500,6 +54446,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -52183,6 +55144,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -53464,6 +56440,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -54763,6 +57754,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -55446,6 +58452,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -55784,6 +58805,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -56122,6 +59158,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -56460,6 +59511,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -56798,6 +59864,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -57066,6 +60147,22 @@
         "text-color": "#8a8076",
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "former",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations",
+          "inactive"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -57612,6 +60709,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -58140,6 +61252,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -58668,6 +61795,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -59234,6 +62376,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -59817,6 +62974,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -60392,6 +63564,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -60967,6 +64154,21 @@
         ],
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
       }
     },
     {
@@ -61034,7 +64236,20 @@
           0
         ]
       },
-      "minzoom": 1
+      "minzoom": 1,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "place",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
+      }
     },
     {
       "id": "country_label",
@@ -61112,7 +64327,20 @@
           0
         ]
       },
-      "minzoom": 1
+      "minzoom": 1,
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "basemap",
+        "atlas:category": "place",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
+      }
     }
   ]
 }

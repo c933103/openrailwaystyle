@@ -113,7 +113,9 @@ class RemoteZip:
         self.url, self.max_bytes = url, max_bytes
         self.full, self.identity = None, None
         with get(url, {'Range': 'bytes=-65557'}) as response:
-            self.identity = response.headers.get('ETag') or response.headers.get('Last-Modified')
+            self.etag=response.headers.get('ETag')
+            self.last_modified=response.headers.get('Last-Modified')
+            self.identity = self.etag or self.last_modified
             content_range = response.headers.get('Content-Range', '')
             if response.status != 206:
                 self.full = self.read_bounded(response)
@@ -233,7 +235,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
     # Download with conditional revalidation. A cached successful ZIP is still
     # used only after a successful response/304, never after a failed refresh.
     meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
-    headers = {'If-None-Match': meta['etag']} if meta.get('etag') else {}
+    headers = {'If-None-Match': meta['etag']} if meta.get('etag') else {'If-Modified-Since':meta['last_modified']} if meta.get('last_modified') else {}
     fresh = False
     if path.exists() and headers:
         try:
@@ -241,7 +243,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
                 data = RemoteZip.read_bounded(type('Budget', (), {'max_bytes': max_bytes})(), response)
                 path.write_bytes(data)
                 del data
-                meta = {'etag': response.headers.get('ETag'), 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
+                meta = {'etag': response.headers.get('ETag'), 'last_modified':response.headers.get('Last-Modified'), 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
                 fresh = True
         except HTTPError as error:
             if error.code != 304:
@@ -254,7 +256,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
             (output/'feeds'/(ident+'.json.gz')).unlink(missing_ok=True)
             return {**entry, 'status': 'no_rail', 'rail_routes': 0}
         path.write_bytes(remote.download())
-        meta = {'etag': remote.identity, 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
+        meta = {'etag': remote.etag, 'last_modified':remote.last_modified, 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
         del remote
     # Reinspect changed conditional 200 responses and cached 304 revisions.
     with zipfile.ZipFile(path) as archive:

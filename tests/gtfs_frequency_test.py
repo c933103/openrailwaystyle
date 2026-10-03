@@ -91,6 +91,37 @@ class GTFSFrequency(unittest.TestCase):
         self.assertGreater(routes['current']['valid_until'],now)
         self.assertEqual(result['source']['calendar_audit']['routes_beyond_service_horizon'],['old'])
 
+    def test_canonical_route_preserves_expired_branch_and_current_branch_validity(self):
+        patterns={'old':[('A','08:00:00'),('B','08:10:00')],'current':[('B','08:00:00'),('C','08:10:00')]}
+        path=self.feed(patterns,patterns)
+        with zipfile.ZipFile(path) as z:files={n:z.read(n) for n in z.namelist() if n!='feed_info.txt'}
+        files['calendar.txt']=files['calendar.txt'].replace(b'20261231',b'20261002')+b'NEW,1,1,1,1,1,1,1,20260101,20261231\n'
+        files['routes.txt']=b'route_id,route_type,agency_id,route_short_name\na,2,A,R\nz,2,A,R\n'
+        files['trips.txt']=b'trip_id,route_id,service_id\nold,a,W\ncurrent,z,NEW\n'
+        with zipfile.ZipFile(path,'w') as z:
+            for name,data in files.items():z.writestr(name,data)
+        result=compiler.compile_feed(path,{**CONFIG,'canonical_routes':True},'2026-10-05')
+        self.assertEqual(len(result['routes']),1)
+        self.assertEqual(result['routes'][0]['source_route_ids'],['a','z'])
+        now=compiler.local_boundary(compiler.dt.date(2026,10,5),'00:00:00',compiler.ZoneInfo('Europe/Helsinki'))
+        segments={tuple(s['stops']):s for s in result['segments']}
+        self.assertIsNone(segments[('A','B')]['profiles']['am']['display_tph'])
+        self.assertLess(segments[('A','B')]['valid_until'],now)
+        self.assertEqual(segments[('B','C')]['profiles']['am']['display_tph'],.5)
+        self.assertGreater(segments[('B','C')]['valid_until'],now)
+        self.assertGreater(result['routes'][0]['valid_until'],now)
+        # The same protection applies to variants already using one route ID.
+        files['routes.txt']=b'route_id,route_type,agency_id,route_short_name\na,2,A,R\n'
+        files['trips.txt']=b'trip_id,route_id,service_id\nold,a,W\ncurrent,a,NEW\n'
+        with zipfile.ZipFile(path,'w') as z:
+            for name,data in files.items():z.writestr(name,data)
+        result=compiler.compile_feed(path,{**CONFIG,'canonical_routes':True},'2026-10-05')
+        segments={tuple(s['stops']):s for s in result['segments']}
+        self.assertIsNone(segments[('A','B')]['profiles']['am']['display_tph'])
+        self.assertLess(segments[('A','B')]['valid_until'],now)
+        self.assertEqual(segments[('B','C')]['profiles']['am']['display_tph'],.5)
+        self.assertGreater(segments[('B','C')]['valid_until'],now)
+
     def test_shape_snap_distances_are_local_even_with_unrelated_latitudes(self):
         spec=importlib.util.spec_from_file_location('shape_paths',Path(__file__).parent.parent/'scripts/gtfs-shapes.py')
         shapes=importlib.util.module_from_spec(spec);spec.loader.exec_module(shapes)

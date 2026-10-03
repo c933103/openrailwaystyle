@@ -4,6 +4,25 @@
 
 For loading gauge view, see the [dimension reference and sources](loading-gauges.md).
 
+## Style and source architecture
+
+Railway Atlas owns the MapLibre style; data providers supply geometry and attributes. `scripts/build-style.mjs` prepares curated station data and calls `scripts/style/compose-style.mjs`. The composition declares the complete bottom-to-top rendering order, including label placement priority, without copying or editing an upstream style.
+
+| Component | Definition | Role |
+| --- | --- | --- |
+| Basemap | `scripts/style/sources/basemap.mjs` | En Liberté OpenMapTiles-compatible vector geometry and glyphs |
+| Railway detail | `scripts/style/sources/railway.mjs` | Shared logical ORM datasets and separate transformed source variants |
+| Atlas data | `scripts/style/sources/atlas.mjs` | Published snapshots, curated stations and derived annotations |
+| Terrain and imagery | `scripts/style/sources/terrain.mjs` | DEM, contours, satellite and Carto providers |
+| Cartography | `scripts/style/layers/` | Atlas-owned land, water, boundaries, terrain, rail views, stations and infrastructure |
+| Composition | `scripts/style/compose-style.mjs` | Ordered stack, initial defaults and source-contract enforcement |
+
+`source-contract.mjs` declares the vector source layers and attribute names consumed by the style after adapters enrich them. The build rejects undeclared dependencies. Attributes may be absent on individual features, and this static check does not establish provider availability or completeness. Changing to another OpenMapTiles-compatible provider requires confirming the actual schema and coverage as well as updating its URL and attribution.
+
+Layer metadata declares groups, view restrictions, setting requirements, background suppression and whether text can be localized. The application reads those declarations; a compatibility adapter handles previously cached styles without metadata. Separate owner, axle-load and loading-gauge sources retain their independent loading and shared byte-cache behavior.
+
+The migration regression manifest in `tests/fixtures/style-composition-baseline.json` records ordered layer hashes, source hashes and root rendering settings. Changes to paint, filters, zoom limits, label placement, embedded station data or ordering require deliberate review and baseline updates; `atlas:*` metadata and the project description are excluded. Browser checks complement this definition-level comparison with actual rendering. The initial refactor preserves the reviewed Infrastructure integration's cartography.
+
 ## Speed and units
 
 Maximum-speed colouring uses eight bands plus an explicit unknown category.

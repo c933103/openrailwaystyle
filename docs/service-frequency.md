@@ -110,6 +110,9 @@ A reference beyond every retained rail calendar's horizon fails explicitly
 instead of becoming a future zero-frequency profile. Unrelated bus calendars
 and feed-wide metadata cannot extend that horizon. Within a current feed,
 expired rail routes remain unknown and are listed in the calendar audit.
+Constituent service-calendar validity is retained before route IDs consolidate.
+Each path keeps the earliest expiry of its contributing trip patterns, so a
+current branch cannot refresh an expired branch, even within one route ID.
 Multi-day departures extending the final service day are included in that
 horizon and expiry calculation.
 

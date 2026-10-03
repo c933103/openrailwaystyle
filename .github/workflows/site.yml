@@ -154,7 +154,7 @@ jobs:
         run: node scripts/check-map-browser.mjs
       - name: Verify platform length labels and main Units selector
         run: node scripts/check-platform-browser.mjs
-      - name: Verify infrastructure platforms, signals and entrances
+      - name: Verify platform references, signals and entrances
         run: node scripts/check-infrastructure-browser.mjs
       - name: Verify served build information on desktop and touch
         run: node scripts/check-build-browser.mjs
