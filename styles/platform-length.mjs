@@ -5,8 +5,11 @@ export const PLATFORM_API='https://openrailwaymap.app/api/feature/openrailwaymap
 export function formatPlatformLength(metres,units='metric') {if(!(metres>0&&Number.isFinite(metres)))return '';return `${Math.round(units==='imperial'?metres/0.3048:metres)} ${units==='imperial'?'ft':'m'}`;}
 export function platformLengthLabel(units='metric') {
  const length=['concat',['to-string',['round',['*',['get','platform_length'],units==='imperial'?1/0.3048:1]]],units==='imperial'?' ft':' m'];
- return ['concat',['case',['!=',['coalesce',['get','ref'],''],''],['concat',['to-string',['get','ref']],' · '],''],length];
+ const hasLength=['>',['to-number',['get','platform_length'],0],0],ref=['coalesce',['get','ref'],''];
+ return ['concat',ref,['case',['all',['!=',ref,''],hasLength],' · ',''],['case',hasLength,length,'']];
 }
+export function platformReference(value) {return (Array.isArray(value)?value:[value]).filter(v=>typeof v==='string'||typeof v==='number'&&Number.isFinite(v)).flatMap(v=>String(v).split(';')).map(v=>v.trim()).filter(Boolean).join(' / ');}
+export function platformObjectIdentity(feature) {const match=/^(node|way|relation)-([1-9]\d*)$/.exec(String(feature.properties?.id??feature.id??''));return match?{key:match[0],type:match[1],id:match[2]}:null;}
 export function platformIdentity(feature){const p=feature.properties||{},value=p.id??feature.id;const m=/^(?:way-)?(\d+)$/.exec(String(value??''));return m&&Number(m[1])>0?m[1]:null;}
 // Anchor at the midpoint of the longest loaded piece; the API supplies the
 // full length independently of that visible/clipped piece.
@@ -19,29 +22,83 @@ export function platformAnchor(feature){
  const best=longestPlatformLine(feature);if(!best)return null;const {line,lens,total}=best;let half=total/2;
  for(let i=0;i<lens.length;i++){if(half<=lens[i]){const t=lens[i]?half/lens[i]:0;return line[i].map((v,j)=>v+(line[i+1][j]-v)*t);}half-=lens[i];}return null;
 }
-export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1100,maxEntries=256,cooldown=600000,retryDelay=30000,onLength=()=>{}}={}){
- const cache=new Map(),pending=new Map();let desired=new Map(),timer,wakeTimer,busy=false,disposed=false,controller,inflight;let pausedUntil=0,lastDraw,lastSource;
- const remember=(id,length)=>{cache.delete(id);cache.set(id,length);while(cache.size>maxEntries)cache.delete(cache.keys().next().value);};
+// Both platform references and complete boarding-edge lengths use one bounded
+// request queue. Platform tiles contain name/id but deliberately omit ref;
+// edge tiles contain ref and can therefore label it before any API response.
+export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1100,maxEntries=512,cooldown=600000,retryDelay=30000,onLength=()=>{},onPlatform=()=>{}}={}){
+ const cache=new Map(),pending=new Map(),drawn=new Map();let desired=new Map(),timer,wakeTimer,busy=false,disposed=false,controller,inflight,cancelled=false;let pausedUntil=0;
+ const remember=(key,properties)=>{cache.delete(key);cache.set(key,properties);while(cache.size>maxEntries)cache.delete(cache.keys().next().value);};
  const pause=duration=>{pausedUntil=Date.now()+duration;clearTimeout(wakeTimer);wakeTimer=setTimeout(()=>{wakeTimer=undefined;pausedUntil=0;update();},duration);};
- const draw=()=>{if(disposed)return;const features=[];for(const [id,f] of desired){const length=cache.get(id);if(!(length>0))continue;const coordinates=platformAnchor(f);if(coordinates)features.push({type:'Feature',id,geometry:{type:'Point',coordinates},properties:{id:`way-${id}`,osm_type:'way',osm_id:id,feature:'platform_edge',ref:f.properties?.ref||'',platform_length:length}});}const data={type:'FeatureCollection',features},signature=JSON.stringify(data),source=map.getSource('platformLengths');if(source&&(source!==lastSource||signature!==lastDraw)){source.setData(data);lastDraw=signature;lastSource=source;}};
+ const draw=()=>{
+  if(disposed)return;
+  const edges=[],platforms=[];
+  for(const [key,entry] of desired){
+   const {kind,id,feature:f}=entry,p={...f.properties,...cache.get(key)},ref=platformReference(p.ref);
+   if(kind==='edge'){
+    const length=Number(p.length),coordinates=platformAnchor(f);
+    if(coordinates&&(ref||length>0&&map.getZoom()>=19))edges.push({type:'Feature',id,geometry:{type:'Point',coordinates},properties:{id:`way-${id}`,osm_type:'way',osm_id:id,feature:'platform_edge',ref,...(length>0&&Number.isFinite(length)&&map.getZoom()>=19?{platform_length:length}:{})}});
+   }else if(ref){
+    const object=platformObjectIdentity(f);
+    platforms.push({type:'Feature',id,geometry:f.geometry,properties:{id,osm_type:object.type,osm_id:object.id,feature:'platform',name:p.name||'',ref}});
+   }
+  }
+  for(const [id,features] of [['platformLengths',edges],['platformNumbers',platforms]]){
+   if(id==='platformNumbers'&&!features.length&&!drawn.has(id))continue;
+   const source=map.getSource(id);if(!source)continue;
+   const data={type:'FeatureCollection',features},signature=JSON.stringify(data),last=drawn.get(id);
+   if(source!==last?.source||signature!==last.signature){source.setData(data);drawn.set(id,{source,signature});}
+  }
+ };
  async function next(){
   if(busy||disposed||Date.now()<pausedUntil)return;const entry=pending.entries().next().value;if(!entry)return;
-  const [id,url]=entry;pending.delete(id);if(!desired.has(id)){schedule();return;}busy=true;inflight=id;controller=new AbortController();
+  const [key,url]=entry,requested=desired.get(key);pending.delete(key);if(!requested){schedule();return;}busy=true;inflight=key;cancelled=false;controller=new AbortController();
   const timeout=setTimeout(()=>controller.abort(),5000);
-  try {const r=await fetcher(url,{signal:controller.signal});if(r.status===429){pause(cooldown);pending.clear();return;}if(r.status===404||r.status===410){remember(id,null);return;}if(!r.ok)throw new Error(`HTTP ${r.status}`);const data=await r.json(),length=Number(data.properties?.length);remember(id,Number.isFinite(length)&&length>0?length:null);draw();onLength(id,cache.get(id));}
-  catch(error){if(desired.has(id)&&!disposed)pause(retryDelay);}
-  finally{clearTimeout(timeout);busy=false;inflight=undefined;schedule();}
+  try {
+   const r=await fetcher(url,{signal:controller.signal});if(r.status===429){pause(cooldown);pending.clear();return;}
+   if(r.status===404||r.status===410){remember(key,{});draw();return;}
+   if(!r.ok)throw new Error(`HTTP ${r.status}`);
+   const data=await r.json(),entry=requested;if(disposed)return;
+   const raw=data.properties||{},length=Number(raw.length),properties={name:raw.name||entry.feature.properties?.name||'',ref:raw.ref??entry.feature.properties?.ref??''};
+   if(entry.kind==='edge')properties.length=Number.isFinite(length)&&length>0?length:null;
+   remember(key,properties);draw();
+   if(entry.kind==='edge')onLength(entry.id,properties.length);else onPlatform(entry.id,properties);
+  }
+  catch(error){if(!cancelled&&desired.get(key)?.url&&!disposed)pause(retryDelay);}
+  finally{
+   clearTimeout(timeout);busy=false;inflight=undefined;
+   // A quick hide/show can restore this object before its aborted fetch
+   // settles. Resume it without treating a view cancellation as a failure.
+   if(cancelled&&!disposed&&desired.get(key)?.url&&!cache.has(key))pending.set(key,desired.get(key).url);
+   schedule();
+  }
  }
  function schedule(){if(timer||busy||disposed||!pending.size||Date.now()<pausedUntil)return;timer=setTimeout(()=>{timer=undefined;next();},delay);}
  function update(){
   if(disposed)return;desired=new Map();
-  if(active()&&map.getZoom()>=19){for(const f of map.queryRenderedFeatures({layers:['platform-edges']})){const id=platformIdentity(f);if(!id)continue;const previous=desired.get(id);if(!previous||platformSpan(f)>platformSpan(previous))desired.set(id,f);}}
-  for(const id of pending.keys())if(!desired.has(id))pending.delete(id);
-  for(const id of desired.keys())if(!cache.has(id)&&!pending.has(id)&&id!==inflight&&Date.now()>=pausedUntil)pending.set(id,PLATFORM_API+id);
-  if(inflight&&!desired.has(inflight))controller?.abort();
+  if(active()&&map.getZoom()>=17){
+   for(const f of map.queryRenderedFeatures({layers:['platform-edges']})){
+    const id=platformIdentity(f);if(!id)continue;const key='edge/'+id,previous=desired.get(key);
+    if(!previous||platformSpan(f)>platformSpan(previous.feature))desired.set(key,{kind:'edge',id,feature:f,url:map.getZoom()>=19?PLATFORM_API+id:null});
+   }
+   const layers=['platform-areas','platform-outlines','platform-points'].filter(id=>!map.getLayer||map.getLayer(id));
+   for(const f of layers.length?map.queryRenderedFeatures({layers}):[]){
+    const object=platformObjectIdentity(f);if(!object)continue;const key='platform/'+object.key,previous=desired.get(key);
+    if(!previous||geometrySpan(f)>geometrySpan(previous.feature))desired.set(key,{kind:'platform',id:object.key,feature:f,url:'https://openrailwaymap.app/api/feature/openrailwaymap_standard/standard_railway_platforms/'+object.key});
+   }
+  }
+  for(const key of pending.keys())if(!desired.get(key)?.url)pending.delete(key);
+  for(const [key,entry] of desired)if(entry.url&&!cache.has(key)&&!pending.has(key)&&key!==inflight&&Date.now()>=pausedUntil)pending.set(key,entry.url);
+  if(inflight&&!desired.get(inflight)?.url){cancelled=true;controller?.abort();}
   draw();schedule();
  }
  function destroy(){disposed=true;clearTimeout(timer);clearTimeout(wakeTimer);controller?.abort();pending.clear();}
- function enrich(feature){const id=platformIdentity(feature);if(!id)return feature;const p=feature.properties||{},length=cache.get(id);return {...feature,properties:{...p,osm_type:'way',osm_id:id,...(length>0?{platform_length:length}:{})}};}
+ function enrich(feature){
+  const p=feature.properties||{},object=feature.source==='platforms'?platformObjectIdentity(feature):null,id=object?.key||platformIdentity(feature);if(!id)return feature;
+  const values=cache.get((object?'platform/':'edge/')+id)||{},length=Number(values.length);
+  return {...feature,properties:{...p,...values,ref:platformReference(values.ref??p.ref),osm_type:object?.type||'way',osm_id:object?.id||id,feature:object?'platform':'platform_edge',...(length>0?{platform_length:length}:{})}};
+ }
  return {update,destroy,enrich};
 }
+// Prefer the largest visible fragment of a tiled platform, rather than whichever
+// fragment happens to be returned first. It is used for label placement only.
+function geometrySpan(feature){let west=Infinity,east=-Infinity,south=Infinity,north=-Infinity;const visit=value=>{if(typeof value?.[0]==='number'){west=Math.min(west,value[0]);east=Math.max(east,value[0]);south=Math.min(south,value[1]);north=Math.max(north,value[1]);}else for(const v of value||[])visit(v);};visit(feature.geometry?.coordinates);return west===Infinity?0:Math.hypot(east-west,north-south);}

@@ -1,51 +1,61 @@
-# Upstream project and original examples
+# Project origins and inherited code
 
 [Documentation index](README.md) · [Project overview](../README.md)
 
-This fork originated in **Open Railway Styles**. The following project background and original tile-building approach are retained for reference. The worldwide Atlas does not run the Europe extractor.
+Railway Atlas originated as a fork of
+**[Open Railway Styles](https://github.com/OpenRail-Playground/openrailwaystyle)**.
+That upstream project began at [Hack4Rail 2025](https://hack4rail.event.sbb.ch/en/),
+organised by SBB, ÖBB and DB in partnership with the OpenRail Association.
+Its [README](https://github.com/OpenRail-Playground/openrailwaystyle/blob/main/README.md)
+records the original aims and approach. Repository code retains the
+[Apache 2.0 licence](../LICENSE).
 
-Design a style for railways using [OpenStreetMap](https://www.openstreetmap.org/) data.
+## Current project scope
 
-Most maps favour only roads. We want to display railway information as a base map.
+Atlas is developed in this repository as a worldwide railway map. It combines
+railway infrastructure and service views, prominent stations, subdued roads and
+buildings, transport and planning context, land and seabed relief, multilingual
+labels, globe navigation, and drawing and measurement tools.
+See the [user guide](user-guide.md), [rendering reference](rendering.md) and
+[data maintenance guide](data-maintenance.md) for current behaviour and sources.
 
-Too many railway services use a general purpose OpenStreetMap base layer (or even worse, a proprietary map from a GAFAM company) and this project aims to change that.
+The upstream description of a demonstration webpage backed by a Europe-only
+Planetiler extractor does not describe Atlas's build or data pipeline. Atlas uses
+OpenRailwayMap railway tiles and its own published worldwide OSM snapshots.
+The upstream suggestion of adding commercial lines is historical background;
+Atlas already has a Service view for mapped urban rail routes. That view's
+coverage depends on published data and is not a complete worldwide timetable.
 
-As the [OpenRailwayMap](https://www.openrailwaymap.org/) project shows, OpenStreetMap has a lot of information that can be used to design a nice looking general purpose railway base map.
+## Inherited code audit
 
-In this project we provide:
-- a style that focuses on showing railway infrastructure,
-- a script that extracts the needed railway data from OpenStreetMap (with certain specific tags) and generates a [PMTiles](https://github.com/protomaps/PMTiles),
-- a demonstration webpage to explore the style.
+The audit on 3 October 2026 follows the npm build, `.github/workflows/`, the
+application in `styles/`, and the published `styles/` directory. A legacy
+Europe-only extractor remains in the repository. The three standalone demo pages and
+their styles have been removed after integrating their useful railway detail
+features into Atlas's Infrastructure view.
 
-## Background
+| Inherited item | Current use | Assessment |
+| --- | --- | --- |
+| [`styles/default.style.json`](../styles/default.style.json) | Read by [`scripts/build-style.mjs`](../scripts/build-style.mjs); supplies the OpenMapTiles source, glyph URL and 23 land, water, boundary and place-label layers | Required build input. Its other 32 railway, station, road and airport layers, Europe railway source, sprite URL and editor metadata are discarded by the builder. Those unused definitions can be pruned while preserving the generated style. |
+| [`ProcessRailway.java`](../ProcessRailway.java) and [`justfile`](../justfile) | Standalone Europe OSM download/filter/Planetiler pipeline; no current npm build, workflow or app reference | Unused by Atlas. They can be removed if the old extractor is no longer offered as a separate example. |
+| The three original standalone demo pages and styles | Removed from this fork; historical examples are linked below | Platform/boarding-edge references, signals and entrances now use Atlas's own layers and worldwide sources. The old bus-route layer is not retained. |
+| [`img/hack4rail-logo.jpg`](../img/hack4rail-logo.jpg) | Former history-page illustration; no application or build dependency | Unused artwork; the written origin credit does not need it. |
+| [`MAINTAINERS.md`](../MAINTAINERS.md) | An empty inherited maintainer-list template | No functional dependency or maintainer information. |
 
-This project has been initiated during the [Hack4Rail 2025](https://hack4rail.event.sbb.ch/en/), a joint hackathon organized by the railway companies SBB, ÖBB, and DB in partnership with the OpenRail Association.
+Keep the upstream credit and licence when pruning unused code. The current
+application page, deployment workflow and contribution guidelines have been
+adapted for Atlas and remain in use. Upstream origin alone is not a reason to
+delete a file.
 
-Three teams tackled the challenge under different angles (focus on a specific zoom level, different use cases…). Their results can be found here:
+## Original demonstrations
 
-* [Infra Viewers](https://openrail-playground.github.io/openrailwaystyle/infra_viewers.html)
-* [European Train Spotter](https://openrail-playground.github.io/openrailwaystyle/european_train_spotter.html)
-* [Openstreet Trainsformer](https://openrail-playground.github.io/openrailwaystyle/openstreet_trainsformer.html)
+Historical demos remain available at the upstream project's site:
 
-<p align="center">
-  <img alt="Hack4Rail Logo" src="../img/hack4rail-logo.jpg" width="220"/>
-</p>
+- [Infra Viewers](https://openrail-playground.github.io/openrailwaystyle/infra_viewers.html): infrastructure by type, including main lines, branches, service tracks, urban rail, disused lines, signals and entrances.
+- [European Train Spotter](https://openrail-playground.github.io/openrailwaystyle/european_train_spotter.html): a network overview emphasising main, branch and high-speed lines, with station markers and labels and subdued tram/narrow-gauge lines.
+- [Openstreet Trainsformer](https://openrail-playground.github.io/openrailwaystyle/openstreet_trainsformer.html): close-zoom passenger transport context, including rail, tram and bus routes/stops, platform references and platform-edge labels.
 
-## How does it work?
+These emphases are inferred from the original styles' rendering rules; the
+upstream README does not set out a detailed design brief for each team.
 
-Maps on the web are nowadays generally rendered on the browser with a library such as [MapLibre](https://github.com/maplibre/maplibre-gl-js).
-
-The data is pre-processed into [Vector Tiles](https://wiki.openstreetmap.org/wiki/Vector_tiles) to only access to the needed data at a given coordinate and zoom level (when displaying Europe, we don’t need the position of every tree).
-
-Similarly, only some tags from OpenStreetMap are used. There are conventions such as [OpenMapTiles](https://openmaptiles.org/schema/) that define what tags are included.
-
-The usual data schemas do not contain enough detail for the railway-specific rendering in this project.
-
-For this preprocessing, we use the tool [planetiler](https://github.com/onthegomap/planetiler). The file [ProcessRailway.java](../ProcessRailway.java) contains all the specific configuration.
-
-Read the [justfile](../justfile) to see how to run the processing different steps.
-
-## Going further
-
-The project focuses on the physical representation of rail networks. However, travelers often need information about commercial lines.
-The [publication of Patrick Brosi and Hannah Bast](https://ad-publications.informatik.uni-freiburg.de/Large-Scale_Generation_of_Transit_Maps_from_OpenStreetMap_Data.pdf) could be considered to transform the physical layer to have more information.
+These are upstream examples, not descriptions of current Atlas functionality.

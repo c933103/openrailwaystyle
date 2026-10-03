@@ -2,7 +2,7 @@
   "version": 8,
   "name": "Railway Atlas — world",
   "metadata": {
-    "description": "Worldwide station-first adaptation of Open Railway Styles",
+    "description": "Railway Atlas: a worldwide railway map with prominent stations and infrastructure",
     "openrailwaystyle:rail-data": "https://openrailwaymap.app"
   },
   "glyphs": "https://tuiles.enliberte.fr/fonts/{fontstack}/{range}.pbf",
@@ -5701,10 +5701,18 @@
       },
       "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a> · <a href=\"https://www.wikidata.org/\">Wikidata, CC0</a>"
     },
+    "platforms": {
+      "type": "vector",
+      "url": "https://openrailwaymap.app/standard_railway_platforms",
+      "minzoom": 17,
+      "maxzoom": 22,
+      "promoteId": "id",
+      "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
+    },
     "platformEdges": {
       "type": "vector",
       "url": "https://openrailwaymap.app/standard_railway_platform_edges",
-      "minzoom": 19,
+      "minzoom": 17,
       "maxzoom": 22,
       "promoteId": "id",
       "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
@@ -5715,6 +5723,29 @@
         "type": "FeatureCollection",
         "features": []
       }
+    },
+    "platformNumbers": {
+      "type": "geojson",
+      "data": {
+        "type": "FeatureCollection",
+        "features": []
+      }
+    },
+    "railwaySignals": {
+      "type": "vector",
+      "url": "https://openrailwaymap.app/railway_signals",
+      "minzoom": 16,
+      "maxzoom": 22,
+      "promoteId": "id",
+      "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
+    },
+    "stationEntrances": {
+      "type": "vector",
+      "url": "https://openrailwaymap.app/standard_station_entrances",
+      "minzoom": 16,
+      "maxzoom": 22,
+      "promoteId": "id",
+      "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
     },
     "stationLow": {
       "type": "vector",
@@ -24654,35 +24685,182 @@
       }
     },
     {
+      "source": "platforms",
+      "source-layer": "standard_railway_platforms",
+      "minzoom": 17,
+      "id": "platform-areas",
+      "type": "fill",
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Polygon"
+      ],
+      "paint": {
+        "fill-color": "#cad6d1",
+        "fill-opacity": 0.55
+      }
+    },
+    {
+      "source": "platforms",
+      "source-layer": "standard_railway_platforms",
+      "minzoom": 17,
+      "id": "platform-outlines",
+      "type": "line",
+      "filter": [
+        "match",
+        [
+          "geometry-type"
+        ],
+        [
+          "Polygon",
+          "LineString"
+        ],
+        true,
+        false
+      ],
+      "paint": {
+        "line-color": "#879e96",
+        "line-width": 1
+      }
+    },
+    {
+      "source": "platforms",
+      "source-layer": "standard_railway_platforms",
+      "minzoom": 17,
+      "id": "platform-points",
+      "type": "circle",
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
+      "paint": {
+        "circle-color": "#cad6d1",
+        "circle-radius": 3,
+        "circle-stroke-color": "#527987",
+        "circle-stroke-width": 1
+      }
+    },
+    {
       "id": "platform-edges",
       "type": "line",
       "source": "platformEdges",
       "source-layer": "standard_railway_platform_edges",
-      "minzoom": 19,
+      "minzoom": 17,
       "paint": {
         "line-color": "#527987",
         "line-width": 1.5
       }
     },
     {
+      "id": "platform-numbers",
+      "type": "symbol",
+      "source": "platformNumbers",
+      "minzoom": 17,
+      "layout": {
+        "text-field": [
+          "get",
+          "ref"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 12,
+        "text-padding": 10,
+        "text-allow-overlap": false
+      },
+      "paint": {
+        "text-color": "#214b5b",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 2
+      }
+    },
+    {
       "id": "platform-lengths",
       "type": "symbol",
       "source": "platformLengths",
-      "minzoom": 19,
+      "minzoom": 17,
       "layout": {
         "text-field": [
           "concat",
           [
-            "to-string",
+            "coalesce",
             [
-              "round",
-              [
-                "get",
-                "platform_length"
-              ]
-            ]
+              "get",
+              "ref"
+            ],
+            ""
           ],
-          " m"
+          [
+            "case",
+            [
+              "all",
+              [
+                "!=",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "ref"
+                  ],
+                  ""
+                ],
+                ""
+              ],
+              [
+                ">",
+                [
+                  "to-number",
+                  [
+                    "get",
+                    "platform_length"
+                  ],
+                  0
+                ],
+                0
+              ]
+            ],
+            " · ",
+            ""
+          ],
+          [
+            "case",
+            [
+              ">",
+              [
+                "to-number",
+                [
+                  "get",
+                  "platform_length"
+                ],
+                0
+              ],
+              0
+            ],
+            [
+              "concat",
+              [
+                "to-string",
+                [
+                  "round",
+                  [
+                    "*",
+                    [
+                      "get",
+                      "platform_length"
+                    ],
+                    1
+                  ]
+                ]
+              ],
+              " m"
+            ],
+            ""
+          ]
         ],
         "text-font": [
           "Noto Sans Bold"
@@ -24695,6 +24873,160 @@
         "text-color": "#214b5b",
         "text-halo-color": "#fffef8",
         "text-halo-width": 2
+      }
+    },
+    {
+      "source": "railwaySignals",
+      "source-layer": "railway_signals",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Point"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "railway"
+          ],
+          "signal"
+        ]
+      ],
+      "id": "infrastructure-signal-points",
+      "type": "circle",
+      "minzoom": 16,
+      "paint": {
+        "circle-color": "#765484",
+        "circle-radius": 3,
+        "circle-stroke-color": "#fffef8",
+        "circle-stroke-width": 1.5
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "railwaySignals",
+      "source-layer": "railway_signals",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Point"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "railway"
+          ],
+          "signal"
+        ]
+      ],
+      "id": "infrastructure-signal-references",
+      "type": "symbol",
+      "minzoom": 18,
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "ref"
+          ],
+          [
+            "get",
+            "caption"
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-offset": [
+          0,
+          0.9
+        ],
+        "text-anchor": "top",
+        "text-padding": 5,
+        "text-allow-overlap": false,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "#765484",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "source": "stationEntrances",
+      "source-layer": "standard_station_entrances",
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
+      "id": "infrastructure-entrance-points",
+      "type": "circle",
+      "minzoom": 16,
+      "paint": {
+        "circle-color": "#167a78",
+        "circle-radius": 4,
+        "circle-stroke-color": "#fffef8",
+        "circle-stroke-width": 1.5
+      },
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "source": "stationEntrances",
+      "source-layer": "standard_station_entrances",
+      "filter": [
+        "==",
+        [
+          "geometry-type"
+        ],
+        "Point"
+      ],
+      "id": "infrastructure-entrance-references",
+      "type": "symbol",
+      "minzoom": 17,
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "label"
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-offset": [
+          0,
+          0.9
+        ],
+        "text-anchor": "top",
+        "text-padding": 5,
+        "text-allow-overlap": false,
+        "visibility": "none"
+      },
+      "paint": {
+        "text-color": "#167a78",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.5
       }
     },
     {

@@ -3,7 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import {roadLayers, constraintLayers} from './planning-style.mjs';
 import {contextLayers} from './context-style.mjs';
 import {OVERVIEW_ZOOM, DETAIL_ZOOM} from './crossing-data.mjs';
-import { CARTO_TILES, ORM, axlePaint, axleLabel, LIGHT_MODES, MINOR_MODES, LIFECYCLE_PATTERNS, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, ownerPaint, loadingLabel, trainProtectionShort, TRAIN_PROTECTION, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
+import { CARTO_TILES, ORM, axlePaint, axleLabel, LIGHT_MODES, MINOR_MODES, LIFECYCLE_PATTERNS, UNKNOWN_COLOR, labelExpression, INFRASTRUCTURE, DEM_URL, platformLengthLabel, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, ownerPaint, loadingLabel, trainProtectionShort, TRAIN_PROTECTION, inactivePaint as inactiveColours } from '../styles/map-model.mjs';
 
 const majorStations=JSON.parse(await readFile(new URL('../styles/data-src/major-stations.json',import.meta.url)));
 validateStationCountries(majorStations);
@@ -18,7 +18,7 @@ const vector = (path, minzoom, maxzoom) => ({
 });
 const style = {
   version: 8, name: 'Railway Atlas — world',
-  metadata: { description: 'Worldwide station-first adaptation of Open Railway Styles', 'openrailwaystyle:rail-data': ORM },
+  metadata: { description: 'Railway Atlas: a worldwide railway map with prominent stations and infrastructure', 'openrailwaystyle:rail-data': ORM },
   glyphs: original.glyphs,
   sources: {
     openmaptiles: { ...original.sources.openmaptiles, attribution: '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a> · <a href="https://tuiles.enliberte.fr/">En Liberté tiles</a>' },
@@ -47,8 +47,12 @@ const style = {
     // they know the separate station asset. The app holds this data outside
     // MapLibre until the overview needs it.
     stationMajor:{type:'geojson',data:majorStationData,attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a> · <a href="https://www.wikidata.org/">Wikidata, CC0</a>'},
-    platformEdges:vector('standard_railway_platform_edges',19,22),
+    platforms:vector('standard_railway_platforms',17,22),
+    platformEdges:vector('standard_railway_platform_edges',17,22),
     platformLengths:{type:'geojson',data:{type:'FeatureCollection',features:[]}},
+    platformNumbers:{type:'geojson',data:{type:'FeatureCollection',features:[]}},
+    railwaySignals:vector('railway_signals',16,22),
+    stationEntrances:vector('standard_station_entrances',16,22),
     stationLow: vector('standard_railway_text_stations_low', 4, 6),
     // The mid-zoom endpoint returns nothing below zoom 7, and the low-zoom
     // one keeps only stations OpenRailwayMap sizes large or normal, which
@@ -396,8 +400,27 @@ for(const tier of [6,5,4,3])style.layers.push({
  filter:['==',['get','tier'],tier],
  layout:{...stationText,'text-padding':['step',['zoom'],MAJOR_STATION_DENSITY[0].padding,...MAJOR_STATION_DENSITY.slice(1).flatMap(({zoom,padding})=>[zoom,padding])],'symbol-sort-key':['get','rank'],'icon-image':'station-dot','icon-size':.85,'icon-padding':12,'icon-allow-overlap':false,'icon-ignore-placement':false,'icon-optional':false,'text-optional':false},paint:stationInk,
 });
-style.layers.push({id:'platform-edges',type:'line',source:'platformEdges','source-layer':'standard_railway_platform_edges',minzoom:19,paint:{'line-color':'#527987','line-width':1.5}});
-style.layers.push({id:'platform-lengths',type:'symbol',source:'platformLengths',minzoom:19,layout:{'text-field':['concat',['to-string',['round',['get','platform_length']]],' m'],'text-font':['Noto Sans Bold'],'text-size':11,'text-padding':10,'text-allow-overlap':false},paint:{'text-color':'#214b5b','text-halo-color':'#fffef8','text-halo-width':2}});
+// Close-zoom infrastructure details use the worldwide provider sources directly,
+// independently of the original Hack4Rail demo styles. Platform tiles omit ref;
+// the app's shared feature-API queue supplies platformNumbers and full edge lengths.
+const platformBase={source:'platforms','source-layer':'standard_railway_platforms',minzoom:17};
+style.layers.push(
+ {...platformBase,id:'platform-areas',type:'fill',filter:['==',['geometry-type'],'Polygon'],paint:{'fill-color':'#cad6d1','fill-opacity':0.55}},
+ {...platformBase,id:'platform-outlines',type:'line',filter:['match',['geometry-type'],['Polygon','LineString'],true,false],paint:{'line-color':'#879e96','line-width':1}},
+ {...platformBase,id:'platform-points',type:'circle',filter:['==',['geometry-type'],'Point'],paint:{'circle-color':'#cad6d1','circle-radius':3,'circle-stroke-color':'#527987','circle-stroke-width':1}},
+ {id:'platform-edges',type:'line',source:'platformEdges','source-layer':'standard_railway_platform_edges',minzoom:17,paint:{'line-color':'#527987','line-width':1.5}},
+ {id:'platform-numbers',type:'symbol',source:'platformNumbers',minzoom:17,layout:{'text-field':['get','ref'],'text-font':['Noto Sans Bold'],'text-size':12,'text-padding':10,'text-allow-overlap':false},paint:{'text-color':'#214b5b','text-halo-color':'#fffef8','text-halo-width':2}},
+ {id:'platform-lengths',type:'symbol',source:'platformLengths',minzoom:17,layout:{'text-field':platformLengthLabel(),'text-font':['Noto Sans Bold'],'text-size':11,'text-padding':10,'text-allow-overlap':false},paint:{'text-color':'#214b5b','text-halo-color':'#fffef8','text-halo-width':2}},
+);
+for(const [source,sourceLayer,kind,colour,label,minzoom] of [
+ ['railwaySignals','railway_signals','signal','#765484',['coalesce',['get','ref'],['get','caption'],''],18],
+ ['stationEntrances','standard_station_entrances','entrance','#167a78',['coalesce',['get','label'],''],17],
+]){
+ const point={source,'source-layer':sourceLayer,filter:['==',['geometry-type'],'Point']};
+ // Neutral location markers identify mapped assets, not a live signal aspect.
+ style.layers.push({...point,id:`infrastructure-${kind}-points`,type:'circle',minzoom:16,...(kind==='signal'?{filter:['all',point.filter,['==',['get','railway'],'signal']]}:{}),paint:{'circle-color':colour,'circle-radius':kind==='signal'?3:4,'circle-stroke-color':'#fffef8','circle-stroke-width':1.5}});
+ style.layers.push({...point,id:`infrastructure-${kind}-references`,type:'symbol',minzoom,...(kind==='signal'?{filter:['all',point.filter,['==',['get','railway'],'signal']]}:{}),layout:{'text-field':label,'text-font':['Noto Sans Regular'],'text-size':11,'text-offset':[0,0.9],'text-anchor':'top','text-padding':5,'text-allow-overlap':false},paint:{'text-color':colour,'text-halo-color':'#fffef8','text-halo-width':1.5}});
+}
 // Former, disused and planned stations rank last, from zoom 12, muted; their
 // dots lie under the operating stations' dots.
 style.layers.push({
@@ -491,7 +514,7 @@ const railwayNames = style.layers.filter(l => l.type === 'symbol' && l.id.endsWi
 const trackBadges = style.layers.filter(l => l.id === 'infrastructure-track-count' || l.id === 'infrastructure-station-tracks');
 style.layers = style.layers.filter(l => !stationNames.includes(l) && !railwayNames.includes(l) && !trackBadges.includes(l)).concat(railwayNames, trackBadges, stationNames);
 for (const l of style.layers) {
-  if (/^(infrastructure|electrification|control|gauge|loading|axle|owner|service)-/.test(l.id)) l.layout.visibility = 'none';
+  if (/^(infrastructure|electrification|control|gauge|loading|axle|owner|service)-/.test(l.id)) { l.layout ||= {}; l.layout.visibility = 'none'; }
 }
 // Satellite imagery directly above the background, off unless chosen.
 style.layers.splice(style.layers.findIndex(l => l.id === 'background') + 1, 0, {id:'satellite', type:'raster', source:'satellite', layout:{visibility:'none'}, paint:{'raster-fade-duration':150}});
