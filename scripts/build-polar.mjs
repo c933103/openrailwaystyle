@@ -61,16 +61,20 @@ async function cached(file, maxAgeDays, load, validate = () => {}) {
 // 1-arc-minute grid (rows run south to north).
 async function elevation(cap) {
   const rows = cap === 'south' ? '0:1:299' : '10500:1:10799';
-  const text = await cached(`.snapshot-cache/polar-dem-${cap}.txt`, 36500, () =>
-    fetchText(`${ETOPO}.ascii?z%5B${rows}%5D%5B0:${LON_STRIDE}:21599%5D`));
-  const data = text.slice(text.indexOf('z.z['));
-  const values = [];
-  for (const line of data.split('\n').slice(1)) {
-    if (!line.startsWith('[')) continue;
-    values.push(Float32Array.from(line.slice(line.indexOf(',') + 1).split(',').map(Number)));
-    if (values.length === 300) break;
-  }
-  if (values.length !== 300 || values.some(row => row.length !== 2160 || row.some(v => !Number.isFinite(v)))) throw new Error(`Elevation for the ${cap} cap is incomplete`);
+  let values;
+  const validate = text => {
+    const start = text.indexOf('z.z[');
+    if (start < 0) throw new Error(`Elevation for the ${cap} cap is incomplete`);
+    values = [];
+    for (const line of text.slice(start).split('\n').slice(1)) {
+      if (!line.startsWith('[')) continue;
+      values.push(Float32Array.from(line.slice(line.indexOf(',') + 1).split(',').map(v => v.trim() ? Number(v) : NaN)));
+      if (values.length === 300) break;
+    }
+    if (values.length !== 300 || values.some(row => row.length !== 2160 || row.some(v => !Number.isFinite(v)))) throw new Error(`Elevation for the ${cap} cap is incomplete`);
+  };
+  await cached(`.snapshot-cache/polar-dem-${cap}.txt`, 36500, () =>
+    fetchText(`${ETOPO}.ascii?z%5B${rows}%5D%5B0:${LON_STRIDE}:21599%5D`), validate);
   const firstLat = cap === 'south' ? -90 + 1 / 120 : 85 + 1 / 120, lonStep = LON_STRIDE / 60, firstLon = -180 + 1 / 120;
   const cols = values[0].length;
   // Bilinear, wrapping in longitude and holding the edge rows.
