@@ -21,12 +21,13 @@ export function timetableFeatures(feeds,now=Date.now()) {
     const end=source.feed_info.feed_end_date;
     // A reference day represents this feed version only through its validity
     // and review interval. Local expiry is compiled by the importer.
-    const until=Math.min(review/1000,source.valid_until||Infinity);
+    const feedUntil=Math.min(review/1000,source.valid_until||Infinity);
     let available=0;const mapped=new Set(),known=new Set();
     for(const segment of feed.segments){
       if(!segment.geometry||segment.geometry.length<2)continue;
       const route=routes.get(segment.route_id),agency=agencies.get(segment.agency_id);
       if(!route||!agency)throw new Error(`Broken route/agency in ${source.id}`);
+      const until=Math.min(feedUntil,route.valid_until??Infinity);
       const coordinates=segment.geometry.map(p=>p.map(round)),key=JSON.stringify(coordinates);
       if(!edges.has(key))edges.set(key,{coordinates,records:[]});
       const profiles=Object.fromEntries(Object.entries(segment.profiles).map(([p,v])=>[p,{rate:v.display_tph,high:v.display_tph,quality:v.quality,forward:v.forward_tph,backward:v.backward_tph}]));
