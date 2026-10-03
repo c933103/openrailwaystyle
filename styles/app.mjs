@@ -1,12 +1,12 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261002-80';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261002-80';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261003-81';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261003-81';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261002-80';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261002-80';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261002-80';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261002-80';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261002-80';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261002-80';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261003-81';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261003-81';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261003-81';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261003-81';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261003-81';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261003-81';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -40,7 +40,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261002-80';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261003-81';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -978,8 +978,11 @@ async function initialize() {
   const protocol = new pmtiles.Protocol();
   protocol.tile = shareArchiveRequests(protocol.tile.bind(protocol));
   maplibregl.addProtocol('pmtiles', protocol.tile);
-  const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url),
-    basemapArchive: url => new pmtiles.PMTiles(labelCode.timedSource(new pmtiles.FetchSource(url), 20000))});
+  // Both the labelled basemap and bathymetry read the same PMTiles archive.
+  // Create it with the timeout wrapper once, before either consumer can ask
+  // Protocol.tile() to create an untimed default FetchSource for that URL.
+  const basemapArchive = url => new pmtiles.PMTiles(labelCode.timedSource(new pmtiles.FetchSource(url), 20000));
+  const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url), basemapArchive});
   // The contour worker with the terrain tiles' bad pixels repaired
   // (dem-worker.mjs); relief shading reads its tiles through it too.
   mlcontour.workerUrl = new URL(`vendor/dem-worker.js?v=${assetVersion}`, import.meta.url).href;
@@ -1016,6 +1019,8 @@ async function initialize() {
   majorStationData=style.sources.stationMajor.data;
   style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
   const waterArchive = style.sources.openmaptiles.url;
+  const waterArchiveKey = waterArchive.replace(/^pmtiles:\/\//,'');
+  if (waterArchiveKey !== waterArchive && !protocol.tiles.has(waterArchiveKey)) protocol.tiles.set(waterArchiveKey, basemapArchive(waterArchiveKey));
   installBathymetry(maplibregl, dem, {
     waterTile: (z, x, y, controller) => protocol.tile({url: `${waterArchive}/${z}/${x}/${y}`, type: 'arrayBuffer'}, controller),
     readTile: data => labelCode.readTile(data, ['water']),
