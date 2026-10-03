@@ -385,7 +385,7 @@ function showDetails(feature) {
   if(['railwaySignals','stationEntrances'].includes(feature.source)){showRailwayPointDetails(feature);return;}
   if (INFRASTRUCTURE_POINTS.includes(feature.layer?.id)) { showInfrastructureContext(feature); return; }
   if (feature.layer?.id.startsWith('context-')) { showContextDetails(feature); return; }
-  if (feature.layer?.id === 'service-routes') { showServiceDetails(feature); return; }
+  if (feature.layer?.id === 'service-routes') { showServiceDetails(feature); frequencyExpiry?.update(); return; }
   const p = feature.properties;
   const isPlatform=['platformLengths','platformEdges','platforms','platformNumbers'].includes(feature.source);
   const isStation = feature.source?.startsWith('station') || feature.kind === 'station';
@@ -1340,7 +1340,7 @@ function profileChart(profile, km, units) {
   svg.addEventListener('pointerleave', () => { cursor.setAttribute('visibility', 'hidden'); readout.textContent = ''; profileMarker?.remove(); });
   return svg;
 }
-function closeDetails() { $('details').hidden = true; currentFeature = null; profileMarker?.remove(); }
+function closeDetails() { $('details').hidden = true; currentFeature = null; profileMarker?.remove(); frequencyExpiry?.update(); }
 $('details-close').addEventListener('click', closeDetails);
 addEventListener('keydown', event => { if (event.key === 'Escape' && !$('details').hidden && !drawing?.active && !measuring?.active && !document.querySelector('dialog[open]')) closeDetails(); });
 $('about-open').addEventListener('click', () => $('about').showModal());
@@ -1492,8 +1492,8 @@ $('search-form').addEventListener('submit', async e => {
   } finally { clearTimeout(timeout); }
 });
 frequencyExpiry=installFrequencyExpiry({
-  active:()=>ready&&document.visibilityState!=='hidden'&&settings.mode==='service'&&settings.serviceWidth==='frequency',
-  features:()=>map.querySourceFeatures('serviceRoutes',{sourceLayer:'service_routes'}),
+  active:()=>ready&&document.visibilityState!=='hidden'&&(settings.mode==='service'||currentFeature?.layer?.id==='service-routes'),
+  features:()=>[...map.querySourceFeatures('serviceRoutes',{sourceLayer:'service_routes'}),...(currentFeature?.layer?.id==='service-routes'?[currentFeature]:[])],
   refresh:()=>{
     const p=serviceFrequencyPaint(settings);
     if(map.getStyle().layers.some(l=>l.id==='service-routes'))for(const [key,value] of [['line-width',p.width],['line-offset',p.offset],['line-opacity',p.opacity]])map.setPaintProperty('service-routes',key,value);

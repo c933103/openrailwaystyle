@@ -16,7 +16,7 @@ const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '' } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', frequencyClock } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -113,7 +113,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const contextModule = new vm.SyntheticModule(Object.keys(contextFeatures),function() {
     for (const [key,value] of Object.entries(contextFeatures)) this.setExport(key,value);
   },{context});
-  const frequency = new vm.SyntheticModule(Object.keys(frequencyModule),function(){for(const [key,value] of Object.entries(frequencyModule))this.setExport(key,value);},{context});
+  const frequency = new vm.SyntheticModule(Object.keys(frequencyModule),function(){for(const [key,value] of Object.entries(frequencyModule))this.setExport(key,frequencyClock&&key==='installFrequencyExpiry'?options=>value({...options,...frequencyClock}):frequencyClock&&key==='frequencyDetails'?(properties,profile)=>value(properties,profile,frequencyClock.now()):value);},{context});
   const semantics = new vm.SyntheticModule(Object.keys(layerSemantics), function() {
     for (const [key,value] of Object.entries(layerSemantics)) this.setExport(key,value);
   }, {context});
@@ -144,6 +144,26 @@ test('service frequency profile is applied on the first frame and controls persi
     doc.querySelector('[data-mode="speed"]').click();
     assert.equal(doc.getElementById('service-frequency-options').hidden,true);
   } finally {dom.window.close();}
+});
+test('equal-width service details expire even after the inspected route leaves loaded tiles',async()=>{
+  let stamp=1000,scheduled;
+  const frequencyClock={now:()=>stamp,setTimer:(fn,delay)=>(scheduled={fn,delay}),clearTimer:()=>{scheduled=undefined;}};
+  const {dom,window,maps,errors}=await start({search:'?mode=service',frequencyClock});
+  try{
+    const map=maps[0],doc=window.document;map.handlers['style.load']();
+    map.project=([lng,lat])=>({x:500+lng*100,y:400+lat*100});
+    const feature={source:'serviceRoutes',sourceLayer:'service_routes',layer:{id:'service-routes'},properties:{id:'gtfs:fixture:R',ref:'R',kind:'rail',i:0,n:1,frequency_until:2,frequency_offpeak:2,frequency_high_offpeak:2,frequency_quality_offpeak:'scheduled'},geometry:{type:'LineString',coordinates:[[0,0],[1,0]]}};
+    map.rendered=[feature];map.sourceFeatures=[feature];map.handlers.sourcedata({sourceId:'serviceRoutes',tile:{}});
+    map.handlers.click({point:{x:550,y:400},lngLat:{lng:.5,lat:0}});
+    assert.match(doc.getElementById('detail-content').textContent,/2\/h\/direction/);
+    map.sourceFeatures=[];map.handlers.sourcedata({sourceId:'serviceRoutes',tile:{}});
+    assert.equal(scheduled?.delay,1001,'the open panel keeps its expiry when the route leaves the viewport');
+    stamp=2001;scheduled.fn();
+    assert.doesNotMatch(doc.getElementById('detail-content').textContent,/2\/h\/direction/);
+    assert.match(doc.getElementById('detail-content').textContent,/Frequency unavailable/);
+    assert.equal(errors.length,0);
+    window.dispatchEvent(new window.Event('pagehide'));
+  }finally{dom.window.close();}
 });
 test('app starts with the MapLibre 5 API and enables map controls', async () => {
   const {dom,window,maps,errors} = await start();
