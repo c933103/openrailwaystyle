@@ -90,7 +90,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') { console.log('Browser resource:',msg.text()); if(/DataCloneError|already detached/.test(msg.text())) errors.push(msg.text()); }});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261002-80&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261003-82&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
@@ -134,6 +134,17 @@ try{
   info=await attributionState();
   assert.deepEqual({compact:info.compact,open:info.open},{compact:true,open:false},'Closed state survives background changes');
   console.log('PASS: attribution stays a visible compact info button and remembers its state');
+  // On desktop the scale/readout corner must start to the right of the menu,
+  // and it must not cover the centred status pill.
+  const overlayBoxes=()=>page.evaluate(()=>{
+    const box=el=>{const r=el.getBoundingClientRect();return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height};};
+    return {scale:box(document.querySelector('.maplibregl-ctrl-scale')),panel:box(document.querySelector('.panel')),status:box(document.querySelector('#map-status'))};
+  });
+  const overlaps=(a,b)=>a.left<b.right && a.right>b.left && a.top<b.bottom && a.bottom>b.top;
+  let boxes=await overlayBoxes();
+  assert.equal(overlaps(boxes.scale,boxes.panel),false,'Desktop scale ruler stays clear of the left menu');
+  assert.equal(overlaps(boxes.scale,boxes.status),false,'Desktop scale ruler stays clear of status text');
+  console.log('PASS: desktop scale ruler clears the left menu and status');
   // Pan northwest at the SAME zoom before any visit to zoom 8.
   await moveTo(7,128.1,35.65);
   await waitUntil(page,async()=>{
@@ -463,11 +474,12 @@ try{
   await page.waitForTimeout(150);
   const compactControls=await page.evaluate(()=>{
     const box=el=>{const r=el.getBoundingClientRect();return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height};};
-    const scale=document.querySelector('.maplibregl-ctrl-scale'),readout=document.querySelector('.map-readout');
-    return {display:getComputedStyle(scale).display,scale:box(scale),readout:readout.hidden?null:box(readout),viewport:{width:innerWidth,height:innerHeight}};
+    const scale=document.querySelector('.maplibregl-ctrl-scale'),readout=document.querySelector('.map-readout'),status=document.querySelector('#map-status');
+    return {display:getComputedStyle(scale).display,scale:box(scale),readout:readout.hidden?null:box(readout),status:box(status),viewport:{width:innerWidth,height:innerHeight}};
   });
   assert.notEqual(compactControls.display,'none','The scale ruler stays visible on compact screens');
   assert.ok(compactControls.scale.left>=0 && compactControls.scale.top>=0 && compactControls.scale.right<=compactControls.viewport.width && compactControls.scale.bottom<=compactControls.viewport.height,'The compact scale ruler stays inside the visible viewport');
+  assert.ok(compactControls.scale.bottom<=compactControls.status.top-1,'The mobile scale ruler stays above status text instead of overlapping it');
   if(compactControls.readout) assert.ok(compactControls.scale.bottom<=compactControls.readout.top+1,'The scale ruler sits above the coordinate readout instead of being covered by it');
   console.log('PASS: compact-screen scale ruler stays visible and above the bottom readout');
   await page.setViewportSize({width:1365,height:900});
