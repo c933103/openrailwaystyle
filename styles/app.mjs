@@ -310,7 +310,7 @@ function updateAttribution() {
   // Always use MapLibre's compact info control. The previous Carto exception
   // replaced the ⓘ button with a full-width attribution bar, so a remembered
   // Carto background looked as if the info button had disappeared.
-  const container = map.getContainer().querySelector('.maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib');
+  const container = document.querySelector('.maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib');
   if (!container?.classList.contains('maplibregl-compact')) return;
   // MapLibre initially expands compact attribution. Restore the state kept in
   // atlas_settings; when the cookie has no state, attributionOpen is false.
