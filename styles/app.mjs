@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261003-81';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261003-81';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261003-82';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261003-82';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261003-81';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261003-81';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261003-81';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261003-81';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261003-81';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261003-82';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261003-82';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261003-82';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261003-82';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261003-82';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -39,7 +39,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261003-81';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261003-82';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -231,13 +231,13 @@ function shareURL() {
   return url.href;
 }
 saveSettings();
-const CHECKBOXES = ['stations', 'curatedStationColor', 'trackCounts', 'labels', 'inactive', 'relief', 'names', 'autoGlobe', 'readout', 'transport', 'destinations', 'constraints'];
-const CURATED_STATION_TEXT_COLOR = '#8b2f6d';
-const CURATED_STATION_ICON = 'station-dot-curated';
+const CHECKBOXES = ['stations', 'stationImportanceColors', 'trackCounts', 'labels', 'inactive', 'relief', 'names', 'autoGlobe', 'readout', 'transport', 'destinations', 'constraints'];
 const DEFAULT_STATION_TEXT_COLOR = ['match', ['get','station_size'], 'large', '#123e52', '#0865c0'];
-const isCuratedStationLayer = id => /^station-major-[3-6]-names$/.test(id);
-const curatedStationTextColor = () => settings.curatedStationColor ? CURATED_STATION_TEXT_COLOR : DEFAULT_STATION_TEXT_COLOR;
-const curatedStationIcon = () => settings.curatedStationColor ? CURATED_STATION_ICON : 'station-dot';
+const LOW_ZOOM_STATION_TEXT_COLOR = '#123e52';
+const isLowZoomStationLayer = id => id.endsWith('-names') && (id.startsWith('station-major-') || id.startsWith('station-stationLow-') || id.startsWith('station-stationMed-'));
+const lowZoomStationTextColor = () => settings.stationImportanceColors
+  ? DEFAULT_STATION_TEXT_COLOR
+  : ['step', ['zoom'], LOW_ZOOM_STATION_TEXT_COLOR, 7, DEFAULT_STATION_TEXT_COLOR];
 // The drawn base map: hidden under satellite imagery.
 const isBaseMap = layer => layer.source === 'openmaptiles' || layer.id === 'background' || layer.id.startsWith('terrain-');
 const RUNTIME_LAYER = /^(drawing|measure)-|^polar-caps$/;
@@ -286,10 +286,7 @@ function applySettings() {
     if(layer.id==='polar-caps')map.triggerRepaint();
     const visible = layerVisibility(layer);
     if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
-    if (isCuratedStationLayer(layer.id)) {
-      map.setPaintProperty(layer.id, 'text-color', curatedStationTextColor());
-      map.setLayoutProperty(layer.id, 'icon-image', curatedStationIcon());
-    }
+    if (isLowZoomStationLayer(layer.id)) map.setPaintProperty(layer.id, 'text-color', lowZoomStationTextColor());
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
     if ((visible ?? true) && isClickable(layer.id)) clickable.push(layer.id);
   }
@@ -1032,10 +1029,7 @@ async function initialize() {
   for (const layer of style.layers) {
     const visible=layerVisibility(layer);
     if(visible!==undefined)(layer.layout ||= {}).visibility=visible?'visible':'none';
-    if (isCuratedStationLayer(layer.id)) {
-      (layer.paint ||= {})['text-color'] = curatedStationTextColor();
-      (layer.layout ||= {})['icon-image'] = curatedStationIcon();
-    }
+    if (isLowZoomStationLayer(layer.id)) (layer.paint ||= {})['text-color'] = lowZoomStationTextColor();
   }
   // Reopen where the last visit ended, unless the link gives a position; start
   // on the globe (or as last left) so the first frame is not the flat map.
@@ -1097,16 +1091,15 @@ async function initialize() {
       map.addImage(event.id, {width: size, height: size, data}, {pixelRatio: 2, sdf: true});
       return;
     }
-    if (!['station-dot', CURATED_STATION_ICON].includes(event.id)) return;
+    if (event.id !== 'station-dot') return;
     const width = 32, data = new Uint8Array(width * width * 4);
-    const inner = event.id === CURATED_STATION_ICON ? [208,90,148] : [255,163,35];
     for (let y = 0; y < width; y++) for (let x = 0; x < width; x++) {
       const r = Math.hypot(x + 0.5 - width / 2, y + 0.5 - width / 2);
       const offset = (y * width + x) * 4;
-      const color = r < 8.5 ? inner : [18,62,82];
+      const color = r < 8.5 ? [255,163,35] : [18,62,82];
       data.set([...color, Math.round(Math.max(0, Math.min(1, 12 - r)) * 255)], offset);
     }
-    map.addImage(event.id, {width,height:width,data}, {pixelRatio:2});
+    map.addImage('station-dot', {width,height:width,data}, {pixelRatio:2});
   });
   // Compass above the zoom buttons: shows the heading; click to face north.
   map.addControl(new maplibregl.NavigationControl({ showZoom: false, showCompass: true, visualizePitch: true }), 'top-right');
