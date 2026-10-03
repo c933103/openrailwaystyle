@@ -94,7 +94,7 @@ test('regional stations have collision-aware markers and progressive size thresh
   for (const [id, source] of Object.entries(style.sources)) if (source.type === 'vector') assert.equal(source.tileSize ?? 512, 512, id);
   assert.match(style.sources.stationMed.url, /#minzoom=6&maxzoom=7&underzoom=7$/);
   assert.equal(shown(7, {station_size:'normal'}),true);
-  assert.equal(shown(6, {id:'node-2149761647-train-station',station_size:'large'}),false,'curated duplicate is absent from provider fill');
+  assert.equal(shown(6, {id:'node-2149761647-train-station',station_size:'large'}),true,'provider copy remains eligible beneath curated placement priority');
   assert.equal(shown(7, {id:'node-2149761647-train-station',station_size:'large'}),true,'provider labels take over at seven');
   assert.equal(shown(7, {station_size:'small'}),true);
   assert.equal(shown(9.9, {station_size:'small'}),true);
