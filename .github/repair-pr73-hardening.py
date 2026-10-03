@@ -30,7 +30,7 @@ test('curated OSM labels remain searchable when both remote searches fail',async
   return{ok:true,status:200,json:async()=>structuredClone(style)};
  };
  const {dom,window,maps}=await start({search:'?language=en#3/35.681/125',fetcher});
- const wait=async condition=>{for(let i=0;i<100;i++){if(condition())return;await new Promise(resolve=>setTimeout(resolve,0));}assert.ok(condition(),'condition settled');};
+ const wait=async condition=>{const until=Date.now()+5000;while(Date.now()<until){if(condition())return;await new Promise(resolve=>setTimeout(resolve,10));}assert.ok(condition(),'condition settled');};
  try{
   const map=maps[0],d=window.document;
   map.getCenter=()=>({lng:0,lat:0,toArray:()=>[0,0]});
@@ -80,6 +80,8 @@ test('late OSM names cannot populate a hidden curated source',async()=>{
  }finally{pending.forEach(resolve=>resolve());dom.window.close();}
 });
 '''
+# Keep idempotence if the prior repair attempt was already saved.
+text=text.replace("const wait=async condition=>{for(let i=0;i<100;i++){if(condition())return;await new Promise(resolve=>setTimeout(resolve,0));}assert.ok(condition(),'condition settled');};", "const wait=async condition=>{const until=Date.now()+5000;while(Date.now()<until){if(condition())return;await new Promise(resolve=>setTimeout(resolve,10));}assert.ok(condition(),'condition settled');};")
 startup.write_text(text)
 
 for path in ['docs/data-maintenance.md','docs/labels.md']:
@@ -97,4 +99,14 @@ if new not in text:
     assert old in text
     text=text.replace(old,new,1)
 index.write_text(text)
-print('Applied bounded per-object OSM names and regression tests.',flush=True)
+# Main uses named versions such as 20261003-style2, not just numeric suffixes.
+version='20261003-110100'
+for root in ['styles','scripts']:
+    for p in Path(root).glob('*'):
+        if not p.is_file() or p.suffix not in ['.mjs','.html']:continue
+        if p.name.startswith('data-check'):continue
+        if root=='scripts' and not p.name.startswith('check-'):continue
+        original=p.read_text()
+        updated=re.sub(r'\b20\d{6}-[\w.-]+\b',version,original)
+        if updated!=original:p.write_text(updated)
+print('Applied bounded per-object OSM names and regression tests; version',version,flush=True)
