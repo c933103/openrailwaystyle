@@ -8,6 +8,7 @@ import * as draw from '../styles/draw.mjs';
 import * as departuresModule from '../styles/departures.mjs';
 import * as elevationModule from '../styles/elevation.mjs';
 import * as contextFeatures from '../styles/context.mjs';
+import * as watchModule from '../styles/watch-map.mjs';
 import * as frequencyModule from '../styles/service-frequency.mjs';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
@@ -113,7 +114,8 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     for (const [key,value] of Object.entries(contextFeatures)) this.setExport(key,value);
   },{context});
   const frequency = new vm.SyntheticModule(Object.keys(frequencyModule),function(){for(const [key,value] of Object.entries(frequencyModule))this.setExport(key,value);},{context});
-  await app.link(specifier => specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
+  await app.link(specifier => specifier.includes('watch-map.mjs') ? watch : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries,loadLabels};
@@ -139,6 +141,27 @@ test('service frequency profile is applied on the first frame and controls persi
     assert.doesNotMatch(JSON.stringify(map.paintProperties['service-routes']['line-width']),/frequency_width/);
     doc.querySelector('[data-mode="speed"]').click();
     assert.equal(doc.getElementById('service-frequency-options').hidden,true);
+  } finally {dom.window.close();}
+});
+test('watch starts map-only and deliberate controls return to the map after each action',async()=>{
+  const {dom,window,maps,errors}=await start({search:'?ui=watch',cookie:'atlas_settings='+encodeURIComponent(JSON.stringify({attributionOpen:true}))});
+  try {
+    assert.equal(errors.length,0);const doc=window.document,map=maps[0];map.handlers['style.load']();
+    assert.equal(doc.body.dataset.ui,'watch');assert.equal(doc.querySelector('.panel').inert,true);
+    assert.equal(doc.getElementById('watch-menu').hidden,true);
+    map.handlers.click({point:{x:10,y:10}});assert.equal(doc.getElementById('details').hidden,true);
+    const open=()=>doc.getElementById('map').dispatchEvent(new window.Event('contextmenu',{cancelable:true}));
+    open();assert.equal(doc.getElementById('watch-menu').hidden,false);assert.equal(doc.getElementById('map-frame').inert,true);
+    let select=doc.querySelector('#watch-content select');select.value='service';select.dispatchEvent(new window.Event('change'));
+    assert.equal(doc.getElementById('watch-menu').hidden,true);assert.equal(map.visibility['service-routes'],'visible');
+    open();select=doc.querySelector('#watch-content select[aria-label="Map options"]');select.value='frequency';select.dispatchEvent(new window.Event('change'));
+    select=doc.querySelector('#watch-content select');select.value='pm';select.dispatchEvent(new window.Event('change'));
+    assert.equal(doc.getElementById('watch-menu').hidden,true);assert.match(JSON.stringify(map.paintProperties['service-routes']['line-width']),/frequency_width_pm/);
+    open();doc.getElementById('watch-menu').dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert.equal(doc.getElementById('watch-menu').hidden,true);
+    open();select=doc.querySelector('#watch-content select[aria-label="Map options"]');select.value='standard';select.dispatchEvent(new window.Event('change'));
+    assert.equal(doc.body.dataset.ui,'standard');assert.equal(doc.querySelector('.panel').inert,false);assert.equal(doc.getElementById('map-frame').inert,false);
+    assert.match(decodeURIComponent(doc.cookie),/"attributionOpen":true/);
+    assert.match(decodeURIComponent(doc.cookie),/"ui":"standard"/);
   } finally {dom.window.close();}
 });
 test('app starts with the MapLibre 5 API and enables map controls', async () => {

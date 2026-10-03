@@ -113,3 +113,14 @@ button.brand-mark:focus-visible{outline:3px solid #d58d13;outline-offset:3px}
 .frequency-key p { flex-basis:100%; margin:3px 0; }
 .frequency-sample { display:inline-flex; align-items:center; gap:5px; font-size:11px; }
 .frequency-sample i { display:block; width:24px; background:var(--ink); }
+
+/* Explicit watch mode: the entire idle viewport belongs to the map. */
+body[data-ui="watch"] .panel,body[data-ui="watch"] .maplibregl-control-container,body[data-ui="watch"] .detail-panel,body[data-ui="watch"] .map-status,body[data-ui="watch"] #draw-toolbar,body[data-ui="watch"] #measure-toolbar,body[data-ui="watch"] #about {display:none!important}
+body[data-ui="watch"] #map-frame {inset:0;border-radius:0}
+#watch-menu {position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:var(--paper)}
+#watch-content {width:min(360px,70vmin);height:min(360px,70vmin);overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:0;font-size:14px}
+#watch-content>button,#watch-content>select {min-height:44px;flex-shrink:0;width:100%;padding:7px 5px;border-radius:4px}
+#watch-content .watch-scroll {overflow:auto;flex:1;min-height:0;overflow-wrap:anywhere;font-size:12px}
+#watch-content .watch-scroll button {display:block;min-height:44px;width:100%;padding:7px 5px}
+#watch-content .watch-scroll button[aria-pressed="true"] {background:#e3ebe6}
+#watch-content .watch-scroll p {margin:6px 0}
