@@ -15,6 +15,45 @@ CONFIG = {'source':{'id':'fixture'},'profiles':{'am':{'start':'07:00:00','end':'
 
 
 class GTFSFrequency(unittest.TestCase):
+    def test_future_rail_calendars_without_feed_start_are_unknown_not_zero(self):
+        patterns={'t':[('A','08:00:00'),('B','08:10:00')]}
+        for added in [False,True]:
+            with self.subTest(added=added):
+                path=self.feed(patterns,patterns)
+                with zipfile.ZipFile(path) as z:files={n:z.read(n) for n in z.namelist() if n!='feed_info.txt'}
+                files['calendar.txt']=files['calendar.txt'].replace(b'20260101',b'20261101')
+                if added:
+                    del files['calendar.txt']
+                    files['calendar_dates.txt']=b'service_id,date,exception_type\nW,20261101,1\nW,20261001,2\n'
+                with zipfile.ZipFile(path,'w') as z:
+                    for name,data in files.items():z.writestr(name,data)
+                with self.assertRaisesRegex(ValueError,'before.*service calendar'):
+                    compiler.compile_feed(path,CONFIG,'2026-10-05')
+                # An earlier added rail service extends the lower boundary.
+                files['calendar_dates.txt']=b'service_id,date,exception_type\nW,20261001,1\n'
+                with zipfile.ZipFile(path,'w') as z:
+                    for name,data in files.items():z.writestr(name,data)
+                result=compiler.compile_feed(path,CONFIG,'2026-10-01')
+                self.assertEqual(result['segments'][0]['profiles']['am']['display_tph'],.5)
+
+    def test_current_pattern_cannot_validate_a_future_branch_after_route_merging(self):
+        patterns={'future':[('A','08:00:00'),('B','08:10:00')],'current':[('B','08:00:00'),('C','08:10:00')]}
+        for same_route in [False,True]:
+            with self.subTest(same_route=same_route):
+                path=self.feed(patterns,patterns)
+                with zipfile.ZipFile(path) as z:files={n:z.read(n) for n in z.namelist() if n!='feed_info.txt'}
+                files['calendar.txt']=files['calendar.txt'].replace(b'20260101',b'20261101')+b'NOW,1,1,1,1,1,1,1,20260101,20261231\n'
+                files['routes.txt']=b'route_id,route_type,agency_id,route_short_name\na,2,A,R\n'+(b'' if same_route else b'z,2,A,R\n')
+                files['trips.txt']=b'trip_id,route_id,service_id\nfuture,a,W\ncurrent,'+(b'a' if same_route else b'z')+b',NOW\n'
+                with zipfile.ZipFile(path,'w') as z:
+                    for name,data in files.items():z.writestr(name,data)
+                result=compiler.compile_feed(path,{**CONFIG,'canonical_routes':True},'2026-10-05')
+                self.assertEqual(len(result['routes']),1)
+                segments={tuple(s['stops']):s for s in result['segments']}
+                self.assertIsNone(segments[('A','B')]['profiles']['am']['display_tph'])
+                self.assertEqual(segments[('B','C')]['profiles']['am']['display_tph'],.5)
+                self.assertEqual(result['source']['calendar_audit']['trip_patterns_before_service_start'],1)
+
     def test_calendar_horizon_retains_multi_day_departures_after_final_service_day(self):
         patterns={'late':[('A','00:00:00'),('B','103:00:00'),('C','103:10:00')]}
         path=self.feed(patterns,patterns)
@@ -90,6 +129,37 @@ class GTFSFrequency(unittest.TestCase):
         self.assertLess(routes['old']['valid_until'],now)
         self.assertGreater(routes['current']['valid_until'],now)
         self.assertEqual(result['source']['calendar_audit']['routes_beyond_service_horizon'],['old'])
+
+    def test_canonical_route_preserves_expired_branch_and_current_branch_validity(self):
+        patterns={'old':[('A','08:00:00'),('B','08:10:00')],'current':[('B','08:00:00'),('C','08:10:00')]}
+        path=self.feed(patterns,patterns)
+        with zipfile.ZipFile(path) as z:files={n:z.read(n) for n in z.namelist() if n!='feed_info.txt'}
+        files['calendar.txt']=files['calendar.txt'].replace(b'20261231',b'20261002')+b'NEW,1,1,1,1,1,1,1,20260101,20261231\n'
+        files['routes.txt']=b'route_id,route_type,agency_id,route_short_name\na,2,A,R\nz,2,A,R\n'
+        files['trips.txt']=b'trip_id,route_id,service_id\nold,a,W\ncurrent,z,NEW\n'
+        with zipfile.ZipFile(path,'w') as z:
+            for name,data in files.items():z.writestr(name,data)
+        result=compiler.compile_feed(path,{**CONFIG,'canonical_routes':True},'2026-10-05')
+        self.assertEqual(len(result['routes']),1)
+        self.assertEqual(result['routes'][0]['source_route_ids'],['a','z'])
+        now=compiler.local_boundary(compiler.dt.date(2026,10,5),'00:00:00',compiler.ZoneInfo('Europe/Helsinki'))
+        segments={tuple(s['stops']):s for s in result['segments']}
+        self.assertIsNone(segments[('A','B')]['profiles']['am']['display_tph'])
+        self.assertLess(segments[('A','B')]['valid_until'],now)
+        self.assertEqual(segments[('B','C')]['profiles']['am']['display_tph'],.5)
+        self.assertGreater(segments[('B','C')]['valid_until'],now)
+        self.assertGreater(result['routes'][0]['valid_until'],now)
+        # The same protection applies to variants already using one route ID.
+        files['routes.txt']=b'route_id,route_type,agency_id,route_short_name\na,2,A,R\n'
+        files['trips.txt']=b'trip_id,route_id,service_id\nold,a,W\ncurrent,a,NEW\n'
+        with zipfile.ZipFile(path,'w') as z:
+            for name,data in files.items():z.writestr(name,data)
+        result=compiler.compile_feed(path,{**CONFIG,'canonical_routes':True},'2026-10-05')
+        segments={tuple(s['stops']):s for s in result['segments']}
+        self.assertIsNone(segments[('A','B')]['profiles']['am']['display_tph'])
+        self.assertLess(segments[('A','B')]['valid_until'],now)
+        self.assertEqual(segments[('B','C')]['profiles']['am']['display_tph'],.5)
+        self.assertGreater(segments[('B','C')]['valid_until'],now)
 
     def test_shape_snap_distances_are_local_even_with_unrelated_latitudes(self):
         spec=importlib.util.spec_from_file_location('shape_paths',Path(__file__).parent.parent/'scripts/gtfs-shapes.py')

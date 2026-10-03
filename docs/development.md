@@ -83,16 +83,17 @@ Open [http://localhost:4173](http://localhost:4173). The local server serves
 | --- | --- |
 | `styles/index.html`, `styles/app.mjs`, `styles/app.css` | Application page, controls and presentation |
 | `styles/map-model.mjs` | Map semantics and shared display rules |
-| `scripts/build-style.mjs` | Builds the worldwide style from `styles/default.style.json` |
+| `scripts/build-style.mjs`, `scripts/style/compose-style.mjs` | Generates station data and composes the atlas-owned rendering stack |
+| `scripts/style/sources/`, `scripts/style/layers/` | Provider definitions and cartographic modules |
+| `scripts/style/source-contract.mjs`, `styles/layer-semantics.mjs` | Consumed source schema and semantic visibility/localization controls |
 | `styles/world.style.json`, `styles/major-stations.geojson` | Generated style and curated station labels, committed and checked for reproducibility |
 | `styles/tile-labels.mjs`, `styles/han-region.mjs` | Label selection and geographic name rules |
 | `styles/track-count.mjs`, `styles/track-tiles.mjs` | Track grouping and tile loading |
 | `scripts/` | Build tools, data preparation, preview server and browser checks |
 | `tests/` | Automated tests |
 | `.github/workflows/` | Validation, Pages deployment and snapshot maintenance |
-| `ProcessRailway.java`, `justfile` | Standalone legacy Europe extractor, unused by Atlas; see [project origins](upstream.md#inherited-code-audit) |
 
-For worldwide style changes, edit the builder and relevant source modules, run
+For worldwide style changes, edit the relevant layer/source modules and the explicit composition, run
 `npm run build`, and commit the resulting `styles/world.style.json` with the
 source changes. The build also creates the browser localization bundle and
 copies the pinned contour library with its licence into `styles/vendor/`;

@@ -113,7 +113,11 @@ class RemoteZip:
         self.url, self.max_bytes = url, max_bytes
         self.full, self.identity = None, None
         with get(url, {'Range': 'bytes=-65557'}) as response:
-            self.identity = response.headers.get('ETag') or response.headers.get('Last-Modified')
+            self.etag=response.headers.get('ETag')
+            self.last_modified=response.headers.get('Last-Modified')
+            self.identity = self.etag or self.last_modified
+            # A weak ETag is valid for If-None-Match, never for If-Range.
+            self.range_validator = self.etag if self.etag and not self.etag.startswith('W/') else self.last_modified
             content_range = response.headers.get('Content-Range', '')
             if response.status != 206:
                 self.full = self.read_bounded(response)
@@ -126,6 +130,11 @@ class RemoteZip:
             offset, _, self.size = map(int, match.groups())
             if self.size > max_bytes:
                 raise ValueError('Feed exceeds download byte budget')
+            if not self.range_validator:
+                # One bounded whole response avoids mixing unguarded byte
+                # ranges when there is no strong ETag or date validator.
+                self.directory = None
+                return
             tail = response.read(65558)
         index = tail.rfind(b'PK\x05\x06')
         if index < 0 or len(tail) < index+22:
@@ -156,13 +165,15 @@ class RemoteZip:
 
     def range(self, begin, end):
         headers = {'Range': f'bytes={begin}-{end}'}
-        if self.identity:
-            headers['If-Range'] = self.identity
+        if self.range_validator:
+            headers['If-Range'] = self.range_validator
         with get(self.url, headers) as response:
             if response.status != 206:
                 raise ValueError('Feed changed during range reads, or ranges unavailable')
             identity = response.headers.get('ETag') or response.headers.get('Last-Modified')
             if self.identity and identity != self.identity:
+                raise ValueError('Feed changed during range reads')
+            if self.last_modified and self.range_validator == self.last_modified and response.headers.get('Last-Modified') != self.last_modified:
                 raise ValueError('Feed changed during range reads')
             data = response.read(end-begin+2)
         if len(data) != end-begin+1:
@@ -203,6 +214,8 @@ class RemoteZip:
                 identity = response.headers.get('ETag') or response.headers.get('Last-Modified')
                 if self.identity and identity != self.identity:
                     raise ValueError('Feed changed during full download')
+                if self.last_modified and self.range_validator == self.last_modified and response.headers.get('Last-Modified') != self.last_modified:
+                    raise ValueError('Feed changed during full download')
                 self.full = self.read_bounded(response)
         return self.full
 
@@ -233,7 +246,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
     # Download with conditional revalidation. A cached successful ZIP is still
     # used only after a successful response/304, never after a failed refresh.
     meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
-    headers = {'If-None-Match': meta['etag']} if meta.get('etag') else {}
+    headers = {'If-None-Match': meta['etag']} if meta.get('etag') else {'If-Modified-Since':meta['last_modified']} if meta.get('last_modified') else {}
     fresh = False
     if path.exists() and headers:
         try:
@@ -241,12 +254,15 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
                 data = RemoteZip.read_bounded(type('Budget', (), {'max_bytes': max_bytes})(), response)
                 path.write_bytes(data)
                 del data
-                meta = {'etag': response.headers.get('ETag'), 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
+                meta = {'etag': response.headers.get('ETag'), 'last_modified':response.headers.get('Last-Modified'), 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
                 fresh = True
         except HTTPError as error:
-            if error.code != 304:
-                raise
-            fresh = True  # content remains the exact successful revision.
+            try:
+                if error.code != 304:
+                    raise
+                fresh = True  # content remains the exact successful revision.
+            finally:
+                error.close()
     if not fresh:
         remote = RemoteZip(entry['processed_url'], max_bytes)
         rail = [r for r in csv.DictReader(io.StringIO(remote.table('routes.txt').decode('utf-8-sig'))) if compiler.rail_type(r['route_type'])]
@@ -254,7 +270,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
             (output/'feeds'/(ident+'.json.gz')).unlink(missing_ok=True)
             return {**entry, 'status': 'no_rail', 'rail_routes': 0}
         path.write_bytes(remote.download())
-        meta = {'etag': remote.identity, 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
+        meta = {'etag': remote.etag, 'last_modified':remote.last_modified, 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
         del remote
     # Reinspect changed conditional 200 responses and cached 304 revisions.
     with zipfile.ZipFile(path) as archive:

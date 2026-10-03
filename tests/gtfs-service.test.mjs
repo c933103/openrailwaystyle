@@ -19,14 +19,16 @@ test('GTFS shapes populate service tiles with no OSM snapshot, date and directio
   assert.equal(timetableFeatures([feed],feed.source.valid_until*1000+1).summary[0].routesWithProfiles,0);
 });
 test('route calendar expiry reaches encoded tiles even while its feed remains current',()=>{
-  const bounded=structuredClone(feed),until=now/1000-1;
-  bounded.routes[0].valid_until=until;
-  const data=timetableFeatures([bounded],now),tiles=buildTiles(readTable(''),{timetable:data});
-  const bytes=[...tiles.entries()].find(([key])=>key.startsWith('12/'));
-  const feature=new VectorTile(new Pbf(bytes[1])).layers.service_routes.feature(0).properties;
-  assert.equal(feature.frequency_until,until);
-  assert.equal(data.summary[0].routesWithProfiles,0);
-  assert.equal(frequencyDetails(feature,'am',now),null);
+  for(const scope of ['route','segment']){
+    const bounded=structuredClone(feed),until=now/1000-1;
+    (scope==='route'?bounded.routes[0]:bounded.segments[0]).valid_until=until;
+    const data=timetableFeatures([bounded],now),tiles=buildTiles(readTable(''),{timetable:data});
+    const bytes=[...tiles.entries()].find(([key])=>key.startsWith('12/'));
+    const feature=new VectorTile(new Pbf(bytes[1])).layers.service_routes.feature(0).properties;
+    assert.equal(feature.frequency_until,until,scope);
+    assert.equal(data.summary[0].routesWithProfiles,0);
+    assert.equal(frequencyDetails(feature,'am',now),null);
+  }
 });
 test('local services rebundle independently and shared geometry retains every service',()=>{
   const tram=structuredClone(feed);tram.source.id='other';tram.routes[0].route_type='0';
