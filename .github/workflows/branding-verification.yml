@@ -1,0 +1,29 @@
+name: Verify installed-app branding migration
+on:
+  push:
+    branches: [test/branding-migration-20261003]
+permissions:
+  contents: read
+jobs:
+  branding:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate branding assets and metadata
+        run: node --test tests/branding.test.mjs
+      - name: Install full Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test browser-managed installation and cache migration
+        run: node scripts/check-branding-browser.mjs
+      - name: Save migration evidence and social-preview asset
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: branding-migration-review
+          path: browser-review/branding/
+          if-no-files-found: warn
