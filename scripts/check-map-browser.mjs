@@ -90,7 +90,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') { console.log('Browser resource:',msg.text()); if(/DataCloneError|already detached/.test(msg.text())) errors.push(msg.text()); }});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261003-82&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261003-83&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
@@ -138,7 +138,7 @@ try{
   // and it must not cover the centred status pill.
   const overlayBoxes=()=>page.evaluate(()=>{
     const box=el=>{const r=el.getBoundingClientRect();return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height};};
-    return {scale:box(document.querySelector('.maplibregl-ctrl-scale')),panel:box(document.querySelector('.panel')),status:box(document.querySelector('#map-status'))};
+    return {scale:box(document.querySelector('.maplibregl-ctrl-scale')),panel:box(document.querySelector('.panel')),status:box(document.querySelector('.map-status'))};
   });
   const overlaps=(a,b)=>a.left<b.right && a.right>b.left && a.top<b.bottom && a.bottom>b.top;
   let boxes=await overlayBoxes();
@@ -475,7 +475,7 @@ try{
   const compactControls=await page.evaluate(()=>{
     const box=el=>{const r=el.getBoundingClientRect();return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height};};
     const scale=document.querySelector('.maplibregl-ctrl-scale'),readout=document.querySelector('.map-readout'),status=document.querySelector('#map-status');
-    return {display:getComputedStyle(scale).display,scale:box(scale),readout:readout.hidden?null:box(readout),status:box(status),viewport:{width:innerWidth,height:innerHeight}};
+    return {display:getComputedStyle(scale).display,scale:box(scale),readout:readout.hidden?null:box(readout),status:box(document.querySelector('.map-status')),viewport:{width:innerWidth,height:innerHeight}};
   });
   assert.notEqual(compactControls.display,'none','The scale ruler stays visible on compact screens');
   assert.ok(compactControls.scale.left>=0 && compactControls.scale.top>=0 && compactControls.scale.right<=compactControls.viewport.width && compactControls.scale.bottom<=compactControls.viewport.height,'The compact scale ruler stays inside the visible viewport');
