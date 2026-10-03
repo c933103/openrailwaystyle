@@ -140,7 +140,9 @@ class ShapePaths:
         return t,math.hypot(px-ax-t*dx,py-ay-t*dy)
 
     def pattern_key(self, trip, sequence):
-        return trip.get('shape_id'), tuple((r['stop_id'],r.get('shape_dist_traveled','')) for r in sequence)
+        # Route scope keeps graph fallbacks and their mode-specific failures
+        # separate even when two services have identical stops and no shape.
+        return trip['route_id'], trip.get('shape_id'), tuple((r['stop_id'],r.get('shape_dist_traveled','')) for r in sequence)
 
     def project_pattern(self, trip, sequence, stops):
         shape = self.shapes.get(trip.get('shape_id'))
