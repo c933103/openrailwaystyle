@@ -7,7 +7,7 @@ export const DETAIL_SIDE = 4;
 export const DETAIL_QUANTUM = 0.001; // 1 m: preserve small polar-station buildings.
 export function detailQuery(cap, west, east) {
   const bbox = cap === 'north' ? `85,${west},90,${east}` : `-90,${west},-85,${east}`;
-  return `[out:json][timeout:240];(way[highway](${bbox});way[waterway](${bbox});way[building](${bbox});rel[building][type=multipolygon](${bbox});way[aeroway~"^(taxiway|apron)$"](${bbox});nwr[amenity][name](${bbox});nwr[man_made=research_station](${bbox});node[natural=peak][name](${bbox}););out geom;`;
+  return `[out:json][timeout:240];(way[highway](${bbox});way[waterway](${bbox});way[building](${bbox});rel[building][type=multipolygon](${bbox});way[aeroway~"^(taxiway|apron)$"](${bbox});rel[aeroway=apron][type=multipolygon](${bbox});nwr[amenity][name](${bbox});nwr[man_made=research_station](${bbox});node[natural=peak][name](${bbox}););out geom;`;
 }
 export function parseOverpass(text) {
   const data = JSON.parse(text);

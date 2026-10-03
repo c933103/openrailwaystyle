@@ -18,7 +18,7 @@ test('detail extraction covers both full caps; incomplete Overpass responses are
   for (const cap of ['north', 'south']) for (let west = -180; west < 180; west += 90) {
     const query = detailQuery(cap, west, west + 90);
     assert.ok(query.includes(cap === 'north' ? `85,${west},90,${west + 90}` : `-90,${west},-85,${west + 90}`));
-    for (const selector of ['way[highway]', 'way[waterway]', 'way[building]', 'rel[building]', 'research_station']) assert.ok(query.includes(selector));
+    for (const selector of ['way[highway]', 'way[waterway]', 'way[building]', 'rel[building]', 'rel[aeroway=apron][type=multipolygon]', 'research_station']) assert.ok(query.includes(selector));
   }
   assert.deepEqual(parseOverpass('{"elements":[]}').elements, []);
   assert.throws(() => parseOverpass('{"elements":[{"id":1}],"remark":"runtime error: timeout"}'), /Incomplete/);
@@ -32,10 +32,12 @@ test('Carto tiles preserve metre-scale buildings, join relation holes and dedupl
   const building = {type:'relation', id:1, tags:{building:'yes'}, members:[{role:'outer',geometry:outer},{role:'inner',geometry:inner}]};
   const road = {type:'way', id:2, tags:{highway:'service'}, geometry:geometry([[10,20],[40,20]])};
   const station = {type:'node', id:3, ...geometry([[35,45]])[0], tags:{man_made:'research_station',name:'Station', 'name:ja':'Station JA'}};
-  const tiles = detailTiles('south', [building, building, road, road, station, station]);
+  const apron = {...building,id:4,tags:{aeroway:'apron'}};
+  const tiles = detailTiles('south', [building, building, road, road, station, station, apron]);
   assert.equal(tiles.size, 1);
   const tile = tiles.get('2-2');
   assert.equal(tile.buildings.length, 1); assert.equal(tile.buildings[0].length, 2);
+  assert.equal(tile.aprons.length, 1); assert.equal(tile.aprons[0].length, 2);
   const ring = tile.buildings[0][0], points = decodeLine(ring, 0, ring.length, tile.quantum);
   assert.equal(new Set(points.map(p => p.join(','))).size, 4, 'a six-metre building must not collapse');
   assert.equal(tile.roads.length, 1); assert.equal(tile.places.length, 1);
