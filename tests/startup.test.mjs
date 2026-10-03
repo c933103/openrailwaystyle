@@ -298,7 +298,7 @@ test('curated priority gets its displayed names from OSM object tags, never the 
   }
   return {ok:true,status:200,json:async()=>structuredClone(style)};
  };
- const {dom,maps}=await start({search:'#3/35.681/125',fetcher});
+ const {dom,maps}=await start({search:'?language=en#3/35.681/125',fetcher});
  try{
   const map=maps[0];map.handlers['style.load']();
   for(let i=0;i<20&&!map.sourceData?.stationMajor;i++)await new Promise(r=>setTimeout(r,0));
