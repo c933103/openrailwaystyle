@@ -34,7 +34,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     off(name) { delete this.handlers[name]; }
     on(name, handler) { this.handlers[name] = handler; }
     getStyle() { return this.options.style; }
-    getSource(id) { return {setData(){},setUrl: url => {this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
+    getSource(id) { return (this.sources ||= {})[id] ||= {setData:data=>{(this.sourceData ||= {})[id]=data;},setUrl:url=>{this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
     setLayoutProperty(id, property, value) { if (property === 'visibility') this.visibility[id] = value; else (this.layout ||= {})[id] = value; }
     setPaintProperty(id, property, value) { (this.paint ||= {})[id] = value; }
     setPixelRatio(ratio) { this.pixelRatio = ratio; }
@@ -287,6 +287,30 @@ test('settings are remembered in a cookie; a shared link applies once and leaves
     } finally {dom.window.close();}
   }
 });
+test('curated priority gets its displayed names from OSM object tags, never the source note',async()=>{
+ const osmCalls=[];
+ const fetcher=async url=>{
+  const u=new URL(String(url));
+  if(u.hostname==='api.openstreetmap.org'){
+   osmCalls.push(u.href);
+   const plural=u.pathname.split('/').at(-1).replace(/\.json$/,''),type=plural.slice(0,-1),ids=(u.searchParams.get(plural)||'').split(',').filter(Boolean);
+   return {ok:true,status:200,json:async()=>({elements:ids.map(id=>({type,id:Number(id),tags:{name:`OSM local ${id}`,'name:en':`OSM English ${id}`}}))})};
+  }
+  return {ok:true,status:200,json:async()=>structuredClone(style)};
+ };
+ const {dom,maps}=await start({search:'#3/35.681/125',fetcher});
+ try{
+  const map=maps[0];map.handlers['style.load']();
+  for(let i=0;i<20&&!map.sourceData?.stationMajor;i++)await new Promise(r=>setTimeout(r,0));
+  const penn=map.sourceData?.stationMajor?.features.find(f=>f.properties.wikidata==='Q54451');
+  assert.ok(penn,'curated Penn feature is hydrated');
+  assert.equal(penn.properties.atlas_name,`OSM English ${penn.properties.osm_id}`);
+  assert.equal(penn.properties.atlas_name_source,'osm');
+  assert.notEqual(penn.properties.atlas_name,'New York Penn Station');
+  assert.ok(osmCalls.some(u=>u.includes('/nodes.json?')),'fixed OSM node identities are fetched in a batch');
+ }finally{dom.window.close();}
+});
+
 test('real renderer initialization failures reach the visible error message', async () => {
   const {dom,window,errors} = await start({failWebGL:true});
   try {
