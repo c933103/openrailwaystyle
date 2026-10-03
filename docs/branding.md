@@ -46,8 +46,9 @@ Keep `manifest.webmanifest` at its existing URL. Preserve its `id`, `start_url`
 and `scope` (`./`). Do not change the repository/Pages path or saved-settings
 keys as part of a display-name update. `openrailwaystyle` in repository URLs and
 the private npm package identifier are compatibility/technical identifiers,
-not the displayed app name. **Open Railway Styles**, Hack4Rail credits and the
-original examples are historical/upstream names, not stale branding to erase.
+not the displayed app name. **Open Railway Styles** and Hack4Rail remain origin
+credits; they do not describe the current application. Keep those credits in
+[project origins](upstream.md) and the app's Sources section.
 
 Shell cache generation 7 refreshes the branding files while preserving the
 previous app version through the existing migration. It does not clear cookies,

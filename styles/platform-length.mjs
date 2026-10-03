@@ -52,13 +52,13 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
  };
  async function next(){
   if(busy||disposed||Date.now()<pausedUntil)return;const entry=pending.entries().next().value;if(!entry)return;
-  const [key,url]=entry;pending.delete(key);if(!desired.has(key)){schedule();return;}busy=true;inflight=key;const requestController=new AbortController();controller=requestController;
+  const [key,url]=entry,requested=desired.get(key);pending.delete(key);if(!requested){schedule();return;}busy=true;inflight=key;const requestController=new AbortController();controller=requestController;
   const timeout=setTimeout(()=>requestController.abort(),5000);
   try {
    const r=await fetcher(url,{signal:requestController.signal});if(r.status===429){pause(cooldown);pending.clear();return;}
    if(r.status===404||r.status===410){remember(key,{});draw();return;}
    if(!r.ok)throw new Error(`HTTP ${r.status}`);
-   const data=await r.json(),entry=desired.get(key);if(!entry||disposed)return;
+   const data=await r.json(),entry=requested;if(disposed)return;
    const raw=data.properties||{},length=Number(raw.length),properties={name:raw.name||entry.feature.properties?.name||'',ref:raw.ref??entry.feature.properties?.ref??''};
    if(entry.kind==='edge')properties.length=Number.isFinite(length)&&length>0?length:null;
    remember(key,properties);draw();

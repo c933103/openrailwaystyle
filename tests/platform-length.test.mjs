@@ -100,3 +100,25 @@ test('request timeouts retain failure backoff before retrying a still-visible ed
   t.mock.timers.tick(2);await new Promise(resolve=>setImmediate(resolve));assert.equal(requests,2);assert.equal(data.features[0].properties.platform_length,350);
  }finally{p.destroy();}
 });
+
+test('zooming below the length threshold cancels only the length request without delaying platform references',async()=>{
+ let zoom=19,requests=0;
+ const platform={properties:{id:'node-23'},geometry:{type:'Point',coordinates:[0,0]}};
+ const map={getZoom:()=>zoom,getLayer:()=>({}),queryRenderedFeatures:({layers})=>layers.includes('platform-edges')?[edge()]:[platform],getSource:()=>({setData(){}})};
+ const p=createPlatformLengths(map,{delay:0,retryDelay:10000,fetcher:(url,{signal})=>{
+  requests++;
+  if(url.includes('platform_edges'))return new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(new Error('cancelled'))));
+  return Promise.resolve({ok:true,json:async()=>({properties:{ref:['3']}})});
+ }});
+ try{p.update();await new Promise(r=>setTimeout(r,10));assert.equal(requests,1);zoom=18;p.update();await new Promise(r=>setTimeout(r,20));assert.equal(requests,2);assert.equal(p.enrich({...platform,source:'platforms'}).properties.ref,'3');}finally{p.destroy();}
+});
+
+test('quickly reopening the view resumes an aborted object without a transient-error cooldown',async()=>{
+ let active=true,requests=0,data;const source={setData:d=>data=d};
+ const map={getZoom:()=>19,getLayer:()=>undefined,queryRenderedFeatures:()=>[edge()],getSource:id=>id==='platformLengths'?source:null};
+ const p=createPlatformLengths(map,{active:()=>active,delay:0,retryDelay:10000,fetcher:(url,{signal})=>{
+  if(++requests===1)return new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(new Error('cancelled'))));
+  return Promise.resolve({ok:true,json:async()=>({properties:{length:350}})});
+ }});
+ try{p.update();await new Promise(r=>setTimeout(r,10));active=false;p.update();active=true;p.update();await new Promise(r=>setTimeout(r,20));assert.equal(requests,2);assert.equal(data.features[0].properties.platform_length,350);}finally{p.destroy();}
+});
