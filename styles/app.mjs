@@ -1,11 +1,12 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261002-79';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261002-79';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261003-frequency-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS} from './service-frequency.mjs?v=20261003-frequency-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261003-frequency-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261002-79';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261002-79';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261002-79';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261002-79';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261002-79';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261003-frequency-1';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261003-frequency-1';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261003-frequency-1';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261003-frequency-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261003-frequency-1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -39,7 +40,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261002-79';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261003-frequency-1';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -197,6 +198,12 @@ function renderLegend() {
     }
   }
   box.append(grid);
+  if(settings.mode==='service'&&settings.serviceWidth==='frequency'){
+    const key=textNode('div','','frequency-key');
+    key.append(textNode('p',FREQUENCY_LABELS[selectedFrequencyProfile(settings)],'small'));
+    for(const rate of [1,6,12,24,30]){const sample=textNode('span','','frequency-sample'),mark=textNode('i');mark.style.height=frequencyWidth(rate)+'px';sample.append(mark,textNode('span',`${rate===30?'30+':rate}/h`));key.append(sample);}
+    key.append(textNode('p','Subdued line: frequency unavailable. Rates are per direction; published headways are estimates.','small'));box.append(key);
+  }
   const notes = {
     speed: settings.units === 'imperial' ? 'Labels in mph; limits tagged in mph keep their directional values. Grey means no numeric limit is recorded.' : 'Labels keep tagged units: bare numbers are km/h, mph is written out. Grey means no numeric limit is recorded.',
     electrification: 'Hue is the current type (DC, or AC by frequency); darker is higher voltage. A train needs both to match, unless built for several systems. Grey means not recorded.',
@@ -209,6 +216,7 @@ function renderLegend() {
     infrastructure: 'Numbers count the mapped tracks: running tracks side by side (not sidings, yards or crossovers), on the surface, on viaducts or in tunnels alike (grey-blue where all are in tunnels); at a station, every track there, sidings included. Ochre marks explicitly tagged shared roadway; level crossings are dark brown (road) or light brown (pedestrian).',
   };
   let note = notes[settings.mode];
+  if(settings.mode==='service'&&settings.serviceWidth==='frequency')note+=' Width uses the same capped scale in each weekday profile, using the lower rate when the source publishes a range. Morning and evening peaks are separate. Early morning, late night and special operating conditions are excluded. Missing, expired or unmatched profiles remain unavailable.';
   if (settings.inactive && settings.mode === 'speed') note += ' Planned and former lines take the colour of their recorded limit, if any.';
   // Collapsed by default, so the legend stays short; stays open once opened.
   const help = Object.assign(textNode('details', '', 'legend-help'), {open: legendHelpOpen});
@@ -266,6 +274,12 @@ function updateMajorStations(){
  }).catch(error=>console.warn('Major station list unavailable:',error.message));
 }
 function applySettings() {
+  $('service-frequency-options').hidden = settings.mode !== 'service';
+  $('frequency-profile-options').hidden = settings.serviceWidth !== 'frequency';
+  $('peak-phase-options').hidden = settings.frequencyPeriod !== 'peak';
+  $('service-width').value = settings.serviceWidth;
+  $('frequency-period').value = settings.frequencyPeriod;
+  $('peak-phase').value = settings.peakPhase;
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
   document.querySelectorAll('[data-background]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.background === settings.background)));
   $('legend').hidden = settings.background === 'satellite';
@@ -274,10 +288,13 @@ function applySettings() {
   $('units').value = settings.units;
   readout.hidden = !settings.readout; updateReadout();
   if (ready) clickable = [];
+  const frequencyPaint=serviceFrequencyPaint(settings);
   if (ready) for (const layer of map.getStyle().layers) {
     // Shown unless a setting hides it (a layer hidden under the imagery comes
     // back with the map).
     if(layer.id==='polar-caps')map.triggerRepaint();
+    if(layer.id==='service-routes')for(const [property,value] of [['line-width',frequencyPaint.width],['line-offset',frequencyPaint.offset],['line-opacity',frequencyPaint.opacity]])map.setPaintProperty(layer.id,property,value);
+    if(layer.id==='service-names')map.setLayoutProperty(layer.id,'text-offset',frequencyPaint.labelOffset);
     const visible = layerVisibility(layer);
     if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
@@ -460,22 +477,7 @@ function showDetails(feature) {
 // shifted sideways by its place in the bundle, as service-routes draws it)
 // passes nearest the point.
 function nearestService(services, point) {
-  const z = map.getZoom(), width = z <= 12 ? 2 + (Math.max(7, z) - 7) * 0.3 : 3.5 + (Math.min(16, z) - 12) * 0.375;
-  let best = services[0], bestDistance = Infinity;
-  for (const f of services) {
-    const offset = (f.properties.i - (f.properties.n - 1) / 2) * width;
-    const lines = f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.coordinates;
-    for (const line of lines) for (let k = 1; k < line.length; k++) {
-      const a = map.project(line[k - 1]), b = map.project(line[k]), dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
-      if (!len) continue;
-      // The segment shifted to the right of its direction (screen y points down).
-      const nx = -dy / len * offset, ny = dx / len * offset;
-      const t = Math.max(0, Math.min(1, ((point.x - a.x - nx) * dx + (point.y - a.y - ny) * dy) / (len * len)));
-      const d = Math.hypot(a.x + nx + t * dx - point.x, a.y + ny + t * dy - point.y);
-      if (d < bestDistance) { bestDistance = d; best = f; }
-    }
-  }
-  return best;
+  return nearestServiceFeature(services,point,p=>map.project(p),map.getZoom(),settings);
 }
 // An urban rail service (Service view): the route, its network and operator.
 function showServiceDetails(feature) {
@@ -486,6 +488,9 @@ function showServiceDetails(feature) {
   row(dl, 'Reference', p.ref);
   row(dl, 'Network', p.network);
   row(dl, 'Operator', p.operator);
+  for(const profile of ['am','pm','offpeak'])row(dl,FREQUENCY_LABELS[profile],frequencyDetails(p,profile)||'Frequency unavailable');
+  if(p.frequency_source){row(dl,'Frequency source',`${p.frequency_source} · checked ${p.frequency_checked}`);row(dl,'Period definitions',p.frequency_definition);}
+  if(p.frequency_url==='https://www.mtr.com.hk/en/customer/services/train_service_index.html'){const link=textNode('a','Published headways');link.href=p.frequency_url;link.target='_blank';link.rel='noopener';panel.append(link);}
   if (p.n > 1) row(dl, 'Services on this track', String(p.n));
   panel.append(dl);
   osmLink(panel, feature);
@@ -667,7 +672,10 @@ function gauge(value) {
 }
 // Units change speed colours and labels, contour intervals and the scale bar.
 function unitStyle(style) {
+  const frequencyPaint=serviceFrequencyPaint(settings);
   for (const layer of style.layers) {
+    if(layer.id==='service-routes')Object.assign(layer.paint,{'line-width':frequencyPaint.width,'line-offset':frequencyPaint.offset,'line-opacity':frequencyPaint.opacity});
+    if(layer.id==='service-names')layer.layout['text-offset']=frequencyPaint.labelOffset;
     if (/^speed-(branch-overview|metro-overview|overview|tracks)$/.test(layer.id)) layer.paint['line-color'] = speedPaint(settings.units);
     if(layer.id==='platform-lengths')layer.layout['text-field']=platformLengthLabel(settings.units);
     if (layer.id === 'axle-labels') layer.layout['text-field'] = axleLabel(settings.units);
@@ -1212,6 +1220,7 @@ async function initialize() {
 document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
   settings.mode = button.dataset.mode; applySettings(); saveSettings();
 }));
+for(const [id,key] of [['service-width','serviceWidth'],['frequency-period','frequencyPeriod'],['peak-phase','peakPhase']])$(id).addEventListener('change',()=>{settings[key]=$(id).value;applySettings();saveSettings();if(currentFeature?.layer?.id==='service-routes')showServiceDetails(currentFeature);});
 document.querySelectorAll('[data-background]').forEach(button => button.addEventListener('click', () => {
   settings.background = button.dataset.background; applySettings(); saveSettings();
 }));

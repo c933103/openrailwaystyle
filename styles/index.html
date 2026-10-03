@@ -31,7 +31,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20261002-79" rel="stylesheet">
+  <link href="app.css?v=20261003-frequency-1" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -55,6 +55,12 @@
         <button data-mode="service" aria-pressed="false">Service</button>
         <button data-mode="owner" aria-pressed="false">Owner</button>
         <button data-mode="axle" aria-pressed="false">Axle load</button>
+      </div>
+      <div id="service-frequency-options" hidden>
+        <label for="service-width">Route width</label><select id="service-width"><option value="equal">Equal</option><option value="frequency">By frequency</option></select>
+        <div id="frequency-profile-options" hidden><label for="frequency-period">Frequency</label><select id="frequency-period"><option value="offpeak">Off-peak</option><option value="peak">Peak</option></select>
+          <div id="peak-phase-options" hidden><label for="peak-phase">Peak</label><select id="peak-phase"><option value="am">Morning</option><option value="pm">Evening</option></select></div>
+        </div>
       </div>
       <div class="background-picker" role="group" aria-label="Background"><button data-background="map" aria-pressed="true">Map</button><button data-background="satellite" aria-pressed="false" title="Satellite imagery only">Satellite</button><button data-background="hybrid" aria-pressed="false" title="Satellite imagery under the railways">Hybrid</button><button data-background="carto" aria-pressed="false">Carto</button></div>
       <div id="legend" aria-live="polite"></div>
@@ -172,6 +178,6 @@
       status.textContent = 'The map could not load. Check your connection and reload the page.';
     }, true);
   </script>
-  <script type="module" src="app.mjs?v=20261002-79"></script>
+  <script type="module" src="app.mjs?v=20261003-frequency-1"></script>
 </body>
 </html>

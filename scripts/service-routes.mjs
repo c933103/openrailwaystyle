@@ -7,6 +7,7 @@
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import {simplify} from './branch-lines.mjs';
+import {frequencyBundle} from '../styles/service-frequency.mjs';
 
 export const MIN_ZOOM = 7, LOCAL_MIN_ZOOM = 10, MAX_ZOOM = 12, LAYER = 'service_routes';
 // Light rail, trams and monorails from zoom 10, as in the other views.
@@ -280,7 +281,7 @@ export function joinLines(lines) {
 // route on each way: its label, colour, kind and place (i of n) among the
 // routes drawn on that way (at zooms 7–9 metro and commuter routes only;
 // from zoom 10 all of them).
-export function buildTiles({routes, ways}) {
+export function buildTiles({routes, ways}, {headways} = {}) {
   const out = new Map(), sets = [[new Map(), MIN_ZOOM, LOCAL_MIN_ZOOM - 1, r => !LOCAL_KINDS.includes(r.kind)], [new Map(), LOCAL_MIN_ZOOM, MAX_ZOOM, () => true]];
   const service = serviceRoutes({routes, ways});
   for (const way of ways.values()) {
@@ -291,6 +292,7 @@ export function buildTiles({routes, ways}) {
     if (!lines.length) continue;
     for (const [groups, , , shown] of sets) {
       const list = all.filter(shown);
+      const frequency = headways ? frequencyBundle(list, lines, headways) : null;
       // Names as name and name:xx, as the map's other labels, so they follow
       // the label language.
       list.forEach((route, i) => {
@@ -298,6 +300,7 @@ export function buildTiles({routes, ways}) {
           ref: route.ref, colour: route.colour, kind: route.kind, network: route.network, operator: route.operator, i, n: list.length,
           // Its place across the bundle (−(n−1) … n−1), for its name's offset.
           slot: Math.max(-63, Math.min(63, 2 * i - (list.length - 1)))};
+        if (frequency) Object.assign(properties, frequency[i]);
         const key = JSON.stringify(properties);
         if (!groups.has(key)) groups.set(key, {properties, lines: []});
         groups.get(key).lines.push(...lines);

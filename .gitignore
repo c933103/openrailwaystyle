@@ -17,3 +17,4 @@ crossing-data/
 *.tmp.mjs
 .probe-tmp.mjs
 service-data/
+__pycache__/

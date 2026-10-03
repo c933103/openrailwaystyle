@@ -8,6 +8,7 @@ import * as draw from '../styles/draw.mjs';
 import * as departuresModule from '../styles/departures.mjs';
 import * as elevationModule from '../styles/elevation.mjs';
 import * as contextFeatures from '../styles/context.mjs';
+import * as frequencyModule from '../styles/service-frequency.mjs';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
 const appURL = new URL('../styles/app.mjs', import.meta.url);
@@ -36,7 +37,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     getStyle() { return this.options.style; }
     getSource(id) { return {setData(){},setUrl: url => {this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
     setLayoutProperty(id, property, value) { if (property === 'visibility') this.visibility[id] = value; else (this.layout ||= {})[id] = value; }
-    setPaintProperty(id, property, value) { (this.paint ||= {})[id] = value; }
+    setPaintProperty(id, property, value) { (this.paint ||= {})[id] = value; ((this.paintProperties ||= {})[id] ||= {})[property] = value; }
     setPixelRatio(ratio) { this.pixelRatio = ratio; }
     zoom = 20;
     getZoom() { return this.zoom; }
@@ -111,12 +112,35 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const contextModule = new vm.SyntheticModule(Object.keys(contextFeatures),function() {
     for (const [key,value] of Object.entries(contextFeatures)) this.setExport(key,value);
   },{context});
-  await app.link(specifier => specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  const frequency = new vm.SyntheticModule(Object.keys(frequencyModule),function(){for(const [key,value] of Object.entries(frequencyModule))this.setExport(key,value);},{context});
+  await app.link(specifier => specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries,loadLabels};
 }
 
+test('service frequency profile is applied on the first frame and controls persist independently',async()=>{
+  const {dom,window,maps,errors}=await start({search:'?mode=service&serviceWidth=frequency&frequencyPeriod=peak&peakPhase=pm'});
+  try {
+    assert.equal(errors.length,0);
+    const doc=window.document, map=maps[0];
+    assert.equal(doc.getElementById('service-frequency-options').hidden,false);
+    assert.equal(doc.getElementById('peak-phase-options').hidden,false);
+    assert.equal(doc.getElementById('peak-phase').value,'pm');
+    const first=map.options.style.layers.find(l=>l.id==='service-routes').paint;
+    assert.match(JSON.stringify(first['line-width']),/frequency_width_pm/);
+    map.handlers['style.load']();
+    const period=doc.getElementById('frequency-period');period.value='offpeak';period.dispatchEvent(new window.Event('change'));
+    assert.match(JSON.stringify(map.paintProperties['service-routes']['line-offset']),/frequency_offset_offpeak/);
+    assert.equal(doc.getElementById('peak-phase-options').hidden,true);
+    assert.match(decodeURIComponent(doc.cookie),/"frequencyPeriod":"offpeak"/);
+    const width=doc.getElementById('service-width');width.value='equal';width.dispatchEvent(new window.Event('change'));
+    assert.equal(doc.getElementById('frequency-profile-options').hidden,true);
+    assert.doesNotMatch(JSON.stringify(map.paintProperties['service-routes']['line-width']),/frequency_width/);
+    doc.querySelector('[data-mode="speed"]').click();
+    assert.equal(doc.getElementById('service-frequency-options').hidden,true);
+  } finally {dom.window.close();}
+});
 test('app starts with the MapLibre 5 API and enables map controls', async () => {
   const {dom,window,maps,errors} = await start();
   try {

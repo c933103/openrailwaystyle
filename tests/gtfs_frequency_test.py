@@ -1,0 +1,83 @@
+import csv
+import importlib.util
+import io
+from pathlib import Path
+import tempfile
+import unittest
+import zipfile
+
+spec = importlib.util.spec_from_file_location('gtfs_frequency',Path(__file__).parent.parent/'scripts/gtfs-frequency.py')
+compiler = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(compiler)
+CONFIG = {'source':{'id':'fixture'},'profiles':{'am':{'start':'07:00:00','end':'09:00:00'},'pm':{'start':'15:00:00','end':'18:00:00'},'offpeak':{'start':'13:00:00','end':'14:00:00'}}}
+
+
+class GTFSFrequency(unittest.TestCase):
+    def feed(self, trips, patterns, frequencies=None, exceptions=None, blank=False):
+        rows={
+          'agency.txt':[{'agency_id':'A','agency_name':'Fixture','agency_timezone':'Europe/Helsinki'}],
+          'routes.txt':[{'route_id':'R','route_type':'1','agency_id':'A','route_short_name':'R'}],
+          'feed_info.txt':[{'feed_start_date':'20260101','feed_end_date':'20261231'}],
+          'stops.txt':[{'stop_id':s,'stop_name':s,'stop_lat':60+i*.01,'stop_lon':24,'parent_station':' '} for i,s in enumerate('ABCD')],
+          'calendar.txt':[{'service_id':'W','monday':'1','tuesday':'1','wednesday':'1','thursday':'1','friday':'1','saturday':'0','sunday':'1','start_date':'20260101','end_date':'20261231'}],
+          'trips.txt':[{'trip_id':name,'route_id':'R','service_id':'W'} for name in trips],
+          'stop_times.txt':[{'trip_id':name,'stop_sequence':i,'stop_id':s,'arrival_time':time,'departure_time':time if not blank or i else ''} for name,pattern in patterns.items() for i,(s,time) in enumerate(pattern)]}
+        if frequencies:rows['frequencies.txt']=frequencies
+        if exceptions:rows['calendar_dates.txt']=exceptions
+        temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup);path=Path(temp.name)/'feed.zip'
+        with zipfile.ZipFile(path,'w') as z:
+            for filename,data in rows.items():
+                text=io.StringIO();writer=csv.DictWriter(text,fieldnames=list(data[0]));writer.writeheader();writer.writerows(data);z.writestr(filename,text.getvalue())
+        return path
+
+    def test_shared_trunk_branches_and_directions(self):
+        patterns={'t1':[('A','08:00:00'),('B','08:10:00'),('C','08:20:00')],
+                  't2':[('A','08:30:00'),('B','08:40:00'),('D','08:50:00')],
+                  't3':[('C','08:00:00'),('B','08:10:00'),('A','08:20:00')],
+                  't4':[('D','08:30:00'),('B','08:40:00'),('A','08:50:00')]}
+        result=compiler.compile_feed(self.feed(patterns,patterns),CONFIG,'2026-10-05')
+        rates={tuple(s['stops']):s['profiles']['am'] for s in result['segments']}
+        self.assertEqual(rates[('A','B')]['display_tph'],1)
+        self.assertEqual(rates[('B','C')]['display_tph'],.5)
+        self.assertEqual(rates[('B','D')]['display_tph'],.5)
+        self.assertEqual(rates[('A','B')]['forward_tph'],1)
+        self.assertEqual(rates[('A','B')]['backward_tph'],1)
+
+    def test_frequency_templates_and_anchor_shift(self):
+        patterns={'t':[('A','00:00:00'),('B','00:30:00'),('C','00:40:00')]}
+        for exact in ['0','1']:
+            freq=[{'trip_id':'t','start_time':'07:00:00','end_time':'09:00:00','headway_secs':'600','exact_times':exact}]
+            result=compiler.compile_feed(self.feed(patterns,patterns,freq),CONFIG,'2026-10-05')
+            rates={tuple(s['stops']):s['profiles']['am'] for s in result['segments']}
+            self.assertEqual(rates[('A','B')]['display_tph'],6)
+            self.assertEqual(rates[('B','C')]['display_tph'],4.5)
+            self.assertEqual(rates[('A','B')]['quality'],'scheduled' if exact=='1' else 'headway_estimate')
+
+    def test_calendar_exception_zero_and_missing_time(self):
+        patterns={'t':[('A','08:00:00'),('B','08:10:00')]}
+        exceptions=[{'service_id':'W','date':'20261005','exception_type':'2'}]
+        result=compiler.compile_feed(self.feed(patterns,patterns,exceptions=exceptions),CONFIG,'2026-10-05')
+        self.assertEqual(result['segments'][0]['profiles']['am']['display_tph'],0)
+        result=compiler.compile_feed(self.feed(patterns,patterns,blank=True),CONFIG,'2026-10-05')
+        self.assertIsNone(result['segments'][0]['profiles']['am']['display_tph'])
+        self.assertEqual(result['segments'][0]['profiles']['am']['quality'],'unknown')
+
+    def test_prior_service_day_and_half_open_window(self):
+        patterns={'t':[('A','25:00:00'),('B','25:10:00')], 'end':[('A','26:00:00'),('B','26:10:00')]}
+        config={**CONFIG,'profiles':{'early':{'start':'01:00:00','end':'02:00:00'}}}
+        result=compiler.compile_feed(self.feed(patterns,patterns),config,'2026-10-05')
+        self.assertEqual(result['segments'][0]['profiles']['early']['display_tph'],1)
+
+    def test_overlaps_expiry_and_dst_fail_explicitly(self):
+        patterns={'t':[('A','00:00:00'),('B','00:10:00')]}
+        frequencies=[{'trip_id':'t','start_time':start,'end_time':end,'headway_secs':'600','exact_times':'0'} for start,end in [('07:00:00','09:00:00'),('08:00:00','10:00:00')]]
+        with self.assertRaisesRegex(ValueError,'Overlapping'):
+            compiler.compile_feed(self.feed(patterns,patterns,frequencies),CONFIG,'2026-10-05')
+        with self.assertRaisesRegex(ValueError,'outside'):
+            compiler.compile_feed(self.feed(patterns,patterns),CONFIG,'2027-01-01')
+        config={**CONFIG,'profiles':{'ambiguous':{'start':'03:30:00','end':'04:30:00'}}}
+        with self.assertRaisesRegex(ValueError,'DST'):
+            compiler.compile_feed(self.feed(patterns,patterns),config,'2026-10-25')
+
+
+if __name__=='__main__':unittest.main()
