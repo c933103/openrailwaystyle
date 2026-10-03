@@ -50,7 +50,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     addSource() {}
     getCanvas() { return {style:{}}; }
     getCanvasContainer() { return this.canvasContainer ||= window.document.createElement('div'); }
-    doubleClickZoom = {enable(){}, disable(){}};
+    doubleClickZoom = {enable:()=>{this.doubleClickEnabled=true;}, disable:()=>{this.doubleClickEnabled=false;}};
     queryRenderedFeatures({layers}={}) {return (this.rendered||[]).filter(f=>!layers||layers.includes(f.layer?.id));}
     querySourceFeatures(id,{sourceLayer}) { return (this.sourceFeatures || []).filter(f=>f.sourceLayer===sourceLayer); }
     isSourceLoaded() { return true; }
@@ -162,6 +162,20 @@ test('watch starts map-only and deliberate controls return to the map after each
     assert.equal(doc.body.dataset.ui,'standard');assert.equal(doc.querySelector('.panel').inert,false);assert.equal(doc.getElementById('map-frame').inert,false);
     assert.match(decodeURIComponent(doc.cookie),/"attributionOpen":true/);
     assert.match(decodeURIComponent(doc.cookie),/"ui":"standard"/);
+  } finally {dom.window.close();}
+});
+test('entering watch mode deactivates hidden drawing and measurement input',async()=>{
+  const {dom,window,maps}=await start();
+  try {
+    const doc=window.document,map=maps[0];map.handlers['style.load']();
+    for(const selector of ['[data-draw="line"]','[data-measure="distance"]']){
+      const tool=doc.querySelector(selector);tool.click();assert.equal(map.doubleClickEnabled,false);
+      const watch=doc.getElementById('watch-layout');watch.checked=true;watch.dispatchEvent(new window.Event('change'));
+      assert.equal(map.doubleClickEnabled,true,'watch mode restores direct double-tap zoom');
+      assert.equal(tool.getAttribute('aria-pressed'),'false','the hidden tool is inactive');
+      assert.equal(doc.getElementById('draw-toolbar').hidden,true);assert.equal(doc.getElementById('measure-toolbar').hidden,true);
+      watch.checked=false;watch.dispatchEvent(new window.Event('change'));assert.equal(tool.getAttribute('aria-pressed'),'false','returning to normal does not restore hidden editing');
+    }
   } finally {dom.window.close();}
 });
 test('app starts with the MapLibre 5 API and enables map controls', async () => {

@@ -40,7 +40,7 @@ export function frequencyBundle(routes, lines, catalog) {
 }
 const legacyOffset=['*',['-',['get','i'],['/',['-',['get','n'],1],2]],3.5];
 const zoomScale=value=>['interpolate',['linear'],['zoom'],7,['*',value,2/3.5],12,value,16,['*',value,5/3.5]];
-const valid=now=>['>=',['coalesce',['get','frequency_until'],0],Math.floor(now/1000)];
+const valid=now=>['>=',['coalesce',['get','frequency_until'],0],now/1000];
 const legacyLabels=()=>['match',['get','slot'],...Array.from({length:127},(_,k)=>k-63).filter(k=>k).flatMap(k=>[k,['literal',[0,k*.65]]]),['literal',[0,0]]];
 export function serviceFrequencyPaint(settings={},now=Date.now()) {
   if(settings.serviceWidth!=='frequency')return {width:zoomScale(3.5),offset:zoomScale(legacyOffset),opacity:1,labelOffset:legacyLabels()};
@@ -81,4 +81,19 @@ export function nearestServiceFeature(services, point, project, z, settings, now
     }
   }
   return best;
+}
+
+// No polling or requests. Reevaluate at the earliest loaded profile expiry,
+// then on resume because suspended tabs may defer timers.
+export function installFrequencyExpiry({features,active,refresh,now=Date.now,setTimer=setTimeout,clearTimer=clearTimeout}) {
+  let timer,lastPaint=now();
+  const pause=()=>{clearTimer(timer);timer=undefined;};
+  function update(){
+    pause();if(!active())return;
+    const stamp=now(),expiries=[...new Set(features().map(f=>Number(f.properties.frequency_until)*1000).filter(n=>Number.isFinite(n)&&n>0))];
+    if(expiries.some(n=>n<stamp&&n>=lastPaint)){refresh();lastPaint=stamp;}
+    const next=Math.min(...expiries.filter(n=>n>=stamp));
+    if(Number.isFinite(next))timer=setTimer(update,Math.min(2147483647,Math.max(1,next-stamp+1)));
+  }
+  return {update,pause,resume(){if(active()){refresh();lastPaint=now();}update();}};
 }

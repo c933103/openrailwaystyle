@@ -53,4 +53,14 @@ try {
   await page.waitForFunction(()=>document.body.dataset.mapReady==='true',{},{timeout:60000});
   assert.equal(await page.locator('.panel').isVisible(),true,'ordinary narrow phones retain controls');
   assert.equal(await page.locator('.maplibregl-ctrl-scale').isVisible(),true,'ordinary phones retain their visible scale');
+  for(const selector of ['[data-draw="line"]','[data-measure="distance"]']){
+    const state=await page.evaluate(async selector=>{
+      const map=(await import(document.querySelector('script[type="module"]').src)).map;
+      document.querySelector(selector).click();const before=map.doubleClickZoom.isEnabled();
+      const watch=document.getElementById('watch-layout');watch.checked=true;watch.dispatchEvent(new Event('change'));
+      const after=map.doubleClickZoom.isEnabled(),pressed=document.querySelector(selector).getAttribute('aria-pressed');
+      watch.checked=false;watch.dispatchEvent(new Event('change'));return {before,after,pressed};
+    },selector);
+    assert.deepEqual(state,{before:false,after:true,pressed:'false'},'entering watch mode fully deactivates an active tool');
+  }
 } finally {await browser.close();}
