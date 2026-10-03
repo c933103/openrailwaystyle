@@ -122,7 +122,8 @@ try{
   let settingsCookie=(await page.context().cookies()).find(c=>c.name==='atlas_settings');
   assert.equal(JSON.parse(decodeURIComponent(settingsCookie.value)).attributionOpen,true,'Open attribution is remembered in the settings cookie');
   await page.locator('[data-background="carto"]').click();
-  assert.deepEqual(({compact,open})=>({compact,open})(await attributionState()),{compact:true,open:true},'Carto keeps the compact control and inherited open state');
+  info=await attributionState();
+  assert.deepEqual({compact:info.compact,open:info.open},{compact:true,open:true},'Carto keeps the compact control and inherited open state');
   await page.locator('.maplibregl-ctrl-attrib-button').click();
   info=await attributionState();
   assert.equal(info.open,false,'The info button closes attribution');
@@ -130,7 +131,8 @@ try{
   settingsCookie=(await page.context().cookies()).find(c=>c.name==='atlas_settings');
   assert.equal(JSON.parse(decodeURIComponent(settingsCookie.value)).attributionOpen,false,'Closed attribution is remembered in the settings cookie');
   await page.locator('[data-background="map"]').click();
-  assert.deepEqual(({compact,open})=>({compact,open})(await attributionState()),{compact:true,open:false},'Closed state survives background changes');
+  info=await attributionState();
+  assert.deepEqual({compact:info.compact,open:info.open},{compact:true,open:false},'Closed state survives background changes');
   console.log('PASS: attribution stays a visible compact info button and remembers its state');
   // Pan northwest at the SAME zoom before any visit to zoom 8.
   await moveTo(7,128.1,35.65);
