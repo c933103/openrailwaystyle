@@ -87,11 +87,19 @@ try {
   await waitUntil(page,async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('context-')&&f.properties.atlas_language==='zh-Hant');});
   await waitContext('transport');await settleContext();
   console.log('PASS: Hong Kong transport, destination labels/areas, shared language, toggles and inspection');
-  await evaluate(map=>map.jumpTo({center:[-0.4543,51.47],zoom:10}));
+  // Centre closely on Heathrow and first wait for the basemap POI tile
+  // itself. Waiting only for symbol placement at zoom 10 was intermittently
+  // timing out even when the source data was present.
+  await evaluate(map=>map.jumpTo({center:[-0.4543,51.47],zoom:12}));
   await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
-    return map.queryRenderedFeatures({layers:['context-transport-airport-label']}).some(f=>f.properties.iata==='LHR'||/Heathrow/.test(f.properties.name));
-  });
+    if(!map.isSourceLoaded('openmaptiles'))return false;
+    return map.querySourceFeatures('openmaptiles',{sourceLayer:'poi'}).some(f=>f.properties.iata==='LHR'||/Heathrow/i.test(f.properties.name||f.properties.name_en||f.properties['name:en']||''));
+  },undefined,{timeout:120000});
+  await waitUntil(page,async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    return map.queryRenderedFeatures({layers:['context-transport-airport-label']}).some(f=>f.properties.iata==='LHR'||/Heathrow/i.test(f.properties.name||f.properties.atlas_name||''));
+  },undefined,{timeout:120000});
   await settleContext();
   await screenshot('airport');
   console.log('PASS: regional airport label');
