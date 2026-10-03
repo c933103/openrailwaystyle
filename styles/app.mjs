@@ -1,11 +1,11 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261002-80';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261002-80';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261003-82';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261003-82';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261002-80';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261002-80';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261002-80';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261002-80';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261002-80';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261003-82';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261003-82';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261003-82';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261003-82';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261003-82';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -39,7 +39,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261002-80';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261003-82';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -1249,6 +1249,25 @@ $('units').addEventListener('change', () => {
   if (currentFeature) showDetails(currentFeature);
 });
 const compactControls = () => matchMedia('(max-width: 650px), (max-height: 500px)').matches;
+// The scale/readout live in MapLibre's bottom-left control corner. Keep that
+// corner clear of our own overlays using their real rendered dimensions:
+// beside the left menu on desktop, and above the status pill on every screen.
+function updateMapControlClearance() {
+  const root=document.documentElement, panel=document.querySelector('.panel'), statusBox=$('map-status');
+  const panelRect=panel?.getBoundingClientRect(), statusRect=statusBox?.getBoundingClientRect();
+  const menuClearance=!compactControls() && panelRect?.width ? Math.ceil(panelRect.right + 10) : 0;
+  const statusVisible=statusRect?.width>0 && statusRect?.height>0 && getComputedStyle(statusBox).display!=='none';
+  const statusClearance=statusVisible ? Math.ceil(innerHeight - statusRect.top + 8) : 0;
+  root.style.setProperty('--map-menu-clearance', menuClearance+'px');
+  root.style.setProperty('--map-status-clearance', statusClearance+'px');
+}
+if (typeof ResizeObserver !== 'undefined') {
+  const overlayObserver=new ResizeObserver(updateMapControlClearance);
+  overlayObserver.observe(document.querySelector('.panel'));
+  overlayObserver.observe($('map-status'));
+}
+addEventListener('resize', updateMapControlClearance);
+updateMapControlClearance();
 function setControlsExpanded(expanded, focus = false) {
   $('controls').hidden = !expanded;
   document.querySelector('.panel').classList.toggle('collapsed', !expanded);
@@ -1257,6 +1276,7 @@ function setControlsExpanded(expanded, focus = false) {
   $('collapse').setAttribute('aria-label', `${expanded ? 'Collapse' : 'Expand'} map controls`);
   $('controls-open').setAttribute('aria-expanded', String(expanded));
   $('controls-open').setAttribute('aria-label', expanded ? 'Collapse map controls' : 'Open map controls');
+  updateMapControlClearance();
   if (focus) (expanded || !compactControls() ? $('collapse') : $('controls-open')).focus();
 }
 $('collapse').addEventListener('click', () => setControlsExpanded($('controls').hidden, true));
