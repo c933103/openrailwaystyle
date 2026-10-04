@@ -92,3 +92,27 @@ test('globe drag: a press becomes a drag after 3 on-screen pixels at every More 
     }
   } finally { globalThis.addEventListener = saved; }
 });
+
+test('close polar coordinates and drag scale retain sub-metre precision', async () => {
+  const {toVector,fromVector,globeRadiansPerPixel,zoomForLatitude,POLE_LIMIT,stepView} = await import('../styles/globe-drag.mjs');
+  for(const sign of [1,-1]) {
+    for(const latitude of [89.9,89.999,89.99999,POLE_LIMIT]) {
+      const lat=sign*latitude;
+      near(fromVector(toVector([20,lat]))[1],lat,1e-12);
+      const scale=globeRadiansPerPixel(512*2**2,lat);
+      assert.ok(Number.isFinite(scale)&&scale>0);
+      // One step ends exactly on the pole. The next must carry on down the
+      // other meridian even if coordinate conversion rounded z to ±1.
+      const toPole=(90-latitude)*Math.PI/180/scale;
+      const pole=stepView({center:[20,lat],bearing:0},0,sign*toPole,scale);
+      near(pole.center[1],sign*90,1e-10);
+      const crossed=stepView(pole,0,sign*4,scale);
+      assert.ok(Math.abs(crossed.center[1])<90);
+      near(Math.abs(crossed.bearing),180,0.001);
+      const zoom=zoomForLatitude(2,lat,crossed.center[1]);
+      near(globeRadiansPerPixel(512*2**zoom,crossed.center[1])/scale,1,1e-9);
+    }
+  }
+  near(globeRadiansPerPixel(2048,0),2*Math.PI/2048,1e-12);
+  near(globeRadiansPerPixel(2048,60,60),2*Math.PI/2048,1e-12);
+});

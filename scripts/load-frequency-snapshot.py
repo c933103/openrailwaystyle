@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Load the published worldwide snapshot; never download operator feeds here."""
 import argparse
+import os
+import re
 from pathlib import Path
 import tarfile
 import tempfile
@@ -8,7 +10,11 @@ import time
 from urllib.error import HTTPError
 from urllib.request import urlopen
 
-URL='https://github.com/c933103/openrailwaystyle/releases/download/service-frequency-data/frequency-snapshot.tar.gz'
+REPOSITORY=os.environ.get('GITHUB_REPOSITORY','c933103/openrailwaystyle')
+if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',REPOSITORY):
+    raise ValueError('Invalid GITHUB_REPOSITORY')
+URL=f'https://github.com/{REPOSITORY}/releases/download/service-frequency-data/frequency-snapshot.tar.gz'
+RELEASE_URL=f'https://api.github.com/repos/{REPOSITORY}/releases/tags/service-frequency-data'
 
 
 def unpack(path, output):
@@ -49,7 +55,7 @@ def main():
                 # An existing release with a temporarily replaced/missing
                 # asset must not be mistaken for initial no-data startup.
                 try:
-                    with urlopen('https://api.github.com/repos/c933103/openrailwaystyle/releases/tags/service-frequency-data',timeout=30):pass
+                    with urlopen(RELEASE_URL,timeout=30):pass
                 except HTTPError as release_error:
                     if release_error.code!=404:raise
                     print('No worldwide frequency release yet; frequency coverage remains unknown.');return

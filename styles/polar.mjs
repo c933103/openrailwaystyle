@@ -36,19 +36,23 @@ export const POLAR_BANDS = {
 };
 export const FEET = 3.28084;
 export const bandFor = zoom => zoom >= 11 ? 2 : zoom >= 9 ? 1 : 0;
+// Railway backgrounds retain the reviewed low-detail cap. Only Carto uses
+// the finer bands; clamp for older snapshots containing just band zero.
+export const polarBandFor = (zoom, background, count) => Math.min(background === 'carto' ? bandFor(zoom) : 0, count - 1);
+export const POLAR_DETAIL_ZOOM = 10;
 // Compact storage: coordinates in tens of metres, each line's points as
 // differences from the previous point.
 export const QUANTUM = 0.01; // km
-export function encodeLine(points) {
+export function encodeLine(points, quantum = QUANTUM) {
   const out = []; let px = 0, py = 0;
   for (const [x, y] of points) {
-    const qx = Math.round(x / QUANTUM), qy = Math.round(y / QUANTUM);
+    const qx = Math.round(x / quantum), qy = Math.round(y / quantum);
     out.push(qx - px, qy - py); px = qx; py = qy;
   }
   return out;
 }
-export function decodeLine(values, start = 0, end = values.length) {
+export function decodeLine(values, start = 0, end = values.length, quantum = QUANTUM) {
   const out = []; let x = 0, y = 0;
-  for (let i = start; i < end; i += 2) { x += values[i]; y += values[i + 1]; out.push([x * QUANTUM, y * QUANTUM]); }
+  for (let i = start; i < end; i += 2) { x += values[i]; y += values[i + 1]; out.push([x * quantum, y * quantum]); }
   return out;
 }
