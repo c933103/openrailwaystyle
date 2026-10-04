@@ -1,12 +1,13 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261003-81';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261003-81';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261004-pr53-repair1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-pr53-repair1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261003-81';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261003-81';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261003-81';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261003-81';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261003-81';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261003-81';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-pr53-repair1';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-pr53-repair1';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-pr53-repair1';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261004-pr53-repair1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-pr53-repair1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261004-pr53-repair1';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-pr53-repair1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -40,7 +41,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261003-81';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-pr53-repair1';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -175,7 +176,7 @@ function renderLegend() {
   if (settings.mode === 'service') rows.push(['#b8c0c5', 'Other track']);
   else if (settings.mode !== 'infrastructure') rows.push([UNKNOWN_COLOR, 'Unknown']);
   rows.push(['#2356b6','Bridge','bridge'], ['#2356b6','Tunnel','tunnel']);
-  if (settings.mode === 'infrastructure') rows.push(['#b68f55','Shared roadway','street-running'], ['#63332c','Level crossing','level-crossing']);
+  if (settings.mode === 'infrastructure') rows.push(['#b68f55','Shared roadway','street-running'], ['#63332c','Level crossing','level-crossing'],['#765484','Signal'],['#167a78','Station entrance']);
   if (settings.inactive) rows.push(...INACTIVE_STATES.map(([state, color, label]) => [color, label, `inactive-${state}`]));
   for (const [color, label, extra] of rows) {
     const row = textNode('div', '', 'legend-item');
@@ -207,7 +208,7 @@ function renderLegend() {
     loading: 'Colour follows the envelope’s height above rail, so equal sizes match across regions; Britain’s W gauges share one height and form their own ladder. Click a track for dimensions. Grey means not recorded.',
     owner: 'Each owner of the infrastructure, as recorded in OpenStreetMap, has its own colour, the same everywhere; the owner is not always the operator. Click a track for its owner and operator. Grey means no owner is recorded.',
     service: 'Metro, light rail, tram, monorail and commuter rail services, each in its own colour along the tracks it runs on, side by side where they share a track; long-distance trains are not shown. Click a service for its details. Grey tracks have no such service mapped.',
-    infrastructure: 'Numbers count the mapped tracks: running tracks side by side (not sidings, yards or crossovers), on the surface, on viaducts or in tunnels alike (grey-blue where all are in tunnels); at a station, every track there, sidings included. Ochre marks explicitly tagged shared roadway; level crossings are dark brown (road) or light brown (pedestrian).',
+    infrastructure: 'Numbers in boxes count mapped tracks: running tracks side by side (not sidings, yards or crossovers), on every level; at a station, sidings are included. Ochre marks shared roadway; crossings are brown. Zoom in for platform references and complete boarding-edge lengths, purple signal locations and teal station entrances. Signal markers do not show a live aspect.',
   };
   let note = notes[settings.mode];
   if (settings.inactive && settings.mode === 'speed') note += ' Planned and former lines take the colour of their recorded limit, if any.';
@@ -233,32 +234,6 @@ function shareURL() {
 }
 saveSettings();
 const CHECKBOXES = ['stations', 'trackCounts', 'labels', 'inactive', 'relief', 'names', 'autoGlobe', 'readout', 'transport', 'destinations', 'constraints'];
-// The drawn base map: hidden under satellite imagery.
-const isBaseMap = layer => layer.source === 'openmaptiles' || layer.id === 'background' || layer.id.startsWith('terrain-');
-const RUNTIME_LAYER = /^(drawing|measure)-|^polar-caps$/;
-// The initial frame and later setting changes use the same source visibility.
-function layerVisibility(layer) {
-    let visible = RUNTIME_LAYER.test(layer.id) ? undefined : true;
-    if (MODES.some(mode => layer.id.startsWith(`${mode}-`))) visible = layer.id.startsWith(`${settings.mode}-`) && (!VALUE_LABELS.test(layer.id) || settings.labels) && (layer.source !== 'trackCounts' || settings.trackCounts);
-    if (layer.id.startsWith('station-')) visible = settings.stations && (!layer.id.startsWith('station-former-') || settings.inactive);
-    if (layer.id.startsWith('inactive-')) visible = settings.inactive;
-    // Service names follow the names setting, in the Service view only.
-    if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive) && (!layer.id.startsWith('service-') || settings.mode === 'service');
-    if(layer.id==='platform-lengths')visible=settings.labels;
-    if (layer.id.startsWith('terrain-')) visible = settings.relief;
-    if (layer.id.startsWith('context-transport-')) visible = settings.transport;
-    if (layer.id.startsWith('context-destinations-')) visible = settings.destinations;
-    if (layer.id.startsWith('context-constraints-')) visible = settings.constraints;
-    // Satellite: the imagery alone; hybrid: the imagery under the railways.
-    if (layer.id === 'carto') visible = settings.background === 'carto';
-    else if (layer.id === 'satellite') visible = ['satellite','hybrid'].includes(settings.background);
-    else if (settings.background === 'satellite' && !RUNTIME_LAYER.test(layer.id)) visible = false;
-    else if (settings.background === 'hybrid' && isBaseMap(layer)) visible = false;
-    else if (settings.background === 'carto' && isBaseMap(layer) && !layer.id.startsWith('terrain-')) visible = false;
-    // Carto draws its own sea.
-    if (layer.id === 'terrain-bathymetry' && settings.background === 'carto') visible = false;
-    return visible;
-}
 let majorStationData,majorStationsPromise;const majorStationLanguages=new WeakMap();
 function updateMajorStations(){
  if(!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3||map.getZoom()>=7)return;
@@ -281,7 +256,7 @@ function applySettings() {
     // Shown unless a setting hides it (a layer hidden under the imagery comes
     // back with the map).
     if(layer.id==='polar-caps')map.triggerRepaint();
-    const visible = layerVisibility(layer);
+    const visible = layerVisibility(layer, settings);
     if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
     if ((visible ?? true) && isClickable(layer.id)) clickable.push(layer.id);
@@ -332,9 +307,8 @@ function updateAttribution() {
     attributionStateObserver.observe(container, {attributes:true, attributeFilter:['class']});
   }
 }
-const featurePickRank = f => f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
-const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
-const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-crossing-overview','infrastructure-crossing-dots','infrastructure-crossing-marks','infrastructure-street-running'];
+const featurePickRank = f => ['railwaySignals','stationEntrances'].includes(f.source) ? -1 : f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
+const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-crossing-overview','infrastructure-crossing-dots','infrastructure-crossing-marks','infrastructure-street-running','infrastructure-signal-points','infrastructure-signal-references','infrastructure-entrance-points','infrastructure-entrance-references'];
 // Clickable: stations, tracks, level crossings, inactive lines, and transport
 // and destination points; land-use areas, protected, heritage and other
 // planning areas, jurisdictions and buildings are drawn for context only.
@@ -389,13 +363,14 @@ function stationObject(osmId) {
   return null;
 }
 function showDetails(feature) {
-  if(feature.source==='platformEdges')feature=platformLengths?.enrich(feature)||feature;
+  if(['platformEdges','platformLengths','platforms'].includes(feature.source))feature=platformLengths?.enrich(feature)||feature;
   currentFeature = feature;
+  if(['railwaySignals','stationEntrances'].includes(feature.source)){showRailwayPointDetails(feature);return;}
   if (INFRASTRUCTURE_POINTS.includes(feature.layer?.id)) { showInfrastructureContext(feature); return; }
   if (feature.layer?.id.startsWith('context-')) { showContextDetails(feature); return; }
   if (feature.layer?.id === 'service-routes') { showServiceDetails(feature); return; }
   const p = feature.properties;
-  const isPlatform=feature.source==='platformLengths'||feature.source==='platformEdges';
+  const isPlatform=['platformLengths','platformEdges','platforms','platformNumbers'].includes(feature.source);
   const isStation = feature.source?.startsWith('station') || feature.kind === 'station';
   const panel = $('detail-content'); panel.replaceChildren();
   panel.append(textNode('div', isPlatform?'RAILWAY PLATFORM':isStation ? 'RAILWAY STATION' : 'RAILWAY INFRASTRUCTURE', 'eyebrow'));
@@ -582,6 +557,23 @@ function crossingTags(id) {
   }).catch(error=>{crossingCache.delete(id);throw error;}));
   return crossingCache.get(id);
 }
+function showRailwayPointDetails(feature) {
+  const p=feature.properties,signal=feature.source==='railwaySignals',panel=$('detail-content');
+  panel.replaceChildren(textNode('div',signal?'RAILWAY SIGNAL':'STATION ENTRANCE','eyebrow'));
+  panel.append(textNode('h2',signal?(p.ref?`Signal ${p.ref}`:'Railway signal'):(p.label||'Station entrance')));
+  const dl=document.createElement('dl');
+  row(dl,signal?'Reference':'Entrance label',signal?p.ref:p.label);
+  if(signal){
+    row(dl,'Caption',p.caption);
+    const categories=[...new Set(Array.from({length:12},(_,i)=>p[`category${i}`]).filter(Boolean))];
+    row(dl,'Mapped functions',categories.map(v=>String(v).replaceAll('_',' ')).join(', '));
+    const inactive=[...new Set(Array.from({length:12},(_,i)=>p[`deactivated${i}`]===true?p[`category${i}`]:null).filter(Boolean))];
+    row(dl,'Inactive components',inactive.map(v=>String(v).replaceAll('_',' ')).join(', '));
+    row(dl,'Facing',p.direction_both===true?'Both directions':typeof p.azimuth==='number'&&Number.isFinite(p.azimuth)?`${Math.round(((p.azimuth%360)+360)%360)}° clockwise from north`:undefined);
+  }
+  panel.append(dl,textNode('p',signal?'A mapped signal location and its recorded functions. The marker does not show a live signal aspect.':'A station entrance recorded in OpenStreetMap.','small'));
+  osmLink(panel,feature);$('details').hidden=false;
+}
 function showInfrastructureContext(feature) {
   const p=feature.properties,crossing=feature.sourceLayer==='points_of_interest';
   const panel=$('detail-content');panel.replaceChildren(textNode('div','RAILWAY INFRASTRUCTURE','eyebrow'));
@@ -733,8 +725,7 @@ function updateStatus() {
 const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg|owner|axle):\/\//,'');
 function localizeStyle(style) {
   for (const layer of style.layers) {
-    if (layer.type !== 'symbol' || layer.id === 'speed-labels' || layer.id==='platform-lengths' || layer.id.startsWith('terrain-')) continue;
-    if (layer.source === 'openmaptiles' || layer.id.startsWith('station-') || layer.id.endsWith('-names')) layer.layout['text-field'] = labelExpression(settings.language);
+    if (shouldLocalizeLayer(layer)) layer.layout['text-field'] = labelExpression(settings.language);
   }
   style.sources.openmaptiles.url = `atlasbase://${settings.language}/${unwrap(style.sources.openmaptiles.url).replace(/^pmtiles:\/\//,'')}`;
   for(const id of ['stationLow','stationMed','stations']) style.sources[id].url = `atlasstation://${settings.language}/${unwrap(style.sources[id].url)}`;
@@ -1022,7 +1013,11 @@ async function initialize() {
   const waterArchiveKey = waterArchive.replace(/^pmtiles:\/\//,'');
   if (waterArchiveKey !== waterArchive && !protocol.tiles.has(waterArchiveKey)) protocol.tiles.set(waterArchiveKey, basemapArchive(waterArchiveKey));
   installBathymetry(maplibregl, dem, {
-    waterTile: (z, x, y, controller) => protocol.tile({url: `${waterArchive}/${z}/${x}/${y}`, type: 'arrayBuffer'}, controller),
+    waterTile: (z, x, y, controller) => {
+      // A label retry may remove the shared archive during its backoff.
+      if (!protocol.tiles.has(waterArchiveKey)) protocol.tiles.set(waterArchiveKey, basemapArchive(waterArchiveKey));
+      return protocol.tile({url: `${waterArchive}/${z}/${x}/${y}`, type: 'arrayBuffer'}, controller);
+    },
     readTile: data => labelCode.readTile(data, ['water']),
     createWorker: () => new Worker(new URL(`vendor/depth-worker.js?v=${assetVersion}`, import.meta.url)),
   });
@@ -1037,7 +1032,7 @@ async function initialize() {
   style.sources.relief.tiles = [dem.sharedDemProtocolUrl];
   // Hidden sources must stay hidden before MapLibre starts its first requests.
   for (const layer of style.layers) {
-    const visible=layerVisibility(layer);
+    const visible=layerVisibility(layer, settings);
     if(visible!==undefined)(layer.layout ||= {}).visibility=visible?'visible':'none';
   }
   // Reopen where the last visit ended, unless the link gives a position; start
@@ -1170,10 +1165,17 @@ async function initialize() {
   };
   if (map.isStyleLoaded?.()) styleReady(); else map.once('style.load', styleReady);
   map.on('idle', updateStatus);
-  platformLengths=createPlatformLengths(map,{active:()=>ready&&settings.labels&&settings.background!=='satellite',onLength:(id,length)=>{if(length>0&&currentFeature?.source==='platformEdges'&&String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);}});
+  platformLengths=createPlatformLengths(map,{active:()=>ready&&settings.mode==='infrastructure'&&settings.labels&&settings.background!=='satellite',onLength:(id,length)=>{if(length>0&&['platformEdges','platformLengths'].includes(currentFeature?.source)&&String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);},onPlatform:(id)=>{if(currentFeature?.source==='platforms'&&String(currentFeature.properties.id)===id)showDetails(currentFeature);}});
   map.on('moveend',()=>platformLengths.update());
   map.on('remove',()=>platformLengths.destroy());
-  map.on('sourcedata',e=>{if(e.sourceId==='platformEdges'&&e.tile)platformLengths.update();});
+  let platformFramePending=false;
+  map.on('sourcedata',e=>{
+    if(!['platformEdges','platforms'].includes(e.sourceId)||!e.tile||platformFramePending)return;
+    // A loaded tile is queryable after the next render, even if no other tile
+    // arrives and the map remains stationary. Coalesce neighbouring tiles.
+    platformFramePending=true;
+    map.once('render',()=>{platformFramePending=false;platformLengths.update();});
+  });
   map.on('moveend', scheduleLegend);
   map.on('moveend',updateMajorStations);
   map.on('moveend', scheduleNearbyTransport);

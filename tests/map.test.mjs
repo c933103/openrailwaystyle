@@ -87,11 +87,11 @@ test('context layers cover every zoom continuously with global category/filter c
     assert.equal(layer.minzoom,start,`${id} starts at its category zoom`);
     assert.equal(layer['source-layer'],category.id==='airport'?'aerodrome_label':'poi',`${id} uses the expected global basemap layer`);
     const properties=category.id==='airport'
-      ? {class:'international',iata:'ZZZ'}
-      : category.values
-        ? {class:category.values[0],subclass:category.values[0]}
-        : {class:category.classes[0]};
-    for(const zoom of zooms) assert.equal(visible(layer,zoom,properties),zoom>=start,`${id} at zoom ${zoom}`);
+      ? [{class:'international',iata:'ZZZ'}]
+      : [...(category.values||[]).map(value=>({class:'other',subclass:value})),
+         ...(category.classes||[]).map(value=>({class:value,subclass:'other'}))];
+    for(const props of properties)for(const zoom of zooms)
+      assert.equal(visible(layer,zoom,props),zoom>=start,`${id} ${JSON.stringify(props)} at zoom ${zoom}`);
   }
 
   const airport=byId.get('context-transport-airport-label');
@@ -102,11 +102,11 @@ test('context layers cover every zoom continuously with global category/filter c
   }
 
   for(const category of AREA_CATEGORIES){
-    const props={class:category.values[0]};
+    const properties=category.values.map(value=>({class:value}));
     const area=byId.get(`context-destinations-${category.id}-area`);
     const edge=byId.get(`context-destinations-${category.id}-edge`);
     assert.ok(area&&edge,category.id);
-    for(const zoom of zooms){
+    for(const props of properties)for(const zoom of zooms){
       assert.equal(visible(area,zoom,props,3),zoom>=10,`${area.id} at zoom ${zoom}`);
       assert.equal(visible(edge,zoom,props,3),zoom>=12,`${edge.id} at zoom ${zoom}`);
     }

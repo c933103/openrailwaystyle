@@ -28,7 +28,7 @@ The atlas can be installed on a phone, tablet or computer from the browser (for 
 
 The compass resets north. The location button shows your position (the browser asks first; the position stays in the browser) and follows it as it moves, with the direction of travel where the device reports one; moving the map stops following, and pressing the button again resumes it. The “more detail” button cycles through 100%, 50% and 25%: the next zoom level is drawn at half size, then two levels further in at a quarter size, so the same area shows more tiles and features. Its tooltip reports the scale.
 
-The map reopens where it was left, on the globe or flat map as last used. The globe/map button (🌍/🗺️) switches projection. Dragging the globe keeps its direction and the compass heading: sideways along the parallel, up and down along the meridian. Beyond 85° (the polar caps) it turns as a ball and carries on over the pole, after which the map is the other way up. The planet keeps its size as the view moves.
+The map reopens where it was left, on the globe or flat map as last used. The globe/map button (🌍/🗺️) switches projection. Dragging the globe keeps its direction and the compass heading: sideways along the parallel, up and down along the meridian. Beyond 85° (the polar caps) it turns as a ball and carries on over the pole, including close-up views, after which the map is the other way up. The planet keeps its size as the view moves.
 
 The map switches to the globe automatically below zoom 4, and back to the flat map from zoom 4 unless most of the view is beyond 60° N or S. This can be turned off in the settings. Polar coverage and its resolution are described in the [data maintenance guide](data-maintenance.md#polar-caps).
 
@@ -69,6 +69,8 @@ Community-hosted external services can be unavailable or change schema. The appl
 For sources and credits, use the map’s **?** help page or the [data and attribution reference](data-maintenance.md#sources-and-attribution).
 
 Metric/imperial units are directly below Language. They apply to speed, dimensions, axle loads and mapped platform boarding-edge lengths. Platform lengths come from complete mapped boarding edges; they are not a guarantee of usable train length.
+
+Infrastructure view shows mapped signals and train or subway station entrances from zoom 16. Platform numbers and boarding-edge references appear from zoom 17, with complete edge lengths added from zoom 19. Click these objects for their mapped details and OpenStreetMap link. The **Value labels** setting hides their text; the platform shapes, edges and point markers remain visible. Signal markers show mapped locations, not current aspects.
 
 The **Carto** background shows OpenStreetMap Standard beneath the railways. Railway colours, station labels and the legend follow your settings. Carto provides its own place labels; the terrain and contour toggle still applies. Carto tiles are for online viewing and are not saved for offline use.
 

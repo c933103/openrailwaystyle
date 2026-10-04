@@ -2,7 +2,7 @@ import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {waitUntil,setDefaultTimeout} from './wait-until.mjs';
-const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+const browser=await chromium.launch({headless:true,...(process.env.HTTPS_PROXY?{proxy:{server:process.env.HTTPS_PROXY,bypass:'localhost,127.0.0.1'}}:{}),args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1});
 setDefaultTimeout(page,90000);
 const errors=[];
@@ -44,7 +44,7 @@ async function screenshot(name) {
 await mkdir('browser-review',{recursive:true});
 try {
   const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
-  await page.goto(base+'?v=20261003-81&mode=speed&language=en&relief=0&inactive=0#14/22.299/114.172',{waitUntil:'domcontentloaded'});
+  await page.goto(base+'?v=20261004-pr53-repair1&mode=speed&language=en&relief=0&inactive=0#14/22.299/114.172',{waitUntil:'domcontentloaded'});
   await page.waitForSelector('body[data-map-ready="true"]',{state:'attached'});
   await waitContext('transport');await waitContext('destinations');await settleContext();
   console.log('CONTEXT_DATA',JSON.stringify(await evaluate(map=>({
@@ -134,11 +134,16 @@ try {
   });
   const candidates=new Map();
   for(const sample of discoverySamples){
-    await evaluate((map,s)=>map.jumpTo({center:s.center,zoom:s.zoom}),sample);
+    await evaluate(async(map,s)=>{
+      // A jump can still report the previous viewport's loaded tiles until its
+      // first render. Wait for that frame before checking the new source.
+      await new Promise(resolve=>{map.once('render',resolve);map.jumpTo({center:s.center,zoom:s.zoom});map.triggerRepaint();});
+    },sample);
     await waitUntil(page,async()=>{
       const {map}=await import(document.querySelector('script[type="module"]').src);
       return map.getSource('openmaptiles')&&map.isSourceLoaded('openmaptiles');
     },undefined,{timeout:120000});
+    await page.waitForTimeout(100);
     const found=await evaluate(async(map,sample)=>{
       const {CONTEXT_CATEGORIES,AREA_CATEGORIES,contextCategory}=await import(new URL('./context.mjs',document.querySelector('script[type="module"]').src));
       const styleLayers=new Map(map.getStyle().layers.map(l=>[l.id,l]));
@@ -185,34 +190,32 @@ try {
         if(f.properties.class==='ferry')add(out,'context-transport-ferry-routes',{...f,sourceLayer:'transportation'});
       return out;
     },sample);
-    for(const item of found)if(!candidates.has(item.id))candidates.set(item.id,item);
+    console.log('CONTEXT_SAMPLE',sample.name,found.length);
+    for(const item of found){const list=candidates.get(item.id)||[];if(list.length<8)list.push(item);candidates.set(item.id,list);}
     if(candidates.size===targetInfo.targets.length)break;
   }
   const missingTargets=targetInfo.targets.map(t=>t.id).filter(id=>!candidates.has(id));
   console.log('CONTEXT_DISCOVERY',JSON.stringify({found:[...candidates.values()],missing:missingTargets}));
   assert.deepEqual(missingTargets,[],'real worldwide samples supply every generated context layer');
 
-  // Centre each real source feature and force only collision-overlap options on
-  // the target layer, so this checks data/filter/render integration rather than
-  // failing because another label won a collision in that particular frame.
+  // Keep the production collision policy. Try several real source features
+  // rather than choosing the first offscreen/colliding candidate permanently.
   const renderedMatrix=[];
   for(const target of targetInfo.targets){
-    const candidate=candidates.get(target.id);
-    await evaluate((map,item)=>{
-      map.jumpTo({center:item.center,zoom:item.zoom});
-      const layer=map.getStyle().layers.find(l=>l.id===item.id);
-      if(layer?.type==='symbol'){
-        map.setLayoutProperty(item.id,'icon-allow-overlap',true);
-        map.setLayoutProperty(item.id,'text-allow-overlap',true);
-      }
-    },{...candidate,id:target.id});
-    await waitUntil(page,async item=>{
-      const {map}=await import(document.querySelector('script[type="module"]').src);
-      return map.getSource('openmaptiles')&&map.isSourceLoaded('openmaptiles')&&map.queryRenderedFeatures({layers:[item.id]}).length>0;
-    },{id:target.id},{timeout:120000});
-    const result=await evaluate((map,item)=>({id:item.id,zoom:map.getZoom(),count:map.queryRenderedFeatures({layers:[item.id]}).length}),{id:target.id});
-    assert.ok(result.count>0,`${target.id} renders real provider data`);
-    renderedMatrix.push({...result,sample:candidate.sample});
+    let result;
+    for(const candidate of candidates.get(target.id)){
+      await evaluate(async(map,item)=>{await new Promise(resolve=>{map.once('render',resolve);map.jumpTo({center:item.center,zoom:item.zoom});map.triggerRepaint();});},{...candidate,id:target.id});
+      try{
+        await waitUntil(page,async item=>{
+          const {map}=await import(document.querySelector('script[type="module"]').src);
+          return map.getSource('openmaptiles')&&map.isSourceLoaded('openmaptiles')&&map.queryRenderedFeatures({layers:[item.id]}).length>0;
+        },{id:target.id},{timeout:15000});
+        result=await evaluate((map,item)=>({id:item.id,zoom:map.getZoom(),count:map.queryRenderedFeatures({layers:[item.id]}).length}),{id:target.id});
+        if(result.count>0){result.sample=candidate.sample;break;}
+      }catch{}
+    }
+    assert.ok(result?.count>0,`${target.id} renders real provider data with production placement`);
+    renderedMatrix.push(result);
   }
   console.log('PASS: every context layer renders real worldwide provider data',JSON.stringify(renderedMatrix));
   await screenshot('category-matrix');

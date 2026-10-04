@@ -114,7 +114,7 @@ test('with a worker, depth tiles are drawn there: land needs no terrain, a cance
   assert.deepEqual([...new Uint8Array(land.data)], [7]);
   assert.equal(demRequests, 0, 'no terrain tile for land');
   const sea = await protocol({url: 'atlas-depth://5/2/3'}, new AbortController());
-  assert.equal(new TextDecoder().decode(sea.data), 'atlas-depth://5/2/3');
+  assert.match(new TextDecoder().decode(sea.data), /^atlas-depth:\/\/5\/2\/3#\d+$/);
   assert.equal(demRequests, 1);
   const paint = posted.find(m => m.heights);
   assert.deepEqual([paint.heights.width, paint.heights.height, [...paint.heights.data]], [2, 2, [-10, -20, -30, -40]]);
@@ -127,7 +127,7 @@ test('with a worker, depth tiles are drawn there: land needs no terrain, a cance
   await new Promise(resolve => setTimeout(resolve, 20));
   cancelled.abort();
   await assert.rejects(pending, {name: 'AbortError'});
-  assert.ok(posted.some(m => m.drop && m.key === 'atlas-depth://5/4/3'));
+  assert.ok(posted.some(m => m.drop && m.key.startsWith('atlas-depth://5/4/3#')));
 });
 
 test('a depth worker that fails is not used again: its tiles and later ones are drawn on the page', async t => {
@@ -156,4 +156,20 @@ test('a depth worker that fails is not used again: its tiles and later ones are 
   assert.equal(worker.posted, posted, 'later tiles are not sent to the failed worker');
   assert.equal(decoded, 2);
   assert.equal(created, 1);
+});
+
+test('world-wrap requests of the same depth tile keep independent worker state',async t=>{
+ const had=[globalThis.OffscreenCanvas,globalThis.Worker];globalThis.OffscreenCanvas=class{};globalThis.Worker=class{};
+ t.after(()=>{[globalThis.OffscreenCanvas,globalThis.Worker]=had;});
+ let protocol;const polygons=new Set(),keys=[],release=[];
+ const worker={postMessage(message){
+  if(message.drop){polygons.delete(message.key);return;}
+  if(message.water){polygons.add(message.key);keys.push(message.key);queueMicrotask(()=>this.onmessage({data:{id:message.id,ocean:true}}));}
+  else {const found=polygons.delete(message.key);queueMicrotask(()=>this.onmessage({data:found?{id:message.id,data:new Uint8Array([1]).buffer}:{id:message.id,error:'lost polygons'}}));}
+ }};
+ installBathymetry({addProtocol:(_,handler)=>protocol=handler},{getDemTile:()=>new Promise(r=>release.push(()=>r({width:1,height:1,data:[-10]})))},{waterTile:async()=>({data:new Uint8Array([1]).buffer}),readTile:()=>{},createWorker:()=>worker});
+ const cancelled=new AbortController(),first=protocol({url:'atlas-depth://5/2/3'},cancelled),second=protocol({url:'atlas-depth://5/2/3'},new AbortController());
+ await new Promise(r=>setImmediate(r));assert.equal(keys.length,2);assert.notEqual(keys[0],keys[1]);
+ cancelled.abort();release.forEach(r=>r());await assert.rejects(first,{name:'AbortError'});
+ assert.deepEqual([...new Uint8Array((await second).data)],[1]);assert.equal(polygons.size,0);
 });

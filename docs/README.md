@@ -1,4 +1,6 @@
-# Documentation
+<p><img src="../styles/atlas-icon.svg" width="48" height="48" alt="Railway Atlas icon"></p>
+
+# Railway Atlas documentation
 
 [Project overview](../README.md) · [Open the map](https://c933103.github.io/openrailwaystyle/)
 
@@ -12,9 +14,10 @@
 ## Working on the project
 
 - [Development guide](development.md): setup, published data, source layout, checks and deployment.
+- [Branding and app identity](branding.md): the app name, shared icon assets, installed-app updates and GitHub metadata.
 - [Data maintenance](data-maintenance.md): providers and attribution, snapshot workflows, refresh schedules, polar data and caches.
 - [Contribution guidelines](../CONTRIBUTING.md): proposing changes and keeping documentation organised.
-- [Upstream history](upstream.md): Hack4Rail background, original demos and Europe tile extraction.
+- [Project origins](upstream.md): upstream credit, the active basemap dependency and unused inherited code.
 
 ## Where new information belongs
 

@@ -3,18 +3,35 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="Explore railways worldwide, with prominent stations, maximum speeds and electrification. Built on OpenStreetMap and Open Railway Styles.">
+  <meta name="description" content="Railway Atlas: explore railways worldwide, with prominent stations, infrastructure, maximum speeds, electrification and gauges. Built on OpenStreetMap.">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="theme-color" content="#173e47">
   <title>Railway Atlas · Worldwide rail map</title>
-  <link rel="icon" href="atlas-icon.svg" type="image/svg+xml">
+  <meta name="application-name" content="Railway Atlas">
+  <meta property="og:site_name" content="Railway Atlas">
+  <meta property="og:title" content="Railway Atlas · Worldwide rail map">
+  <meta property="og:description" content="The world, by rail. Explore stations and railway infrastructure worldwide with OpenStreetMap data.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://c933103.github.io/openrailwaystyle/">
+  <meta property="og:image" content="https://c933103.github.io/openrailwaystyle/atlas-icon-512.png?rev=3eac3367ae0f">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:image:alt" content="Railway Atlas: golden rails receding towards a teal horizon">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Railway Atlas · Worldwide rail map">
+  <meta name="twitter:description" content="The world, by rail. Explore stations and railway infrastructure worldwide with OpenStreetMap data.">
+  <meta name="twitter:image" content="https://c933103.github.io/openrailwaystyle/atlas-icon-512.png?rev=3eac3367ae0f">
+  <meta name="twitter:image:alt" content="Railway Atlas: golden rails receding towards a teal horizon">
+  <link rel="icon" href="atlas-icon-192.png?rev=1b3a87900a12" type="image/png" sizes="192x192">
+  <link rel="icon" href="atlas-icon.svg?rev=69d552ce10e7" type="image/svg+xml" sizes="any">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="apple-touch-icon" href="atlas-icon-touch-180.png">
+  <link rel="apple-touch-icon" href="atlas-icon-touch-180.png?rev=3d88aa125da7" sizes="180x180">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Rail Atlas">
+  <meta name="apple-mobile-web-app-title" content="Railway Atlas">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20261003-81" rel="stylesheet">
+  <link href="app.css?v=20261004-pr53-repair1" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -59,7 +76,7 @@
         <fieldset><legend>Railways</legend>
           <label><input type="checkbox" id="stations" checked> Station markers and names</label>
           <label><input type="checkbox" id="names" checked> Railway names along tracks</label>
-          <label><input type="checkbox" id="labels" checked> Value labels (speed, power, train control, gauges, axle loads and platform lengths)</label>
+          <label><input type="checkbox" id="labels" checked> Value labels (speed, power, train control, gauges, axle loads, platforms, signals and entrances)</label>
           <label><input type="checkbox" id="trackCounts" checked> Track counts in boxes (Infrastructure view)</label>
           <label><input type="checkbox" id="inactive" checked> Planned, construction and former railways</label>
         </fieldset>
@@ -106,7 +123,7 @@
     <h3 id="help-start" tabindex="-1">Getting started</h3>
     <p>Search for a station, railway facility or place with the box at the top of the panel. The view buttons colour the railways by infrastructure, maximum speed, power, train control, gauge, loading gauge, axle load or owner, or show the urban rail services (metro, light rail, tram and commuter rail lines) along the tracks they run on; Map, Satellite, Hybrid and Carto choose the background. Click a station, line, level crossing or transport facility to inspect it; its panel links to the object on OpenStreetMap.</p>
     <p>At the foot of the panel: the link button copies a link to the current view, the satellite button copies the GPS coordinates of the map centre, the gear opens the settings (what is drawn, the coordinate readout and the automatic globe), and ? opens this page. Beside the map: compass, zoom, your location, ⊞ (more detail), ✎ (drawing), 📏 (measuring) and the globe/flat-map switch. With the map focused, the arrow keys pan the map and Shift with an arrow turns or tilts it.</p>
-    <p>A station-first adaptation of <a href="https://github.com/c933103/openrailwaystyle">Open Railway Styles</a>, started at Hack4Rail. The background keeps roads and settlements subdued so railway infrastructure stands out.</p>
+    <p><strong>Railway Atlas</strong> is a worldwide railway map with prominent stations, infrastructure and service routes. Subdued roads and settlements, land and seabed relief, and drawing and measurement tools provide context for exploring railways.</p>
     <h3 id="help-reading" tabindex="-1">Reading the map</h3><p>Major stations are ranked by the provider’s mapped route importance, which is not a passenger-volume ranking. Coverage and station ranking depend on OpenStreetMap completeness.</p>
     <p>Speed colours use the provider’s numeric limit in km/h. Where directions differ, this is the preferred-direction limit, or the larger directional limit when no preferred direction is mapped. Track labels retain original units: bare numbers are km/h; mph is written explicitly. “A / B” means forward / backward; “A (B)” means preferred / opposite direction. A dash means missing data. These directions refer to the underlying OSM way.</p>
     <p>Grey means no numeric speed is available. Railways under construction are drawn with long dashes, proposed ones with spaced round dots, disused ones with dash-dot lines, and abandoned or removed ones with sparse pairs of short dashes; they are not presented as operating lines. In the speed view they take the colour of their recorded (planned or former) limit where one is mapped. Bridges (dark edges) and tunnels (pale dashed core or faded line) are marked in every view. Recorded infrastructure limits are not train running speeds or a timetable.</p>
@@ -118,8 +135,10 @@
     <p>Brown contours show land elevation; blue contours show negative elevation below sea level. Labels are signed metres. Heavier index contours are labelled. Seabed depth data is much coarser than land elevation. Around the poles on the globe, relief and contours come from NOAA ETOPO 2022 (about 1.85 km resolution).</p>
     <p>Roads, cycling paths and walking trails remain visible beneath the railway network. Protected areas, military grounds, religious institutions and heritage sites provide context for drawing proposals. Purple boundaries show Indigenous territories where mapped as non-administrative jurisdictions, separately from administrative and conservation boundaries. The map does not establish legal boundaries or permission to build.</p>
     <p>Infrastructure view marks level crossings (dark brown for road crossings, light brown for pedestrian ones), with their mapped equipment; they come from a worldwide OSM table refreshed weekly: <a href="data/level-crossings/manifest.json">snapshot date and counts</a>; <a href="data/level-crossings/crossings.tsv.gz">download the ODbL table</a>. It marks explicitly tagged street-running track with an ochre roadbed. Street running is refreshed weekly from OSM: <a href="data/street-running/manifest.json">snapshot date and query</a>; <a href="data/street-running/street-running.geojson.gz">download the ODbL extract</a>. It is not inferred from every tramway or a nearby road.</p>
+    <p>Zoom in on Infrastructure view for platforms and their boarding edges. Platform numbers and edge references appear from zoom 17; from zoom 19 an edge label pairs its reference with the length of the complete mapped boarding edge, in metres or feet. Platform numbers and lengths can take a moment to load. Signals (purple) and mapped train or subway station entrances (teal) appear from zoom 16; click them for mapped details and an OpenStreetMap link. Signal markers identify their location, not their current aspect. Coverage depends on the provider’s mapped data. Value labels hides their text while keeping the mapped shapes and markers.</p>
     <p>Carto background: <a href="https://www.openstreetmap.org/">OpenStreetMap Standard</a>, under the <a href="https://operations.osmfoundation.org/policies/tiles/">OSMF tile usage policy</a>. <a href="https://www.openstreetmap.org/fixthemap">Report a map issue</a>.</p>
     <h3 id="help-sources" tabindex="-1">Sources</h3><p>Railway tiles: <a href="https://openrailwaymap.app/">OpenRailwayMap vector</a>. Station search: <a href="https://www.openrailwaymap.org/">OpenRailwayMap public API</a>; place search: <a href="https://nominatim.org/">Nominatim</a> (OpenStreetMap data). Departures and journey planning: <a href="https://transitous.org">Transitous</a> (<a href="https://transitous.org/sources/">timetable sources and licences</a>). Regional planned, construction and former lines: <a href="data/manifest.json">published OSM snapshot</a>, extracted with <a href="https://overpass-api.de/">Overpass (FOSSGIS)</a>; <a href="data/lifecycle.geojson.gz">download the ODbL database</a>. Relief: <a href="terrain-credits.html">Mapzen Terrain Tiles / AWS, including NOAA ETOPO1 seabed data</a>. Base map: <a href="https://tuiles.enliberte.fr/">En Liberté</a>. Satellite imagery: <a href="https://cloudless.eox.at">EOxCloudless https://cloudless.eox.at</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2025), <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>. Map data: <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>. Name regions: <a href="https://www.naturalearthdata.com/">Natural Earth</a>, <a href="https://github.com/evansiroky/timezone-boundary-builder">timezone-boundary-builder</a> (OSM, ODbL) and OSM boundary relations and <a href="https://www.geoboundaries.org/">geoBoundaries</a> (Myanmar Analytics Project, CC BY 4.0; Royal Thai Survey Department / OCHA ROAP, CC BY 3.0 IGO). Renderer: <a href="https://maplibre.org/">MapLibre</a>.</p>
+    <p>Project origins: Railway Atlas began as a fork of <a href="https://github.com/OpenRail-Playground/openrailwaystyle">Open Railway Styles</a>, the Hack4Rail 2025 project. Atlas's current application and worldwide data pipeline are developed in this repository.</p>
     <p class="small">This public map uses community-hosted services. Data availability and updates follow those providers. No account or API key is required. Search terms are sent to OpenRailwayMap and to OpenStreetMap's Nominatim geocoder only when submitted. Opening a station sends its position to Transitous for its departures. Opening a level crossing asks the OpenStreetMap API for its tags. Panning loads planned and former railways from files published with this site; your viewport is not sent to Overpass. The snapshot date is recorded in its manifest. Detail tiles follow OpenRailwayMap updates. Shading and contours are derived from elevation, including seabed where recorded; they are not a nautical chart.</p>
     <p>Other transport and major destinations use the existing OpenMapTiles basemap: airports, bus/coach and ferry terminals, cable car stations, hospitals, campuses, shopping centres, government/community facilities and visitor attractions. Shaded industrial, commercial and other facility grounds show potential trip destinations, not passenger volumes. Station panels list nearby transport within 500 m straight-line distance; this does not confirm a walkable interchange.</p>
     <h3 id="help-licences" tabindex="-1">Licences</h3>
@@ -155,6 +174,6 @@
       status.textContent = 'The map could not load. Check your connection and reload the page.';
     }, true);
   </script>
-  <script type="module" src="app.mjs?v=20261003-81"></script>
+  <script type="module" src="app.mjs?v=20261004-pr53-repair1"></script>
 </body>
 </html>

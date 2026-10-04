@@ -1,6 +1,6 @@
-export {createPlatformLengths,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261003-81';
+export {createPlatformLengths,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261004-pr53-repair1';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261003-81';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261004-pr53-repair1';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -659,6 +659,11 @@ export function osmObject(feature) {
     if (match) return {type: match[1], id: match[2]};
   }
   if (feature.sourceLayer === 'level_crossings') return Number.isInteger(feature.id) ? {type: 'node', id: String(feature.id)} : null;
+  // The dedicated signal and entrance tile functions expose bare OSM node IDs.
+  if (['railwaySignals','stationEntrances'].includes(feature.source)) {
+    const id=p.id??feature.id;
+    return /^[1-9]\d*$/.test(String(id??''))?{type:'node',id:String(id)}:null;
+  }
   if (feature.source === 'openmaptiles') {
     const type = [, 'node', 'way', 'relation'][feature.id % 10];
     return Number.isInteger(feature.id) && feature.id > 0 && type ? {type, id: String(Math.floor(feature.id / 10))} : null;

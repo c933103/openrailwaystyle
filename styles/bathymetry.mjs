@@ -183,7 +183,7 @@ function depthWorker(create) {
 // Keep only 32 encoded tiles; MapLibre retains the visible textures itself.
 export function installBathymetry(maplibre, dem, {waterTile, readTile, createWorker, keep = 32}) {
   const cache = new Map();
-  let worker = null;
+  let worker = null, requestId = 0;
   // A worker that cannot even be created (blocked by the browser) leaves
   // the drawing on the page.
   if (createWorker && typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined') try { worker = depthWorker(createWorker); } catch { worker = null; }
@@ -206,18 +206,19 @@ export function installBathymetry(maplibre, dem, {waterTile, readTile, createWor
       const data = cache.get(url); cache.delete(url); cache.set(url, data);
       return {data: data.slice(0)};
     }
+    const requestKey = `${url}#${++requestId}`; // World wraps may request the same URL concurrently.
     const water = await waterTile(z, x, y, controller);
     controller.signal.throwIfAborted();
     // In the worker while it works; on the page without one, or after it failed.
     const inWorker = async () => {
-      const {ocean} = await worker.send({key: url, water: water.data ?? new ArrayBuffer(0)}, controller.signal);
+      const {ocean} = await worker.send({key: requestKey, water: water.data ?? new ArrayBuffer(0)}, controller.signal);
       if (!ocean) return empty(); // No extra DEM request inland.
       const tile = depthTile(z, x, y);
       let heights;
       try { heights = await dem.getDemTile(tile.z, tile.x, tile.y, controller); controller.signal.throwIfAborted(); }
-      catch (error) { worker.forget(url); throw error; }
+      catch (error) { worker.forget(requestKey); throw error; }
       // A copy: the terrain cache keeps its own.
-      return (await worker.send({key: url, tile, heights: {width: heights.width, height: heights.height, data: Float32Array.from(heights.data)}}, controller.signal)).data;
+      return (await worker.send({key: requestKey, tile, heights: {width: heights.width, height: heights.height, data: Float32Array.from(heights.data)}}, controller.signal)).data;
     };
     const onPage = async () => {
       const polygons = water.data?.byteLength ? oceanPolygons(readTile(water.data)) : [];

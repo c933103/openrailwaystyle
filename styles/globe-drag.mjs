@@ -15,13 +15,14 @@
 //   view can pass over the poles like anywhere else.
 const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
 export const toVector = ([lng, lat]) => [Math.cos(rad(lat)) * Math.cos(rad(lng)), Math.cos(rad(lat)) * Math.sin(rad(lng)), Math.sin(rad(lat))];
-export const fromVector = ([x, y, z]) => [deg(Math.atan2(y, x)), deg(Math.asin(Math.max(-1, Math.min(1, z))))];
+export const fromVector = ([x, y, z]) => [deg(Math.atan2(y, x)), deg(Math.atan2(z, Math.hypot(x, y)))];
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const unit = v => { const n = Math.hypot(...v); return v.map(c => c / n); };
-// The centre may come this close to a pole; exactly at it the heading and
-// MapLibre's zoom are undefined.
-export const POLE_LIMIT = 89.9;
+// Avoid the singularity at exactly 90°, where MapLibre's latitude-relative
+// zoom is undefined. The offset is about 1 mm on the ground, rather than
+// the former 11 km barrier at 89.9° which froze small close-up drag steps.
+export const POLE_LIMIT = 90 - 1e-8;
 const MERCATOR_LIMIT = 85.051129;
 // North and east directions at a point on the sphere.
 function axes(c) {
@@ -132,6 +133,10 @@ const clampLat = lat => Math.max(-POLE_LIMIT, Math.min(POLE_LIMIT, lat));
 // The zoom that shows the planet at the same size with the centre moved
 // from oldLat to newLat (MapLibre's getZoomAdjustment).
 export const zoomForLatitude = (zoom, oldLat, newLat) => zoom + Math.log2(Math.cos(rad(clampLat(newLat))) / Math.cos(rad(clampLat(oldLat))));
+// MapLibre's globe radius is worldSize / (2π cos(latitude)). Use its
+// centre scale directly: inverse projection rounds very close polar
+// latitudes to 90° and makes two nearby screen points identical.
+export const globeRadiansPerPixel = (worldSize, latitude, pitch = 0) => 2 * Math.PI * Math.cos(rad(clampLat(latitude))) / (worldSize * Math.cos(rad(pitch)));
 // Let the globe's centre go beyond 85.05°, up to POLE_LIMIT, while the globe
 // is drawn (close up MapLibre draws the flat map, which cannot). MapLibre
 // creates a new transform whenever the projection changes, so each one is
@@ -141,7 +146,7 @@ export const zoomForLatitude = (zoom, oldLat, newLat) => zoom + Math.log2(Math.c
 // MapLibre accepts as a minimum (−2): there the transform's own minimum is
 // set low and the real one applied here. Returns {refresh}, to call after
 // the map's minimum zoom is set.
-const LOWEST = -24;
+const LOWEST = -40;
 export function allowPolarCentres(map, LngLat, minZoom) {
   const isGlobe = transform => Boolean(transform?._verticalPerspectiveTransform);
   // One constrain for every transform (MapLibre's transformConstrain). On a
@@ -216,9 +221,14 @@ export function installGlobeDrag(map, {active, ignore = () => false}) {
   const at = e => { const r = canvas.getBoundingClientRect(), k = r.width ? canvas.clientWidth / r.width : 1; return {x: (e.clientX - r.left) * k, y: (e.clientY - r.top) * k, k}; };
   // The globe's scale at the centre of the view, measured from the map.
   function radiansPerPixel() {
+    const t = map.transform;
+    if (t?.isGlobeRendering && t.worldSize > 0) return globeRadiansPerPixel(t.worldSize, t.center.lat, t.pitch);
     const {clientWidth: w, clientHeight: h} = map.getContainer();
     const a = map.unproject([w / 2, h / 2]), b = map.unproject([w / 2, h / 2 - 10]);
-    const angle = Math.acos(Math.max(-1, Math.min(1, dot(toVector([a.lng, a.lat]), toVector([b.lng, b.lat])))));
+    // atan2 retains small angles: acos(dot) rounds to zero at close zooms
+    // and loses precision on either side of a pole.
+    const av = toVector([a.lng, a.lat]), bv = toVector([b.lng, b.lat]);
+    const angle = Math.atan2(Math.hypot(...cross(av, bv)), dot(av, bv));
     return Number.isFinite(angle) && angle > 0 ? angle / 10 : null;
   }
   canvas.addEventListener('pointerdown', e => {

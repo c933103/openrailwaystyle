@@ -12,7 +12,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -141,8 +141,14 @@ jobs:
         run: node scripts/check-context-browser.mjs
       - name: Verify actual WebGL rendering and zoom-7 panning
         run: node scripts/check-map-browser.mjs
+      - name: Verify Carto-only detailed polar rendering and view switching
+        run: node scripts/check-polar-browser.mjs
+      - name: Verify close-up globe dragging across both poles
+        run: node scripts/check-globe-browser.mjs
       - name: Verify platform length labels and main Units selector
         run: node scripts/check-platform-browser.mjs
+      - name: Verify platform references, signals and entrances
+        run: node scripts/check-infrastructure-browser.mjs
       - name: Verify served build information on desktop and touch
         run: node scripts/check-build-browser.mjs
       - name: Save browser review
