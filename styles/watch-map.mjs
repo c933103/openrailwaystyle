@@ -13,7 +13,7 @@ export function installWatchGesture(surface,{active,open,delay=700}) {
   };
   const move=e=>{if(held&&held.id===e.pointerId&&Math.hypot(e.clientX-held.x,e.clientY-held.y)>8)cancelHold();};
   const release=e=>{pointers.delete(e.pointerId);if(held?.id===e.pointerId)cancelHold();};
-  const leave=e=>{if(held?.id===e.pointerId)cancelHold();};
+  const leave=release;
   const context=e=>{if(active()){e.preventDefault();cancel();open();}};
   const key=e=>{if(active()&&(e.key==='ContextMenu'||e.key==='F10'&&e.shiftKey)){e.preventDefault();cancel();open();}};
   surface.addEventListener('pointerdown',down,{passive:true});

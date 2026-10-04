@@ -28,3 +28,14 @@ test('long press opens controls while drags, pinches, releases and ordinary layo
     active=true;surface.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'F10',shiftKey:true}));assert.equal(opens,2);
   } finally {gesture.destroy();dom.window.close();}
 });
+
+test('a pointer released outside the viewport cannot block the next hold',async()=>{
+  const dom=new JSDOM('<div id="map"></div>'),surface=dom.window.document.getElementById('map');
+  let opens=0;const gesture=installWatchGesture(surface,{active:()=>true,open:()=>opens++,delay:20});
+  const send=name=>{const event=new dom.window.Event(name);Object.assign(event,{pointerId:1,button:0,clientX:50,clientY:50});surface.dispatchEvent(event);};
+  try {
+    send('pointerdown');send('pointerleave');await wait(35);assert.equal(opens,0);
+    // The browser never receives the outside release; the next press reuses its ID.
+    send('pointerdown');await wait(35);assert.equal(opens,1);
+  } finally {gesture.destroy();dom.window.close();}
+});
