@@ -260,6 +260,23 @@ class GTFSFrequency(unittest.TestCase):
         self.assertIsNone(paths.patterns[paths.pattern_key(trips['equator'],times['equator'])])
         self.assertAlmostEqual(paths.distance((0,80),(.01,80)),193.305,places=2)
 
+    def test_antimeridian_shapes_are_short_and_split_at_the_dateline(self):
+        spec=importlib.util.spec_from_file_location('shape_paths',Path(__file__).parent.parent/'scripts/gtfs-shapes.py')
+        shapes=importlib.util.module_from_spec(spec);spec.loader.exec_module(shapes)
+        # About 22 km across the antimeridian, stops on either side.
+        rows=[{'shape_id':'fiji','shape_pt_sequence':i,'shape_pt_lon':lon,'shape_pt_lat':-16.5} for i,lon in enumerate([179.9,179.97,-179.97,-179.9])]
+        trips={'t':{'shape_id':'fiji','route_id':'r'}}
+        times={'t':[{'stop_id':'w','stop_sequence':0},{'stop_id':'e','stop_sequence':1}]}
+        stops={'w':{'stop_lon':179.9,'stop_lat':-16.5},'e':{'stop_lon':-179.9,'stop_lat':-16.5}}
+        paths=shapes.ShapePaths(rows,trips,times,stops,{'max_stop_snap_metres':200})
+        self.assertLess(paths.shapes['fiji']['lengths'][-1],25000)
+        self.assertIsNotNone(paths.patterns[paths.pattern_key(trips['t'],times['t'])])
+        edges=[geometry for _,_,_,geometry in paths.segments(trips['t'],times['t'])]
+        self.assertTrue(edges)
+        self.assertTrue(all(-180<=lon<=180 for edge in edges for lon,_ in edge))
+        self.assertTrue(all(abs(a[0]-b[0])<1 for a,b in edges),'no edge spans the world')
+        self.assertTrue(any(lon==180 for edge in edges for lon,_ in edge) and any(lon==-180 for edge in edges for lon,_ in edge),'split at the dateline')
+
     def test_global_rail_modes_exclude_buses_and_aerial_lifts(self):
         for value in [0,1,2,5,7,12,100,109,400,405,900,906,1400]:
             self.assertTrue(compiler.rail_type(str(value)), value)

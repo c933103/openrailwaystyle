@@ -31,6 +31,11 @@ class ShapePaths:
                 p = (round(float(r['shape_pt_lon']), 6), round(float(r['shape_pt_lat']), 6))
                 if not (-180 <= p[0] <= 180 and -90 <= p[1] <= 90):
                     raise ValueError('Invalid shape coordinate')
+                # Unwrap at the antimeridian: consecutive vertices never differ
+                # by more than 180° of longitude, so 179.9° to -179.9° is a
+                # short step. Output edges are normalized back to ±180°.
+                if points:
+                    p = (round(p[0] + 360*round((points[-1][0]-p[0])/360), 6), p[1])
                 if not points or p != points[-1]:
                     points.append(p); distances.append(r.get('shape_dist_traveled', '').strip())
             if len(points) < 2:
@@ -41,7 +46,9 @@ class ShapePaths:
             measures = [float(v) for v in distances] if all(distances) else None
             if measures and any(b <= a for a, b in zip(measures, measures[1:])):
                 measures = None
-            self.shapes[key] = {'points': points, 'lengths': lengths, 'measures': measures, 'anchors': {}, 'lookup': None}
+            longitudes = [x for x, _ in points]
+            self.shapes[key] = {'points': points, 'lengths': lengths, 'measures': measures, 'anchors': {}, 'lookup': None,
+                                'centre': (min(longitudes)+max(longitudes))/2}
         # One projection per stop pattern, rather than once per train.
         for trip_id, trip in sorted(trips.items()):
             sequence = sorted(times.get(trip_id, []), key=lambda r: int(r['stop_sequence']))
@@ -154,6 +161,8 @@ class ShapePaths:
             if not stop:
                 raise ValueError('Trip references an absent stop')
             p = (float(stop['stop_lon']),float(stop['stop_lat']))
+            # The stop in the shape's (possibly unwrapped) world copy.
+            p = (p[0] + 360*round((shape['centre']-p[0])/360), p[1])
             value = row.get('shape_dist_traveled','').strip()
             measures = shape['measures']
             if value and measures:
@@ -214,6 +223,22 @@ class ShapePaths:
             if middle < positions[0]-.001 or middle >= positions[-1]-.001:
                 continue
             anchor = max(0,min(len(sequence)-2,bisect_right(positions,middle)-1))
-            lo,hi = sorted((a,b))
-            out.append(((trip['route_id'],lo,hi),0 if a==lo else 1,sequence[anchor], [lo,hi]))
+            for p,q in self.normalized(a,b):
+                lo,hi = sorted((p,q))
+                out.append(((trip['route_id'],lo,hi),0 if p==lo else 1,sequence[anchor], [lo,hi]))
         return out
+
+    @staticmethod
+    def normalized(a, b):
+        """An unwrapped edge as one or two edges within -180..180 longitude."""
+        shift = -360*round((a[0]+b[0])/720)
+        a, b = (round(a[0]+shift, 6), a[1]), (round(b[0]+shift, 6), b[1])
+        edge = 180 if max(a[0], b[0]) > 180 else -180 if min(a[0], b[0]) < -180 else None
+        if edge is None:
+            return [(a, b)]
+        t = (edge-a[0])/(b[0]-a[0])
+        middle = round(a[1]+t*(b[1]-a[1]), 6)
+        turn = 360 if edge > 0 else -360
+        if a[0] > 180 or a[0] < -180:
+            return [((a[0]-turn, a[1]), (-edge, middle)), ((edge, middle), b)]
+        return [(a, (edge, middle)), ((-edge, middle), (b[0]-turn, b[1]))]

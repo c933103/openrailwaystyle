@@ -8,6 +8,9 @@ import {timetableFeatures} from './gtfs-service.mjs';
 import {mergeServiceTiles} from './merge-service-tiles.mjs';
 import {readFrequencyFeed} from './read-frequency-feed.mjs';
 import {assertFrequencyTilingBudget,FrequencyTilingBudgetError} from './frequency-tiling-budget.mjs';
+// Outcome totals always come from the entries themselves: each shard's own
+// counts cover only that shard.
+export const countStatuses=entries=>{const counts={};for(const entry of entries)counts[entry.status]=(counts[entry.status]||0)+1;return counts;};
 export function mergeInventories(inventories){
   if(!inventories.length)throw new Error('No worldwide inventory');
   const first=inventories[0],ids=new Set(),shards=new Set(),entries=[];
@@ -17,7 +20,8 @@ export function mergeInventories(inventories){
     for(const entry of inventory.entries){if(ids.has(entry.id))throw new Error('Duplicate feed');ids.add(entry.id);entries.push(entry);}
   }
   if(shards.size!==first.shards||ids.size!==first.catalogue_entries)throw new Error('Incomplete worldwide scan; refusing to publish a partial shard collection');
-  return {...first,shard:undefined,entries:entries.sort((a,b)=>a.id.localeCompare(b.id))};
+  entries.sort((a,b)=>a.id.localeCompare(b.id));
+  return {...first,shard:undefined,counts:countStatuses(entries),entries};
 }
 export async function pruneFrequencyOutputs(directory,entries){
   const wanted=new Set(entries.filter(e=>e.status==='compiled').map(e=>e.output));
@@ -30,9 +34,8 @@ export async function assemble(directory){
   const inventory=mergeInventories(await Promise.all(names.map(async name=>JSON.parse(await readFile(join(directory,name),'utf8')))));
   await pruneFrequencyOutputs(directory,inventory.entries);
   const tileRoot=join(directory,'tiles');await rm(tileRoot,{recursive:true,force:true});await mkdir(tileRoot,{recursive:true});
-  const keys=new Set(),summary=[],counts={};
+  const keys=new Set(),summary=[];
   for(const entry of inventory.entries){
-    counts[entry.status]=(counts[entry.status]||0)+1;
     if(entry.status!=='compiled')continue;
     const feed=await readFrequencyFeed(join(directory,entry.output));
     if(feed.source.id!==entry.id||feed.source.sha256!==entry.sha256||feed.source.service_date!==inventory.service_date)throw new Error(`Unverified feed ${entry.id}`);
@@ -47,7 +50,6 @@ export async function assemble(directory){
     } catch(error) {
       if(!(error instanceof FrequencyTilingBudgetError))throw error;
       entry.status='failed';entry.failure_stage='assembly';entry.error=error.message;
-      counts.compiled--;counts.failed=(counts.failed||0)+1;
       console.warn(entry.id,error.message);continue;
     }
     const tiles=buildTiles(readTable(''),{timetable:data});
@@ -62,6 +64,8 @@ export async function assemble(directory){
   }
   if(!summary.some(f=>f.mappedRoutes>0))throw new Error('Worldwide scan produced no mapped rail services; inspect inventory failures');
   await pruneFrequencyOutputs(directory,inventory.entries);
+  // Recounted after assembly, which can turn a compiled feed into a failure.
+  const counts=countStatuses(inventory.entries);inventory.counts=counts;
   const manifest={schema:3,service_date:inventory.service_date,catalogue_url:inventory.catalogue_url,catalogue_sha256:inventory.catalogue_sha256,catalogue_entries:inventory.catalogue_entries,
     countries_scanned:[...new Set(inventory.entries.map(e=>e.country))].sort(),counts,feeds:summary,tiles:keys.size,
     scope:'Whole worldwide catalogue scanned. Timetable shapes and conservative matches to published rail geometry; failed, excluded, unshaped and expired sources are explicitly reported. Coverage is not complete worldwide.'};

@@ -17,6 +17,8 @@ test('global assembly rejects missing shards, duplicate feeds and catalogue drif
   const base={schema:2,shards:2,catalogue_sha256:'hash',catalogue_entries:2,service_date:'2026-10-05'};
   const a={...base,shard:0,entries:[{id:'a'}]},b={...base,shard:1,entries:[{id:'b'}]};
   assert.equal(mergeInventories([a,b]).entries.length,2);
+  const c={...base,shard:0,counts:{compiled:1},entries:[{id:'a',status:'compiled'}]},d={...base,shard:1,counts:{no_rail:1},entries:[{id:'b',status:'no_rail'}]};
+  assert.deepEqual(mergeInventories([c,d]).counts,{compiled:1,no_rail:1},'totals cover every shard, not only the first');
   assert.throws(()=>mergeInventories([a]),/Incomplete/);
   assert.throws(()=>mergeInventories([a,{...b,entries:[{id:'a'}]}]),/Duplicate feed/);
   assert.throws(()=>mergeInventories([a,{...b,catalogue_sha256:'changed'}]),/Inconsistent/);
@@ -70,6 +72,6 @@ test('an excessive feed contributes no partial tiles and is audited while verifi
     const entries=['bad','good'].map(id=>({id,status:'compiled',output:`feeds/${id}.json.gz`,sha256:id,country:'US'}));
     await writeFile(join(root,'inventory-0.json'),JSON.stringify({schema:2,shard:0,shards:1,catalogue_sha256:'verified',catalogue_entries:2,service_date:'2026-10-05',entries}));
     const manifest=await assemble(root);assert.equal(manifest.counts.failed,1);assert.equal(manifest.counts.compiled,1);assert.deepEqual(manifest.feeds.map(f=>f.id),['good']);assert.ok(manifest.tiles>0);
-    const inventory=JSON.parse(await (await import('node:fs/promises')).readFile(join(root,'inventory.json'),'utf8'));assert.equal(inventory.entries[0].failure_stage,'assembly');assert.match(inventory.entries[0].error,/fan-out/);assert.deepEqual(await readdir(join(root,'feeds')),['good.json.gz']);
+    const inventory=JSON.parse(await (await import('node:fs/promises')).readFile(join(root,'inventory.json'),'utf8'));assert.equal(inventory.entries[0].failure_stage,'assembly');assert.deepEqual(inventory.counts,manifest.counts,'the published inventory totals match its entries after assembly');assert.match(inventory.entries[0].error,/fan-out/);assert.deepEqual(await readdir(join(root,'feeds')),['good.json.gz']);
   }finally{await rm(root,{recursive:true,force:true});}
 });
