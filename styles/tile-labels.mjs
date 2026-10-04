@@ -37,7 +37,6 @@ export function platformTilePieces(data,layerName,limits={bytes:1024*1024,featur
  return pieces;
 }
 
-export function readTile(data) {
 export function readTile(data, onlyLayers) {
   const tile = new VectorTile(new Pbf(new Uint8Array(data)));
   // vector-tile creates a new object on each feature() call. Retain mutations
