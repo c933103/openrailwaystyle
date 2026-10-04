@@ -49,3 +49,27 @@ test('keyboard panning: a held key is one movement, ended on release', () => {
   assert.equal(fired.filter(t => t === 'moveend').length, 2);
   delete globalThis.window; delete globalThis.requestAnimationFrame; delete globalThis.cancelAnimationFrame;
 });
+
+test('keyboard panning hands each step to the globe pan when it takes it', () => {
+  const frames = [];
+  globalThis.requestAnimationFrame = callback => frames.push(callback);
+  globalThis.cancelAnimationFrame = () => { frames.length = 0; };
+  const listeners = {}, panned = [], globe = [];
+  const container = {clientWidth: 800, clientHeight: 600, addEventListener: (type, f) => { listeners[type] = f; }};
+  const map = {fire() { return this; }, panBy: offset => panned.push(offset), stop() {}, getContainer: () => container, getCanvasContainer: () => container};
+  const key = name => ({key: name, preventDefault() {}, stopImmediatePropagation() {}});
+  globalThis.window = {addEventListener() {}};
+  let onGlobe = true;
+  installKeyboardPan(map, {reducedMotion: () => true, pan: (dx, dy, data) => { if (!onGlobe) return false; globe.push([dx, dy, data.originalEvent.key]); return true; }});
+  listeners.keydown(key('ArrowUp'));
+  let now = performance.now();
+  for (let i = 0; i < 10; i++) frames.shift()(now += 16);
+  listeners.keyup(key('ArrowUp'));
+  assert.equal(panned.length, 0, 'the flat-map pan is not used on the globe');
+  assert.ok(globe.length >= 9 && globe.every(([dx, dy, k]) => dx === 0 && dy < 0 && k === 'ArrowUp'));
+  onGlobe = false; listeners.keydown(key('ArrowLeft'));
+  for (let i = 0; i < 3; i++) frames.shift()(now += 16);
+  listeners.keyup(key('ArrowLeft'));
+  assert.ok(panned.length > 0 && panned.every(([dx, dy]) => dx < 0 && dy === 0));
+  delete globalThis.window; delete globalThis.requestAnimationFrame; delete globalThis.cancelAnimationFrame;
+});
