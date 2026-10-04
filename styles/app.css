@@ -105,6 +105,14 @@ button.brand-mark:focus-visible{outline:3px solid #d58d13;outline-offset:3px}
 
 .maplibregl-ctrl-attrib .atlas-build { display: block; }
 
+#service-frequency-options { display:grid; gap:5px; margin:10px 0; }
+#service-frequency-options[hidden],#frequency-profile-options[hidden],#peak-phase-options[hidden],#frequency-hour-options[hidden] { display:none; }
+#service-frequency-options select { width:100%; margin-bottom:6px; }
+
+.frequency-key { display:flex; flex-wrap:wrap; gap:7px 12px; margin-top:10px; }
+.frequency-key p { flex-basis:100%; margin:3px 0; }
+.frequency-sample { display:inline-flex; align-items:center; gap:5px; font-size:11px; }
+.frequency-sample i { display:block; width:24px; background:var(--ink); }
 /* A measured control stack, not competing fixed offsets on its children. */
 :root{--map-safe-left:env(safe-area-inset-left,0px);--map-safe-right:env(safe-area-inset-right,0px);--map-safe-top:env(safe-area-inset-top,0px);--map-safe-bottom:env(safe-area-inset-bottom,0px)}
 .map-control-insets{position:fixed;visibility:hidden;pointer-events:none;width:0;height:0;padding:var(--map-safe-top) var(--map-safe-right) var(--map-safe-bottom) var(--map-safe-left)}
@@ -121,3 +129,14 @@ button.brand-mark:focus-visible{outline:3px solid #d58d13;outline-offset:3px}
 .maplibregl-ctrl-attrib.maplibregl-compact{width:32px;height:32px;min-height:32px;padding:0;border-radius:50%}
 .maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button{width:32px;height:32px;right:0;top:0;background-repeat:no-repeat;background-position:center;background-size:24px 24px}
 .maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-inner{position:absolute;bottom:40px;right:0;width:330px;max-width:var(--map-info-width,calc(100vw - 20px));max-height:var(--map-info-height,calc(100dvh - 70px));overflow:auto;overflow-wrap:anywhere;white-space:normal;padding:12px;background:var(--paper);border-radius:9px;box-shadow:0 3px 15px #173e4740;text-align:left}
+
+/* Explicit watch mode: the entire idle viewport belongs to the map. */
+body[data-ui="watch"] .panel,body[data-ui="watch"] .maplibregl-control-container,body[data-ui="watch"] .detail-panel,body[data-ui="watch"] .map-status,body[data-ui="watch"] #draw-toolbar,body[data-ui="watch"] #measure-toolbar,body[data-ui="watch"] #about {display:none!important}
+body[data-ui="watch"] #map-frame {inset:0;border-radius:0}
+#watch-menu {position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:var(--paper)}
+#watch-content {width:min(360px,70vmin);height:min(360px,70vmin);overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:0;font-size:14px}
+#watch-content>button,#watch-content>select {min-height:44px;flex-shrink:0;width:100%;padding:7px 5px;border-radius:4px}
+#watch-content .watch-scroll {overflow:auto;flex:1;min-height:0;overflow-wrap:anywhere;font-size:12px}
+#watch-content .watch-scroll button {display:block;min-height:44px;width:100%;padding:7px 5px}
+#watch-content .watch-scroll button[aria-pressed="true"] {background:#e3ebe6}
+#watch-content .watch-scroll p {margin:6px 0}

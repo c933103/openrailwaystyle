@@ -1,6 +1,6 @@
-export {createPlatformLengths,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261004-pr71-repair1';
+export {createPlatformLengths,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261004-frequency4';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261004-pr71-repair1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261004-frequency4';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -624,7 +624,7 @@ export function formatSpeed(properties, units = 'metric') {
 // Display settings live in a cookie; a link can still carry them (the app
 // then saves them and removes them from the address). remembered: settings
 // kept in this browser, used for anything the URL does not name.
-export const SETTING_KEYS = ['mode','background','stations','trackCounts','labels','inactive','relief','names','autoGlobe','readout','transport','destinations','constraints','units','detail','language'];
+export const SETTING_KEYS = ['mode','background','stations','trackCounts','labels','inactive','relief','names','autoGlobe','readout','transport','destinations','constraints','units','detail','language','serviceWidth','frequencyPeriod','peakPhase','frequencyHour','ui'];
 const LEGACY_LANGUAGE_KEYS = ['stationLanguage','mapLanguage','lineLanguage'];
 export const SETTING_PARAMS = [...SETTING_KEYS, ...LEGACY_LANGUAGE_KEYS];
 // More detail: 0 (normal), 1 (the next zoom level at half size) or 2 (two
@@ -679,11 +679,16 @@ export function readSettings(search, remembered = {}) {
   const pick = (key, valid, fallback) => [params.get(key), remembered[key]].find(valid) ?? fallback;
   return {
     mode: pick('mode', v => MODES.includes(v), 'infrastructure'),
+    ui: pick('ui', v => ['standard','watch'].includes(v), 'standard'),
     background: pick('background', v => BACKGROUNDS.includes(v), 'map'),
     stations: flag('stations', true), trackCounts: flag('trackCounts', true), labels: flag('labels', true), inactive: flag('inactive', true),
     transport: flag('transport', true), destinations: flag('destinations', true), constraints: flag('constraints', true),
     relief: flag('relief', true), names: flag('names', true), autoGlobe: flag('autoGlobe', true), readout: flag('readout', true),
     units: pick('units', v => v === 'metric' || v === 'imperial', 'metric'),
+    serviceWidth: pick('serviceWidth', v => ['equal','frequency'].includes(v), 'equal'),
+    frequencyPeriod: pick('frequencyPeriod', v => ['peak','offpeak','overnight','hour'].includes(v), 'offpeak'),
+    frequencyHour: Number(pick('frequencyHour', v => /^(?:[0-9]|1[0-9]|2[0-3])$/.test(String(v)), '12')),
+    peakPhase: pick('peakPhase', v => ['am','pm'].includes(v), 'am'),
     detail: detailLevel(params.has('detail') ? params.get('detail') : remembered.detail),
     language: language(params.get('language') || LEGACY_LANGUAGE_KEYS.map(k => params.get(k)).find(Boolean) || remembered.language),
   };

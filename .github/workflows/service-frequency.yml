@@ -1,0 +1,164 @@
+name: Build worldwide service frequencies
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/global-service-frequency.py
+      - scripts/gtfs-frequency.py
+      - scripts/gtfs-shapes.py
+      - scripts/gtfs-rail-paths.py
+      - scripts/assemble-global-frequency.mjs
+      - scripts/read-frequency-feed.mjs
+      - scripts/gtfs-service.mjs
+      - scripts/service-routes.mjs
+      - scripts/merge-service-tiles.mjs
+      - styles/service-frequency.mjs
+      - styles/data-src/frequency-source-rules.json
+      - .github/workflows/service-frequency.yml
+  workflow_dispatch:
+    inputs:
+      service_date:
+        description: 'Reference date (YYYY-MM-DD); blank uses next Monday'
+        required: false
+  schedule:
+    - cron: '41 2 * * 1'
+  pull_request:
+    paths:
+      - scripts/global-service-frequency.py
+      - scripts/gtfs-frequency.py
+      - scripts/gtfs-shapes.py
+      - scripts/gtfs-rail-paths.py
+      - scripts/assemble-global-frequency.mjs
+      - scripts/read-frequency-feed.mjs
+      - scripts/gtfs-service.mjs
+      - scripts/service-routes.mjs
+      - scripts/merge-service-tiles.mjs
+      - styles/service-frequency.mjs
+      - styles/data-src/frequency-source-rules.json
+      - .github/workflows/service-frequency.yml
+permissions:
+  contents: read
+concurrency:
+  group: worldwide-frequency-${{ github.head_ref || github.ref }}
+  # Preserve costly catalogue scans; a later revision queues behind the
+  # running build and can reuse its successfully verified feed cache.
+  cancel-in-progress: false
+jobs:
+  catalogue:
+    if: github.event_name != 'pull_request' || github.event.pull_request.base.ref == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    outputs:
+      service_date: ${{ steps.date.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: date
+        env:
+          REQUESTED_DATE: ${{ inputs.service_date }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import datetime as dt, os
+          today=dt.datetime.now(dt.timezone.utc).date()
+          reference=os.environ.get('REQUESTED_DATE') or (today+dt.timedelta(days=(-today.weekday())%7)).isoformat()
+          dt.date.fromisoformat(reference)
+          print('value='+reference)
+          PY
+      - name: Pin one worldwide catalogue for every worker
+        run: |
+          mkdir -p catalogue
+          curl --fail --retry 3 --location https://raw.githubusercontent.com/public-transport/transitous/main/website/data/license.json --output catalogue/license.json
+          python3 scripts/global-service-frequency.py --catalogue catalogue/license.json --cache /tmp/frequency-cache --output catalogue --date '${{ steps.date.outputs.value }}' --inventory-only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: worldwide-frequency-catalogue
+          path: catalogue/
+          retention-days: 14
+  compile:
+    needs: catalogue
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: worldwide-frequency-catalogue
+          path: catalogue
+      - name: Load existing published branch and metro geometry
+        run: |
+          mkdir -p railway-graph
+          if git ls-remote --exit-code --heads origin branch-data; then
+            git fetch --depth=1 origin branch-data
+            git show FETCH_HEAD:branch-lines.ndjson.gz > railway-graph/branch-lines.ndjson.gz
+          fi
+      - uses: actions/cache@v4
+        with:
+          path: |
+            frequency-cache
+            frequency-output/feeds
+          key: worldwide-gtfs-${{ matrix.shard }}-${{ needs.catalogue.outputs.service_date }}-${{ github.run_id }}
+          restore-keys: worldwide-gtfs-${{ matrix.shard }}-
+      - name: Compile every eligible feed in this worldwide shard
+        run: |
+          graph=()
+          if [ -f railway-graph/branch-lines.ndjson.gz ]; then graph=(--rail-graph railway-graph/branch-lines.ndjson.gz); fi
+          python3 scripts/global-service-frequency.py --catalogue catalogue/license.json --cache frequency-cache --output frequency-output --date '${{ needs.catalogue.outputs.service_date }}' --shards 8 --shard '${{ matrix.shard }}' "${graph[@]}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: worldwide-frequency-shard-${{ matrix.shard }}
+          path: frequency-output/
+          retention-days: 14
+  assemble:
+    needs: [catalogue, compile]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: worldwide-frequency-shard-*
+          path: frequency-output
+          merge-multiple: true
+      - name: Validate complete inventory and assemble bounded tile batches
+        run: node --max-old-space-size=5500 scripts/assemble-global-frequency.mjs frequency-output
+      - uses: actions/upload-artifact@v4
+        with:
+          name: worldwide-frequency-snapshot
+          path: frequency-output/
+          retention-days: 14
+  publish:
+    needs: assemble
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: worldwide-frequency-snapshot
+          path: frequency-output
+      - name: Publish the complete data snapshot independently of application code
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          tar -czf frequency-snapshot.tar.gz -C frequency-output manifest.json inventory.json feeds tiles
+          # One data release, with the current snapshot. No force pushes or
+          # changes to other workers' snapshot branches or application PRs.
+          status=0
+          gh api "repos/$GH_REPO/releases/tags/service-frequency-data" > /tmp/frequency-release.json 2>/tmp/frequency-release-error || status=$?
+          if [ "$status" != 0 ]; then
+            if ! rg -q '404' /tmp/frequency-release-error; then cat /tmp/frequency-release-error; exit "$status"; fi
+            gh release create service-frequency-data --title 'Worldwide service-frequency data' --notes 'Catalogue-wide GTFS frequency profiles and path geometry. Inventory records missing licences, failed downloads and unmatched paths.'
+          fi
+          gh release upload service-frequency-data frequency-snapshot.tar.gz frequency-output/manifest.json frequency-output/inventory.json --clobber
+          gh workflow run site.yml --ref main
