@@ -31,7 +31,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20261004-polezoom1" rel="stylesheet">
+  <link href="app.css?v=20261004-polezoom2" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -87,6 +87,7 @@
           <label><input type="checkbox" id="relief" checked> Terrain, seabed and contours</label>
         </fieldset>
         <fieldset><legend>Map</legend>
+          <label><input type="checkbox" id="watch-layout">Map-only watch layout (hold the map for controls)</label>
           <label><input type="checkbox" id="readout" checked> Cursor coordinates and zoom under the scale bar</label>
           <label><input type="checkbox" id="autoGlobe" checked> Switch to the globe when zoomed out (and near the poles)</label>
         </fieldset>
@@ -174,6 +175,7 @@
       status.textContent = 'The map could not load. Check your connection and reload the page.';
     }, true);
   </script>
-  <script type="module" src="app.mjs?v=20261004-polezoom1"></script>
+  <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
+  <script type="module" src="app.mjs?v=20261004-polezoom2"></script>
 </body>
 </html>

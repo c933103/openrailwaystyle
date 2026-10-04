@@ -29,3 +29,26 @@ export async function rendererFixture() {
   }
   return assets;
 }
+
+// Real MapLibre rendering with empty external providers for layout/gesture tests.
+export async function installEmptyMapProviders(context, base) {
+  const style=JSON.parse(await readFile('styles/world.style.json','utf8'));
+  style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
+  const renderer=await rendererFixture();
+  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg==','base64');
+  await context.addInitScript(()=>{window.pmtiles={Protocol:class{tiles=new Map();tile=async params=>({data:params.type==='json'?{tilejson:'3.0.0',minzoom:0,maxzoom:14,tiles:['pmtiles://fixture/{z}/{x}/{y}']}:new ArrayBuffer(0)});},FetchSource:class{getKey(){return 'fixture';}},PMTiles:class{}};});
+  await context.route('**/*',async route=>{
+    const url=new URL(route.request().url()),path=url.pathname,asset=renderer.get(url.href);
+    if(asset)return route.fulfill(asset);
+    if(url.href.startsWith(base)){
+      if(path.endsWith('/major-stations.geojson'))return route.fulfill({json:{type:'FeatureCollection',features:[]}});
+      if(path.endsWith('/world.style.json'))return route.fulfill({json:style});
+      if(path.includes('/data/polar/'))return route.fulfill({status:404,body:''});
+      if(path.includes('/data/'))return route.fulfill({json:{tiles:[],features:[],countries:{}}});
+      return route.continue();
+    }
+    if(/\.(png|jpg|jpeg)$/.test(path))return route.fulfill({contentType:'image/png',body:png});
+    if(/\/\d+\/\d+\/\d+(?:\.pbf)?$|\/fonts\//.test(path))return route.fulfill({contentType:'application/x-protobuf',body:Buffer.alloc(0)});
+    return route.fulfill({json:{tilejson:'3.0.0',minzoom:0,maxzoom:16,tiles:['https://fixture.invalid/{z}/{x}/{y}']}});
+  });
+}

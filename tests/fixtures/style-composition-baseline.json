@@ -2046,7 +2046,7 @@
       "source": "stationMajor",
       "minzoom": 6,
       "maxzoom": 7,
-      "sha256": "088e65261ceda8f85f5b225e749e21d01e34cf8c5d3b3be3441128cec4017320"
+      "sha256": "40ab27acd9985dcc1c22f61f3f01ad6715222374450fecc7bc3cf89861a73d91"
     },
     {
       "id": "station-major-5-names",
@@ -2054,7 +2054,7 @@
       "source": "stationMajor",
       "minzoom": 5,
       "maxzoom": 7,
-      "sha256": "0fd32e4fcd6652c30076795a7a5848ebcbe1f225feffec42d315db0987d94c5c"
+      "sha256": "c0008712b8297131777d7ca6fd6ecebd236a34f4edc489878a6dc00def24c93c"
     },
     {
       "id": "station-major-4-names",
@@ -2062,7 +2062,7 @@
       "source": "stationMajor",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "f6e6d8f61ac8a475cc0e8226d02f0412ebb1c19f5ba1721c868e59b1ab8e7f10"
+      "sha256": "adbe8eba2fbba7baf1a9eb978704a7bfbb601793f8edbafd035a5777d4700908"
     },
     {
       "id": "station-major-3-names",
@@ -2070,7 +2070,7 @@
       "source": "stationMajor",
       "minzoom": 3,
       "maxzoom": 7,
-      "sha256": "9ee28cda441d3bc75fc6ee523c97af7d844e00d5728b5b1952e55a2705d8eb94"
+      "sha256": "594d82779dde14507dc1c16b1aafd41713bc8ca7d6dd41247272695e9dc89609"
     },
     {
       "id": "station-former-names",
