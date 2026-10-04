@@ -81,8 +81,18 @@ const cjkFont = lang => {const script=cjkScript(lang);return loadedCjkFonts.has(
 // Simplified characters such as 岛 and 顿. Load our full-coverage subset only
 // when Chinese is selected, alongside map startup, and replace cached glyphs
 // once it arrives. Fonts never hold up the map or its controls.
-function loadCjkFont(lang){
-  if(!['zh-Hant','zh-Hans'].includes(lang)||!window.FontFace||!document.fonts)return;
+// The Chinese font a label language draws with: a Chinese setting, or the
+// browser's Chinese locale for other settings (local names and fallbacks).
+// Otherwise none, so non-Chinese visitors never download it.
+function chineseLabelFont(lang){
+  if(['zh-Hant','zh-Hans'].includes(lang))return lang;
+  const chinese=(navigator.languages||[navigator.language]).some(l=>/^zh/i.test(l||''));
+  const script=cjkScript(lang);
+  return chinese&&['zh-Hant','zh-Hans'].includes(script)?script:null;
+}
+function loadCjkFont(setting){
+  const lang=chineseLabelFont(setting);
+  if(!lang||!window.FontFace||!document.fonts)return;
   if(cjkFontLoads.has(lang))return;
   const code=lang==='zh-Hant'?'tc':'sc',face=new FontFace(bundledCjkFamily(lang),`url("${new URL(`fonts/atlas-cjk-${code}-v1.woff2`,import.meta.url).href}")`);
   document.fonts.add(face);

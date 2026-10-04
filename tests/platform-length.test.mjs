@@ -248,3 +248,12 @@ test('an oversized platform tile gives no pieces instead of decoding every featu
  const {platformTilePieces}=await import('../styles/tile-labels.mjs');
  assert.deepEqual(platformTilePieces(new ArrayBuffer(16),'x',{bytes:8,features:1,vertices:1}),[]);
 });
+
+test('interlocking multipolygon parts with overlapping bounds stay separate',async()=>{
+ const {ringsMeet}=await import('../styles/platform-length.mjs');
+ // An L-shape and a block tucked into its corner: bounds overlap, rings do not meet.
+ const l=[[0,0],[10,0],[10,1],[1,1],[1,10],[0,10],[0,0]],block=[[3,3],[9,3],[9,9],[3,9],[3,3]];
+ assert.equal(ringsMeet(l,block),false);
+ assert.equal(ringsMeet(l,[[9,0.5],[12,0.5],[12,2],[9,2],[9,0.5]]),true,'overlapping pieces meet');
+ assert.equal(ringsMeet(block,[[4,4],[5,4],[5,5],[4,5],[4,4]]),true,'a hole meets its outer ring');
+});
