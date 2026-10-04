@@ -65,3 +65,16 @@ test('a zoomed visual viewport keeps the controls inside it',()=>{
   assert.equal(overlaps(stack,f.panel.getBoundingClientRect()),false);
  }finally{f.layout.destroy();f.dom.window.close();}
 });
+
+test('new status text that wraps the pill lifts the corner without waiting for a resize notification',async()=>{
+ const f=fixture(800,400,42,true,false);
+ try{
+  // A one-line pill beside the corner's column, growing to three lines.
+  let lines=1;
+  f.status.getBoundingClientRect=()=>({left:200,right:600,top:348-14-13*lines,bottom:348,width:400,height:14+13*lines});
+  f.layout.update();
+  lines=3;f.status.textContent='A longer status message that wraps onto three lines';
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.ok(f.corner.getBoundingClientRect().bottom<=f.status.getBoundingClientRect().top,'the corner sits above the wrapped pill');
+ }finally{f.layout.destroy();f.dom.window.close();}
+});

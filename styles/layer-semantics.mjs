@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261004-frequency5';
+import { MODES } from './map-model.mjs?v=20261004-frequency6';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
