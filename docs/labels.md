@@ -18,7 +18,7 @@ entry is the suffix of an OSM `name:*` tag.
 | Taiwan | `name` | `zh-Hans` → `zh-CN` → `zh` → `name` |
 | Hong Kong and Macau | `zh` → `zh-Hant` → `zh-HK` → `zh-TW` → `name` | `zh-Hans` → `zh-CN` → `zh` → `zh-Hant` → `zh-HK` → `zh-TW` → `name` |
 | Mainland China | `zh-Hant` → `zh-TW` → `zh-HK` → `zh` → `name` | `name` |
-| Elsewhere | `zh-Hant` → `zh` → `zh-TW` → `zh-HK` → `zh-Hans` → `zh-CN` | `zh-Hans` → `zh` → `zh-CN` → `zh-Hant` → `zh-TW` → `zh-HK` |
+| Elsewhere | `zh-Hant` → `zh-TW` → `zh-HK` → `zh` → `zh-Hans` → `zh-CN` | `zh-Hans` → `zh` → `zh-CN` → `zh-Hant` → `zh-TW` → `zh-HK` |
 
 In those four areas the local `name` is used as recorded, even when it is not Chinese (KFC, K11), and ends the list; elsewhere the other script always comes before borrowed names and English, so a name recorded only in the other script is shown. Taiwan wording ranks before Hong Kong wording; `zh-SG`, `zh-MY` and `zh-MO` are too rare to consult.
 

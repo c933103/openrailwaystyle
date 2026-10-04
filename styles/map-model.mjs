@@ -1,6 +1,6 @@
-export {createPlatformLengths,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261004-pr81-repair1';
+export {createPlatformLengths,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261004-font2';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261004-pr81-repair1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261004-font2';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -476,7 +476,7 @@ const CHINESE_ORDER = {
     TW: ['name'],
     HK: ['name:zh','name:zh-Hant','name:zh-HK','name:zh-TW','name'],
     CN: ['name:zh-Hant','name:zh-TW','name:zh-HK','name:zh','name'],
-    '': ['name:zh-Hant','name:zh','name:zh-TW','name:zh-HK','name:zh-Hans','name:zh-CN'],
+    '': ['name:zh-Hant','name:zh-TW','name:zh-HK','name:zh','name:zh-Hans','name:zh-CN'],
   },
   'zh-Hans': {
     CN: ['name'],

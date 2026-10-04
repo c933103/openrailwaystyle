@@ -8,6 +8,7 @@ import * as draw from '../styles/draw.mjs';
 import * as departuresModule from '../styles/departures.mjs';
 import * as elevationModule from '../styles/elevation.mjs';
 import * as contextFeatures from '../styles/context.mjs';
+import * as controlFunctions from '../styles/map-controls.mjs';
 import * as layerSemantics from '../styles/layer-semantics.mjs';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
@@ -22,7 +23,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const errors = [], maps = [];
   const fonts=[];
   if(fontFaces){
-    const registered=new Set();Object.defineProperty(window.document,'fonts',{value:{add:f=>registered.add(f),delete:f=>registered.delete(f)}});
+    const registered=new Set();Object.defineProperty(window.document,'fonts',{value:{ready:Promise.resolve(),add:f=>registered.add(f),delete:f=>registered.delete(f)}});
     window.FontFace=class{constructor(family,url){this.family=family;this.url=url;fonts.push(this);}load(){return new Promise((resolve,reject)=>{this.finish=()=>resolve(this);this.fail=()=>reject(new Error('font offline'));});}};
   }
   window.console.error = error => errors.push(error);
@@ -120,17 +121,20 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const semantics = new vm.SyntheticModule(Object.keys(layerSemantics), function() {
     for (const [key,value] of Object.entries(layerSemantics)) this.setExport(key,value);
   }, {context});
-  await app.link(specifier => specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  const mapControls = new vm.SyntheticModule(Object.keys(controlFunctions), function() {
+    for (const [key,value] of Object.entries(controlFunctions)) this.setExport(key,value);
+  }, {context});
+  await app.link(specifier => specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries,loadLabels,fonts};
 }
 
 test('Chinese font downloads do not block startup and refresh glyphs only for the current script',async()=>{
- const {dom,window,maps,fonts}=await start({search:'?language=zh-Hant',fontFaces:true});
+ const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true});
  try{
   assert.equal(maps.length,1,'map starts while font remains pending');assert.equal(fonts.length,1);assert.match(fonts[0].url,/atlas-cjk-tc-v1\.woff2/);
-  const map=maps[0];map.handlers['style.load']();assert.equal(window.document.body.dataset.mapReady,'true');
+  assert.deepEqual(errors,[]);const map=maps[0];map.handlers['style.load']();assert.equal(window.document.body.dataset.mapReady,'true');
   const language=window.document.getElementById('language');language.value='zh-Hans';language.dispatchEvent(new window.Event('change'));assert.equal(fonts.length,2);
   fonts[0].finish();await new Promise(r=>setTimeout(r,0));assert.ok(!map.styleOptions.localIdeographFontFamily.includes('Atlas CJK TC'),'a stale download cannot overwrite the selected script');
   fonts[1].finish();await new Promise(r=>setTimeout(r,0));assert.equal(map.styleOptions.localIdeographFontFamily,'"Atlas CJK SC"');
@@ -142,8 +146,8 @@ test('Chinese font downloads do not block startup and refresh glyphs only for th
 });
 
 test('unavailable Chinese font preserves a working map and system fallback',async()=>{
- const {dom,window,maps,fonts}=await start({search:'?language=zh-Hant',fontFaces:true});
- try{maps[0].handlers['style.load']();fonts[0].fail();await new Promise(r=>setTimeout(r,0));assert.equal(window.document.body.dataset.mapReady,'true');assert.match(maps[0].options.localIdeographFontFamily,/Noto Sans TC/);}finally{dom.window.close();}
+ const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true});
+ try{assert.deepEqual(errors,[]);maps[0].handlers['style.load']();fonts[0].fail();await new Promise(r=>setTimeout(r,0));assert.equal(window.document.body.dataset.mapReady,'true');assert.match(maps[0].options.localIdeographFontFamily,/Noto Sans TC/);}finally{dom.window.close();}
 });
 
 test('app starts with the MapLibre 5 API and enables map controls', async () => {
@@ -314,7 +318,7 @@ test('real renderer initialization failures reach the visible error message', as
 test('station inspection finds nearby interchanges and facility inspection avoids railway fields', async () => {
   const {dom,window,maps,errors}=await start();
   try {
-    const map=maps[0];map.handlers['style.load']();map.zoom=14;
+    assert.deepEqual(errors,[]);const map=maps[0];map.handlers['style.load']();map.zoom=14;
     const station={source:'stations',sourceLayer:'standard_railway_text_stations',layer:{id:'station-detail-large-names'},properties:{name:'Central',station_size:'large',state:'present'},geometry:{type:'Point',coordinates:[0,0]}};
     const bus={id:123,source:'openmaptiles',sourceLayer:'poi',layer:{id:'context-transport-bus-label'},properties:{name:'Central Bus Interchange',class:'bus',subclass:'bus_station'},geometry:{type:'Point',coordinates:[0.001,0]}};
     map.sourceFeatures=[bus,bus];map.rendered=[station];
@@ -356,7 +360,7 @@ test('close infrastructure details follow the mode, labels and background on the
 test('signals and entrances inspect their mapped node and avoid track/timetable fields',async()=>{
  const {dom,window,maps,errors}=await start();
  try{
-  const map=maps[0];map.handlers['style.load']();map.zoom=19;
+  assert.deepEqual(errors,[]);const map=maps[0];map.handlers['style.load']();map.zoom=19;
   for(const feature of [
    {source:'railwaySignals',sourceLayer:'railway_signals',layer:{id:'infrastructure-signal-points'},properties:{id:123,railway:'signal',ref:'S12',category0:'main',category1:'distant',deactivated1:true,direction_both:true},geometry:{type:'Point',coordinates:[0,0]}},
    {source:'stationEntrances',sourceLayer:'standard_station_entrances',layer:{id:'infrastructure-entrance-points'},properties:{id:456,label:'Exit A8'},geometry:{type:'Point',coordinates:[0,0]}}
@@ -371,14 +375,14 @@ test('signals and entrances inspect their mapped node and avoid track/timetable 
  }finally{dom.window.close();}
 });
 
-test('Carto shows railway overlays, honours terrain, hides duplicate basemap labels and keeps attribution open', async () => {
+test('Carto shows railway overlays, honours terrain, hides duplicate basemap labels and keeps compact attribution', async () => {
   const {dom,window,maps} = await start({search:'?background=carto'});
   try {
     const map=maps[0], layer=id=>map.options.style.layers.find(l=>l.id===id);
     assert.equal(layer('carto').layout.visibility,'visible');
     assert.equal(layer('satellite').layout.visibility,'none');
     assert.equal(layer('water').layout.visibility,'none');
-    assert.ok(map.controls.some(c=>c.options?.compact===false));
+    assert.ok(map.controls.some(c=>c.options?.compact===true),'Carto keeps the same compact info control');
     map.handlers['style.load']();
     assert.equal(map.visibility['infrastructure-tracks'],'visible');
     assert.equal(map.visibility['terrain-relief'],'visible');
@@ -451,7 +455,7 @@ test('map info identifies the executing cached asset and links to its build repo
  try {
   const attribution=()=>maps[0].controls.find(c=>c.options?.customAttribution)?.options;
   let info=attribution();assert.equal(info.compact,true);assert.match(info.customAttribution,/Build cached-42/);assert.ok(info.customAttribution.includes(`href="${sourceUrl}"`));assert.match(info.customAttribution,/Code aaaaaaaaaa/);
-  window.document.querySelector('[data-background="carto"]').click();info=attribution();assert.equal(info.compact,false);assert.match(info.customAttribution,/Build cached-42/);assert.match(info.customAttribution,new RegExp(commit));
+  window.document.querySelector('[data-background="carto"]').click();info=attribution();assert.equal(info.compact,true);assert.match(info.customAttribution,/Build cached-42/);assert.match(info.customAttribution,new RegExp(commit));
  } finally {dom.window.close();}
 });
 test('map info exposes mismatched cached bundle versions and handles a missing commit',async()=>{

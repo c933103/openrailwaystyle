@@ -43,7 +43,7 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  });
  await page.goto(base+'?mode=infrastructure&language=zh-Hant&background=plain&relief=0&stations=0&names=0&inactive=0&trackCounts=0&transport=0&destinations=0&constraints=0#19/35.1167/129.0440',{waitUntil:'domcontentloaded'});
  await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:60000});
- await page.evaluate(async()=>{window.reviewMap=(await import(document.querySelector('script[type="module"]').src)).map;});
+ await page.evaluate(async platforms=>{window.reviewMap=(await import(document.querySelector('script[type="module"]').src)).map;window.platformGeometries=Object.fromEntries(platforms.map(f=>[f.properties.id,f]));window.platformLabelAnchor=(await import('./platform-length.mjs')).platformLabelAnchor;},platforms);
  await page.waitForFunction(()=>document.fonts.check('24px "Atlas CJK TC"')&&window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Atlas CJK TC'),undefined,{timeout:30000});
  const checkGlyphs=async code=>{
   const result=await page.evaluate(async code=>{
@@ -56,10 +56,11 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  await checkGlyphs('TC');
  for(const station of fixture.stations){
   await page.evaluate(center=>window.reviewMap.jumpTo({center,zoom:19}),station.center);
-  await waitUntil(page,async()=>{
-   const map=window.reviewMap,visible=[...new Set(map.queryRenderedFeatures({layers:['platform-areas']}).map(f=>f.properties.id))],data=(await map.getSource('platformNumbers').getData()).features;
+  try{await waitUntil(page,async()=>{
+   // Renderer queries include buffered polygons whose bounding boxes touch the viewport even when their actual area is outside it. Require labels for complete fixture geometry that intersects it.
+   const map=window.reviewMap,visible=[...new Set(map.queryRenderedFeatures({layers:['platform-areas']}).map(f=>f.properties.id))].filter(id=>window.platformLabelAnchor(window.platformGeometries[id],map.getBounds())),data=(await map.getSource('platformNumbers').getData()).features;
    return visible.length>=2&&visible.every(id=>data.some(f=>f.properties.id===id&&f.properties.platform_length>0&&f.properties.length_estimated));
-  },undefined,{timeout:35000});
+  },undefined,{timeout:35000});}catch(error){console.error('PLATFORM_DIAGNOSTIC',station.name,requests,JSON.stringify(await page.evaluate(async()=>({zoom:window.reviewMap.getZoom(),bounds:window.reviewMap.getBounds(),areas:window.reviewMap.queryRenderedFeatures({layers:['platform-areas']}).map(f=>({properties:f.properties,geometry:f.geometry})),numbers:(await window.reviewMap.getSource('platformNumbers').getData()).features,visible:window.reviewMap.getStyle().layers.filter(l=>l.id.startsWith('platform-')).map(l=>({id:l.id,layout:l.layout}))}))));throw error;}
   const labels=await page.evaluate(async()=>(await window.reviewMap.getSource('platformNumbers').getData()).features.map(f=>f.properties));
   for(const p of labels){const f=byId.get(p.id);assert.ok(f);assert.equal(p.ref,f.properties.ref.split(';').filter(Boolean).join(' / '));assert.ok(p.platform_length>0&&p.platform_length<1200);}
   assert.ok(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['platform-numbers']}).length>0));

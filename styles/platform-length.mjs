@@ -173,15 +173,17 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
  function update(){
   if(disposed)return;desired=new Map();
   if(active()&&map.getZoom()>=17){
+   const bounds=map.getBounds?.();
+   const better=(f,previous,span)=>!previous||!!platformLabelAnchor(f,bounds)&&!platformLabelAnchor(previous.feature,bounds)||!!platformLabelAnchor(f,bounds)===!!platformLabelAnchor(previous.feature,bounds)&&span(f)>span(previous.feature);
    for(const f of map.queryRenderedFeatures({layers:['platform-edges']})){
     const id=platformIdentity(f);if(!id)continue;const key='edge/'+id,previous=desired.get(key);
-    if(!previous||platformSpan(f)>platformSpan(previous.feature))desired.set(key,{kind:'edge',id,feature:f,url:map.getZoom()>=19?PLATFORM_API+id:null});
+    if(better(f,previous,platformSpan))desired.set(key,{kind:'edge',id,feature:f,url:map.getZoom()>=19?PLATFORM_API+id:null});
    }
    const layers=['platform-areas','platform-outlines','platform-points'].filter(id=>!map.getLayer||map.getLayer(id));
    for(const f of layers.length?map.queryRenderedFeatures({layers}):[]){
     const object=platformObjectIdentity(f);if(!object)continue;const key='platform/'+object.key,previous=desired.get(key);
     const full=map.getZoom()>=19;
-    if(!previous||geometrySpan(f)>geometrySpan(previous.feature))desired.set(key,{kind:'platform',id:object.key,feature:f,full,url:full?platformOSMURL(object):'https://openrailwaymap.app/api/feature/openrailwaymap_standard/standard_railway_platforms/'+object.key});
+    if(better(f,previous,geometrySpan))desired.set(key,{kind:'platform',id:object.key,feature:f,full,url:full?platformOSMURL(object):'https://openrailwaymap.app/api/feature/openrailwaymap_standard/standard_railway_platforms/'+object.key});
    }
   }
   for(const key of pending.keys())if(!desired.get(key)?.url)pending.delete(key);

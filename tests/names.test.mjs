@@ -124,7 +124,7 @@ const zh=(p,area)=>({...p,atlas_han:area?'cjkv':'none',atlas_zh:area||''});
 test('Chinese keys are read by region; the other script and regional names stay fallbacks',()=>{
   // name:zh may be Traditional already while name:zh-HK carries Hong Kong wording.
   const singapore={name:'Singapore','name:en':'Singapore','name:zh':'星加坡','name:zh-HK':'新加坡'};
-  assert.equal(chooseName(zh(singapore),'zh-Hant'),'星加坡','general name:zh before Hong Kong wording');
+  assert.equal(chooseName(zh(singapore),'zh-Hant'),'新加坡','explicit Traditional regional wording before unspecified-script name:zh');
   assert.equal(chooseName(zh({...singapore,'name:zh':''}),'zh-Hant'),'新加坡','regional wording in the right script before English');
   assert.equal(chooseName(zh({name:'Paris','name:zh-HK':'巴黎（港）','name:zh-TW':'巴黎（臺）','name:zh-Hans':'巴黎（简）'}),'zh-Hant'),'巴黎（臺）','Taiwan wording before Hong Kong wording, both before the other script');
   assert.equal(chooseName(zh({name:'Paris','name:zh-CN':'巴黎（中）','name:zh-Hant':'巴黎（繁）'}),'zh-Hans'),'巴黎（中）','Simplified regional wording before Traditional');
@@ -159,7 +159,7 @@ test('station names fetch only language tags that could still outrank the best k
   assert.deepEqual(stationPending(zh({name:'北京'},'CN'),'zh-Hant',fetched(['zh-Hant'])),['zh-TW','zh-HK','zh']);
   assert.deepEqual(stationPending(zh({name:'北京','name:zh-TW':'北京（臺）'},'CN'),'zh-Hant',fetched(['zh-Hant','zh-TW'])),[]);
   assert.deepEqual(stationPending(zh({name:'紅磡 Hung Hom'},'HK'),'zh-Hant',fetched(['zh-Hant'])),['zh','zh-HK','zh-TW'],'nothing after the local name is fetched');
-  assert.deepEqual(stationPending(zh({name:'Berlin Hbf','name:zh':'柏林'}),'zh-Hant',fetched(['zh-Hant','zh'])),[]);
+  assert.deepEqual(stationPending(zh({name:'Berlin Hbf','name:zh':'柏林'}),'zh-Hant',fetched(['zh-Hant','zh'])),['zh-TW','zh-HK']);
   assert.deepEqual(stationPending(zh({name:'Berlin Hbf'}),'zh-Hant',fetched(['zh-Hant','zh','zh-Hans','zh-TW','zh-HK','zh-CN','en'])),[]);
 });
 test('Chinese labels show only the kanji of Japanese "kana (kanji)" and "kanji (kana)" names',()=>{
@@ -378,4 +378,17 @@ test('generated Latin transliteration cannot replace a local name as English fal
   const keys=labelExpression('en').filter(x=>Array.isArray(x)&&x[0]==='to-string').map(x=>x[1][1]);
   assert.ok(keys.indexOf('name:en')<keys.indexOf('name'));
   assert.ok(keys.indexOf('name')<keys.indexOf('name:latin'));
+});
+
+
+test('Traditional regional names outrank unspecified Chinese for the reported cities',async()=>{
+  for(const [name,area,recorded,traditional] of [['Wuhan','CN','武汉','武漢'],['Qingdao','CN','青岛','青島'],['Washington Union Station','','华盛顿联合车站','華盛頓聯合車站']]){
+    assert.equal(chooseName(zh({name,'name:zh':recorded,'name:zh-TW':traditional},area),'zh-Hant'),traditional);
+    assert.equal(chooseName(zh({name,'name:zh':recorded},area),'zh-Hant'),recorded,'missing Traditional tags retain recorded spelling');
+  }
+  const protocols={};installLabelProtocols({addProtocol:(id,fn)=>protocols[id]=fn},{},async url=>{
+    const lang=new URL(url).searchParams.get('lang');return {ok:true,arrayBuffer:async()=>tile({name:'Union Station',localized_name:({'zh':'华盛顿联合车站','zh-TW':'華盛頓聯合車站',en:'Union Station'})[lang]||'Union Station'})};
+  });
+  const result=await protocols.atlasstation({url:'atlasstation://zh-Hant/https://example.org/stations/10/292/391'},new AbortController());
+  assert.equal(readTile(result.data).layers.stations.feature(0).properties.atlas_name,'華盛頓聯合車站');
 });

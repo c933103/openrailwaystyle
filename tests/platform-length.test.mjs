@@ -180,3 +180,13 @@ test('area labels stay inside concave polygons and outside their holes',()=>{
  const tip={getWest:()=>3.5,getEast:()=>4.5,getSouth:()=>2,getNorth:()=>3};
  const visible=platformLabelAnchor(feature,tip);assert.ok(visible[0]>3.5&&visible[0]<4&&visible[1]>2&&visible[1]<3);
 });
+
+
+test('a larger buffered tile fragment outside the viewport cannot displace the visible fragment',async()=>{
+  const polygon=coordinates=>({properties:{id:'way-23'},geometry:{type:'Polygon',coordinates:[coordinates]}});
+  const outside=polygon([[0,0],[.01,0],[.01,.001],[0,.001],[0,0]]),visible=polygon([[.019,.0001],[.021,.0001],[.021,.0009],[.019,.0009],[.019,.0001]]);
+  const bounds={getWest:()=>.0195,getEast:()=>.0205,getSouth:()=>0,getNorth:()=>.001};let data;
+  const map={getZoom:()=>19,getBounds:()=>bounds,queryRenderedFeatures:({layers})=>layers.includes('platform-areas')?[visible,outside]:[],getSource:id=>id==='platformNumbers'?{setData:d=>data=d}:null};
+  const tracker=createPlatformLengths(map,{delay:0,fetcher:async()=>({ok:true,json:async()=>({elements:[{type:'way',id:23,tags:{ref:'1',length:'350'}}]})})});
+  try{tracker.update();await new Promise(r=>setTimeout(r,20));assert.equal(data.features.length,1);assert.equal(data.features[0].properties.platform_length,350);assert.ok(data.features[0].geometry.coordinates[0]>=.0195);}finally{tracker.destroy();}
+});
