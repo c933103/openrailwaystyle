@@ -6,6 +6,16 @@ import {powerFacilitiesGeoJSON,powerFacilityQuery} from '../scripts/power-facili
 import {powerFacilityLayers} from '../scripts/style/layers/power-facilities.mjs';
 import {annotateLayers,layerVisibility} from '../styles/layer-semantics.mjs';
 
+function candidateSelector(query) {
+  // Decode actual QL filters independently of the facility classifier.
+  const selectors=[...query.matchAll(/nwr((?:\[~?"(?:[^"\\]|\\.)*"~"(?:[^"\\]|\\.)*",i\])+)\(-90,-180,0,-90\);/g)].map(([,text])=>
+    [...text.matchAll(/\[(~)?("(?:[^"\\]|\\.)*")~("(?:[^"\\]|\\.)*"),i\]/g)].map(([,keyRegex,key,value])=>({
+      key:JSON.parse(key),keyRegex:Boolean(keyRegex),value:new RegExp(JSON.parse(value).replaceAll('[[:space:]]','\\s'),'i'),
+    })));
+  return {selectors,selected:tags=>selectors.some(filters=>filters.every(({key,keyRegex,value})=>
+    Object.entries(tags).some(([name,text])=>(keyRegex?new RegExp(key,'i').test(name):name===key)&&value.test(text))))};
+}
+
 test('power supplies select locomotive facilities without proximity or operator guesses',()=>{
   for(const kind of ['fuel','coaling_facility','water_tower','water_tank','water_crane','power_supply','preheating'])assert.equal(powerFacility({railway:kind}).kind,kind);
   assert.equal(powerFacility({power:'substation',substation:'traction'}).kind,'substation');
@@ -26,13 +36,8 @@ test('maintenance selectors include every supported token and lifecycle hint bef
   // Decode the actual QL strings, including escaped regex dots. This checks
   // candidate selection independently of the JS classifier and catches tags
   // that fixture-only transform tests would accept but never download.
-  const selectors=[...query.matchAll(/nwr((?:\[~?"(?:[^"\\]|\\.)*"~"(?:[^"\\]|\\.)*",i\])+)\(-90,-180,0,-90\);/g)].map(([,text])=>
-    [...text.matchAll(/\[(~)?("(?:[^"\\]|\\.)*")~("(?:[^"\\]|\\.)*"),i\]/g)].map(([,keyRegex,key,value])=>({
-      key:JSON.parse(key),keyRegex:Boolean(keyRegex),value:new RegExp(JSON.parse(value).replaceAll('[[:space:]]','\\s'),'i'),
-    })));
-  assert.equal(selectors.length,88,'all eight lifecycle families retain eleven bounded selection rules');
-  const selected=tags=>selectors.some(filters=>filters.every(({key,keyRegex,value})=>
-    Object.entries(tags).some(([name,text])=>(keyRegex?new RegExp(key,'i').test(name):name===key)&&value.test(text))));
+  const {selectors,selected}=candidateSelector(query);
+  assert.equal(selectors.length,11,'eight lifecycle keys share eleven bounded selection rules');
   for(const tags of [
     {railway:' fuel ; WATER_CRANE '},
     {power:' generator ; converter ',railway:' rail ; yes '},
@@ -51,6 +56,47 @@ test('maintenance selectors include every supported token and lifecycle hint bef
   }
   for(const tags of [{power:'plant',frequency:'16x7'},{power:'transformer',transformer:'main',frequency:'50'},
     {power:'plant',usage:'not_railway'},{railway:'not_fuel'}])assert.equal(selected(tags),false,JSON.stringify(tags));
+  for(const prefix of ['', 'construction:', 'proposed:', 'disused:', 'abandoned:', 'razed:', 'demolished:', 'removed:']) {
+    for(const tags of [
+      {[`${prefix}railway`]:' WATER_CRANE ; fuel '},
+      {[`${prefix}railway:electricity`]:' POWER_SUPPLY '},
+      {[`${prefix}power`]:' generator ; converter ',substation:' TRACTION '},
+      {[`${prefix}power`]:' transformer ',transformer:' traction '},
+      {[`${prefix}power`]:' plant ',[`${prefix}railway`]:' rail '},
+      {[`${prefix}power`]:' plant ',usage:' railway '},
+      {[`${prefix}power`]:' plant ',landuse:' railway '},
+      {[`${prefix}power`]:' plant ',frequency:' 16.667 '},
+      {[`${prefix}man_made`]:' storage_tank ',[`${prefix}railway`]:' yes ',content:'diesel'},
+      {[`${prefix}man_made`]:' water_tower ',landuse:' railway '},
+      {[`${prefix}man_made`]:' water_tower ',usage:' traction '},
+    ]) {
+      assert.ok(powerFacility(tags),JSON.stringify(tags));
+      assert.equal(selected(tags),true,JSON.stringify(tags));
+    }
+  }
+  for(const tags of [{'future:railway':'fuel'},{'xdisused:power':'plant',usage:'railway'},
+    {'disused:power:extra':'plant',usage:'railway'},{railway:'fuel_stop'},
+    {power:'plant',frequency:'16.6667'},{railway:'oil_fuel'}])assert.equal(selected(tags),false,JSON.stringify(tags));
+});
+
+test('native key case overfetch does not publish uppercase-only or otherwise unqualified facilities',()=>{
+  const {selected}=candidateSelector(powerFacilityQuery([-90,-180,0,-90]));
+  const tags=[
+    {POWER:'plant',usage:'railway'},
+    {RAILWAY:'fuel'},
+    {'DISUSED:RAILWAY':'water_tower'},
+    {power:'plant',RAILWAY:'yes'},
+    {MAN_MADE:'storage_tank',content:'diesel',usage:'railway'},
+    {power:'substation',SUBSTATION:'traction'},
+    {power:'cable','disused:power':'plant',usage:'railway'},
+    {power:'plant',usage:'not_railway'},
+    {railway:'\u00a0fuel',POWER:'plant',usage:'railway'},
+  ];
+  for(const id of [0,1,2,3,4,6])assert.equal(selected(tags[id]),true,JSON.stringify(tags[id]));
+  assert.equal(selected(tags[5]),false,'literal-key hint filters keep their original key case');
+  const data=powerFacilitiesGeoJSON({elements:tags.map((tags,id)=>({type:'node',id,lat:0,lon:0,tags}))});
+  assert.deepEqual(data.features.map(f=>f.id),['node-8']);
+  assert.equal(data.features[0].properties.power_kind,'fuel','mixed tags still require a qualifying canonical supply');
 });
 
 test('snapshot keeps node/way/relation identities and lifecycle instead of claiming former supplies are operating',()=>{
@@ -64,7 +110,7 @@ test('snapshot keeps node/way/relation identities and lifecycle instead of claim
   assert.equal(data.features.find(f=>f.id==='way-12').properties.power_state,'disused');
   assert.equal(data.features.find(f=>f.id==='relation-99').properties.osm_type,'relation');
   assert.throws(()=>powerFacilitiesGeoJSON({remark:'runtime error: timed out',elements:[]}),/timed out/);
-  assert.match(powerFacilityQuery([-90,-180,0,-90]),/nwr\["railway"/);
+  assert.match(powerFacilityQuery([-90,-180,0,-90]),/nwr\[~/);
   assert.match(powerFacilityQuery([-90,-180,0,-90]),/out body center qt/);
   // Overpass `out tags center` has ids/tags for nodes but no coordinates;
   // silently accepting this output would falsely publish complete coverage.

@@ -7,10 +7,12 @@ import {powerFacilityQuery,powerFacilitiesGeoJSON} from './power-facility-data.m
 const api=process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const output=process.env.POWER_OUTPUT || 'power-data';
 const cache='.snapshot-cache';
-// v1 omitted node coordinates; v3 adds explicit traction transformers and
-// token/lifecycle selectors. Bind every raw response to its exact query too,
+// v1 omitted node coordinates; v3 added token/lifecycle selectors. v4 factors
+// lifecycle key scans and can overfetch extra key case variants. Use a fresh
+// cache epoch so completed v3 regions cannot omit newly selected facilities.
+// Bind every raw response to its exact query too,
 // so later selection changes cannot accidentally reuse an incomplete cache.
-const VERSION=3, MAX_AGE=28*86400_000;
+const VERSION=4, MAX_AGE=28*86400_000;
 const regions=[];
 for (let south=-90;south<90;south+=90) for(let west=-180;west<180;west+=90) regions.push([south,west,south+90,west+90]);
 await mkdir(cache,{recursive:true});
