@@ -85,10 +85,13 @@ class ShapePaths:
             shape.pop('lookup', None)
         # Every stop/vertex from every pattern is a split candidate. This also
         # handles express trips skipping stops and unequal vertex densities.
+        # Vertices are indexed in one world copy: shapes unwrapped from
+        # opposite sides of the antimeridian still split each other.
         grid, vertices = defaultdict(set), set()
         for shape in self.shapes.values():
             coords = shape['points'] + list(shape['anchors'].values())
             for p in coords:
+                p = self.canonical(p)
                 if p not in vertices:
                     vertices.add(p); grid[self.cell(p)].add(p)
         split_cache = {}
@@ -99,17 +102,27 @@ class ShapePaths:
                 if key not in split_cache:
                     lo, hi = key
                     cuts = [(0, lo), (1, hi)]
-                    x0, y0 = self.cell(lo); x1, y1 = self.cell(hi)
-                    # Query cells along the segment, not a large diagonal box.
-                    cells = set()
-                    steps = max(abs(x1-x0), abs(y1-y0), 1)
+                    # The segment in the canonical copy (and its neighbours,
+                    # when it reaches past ±180°) for the vertex lookup.
+                    middle = (lo[0]+hi[0])/2
+                    shift = self.canonical((middle, 0))[0]-middle
                     radius_x,_ = self.radii((0,max(abs(a[1]),abs(b[1]))),.15)
-                    for step in range(steps+1):
-                        c = self.cell((lo[0]+(hi[0]-lo[0])*step/steps, lo[1]+(hi[1]-lo[1])*step/steps))
-                        if radius_x<=256:
-                            cells.update((c[0]+dx, c[1]+dy) for dx in range(-radius_x,radius_x+1) for dy in (-1,0,1))
+                    cells = set()
+                    for turn in (-360, 0, 360):
+                        s0, s1 = (lo[0]+shift+turn, lo[1]), (hi[0]+shift+turn, hi[1])
+                        if max(s0[0], s1[0]) < -181 or min(s0[0], s1[0]) > 181:
+                            continue
+                        x0, y0 = self.cell(s0); x1, y1 = self.cell(s1)
+                        # Query cells along the segment, not a large diagonal box.
+                        steps = max(abs(x1-x0), abs(y1-y0), 1)
+                        for step in range(steps+1):
+                            c = self.cell((s0[0]+(s1[0]-s0[0])*step/steps, s0[1]+(s1[1]-s0[1])*step/steps))
+                            if radius_x<=256:
+                                cells.update((c[0]+dx, c[1]+dy) for dx in range(-radius_x,radius_x+1) for dy in (-1,0,1))
                     candidates=vertices if radius_x>256 else {p for cell in cells for p in grid.get(cell, ())}
                     for p in candidates:
+                        # Back into this segment's (unwrapped) world copy.
+                        p = (round(p[0] + 360*round((middle-p[0])/360), 6), p[1])
                         t, error = self.project_segment(p, lo, hi)
                         if 1e-8 < t < 1-1e-8 and error <= .15:
                             cuts.append((t, p))
@@ -123,6 +136,11 @@ class ShapePaths:
                     if p0 != p1:
                         edges.append((shape['lengths'][i]+t0*length, shape['lengths'][i]+t1*length, p0,p1))
             shape['edges'] = edges
+
+    @staticmethod
+    def canonical(p):
+        """A point's longitude in -180 <= lon < 180."""
+        return (round((p[0]+180) % 360 - 180, 6), p[1])
 
     def xy(self, p):
         return p[0]*self.sx, p[1]*self.sy

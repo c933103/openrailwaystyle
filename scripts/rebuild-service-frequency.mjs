@@ -1,5 +1,5 @@
 // Enrich the already published OSM snapshot. No Overpass or viewer requests.
-import {readFile,mkdir,writeFile} from 'node:fs/promises';
+import {readFile,mkdir,writeFile,readdir,rm} from 'node:fs/promises';
 import {gunzipSync,gzipSync} from 'node:zlib';
 import {buildTiles,readTable} from './service-routes.mjs';
 import {loadTimetableServices,timetableFeatures} from './gtfs-service.mjs';
@@ -26,6 +26,13 @@ if(!fixture){
     timetable.summary=global.feeds;
   }
 }
+// A rebuild replaces the whole tile set: tiles from an earlier build (for
+// example the fixture build) would otherwise stay servable without an index entry.
+async function clearTileDirectories(root){
+  let names;try{names=await readdir(root);}catch(error){if(error.code==='ENOENT')return;throw error;}
+  for(const name of names)if(/^\d+$/.test(name))await rm(`${root}/${name}`,{recursive:true,force:true});
+}
+await clearTileDirectories(directory);
 const keys=[];let bytes=0;
 for(const [key,data] of tiles){
   await mkdir(`${directory}/${key.slice(0,key.lastIndexOf('/'))}`,{recursive:true});

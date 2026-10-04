@@ -277,6 +277,22 @@ class GTFSFrequency(unittest.TestCase):
         self.assertTrue(all(abs(a[0]-b[0])<1 for a,b in edges),'no edge spans the world')
         self.assertTrue(any(lon==180 for edge in edges for lon,_ in edge) and any(lon==-180 for edge in edges for lon,_ in edge),'split at the dateline')
 
+    def test_opposite_dateline_shapes_share_edges(self):
+        spec=importlib.util.spec_from_file_location('shape_paths',Path(__file__).parent.parent/'scripts/gtfs-shapes.py')
+        shapes=importlib.util.module_from_spec(spec);spec.loader.exec_module(shapes)
+        # Eastbound is densely sampled from the west side; westbound is two
+        # vertices from the east side. Both must split into the same edges.
+        lines={'east':[179.9,179.95,-179.95,-179.9],'west':[-179.9,179.9]}
+        rows=[{'shape_id':key,'shape_pt_sequence':i,'shape_pt_lon':lon,'shape_pt_lat':-16.5} for key,lons in lines.items() for i,lon in enumerate(lons)]
+        trips={key:{'shape_id':key,'route_id':'r'} for key in lines}
+        stops={'w':{'stop_lon':179.9,'stop_lat':-16.5},'e':{'stop_lon':-179.9,'stop_lat':-16.5}}
+        times={'east':[{'stop_id':'w','stop_sequence':0},{'stop_id':'e','stop_sequence':1}],'west':[{'stop_id':'e','stop_sequence':0},{'stop_id':'w','stop_sequence':1}]}
+        paths=shapes.ShapePaths(rows,trips,times,stops,{'max_stop_snap_metres':200})
+        east={(key,direction) for key,direction,_,_ in paths.segments(trips['east'],times['east'])}
+        west={(key,direction) for key,direction,_,_ in paths.segments(trips['west'],times['west'])}
+        self.assertEqual({k for k,_ in east},{k for k,_ in west},'one set of shared edges in both directions')
+        self.assertTrue(all((k,1-d) in west for k,d in east),'opposite directions on every edge')
+
     def test_global_rail_modes_exclude_buses_and_aerial_lifts(self):
         for value in [0,1,2,5,7,12,100,109,400,405,900,906,1400]:
             self.assertTrue(compiler.rail_type(str(value)), value)

@@ -64,10 +64,14 @@ test('fixture assembly succeeds when the OSM service-data branch supplies no tab
   const {tmpdir}=await import('node:os');
   const {join}=await import('node:path');
   const {spawnSync}=await import('node:child_process');
+  const {mkdir,writeFile,access}=await import('node:fs/promises');
   const directory=await mkdtemp(join(tmpdir(),'atlas-timetable-only-'));
   try {
+    // A tile left by an earlier build must not survive a rebuild.
+    await mkdir(join(directory,'3','1'),{recursive:true});await writeFile(join(directory,'3','1','1.pbf.gz'),'stale');
     const run=spawnSync(process.execPath,['scripts/rebuild-service-frequency.mjs',directory,join(directory,'credits.html'),'--fixtures'],{encoding:'utf8'});
     assert.equal(run.status,0,run.stderr);
+    await assert.rejects(access(join(directory,'3','1','1.pbf.gz')),'obsolete tiles are removed before the new set is written');
     const index=JSON.parse(await readFile(join(directory,'index.json'),'utf8'));
     assert.ok(index.tiles.length>0,'official paths remain usable without the OSM snapshot');
     const manifest=JSON.parse(await readFile(join(directory,'frequency-manifest.json'),'utf8'));
