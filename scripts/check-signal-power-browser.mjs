@@ -211,6 +211,9 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await jump([0,0],8);console.log(`CHECK: ${kind} moved to metro overview`);await sharedBands('control-metro-overview');
     await jump(center,14);await visible('infrastructure-signal-points');await visible('infrastructure-signal-supplement-overview');
     await jump(center,18);await sharedBands('control-tracks');
+    for(const id of ['infrastructure-signal-points','infrastructure-signal-supplement-points','infrastructure-signal-references','infrastructure-signal-supplement-references','context-destinations-culture-label'])await visible(id);
+    await waitUntil(page,()=>new Set(window.reviewMap.queryRenderedFeatures({layers:['context-destinations-culture-label']}).map(f=>f.properties.subclass)).size===2);
+    await page.evaluate(()=>new Promise(resolve=>{window.reviewMap.once('idle',()=>resolve());window.reviewMap.triggerRepaint();}));
     await waitUntil(page,()=>!document.querySelector('#map-status').classList.contains('error'));
     await page.screenshot({path:`browser-review/signal-power-control-${kind}.png`});
     assert.deepEqual(errors,[]);assert.deepEqual(await page.evaluate(()=>window.reviewErrors),[]);

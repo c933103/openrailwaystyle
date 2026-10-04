@@ -1,0 +1,99 @@
+name: Diagnose railway supply Overpass query
+on:
+  push:
+    branches: [feature/signal-power-facilities]
+    paths: [.github/workflows/traction-query-probe.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: traction-query-probe
+  cancel-in-progress: false
+jobs:
+  probe:
+    if: github.ref == 'refs/heads/feature/signal-power-facilities'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compare native regex keys with literal lifecycle keys
+        run: |
+          node --input-type=module <<'JS'
+          const api='https://overpass-api.de/api/interpreter';
+          const box=[-90,-180,0,-90];
+          const SUPPLIES='fuel|coaling_facility|water_tower|water_tank|water_crane|power_supply|preheating|power_station|substation';
+          const POWER='substation|plant|generator|converter|frequency_converter|transformer';
+          const RAIL='yes|rail|narrow_gauge|light_rail|subway|tram|monorail|power_station|substation';
+          const PREFIXES=['','construction:','proposed:','disused:','abandoned:','razed:','demolished:','removed:'];
+          const tokenPattern=options=>`(^|;)[[:space:]]*(${options})[[:space:]]*(;|$)`;
+          const tagFilter=(key,options)=>`[${JSON.stringify(key)}~${JSON.stringify(tokenPattern(options))},i]`;
+          const familyFilter=(key,options)=>`[~${JSON.stringify(`^((construction|proposed|disused|abandoned|razed|demolished|removed):)?${key}$`)}~${JSON.stringify(tokenPattern(options))},i]`;
+          const bbox=`(${box.join(',')})`;
+          const complete=selectors=>`[out:json][timeout:25][maxsize:134217728];(${selectors.join('')});out body center qt;`;
+          function regexKeyQuery() {
+            const power=familyFilter('power',POWER),tank=familyFilter('man_made','water_tower|storage_tank');
+            const railwayHint=familyFilter('railway',RAIL);
+            return complete([
+              `nwr${familyFilter('railway',SUPPLIES)}${bbox};`,
+              `nwr${familyFilter('railway:electricity','power_supply')}${bbox};`,
+              `nwr${power}${tagFilter('substation','traction')}${bbox};`,
+              `nwr${familyFilter('power','transformer')}${tagFilter('transformer','traction')}${bbox};`,
+              `nwr${power}${railwayHint}${bbox};`,
+              `nwr${power}${tagFilter('usage','railway|traction')}${bbox};`,
+              `nwr${power}${tagFilter('landuse','railway')}${bbox};`,
+              `nwr${power}${tagFilter('frequency','16\\.(7|67|66[67]?)')}${bbox};`,
+              `nwr${tank}${railwayHint}${bbox};`,
+              `nwr${tank}${tagFilter('landuse','railway')}${bbox};`,
+              `nwr${tank}${tagFilter('usage','railway|traction')}${bbox};`,
+            ]);
+          }
+          function literalKeyQuery() {
+            const selectors=[];
+            for(const prefix of PREFIXES) {
+              const power=tagFilter(`${prefix}power`,POWER),tank=tagFilter(`${prefix}man_made`,'water_tower|storage_tank');
+              selectors.push(
+                `nwr${tagFilter(`${prefix}railway`,SUPPLIES)}${bbox};`,
+                `nwr${tagFilter(`${prefix}railway:electricity`,'power_supply')}${bbox};`,
+                `nwr${power}${tagFilter('substation','traction')}${bbox};`,
+                `nwr${tagFilter(`${prefix}power`,'transformer')}${tagFilter('transformer','traction')}${bbox};`,
+                `nwr${power}${tagFilter('usage','railway|traction')}${bbox};`,
+                `nwr${power}${tagFilter('landuse','railway')}${bbox};`,
+                `nwr${power}${tagFilter('frequency','16\\.(7|67|66[67]?)')}${bbox};`,
+                `nwr${tank}${tagFilter('landuse','railway')}${bbox};`,
+                `nwr${tank}${tagFilter('usage','railway|traction')}${bbox};`,
+              );
+              for(const railwayPrefix of PREFIXES) {
+                const hint=tagFilter(`${railwayPrefix}railway`,RAIL);
+                selectors.push(`nwr${power}${hint}${bbox};`,`nwr${tank}${hint}${bbox};`);
+              }
+            }
+            return complete(selectors);
+          }
+          async function probe(name,query) {
+            const start=performance.now();
+            const result={name,bbox:box,selectors:(query.match(/nwr\[/g)||[]).length,keyRegex:query.includes('[~')};
+            try {
+              const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:query}),
+                headers:{'User-Agent':'RailwayAtlas-query-probe/1.0 (+https://github.com/c933103/openrailwaystyle)'},
+                signal:AbortSignal.timeout(35000)});
+              result.http=response.status;
+              const text=await response.text();result.bytes=Buffer.byteLength(text);
+              try {
+                const json=JSON.parse(text);
+                result.remark=json.remark||null;
+                result.elements=Array.isArray(json.elements)?json.elements.length:null;
+                result.osmBase=json.osm3s?.timestamp_osm_base||null;
+              } catch {
+                result.parseError=true;
+                result.preview=text.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0,200);
+              }
+            } catch(error) {result.error={name:error.name,message:error.message};}
+            result.durationMs=Math.round(performance.now()-start);
+            console.log(JSON.stringify(result));
+          }
+          await probe('v4-native-regex-keys-11',regexKeyQuery());
+          await new Promise(resolve=>setTimeout(resolve,10000));
+          await probe('v5-literal-keys-200',literalKeyQuery());
+          JS
