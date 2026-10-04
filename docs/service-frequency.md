@@ -44,6 +44,8 @@ trigger site assembly. PR runs create reviewable artifacts without publishing.
 The site uses the published worldwide snapshot; absent data remains unknown.
 The four earlier city datasets are now **test fixtures only**.
 
+Per-feed assembly budgets bound features, vertices, projected tile fan-out and estimated encoded bytes before tile indexing. A feed that exceeds them is recorded as failed at assembly and contributes no partial tiles; other verified feeds can still publish.
+
 National outputs can exceed JavaScript's single-string limit. The assembler
 streams and decodes their top-level array records, then compacts consecutive
 equal-profile edges before tile indexing. Python writes gzip JSON incrementally

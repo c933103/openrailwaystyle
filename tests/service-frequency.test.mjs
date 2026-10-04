@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createExpression,validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
-import {frequencyWidth,matchHeadway,frequencyBundle,serviceFrequencyPaint,frequencyOffset,frequencyDetails,nearestServiceFeature,installFrequencyExpiry,selectedFrequencyProfile,profileBundle,FREQUENCY_PROFILES} from '../styles/service-frequency.mjs';
+import {frequencyWidth,matchHeadway,frequencyBundle,serviceFrequencyPaint,frequencyOffset,frequencyDetails,nearestServiceFeature,installFrequencyExpiry,selectedFrequencyProfile,profileBundle,FREQUENCY_PROFILES,FREQUENCY_LABELS} from '../styles/service-frequency.mjs';
 import {readSettings,settingsQuery} from '../styles/map-model.mjs';
 const requireProfiles=await readFile(new URL('../styles/data-src/frequency-source-rules.json',import.meta.url),'utf8').then(s=>JSON.stringify(JSON.parse(s).profiles));
 const catalog=JSON.parse(await readFile(new URL('../styles/service-headways.json',import.meta.url)));
@@ -116,4 +116,10 @@ test('hour and overnight settings select separate profiles, preserve unknowns an
   const missing=serviceFrequencyPaint({serviceWidth:'frequency',frequencyPeriod:'hour',frequencyHour:3},now);
   assert.equal(evaluate(missing.width,bundle),3.5);assert.equal(evaluate(missing.opacity,bundle),.45);
   for(const hour of [-1,24,1.5,'invalid'])assert.equal(readSettings(`?frequencyHour=${hour}`).frequencyHour,12);
+});
+
+
+test('operator peak categories do not acquire configured GTFS clock windows',()=>{
+  for(const key of ['am','pm','offpeak'])assert.doesNotMatch(FREQUENCY_LABELS[key],/\d\d:\d\d/);
+  assert.match(catalog.source.period_definition,/clock windows are not supplied/);
 });

@@ -7,6 +7,7 @@ import {buildTiles,readTable} from './service-routes.mjs';
 import {timetableFeatures} from './gtfs-service.mjs';
 import {mergeServiceTiles} from './merge-service-tiles.mjs';
 import {readFrequencyFeed} from './read-frequency-feed.mjs';
+import {assertFrequencyTilingBudget,FrequencyTilingBudgetError} from './frequency-tiling-budget.mjs';
 export function mergeInventories(inventories){
   if(!inventories.length)throw new Error('No worldwide inventory');
   const first=inventories[0],ids=new Set(),shards=new Set(),entries=[];
@@ -35,7 +36,21 @@ export async function assemble(directory){
     if(entry.status!=='compiled')continue;
     const feed=await readFrequencyFeed(join(directory,entry.output));
     if(feed.source.id!==entry.id||feed.source.sha256!==entry.sha256||feed.source.service_date!==inventory.service_date)throw new Error(`Unverified feed ${entry.id}`);
-    const data=timetableFeatures([feed]),tiles=buildTiles(readTable(''),{timetable:data});
+    let data;
+    try {
+      // Reject pathological raw fan-out before allocating profile bundles,
+      // then budget the actual properties/geometry passed to both indexes.
+      assertFrequencyTilingBudget(feed.segments.filter(s=>s.geometry?.length>=2).map(s=>({geometry:{type:'LineString',coordinates:s.geometry}})));
+      data=timetableFeatures([feed]);
+      assertFrequencyTilingBudget(data.overview,{maxZoom:9});
+      assertFrequencyTilingBudget(data.local);
+    } catch(error) {
+      if(!(error instanceof FrequencyTilingBudgetError))throw error;
+      entry.status='failed';entry.failure_stage='assembly';entry.error=error.message;
+      counts.compiled--;counts.failed=(counts.failed||0)+1;
+      console.warn(entry.id,error.message);continue;
+    }
+    const tiles=buildTiles(readTable(''),{timetable:data});
     summary.push(...data.summary);
     for(const [key,bytes]of tiles){
       const file=join(tileRoot,key+'.pbf.gz');let previous;
@@ -46,6 +61,7 @@ export async function assemble(directory){
     console.log(entry.id,feed.routes.length,'rail services',tiles.size,'tiles');
   }
   if(!summary.some(f=>f.mappedRoutes>0))throw new Error('Worldwide scan produced no mapped rail services; inspect inventory failures');
+  await pruneFrequencyOutputs(directory,inventory.entries);
   const manifest={schema:3,service_date:inventory.service_date,catalogue_url:inventory.catalogue_url,catalogue_sha256:inventory.catalogue_sha256,catalogue_entries:inventory.catalogue_entries,
     countries_scanned:[...new Set(inventory.entries.map(e=>e.country))].sort(),counts,feeds:summary,tiles:keys.size,
     scope:'Whole worldwide catalogue scanned. Timetable shapes and conservative matches to published rail geometry; failed, excluded, unshaped and expired sources are explicitly reported. Coverage is not complete worldwide.'};
