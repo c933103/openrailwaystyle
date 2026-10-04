@@ -3,6 +3,7 @@
 // Infrastructure view can show them from zoom 5 without the provider's
 // street-zoom tiles. Pure functions; scripts/build-crossings.mjs does the I/O.
 import vtpbf from 'vt-pbf';
+import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {CROSSING_TAGS} from '../styles/crossing-tags.mjs';
 
 export const TAG_KEYS = CROSSING_TAGS.map(([key]) => key);

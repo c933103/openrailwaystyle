@@ -5,6 +5,7 @@ import {once} from 'node:events';
 import {gzipSync} from 'node:zlib';
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
+import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {STATES, toGeoJSON} from './lifecycle.mjs';
 import {DELTA_FILE, deltaQueries, mergeDelta, applyDelta} from './snapshot-delta.mjs';
 const api = 'https://overpass-api.de/api/interpreter';

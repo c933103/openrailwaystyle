@@ -7,6 +7,7 @@ import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
+import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 const OVERVIEW_STATES = ['construction'];
 const root = new URL('../styles/data/lifecycle/', import.meta.url);
 const index = JSON.parse(await readFile(new URL('index.json', root)));
