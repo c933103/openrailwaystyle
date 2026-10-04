@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261004-corner1-power4';
+import { MODES } from './map-model.mjs?v=20261004-polarlinks3';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
