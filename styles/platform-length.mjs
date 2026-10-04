@@ -12,6 +12,13 @@ export function platformLengthLabel(units='metric') {
 export function platformReference(value) {return (Array.isArray(value)?value:[value]).filter(v=>typeof v==='string'||typeof v==='number'&&Number.isFinite(v)).flatMap(v=>String(v).split(';')).map(v=>v.trim()).filter(Boolean).join(' / ');}
 export function platformObjectIdentity(feature) {const match=/^(node|way|relation)-([1-9]\d*)$/.exec(String(feature.properties?.id??feature.id??''));return match?{key:match[0],type:match[1],id:match[2]}:null;}
 export function platformIdentity(feature){const p=feature.properties||{},value=p.id??feature.id;const m=/^(?:way-)?(\d+)$/.exec(String(value??''));return m&&Number(m[1])>0?m[1]:null;}
+// OSM length values default to metres; explicit unit tags take precedence
+// over geometric estimates, including mixed-case customary units.
+export function parsePlatformLength(value){
+ const match=/^\s*(\d+(?:\.\d+)?)\s*(m|km|ft|mi)?\s*$/i.exec(String(value??''));
+ const length=match?Number(match[1])*({m:1,km:1000,ft:.3048,mi:1609.344}[match[2]?.toLowerCase()||'m']):0;
+ return Number.isFinite(length)&&length>0?length:null;
+}
 // Anchor at the midpoint of the longest loaded piece; the API supplies the
 // full length independently of that visible/clipped piece.
 function longestPlatformLine(feature){
@@ -48,8 +55,8 @@ export function platformOSMDetails(data,object){
  }
  // An explicitly mapped length takes precedence; a point still cannot give
  // a geometric measurement. A missing coordinate never becomes a short span.
- const tagged=/^\s*(\d+(?:\.\d+)?)\s*(m|ft)?\s*$/.exec(tags.length||'');
- if(tagged&&Number(tagged[1])>0)return {...properties,length:Number(tagged[1])*(tagged[2]==='ft'?.3048:1),length_basis:'mapped_tag'};
+ const tagged=parsePlatformLength(tags.length);
+ if(tagged)return {...properties,length:tagged,length_basis:'mapped_tag'};
  if(!geometry)return properties;
  if(geometry.type==='LineString')return {...properties,length:platformSpan({geometry}),length_basis:'mapped_line'};
  const length=platformExtent(geometry);
@@ -83,11 +90,28 @@ export function platformLabelAnchor(feature,bounds){
   for(const line of lines){let current=[];for(let i=1;i<line.length;i++){const piece=clipSegment(line[i-1],line[i]);if(!piece){current=[];continue;}if(current.length&&current.at(-1).every((v,j)=>Math.abs(v-piece[0][j])<1e-10))current.push(piece[1]);else{current=piece;parts.push(current);}}}
   return platformAnchor({geometry:{type:'MultiLineString',coordinates:parts}});
  }
- const polygons=g.type==='Polygon'?[g.coordinates]:g.type==='MultiPolygon'?g.coordinates:[];let best,area=0;
- for(const polygon of polygons){let ring=polygon[0];
-  if(limits)for(let side=0;side<4;side++){const j=side%2,bound=limits[side],lower=side<2,inward=p=>lower?p[j]>=bound:p[j]<=bound,result=[];for(let i=0;i<ring.length;i++){const a=ring[i],b=ring[(i+1)%ring.length],ia=inward(a),ib=inward(b);if(ia)result.push(a);if(ia!==ib){const t=(bound-a[j])/(b[j]-a[j]);result.push(a.map((v,k)=>v+(b[k]-v)*t));}}ring=result;if(!ring.length)break;}
-  if(ring.length<3)continue;const origin=ring[0];let sum=0,x=0,y=0;for(let i=0;i<ring.length;i++){const a=ring[i].map((v,j)=>v-origin[j]),b=ring[(i+1)%ring.length].map((v,j)=>v-origin[j]),c=a[0]*b[1]-b[0]*a[1];sum+=c;x+=(a[0]+b[0])*c;y+=(a[1]+b[1])*c;}
-  if(Math.abs(sum)>area){area=Math.abs(sum);best=sum?[origin[0]+x/(3*sum),origin[1]+y/(3*sum)]:null;}
+ const polygons=g.type==='Polygon'?[g.coordinates]:g.type==='MultiPolygon'?g.coordinates:[];
+ let best=null,score=0;
+ // Between consecutive vertex heights, a horizontal scan has constant edge
+ // topology. Pair crossings with even-odd fill so concavities and holes are
+ // excluded; intersect the resulting interior intervals with the viewport.
+ for(const polygon of polygons){
+  const ys=[...new Set(polygon.flat().map(p=>p[1]).filter(y=>!limits||y>limits[1]&&y<limits[3]))];
+  if(limits)ys.push(limits[1],limits[3]);
+  ys.sort((a,b)=>a-b);
+  for(let band=1;band<ys.length;band++){
+   const y=(ys[band-1]+ys[band])/2,crossings=[];
+   for(const ring of polygon)for(let i=0;i<ring.length;i++){
+    const a=ring[i],b=ring[(i+1)%ring.length];
+    if((a[1]>y)!==(b[1]>y))crossings.push(a[0]+(b[0]-a[0])*(y-a[1])/(b[1]-a[1]));
+   }
+   crossings.sort((a,b)=>a-b);
+   for(let i=1;i<crossings.length;i+=2){
+    const left=Math.max(crossings[i-1],limits?.[0]??-Infinity),right=Math.min(crossings[i],limits?.[2]??Infinity);
+    const area=(right-left)*(ys[band]-ys[band-1]);
+    if(right>left&&area>score){score=area;best=[(left+right)/2,y];}
+   }
+  }
  }return best&&inside(best)?best:null;
 }
 function platformTextAnchor(map,coordinates,ref,length){

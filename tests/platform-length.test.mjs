@@ -156,3 +156,27 @@ test('quickly reopening the view resumes an aborted object without a transient-e
  }});
  try{p.update();await new Promise(r=>setTimeout(r,10));active=false;p.update();active=true;p.update();await new Promise(r=>setTimeout(r,20));assert.equal(requests,2);assert.equal(data.features[0].properties.platform_length,350);}finally{p.destroy();}
 });
+
+test('mapped unit lengths override area estimates and reject malformed lengths',()=>{
+ for(const [value,metres] of [['0.3 km',300],['0.2 mi',321.8688],['100 FT',30.48],['350 M',350],['425',425]]){
+  const data=fullPlatform();data.elements.at(-1).tags.length=value;
+  const details=platformOSMDetails(data,{type:'way',id:'23'});
+  assert.ok(Math.abs(details.length-metres)<1e-8,value);assert.equal(details.length_basis,'mapped_tag');assert.equal(details.length_estimated,undefined);
+ }
+ for(const value of ['0','-1','Infinity','300 boats']){
+  const data=fullPlatform();data.elements.at(-1).tags.length=value;
+  assert.equal(platformOSMDetails(data,{type:'way',id:'23'}).length_basis,'mapped_extent');
+ }
+});
+test('area labels stay inside concave polygons and outside their holes',()=>{
+ const concave=[[0,0],[4,0],[4,4],[3,4],[3,1],[1,1],[1,4],[0,4],[0,0]];
+ const point=platformLabelAnchor({geometry:{type:'Polygon',coordinates:[concave]}});
+ assert.ok(point&&(point[1]<1||point[0]<1||point[0]>3),JSON.stringify(point));
+ const outer=[[0,0],[4,0],[4,4],[0,4],[0,0]],hole=[[1,1],[3,1],[3,3],[1,3],[1,1]];
+ const feature={geometry:{type:'Polygon',coordinates:[outer,hole]}};
+ const at=platformLabelAnchor(feature);assert.ok(at&&(at[0]<1||at[0]>3||at[1]<1||at[1]>3));
+ const bounds={getWest:()=>1.2,getEast:()=>2.8,getSouth:()=>1.2,getNorth:()=>2.8};
+ assert.equal(platformLabelAnchor(feature,bounds),null,'viewport entirely in a hole has no platform interior');
+ const tip={getWest:()=>3.5,getEast:()=>4.5,getSouth:()=>2,getNorth:()=>3};
+ const visible=platformLabelAnchor(feature,tip);assert.ok(visible[0]>3.5&&visible[0]<4&&visible[1]>2&&visible[1]<3);
+});
