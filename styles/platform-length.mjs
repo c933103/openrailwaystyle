@@ -136,10 +136,25 @@ export function extentOfPoints(list){
   if(list.length<3)return 0;const origin=list[0],scale=6371000*RAD,cos=Math.cos(origin[1]*RAD);
   const points=list.map(p=>[(((p[0]-origin[0]+540)%360)-180)*scale*cos,(p[1]-origin[1])*scale]).sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
   const cross=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]),half=list=>{const out=[];for(const p of list){while(out.length>1&&cross(out.at(-2),out.at(-1),p)<=0)out.pop();out.push(p);}return out.slice(0,-1);};
-  const hull=[...half(points),...half(points.slice().reverse())];let bestArea=Infinity,bestLength=0;
-  for(let i=0;i<hull.length;i++){const a=hull[i],b=hull[(i+1)%hull.length],theta=Math.atan2(b[1]-a[1],b[0]-a[0]),c=Math.cos(theta),s=Math.sin(theta);let xmin=Infinity,xmax=-Infinity,ymin=Infinity,ymax=-Infinity;
-   for(const [x,y] of hull){const u=x*c+y*s,v=-x*s+y*c;xmin=Math.min(xmin,u);xmax=Math.max(xmax,u);ymin=Math.min(ymin,v);ymax=Math.max(ymax,v);}
-   const width=xmax-xmin,height=ymax-ymin,area=width*height;if(area<bestArea){bestArea=area;bestLength=Math.max(width,height);}
+  const hull=[...half(points),...half(points.slice().reverse())],n=hull.length;let bestArea=Infinity,bestLength=0;
+  if(n<3){for(const p of hull)for(const q of hull)bestLength=Math.max(bestLength,Math.hypot(p[0]-q[0],p[1]-q[1]));return bestLength;}
+  // Rotating calipers: the smallest enclosing rectangle has a side on a hull
+  // edge, and the farthest points along, across and behind each edge only
+  // move forward around the counter-clockwise hull, so the work is linear.
+  const at=i=>hull[i%n];let far=1,top=1,back=1;
+  for(let i=0;i<n;i++){
+   const a=hull[i],b=at(i+1),len=Math.hypot(b[0]-a[0],b[1]-a[1]);if(!len)continue;
+   const ux=(b[0]-a[0])/len,uy=(b[1]-a[1])/len,along=p=>(p[0]-a[0])*ux+(p[1]-a[1])*uy,across=p=>(p[1]-a[1])*ux-(p[0]-a[0])*uy;
+   // Each caliper starts no earlier than the one before it.
+   far=Math.max(far,i+1);
+   for(let step=0;step<n&&along(at(far+1))>=along(at(far));step++)far++;
+   top=Math.max(top,far);
+   for(let step=0;step<n&&across(at(top+1))>=across(at(top));step++)top++;
+   back=Math.max(back,top);
+   for(let step=0;step<n&&along(at(back+1))<=along(at(back));step++)back++;
+   const width=along(at(far))-along(at(back)),height=across(at(top)),area=width*height;
+   // Equal areas (common for gridded outlines) keep the first edge's rectangle.
+   if(area<bestArea*(1-1e-9)){bestArea=area;bestLength=Math.max(width,height);}
   }return bestLength;
 }
 // A point label on the visible platform fragment avoids tiled polygon/line
