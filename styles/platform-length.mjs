@@ -59,19 +59,27 @@ function insideLength(z,x,y,extent,line){
  }
  return total;
 }
-const orient=(a,b,c)=>Math.sign((b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]));
-const onSegment=(a,b,p)=>Math.min(a[0],b[0])<=p[0]&&p[0]<=Math.max(a[0],b[0])&&Math.min(a[1],b[1])<=p[1]&&p[1]<=Math.max(a[1],b[1]);
-function segmentsMeet(a,b,c,d){
- const o1=orient(a,b,c),o2=orient(a,b,d),o3=orient(c,d,a),o4=orient(c,d,b);
- if(o1!==o2&&o3!==o4)return true;
- return (!o1&&onSegment(a,b,c))||(!o2&&onSegment(a,b,d))||(!o3&&onSegment(c,d,a))||(!o4&&onSegment(c,d,b));
-}
 function insideRing([x,y],ring){let inside=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const [xi,yi]=ring[i],[xj,yj]=ring[j];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)inside=!inside;}return inside;}
-// Two rings meet when an edge of one crosses or touches an edge of the other,
-// or one lies inside the other.
-export function ringsMeet(a,b){
- for(let i=1;i<a.length;i++)for(let j=1;j<b.length;j++)if(segmentsMeet(a[i-1],a[i],b[j-1],b[j]))return true;
- return insideRing(a[0],b)||insideRing(b[0],a);
+function segmentDistance(p,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],t=dx||dy?Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy))):0;return Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy);}
+const deepInside=(p,ring,eps)=>{if(!insideRing(p,ring))return false;for(let i=1;i<ring.length;i++)if(segmentDistance(p,ring[i-1],ring[i])<=eps)return false;return true;};
+// Two edges cross through each other away from their ends.
+function edgesCross(a,b,c,d,eps){
+ const cross=(o,p,q)=>(p[0]-o[0])*(q[1]-o[1])-(p[1]-o[1])*(q[0]-o[0]);
+ const d1=cross(a,b,c),d2=cross(a,b,d),d3=cross(c,d,a),d4=cross(c,d,b);
+ if(!(d1*d2<0&&d3*d4<0))return false;
+ const t=d1/(d1-d2),at=[c[0]+(d[0]-c[0])*t,c[1]+(d[1]-c[1])*t];
+ return [a,b,c,d].every(e=>Math.hypot(e[0]-at[0],e[1]-at[1])>eps);
+}
+// Two rings belong to one part when they share area: the pieces of one part
+// overlap in the buffer neighbouring tiles share, and a hole lies inside its
+// outer ring. Parts that only touch, at a vertex or along an edge, stay
+// separate. eps (about a tile unit) absorbs where each tile rounded a shared
+// boundary.
+export function ringsOverlap(a,b,eps=0){
+ const probes=ring=>ring.flatMap((p,i)=>i?[p,[(p[0]+ring[i-1][0])/2,(p[1]+ring[i-1][1])/2]]:[p]);
+ if(probes(a).some(p=>deepInside(p,b,eps))||probes(b).some(p=>deepInside(p,a,eps)))return true;
+ for(let i=1;i<a.length;i++)for(let j=1;j<b.length;j++)if(edgesCross(a[i-1],a[i],b[j-1],b[j],eps))return true;
+ return false;
 }
 export function createPlatformTileGeometry({tileURL,decode,fetcher=fetch,zoom=PLATFORM_TILE_ZOOM,maxTiles=48,timeout=8000}={}){
  const tiles=new Map();
@@ -112,14 +120,12 @@ export function createPlatformTileGeometry({tileURL,decode,fetcher=fetch,zoom=PL
    return length>0?{length,length_basis:'mapped_line',tiles:[...seen]}:null;
   }
   if(!found.every(f=>f.piece.type===3))return null;
-  // Separate parts of a multipolygon are measured separately. Pieces of one
-  // part overlap in the buffer that neighbouring tiles share, and a hole lies
-  // within its outer ring, so rings that cross or contain each other belong
-  // to one part; overlapping bounds alone do not join interlocking parts.
+  // Separate parts of a multipolygon are measured separately (ringsOverlap);
+  // overlapping bounds alone do not join interlocking parts.
   const rings=found.flatMap(({x,y,piece})=>piece.geometry.map(ring=>ring.map(p=>tileToLngLat(zoom,x,y,piece.extent,p)))).filter(r=>r.length);
   const bounds=rings.map(r=>r.reduce((b,[lng,lat])=>[Math.min(b[0],lng),Math.min(b[1],lat),Math.max(b[2],lng),Math.max(b[3],lat)],[Infinity,Infinity,-Infinity,-Infinity]));
-  const parent=rings.map((_,i)=>i),root=i=>parent[i]===i?i:parent[i]=root(parent[i]),eps=1e-7;
-  for(let i=0;i<rings.length;i++)for(let j=i+1;j<rings.length;j++){const a=bounds[i],b=bounds[j];if(a[0]<=b[2]+eps&&b[0]<=a[2]+eps&&a[1]<=b[3]+eps&&b[1]<=a[3]+eps&&ringsMeet(rings[i],rings[j]))parent[root(i)]=root(j);}
+  const parent=rings.map((_,i)=>i),root=i=>parent[i]===i?i:parent[i]=root(parent[i]),eps=360/2**zoom/(found[0].piece.extent||4096);
+  for(let i=0;i<rings.length;i++)for(let j=i+1;j<rings.length;j++){const a=bounds[i],b=bounds[j];if(a[0]<=b[2]+eps&&b[0]<=a[2]+eps&&a[1]<=b[3]+eps&&b[1]<=a[3]+eps&&ringsOverlap(rings[i],rings[j],eps))parent[root(i)]=root(j);}
   const parts=new Map();rings.forEach((r,i)=>{const k=root(i);parts.set(k,[...(parts.get(k)||[]),...r]);});
   const length=Math.max(0,...[...parts.values()].map(extentOfPoints));
   return length>0?{length,length_estimated:true,length_basis:'mapped_extent',tiles:[...seen]}:null;

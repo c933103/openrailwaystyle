@@ -250,12 +250,27 @@ test('an oversized platform tile gives no pieces instead of decoding every featu
 });
 
 test('interlocking multipolygon parts with overlapping bounds stay separate',async()=>{
- const {ringsMeet}=await import('../styles/platform-length.mjs');
+ const {ringsOverlap}=await import('../styles/platform-length.mjs');
  // An L-shape and a block tucked into its corner: bounds overlap, rings do not meet.
  const l=[[0,0],[10,0],[10,1],[1,1],[1,10],[0,10],[0,0]],block=[[3,3],[9,3],[9,9],[3,9],[3,3]];
- assert.equal(ringsMeet(l,block),false);
- assert.equal(ringsMeet(l,[[9,0.5],[12,0.5],[12,2],[9,2],[9,0.5]]),true,'overlapping pieces meet');
- assert.equal(ringsMeet(block,[[4,4],[5,4],[5,5],[4,5],[4,4]]),true,'a hole meets its outer ring');
+ assert.equal(ringsOverlap(l,block),false);
+ assert.equal(ringsOverlap(l,[[9,0.5],[12,0.5],[12,2],[9,2],[9,0.5]]),true,'overlapping pieces share area');
+ assert.equal(ringsOverlap(block,[[4,4],[5,4],[5,5],[4,5],[4,4]]),true,'a hole lies inside its outer ring');
+ assert.equal(ringsOverlap([[0,4],[10,4],[10,5],[0,5],[0,4]],[[4,0],[5,0],[5,10],[4,10],[4,0]]),true,'crossing bars share area without a corner inside the other');
+});
+test('multipolygon parts that only touch keep their own extents',async()=>{
+ const {ringsOverlap}=await import('../styles/platform-length.mjs');
+ const a=[[0,0],[4,0],[4,1],[0,1],[0,0]];
+ assert.equal(ringsOverlap(a,[[4,1],[8,1],[8,2],[4,2],[4,1]]),false,'corner to corner');
+ assert.equal(ringsOverlap(a,[[4,0],[8,0],[8,1],[4,1],[4,0]]),false,'end to end along an edge');
+ assert.equal(ringsOverlap(a,[[4.001,1.001],[8,1],[8,2],[4,2],[4.001,1.001]],.01),false,'a corner rounded slightly differently still only touches');
+ // Two 0.004°-long parts meeting end to end at one corner, across a zoom-15 tile edge.
+ const mp={type:'Feature',properties:{id:'relation-32'},geometry:{type:'MultiPolygon',coordinates:[
+  [[[.0065,.002],[.0105,.002],[.0105,.0021],[.0065,.0021],[.0065,.002]]],
+  [[[.0105,.0021],[.0145,.0021],[.0145,.0022],[.0105,.0022],[.0105,.0021]]]]}};
+ const {geometry}=providerTiles([mp]);
+ const measured=await geometry.measure('relation-32',platformTilesFor(mp.geometry.coordinates));
+ assert.ok(Math.abs(measured.length-444.78)<1,String(measured.length));
 });
 test('a multipolygon part in tiles the first measurement never read is measured when it comes into view',async()=>{
  // A 0.002° part and a 0.004° part about three zoom-15 tiles apart.
