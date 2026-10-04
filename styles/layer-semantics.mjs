@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=pr53-repair7';
+import { MODES } from './map-model.mjs?v=pr53-repair8';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;

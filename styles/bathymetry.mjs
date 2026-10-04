@@ -144,24 +144,27 @@ export function maskOcean(context, polygons, size) {
 // A depth worker (depth-worker.mjs): send(message, signal) resolves with
 // its answer; forget(key) drops the polygons kept for a tile. A cancelled
 // tile's answer is discarded, and its polygons forgotten. A worker that
-// fails (its script did not load, or it stopped) is not used again: its
-// waiting calls reject with `workerFailed`, and `failed` is set.
+// fails (its script did not load, it stopped, or it reported an error, for
+// example a canvas operation it lacks) is not used again: its waiting calls
+// reject with `workerFailed`, and `failed` is set.
 function depthWorker(create) {
   const worker = create(), waiting = new Map(), state = {failed: false};
   let next = 0;
   const forget = key => { if (!state.failed) worker.postMessage({key, drop: true}); };
+  const fail = message => {
+    state.failed = true;
+    worker.terminate?.();
+    for (const call of waiting.values()) call.reject(Object.assign(new Error(message || 'Depth worker failed'), {workerFailed: true}));
+    waiting.clear();
+  };
   worker.onmessage = ({data}) => {
     const call = waiting.get(data.id);
     if (!call) return;
+    if (data.error) { fail(data.error); return; }
     waiting.delete(data.id);
-    if (data.error) call.reject(new Error(data.error)); else call.resolve(data);
+    call.resolve(data);
   };
-  worker.onerror = event => {
-    state.failed = true;
-    worker.terminate?.();
-    for (const call of waiting.values()) call.reject(Object.assign(new Error(event?.message || 'Depth worker failed'), {workerFailed: true}));
-    waiting.clear();
-  };
+  worker.onerror = event => fail(event?.message);
   const send = (message, signal) => new Promise((resolve, reject) => {
     if (state.failed) { reject(Object.assign(new Error('Depth worker failed'), {workerFailed: true})); return; }
     if (signal.aborted) { forget(message.key); reject(signal.reason); return; }

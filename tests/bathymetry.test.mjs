@@ -158,6 +158,30 @@ test('a depth worker that fails is not used again: its tiles and later ones are 
   assert.equal(created, 1);
 });
 
+test('a depth worker that reports a processing error hands its tiles to the page and is not used again', async t => {
+  const had = [globalThis.OffscreenCanvas, globalThis.Worker, globalThis.ImageData];
+  globalThis.OffscreenCanvas = class { getContext() { return {putImageData() {}, drawImage() {}, getImageData() {}, beginPath() {}, moveTo() {}, lineTo() {}, closePath() {}, fill() {}}; } convertToBlob() { return Promise.resolve(new Blob([new Uint8Array([9])])); } };
+  globalThis.Worker ??= class {};
+  globalThis.ImageData ??= class { constructor(data, width, height) { Object.assign(this, {data, width, height}); } };
+  t.after(() => { [globalThis.OffscreenCanvas, globalThis.Worker, globalThis.ImageData] = had; });
+  // The worker starts, but its canvas cannot draw: it answers with an error.
+  let worker, decoded = 0;
+  class NoCanvasWorker { constructor() { worker = this; this.posted = 0; } postMessage(message) { this.posted++; if (!message.drop) queueMicrotask(() => this.onmessage({data: {id: message.id, error: 'getContext is not a function'}})); } terminate() { this.terminated = true; } }
+  let protocol;
+  const ocean = {layers: {water: {length: 1, extent: 4096, feature: () => ({type: 3, properties: {class: 'ocean'}, loadGeometry: () => [[{x: 0, y: 0}, {x: 4096, y: 0}, {x: 4096, y: 4096}]]})}}};
+  installBathymetry({addProtocol: (_, handler) => { protocol = handler; }}, {getDemTile: async () => ({width: 2, height: 2, data: new Float32Array([-10, -20, -30, -40])})}, {
+    waterTile: async () => ({data: new Uint8Array([1]).buffer}),
+    readTile: () => { decoded++; return ocean; },
+    createWorker: () => new NoCanvasWorker(),
+  });
+  assert.deepEqual([...new Uint8Array((await protocol({url: 'atlas-depth://5/2/3'}, new AbortController())).data)], [9], 'the tile is drawn on the page');
+  assert.ok(worker.terminated);
+  const posted = worker.posted;
+  await protocol({url: 'atlas-depth://5/3/3'}, new AbortController());
+  assert.equal(worker.posted, posted, 'later tiles are not sent to the worker');
+  assert.equal(decoded, 2);
+});
+
 test('world-wrap requests of the same depth tile keep independent worker state',async t=>{
  const had=[globalThis.OffscreenCanvas,globalThis.Worker];globalThis.OffscreenCanvas=class{};globalThis.Worker=class{};
  t.after(()=>{[globalThis.OffscreenCanvas,globalThis.Worker]=had;});
