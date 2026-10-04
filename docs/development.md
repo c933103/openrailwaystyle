@@ -63,6 +63,14 @@ mkdir -p styles/data/level-crossings
 cp -R "$snapshot_dir/crossing-data/5" "$snapshot_dir/crossing-data/9" "$snapshot_dir/crossing-data/index.json" "$snapshot_dir/crossing-data/manifest.json" styles/data/level-crossings/
 ```
 
+For the facility overlays, load the validated `traction-data` snapshot as well:
+
+```sh
+git clone --depth 1 --single-branch --branch traction-data https://github.com/c933103/openrailwaystyle.git "$snapshot_dir/traction-data"
+mkdir -p styles/data/traction
+cp -R "$snapshot_dir/traction-data/power" "$snapshot_dir/traction-data/signals" styles/data/traction/
+```
+
 The temporary directory holds downloaded archives and a Python virtual environment;
 keep it until assembly finishes. Published data and generated vendor files are
 not source changes to commit. For extraction, refresh and publication details,
@@ -124,6 +132,7 @@ node scripts/check-map-browser.mjs
 node scripts/check-major-stations-browser.mjs
 node scripts/check-platform-browser.mjs
 node scripts/check-infrastructure-browser.mjs
+node scripts/check-signal-power-browser.mjs
 node scripts/check-globe-browser.mjs
 ```
 

@@ -44,7 +44,7 @@ async function screenshot(name) {
 await mkdir('browser-review',{recursive:true});
 try {
   const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
-  await page.goto(base+'?v=20261004-pr71-repair1&mode=speed&language=en&relief=0&inactive=0#14/22.299/114.172',{waitUntil:'domcontentloaded'});
+  await page.goto(base+'?v=20261004-signal-power4&mode=speed&language=en&relief=0&inactive=0#14/22.299/114.172',{waitUntil:'domcontentloaded'});
   await page.waitForSelector('body[data-map-ready="true"]',{state:'attached'});
   await waitContext('transport');await waitContext('destinations');await settleContext();
   console.log('CONTEXT_DATA',JSON.stringify(await evaluate(map=>({
@@ -55,11 +55,12 @@ try {
   await waitUntil(page,async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('station-'));});
   await screenshot('hongkong');
   // A feature panel uses destination semantics, never railway speed/status.
-  const point=await evaluate(map=>{
-    const f=map.queryRenderedFeatures().find(f=>f.layer.id.startsWith('context-destinations-')&&f.geometry.type==='Point'&&map.project(f.geometry.coordinates).x>430);
+  const point=await evaluate(async map=>{
+    const {contextLayerInteractive}=await import(new URL('./context.mjs',document.querySelector('script[type="module"]').src));
+    const f=map.queryRenderedFeatures().find(f=>f.layer.id.startsWith('context-destinations-')&&contextLayerInteractive(f.layer.id)&&f.geometry.type==='Point'&&map.project(f.geometry.coordinates).x>430);
     if(!f)return null; const p=map.project(f.geometry.coordinates);return [p.x,p.y];
   });
-  assert.ok(point,'a destination can be inspected');await page.mouse.click(...point);
+  assert.ok(point,'an interactive destination can be inspected');await page.mouse.click(...point);
   await page.waitForSelector('#details:not([hidden])');
   assert.match(await page.locator('#detail-content').innerText(),/PASSENGER DESTINATION/);
   await page.locator('#details-close').click();

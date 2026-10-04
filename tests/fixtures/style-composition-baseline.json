@@ -29,7 +29,51 @@
     },
     "rawStyleSha256": "9765c104c4afed6769c4859d14dc462cbd8f8cac0f71e6a9554e9c1252482095",
     "purpose": "Reviewed pre-migration rendering contract including the separately requested infrastructure integration. Update deliberately after reviewing intended visual/source changes; this is not a generated build artifact.",
-    "normalization": "SHA-256 of recursively key-sorted JSON, preserving arrays; remove atlas:* metadata keys and empty metadata. Root description correction is explicitly excluded."
+    "normalization": "SHA-256 of recursively key-sorted JSON, preserving arrays; remove atlas:* metadata keys and empty metadata. Root description correction is explicitly excluded.",
+    "signalPowerFollowup": {
+      "baseCommit": "b2079ac1b85ea4cfbaa676efdac6e40ab342ee85",
+      "reviewed": "2026-10-04",
+      "addedSources": [
+        "railwaySignalSupplementOverview",
+        "railwaySignalSupplement",
+        "electricSubstations",
+        "electricFacilities"
+      ],
+      "changedSources": [
+        "railwaySignals"
+      ],
+      "changedLayers": [
+        "control-branch-overview",
+        "control-overview",
+        "control-tracks",
+        "control-metro-overview",
+        "control-labels",
+        "infrastructure-signal-points",
+        "infrastructure-signal-references"
+      ],
+      "addedLayers": [
+        "control-branch-overview-system-2",
+        "control-branch-overview-system-3",
+        "control-overview-system-2",
+        "control-overview-system-3",
+        "control-tracks-system-2",
+        "control-tracks-system-3",
+        "control-metro-overview-system-2",
+        "control-metro-overview-system-3",
+        "infrastructure-signal-supplement-overview",
+        "infrastructure-signal-supplement-points",
+        "infrastructure-signal-supplement-references",
+        "electrification-substation-areas",
+        "electrification-substation-edges",
+        "electrification-supply-points",
+        "electrification-former-supply-points",
+        "electrification-supply-marks",
+        "electrification-former-supply-marks",
+        "electrification-supply-names",
+        "electrification-former-supply-names"
+      ],
+      "verification": "All remaining source definitions, layer definitions and their relative order match the base commit after atlas metadata normalization."
+    }
   },
   "root": {
     "glyphs": "https://tuiles.enliberte.fr/fonts/{fontstack}/{range}.pbf",
@@ -192,9 +236,43 @@
       "id": "railwaySignals",
       "type": "vector",
       "url": "https://openrailwaymap.app/railway_signals",
-      "minzoom": 16,
+      "minzoom": 13,
       "maxzoom": 22,
-      "sha256": "6ba8dfd62b2227ab87102fa471095fc95b091b4a059c985379ad792d0a0c85ca"
+      "sha256": "a6f34a7786b0bd2e7c0f1118d7c37bfb626fb18fe1013b89f1fa13e0d40feb9b"
+    },
+    {
+      "id": "railwaySignalSupplementOverview",
+      "type": "vector",
+      "tiles": [
+        "signaltiles://{z}/{x}/{y}"
+      ],
+      "minzoom": 12,
+      "maxzoom": 12,
+      "sha256": "3fc85ab588274b4e53c3e63955c693d897e87a8a64aeb834abdf04c5036704aa"
+    },
+    {
+      "id": "railwaySignalSupplement",
+      "type": "vector",
+      "tiles": [
+        "signaltiles://{z}/{x}/{y}"
+      ],
+      "minzoom": 16,
+      "maxzoom": 16,
+      "sha256": "d0c422602cb2c2a9b83c475b7a47c7e85d8d935c7ff1e8a2126b8c71c0792ec3"
+    },
+    {
+      "id": "electricSubstations",
+      "type": "vector",
+      "url": "https://openrailwaymap.app/electrification_substation",
+      "minzoom": 13,
+      "maxzoom": 22,
+      "sha256": "89430d44f97e4a065d1fa155243b4d6bb0dd15d9f8ff819b694dc3fabc5852f5"
+    },
+    {
+      "id": "electricFacilities",
+      "type": "geojson",
+      "featureCount": 0,
+      "sha256": "37f810f0a47fb49df86cf63b7521009652b25208b7e1e6b2a1c76acac192468c"
     },
     {
       "id": "stationEntrances",
@@ -1019,7 +1097,25 @@
       "sourceLayer": "branch_lines",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "c12b9f4d22584c53febf7aab734f157a1237a3618b29ae90c31743dc683b3353"
+      "sha256": "d57f1c1fd43a6b52a89023989d51e2389752cd644db5ee56359635186db9c8f1"
+    },
+    {
+      "id": "control-branch-overview-system-2",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "8cdba79faf7bdeeea8507f85cad5d19648ec33f3c720e7bff01f844609b1e17d"
+    },
+    {
+      "id": "control-branch-overview-system-3",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "cb2253af08eabe02b8b56ea1528aea3aed99adbf2b074bf3d1c76d4b1d43ec37"
     },
     {
       "id": "control-overview",
@@ -1028,7 +1124,25 @@
       "sourceLayer": "signals_railway_line_low",
       "minzoom": 0,
       "maxzoom": 7,
-      "sha256": "cfb5052b4dccf28fcf4d29a8f9297e204b0e3333eb1944d7f7272c220543e61f"
+      "sha256": "df934c3c572092d900ed02fd94f6afbdd0695a1bd892d19bca4da30ab63037a6"
+    },
+    {
+      "id": "control-overview-system-2",
+      "type": "line",
+      "source": "control",
+      "sourceLayer": "signals_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 7,
+      "sha256": "a73528f529ad482a08489e710e528c3e2c9fe63664805e8da90a166bb427924b"
+    },
+    {
+      "id": "control-overview-system-3",
+      "type": "line",
+      "source": "control",
+      "sourceLayer": "signals_railway_line_low",
+      "minzoom": 0,
+      "maxzoom": 7,
+      "sha256": "9795740ddeb8a741dd263022772def38c03e9bd4835f93db565d3fbfce699245"
     },
     {
       "id": "control-tracks",
@@ -1036,7 +1150,23 @@
       "source": "railway",
       "sourceLayer": "railway_line_high",
       "minzoom": 7,
-      "sha256": "bd41fe8ef77c368981aaa3d81e3d833d979c4d09093f231e263ce76c4dcc1a27"
+      "sha256": "9afd11bc4f19a292f7ac54b03e90ffb427f7f3f44a0d9f3ef8bfb308d9c35c07"
+    },
+    {
+      "id": "control-tracks-system-2",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 7,
+      "sha256": "62fa928b02b332ac8be1fbce1b5e5dd03c511dbbd6a31be764836343bd5cedb1"
+    },
+    {
+      "id": "control-tracks-system-3",
+      "type": "line",
+      "source": "railway",
+      "sourceLayer": "railway_line_high",
+      "minzoom": 7,
+      "sha256": "bc153a9e9d8ec8f96140873fc181c41e2e29480c471551c8d5398ae27884bae3"
     },
     {
       "id": "control-metro-overview",
@@ -1045,7 +1175,25 @@
       "sourceLayer": "branch_lines",
       "minzoom": 7,
       "maxzoom": 10,
-      "sha256": "e8a1ded93b93971f3e1218fb47ab6c783854a6333ec65b3ed251b02520ae2dcf"
+      "sha256": "0423c3fd2f9c5dd6af6cdcd85538cd36349c25e9fa83cfa28e5af585a76690f0"
+    },
+    {
+      "id": "control-metro-overview-system-2",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 7,
+      "maxzoom": 10,
+      "sha256": "9dd3c70d43ec36f4662f4d64855408da272c08fae46f921a162199df86c75744"
+    },
+    {
+      "id": "control-metro-overview-system-3",
+      "type": "line",
+      "source": "branchLines",
+      "sourceLayer": "branch_lines",
+      "minzoom": 7,
+      "maxzoom": 10,
+      "sha256": "99039f9d43ef4d512c9e746551e5b7003421306fc60a46445812ba41a06e7f35"
     },
     {
       "id": "gauge-branch-overview",
@@ -1397,7 +1545,7 @@
       "source": "railway",
       "sourceLayer": "railway_line_high",
       "minzoom": 10,
-      "sha256": "f7d65e4ae671f93c0153022e9f260d77cef6c3a6b7aa2b8bbf6c3ffab0c35e65"
+      "sha256": "1aa172919e46ead8e7899bf7ea1d6bfe930b8a8273a6586a45e778f48c6d0543"
     },
     {
       "id": "gauge-labels",
@@ -1482,16 +1630,16 @@
       "type": "circle",
       "source": "railwaySignals",
       "sourceLayer": "railway_signals",
-      "minzoom": 16,
-      "sha256": "5488327bb3d2dab9ff030f7f05c038edac18577376bd928b98e7512d0082514b"
+      "minzoom": 13,
+      "sha256": "fabd21125fcd6512c517109ea70ef50ebb3c79458cc9bd0eff740728847083e0"
     },
     {
       "id": "infrastructure-signal-references",
       "type": "symbol",
       "source": "railwaySignals",
       "sourceLayer": "railway_signals",
-      "minzoom": 18,
-      "sha256": "016eff7e14cc9654827b14ba95b8d1e1a15c6fc8b98d9da7a8c9cb6ebacf4d46"
+      "minzoom": 16,
+      "sha256": "3125da6f4b97f9b53e9f01272e731bb766c0370944d02c2da4b36ff591b14254"
     },
     {
       "id": "infrastructure-entrance-points",
@@ -1508,6 +1656,31 @@
       "sourceLayer": "standard_station_entrances",
       "minzoom": 17,
       "sha256": "ec3a346f39da64da389fc83d94671c577f0f183d68077d0ca9f54a5ba1a378c3"
+    },
+    {
+      "id": "infrastructure-signal-supplement-overview",
+      "type": "circle",
+      "source": "railwaySignalSupplementOverview",
+      "sourceLayer": "railway_signals",
+      "minzoom": 13,
+      "maxzoom": 16,
+      "sha256": "d05ad7e9c5664e4043da112b572958074c501a13f1e34855778cdd38d40c4d5a"
+    },
+    {
+      "id": "infrastructure-signal-supplement-points",
+      "type": "circle",
+      "source": "railwaySignalSupplement",
+      "sourceLayer": "railway_signals",
+      "minzoom": 16,
+      "sha256": "2452c39772513405c4c82d0a19e4fe4470f60e058f754cea70ad65cb26086bf4"
+    },
+    {
+      "id": "infrastructure-signal-supplement-references",
+      "type": "symbol",
+      "source": "railwaySignalSupplement",
+      "sourceLayer": "railway_signals",
+      "minzoom": 16,
+      "sha256": "1669fc441948e6d089b0a76dcbc548854a0bf857c2a670c35ce714045d7e9611"
     },
     {
       "id": "station-former-dots",
@@ -1585,6 +1758,64 @@
       "sourceLayer": "points_of_interest",
       "minzoom": 15,
       "sha256": "1e26a100367dc2d6329e2784b6adc274ec25d014ac7c0d6a51d0367f91f5a3fe"
+    },
+    {
+      "id": "electrification-substation-areas",
+      "type": "fill",
+      "source": "electricSubstations",
+      "sourceLayer": "electrification_substation",
+      "minzoom": 13,
+      "sha256": "1927237bcefefe9df4f4b8cf4f4a92a83546853da2cf23655d14149f255e76e1"
+    },
+    {
+      "id": "electrification-substation-edges",
+      "type": "line",
+      "source": "electricSubstations",
+      "sourceLayer": "electrification_substation",
+      "minzoom": 13,
+      "sha256": "08b240b479f649f2f76e47ef4ed190b7323b0a2c9cfb0d23fc3c994c44a7d876"
+    },
+    {
+      "id": "electrification-supply-points",
+      "type": "circle",
+      "source": "electricFacilities",
+      "minzoom": 10,
+      "sha256": "28e3d0910c3a8a9a1bb7c4a454c3bd4b97567dacd0d48b78fc25695dfa1e66f1"
+    },
+    {
+      "id": "electrification-former-supply-points",
+      "type": "circle",
+      "source": "electricFacilities",
+      "minzoom": 10,
+      "sha256": "b77ba1596c8a1e01bd6212e46e0504c8c584e69b2649dd48e0fe9804887d009e"
+    },
+    {
+      "id": "electrification-supply-marks",
+      "type": "symbol",
+      "source": "electricFacilities",
+      "minzoom": 13,
+      "sha256": "6ee5ca2db3e3611b1e0f5651a058de69adf8f7f3670ff02fd61055aa80ee11e4"
+    },
+    {
+      "id": "electrification-former-supply-marks",
+      "type": "symbol",
+      "source": "electricFacilities",
+      "minzoom": 13,
+      "sha256": "13362cc70f70518d32decc15e2cdc33ce8fe562f2c802b8bd38797318d7e8ffa"
+    },
+    {
+      "id": "electrification-supply-names",
+      "type": "symbol",
+      "source": "electricFacilities",
+      "minzoom": 14,
+      "sha256": "f9905fb2243348317d130dca7fa302cfea18e5787a1bfaa530b005e441985695"
+    },
+    {
+      "id": "electrification-former-supply-names",
+      "type": "symbol",
+      "source": "electricFacilities",
+      "minzoom": 14,
+      "sha256": "c4c49e4c8dcac59ab7508852a2ec99562e8c99188eb400561a2f0b0e7324fa70"
     },
     {
       "id": "road-labels",

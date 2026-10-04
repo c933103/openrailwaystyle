@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261004-polezoom2';
+import { MODES } from './map-model.mjs?v=20261004-signal-power4';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
@@ -35,7 +35,12 @@ function legacySemantics(layer) {
     if (id === 'platform-lengths') category = 'length';
     if (id === 'platform-numbers') category = 'number';
   }
-  if (/^infrastructure-(signal|entrance)-references$/.test(id)) settings = ['labels'];
+  if (/^electrification-(?:(?:former-)?supply-|substation-)/.test(id)) {
+    group = 'railway'; category = 'energy-supply'; views = ['electrification'];
+    settings = [...(/^electrification-former-/.test(id) ? ['inactive'] : []), ...(id.endsWith('-names') ? ['labels'] : [])];
+  }
+  if (/^infrastructure-signal-/.test(id)) views = ['infrastructure','control'];
+  if (/^infrastructure-(signal(?:-supplement)?|entrance)-references$/.test(id)) settings = ['labels'];
   if (terrain) { group = 'terrain'; category = layer.type; views = []; settings = ['relief']; }
   for (const categoryName of ['transport', 'destinations', 'constraints']) {
     if (id.startsWith(`context-${categoryName}-`)) { group = 'context'; category = categoryName; views = []; settings = [categoryName]; }

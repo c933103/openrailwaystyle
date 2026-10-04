@@ -1,6 +1,6 @@
-export {createPlatformLengths,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261004-polezoom2';
+export {createPlatformLengths,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261004-signal-power4';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261004-polezoom2';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261004-signal-power4';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -246,8 +246,47 @@ export const controlColor = (family, level) => level === 0 ? NO_PROTECTION : hsl
 export const familyShades = family => [1, 2, 3, 4].map(level => controlColor(family, level));
 export const trainProtection = code => TRAIN_PROTECTION.find(([c]) => c === code);
 export const trainProtectionName = code => trainProtection(code)?.[1] || code;
-export function controlPaint() {
-  return ['match', ['coalesce', ['get', 'train_protection0'], ''], ...TRAIN_PROTECTION.flatMap(([code, , family, level]) => [code, controlColor(family, level)]), UNKNOWN_COLOR];
+// The provider publishes three simultaneous systems in both overview and
+// detailed tiles (import/sql/tile_views.sql). Keep distinct codes even when
+// their colours coincide, and ignore repeated or empty slots.
+export function trainProtectionSystems(properties = {}) {
+  const normalize = code => {
+    const text = String(code ?? '').trim(), lower = text.toLowerCase();
+    return lower === 'no' ? 'none' : trainProtection(lower) ? lower : text;
+  };
+  const slots = [0, 1, 2].map(i => properties[`train_protection${i}`]);
+  const raw = properties.train_protection ?? properties['railway:train_protection'];
+  const values = [...slots, ...(Array.isArray(raw) ? raw : String(raw ?? '').split(';'))];
+  return [...new Set(values.map(normalize).filter(Boolean))];
+}
+function controlPropertiesExpression(result) {
+  const bindings = [0, 1, 2].flatMap(i => {
+    const raw = ['to-string', ['coalesce', ['get', `train_protection${i}`], '']], lower = ['downcase', raw];
+    return [`p${i}`, ['case', ['==', lower, 'no'], 'none', ['in', lower, ['var', 'known']], lower, raw]];
+  });
+  // A binding can read enclosing lets, but not earlier names in its own let.
+  return ['let', 'known', ['literal', TRAIN_PROTECTION.map(([code]) => code)], ['let', ...bindings, result]];
+}
+function controlSlotsExpression(result) {
+  const p0 = ['var','p0'], p1 = ['var','p1'], p2 = ['var','p2'], a = ['var','a'], b = ['var','b'];
+  return controlPropertiesExpression(
+    ['let', 'a', ['case', ['!=', p0, ''], p0, ['!=', p1, ''], p1, p2],
+      ['let', 'b', ['case', ['all', ['!=', p1, ''], ['!=', p1, a]], p1, ['all', ['!=', p2, ''], ['!=', p2, a]], p2, ''],
+        ['let', 'c', ['case', ['all', ['!=', p2, ''], ['!=', p2, a], ['!=', p2, b]], p2, ''], result]]]);
+}
+export function controlSystemExpression(index = 0) {
+  if (!Number.isInteger(index) || index < 0 || index > 2) throw new RangeError('Control system slot must be 0, 1 or 2');
+  return controlSlotsExpression(['var', ['a','b','c'][index]]);
+}
+export function controlCountExpression() {
+  const p0 = ['var','p0'], p1 = ['var','p1'], p2 = ['var','p2'];
+  return controlPropertiesExpression(['+',
+    ['case', ['!=', p0, ''], 1, 0],
+    ['case', ['all', ['!=', p1, ''], ['!=', p1, p0]], 1, 0],
+    ['case', ['all', ['!=', p2, ''], ['!=', p2, p0], ['!=', p2, p1]], 1, 0]]);
+}
+export function controlPaint(index = 0) {
+  return ['match', controlSystemExpression(index), ...TRAIN_PROTECTION.flatMap(([code, , family, level]) => [code, controlColor(family, level)]), UNKNOWN_COLOR];
 }
 // Track gauge on a continuous scale: gauges a few millimetres apart (1432 and
 // 1435, 1520 and 1524) get nearly the same colour, gauges far apart differ.
@@ -660,7 +699,7 @@ export function osmObject(feature) {
   }
   if (feature.sourceLayer === 'level_crossings') return Number.isInteger(feature.id) ? {type: 'node', id: String(feature.id)} : null;
   // The dedicated signal and entrance tile functions expose bare OSM node IDs.
-  if (['railwaySignals','stationEntrances'].includes(feature.source)) {
+  if (['railwaySignals','railwaySignalSupplementOverview','railwaySignalSupplement','stationEntrances'].includes(feature.source)) {
     const id=p.id??feature.id;
     return /^[1-9]\d*$/.test(String(id??''))?{type:'node',id:String(id)}:null;
   }
