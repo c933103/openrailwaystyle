@@ -89,7 +89,9 @@ export function createPlatformTileGeometry({tileURL,decode,fetcher=fetch,zoom=PL
   return promise;
  };
  // seeds: [[x,y]] tiles holding the visible piece. Resolves to
- // {length, length_estimated, length_basis} or null when it cannot be complete.
+ // {length, length_estimated, length_basis, tiles} or null when it cannot be
+ // complete; tiles lists the "x/y" keys read, so a caller can tell when a
+ // multipolygon part lies beyond them.
  async function measure(id,seeds){
   const n=2**zoom,queue=seeds.map(([x,y])=>[x,y]),seen=new Set(),found=[];let vertices=0;
   while(queue.length){
@@ -107,7 +109,7 @@ export function createPlatformTileGeometry({tileURL,decode,fetcher=fetch,zoom=PL
   if(!found.length)return null;
   if(found.every(f=>f.piece.type===2)){
    const length=found.reduce((sum,{x,y,piece})=>sum+piece.geometry.reduce((s,line)=>s+insideLength(zoom,x,y,piece.extent,line),0),0);
-   return length>0?{length,length_basis:'mapped_line'}:null;
+   return length>0?{length,length_basis:'mapped_line',tiles:[...seen]}:null;
   }
   if(!found.every(f=>f.piece.type===3))return null;
   // Separate parts of a multipolygon are measured separately. Pieces of one
@@ -120,7 +122,7 @@ export function createPlatformTileGeometry({tileURL,decode,fetcher=fetch,zoom=PL
   for(let i=0;i<rings.length;i++)for(let j=i+1;j<rings.length;j++){const a=bounds[i],b=bounds[j];if(a[0]<=b[2]+eps&&b[0]<=a[2]+eps&&a[1]<=b[3]+eps&&b[1]<=a[3]+eps&&ringsMeet(rings[i],rings[j]))parent[root(i)]=root(j);}
   const parts=new Map();rings.forEach((r,i)=>{const k=root(i);parts.set(k,[...(parts.get(k)||[]),...r]);});
   const length=Math.max(0,...[...parts.values()].map(extentOfPoints));
-  return length>0?{length,length_estimated:true,length_basis:'mapped_extent'}:null;
+  return length>0?{length,length_estimated:true,length_basis:'mapped_extent',tiles:[...seen]}:null;
  }
  return {measure};
 }
@@ -228,8 +230,8 @@ function platformTextAnchor(map,coordinates,ref,length){
 // before any API response. Platform lengths are measured from the provider's
 // platform tiles (createPlatformTileGeometry), one platform at a time.
 export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1100,maxEntries=512,cooldown=600000,retryDelay=30000,geometry=null,onLength=()=>{},onPlatform=()=>{}}={}){
- const cache=new Map(),pending=new Map(),drawn=new Map();let desired=new Map(),timer,wakeTimer,busy=false,disposed=false,controller,inflight,measuring=false,measureRetryAt=0,measureTimer;let pausedUntil=0;
- const remember=(key,properties)=>{cache.delete(key);cache.set(key,properties);while(cache.size>maxEntries)cache.delete(cache.keys().next().value);};
+ const cache=new Map(),pending=new Map(),drawn=new Map(),readTiles=new Map();let desired=new Map(),timer,wakeTimer,busy=false,disposed=false,controller,inflight,measuring=false,measureRetryAt=0,measureTimer;let pausedUntil=0;
+ const remember=(key,properties)=>{cache.delete(key);cache.set(key,properties);while(cache.size>maxEntries){const old=cache.keys().next().value;cache.delete(old);readTiles.delete(old);}};
  const pause=duration=>{pausedUntil=Date.now()+duration;clearTimeout(wakeTimer);wakeTimer=setTimeout(()=>{wakeTimer=undefined;pausedUntil=0;update();},duration);};
  const draw=()=>{
   if(disposed)return;
@@ -311,15 +313,29 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
   draw();schedule();measureNext();
  }
  // Lengths are shown from zoom 19; measure the visible platforms that still
- // lack one, nearest the start of the list first.
+ // lack one, nearest the start of the list first. Measuring follows a part
+ // across tile edges but cannot reach a separate part of a multipolygon in
+ // tiles it never read, so a relation seen in such a tile is measured again
+ // from there and keeps its longest part.
+ const unread=(key,entry,values)=>{
+  const seeds=platformTilesFor(entry.feature.geometry?.coordinates);
+  if(!values?.measured)return seeds;
+  if(platformObjectIdentity(entry.feature)?.type!=='relation')return null;
+  const read=readTiles.get(key)||new Set(),fresh=seeds.filter(([x,y])=>!read.has(`${x}/${y}`));
+  return fresh.length?fresh:null;
+ };
  async function measureNext(){
   if(!geometry||measuring||disposed||map.getZoom()<19)return;
   if(Date.now()<measureRetryAt){clearTimeout(measureTimer);measureTimer=setTimeout(measureNext,measureRetryAt-Date.now());return;}
-  const next=[...desired].find(([key,entry])=>entry.kind==='platform'&&!cache.get(key)?.measured&&platformObjectIdentity(entry.feature)?.type!=='node');if(!next)return;
+  let next,seeds;
+  for(const [key,entry] of desired){if(entry.kind!=='platform'||platformObjectIdentity(entry.feature)?.type==='node')continue;seeds=unread(key,entry,cache.get(key));if(seeds){next=[key,entry];break;}}
+  if(!next)return;
   const [key,entry]=next;measuring=true;
   try{
-   const result=await geometry.measure(entry.id,platformTilesFor(entry.feature.geometry?.coordinates));if(disposed)return;
-   remember(key,{...cache.get(key),...result,measured:true});draw();onPlatform(entry.id,cache.get(key));
+   const result=await geometry.measure(entry.id,seeds);if(disposed)return;
+   const previous=cache.get(key)||{},{tiles=seeds.map(([x,y])=>`${x}/${y}`),...measured}=result||{};
+   const keep=previous.measured&&previous.length>0&&!(measured.length>previous.length);
+   remember(key,{...previous,...(keep?{}:result?measured:{}),measured:true});readTiles.set(key,new Set([...(readTiles.get(key)||[]),...tiles]));draw();onPlatform(entry.id,cache.get(key));
   }catch{measureRetryAt=Date.now()+retryDelay;}
   finally{measuring=false;if(!disposed)measureNext();}
  }

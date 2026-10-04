@@ -257,3 +257,21 @@ test('interlocking multipolygon parts with overlapping bounds stay separate',asy
  assert.equal(ringsMeet(l,[[9,0.5],[12,0.5],[12,2],[9,2],[9,0.5]]),true,'overlapping pieces meet');
  assert.equal(ringsMeet(block,[[4,4],[5,4],[5,5],[4,5],[4,4]]),true,'a hole meets its outer ring');
 });
+test('a multipolygon part in tiles the first measurement never read is measured when it comes into view',async()=>{
+ // A 0.002° part and a 0.004° part about three zoom-15 tiles apart.
+ const short=[[[.0015,.002],[.0035,.002],[.0035,.0021],[.0015,.0021],[.0015,.002]]],long=[[[.0365,.002],[.0405,.002],[.0405,.0021],[.0365,.0021],[.0365,.002]]];
+ const tiles=providerTiles([{type:'Feature',properties:{id:'relation-31'},geometry:{type:'MultiPolygon',coordinates:[short,long]}}]);
+ let visible=short,data;
+ const map={getZoom:()=>19,getLayer:()=>({}),queryRenderedFeatures:({layers})=>layers.includes('platform-edges')?[]:[{properties:{id:'relation-31'},geometry:{type:'Polygon',coordinates:visible}}],getSource:id=>id==='platformNumbers'?{setData:d=>data=d}:null};
+ const p=createPlatformLengths(map,{delay:0,geometry:tiles.geometry,fetcher:async()=>({ok:true,json:async()=>({properties:{ref:'1'}})})});
+ try{
+  p.update();await new Promise(r=>setTimeout(r,30));
+  assert.ok(Math.abs(data.features[0].properties.platform_length-222.4)<.6,String(data.features[0].properties.platform_length));
+  const read=tiles.requests.length;p.update();await new Promise(r=>setTimeout(r,20));assert.equal(tiles.requests.length,read,'the same part is not measured again');
+  visible=long;p.update();await new Promise(r=>setTimeout(r,30));
+  assert.ok(Math.abs(data.features[0].properties.platform_length-444.78)<.6,String(data.features[0].properties.platform_length));
+  visible=short;p.update();await new Promise(r=>setTimeout(r,20));
+  assert.ok(Math.abs(data.features[0].properties.platform_length-444.78)<.6,'the longest part measured so far is kept');
+  assert.equal(p.enrich({source:'platforms',properties:{id:'relation-31'}}).properties.measuredTiles,undefined);
+ }finally{p.destroy();}
+});
