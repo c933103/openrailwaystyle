@@ -1,4 +1,4 @@
-name: Diagnose railway supply Overpass query
+name: Diagnose railway supply hint-set query
 on:
   push:
     branches: [feature/signal-power-facilities]
@@ -13,87 +13,59 @@ jobs:
   probe:
     if: github.ref == 'refs/heads/feature/signal-power-facilities'
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 3
     steps:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Compare native regex keys with literal lifecycle keys
+      - name: Probe bounded hints followed by local literal-key filtering
         run: |
           node --input-type=module <<'JS'
           const api='https://overpass-api.de/api/interpreter';
-          const box=[-90,-180,0,-90];
+          const box=[-90,-180,0,-90],bbox=`(${box.join(',')})`;
           const SUPPLIES='fuel|coaling_facility|water_tower|water_tank|water_crane|power_supply|preheating|power_station|substation';
           const POWER='substation|plant|generator|converter|frequency_converter|transformer';
           const RAIL='yes|rail|narrow_gauge|light_rail|subway|tram|monorail|power_station|substation';
           const PREFIXES=['','construction:','proposed:','disused:','abandoned:','razed:','demolished:','removed:'];
           const tokenPattern=options=>`(^|;)[[:space:]]*(${options})[[:space:]]*(;|$)`;
           const tagFilter=(key,options)=>`[${JSON.stringify(key)}~${JSON.stringify(tokenPattern(options))},i]`;
-          const familyFilter=(key,options)=>`[~${JSON.stringify(`^((construction|proposed|disused|abandoned|razed|demolished|removed):)?${key}$`)}~${JSON.stringify(tokenPattern(options))},i]`;
-          const bbox=`(${box.join(',')})`;
-          const complete=selectors=>`[out:json][timeout:25][maxsize:134217728];(${selectors.join('')});out body center qt;`;
-          function regexKeyQuery() {
-            const power=familyFilter('power',POWER),tank=familyFilter('man_made','water_tower|storage_tank');
-            const railwayHint=familyFilter('railway',RAIL);
-            return complete([
-              `nwr${familyFilter('railway',SUPPLIES)}${bbox};`,
-              `nwr${familyFilter('railway:electricity','power_supply')}${bbox};`,
-              `nwr${power}${tagFilter('substation','traction')}${bbox};`,
-              `nwr${familyFilter('power','transformer')}${tagFilter('transformer','traction')}${bbox};`,
-              `nwr${power}${railwayHint}${bbox};`,
-              `nwr${power}${tagFilter('usage','railway|traction')}${bbox};`,
-              `nwr${power}${tagFilter('landuse','railway')}${bbox};`,
-              `nwr${power}${tagFilter('frequency','16\\.(7|67|66[67]?)')}${bbox};`,
-              `nwr${tank}${railwayHint}${bbox};`,
-              `nwr${tank}${tagFilter('landuse','railway')}${bbox};`,
-              `nwr${tank}${tagFilter('usage','railway|traction')}${bbox};`,
-            ]);
+          const hints=PREFIXES.map(prefix=>`nwr${tagFilter(`${prefix}railway`,RAIL)}${bbox};`);
+          hints.push(`nwr${tagFilter('substation','traction')}${bbox};`,
+            `nwr${tagFilter('transformer','traction')}${bbox};`,
+            `nwr${tagFilter('usage','railway|traction')}${bbox};`,
+            `nwr${tagFilter('landuse','railway')}${bbox};`,
+            `nwr${tagFilter('frequency','16\\.(7|67|66[67]?)')}${bbox};`);
+          const selectors=[];
+          for(const prefix of PREFIXES) {
+            // Item_Constraint returns prefer_ranges, so these regex-value
+            // filters inspect only the already bounded hint objects locally.
+            selectors.push(`nwr.hints${tagFilter(`${prefix}power`,POWER)};`,
+              `nwr.hints${tagFilter(`${prefix}man_made`,'water_tower|storage_tank')};`,
+              `nwr${tagFilter(`${prefix}railway`,SUPPLIES)}${bbox};`,
+              `nwr${tagFilter(`${prefix}railway:electricity`,'power_supply')}${bbox};`);
           }
-          function literalKeyQuery() {
-            const selectors=[];
-            for(const prefix of PREFIXES) {
-              const power=tagFilter(`${prefix}power`,POWER),tank=tagFilter(`${prefix}man_made`,'water_tower|storage_tank');
-              selectors.push(
-                `nwr${tagFilter(`${prefix}railway`,SUPPLIES)}${bbox};`,
-                `nwr${tagFilter(`${prefix}railway:electricity`,'power_supply')}${bbox};`,
-                `nwr${power}${tagFilter('substation','traction')}${bbox};`,
-                `nwr${tagFilter(`${prefix}power`,'transformer')}${tagFilter('transformer','traction')}${bbox};`,
-                `nwr${power}${tagFilter('usage','railway|traction')}${bbox};`,
-                `nwr${power}${tagFilter('landuse','railway')}${bbox};`,
-                `nwr${power}${tagFilter('frequency','16\\.(7|67|66[67]?)')}${bbox};`,
-                `nwr${tank}${tagFilter('landuse','railway')}${bbox};`,
-                `nwr${tank}${tagFilter('usage','railway|traction')}${bbox};`,
-              );
-              for(const railwayPrefix of PREFIXES) {
-                const hint=tagFilter(`${railwayPrefix}railway`,RAIL);
-                selectors.push(`nwr${power}${hint}${bbox};`,`nwr${tank}${hint}${bbox};`);
-              }
-            }
-            return complete(selectors);
-          }
-          async function probe(name,query) {
-            const start=performance.now();
-            const result={name,bbox:box,selectors:(query.match(/nwr\[/g)||[]).length,keyRegex:query.includes('[~')};
+          // The count is diagnostic only; no count objects enter a snapshot.
+          const query=`[out:json][timeout:60][maxsize:134217728];(${hints.join('')})->.hints;.hints out count;(${selectors.join('')});out body center qt;`;
+          const start=performance.now();
+          const result={name:'bounded-hints-local-literal-filters-45',bbox:box,hintSelectors:hints.length,
+            localSelectors:16,directSelectors:16,keyRegex:query.includes('[~'),http:null,remark:null,elements:null,hints:null};
+          try {
+            const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:query}),
+              headers:{'User-Agent':'RailwayAtlas-query-probe/1.0 (+https://github.com/c933103/openrailwaystyle)'},
+              signal:AbortSignal.timeout(75000)});
+            result.http=response.status;
+            const text=await response.text();result.bytes=Buffer.byteLength(text);
             try {
-              const response=await fetch(api,{method:'POST',body:new URLSearchParams({data:query}),
-                headers:{'User-Agent':'RailwayAtlas-query-probe/1.0 (+https://github.com/c933103/openrailwaystyle)'},
-                signal:AbortSignal.timeout(35000)});
-              result.http=response.status;
-              const text=await response.text();result.bytes=Buffer.byteLength(text);
-              try {
-                const json=JSON.parse(text);
-                result.remark=json.remark||null;
-                result.elements=Array.isArray(json.elements)?json.elements.length:null;
-                result.osmBase=json.osm3s?.timestamp_osm_base||null;
-              } catch {
-                result.parseError=true;
-                result.preview=text.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0,200);
-              }
-            } catch(error) {result.error={name:error.name,message:error.message};}
-            result.durationMs=Math.round(performance.now()-start);
-            console.log(JSON.stringify(result));
-          }
-          await probe('v4-native-regex-keys-11',regexKeyQuery());
-          await new Promise(resolve=>setTimeout(resolve,10000));
-          await probe('v5-literal-keys-200',literalKeyQuery());
+              const json=JSON.parse(text);
+              result.remark=json.remark||null;
+              result.elements=Array.isArray(json.elements)?json.elements.filter(element=>element.type!=='count').length:null;
+              result.hints=json.elements?.find(element=>element.type==='count')?.tags||null;
+              result.osmBase=json.osm3s?.timestamp_osm_base||null;
+            } catch {
+              result.parseError=true;
+              result.preview=text.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0,200);
+            }
+          } catch(error) {result.error={name:error.name,message:error.message};}
+          result.durationMs=Math.round(performance.now()-start);
+          console.log(JSON.stringify(result));
           JS
