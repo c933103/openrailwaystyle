@@ -138,7 +138,7 @@ try {
     await page.waitForTimeout(100);
     const found=await evaluate((map,sample)=>{
       const out=[];
-      const atZoom=value=>Array.isArray(value)?value.length===1&&value[0]==='zoom'?sample.zoom:value.map(atZoom):value;
+      const atZoom=value=>Array.isArray(value)?value.length===1&&value[0]==='zoom'?['literal',sample.zoom]:value.map(atZoom):value;
       for(const layer of map.getStyle().layers.filter(layer=>layer.id.startsWith('context-'))){
         for(const feature of map.querySourceFeatures(layer.source,{sourceLayer:layer['source-layer'],filter:atZoom(layer.filter)})){
           // Geometry is a getter on MapLibre's feature prototype. Read it
