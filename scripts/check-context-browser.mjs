@@ -167,27 +167,27 @@ try {
       for(const sourceLayer of ['poi','aerodrome_label']){
         for(const f of map.querySourceFeatures('openmaptiles',{sourceLayer})){
           const category=contextCategory(f.properties,sourceLayer);
-          if(category)add(out,`context-${category.group}-${category.id}-label`,{...f,sourceLayer});
+          if(category)add(out,`context-${category.group}-${category.id}-label`,{properties:f.properties,geometry:f.geometry,sourceLayer});
         }
       }
       for(const f of map.querySourceFeatures('openmaptiles',{sourceLayer:'landuse'})){
         for(const area of AREA_CATEGORIES)if(area.values.includes(f.properties.class)){
-          add(out,`context-destinations-${area.id}-area`,{...f,sourceLayer:'landuse'});
-          add(out,`context-destinations-${area.id}-edge`,{...f,sourceLayer:'landuse'});
+          add(out,`context-destinations-${area.id}-area`,{properties:f.properties,geometry:f.geometry,sourceLayer:'landuse'});
+          add(out,`context-destinations-${area.id}-edge`,{properties:f.properties,geometry:f.geometry,sourceLayer:'landuse'});
         }
         if(['bus_station','railway'].includes(f.properties.class)){
-          add(out,'context-transport-grounds',{...f,sourceLayer:'landuse'});
-          add(out,'context-transport-grounds-edge',{...f,sourceLayer:'landuse'});
+          add(out,'context-transport-grounds',{properties:f.properties,geometry:f.geometry,sourceLayer:'landuse'});
+          add(out,'context-transport-grounds-edge',{properties:f.properties,geometry:f.geometry,sourceLayer:'landuse'});
         }
       }
       for(const f of map.querySourceFeatures('openmaptiles',{sourceLayer:'aeroway'})){
         if(['aerodrome','apron','terminal','runway','taxiway'].includes(f.properties.class)&&f.geometry?.type!=='LineString')
-          add(out,'context-transport-airport-area',{...f,sourceLayer:'aeroway'});
+          add(out,'context-transport-airport-area',{properties:f.properties,geometry:f.geometry,sourceLayer:'aeroway'});
         if(['runway','taxiway'].includes(f.properties.class)&&/LineString/.test(f.geometry?.type||''))
-          add(out,'context-transport-airport-runways',{...f,sourceLayer:'aeroway'});
+          add(out,'context-transport-airport-runways',{properties:f.properties,geometry:f.geometry,sourceLayer:'aeroway'});
       }
       for(const f of map.querySourceFeatures('openmaptiles',{sourceLayer:'transportation'}))
-        if(f.properties.class==='ferry')add(out,'context-transport-ferry-routes',{...f,sourceLayer:'transportation'});
+        if(f.properties.class==='ferry')add(out,'context-transport-ferry-routes',{properties:f.properties,geometry:f.geometry,sourceLayer:'transportation'});
       return out;
     },sample);
     console.log('CONTEXT_SAMPLE',sample.name,found.length);
