@@ -1,3 +1,4 @@
+import {seabedContourOpacity} from '../../styles/bathymetry.mjs';
 import {ORM} from '../../styles/map-model.mjs';
 import {annotateLayers} from '../../styles/layer-semantics.mjs';
 import {createSources, GLYPHS} from './sources/index.mjs';
@@ -38,6 +39,8 @@ export function composeStyle({majorStationData, curatedFilter}) {
     ...rail.names, ...lifecycle.names, ...rail.badges,
     ...stations.names, ...countryLayers,
   ]);
+  layers.splice(layers.findIndex(l=>l.id==='water')+1,0,{id:'terrain-bathymetry',type:'raster',source:'bathymetry',paint:{'raster-fade-duration':0,'raster-resampling':'linear'}});
+  for(const layer of layers)if(['terrain-seabed-contours','terrain-seabed-contours-close'].includes(layer.id))layer.paint['line-opacity']=seabedContourOpacity();
   annotateLayers(layers);
   // Preserve the first frame's default Speed view, before saved settings apply.
   for (const layer of layers) {
