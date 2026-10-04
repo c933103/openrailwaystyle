@@ -367,6 +367,7 @@ function stationObject(osmId) {
   return null;
 }
 function showDetails(feature) {
+  if(['platforms','platformNumbers'].includes(feature.source))platformLengths?.inspect(feature);
   if(['platformEdges','platformLengths','platforms','platformNumbers'].includes(feature.source))feature=platformLengths?.enrich(feature)||feature;
   currentFeature = feature;
   if(['railwaySignals','stationEntrances'].includes(feature.source)){showRailwayPointDetails(feature);return;}

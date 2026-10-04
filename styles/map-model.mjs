@@ -476,7 +476,7 @@ const CHINESE_ORDER = {
     TW: ['name'],
     HK: ['name:zh','name:zh-Hant','name:zh-HK','name:zh-TW','name'],
     CN: ['name:zh-Hant','name:zh-TW','name:zh-HK','name:zh','name'],
-    '': ['name:zh-Hant','name:zh-TW','name:zh-HK','name:zh','name:zh-Hans','name:zh-CN'],
+    '': ['name:zh-Hant','name:zh','name:zh-TW','name:zh-HK','name:zh-Hans','name:zh-CN'],
   },
   'zh-Hans': {
     CN: ['name'],

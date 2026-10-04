@@ -27,14 +27,15 @@ test('platform label anchors stay in the visible tip at maximum zoom',()=>{
  assert.ok(Math.abs(platformExtent(polygon.geometry)-444.7797)<.01,'placement clipping never changes the complete area extent');
 });
 
-test('zoom 19 upgrades cached platform references to complete geometry and preserves object identity',async()=>{
+test('opening a platform upgrades its cached reference to complete geometry from Overpass and preserves object identity',async()=>{
  let zoom=17,data,shown,requests=[];
  const platform={properties:{id:'way-23'},geometry:{type:'Polygon',coordinates:[[[.0035,0],[.004,0],[.004,.0001],[.0035,.0001],[.0035,0]]]}};
  const source={setData:d=>data=d},map={getZoom:()=>zoom,getLayer:()=>({}),queryRenderedFeatures:({layers})=>layers.includes('platform-edges')?[]:[platform],getSource:id=>id==='platformNumbers'?source:null};
- const p=createPlatformLengths(map,{delay:0,onPlatform:()=>shown=p.enrich({...platform,source:'platforms'}),fetcher:async url=>{requests.push(url);return {ok:true,json:async()=>url.includes('openstreetmap.org')?fullPlatform():{properties:{ref:['1','2']}}};}});
+ const p=createPlatformLengths(map,{delay:0,onPlatform:()=>shown=p.enrich({...platform,source:'platforms'}),fetcher:async url=>{requests.push(url);return {ok:true,json:async()=>url.startsWith('https://overpass-api.de/')?fullPlatform():{properties:{ref:['1','2']}}};}});
  try{
   p.update();await new Promise(r=>setTimeout(r,20));assert.equal(data.features[0].properties.ref,'1 / 2');assert.equal(data.features[0].properties.platform_length,undefined);
-  zoom=19;p.update();await new Promise(r=>setTimeout(r,20));assert.equal(requests.length,2);assert.match(requests[1],/way\/23\/full\.json$/);assert.ok(data.features[0].properties.platform_length>444);assert.equal(data.features[0].geometry.type,'Point');assert.equal(shown.properties.length_estimated,true);assert.deepEqual(osmObject(data.features[0]),{type:'way',id:'23'});
+  zoom=19;p.update();await new Promise(r=>setTimeout(r,20));assert.equal(requests.length,1,'visible platforms never fetch complete objects on their own');
+  p.inspect(platform);await new Promise(r=>setTimeout(r,20));assert.equal(requests.length,2);assert.equal(decodeURIComponent(requests[1].split('data=')[1]),'[out:json][timeout:15];way(23);(._;>;);out;');assert.ok(data.features[0].properties.platform_length>444);assert.equal(data.features[0].geometry.type,'Point');assert.equal(shown.properties.length_estimated,true);assert.deepEqual(osmObject(data.features[0]),{type:'way',id:'23'});
   zoom=18;p.update();assert.equal(data.features[0].properties.platform_length,undefined);zoom=22;p.update();assert.equal(requests.length,2);assert.ok(data.features[0].properties.platform_length>444);
  }finally{p.destroy();}
 });
@@ -188,7 +189,7 @@ test('a larger buffered tile fragment outside the viewport cannot displace the v
   const bounds={getWest:()=>.0195,getEast:()=>.0205,getSouth:()=>0,getNorth:()=>.001};let data;
   const map={getZoom:()=>19,getBounds:()=>bounds,queryRenderedFeatures:({layers})=>layers.includes('platform-areas')?[visible,outside]:[],getSource:id=>id==='platformNumbers'?{setData:d=>data=d}:null};
   const tracker=createPlatformLengths(map,{delay:0,fetcher:async()=>({ok:true,json:async()=>({elements:[{type:'way',id:23,tags:{ref:'1',length:'350'}}]})})});
-  try{tracker.update();await new Promise(r=>setTimeout(r,20));assert.equal(data.features.length,1);assert.equal(data.features[0].properties.platform_length,350);assert.ok(data.features[0].geometry.coordinates[0]>=.0195);}finally{tracker.destroy();}
+  try{tracker.update();await new Promise(r=>setTimeout(r,20));tracker.inspect(visible);await new Promise(r=>setTimeout(r,20));assert.equal(data.features.length,1);assert.equal(data.features[0].properties.platform_length,350);assert.ok(data.features[0].geometry.coordinates[0]>=.0195);}finally{tracker.destroy();}
 });
 
 
@@ -223,4 +224,16 @@ test('dense platform tiles share one anchor budget and reuse anchors for redraws
  const map={getZoom:()=>18,getLayer:()=>({}),getContainer:()=>({clientWidth:100,clientHeight:100}),project:([x,y])=>{projects++;return {x:50+x*1000,y:50+y*1000};},unproject:([x,y])=>({lng:(x-50)/1000,lat:(y-50)/1000}),queryRenderedFeatures:({layers})=>layers.includes('platform-edges')?[]:features,getSource:id=>id==='platformNumbers'?{setData:d=>data=d}:null};
  const p=createPlatformLengths(map,{delay:0,fetcher:async()=>({ok:true,json:async()=>({properties:{ref:'1'}})})});
  try{p.update();const first=projects;assert.ok(first>0&&first<PLATFORM_UPDATE_LIMITS.vertices);assert.ok(data.features.length>0&&data.features.length<500);await new Promise(r=>setTimeout(r,15));assert.ok(projects<=first*2+2,'the lookup redraw only projects its label point; its following update may recompute geometry anchors');}finally{p.destroy();}
+});
+
+test('an opened platform Overpass no longer has is cached as not found without pausing the queue',async()=>{
+ let data,requests=[];
+ const platform={properties:{id:'relation-24'},geometry:{type:'Polygon',coordinates:[[[0,0],[.004,0],[.004,.0001],[0,.0001],[0,0]]]}};
+ const map={getZoom:()=>19,getLayer:()=>({}),queryRenderedFeatures:({layers})=>layers.includes('platform-edges')?[]:[platform],getSource:id=>id==='platformNumbers'?{setData:d=>data=d}:null};
+ const p=createPlatformLengths(map,{delay:0,fetcher:async url=>{requests.push(url);return {ok:true,json:async()=>url.startsWith('https://overpass-api.de/')?{elements:[]}:{properties:{ref:['5']}}};}});
+ try{
+  p.update();await new Promise(r=>setTimeout(r,20));p.inspect(platform);await new Promise(r=>setTimeout(r,20));
+  assert.equal(requests.length,2);assert.match(decodeURIComponent(requests[1]),/relation\(24\);\(\._;>;\);out;$/);
+  p.inspect(platform);await new Promise(r=>setTimeout(r,20));assert.equal(requests.length,2);assert.equal(data.features[0].properties.ref,'5');
+ }finally{p.destroy();}
 });

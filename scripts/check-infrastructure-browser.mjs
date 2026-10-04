@@ -58,8 +58,8 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
   await route.fulfill({body:tile?Buffer.from(vtpbf.fromGeojsonVt({[layer]:tile},{version:2})):Buffer.alloc(0),contentType:'application/x-protobuf'});
  });
  await page.route('https://tiles.maps.eox.at/**',route=>route.fulfill({body:png,contentType:'image/png'}));
- await page.route('https://api.openstreetmap.org/api/0.6/**',async route=>{
-  const match=/\/(node|way|relation)\/(\d+)/.exec(new URL(route.request().url()).pathname),[,type,id]=match,key=`${type}-${id}`;
+ await page.route('https://overpass-api.de/api/interpreter**',async route=>{
+  const match=/^\[out:json\]\[timeout:15\];(node|way|relation)\((\d+)\);/.exec(new URL(route.request().url()).searchParams.get('data')),[,type,id]=match,key=`${type}-${id}`;
   const f=datasets.standard_railway_platforms.find(f=>f.properties.id===key);assert.ok(f);
   const coordinates=f.geometry.type==='Polygon'?f.geometry.coordinates[0]:f.geometry.type==='Point'?[f.geometry.coordinates]:f.geometry.coordinates;
   const nodes=coordinates.map(([lon,lat],i)=>({type:'node',id:10000+i,lon,lat}));

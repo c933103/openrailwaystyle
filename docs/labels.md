@@ -18,7 +18,7 @@ entry is the suffix of an OSM `name:*` tag.
 | Taiwan | `name` | `zh-Hans` → `zh-CN` → `zh` → `name` |
 | Hong Kong and Macau | `zh` → `zh-Hant` → `zh-HK` → `zh-TW` → `name` | `zh-Hans` → `zh-CN` → `zh` → `zh-Hant` → `zh-HK` → `zh-TW` → `name` |
 | Mainland China | `zh-Hant` → `zh-TW` → `zh-HK` → `zh` → `name` | `name` |
-| Elsewhere | `zh-Hant` → `zh-TW` → `zh-HK` → `zh` → `zh-Hans` → `zh-CN` | `zh-Hans` → `zh` → `zh-CN` → `zh-Hant` → `zh-TW` → `zh-HK` |
+| Elsewhere | `zh-Hant` → `zh` → `zh-TW` → `zh-HK` → `zh-Hans` → `zh-CN` | `zh-Hans` → `zh` → `zh-CN` → `zh-Hant` → `zh-TW` → `zh-HK` |
 
 In those four areas the local `name` is used as recorded, even when it is not Chinese (KFC, K11), and ends the list; elsewhere the other script always comes before borrowed names and English, so a name recorded only in the other script is shown. Taiwan wording ranks before Hong Kong wording; `zh-SG`, `zh-MY` and `zh-MO` are too rare to consult.
 
@@ -49,9 +49,9 @@ Coasts are simplified to about 1 km. Sea within 12 nautical miles goes to the ne
 Unicode script checks include supplementary-plane Han characters; names are never automatically translated, transliterated or converted between character standards. If no preferred name exists, the native name remains visible.
 
 Chinese labels load a packaged regional CJK font with coverage of both Chinese
-scripts. Consequently a recorded Simplified name used as a Traditional fallback
-(for example Wuhan or Washington Union Station without Traditional tags) uses
-one consistent font. Fonts load alongside the map and replace cached glyphs
+scripts, so a name drawn in either script, or mixing both, uses one consistent
+font. A Simplified name shown in the Traditional view (and the reverse) is drawn
+as recorded. Fonts load alongside the map and replace cached glyphs
 when ready; each selected script's font is cached for later offline use. Neither
 font is part of mandatory app installation. Source, coverage and regeneration
 instructions are in [the font reference](../styles/fonts/README.md).
