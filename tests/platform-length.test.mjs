@@ -190,3 +190,27 @@ test('a larger buffered tile fragment outside the viewport cannot displace the v
   const tracker=createPlatformLengths(map,{delay:0,fetcher:async()=>({ok:true,json:async()=>({elements:[{type:'way',id:23,tags:{ref:'1',length:'350'}}]})})});
   try{tracker.update();await new Promise(r=>setTimeout(r,20));assert.equal(data.features.length,1);assert.equal(data.features[0].properties.platform_length,350);assert.ok(data.features[0].geometry.coordinates[0]>=.0195);}finally{tracker.destroy();}
 });
+
+
+test('rotated viewport anchors use projected screen bounds instead of loose geographic bounds',async()=>{
+  const {platformScreenAnchor}=await import('../styles/platform-length.mjs');
+  const feature={geometry:{type:'Polygon',coordinates:[[[0,0],[4,0],[4,1],[0,1],[0,0]]]}};
+  const bounds={getWest:()=>-1,getEast:()=>3,getSouth:()=>-1,getNorth:()=>3};
+  const map={getBounds:()=>bounds,getContainer:()=>({clientWidth:100,clientHeight:100}),project:([x,y])=>({x:100*(x+y),y:100*(y-x)+150}),unproject:([x,y])=>({lng:(x-y+150)/200,lat:(x+y-150)/200})};
+  assert.ok(map.project(platformLabelAnchor(feature,bounds)).x>100,'geographic rectangle permits an off-screen anchor');
+  const point=map.project(platformScreenAnchor(feature,map));assert.ok(point.x>=0&&point.x<=100&&point.y>=0&&point.y<=100);
+  const line={geometry:{type:'LineString',coordinates:[[0,0],[4,0]]}};
+  const linePoint=map.project(platformScreenAnchor(line,map));assert.ok(linePoint.x>=0&&linePoint.x<=100&&linePoint.y>=0&&linePoint.y<=100);
+});
+
+
+test('large public platform geometry is withheld before quadratic hull and anchor scans',async()=>{
+  const {PLATFORM_GEOMETRY_LIMITS,readPlatformResponse}=await import('../styles/platform-length.mjs');
+  const count=32000,ring=Array.from({length:count},(_,i)=>[Math.cos(i/count*2*Math.PI)*.001,Math.sin(i/count*2*Math.PI)*.001]);ring.push(ring[0]);
+  assert.equal(platformExtent({type:'Polygon',coordinates:[ring]}),0);assert.equal(platformLabelAnchor({geometry:{type:'Polygon',coordinates:[ring]}}),null);
+  const data={elements:[{type:'way',id:23,nodes:Array.from({length:count},(_,i)=>i),tags:{ref:'1'}}]};
+  assert.equal(platformOSMDetails(data,{type:'way',id:'23'}).length,undefined);
+  data.elements[0].tags.length='350';assert.equal(platformOSMDetails(data,{type:'way',id:'23'}).length,350,'explicit tag needs no geometry scan');
+  const body='x'.repeat(PLATFORM_GEOMETRY_LIMITS.responseBytes+1);await assert.rejects(readPlatformResponse(new Response(body)),/response budget/);
+  assert.deepEqual(await readPlatformResponse(new Response('{"elements":[]}')),{elements:[]});
+});

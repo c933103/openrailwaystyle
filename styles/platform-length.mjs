@@ -3,6 +3,14 @@
 export const PLATFORM_SOURCE='standard_railway_platform_edges';
 export const PLATFORM_API='https://openrailwaymap.app/api/feature/openrailwaymap_standard/'+PLATFORM_SOURCE+'/';
 const OBSOLETE_REQUEST=Symbol('obsolete platform request');
+export const PLATFORM_GEOMETRY_LIMITS={elements:4096,members:64,vertices:1024,responseBytes:2*1024*1024};
+function boundedGeometry(geometry){let count=0;const visit=p=>Array.isArray(p)&&(!Array.isArray(p[0])?++count<=PLATFORM_GEOMETRY_LIMITS.vertices:p.every(visit));return !!geometry&&visit(geometry.coordinates);}
+export async function readPlatformResponse(response){
+ if(!response.body?.getReader)return response.json();
+ const reader=response.body.getReader(),decoder=new TextDecoder();let bytes=0,text='';
+ try{for(;;){const {value,done}=await reader.read();if(done)break;bytes+=value.byteLength;if(bytes>PLATFORM_GEOMETRY_LIMITS.responseBytes){const error=new Error('Platform response budget exceeded');error.platformBudget=true;throw error;}text+=decoder.decode(value,{stream:true});}text+=decoder.decode();return JSON.parse(text);}
+ finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
+}
 export function formatPlatformLength(metres,units='metric') {if(!(metres>0&&Number.isFinite(metres)))return '';return `${Math.round(units==='imperial'?metres/0.3048:metres)} ${units==='imperial'?'ft':'m'}`;}
 export function platformLengthLabel(units='metric') {
  const length=['concat',['case',['==',['get','length_estimated'],true],'≈',''],['to-string',['round',['*',['get','platform_length'],units==='imperial'?1/0.3048:1]]],units==='imperial'?' ft':' m'];
@@ -34,10 +42,14 @@ export function platformAnchor(feature){
 // tile. The provider's platform feature API supplies references but no geometry.
 export function platformOSMURL(object){return `https://api.openstreetmap.org/api/0.6/${object.type}/${object.id}${object.type==='node'?'':'/full'}.json`;}
 export function platformOSMDetails(data,object){
- const elements=new Map((data.elements||[]).map(e=>[`${e.type}/${e.id}`,e])),entry=elements.get(`${object.type}/${object.id}`);
+ const rows=data.elements||[],entry=rows.find(e=>e.type===object.type&&String(e.id)===String(object.id));
  if(!entry)throw new Error('Platform object missing from OSM response');
  const tags=entry.tags||{},properties={name:tags.name||'',ref:tags.ref||'',complete:true};
- const points=way=>way?.nodes?.map(id=>{const n=elements.get(`node/${id}`);return n&&Number.isFinite(n.lon)&&Number.isFinite(n.lat)?[n.lon,n.lat]:null;});
+ const tagged=parsePlatformLength(tags.length);
+ if(tagged)return {...properties,length:tagged,length_basis:'mapped_tag'};
+ if(rows.length>PLATFORM_GEOMETRY_LIMITS.elements||entry.members?.length>PLATFORM_GEOMETRY_LIMITS.members)return {...properties,geometry_limited:true};
+ const elements=new Map(rows.map(e=>[`${e.type}/${e.id}`,e]));let vertices=0;
+ const points=way=>{if(!way?.nodes)return;vertices+=way.nodes.length;if(vertices>PLATFORM_GEOMETRY_LIMITS.vertices)return;return way.nodes.map(id=>{const n=elements.get(`node/${id}`);return n&&Number.isFinite(n.lon)&&Number.isFinite(n.lat)?[n.lon,n.lat]:null;});};
  let geometry;
  if(object.type==='way'){
   const line=points(entry);
@@ -55,8 +67,6 @@ export function platformOSMDetails(data,object){
  }
  // An explicitly mapped length takes precedence; a point still cannot give
  // a geometric measurement. A missing coordinate never becomes a short span.
- const tagged=parsePlatformLength(tags.length);
- if(tagged)return {...properties,length:tagged,length_basis:'mapped_tag'};
  if(!geometry)return properties;
  if(geometry.type==='LineString')return {...properties,length:platformSpan({geometry}),length_basis:'mapped_line'};
  const length=platformExtent(geometry);
@@ -66,6 +76,7 @@ export function platformOSMDetails(data,object){
 // This is an estimate of mapped longitudinal extent, never the polygon perimeter
 // or a claim about usable boarding length. Separate multipolygon parts stay separate.
 export function platformExtent(geometry){
+ if(!boundedGeometry(geometry))return 0;
  const rings=geometry.type==='Polygon'?[geometry.coordinates[0]]:geometry.type==='MultiPolygon'?geometry.coordinates.map(p=>p[0]):[];
  return Math.max(0,...rings.map(ring=>{
   if(ring.length<4)return 0;const origin=ring[0],rad=Math.PI/180,scale=6371000*rad,cos=Math.cos(origin[1]*rad);
@@ -80,15 +91,20 @@ export function platformExtent(geometry){
 }
 // A point label on the visible platform fragment avoids tiled polygon/line
 // anchors that lie offscreen at close zoom. Clip only for placement, never length.
-export function platformLabelAnchor(feature,bounds){
- const g=feature.geometry;if(!g)return null;if(g.type==='Point')return g.coordinates;
+export function platformLabelAnchor(feature,bounds,screen=false){
+ const g=feature.geometry;if(!boundedGeometry(g))return null;
  const limits=bounds?[bounds.getWest(),bounds.getSouth(),bounds.getEast(),bounds.getNorth()]:null;
  const inside=p=>!limits||p[0]>=limits[0]&&p[0]<=limits[2]&&p[1]>=limits[1]&&p[1]<=limits[3];
+ if(g.type==='Point')return inside(g.coordinates)?g.coordinates:null;
  const clipSegment=(a,b)=>{let lo=0,hi=1;if(limits)for(let j=0;j<2;j++){const delta=b[j]-a[j];if(!delta){if(a[j]<limits[j]||a[j]>limits[j+2])return null;}else{const t1=(limits[j]-a[j])/delta,t2=(limits[j+2]-a[j])/delta;lo=Math.max(lo,Math.min(t1,t2));hi=Math.min(hi,Math.max(t1,t2));if(lo>hi)return null;}}return [a.map((v,j)=>v+(b[j]-v)*lo),a.map((v,j)=>v+(b[j]-v)*hi)];};
  if(['LineString','MultiLineString'].includes(g.type)){
   const lines=g.type==='LineString'?[g.coordinates]:g.coordinates,parts=[];
   for(const line of lines){let current=[];for(let i=1;i<line.length;i++){const piece=clipSegment(line[i-1],line[i]);if(!piece){current=[];continue;}if(current.length&&current.at(-1).every((v,j)=>Math.abs(v-piece[0][j])<1e-10))current.push(piece[1]);else{current=piece;parts.push(current);}}}
-  return platformAnchor({geometry:{type:'MultiLineString',coordinates:parts}});
+  if(!screen)return platformAnchor({geometry:{type:'MultiLineString',coordinates:parts}});
+  const ranked=parts.map(line=>{const lengths=line.slice(1).map((p,i)=>Math.hypot(p[0]-line[i][0],p[1]-line[i][1]));return {line,lengths,total:lengths.reduce((a,b)=>a+b,0)};}).sort((a,b)=>b.total-a.total),best=ranked[0];
+  if(!best)return null;let left=best.total/2;
+  for(let i=0;i<best.lengths.length;i++){if(left<=best.lengths[i]){const t=best.lengths[i]?left/best.lengths[i]:0;return best.line[i].map((v,j)=>v+(best.line[i+1][j]-v)*t);}left-=best.lengths[i];}
+  return null;
  }
  const polygons=g.type==='Polygon'?[g.coordinates]:g.type==='MultiPolygon'?g.coordinates:[];
  let best=null,score=0;
@@ -97,7 +113,15 @@ export function platformLabelAnchor(feature,bounds){
  // excluded; intersect the resulting interior intervals with the viewport.
  for(const polygon of polygons){
   const ys=[...new Set(polygon.flat().map(p=>p[1]).filter(y=>!limits||y>limits[1]&&y<limits[3]))];
-  if(limits)ys.push(limits[1],limits[3]);
+  if(limits){
+   ys.push(limits[1],limits[3]);
+   // A diagonal can enter a viewport corner between vertex heights. Include
+   // vertical-border intersections so a narrow visible triangle is sampled.
+   for(const ring of polygon)for(let i=0;i<ring.length;i++){
+    const a=ring[i],b=ring[(i+1)%ring.length];
+    for(const x of [limits[0],limits[2]])if((a[0]-x)*(b[0]-x)<0){const y=a[1]+(b[1]-a[1])*(x-a[0])/(b[0]-a[0]);if(y>limits[1]&&y<limits[3])ys.push(y);}
+   }
+  }
   ys.sort((a,b)=>a-b);
   for(let band=1;band<ys.length;band++){
    const y=(ys[band-1]+ys[band])/2,crossings=[];
@@ -113,6 +137,17 @@ export function platformLabelAnchor(feature,bounds){
    }
   }
  }return best&&inside(best)?best:null;
+}
+// Bearing and pitch make getBounds() a loose geographic rectangle. Place
+// labels inside the actual projected viewport, then return ground coordinates.
+export function platformScreenAnchor(feature,map){
+ if(!boundedGeometry(feature.geometry))return null;
+ const container=map.getContainer?.();
+ if(!map.project||!map.unproject||!container?.clientWidth||!container?.clientHeight)return platformLabelAnchor(feature,map.getBounds?.());
+ const project=coordinates=>Array.isArray(coordinates[0])?coordinates.map(project):(()=>{const p=map.project(coordinates);return [p.x,p.y];})();
+ const geometry=feature.geometry;if(!geometry)return null;
+ const anchor=platformLabelAnchor({geometry:{...geometry,coordinates:project(geometry.coordinates)}},{getWest:()=>0,getSouth:()=>0,getEast:()=>container.clientWidth,getNorth:()=>container.clientHeight},true);
+ if(!anchor)return null;const point=map.unproject(anchor);return [point.lng,point.lat];
 }
 function platformTextAnchor(map,coordinates,ref,length){
  const point=map.project?.(coordinates),container=map.getContainer?.();if(!point||!container?.clientWidth)return 'center';
@@ -132,11 +167,11 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
   for(const [key,entry] of desired){
    const {kind,id,feature:f}=entry,p={...f.properties,...cache.get(key)},ref=platformReference(p.ref);
    if(kind==='edge'){
-    const length=Number(p.length),coordinates=platformLabelAnchor(f,map.getBounds?.());
+    const length=Number(p.length),coordinates=platformScreenAnchor(f,map);
     if(coordinates&&(ref||length>0&&map.getZoom()>=19))edges.push({type:'Feature',id,geometry:{type:'Point',coordinates},properties:{id:`way-${id}`,osm_type:'way',osm_id:id,feature:'platform_edge',ref,label_anchor:platformTextAnchor(map,coordinates,ref,length),...(length>0&&Number.isFinite(length)&&map.getZoom()>=19?{platform_length:length}:{})}});
    }else if(ref||Number(p.length)>0&&map.getZoom()>=19){
     const object=platformObjectIdentity(f);
-    const coordinates=platformLabelAnchor(f,map.getBounds?.());if(!coordinates)continue;
+    const coordinates=platformScreenAnchor(f,map);if(!coordinates)continue;
     platforms.push({type:'Feature',id,geometry:{type:'Point',coordinates},properties:{id,osm_type:object.type,osm_id:object.id,feature:'platform',name:p.name||'',ref,label_anchor:platformTextAnchor(map,coordinates,ref,Number(p.length)),...(Number(p.length)>0&&map.getZoom()>=19?{platform_length:p.length,length_estimated:!!p.length_estimated,length_basis:p.length_basis}:{})}});
    }
   }
@@ -155,7 +190,7 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
    const r=await fetcher(url,{signal:requestController.signal});if(r.status===429){pause(cooldown);pending.clear();return;}
    if(r.status===404||r.status===410){remember(key,{...cache.get(key),complete:!!requested.full});draw();return;}
    if(!r.ok)throw new Error(`HTTP ${r.status}`);
-   const data=await r.json(),entry=requested;if(disposed)return;
+   const data=await readPlatformResponse(r),entry=requested;if(disposed)return;
    const raw=entry.full?platformOSMDetails(data,platformObjectIdentity(entry.feature)):data.properties||{},length=Number(raw.length),properties={...(entry.full?raw:{}),name:raw.name||entry.feature.properties?.name||'',ref:raw.ref??entry.feature.properties?.ref??''};
    if(entry.kind==='edge')properties.length=Number.isFinite(length)&&length>0?length:null;
    remember(key,properties);draw();
@@ -164,7 +199,7 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
   // A pan, view change or temporary zoom reduction can hide and then reveal
   // this same key before its abort rejection settles. That cancellation is
   // not a provider failure; genuine failures and request timeouts still pause.
-  catch(error){if(requestController.signal.reason!==OBSOLETE_REQUEST&&desired.get(key)?.url&&!disposed)pause(retryDelay);}
+  catch(error){if(error.platformBudget){remember(key,{...cache.get(key),complete:!!requested.full,geometry_limited:true});draw();}else if(requestController.signal.reason!==OBSOLETE_REQUEST&&desired.get(key)?.url&&!disposed)pause(retryDelay);}
   // A reappearing key was skipped while it was inflight. Refresh desired and
   // pending entries after releasing it so it can be requested without a move.
   finally{clearTimeout(timeout);busy=false;inflight=undefined;controller=undefined;update();}
@@ -173,8 +208,7 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
  function update(){
   if(disposed)return;desired=new Map();
   if(active()&&map.getZoom()>=17){
-   const bounds=map.getBounds?.();
-   const better=(f,previous,span)=>!previous||!!platformLabelAnchor(f,bounds)&&!platformLabelAnchor(previous.feature,bounds)||!!platformLabelAnchor(f,bounds)===!!platformLabelAnchor(previous.feature,bounds)&&span(f)>span(previous.feature);
+   const better=(f,previous,span)=>!previous||!!platformScreenAnchor(f,map)&&!platformScreenAnchor(previous.feature,map)||!!platformScreenAnchor(f,map)===!!platformScreenAnchor(previous.feature,map)&&span(f)>span(previous.feature);
    for(const f of map.queryRenderedFeatures({layers:['platform-edges']})){
     const id=platformIdentity(f);if(!id)continue;const key='edge/'+id,previous=desired.get(key);
     if(better(f,previous,platformSpan))desired.set(key,{kind:'edge',id,feature:f,url:map.getZoom()>=19?PLATFORM_API+id:null});
