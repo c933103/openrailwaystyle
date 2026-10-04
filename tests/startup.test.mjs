@@ -324,7 +324,8 @@ test('curated hubs take their names from the provider station tiles by OSM ident
  try{
   const map=maps[0],source=map.getSource.bind(map);
   map.getSource=id=>id==='stations'?{tiles:['atlasstation://en/https://tiles.test/stations/{z}/{x}/{y}']}:source(id);
-  map.getBounds=()=>({getWest:()=>-80,getEast:()=>-70,getSouth:()=>35,getNorth:()=>45});
+  // New York two world copies east: the hub must still count as in view.
+  map.getBounds=()=>({getWest:()=>640,getEast:()=>650,getSouth:()=>35,getNorth:()=>45});
   map.handlers['style.load']();
   for(let i=0;i<50&&!map.sourceData?.stationMajor?.features.length;i++)await new Promise(r=>setTimeout(r,0));
   const named=map.sourceData?.stationMajor?.features.find(f=>f.properties.wikidata==='Q54451');

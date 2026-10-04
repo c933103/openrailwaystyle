@@ -1,15 +1,15 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-curated5';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-curated5';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-curated5';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-curated6';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-curated6';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-curated6';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-curated5';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-curated5';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-curated5';
-import { installGlobeDrag, allowPolarCentres, readoutZoom } from './globe-drag.mjs?v=20261004-curated5';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-curated5';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-curated5';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-curated5';
-import { installWatchGesture } from './watch-map.mjs?v=20261004-curated5';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-curated6';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-curated6';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-curated6';
+import { installGlobeDrag, allowPolarCentres, readoutZoom } from './globe-drag.mjs?v=20261004-curated6';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-curated6';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-curated6';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-curated6';
+import { installWatchGesture } from './watch-map.mjs?v=20261004-curated6';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -44,7 +44,7 @@ let legendHelpOpen = false;
 let platformLengths;
 let powerFacilities;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-curated5';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-curated6';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -303,7 +303,9 @@ function updateMajorStations(){
  majorStationsPromise.then(async data=>{
   // Only the hubs this view can show are named; others wait for their view.
   const west=bounds.getWest()-10,east=bounds.getEast()+10,south=bounds.getSouth()-10,north=bounds.getNorth()+10;
-  const wanted=data.features.filter(f=>{const [lon,lat]=f.geometry.coordinates,l=lon<west?lon+360:lon>east?lon-360:lon;return (f.properties.tier??7)<=Math.floor(zoom)&&l>=west&&l<=east&&lat>=south&&lat<=north;});
+  // Into the world copy the view shows, however far it was panned.
+  const centre=(west+east)/2;
+  const wanted=data.features.filter(f=>{const [lon,lat]=f.geometry.coordinates,l=lon+360*Math.round((centre-lon)/360);return (f.properties.tier??7)<=Math.floor(zoom)&&l>=west&&l<=east&&lat>=south&&lat<=north;});
   const named=await Promise.all(wanted.map(f=>majorStationName(f,language).catch(()=>null)));
   if(generation!==majorStationGeneration||!ready||language!==settings.language||source!==map.getSource('stationMajor'))return;
   const names=new Map(wanted.map((f,i)=>[f.id,named[i]]));
@@ -317,6 +319,11 @@ function updateMajorStations(){
   }).filter(Boolean);
   majorStationSearchData={type:'FeatureCollection',language,features};
   source.setData({type:'FeatureCollection',features});
+  // An open curated station's panel follows its renamed feature.
+  if(currentFeature?.source==='stationMajor'&&!$('details').hidden){
+   const renamed=features.find(f=>f.properties.id===currentFeature.properties?.id);
+   if(renamed&&renamed.properties.atlas_name!==currentFeature.properties.atlas_name){currentFeature.properties=renamed.properties;showDetails(currentFeature);}
+  }
  }).catch(error=>console.warn('Major station names unavailable:',error.message));
 }
 function applySettings() {
