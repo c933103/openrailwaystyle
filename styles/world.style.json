@@ -6095,6 +6095,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "paint": {
@@ -6902,6 +6903,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "paint": {
@@ -55785,6 +55787,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       },
       "layout": {
