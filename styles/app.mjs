@@ -319,12 +319,25 @@ function updateMajorStations(){
   }).filter(Boolean);
   majorStationSearchData={type:'FeatureCollection',language,features};
   source.setData({type:'FeatureCollection',features});
-  // An open curated station's panel follows its renamed feature.
-  if(currentFeature?.source==='stationMajor'&&!$('details').hidden){
-   const renamed=features.find(f=>f.properties.id===currentFeature.properties?.id);
-   if(renamed&&renamed.properties.atlas_name!==currentFeature.properties.atlas_name){currentFeature.properties=renamed.properties;showDetails(currentFeature);}
-  }
  }).catch(error=>console.warn('Major station names unavailable:',error.message));
+}
+// An open curated station's panel follows a language change on its own,
+// whether or not the overview currently shows that hub.
+function renameOpenMajorStation(){
+ const open=currentFeature;
+ const curatedData=majorStationsPromise||(majorStationData&&Promise.resolve(majorStationData));
+ if(open?.source!=='stationMajor'||$('details').hidden||!stationTileFor||!curatedData)return;
+ stationTileURL ||= map.getSource('stations')?.tiles?.[0]?.replace(/^atlasstation:\/\/[^/]+\//,'');
+ if(!stationTileURL)return;
+ const language=settings.language;
+ curatedData.then(data=>{
+  const curated=data.features.find(f=>f.properties.id===open.properties?.id);
+  return curated&&majorStationName(curated,language).then(p=>{
+   if(!p||currentFeature!==open||language!==settings.language||$('details').hidden)return;
+   open.properties={...curated.properties,name:p.name,localized_name:p.localized_name,atlas_name:p.atlas_name,atlas_language:language,atlas_name_source:'provider'};
+   showDetails(open);
+  });
+ }).catch(()=>{});
 }
 function applySettings() {
   syncWatchLayout();
@@ -1343,7 +1356,7 @@ function reloadLanguage() {
     if(appliedLanguage!==settings.language) {reloadLanguage();return;}
     applySettings();applyUnits();updateStatus();
     document.body.dataset.mapReady = 'true';
-    if(currentFeature) showDetails(currentFeature);
+    if(currentFeature) {showDetails(currentFeature);renameOpenMajorStation();}
     const action = pendingView; pendingView = undefined; action?.();
   });
   map.setStyle(style,{diff:false,localIdeographFontFamily:cjkFont(appliedLanguage)});
