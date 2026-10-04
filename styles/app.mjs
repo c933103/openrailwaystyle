@@ -1,16 +1,17 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-heritage1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-heritage1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-heritage1';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-crossingtags6';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261004-crossingtags6';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-crossingtags6';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-crossingtags6';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-heritage1';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-heritage1';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-heritage1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261004-heritage1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-heritage1';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-heritage1';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-heritage1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261004-heritage1';
-import { installWatchGesture } from './watch-map.mjs?v=20261004-heritage1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-crossingtags6';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-crossingtags6';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-crossingtags6';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261004-crossingtags6';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-crossingtags6';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-crossingtags6';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-crossingtags6';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261004-crossingtags6';
+import { installWatchGesture } from './watch-map.mjs?v=20261004-crossingtags6';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -45,7 +46,7 @@ let legendHelpOpen = false;
 let platformLengths,frequencyExpiry;
 let powerFacilities;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-heritage1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-crossingtags6';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -628,10 +629,10 @@ function showDepartures(panel, feature) {
 // OpenStreetMap API when a crossing is opened (the crossing tiles hold only
 // its kind and id).
 const DETAIL_CROSSING_ZOOM = 9;
-const CROSSING_TAGS = [['crossing:barrier','Barriers'],['crossing:light','Lights'],['crossing:bell','Bells'],['crossing:activation','Activation'],
-  ['crossing:supervision','Supervision'],['crossing:on_demand','On demand'],['crossing:saltire','Saltire (St Andrew\'s cross)'],['crossing:chicane','Chicane'],
-  ['crossing','Crossing type'],['access','Access'],['description','Description'],['name','Name'],['ref','Reference']];
-const crossingCache=new Map();
+// Older crossing snapshots have no tags in their tiles; their manifest
+// lacks the flag, so an untagged crossing is not reported as unequipped.
+let crossingTagsKnown;
+const crossingDataHasTags=()=>crossingTagsKnown||=fetch(new URL('./data/level-crossings/manifest.json',import.meta.url)).then(r=>r.ok?r.json():{}).then(m=>m.tags===true).catch(()=>{crossingTagsKnown=undefined;return false;});
 async function nearestCrossing(lngLat) {
   // Columns wrap (world copies of the flat map, and 180° itself).
   const z=DETAIL_CROSSING_ZOOM, n=2**z, x=((Math.floor((lngLat.lng+180)/360*n)%n)+n)%n, lat=lngLat.lat*Math.PI/180;
@@ -653,13 +654,6 @@ async function nearestCrossing(lngLat) {
     }
     return best;
   } catch { return null; }
-}
-function crossingTags(id) {
-  if(!crossingCache.has(id)) crossingCache.set(id,fetch(`https://api.openstreetmap.org/api/0.6/node/${id}.json`).then(async response=>{
-    if(!response.ok) throw new Error(`OpenStreetMap returned ${response.status}`);
-    return (await response.json()).elements?.[0]?.tags || {};
-  }).catch(error=>{crossingCache.delete(id);throw error;}));
-  return crossingCache.get(id);
 }
 function showRailwayPointDetails(feature) {
   const p=feature.properties,signal=SIGNAL_SOURCES.includes(feature.source),panel=$('detail-content');
@@ -703,15 +697,18 @@ function showInfrastructureContext(feature) {
   if(feature.sourceLayer==='level_crossings') {
     panel.append(textNode('h2',p.kind==='foot'?'Pedestrian level crossing':'Road level crossing'));
     osmLink(panel,feature);
-    const status=textNode('p','Loading the mapped equipment…','small');panel.append(status);
-    $('details').hidden=false;
-    if(Number.isInteger(feature.id)) crossingTags(feature.id).then(tags=>{
-      if(!status.isConnected) return;
+    if(Number.isInteger(feature.id)) {
+      // The crossing snapshot's detail tiles carry the tags themselves.
       const dl=document.createElement('dl');
-      for(const [key,label] of CROSSING_TAGS) row(dl,label,tags[key]?.replaceAll('_',' ').replaceAll(';',', '));
-      status.replaceWith(...(dl.children.length?[dl]:[]),textNode('p',dl.children.length?'From the crossing\'s OpenStreetMap tags; absence of a tag does not prove absence of equipment.':'No equipment is tagged on this crossing in OpenStreetMap.','small'));
-    }).catch(()=>{ if(status.isConnected) status.textContent='The mapped equipment could not load. Try again later, or open the crossing on OpenStreetMap.'; });
-    else status.textContent='Zoom in to pick out a single crossing.';
+      for(const [key,label] of CROSSING_TAGS) row(dl,label,typeof p[key]==='string'?p[key].replaceAll('_',' ').replaceAll(';',', '):undefined);
+      if(p.tags_unreadable) panel.append(textNode('p','This crossing\'s tags could not be read into the map data; the crossing on OpenStreetMap shows them.','small'));
+      else if(dl.children.length) panel.append(dl,textNode('p','From the crossing\'s OpenStreetMap tags; absence of a tag does not prove absence of equipment.','small'));
+      else {
+        const note=textNode('p','','small');panel.append(note);
+        crossingDataHasTags().then(tags=>{note.textContent=tags?'No equipment is tagged on this crossing in OpenStreetMap.':'Equipment details come with the next crossing data update; the crossing on OpenStreetMap shows them now.';});
+      }
+    } else panel.append(textNode('p','Zoom in to pick out a single crossing.','small'));
+    $('details').hidden=false;
     return;
   }
   panel.append(textNode('h2',crossing ? (p.feature==='general/crossing'?'Pedestrian level crossing':'Road level crossing') : 'Track in shared roadway'));
