@@ -23,7 +23,19 @@ requests, preserving the provider's original Latin glyphs and their shared cache
 Browser checks inspect the actual TinySDF canvas font and distinct bitmaps for
 Simplified and Traditional Han characters, rather than only the global option.
 
-Only the selected Chinese font is downloaded. It loads alongside the map;
-when ready, the application replaces cached label glyphs. A failed font download
-retains the system-font fallback. The service worker caches fonts separately,
-so neither file enlarges or blocks mandatory app installation.
+Neither file is downloaded when the device's own Chinese font is complete.
+`styles/cjk-font.mjs` probes the installed candidates for the label script
+with a few characters from each set: Simplified (GB 2312), Traditional (Big5),
+Hong Kong (HKSCS), Macao (MSCS), Japanese (JIS), compatibility ideographs and
+Extensions A and B. A 676-byte probe font, which maps every Han code point to
+an empty glyph, follows each candidate so a missing character measures zero
+wide. The first candidate covering every set is used. When the best installed
+Chinese font is partial (for example Microsoft JhengHei, which has no
+Simplified forms), the matching file is fetched once Han labels are actually
+drawn; until then and if it fails, the installed font stays in use. With no
+named candidate installed (Android exposes none) the system's own fallback
+draws the labels. Japanese and Korean keep their installed fonts, since these
+files are Chinese designs. Characters beyond these files' coverage (such as
+some Macao and later-extension characters) are not yet fetched on demand.
+The service worker caches fonts separately, so neither file enlarges or
+blocks mandatory app installation.

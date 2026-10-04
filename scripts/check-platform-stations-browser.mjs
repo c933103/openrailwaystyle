@@ -21,6 +21,15 @@ const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshade
 await mkdir('browser-review',{recursive:true});
 try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  const page=await browser.newPage({viewport:{width,height},hasTouch:kind==='mobile',deviceScaleFactor:kind==='mobile'?2:1,serviceWorkers:'block'}),errors=[],requests=[];
+ // Deterministic installed fonts: every Chinese candidate name is a stand-in
+ // built from the packaged font, partial as on Windows (Microsoft JhengHei
+ // has no Simplified forms; neither has Extension B). Page fonts take
+ // precedence over installed fonts of the same name.
+ await page.addInitScript(()=>{
+  const stand=(names,file,unicodeRange)=>{for(const name of names)document.fonts.add(new FontFace(name,`url(fonts/${file})`,{unicodeRange}));};
+  stand(['Noto Sans TC','Noto Sans CJK TC','Source Han Sans TC','PingFang TC','Microsoft JhengHei'],'atlas-cjk-tc-v1.woff2','U+3000-987E,U+9880-9FFF,U+F900-FAFF');
+  stand(['Noto Sans SC','Noto Sans CJK SC','Source Han Sans SC','PingFang SC','Microsoft YaHei','Hiragino Sans GB'],'atlas-cjk-sc-v1.woff2','U+3000-9FFF,U+F900-FAFF');
+ });
  page.on('pageerror',error=>errors.push(error.message));
  if(runtime)await page.route('https://cdn.jsdelivr.net/npm/**',async route=>{const path=new URL(route.request().url()).pathname,local=path.includes('maplibre-gl')?'maplibre-gl/dist/'+path.split('/').at(-1):'pmtiles/dist/pmtiles.js';await route.fulfill({body:await readFile(`${runtime}/${local}`),contentType:path.endsWith('.css')?'text/css':'text/javascript'});});
  await page.route('https://tuiles.enliberte.fr/planet.pmtiles',route=>route.fulfill({body:archive,contentType:'application/octet-stream'}));
@@ -42,6 +51,9 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  await page.goto(base+'?mode=infrastructure&language=zh-Hant&background=plain&relief=0&stations=0&names=0&inactive=0&trackCounts=0&transport=0&destinations=0&constraints=0#19/35.1167/129.0440',{waitUntil:'domcontentloaded'});
  await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:60000});
  await page.evaluate(async platforms=>{window.reviewMap=(await import(document.querySelector('script[type="module"]').src)).map;window.platformGeometries=Object.fromEntries(platforms.map(f=>[f.properties.id,f]));window.platformScreenAnchor=(await import('./platform-length.mjs')).platformScreenAnchor;},platforms);
+ const drawHan=async()=>{await page.waitForFunction(()=>window.reviewMap.isStyleLoaded()&&window.reviewMap.getStyle()?.layers,undefined,{timeout:30000});await page.evaluate(async()=>{const map=window.reviewMap,stack=map.getStyle().layers.find(l=>l.id.startsWith('station-')&&l.type==='symbol').layout['text-font'].join(',');await map.style.glyphManager.getGlyphs({[stack]:[...'頓顿'].map(c=>c.codePointAt(0))});});};
+ // The packaged font is fetched once Han glyphs are drawn with a partial font.
+ await drawHan();
  await page.waitForFunction(()=>document.fonts.check('24px "Atlas CJK TC"')&&window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Atlas CJK TC'),undefined,{timeout:30000});
  const checkGlyphs=async code=>{
   const result=await page.evaluate(async code=>{
@@ -79,6 +91,8 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  }
  if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();
  await page.selectOption('#language','zh-Hans');
+ await page.waitForFunction(()=>window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Microsoft YaHei')||window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Noto Sans SC'),undefined,{timeout:30000});
+ await drawHan();
  await page.waitForFunction(()=>document.fonts.check('24px "Atlas CJK SC"')&&window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Atlas CJK SC'),undefined,{timeout:30000});
  await checkGlyphs('SC');
  const counts=new Map();for(const id of requests)counts.set(id,(counts.get(id)||0)+1);assert.ok([...counts.values()].every(n=>n===1),'pans, zooms and font/style changes reuse measuring tiles');

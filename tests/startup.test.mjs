@@ -8,6 +8,7 @@ import * as draw from '../styles/draw.mjs';
 import * as departuresModule from '../styles/departures.mjs';
 import * as elevationModule from '../styles/elevation.mjs';
 import * as contextFeatures from '../styles/context.mjs';
+import * as cjkFontFeatures from '../styles/cjk-font.mjs';
 import * as powerFacilities from '../styles/power-facilities.mjs';
 import * as controlFunctions from '../styles/map-controls.mjs';
 import * as watchModule from '../styles/watch-map.mjs';
@@ -18,7 +19,7 @@ const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '' } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '' } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -27,6 +28,15 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   if(fontFaces){
     const registered=new Set();Object.defineProperty(window.document,'fonts',{value:{ready:Promise.resolve(),add:f=>registered.add(f),delete:f=>registered.delete(f)}});
     window.FontFace=class{constructor(family,url){this.family=family;this.url=url;fonts.push(this);}load(){return new Promise((resolve,reject)=>{this.finish=()=>resolve(this);this.fail=()=>reject(new Error('font offline'));});}};
+  }
+  if(installedFonts){
+    // A 2D context measuring Han characters by the first listed family that
+    // has them; the probe font ("Atlas Probe") draws nothing.
+    const measure=(font,character)=>{const family=/"([^"]+)"/.exec(font)?.[1];return installedFonts[family]?.includes(character)?32:0;};
+    window.OffscreenCanvas=class{getContext(){return {font:'',measureText(text){return {width:measure(this.font,text)};}};}};
+    window.CanvasRenderingContext2D=class{constructor(){this.value='';}};
+    Object.defineProperty(window.CanvasRenderingContext2D.prototype,'font',{configurable:true,get(){return this.value;},set(value){this.value=value;}});
+    window.CanvasRenderingContext2D.prototype.lang='';
   }
   window.console.error = error => errors.push(error);
   class Map {
@@ -123,6 +133,9 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   }, {context});
   const globe = new vm.SyntheticModule(['installGlobeDrag','allowPolarCentres','readoutZoom'], function() { this.setExport('installGlobeDrag', () => ({sync() {}, justDragged: () => false})); this.setExport('allowPolarCentres', () => ({refresh() {}}));this.setExport('readoutZoom',zoom=>zoom);  }, {context});
   const keyboard = new vm.SyntheticModule(['installKeyboardPan'], function() { this.setExport('installKeyboardPan', () => {}); }, {context});
+  const cjkFontModule = new vm.SyntheticModule(Object.keys(cjkFontFeatures),function() {
+    for (const [key,value] of Object.entries(cjkFontFeatures)) this.setExport(key,value);
+  },{context});
   const contextModule = new vm.SyntheticModule(Object.keys(contextFeatures),function() {
     for (const [key,value] of Object.entries(contextFeatures)) this.setExport(key,value);
   },{context});
@@ -136,24 +149,55 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     for (const [key,value] of Object.entries(controlFunctions)) this.setExport(key,value);
   }, {context});
   const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
-  await app.link(specifier => specifier.includes('watch-map.mjs') ? watch : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  await app.link(specifier => specifier.includes('watch-map.mjs') ? watch : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries,loadLabels,fonts};
 }
 
-test('Chinese font downloads do not block startup and refresh glyphs only for the current script',async()=>{
- const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true});
+const ALL_PROBES='顿頓嘢冧𨋢俆㜏駅峠畑\uF900\uFA11㐀㙟𠮷';
+test('a complete installed Chinese font is used without any download',async()=>{
+ const {dom,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true,installedFonts:{'Noto Sans CJK TC':ALL_PROBES}});
  try{
-  assert.equal(maps.length,1,'map starts while font remains pending');assert.equal(fonts.length,1);assert.match(fonts[0].url,/atlas-cjk-tc-v1\.woff2/);
-  assert.deepEqual(errors,[]);const map=maps[0];map.handlers['style.load']();assert.equal(window.document.body.dataset.mapReady,'true');
-  const language=window.document.getElementById('language');language.value='zh-Hans';language.dispatchEvent(new window.Event('change'));assert.equal(fonts.length,2);
-  fonts[0].finish();await new Promise(r=>setTimeout(r,0));assert.ok(!map.styleOptions.localIdeographFontFamily.includes('Atlas CJK TC'),'a stale download cannot overwrite the selected script');
-  fonts[1].finish();await new Promise(r=>setTimeout(r,0));assert.equal(map.styleOptions.localIdeographFontFamily,'"Atlas CJK SC"');
+  assert.equal(fonts.length,1,'only the 676-byte probe font');assert.equal(fonts[0].family,'Atlas Probe');
+  fonts[0].finish();await new Promise(r=>setTimeout(r,0));
+  const map=maps[0];map.handlers['style.load']();await new Promise(r=>setTimeout(r,0));
+  assert.equal(map.styleOptions?.localIdeographFontFamily??map.options.localIdeographFontFamily,'"Noto Sans CJK TC",sans-serif');
+  const glyphs=new dom.window.CanvasRenderingContext2D();glyphs.font='400 24px "Noto Sans CJK TC",sans-serif';
+  assert.equal(glyphs.lang,'zh-TW');assert.equal(fonts.length,1,'drawing Han labels with a complete font downloads nothing');assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('a partial installed Chinese font fetches the packaged font only once Han labels are drawn, for the current script',async()=>{
+ // Microsoft JhengHei: Big5 without Simplified forms or Extension B.
+ const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true,installedFonts:{'Microsoft JhengHei':'頓嘢冧俆㜏駅峠畑\uF900\uFA11㐀㙟','Microsoft YaHei':'顿頓嘢冧俆㜏駅峠畑\uF900\uFA11㐀㙟'}});
+ try{
+  fonts[0].finish();await new Promise(r=>setTimeout(r,0));
+  const map=maps[0];map.handlers['style.load']();await new Promise(r=>setTimeout(r,0));
+  assert.equal(map.styleOptions.localIdeographFontFamily,'"Microsoft JhengHei",sans-serif','the best installed font meanwhile');
+  assert.equal(fonts.length,1,'nothing is fetched before Han labels are drawn');
+  const glyphs=new window.CanvasRenderingContext2D();glyphs.font='400 24px "Microsoft JhengHei",sans-serif';
+  assert.equal(fonts.length,2);assert.match(fonts[1].url,/atlas-cjk-tc-v1\.woff2/);
+  const language=window.document.getElementById('language');language.value='zh-Hans';language.dispatchEvent(new window.Event('change'));
+  await new Promise(r=>setTimeout(r,0));
+  fonts[1].finish();await new Promise(r=>setTimeout(r,0));assert.ok(!map.styleOptions.localIdeographFontFamily.includes('Atlas CJK TC'),'a stale download cannot overwrite the selected script');
+  glyphs.font='400 24px "Microsoft YaHei",sans-serif';
+  assert.equal(fonts.length,3);assert.match(fonts[2].url,/atlas-cjk-sc-v1\.woff2/);
+  fonts[2].finish();await new Promise(r=>setTimeout(r,0));assert.equal(map.styleOptions.localIdeographFontFamily,'"Atlas CJK SC"');
   assert.ok(map.options.style.layers.filter(l=>l.type==='symbol'&&l.layout?.['text-font']).every(l=>l.layout['text-font'].includes('Atlas CJK SC')),'explicit Noto stacks must also include the loaded Han font');
   assert.match(map.options.style.glyphs,/^atlasglyph:\/\//,'Latin glyph requests strip the added local family');
-  language.value='zh-Hant';language.dispatchEvent(new window.Event('change'));assert.equal(fonts.length,2);assert.equal(map.styleOptions.localIdeographFontFamily,'"Atlas CJK TC"','previously loaded font is reused');
+  language.value='zh-Hant';language.dispatchEvent(new window.Event('change'));assert.equal(fonts.length,3);assert.equal(map.styleOptions.localIdeographFontFamily,'"Atlas CJK TC"','previously loaded font is reused');
   assert.ok(map.options.style.layers.filter(l=>l.type==='symbol'&&l.layout?.['text-font']).every(l=>l.layout['text-font'].includes('Atlas CJK TC')&&!l.layout['text-font'].includes('Atlas CJK SC')),'switching script replaces every explicit local font');
+  assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('Japanese labels keep the installed Japanese font even when it is partial',async()=>{
+ const {dom,window,maps,fonts}=await start({search:'?language=ja',fontFaces:true,installedFonts:{'Yu Gothic':'頓駅峠畑\uF900\uFA11㐀'}});
+ try{
+  fonts[0].finish();await new Promise(r=>setTimeout(r,0));maps[0].handlers['style.load']();await new Promise(r=>setTimeout(r,0));
+  const glyphs=new window.CanvasRenderingContext2D();glyphs.font='400 24px "Yu Gothic",sans-serif';
+  assert.equal(glyphs.lang,'ja');assert.equal(fonts.length,1,'the packaged fonts are Chinese designs');
  }finally{dom.window.close();}
 });
 

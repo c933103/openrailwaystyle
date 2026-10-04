@@ -6,6 +6,7 @@ import encode from 'vt-pbf';
 import {chooseName, mergeStationTranslation, stationLanguages, stationPending, ORM, ownerColor} from './map-model.mjs';
 import {hanRegion, chineseArea} from './han-region.mjs';
 import {axleLoad} from './axle-load.mjs';
+import {isLocalFamily} from './cjk-font.mjs';
 import {decodeLoadingGauges, wayId} from './loading-gauge-list.mjs';
 export {hanRegion, chineseArea};
 export const buildInfo=typeof __ATLAS_BUILD_INFO__ === 'undefined' ? {version:'development',commit:''} : __ATLAS_BUILD_INFO__;
@@ -15,7 +16,7 @@ export const buildInfo=typeof __ATLAS_BUILD_INFO__ === 'undefined' ? {version:'d
 // still download from the provider's original Noto Sans stack.
 export function glyphRequestURL(value){
  const url=new URL(value.replace(/^atlasglyph:\/\//,'')),parts=url.pathname.split('/'),stack=decodeURIComponent(parts.at(-2));
- parts[parts.length-2]=encodeURIComponent(stack.split(',').filter(f=>!/^Atlas CJK (TC|SC)$/.test(f.trim())).join(','));
+ parts[parts.length-2]=encodeURIComponent(stack.split(',').filter(f=>!isLocalFamily(f)).join(','));
  url.pathname=parts.join('/');return url.href;
 }
 
