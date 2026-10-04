@@ -253,11 +253,10 @@ const lowZoomStationTextColor = () => settings.stationImportanceColors
   : ['step', ['zoom'], LOW_ZOOM_STATION_TEXT_COLOR, 7, DEFAULT_STATION_TEXT_COLOR];
 // Curated hubs (major-stations.geojson) decide which station is shown at
 // zooms 3–6. Their names come, like every other station label, from the
-// provider's station tiles through the same language handling: zoom 8 holds
-// nearly every hub; one the provider groups under a metro station appears
-// from zoom 10, which is read only when zoom 8 has no match. A tile entry is the curated
+// provider's station tiles through the same language handling: zoom 8 is
+// the first zoom whose tiles hold every railway station. A tile entry is the curated
 // station when its OSM identity is the curated object or one of its aliases.
-const MAJOR_NAME_ZOOMS=[8,10],MAJOR_NAME_TILES=256;
+const MAJOR_NAME_ZOOMS=[8],MAJOR_NAME_TILES=256;
 let majorStationData,majorStationSearchData,majorStationsPromise,stationTileFor=null,stationTileURL=null,majorStationGeneration=0;
 const majorStationTiles=new Map();
 const tileIdentity=id=>/^(node|way|relation)-[1-9]\d*/.exec(String(id??''))?.[0];

@@ -3724,10 +3724,7 @@
   },
   {
     "osm": "way/8105832",
-    "osmAliases": [
-      "way/424572971",
-      "node/5368677484"
-    ],
+    "osmAliases": [],
     "lon": -46.63528,
     "lat": -23.53509,
     "name": "Estação da Luz",
