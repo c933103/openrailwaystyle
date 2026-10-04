@@ -11,6 +11,7 @@ import * as draw from '../styles/draw.mjs';
 import * as departuresModule from '../styles/departures.mjs';
 import * as elevationModule from '../styles/elevation.mjs';
 import * as contextFeatures from '../styles/context.mjs';
+import * as frequencyModule from '../styles/service-frequency.mjs';
 import * as powerFacilities from '../styles/power-facilities.mjs';
 import * as controlFunctions from '../styles/map-controls.mjs';
 import * as watchModule from '../styles/watch-map.mjs';
@@ -21,7 +22,7 @@ const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -49,7 +50,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     getStyle() { return this.options.style; }
     getSource(id) { return (this.sources ||= {})[id] ||= {setData:data=>{(this.sourceData ||= {})[id]=data;},setUrl:url=>{this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
     setLayoutProperty(id, property, value) { if (property === 'visibility') this.visibility[id] = value; else (this.layout ||= {})[id] = value; }
-    setPaintProperty(id, property, value) { (this.paint ||= {})[id] = value; }
+    setPaintProperty(id, property, value) { (this.paint ||= {})[id] = value; ((this.paintProperties ||= {})[id] ||= {})[property] = value; }
     setPixelRatio(ratio) { this.pixelRatio = ratio; }
     zoom = 20;
     getZoom() { return this.zoom; }
@@ -124,6 +125,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const contextModule = new vm.SyntheticModule(Object.keys(contextFeatures),function() {
     for (const [key,value] of Object.entries(contextFeatures)) this.setExport(key,value);
   },{context});
+  const frequency = new vm.SyntheticModule(Object.keys(frequencyModule),function(){for(const [key,value] of Object.entries(frequencyModule))this.setExport(key,frequencyClock&&key==='installFrequencyExpiry'?options=>value({...options,...frequencyClock}):frequencyClock&&key==='frequencyDetails'?(properties,profile)=>value(properties,profile,frequencyClock.now()):value);},{context});
   const powerModule = new vm.SyntheticModule(Object.keys(powerFacilities),function() {
     for (const [key,value] of Object.entries(powerFacilities)) this.setExport(key,value);
   },{context});
@@ -134,12 +136,61 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     for (const [key,value] of Object.entries(controlFunctions)) this.setExport(key,value);
   }, {context});
   const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
-  await app.link(specifier => specifier.includes('watch-map.mjs') ? watch : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  await app.link(specifier => specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries,loadLabels};
 }
 
+test('service frequency profile is applied on the first frame and controls persist independently',async()=>{
+  const {dom,window,maps,errors}=await start({search:'?mode=service&serviceWidth=frequency&frequencyPeriod=peak&peakPhase=pm'});
+  try {
+    assert.equal(errors.length,0);
+    const doc=window.document, map=maps[0];
+    assert.equal(doc.getElementById('service-frequency-options').hidden,false);
+    assert.equal(doc.getElementById('peak-phase-options').hidden,false);
+    assert.equal(doc.getElementById('peak-phase').value,'pm');
+    const first=map.options.style.layers.find(l=>l.id==='service-routes').paint;
+    assert.match(JSON.stringify(first['line-width']),/frequency_width_pm/);
+    map.handlers['style.load']();
+    const period=doc.getElementById('frequency-period');period.value='offpeak';period.dispatchEvent(new window.Event('change'));
+    assert.match(JSON.stringify(map.paintProperties['service-routes']['line-offset']),/frequency_offset_offpeak/);
+    assert.equal(doc.getElementById('peak-phase-options').hidden,true);
+    assert.match(decodeURIComponent(doc.cookie),/"frequencyPeriod":"offpeak"/);
+    period.value='overnight';period.dispatchEvent(new window.Event('change'));
+    assert.match(JSON.stringify(map.paintProperties['service-routes']['line-width']),/frequency_width_overnight/);
+    period.value='hour';period.dispatchEvent(new window.Event('change'));
+    const hour=doc.getElementById('frequency-hour');hour.value='1';hour.dispatchEvent(new window.Event('change'));
+    assert.equal(doc.getElementById('frequency-hour-options').hidden,false);
+    assert.match(JSON.stringify(map.paintProperties['service-routes']['line-width']),/frequency_width_h01/);
+    assert.match(decodeURIComponent(doc.cookie),/"frequencyHour":1/);
+    const width=doc.getElementById('service-width');width.value='equal';width.dispatchEvent(new window.Event('change'));
+    assert.equal(doc.getElementById('frequency-profile-options').hidden,true);
+    assert.doesNotMatch(JSON.stringify(map.paintProperties['service-routes']['line-width']),/frequency_width/);
+    doc.querySelector('[data-mode="speed"]').click();
+    assert.equal(doc.getElementById('service-frequency-options').hidden,true);
+  } finally {dom.window.close();}
+});
+test('equal-width service details expire even after the inspected route leaves loaded tiles',async()=>{
+  let stamp=1000,scheduled;
+  const frequencyClock={now:()=>stamp,setTimer:(fn,delay)=>(scheduled={fn,delay}),clearTimer:()=>{scheduled=undefined;}};
+  const {dom,window,maps,errors}=await start({search:'?mode=service',frequencyClock});
+  try{
+    const map=maps[0],doc=window.document;map.handlers['style.load']();
+    map.project=([lng,lat])=>({x:500+lng*100,y:400+lat*100});
+    const feature={source:'serviceRoutes',sourceLayer:'service_routes',layer:{id:'service-routes'},properties:{id:'gtfs:fixture:R',ref:'R',kind:'rail',i:0,n:1,frequency_until:2,frequency_offpeak:2,frequency_high_offpeak:2,frequency_quality_offpeak:'scheduled'},geometry:{type:'LineString',coordinates:[[0,0],[1,0]]}};
+    map.rendered=[feature];map.sourceFeatures=[feature];map.handlers.sourcedata({sourceId:'serviceRoutes',tile:{}});
+    map.handlers.click({point:{x:550,y:400},lngLat:{lng:.5,lat:0}});
+    assert.match(doc.getElementById('detail-content').textContent,/2\/h\/direction/);
+    map.sourceFeatures=[];map.handlers.sourcedata({sourceId:'serviceRoutes',tile:{}});
+    assert.equal(scheduled?.delay,1001,'the open panel keeps its expiry when the route leaves the viewport');
+    stamp=2001;scheduled.fn();
+    assert.doesNotMatch(doc.getElementById('detail-content').textContent,/2\/h\/direction/);
+    assert.match(doc.getElementById('detail-content').textContent,/Frequency unavailable/);
+    assert.equal(errors.length,0);
+    window.dispatchEvent(new window.Event('pagehide'));
+  }finally{dom.window.close();}
+});
 test('app starts with the MapLibre 5 API and enables map controls', async () => {
   const {dom,window,maps,errors} = await start();
   try {
@@ -656,8 +707,7 @@ test('watch starts map-only and deliberate controls return to the map after each
     open();assert.equal(doc.getElementById('watch-menu').hidden,false);assert.equal(doc.getElementById('map-frame').inert,true);
     let select=doc.querySelector('#watch-content select');select.value='service';select.dispatchEvent(new window.Event('change'));
     assert.equal(doc.getElementById('watch-menu').hidden,true);assert.equal(map.visibility['service-routes'],'visible');
-    open();assert.equal(doc.querySelector('#watch-content option[value="frequency"]'),null,'basic watch view has no frequency dependency');
-    doc.querySelector('#watch-content button').click();
+    assert.equal(doc.getElementById('service-width').value,'equal','basic Service remains the default in watch mode');
     open();doc.getElementById('watch-menu').dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert.equal(doc.getElementById('watch-menu').hidden,true);
     open();select=doc.querySelector('#watch-content select[aria-label="Map options"]');select.value='standard';select.dispatchEvent(new window.Event('change'));
     assert.equal(doc.body.dataset.ui,'standard');assert.equal(doc.querySelector('.panel').inert,false);assert.equal(doc.getElementById('map-frame').inert,false);

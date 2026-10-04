@@ -23,7 +23,7 @@ export function atlasSources(majorStationData) {
     crossingsDetail: snapshot('crossingtiles', DETAIL_ZOOM, DETAIL_ZOOM),
     // The provider's low-zoom mainline data omits these operating branches.
     branchLines: snapshot('branchtiles', 4, 9),
-    serviceRoutes: snapshot('servicetiles', 7, 12),
+    serviceRoutes: {...snapshot('servicetiles', 7, 12), attribution:ATTRIBUTION+' · <a href="frequency-credits.html">Timetable sources</a>'},
     streetRunning: snapshot('streettiles', 12, 12),
   };
 }

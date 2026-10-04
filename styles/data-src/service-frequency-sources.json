@@ -1,0 +1,13 @@
+{
+  "schema": 2,
+  "catalogue": "https://raw.githubusercontent.com/public-transport/transitous/main/website/data/license.json",
+  "snapshot": "data/service-frequency/manifest.json",
+  "feeds": [],
+  "gaps": [
+    {
+      "region": "Worldwide",
+      "status": "Not assembled",
+      "reason": "The worldwide refresh workflow supplies frequency tiles; no city allow-list or city data fallback."
+    }
+  ]
+}

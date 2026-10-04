@@ -1,0 +1,32 @@
+{
+  "source": {
+    "id": "mbta",
+    "name": "Massachusetts Bay Transportation Authority",
+    "url": "https://cdn.mbta.com/MBTA_GTFS.zip",
+    "terms_url": "https://github.com/mbta/gtfs-documentation/blob/master/developers-license-agreement.pdf",
+    "license": "MassDOT Developers License Agreement",
+    "attribution": "Data provided by MassDOT / MBTA; derived scheduled path frequencies.",
+    "retrieved": "2026-10-03",
+    "review_after_days": 30,
+    "region": "North America",
+    "note": "Configured weekday reference windows in agency local time; these are not claimed operator peak definitions. Derived counts describe the supplied schedule, not live service."
+  },
+  "profiles": {
+    "am": {
+      "start": "07:00:00",
+      "end": "09:00:00",
+      "definition": "Configured morning reference"
+    },
+    "pm": {
+      "start": "16:00:00",
+      "end": "18:00:00",
+      "definition": "Configured evening reference"
+    },
+    "offpeak": {
+      "start": "12:00:00",
+      "end": "14:00:00",
+      "definition": "Configured daytime reference"
+    }
+  },
+  "max_stop_snap_metres": 200
+}
