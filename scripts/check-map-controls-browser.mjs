@@ -89,7 +89,9 @@ try{
   // combine in the same application, rather than in isolated rectangle mocks.
   for(const size of [{width:1365,height:900},{width:800,height:400},{width:650,height:900},{width:412,height:915},{width:360,height:640},{width:320,height:568}]){
     await page.setViewportSize(size);
-    await page.evaluate(()=>{document.documentElement.style.setProperty('--map-safe-left','18px');document.documentElement.style.setProperty('--map-safe-right','12px');document.documentElement.style.setProperty('--map-safe-bottom','24px');});
+    // Device inset changes accompany a viewport resize. The first size is
+    // unchanged, so send the same signal after injecting the test insets.
+    await page.evaluate(()=>{document.documentElement.style.setProperty('--map-safe-left','18px');document.documentElement.style.setProperty('--map-safe-right','12px');document.documentElement.style.setProperty('--map-safe-bottom','24px');window.dispatchEvent(new Event('resize'));});
     for(const expanded of [true,false]){
       if((await page.locator('#controls').isHidden())===expanded)await page.locator('#controls-open').click();
       for(const readout of [true,false]){
