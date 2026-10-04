@@ -182,6 +182,8 @@ jobs:
         run: node scripts/check-watch-browser.mjs
       - name: Verify curated station labels and details on the globe
         run: node scripts/check-major-stations-browser.mjs
+      - name: Verify bathymetric depth colours
+        run: node scripts/check-bathymetry-browser.mjs
       - name: Verify roads, planning boundaries and rail-road interfaces
         run: node scripts/check-planning-browser.mjs
       - name: Verify transport and destination context

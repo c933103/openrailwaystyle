@@ -10,11 +10,12 @@ import {decodeLoadingGauges, wayId} from './loading-gauge-list.mjs';
 export {hanRegion, chineseArea};
 export const buildInfo=typeof __ATLAS_BUILD_INFO__ === 'undefined' ? {version:'development',commit:''} : __ATLAS_BUILD_INFO__;
 
-export function readTile(data) {
+export function readTile(data, onlyLayers) {
   const tile = new VectorTile(new Pbf(new Uint8Array(data)));
   // vector-tile creates a new object on each feature() call. Retain mutations
   // and the original integer geometry/extent rather than round-tripping GeoJSON.
-  for (const layer of Object.values(tile.layers)) {
+  for (const [name, layer] of Object.entries(tile.layers)) {
+    if (onlyLayers && !onlyLayers.includes(name)) continue;
     const features = Array.from({length:layer.length},(_,i)=>layer.feature(i));
     layer.feature = i => features[i];
   }
