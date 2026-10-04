@@ -52,7 +52,8 @@ async function collect(box,depth=0) {
         json=undefined;
         console.warn(box.join(','),error.message);
         if(/budget exceeded/.test(error.message))throw error;
-        if(/timed? ?out|out of memory|memory/i.test(error.message)){split=true;break;}
+        // Admission HTTP errors can say "timeout" without executing the query.
+        if(!/^HTTP \d+:/.test(error.message) && /timed? ?out|out of memory|memory/i.test(error.message)){split=true;break;}
         if(attempt===2)throw error;
       }
     }

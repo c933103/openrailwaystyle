@@ -43,7 +43,8 @@ async function collect(box, depth = 0) {
       return [{box, generated, features}];
     } catch (error) {
       console.warn('Signal region', box.join(','), error.message);
-      if (/timed? ?out|timeout|memory|HTTP 504|maxsize/i.test(error.message) && depth < 5) {
+      // Admission HTTP errors can say "timeout" without executing the query.
+      if (!/^Overpass HTTP \d+:/.test(error.message) && /timed? ?out|timeout|memory|maxsize/i.test(error.message) && depth < 5) {
         await writeFile(path, JSON.stringify({query, generated:new Date().toISOString(), split:true}));
         const results = [];
         for (const child of quarters(box)) results.push(...await collect(child, depth + 1));
