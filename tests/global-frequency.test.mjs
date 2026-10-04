@@ -41,3 +41,8 @@ test('tile merging retains distinct services and withholds conflicting duplicate
   assert.equal(layer.length,1);assert.equal(layer.feature(0).properties.frequency_am,undefined);
   assert.match(layer.feature(0).properties.frequency_note,/disagree/);
 });
+
+test('snapshot asset and release lookup follow the publishing repository',()=>{
+  const run=spawnSync('python3',['-m','unittest','discover','-s','tests','-p','load_frequency_snapshot_test.py'],{encoding:'utf8'});
+  assert.equal(run.status,0,run.stdout+run.stderr);
+});

@@ -5,13 +5,13 @@
 // tiles' edge are simply below 0 (north) or above 1 (south); the shader
 // turns them into points on the sphere like any other.
 import earcut from 'earcut';
-import {CAP_RADIUS, MERCATOR_LIMIT, bandFor, decodeLine, fromPolar, toPolar} from './polar.mjs';
+import {CAP_RADIUS, MERCATOR_LIMIT, POLAR_DETAIL_ZOOM, polarBandFor, decodeLine, fromPolar, toPolar} from './polar.mjs';
 
 // Style colours (world.style.json): land background, water, ice shelf
 // (hsl(47, 26%, 88%) at 0.8), runways, contours; and the caps under
 // satellite imagery.
 const COLOURS = {noImagery: '#000000', land: '#f2f1e9', water: '#bfd8e0', iceShelf: '#e8e5d8', runway: '#ffffff', contourLand: '#927b5a', contourSeabed: '#467d9a'};
-const CARTO_COLOURS = {...COLOURS,land:'#f2efe9',water:'#aad3df',iceShelf:'#ddecec'};
+const CARTO_COLOURS = {...COLOURS,land:'#f2efe9',water:'#aad3df',iceShelf:'#ddecec', building:'#d9d0c9',apron:'#e9dce5',road:'#ffffff',path:'#b29b7d',waterway:'#aad3df',taxiway:'#bbc0c4'};
 const rgba = (hex, alpha = 1) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).concat(alpha);
 // Opacity by zoom, as the style's contour layers: [zoom, opacity] stops.
 const ramp = (stops, zoom) => {
@@ -140,7 +140,7 @@ export class PolarLayer {
   }
   onAdd(map, gl) { this.map = map; this.gl = gl; this.generation++;this.pending=new AbortController(); }
   onRemove() {
-    this.generation++;this.pending?.abort();
+    this.generation++;this.pending?.abort();this.detailPending?.abort();this.detailPending=null;
     for (const tile of this.tiles.values()) this.freeMesh(tile);
     for (const cap of Object.values(this.caps)) {
       for (const mesh of Object.values(cap)) if (mesh?.buffers) this.freeMesh(mesh);
@@ -231,8 +231,8 @@ export class PolarLayer {
     bitmap.close?.();
     return texture;
   }
-  async json(name) {
-    const response = await fetch(new URL(name, this.data),{signal:this.pending?.signal});
+  async json(name, signal = this.pending?.signal) {
+    const response = await fetch(new URL(name, this.data),{signal});
     if (!response.ok) throw new Error(`${name}: HTTP ${response.status}`);
     return response.json();
   }
@@ -259,10 +259,11 @@ export class PolarLayer {
   // Contour tile: four meshes (land/seabed, fine/emphasised).
   loadTile(key) {
     if (this.tiles.has(key)){const tile=this.tiles.get(key);this.tiles.delete(key);this.tiles.set(key,tile);return tile;}
-    const tile = {loading: true},generation=this.generation;
+    const detailed = Number(key.split('-')[2]) > 0;
+    const tile = {loading: true, detailed},generation=this.generation;
     this.tiles.set(key, tile);
     const cap = key.split('-')[0];
-    this.json(`${key}.json`).then(({lines}) => {
+    this.json(`${key}.json`, detailed ? this.detailPending?.signal : this.pending?.signal).then(({lines}) => {
       if(generation!==this.generation||this.tiles.get(key)!==tile)return;
       const groups = {landMinor: [], landMajor: [], seabedMinor: [], seabedMajor: []};
       for (const [level, major, ...values] of lines) groups[`${level > 0 ? 'land' : 'seabed'}${major ? 'Major' : 'Minor'}`].push(decodeLine(values));
@@ -270,6 +271,29 @@ export class PolarLayer {
       tile.parts = Object.keys(groups).map(k => tile[k]); tile.loading = false;tile.bytes=tile.parts.reduce((sum,m)=>sum+m.bytes,0);
       this.pruneTiles();
       this.map.triggerRepaint();
+    }).catch(() => { tile.failed = true; });
+    return tile;
+  }
+  // Detailed meshes and in-flight requests exist only in a visible Carto
+  // cap. Switching backgrounds removes them immediately; coarse data stays.
+  syncDetail(active) {
+    if (active) { this.detailPending ||= new AbortController(); return; }
+    this.detailPending?.abort();this.detailPending=null;
+    for (const [key, tile] of this.tiles) if (tile.detailed) { this.freeMesh(tile); this.tiles.delete(key); }
+  }
+  loadDetailTile(key) {
+    if (this.tiles.has(key)) { const tile=this.tiles.get(key);this.tiles.delete(key);this.tiles.set(key,tile);return tile; }
+    const tile = {loading: true, detailed: true}, generation = this.generation, cap = key.split('-')[0];
+    this.tiles.set(key, tile);
+    this.json(`${key}.json`, this.detailPending?.signal).then(data => {
+      if (generation !== this.generation || this.tiles.get(key) !== tile) return;
+      const decode = line => decodeLine(line, 0, line.length, data.quantum || 0.001);
+      for (const kind of ['buildings', 'aprons']) tile[kind] = this.upload(fillMesh(cap, (data[kind] || []).map(rings => rings.map(decode))), 'fill');
+      for (const kind of ['roads', 'paths', 'waterways', 'taxiways']) tile[kind] = this.upload(lineMesh(cap, (data[kind] || []).map(decode)), 'line');
+      tile.places = (data.places || []).map(p => ({...p, lngLat: fromPolar(cap, [p.x, p.y])}));
+      tile.parts = ['buildings', 'aprons', 'roads', 'paths', 'waterways', 'taxiways'].map(k => tile[k]);
+      tile.loading = false; tile.bytes = tile.parts.reduce((sum, m) => sum + m.bytes, 0) + tile.places.length * 256;
+      this.pruneTiles(); this.map.triggerRepaint();
     }).catch(() => { tile.failed = true; });
     return tile;
   }
@@ -330,7 +354,7 @@ export class PolarLayer {
   renderCaps(gl, options) {
     const projection = options.defaultProjectionData, transition = projection.projectionTransition ?? 0;
     // Only on the globe: on the flat map there is nothing beyond 85.05°.
-    if (!(transition > 0.01) || this.map.getProjection?.()?.type !== 'globe') { this.visibleKeys=new Set();this.pruneTiles();this.places([]); return; }
+    if (!(transition > 0.01) || this.map.getProjection?.()?.type !== 'globe') { this.syncDetail(false);this.visibleKeys=new Set();this.pruneTiles();this.places([]); return; }
     const center = this.map.getCenter();
     // Zoom by the planet's size (MapLibre's zoom depends on the latitude).
     const zoom = this.map.getZoom() - Math.log2(Math.cos(Math.max(-89.9, Math.min(89.9, center.lat)) * Math.PI / 180));
@@ -338,7 +362,8 @@ export class PolarLayer {
     // Line quads come in either winding, so nothing is culled.
     gl.disable(gl.CULL_FACE); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     this.visibleKeys=new Set();
-    const view = this.visible(), imagery = this.imagery(), colours = this.palette() === 'carto' ? CARTO_COLOURS : COLOURS;
+    const view = this.visible(), imagery = this.imagery(), background = this.palette(), carto = background === 'carto', colours = carto ? CARTO_COLOURS : COLOURS;
+    this.syncDetail(carto && !imagery && Boolean(view.north || view.south));
     for (const cap of ['north', 'south']) {
       if (!view[cap]) continue;
       this.loadCap(cap);
@@ -350,7 +375,7 @@ export class PolarLayer {
       const terrain = this.relief();
       if (terrain && state.relief && state.index?.relief) this.drawRelief(cap, state, options.shaderData, projection, zoom, fade);
       // The finest band prepared for this zoom (only the coarsest may exist).
-      const bands = state.index?.units?.[units] || [], bandIndex = Math.min(bandFor(zoom), bands.length - 1), band = bands[bandIndex];
+      const bands = state.index?.units?.[units] || [], bandIndex = polarBandFor(zoom, background, bands.length), band = bands[bandIndex];
       if (band && terrain) {
         const size = 2 * CAP_RADIUS / band.n, [x0, y0, x1, y1] = view[cap];
         for (const key of band.tiles) {
@@ -366,9 +391,30 @@ export class PolarLayer {
         }
       }
       if (zoom >= MIN_ZOOM.runway) this.line(state.runways, options.shaderData, projection, rgba(colours.runway, fade), 2);
+      const detail = state.index?.carto;
+      if (carto && !imagery && detail && zoom >= Math.max(POLAR_DETAIL_ZOOM, detail.from)) {
+        const size = 2 * CAP_RADIUS / detail.n, [x0, y0, x1, y1] = view[cap];
+        for (const key of detail.tiles) {
+          const [tx, ty] = key.split('-').map(Number), x = -CAP_RADIUS + tx * size, y = -CAP_RADIUS + ty * size;
+          if (x > x1 || x + size < x0 || y > y1 || y + size < y0) continue;
+          const tileKey = `${cap}-carto-${key}`; this.visibleKeys.add(tileKey);
+          const tile = this.loadDetailTile(tileKey);
+          if (tile.loading || tile.failed) continue;
+          this.fill(tile.aprons, options.shaderData, projection, rgba(colours.apron, fade));
+          if (zoom >= 13) this.fill(tile.buildings, options.shaderData, projection, rgba(colours.building, fade));
+          for (const [kind, colour, width] of [['waterways','waterway',1], ['roads','road',2], ['paths','path',1], ['taxiways','taxiway',2]])
+            this.line(tile[kind], options.shaderData, projection, rgba(colours[colour], fade), width);
+          if (zoom >= 12) labels.push(...tile.places);
+        }
+      }
       if (zoom >= MIN_ZOOM.places && state.places) labels.push(...state.places.filter(p => !this.map.transform?.isLocationOccluded?.({lng: p.lngLat[0], lat: p.lngLat[1]})));
     }
     this.pruneTiles();
-    this.places(labels);
+    const {clientWidth: width, clientHeight: height} = this.map.getContainer();
+    this.places(labels.filter(p => {
+      if (this.map.transform?.isLocationOccluded?.({lng: p.lngLat[0], lat: p.lngLat[1]})) return false;
+      const at = this.map.project(p.lngLat);
+      return at.x >= -80 && at.x <= width + 80 && at.y >= -20 && at.y <= height + 20;
+    }));
   }
 }
