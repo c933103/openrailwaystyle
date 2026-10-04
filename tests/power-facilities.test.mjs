@@ -199,3 +199,12 @@ test('supply snapshot loading is lazy, shared and re-localized without downloadi
   currentLanguage='ja';await refresh();assert.equal(calls,1);assert.equal(shown[1].language,'ja');
   assert.equal(data.language,undefined);
 });
+
+test('former railway use does not describe an operating traction supply',()=>{
+  for(const state of ['construction','proposed','disused','abandoned','removed']) {
+    assert.equal(powerFacility({power:'plant',[`${state}:railway`]:'yes'}).state,state);
+    assert.equal(powerFacility({man_made:'storage_tank',content:'water',[`${state}:railway`]:'yes'}).state,state);
+  }
+  assert.equal(powerFacility({power:'plant','disused:railway':'yes',frequency:'16.7'}).state,'present','independent current traction evidence');
+  assert.equal(powerFacility({man_made:'storage_tank',content:'water','disused:railway':'yes',usage:'railway'}).state,'present');
+});

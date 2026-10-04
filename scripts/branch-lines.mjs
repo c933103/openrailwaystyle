@@ -78,7 +78,8 @@ export function trainProtections(tags) {
   let explicitlyAbsent = false;
   for (const system of PROTECTION_ORDER) {
     const value = tags[`railway:${system}`];
-    if (value === 'no') explicitlyAbsent = true;
+    // Absence of one named system says nothing about other systems.
+    if (value === 'no') continue;
     if (value === undefined || value === 'no' || value === '') continue;
     // Level 3 ETCS draws as level 2; CTCS levels 0 and 1 are plain ctcs.
     if (system === 'etcs' && /^[1-3]$/.test(value)) systems.push(value === '1' ? 'etcs_1' : 'etcs_2');

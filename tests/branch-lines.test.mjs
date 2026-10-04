@@ -104,7 +104,9 @@ test('branch and metro tiles preserve simultaneous control systems and unknown l
   assert.deepEqual(trainProtections({'railway:train_protection':'ETCS;LZB;PZB;ETCS', 'railway:train_protection:ETCS':'2'}), ['etcs_2','lzb','pzb']);
   assert.deepEqual(trainProtections({'railway:pzb':'yes', 'railway:train_protection':'PZB;Unfamiliar:ATP'}), ['pzb','Unfamiliar:ATP']);
   assert.deepEqual(trainProtections({'railway:train_protection':'no'}), ['none']);
-  assert.deepEqual(trainProtections({'railway:pzb':'no'}), ['none']);
+  assert.deepEqual(trainProtections({'railway:pzb':'no'}), []);
+  assert.deepEqual(trainProtections({'railway:pzb':'no','railway:lzb':'no'}), []);
+  assert.deepEqual(trainProtections({'railway:pzb':'no','railway:etcs':'2'}), ['etcs_2']);
   assert.deepEqual(trainProtections({}), [], 'missing data does not mean no protection');
   const features = toFeatures({elements:[
     {type:'way',id:201,tags:{railway:'rail',usage:'branch',...tags},geometry:[{lat:35,lon:139},{lat:35.01,lon:139.01}]},

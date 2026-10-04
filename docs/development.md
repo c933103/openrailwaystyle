@@ -133,6 +133,7 @@ node scripts/check-major-stations-browser.mjs
 node scripts/check-platform-browser.mjs
 node scripts/check-infrastructure-browser.mjs
 node scripts/check-signal-power-browser.mjs
+node scripts/check-globe-browser.mjs
 ```
 
 The deployment gate checks real Chromium/WebGL rendering, including zoom-7 panning

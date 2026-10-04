@@ -40,10 +40,12 @@ export function powerFacility(tags = {}) {
   if (railwayKind) return {...POWER_FACILITY_KINDS[railwayKind], kind:railwayKind, state:railway.state};
   const feeding = lifecycleValue(tags,'railway:electricity');
   if (has(feeding.value,['power_supply'])) return {...POWER_FACILITY_KINDS.feeder, kind:'feeder', state:feeding.state};
+  const independentUse = has(tags.usage,['railway','traction']) || has(tags.landuse,['railway']);
+  const evidenceState = physical => physical !== 'present' ? physical : !independentUse && railwayUse(tags,railway.value) ? railway.state : 'present';
   const kind = values(power.value).find(v=>POWER_TYPES.has(v));
   if (kind && (has(tags.substation,['traction']) || (kind === 'transformer' && has(tags.transformer,['traction'])) || railwayUse(tags,railway.value) || tractionFrequency(tags.frequency))) {
     const normalized = kind === 'frequency_converter' ? 'converter' : kind;
-    return {...POWER_FACILITY_KINDS[normalized], kind:normalized, state:power.state};
+    return {...POWER_FACILITY_KINDS[normalized], kind:normalized, state:has(tags.substation,['traction']) || kind === 'transformer' && has(tags.transformer,['traction']) || tractionFrequency(tags.frequency) ? power.state : evidenceState(power.state)};
   }
   if (has(railway.value,['power_station','substation'])) {
     const normalized = has(railway.value,['power_station']) ? 'plant' : 'substation';
@@ -55,7 +57,7 @@ export function powerFacility(tags = {}) {
   if (railwayUse(tags,railway.value) && has(tank.value,['storage_tank','water_tower'])) {
     const normalized = has(tank.value,['water_tower']) ? 'water_tower' : has(tags.content,['water']) ? 'water_tank' :
       has(tags.content,['diesel','gas_oil','fuel','fuel_oil']) ? 'fuel_tank' : null;
-    if (normalized) return {...POWER_FACILITY_KINDS[normalized], kind:normalized, state:tank.state};
+    if (normalized) return {...POWER_FACILITY_KINDS[normalized], kind:normalized, state:evidenceState(tank.state)};
   }
   return null;
 }

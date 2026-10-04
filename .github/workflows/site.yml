@@ -10,9 +10,28 @@ concurrency:
   group: pages-${{ github.head_ref && format('refs/heads/{0}', github.head_ref) || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
-  validate:
+  facilities:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for the first complete worldwide facility snapshot
+        run: |
+          # The resumable maintenance build has its own 110-minute budget.
+          # Keep initial data readiness outside the browser validation budget.
+          for attempt in $(seq 1 115); do
+            status=0
+            git ls-remote --exit-code --heads origin traction-data || status=$?
+            if [ "$status" = 0 ]; then exit 0; fi
+            if [ "$status" != 2 ]; then exit "$status"; fi
+            sleep 60
+          done
+          echo 'No complete worldwide railway facility snapshot has been published.'
+          exit 1
+  validate:
+    needs: facilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -129,14 +148,6 @@ jobs:
           fi
       - name: Load worldwide railway signals and energy supplies
         run: |
-          for attempt in $(seq 1 40); do
-            if git ls-remote --exit-code --heads origin traction-data; then break; fi
-            if [ "$attempt" = 40 ]; then
-              echo 'No complete railway facility snapshot has been published.'
-              exit 1
-            fi
-            sleep 30
-          done
           mkdir -p styles/data/traction
           git fetch --depth=1 origin traction-data
           git archive FETCH_HEAD | tar -x -C styles/data/traction
@@ -162,6 +173,8 @@ jobs:
         run: node scripts/check-map-browser.mjs
       - name: Verify Carto-only detailed polar rendering and view switching
         run: node scripts/check-polar-browser.mjs
+      - name: Verify close-up globe dragging across both poles
+        run: node scripts/check-globe-browser.mjs
       - name: Verify platform length labels and main Units selector
         run: node scripts/check-platform-browser.mjs
       - name: Verify platform references, signals and entrances
