@@ -1,19 +1,20 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-font15';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261004-font15';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261004-font15';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-font15';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-font15';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-rarehan1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261004-rarehan1';
+import {RARE_HAN_FAMILY, createRareHanFonts} from './rare-han.mjs?v=20261004-rarehan1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261004-rarehan1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-rarehan1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-rarehan1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-font15';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-font15';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-font15';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261004-font15';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261004-font15';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-font15';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-font15';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-font15';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261004-font15';
-import { installWatchGesture } from './watch-map.mjs?v=20261004-font15';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-rarehan1';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-rarehan1';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-rarehan1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261004-rarehan1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261004-rarehan1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-rarehan1';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-rarehan1';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-rarehan1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261004-rarehan1';
+import { installWatchGesture } from './watch-map.mjs?v=20261004-rarehan1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -48,7 +49,7 @@ let legendHelpOpen = false;
 let platformLengths,frequencyExpiry;
 let powerFacilities;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-font15';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-rarehan1';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -74,11 +75,16 @@ function cjkScript(lang) {
 }
 const loadedCjkFonts=new Set(),cjkFontLoads=new Map(),cjkChoices=new Map(),cjkFontFailures=new Map();let cjkFontRefresh=false;
 const bundledCjkFamily=script=>`Atlas CJK ${script==='zh-Hant'?'TC':'SC'}`;
+// Rare Han glyph slices, loaded for the labels of each tile before it is drawn.
+const rareHanFonts=createRareHanFonts({root:new URL('fonts/rare-han-v1/', import.meta.url),fetcher:(...args)=>fetch(...args),FontFace:window.FontFace,fonts:document.fonts});
 // The packaged font when loaded, else the installed font chosen by probing,
 // else the script's candidate list for the system to resolve.
+// Rare Han slices (rare-han.mjs) fill characters the Han font lacks; they
+// come before the generic family, after which no family is consulted.
+const withRareHan = stack => /,\s*sans-serif\s*$/.test(stack) ? stack.replace(/,\s*sans-serif\s*$/,`,"${RARE_HAN_FAMILY}",sans-serif`) : `${stack},"${RARE_HAN_FAMILY}"`;
 const cjkFont = lang => {
   const script=cjkScript(lang),family=cjkChoices.get(script)?.family;
-  return loadedCjkFonts.has(script)?`"${bundledCjkFamily(script)}"`:family?`"${family}",sans-serif`:CJK_FONTS[script];
+  return withRareHan(loadedCjkFonts.has(script)?`"${bundledCjkFamily(script)}"`:family?`"${family}",sans-serif`:CJK_FONTS[script]);
 };
 // Installed fonts are probed once per script (cjk-font.mjs). Nothing is
 // downloaded for a device whose own font covers every character set.
@@ -145,7 +151,7 @@ for (const context of [window.CanvasRenderingContext2D?.prototype, window.Offscr
     font.set.call(this, value);
     if (this.atlasProbe) return;
     const text = String(value), chosen = key => cjkChoices.get(key)?.family;
-    const script = Object.keys(CJK_FONTS).find(key => text.includes(CJK_FONTS[key])||text.includes(bundledCjkFamily(key))||(chosen(key)&&text.includes(chosen(key))));
+    const script = Object.keys(CJK_FONTS).find(key => text.includes(CJK_FONTS[key])||text.includes(withRareHan(CJK_FONTS[key]))||text.includes(bundledCjkFamily(key))||(chosen(key)&&text.includes(chosen(key))));
     // MapLibre is drawing Han glyphs in this script's font.
     if (script) {if ('lang' in this) this.lang = CANVAS_LANG[script]; loadCjkFont(script);}
   }});
@@ -906,7 +912,7 @@ function localizeStyle(style) {
     const fonts=layer.layout?.['text-font'];
     if(Array.isArray(fonts)&&fonts.every(f=>typeof f==='string')){
       const original=fonts.filter(f=>!isLocalFamily(f));
-      layer.layout['text-font']=family?[...original,family]:original;
+      layer.layout['text-font']=[...original,...(family?[family]:[]),RARE_HAN_FAMILY];
     }
   }
   if(style.glyphs)style.glyphs='atlasglyph://'+style.glyphs.replace(/^atlasglyph:\/\//,'');
@@ -1157,7 +1163,7 @@ async function initialize() {
   // Create it with the timeout wrapper once, before either consumer can ask
   // Protocol.tile() to create an untimed default FetchSource for that URL.
   const basemapArchive = url => new pmtiles.PMTiles(labelCode.timedSource(new pmtiles.FetchSource(url), 20000));
-  const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url), basemapArchive});
+  const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url), basemapArchive, rareGlyphs:rareHanFonts.ensure});
   stationTileFor=labelProtocols?.stationTile||null;
   if(ready)updateMajorStations();
   // The contour worker with the terrain tiles' bad pixels repaired
@@ -1183,7 +1189,10 @@ async function initialize() {
     const [z,x,y] = key.split('/').map(Number);
     const data = await decodeLifecycleTile(await response.arrayBuffer());
     if(scheme==='axlebranch') return {data:await labelProtocols.axleTile(data)};
-    return {data: names ? localizeTile(data,lang,{z,x,y}) : data};
+    if (!names) return {data};
+    const found = new Set(), localized = localizeTile(data,lang,{z,x,y},found);
+    if (found.size) await rareHanFonts.ensure(found);
+    return {data: localized};
   });
   }
   const styleURL = new URL(`world.style.json?v=${encodeURIComponent(assetVersion)}`, import.meta.url);

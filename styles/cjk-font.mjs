@@ -1,3 +1,4 @@
+import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261004-rarehan1';
 // Which local font draws Han labels. Names mix scripts (a Simplified name in
 // the Traditional view, Hong Kong or Macao characters, Japanese kanji, rare
 // extension characters), and a font missing some of them makes the browser
@@ -43,7 +44,7 @@ export function chooseCjkFont(candidates, measure) {
   }
   return best || {family: null, complete: false, covered: []};
 }
-// Local families added to MapLibre font stacks: the packaged ones and every
-// installed candidate. Remote glyph requests leave them out.
-const LOCAL_FAMILIES = new Set(['Atlas CJK TC', 'Atlas CJK SC', ...Object.values(CJK_FONTS).flatMap(familyNames)]);
+// Local families added to MapLibre font stacks: the packaged ones, the rare
+// Han slices (rare-han.mjs) and every installed candidate. Remote glyph requests leave them out.
+const LOCAL_FAMILIES = new Set(['Atlas CJK TC', 'Atlas CJK SC', RARE_HAN_FAMILY, ...Object.values(CJK_FONTS).flatMap(familyNames)]);
 export const isLocalFamily = family => LOCAL_FAMILIES.has(String(family).trim());

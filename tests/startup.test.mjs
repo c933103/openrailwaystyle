@@ -12,6 +12,7 @@ import * as departuresModule from '../styles/departures.mjs';
 import * as elevationModule from '../styles/elevation.mjs';
 import * as contextFeatures from '../styles/context.mjs';
 import * as cjkFontFeatures from '../styles/cjk-font.mjs';
+import * as rareHanFeatures from '../styles/rare-han.mjs';
 import * as bathymetryModule from '../styles/bathymetry.mjs';
 import * as crossingTagFeatures from '../styles/crossing-tags.mjs';
 import * as frequencyModule from '../styles/service-frequency.mjs';
@@ -143,6 +144,9 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   }, {context});
   const globe = new vm.SyntheticModule(['installGlobeDrag','allowPolarCentres','readoutZoom','viewHash','parseViewHash'], function() { this.setExport('installGlobeDrag', () => ({sync() {}, justDragged: () => false, pan: () => false})); this.setExport('allowPolarCentres', () => ({refresh() {}}));this.setExport('readoutZoom',zoom=>zoom);this.setExport('viewHash',globeModule.viewHash);this.setExport('parseViewHash',globeModule.parseViewHash);  }, {context});
   const keyboard = new vm.SyntheticModule(['installKeyboardPan'], function() { this.setExport('installKeyboardPan', () => {}); }, {context});
+  const rareHanModule = new vm.SyntheticModule(Object.keys(rareHanFeatures),function() {
+    for (const [key,value] of Object.entries(rareHanFeatures)) this.setExport(key,value);
+  },{context});
   const cjkFontModule = new vm.SyntheticModule(Object.keys(cjkFontFeatures),function() {
     for (const [key,value] of Object.entries(cjkFontFeatures)) this.setExport(key,value);
   },{context});
@@ -166,7 +170,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     for (const [key,value] of Object.entries(controlFunctions)) this.setExport(key,value);
   }, {context});
   const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
-  await app.link(specifier => specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  await app.link(specifier => specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries,loadLabels,fonts};
@@ -179,7 +183,7 @@ test('a complete installed Chinese font is used without any download',async()=>{
   assert.equal(fonts.length,1,'only the 676-byte probe font');assert.equal(fonts[0].family,'Atlas Probe');
   fonts[0].finish();await new Promise(r=>setTimeout(r,0));
   const map=maps[0];map.handlers['style.load']();await new Promise(r=>setTimeout(r,0));
-  assert.equal(map.styleOptions?.localIdeographFontFamily??map.options.localIdeographFontFamily,'"Noto Sans CJK TC",sans-serif');
+  assert.equal(map.styleOptions?.localIdeographFontFamily??map.options.localIdeographFontFamily,'"Noto Sans CJK TC","Atlas Rare Han",sans-serif');
   const glyphs=new dom.window.CanvasRenderingContext2D();glyphs.font='400 24px "Noto Sans CJK TC",sans-serif';
   assert.equal(glyphs.lang,'zh-TW');assert.equal(fonts.length,1,'drawing Han labels with a complete font downloads nothing');assert.deepEqual(errors,[]);
  }finally{dom.window.close();}
@@ -191,7 +195,7 @@ test('a partial installed Chinese font fetches the packaged font only once Han l
  try{
   fonts[0].finish();await new Promise(r=>setTimeout(r,0));
   const map=maps[0];map.handlers['style.load']();await new Promise(r=>setTimeout(r,0));
-  assert.equal(map.styleOptions.localIdeographFontFamily,'"Microsoft JhengHei",sans-serif','the best installed font meanwhile');
+  assert.equal(map.styleOptions.localIdeographFontFamily,'"Microsoft JhengHei","Atlas Rare Han",sans-serif','the best installed font meanwhile');
   assert.equal(fonts.length,1,'nothing is fetched before Han labels are drawn');
   const glyphs=new window.CanvasRenderingContext2D();glyphs.font='400 24px "Microsoft JhengHei",sans-serif';
   assert.equal(fonts.length,2);assert.match(fonts[1].url,/atlas-cjk-tc-v1\.woff2/);
@@ -200,10 +204,10 @@ test('a partial installed Chinese font fetches the packaged font only once Han l
   fonts[1].finish();await new Promise(r=>setTimeout(r,0));assert.ok(!map.styleOptions.localIdeographFontFamily.includes('Atlas CJK TC'),'a stale download cannot overwrite the selected script');
   glyphs.font='400 24px "Microsoft YaHei",sans-serif';
   assert.equal(fonts.length,3);assert.match(fonts[2].url,/atlas-cjk-sc-v1\.woff2/);
-  fonts[2].finish();await new Promise(r=>setTimeout(r,0));assert.equal(map.styleOptions.localIdeographFontFamily,'"Atlas CJK SC"');
+  fonts[2].finish();await new Promise(r=>setTimeout(r,0));assert.equal(map.styleOptions.localIdeographFontFamily,'"Atlas CJK SC","Atlas Rare Han"');
   assert.ok(map.options.style.layers.filter(l=>l.type==='symbol'&&l.layout?.['text-font']).every(l=>l.layout['text-font'].includes('Atlas CJK SC')),'explicit Noto stacks must also include the loaded Han font');
   assert.match(map.options.style.glyphs,/^atlasglyph:\/\//,'Latin glyph requests strip the added local family');
-  language.value='zh-Hant';language.dispatchEvent(new window.Event('change'));assert.equal(fonts.length,3);assert.equal(map.styleOptions.localIdeographFontFamily,'"Atlas CJK TC"','previously loaded font is reused');
+  language.value='zh-Hant';language.dispatchEvent(new window.Event('change'));assert.equal(fonts.length,3);assert.equal(map.styleOptions.localIdeographFontFamily,'"Atlas CJK TC","Atlas Rare Han"','previously loaded font is reused');
   assert.ok(map.options.style.layers.filter(l=>l.type==='symbol'&&l.layout?.['text-font']).every(l=>l.layout['text-font'].includes('Atlas CJK TC')&&!l.layout['text-font'].includes('Atlas CJK SC')),'switching script replaces every explicit local font');
   assert.deepEqual(errors,[]);
  }finally{dom.window.close();}
@@ -218,7 +222,7 @@ test('a failed packaged Chinese font download waits before trying again, and ret
   assert.equal(fonts.length,2);fonts[1].fail();await new Promise(r=>setTimeout(r,0));
   for(let i=0;i<5;i++)glyphs.font='400 24px "Microsoft JhengHei",sans-serif';
   assert.equal(fonts.length,2,'later label drawing does not fetch the font again at once');
-  assert.equal(maps[0].styleOptions.localIdeographFontFamily,'"Microsoft JhengHei",sans-serif','the installed font stays in use');
+  assert.equal(maps[0].styleOptions.localIdeographFontFamily,'"Microsoft JhengHei","Atlas Rare Han",sans-serif','the installed font stays in use');
   window.dispatchEvent(new window.Event('online'));glyphs.font='400 24px "Microsoft JhengHei",sans-serif';
   assert.equal(fonts.length,3,'going back online retries');
   assert.deepEqual(errors,[]);

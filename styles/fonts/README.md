@@ -39,3 +39,30 @@ files are Chinese designs. Characters beyond these files' coverage (such as
 some Macao and later-extension characters) are not yet fetched on demand.
 The service worker caches fonts separately, so neither file enlarges or
 blocks mandatory app installation.
+
+## Rare Han characters
+
+Characters in CJK Unified Ideographs Extensions B to J and the compatibility
+supplement (U+20000–U+3FFFF) that the packaged or installed Chinese font lacks
+come from [Jigmo](https://kamichikoichi.github.io/jigmo/) release 20250912
+(CC0; glyphs from GlyphWiki). `scripts/build-rare-han.py` checks the release's
+SHA-256 and cuts its `Jigmo2.ttf` and `Jigmo3.ttf` into one WOFF2 file per 256
+code points: 295 slices, 74,942 characters, about 20 MB in all, about 60 kB
+each. The site workflow builds them into `rare-han-v1/` at deploy time (cached
+on the script's hash); they are not committed. Slice names are immutable: a new
+release or a different cut needs a new directory name in the script, in
+`styles/app.mjs` and in `styles/sw.js`.
+
+`styles/rare-han.mjs` registers each slice as an `Atlas Rare Han` font face
+with its `unicode-range`, and that family follows the Chinese family in every
+label font stack, so an installed or packaged glyph still wins. MapLibre draws
+each Han glyph once, with the layer's stack, and keeps the bitmap, and a canvas
+does not wait for a font it has not loaded. So the label protocols collect the
+blocks of the names they write (`writeLabels`, or the bytes of railway tiles
+whose names are drawn as stored) and hand a tile to the map only once its slices
+have loaded, or after 8 seconds. A browser downloads only the slices of rare
+characters in labels it shows; a failed slice is retried after a minute, and
+the service worker keeps loaded slices for offline use.
+
+Names in these planes also depend on `styles/pbf-utf8.mjs`: pbf's own UTF-8
+writer turned U+20000–U+2FFFF into U+10000–U+1FFFF when tiles were re-encoded.
