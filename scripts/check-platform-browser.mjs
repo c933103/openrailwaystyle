@@ -1,18 +1,47 @@
 import {chromium} from 'playwright';
 import {readFile,mkdir} from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import geojsonvt from 'geojson-vt';
+import vtpbf from 'vt-pbf';
 const fixture=JSON.parse(await readFile(new URL('../tests/fixtures/platform-edge.json',import.meta.url)));
+const edges=geojsonvt({type:'FeatureCollection',features:[fixture.feature]},{maxZoom:22,indexMaxZoom:17,extent:4096});
+// An empty, valid basemap keeps this focused check independent of planet
+// downloads. Platform geometry still travels through the real vector source
+// and its tile/render events, which drive the application's length lookup.
+const archive=Buffer.alloc(130);archive.write('PMTiles');archive[7]=3;
+for(const [offset,value] of [[8,127],[16,1],[24,128],[32,2],[40,130],[56,130]])archive.writeBigUInt64LE(BigInt(value),offset);
+archive[96]=1;archive[97]=archive[98]=archive[99]=1;archive[101]=22;
+for(const [offset,value] of [[102,-1800000000],[106,-850000000],[110,1800000000],[114,850000000]])archive.writeInt32LE(value,offset);
+archive.write('{}',128);
+const runtime=process.env.ATLAS_BROWSER_RUNTIME,glyphFile=process.env.ATLAS_BROWSER_GLYPHS;
 const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');await mkdir('browser-review',{recursive:true});
 try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
- const page=await browser.newPage({viewport:{width,height},hasTouch:kind==='mobile',deviceScaleFactor:kind==='mobile'?2.625:1});let requests=0,releaseLength;const lengthReady=new Promise(resolve=>releaseLength=resolve);
+ const page=await browser.newPage({viewport:{width,height},hasTouch:kind==='mobile',deviceScaleFactor:kind==='mobile'?2.625:1,serviceWorkers:'block'});let requests=0;
+ const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ page.on('console',message=>{if(message.type()==='error')console.error(kind,message.text());});
  await page.addInitScript(()=>{const getContext=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(kind,options){return getContext.call(this,kind,/^webgl2?$/.test(kind)?{...options,preserveDrawingBuffer:true}:options);};});
- await page.route('https://openrailwaymap.app/api/feature/openrailwaymap_standard/standard_railway_platform_edges/**',async r=>{const id=r.request().url().split('/').at(-1);if(id==='349685435'){requests++;await lengthReady;await r.fulfill({json:fixture.response});}else await r.fulfill({status:404,body:''});});
- await page.goto(base+'?mode=infrastructure&relief=0&stations=0&names=0&trackCounts=0&transport=0&destinations=0&constraints=0#19/35.6815/139.7664',{waitUntil:'domcontentloaded'});
+ if(runtime)await page.route('https://cdn.jsdelivr.net/npm/**',async route=>{const path=new URL(route.request().url()).pathname;const local=path.includes('maplibre-gl')?'maplibre-gl/dist/'+path.split('/').at(-1):'pmtiles/dist/pmtiles.js';await route.fulfill({body:await readFile(`${runtime}/${local}`),contentType:path.endsWith('.css')?'text/css':'text/javascript'});});
+ await page.route('https://tuiles.enliberte.fr/planet.pmtiles',route=>route.fulfill({body:archive,contentType:'application/octet-stream'}));
+ if(glyphFile)await page.route('https://tuiles.enliberte.fr/fonts/**',async route=>route.fulfill({body:await readFile(glyphFile),contentType:'application/x-protobuf'}));
+ await page.route('**/data/**/index.json',route=>route.fulfill({json:{tiles:[]}}));
+ await page.route('https://openrailwaymap.app/**',async route=>{
+  const path=new URL(route.request().url()).pathname;
+  if(path.startsWith('/api/feature/')){
+   if(path.includes('standard_railway_platform_edges/')&&path.split('/').at(-1)==='349685435'){requests++;await route.fulfill({json:fixture.response});}
+   else await route.fulfill({status:404,body:''});
+  }else await route.fulfill({json:{tilejson:'3.0.0',tiles:[`${base}review-platform-tiles${path}/{z}/{x}/{y}.pbf`],minzoom:0,maxzoom:22}});
+ });
+ await page.route('**/review-platform-tiles/**',async route=>{
+  const match=/review-platform-tiles\/([^/]+)\/(\d+)\/(\d+)\/(\d+)\.pbf/.exec(route.request().url());assert.ok(match);
+  const [,layer,z,x,y]=match,tile=layer==='standard_railway_platform_edges'?edges.getTile(+z,+x,+y):null;
+  await route.fulfill({body:tile?Buffer.from(vtpbf.fromGeojsonVt({[layer]:tile},{version:2})):Buffer.alloc(0),contentType:'application/x-protobuf'});
+ });
+ await page.goto(base+'?mode=infrastructure&relief=0&stations=0&names=0&trackCounts=0&transport=0&destinations=0&constraints=0#18/35.6815/139.7664',{waitUntil:'domcontentloaded'});
  await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:90000});
- await page.evaluate(async f=>{const {map}=await import(document.querySelector('script[type="module"]').src);window.reviewMap=map;const layer={...map.getStyle().layers.find(l=>l.id==='platform-edges')};map.removeLayer('platform-edges');map.removeSource('platformEdges');map.addSource('platformEdges',{type:'geojson',data:f});delete layer['source-layer'];map.addLayer(layer,'platform-lengths');map.triggerRepaint();},fixture.feature);
- await page.waitForFunction(()=>window.reviewMap.queryRenderedFeatures({layers:['platform-edges']}).length>0);
- if(await page.locator('#controls').isVisible())await page.locator('#collapse').click();const first=await page.evaluate(()=>{const p=window.reviewMap.project([139.7663502,35.6815449]);return {x:p.x,y:p.y};});await page.locator('#map canvas').click({position:first});await page.waitForSelector('#details:not([hidden])');assert.ok(!(await page.locator('#detail-content').innerText()).includes('Boarding edge length'));releaseLength();await page.waitForFunction(()=>document.querySelector('#detail-content').textContent.includes('247 m'));await page.locator('#details-close').click();
+ await page.evaluate(async()=>{window.reviewMap=(await import(document.querySelector('script[type="module"]').src)).map;});
+ await page.waitForFunction(()=>window.reviewMap.queryRenderedFeatures({layers:['platform-lengths']}).some(f=>f.properties.ref==='1'));
+ if(await page.locator('#controls').isVisible())await page.locator('#collapse').click();const first=await page.evaluate(()=>{const map=window.reviewMap,label=map.queryRenderedFeatures({layers:['platform-lengths']}).find(f=>f.properties.ref==='1'),p=map.project(label.geometry.coordinates);return {x:p.x,y:p.y};});await page.locator('#map canvas').click({position:first});await page.waitForSelector('#details:not([hidden])');assert.ok(!(await page.locator('#detail-content').innerText()).includes('Boarding edge length'));assert.equal(requests,0,'references appear before the length lookup threshold');await page.evaluate(()=>window.reviewMap.jumpTo({zoom:19}));await page.waitForFunction(()=>document.querySelector('#detail-content').textContent.includes('247 m'));await page.locator('#details-close').click();
  const ready=()=>page.waitForFunction(()=>{const map=window.reviewMap;return map.queryRenderedFeatures({layers:['platform-lengths']}).some(f=>Math.abs(f.properties.platform_length-246.86183810409128)<.001);},undefined,{timeout:30000});await ready();
  if(await page.locator('#controls').isHidden()){const open=page.locator('#controls-open');if(await open.count())await open.click();else await page.locator('#collapse').click();}
  assert.equal(await page.locator('#units').evaluate(e=>e.closest('#main-view')!==null&&e.parentElement.previousElementSibling?.classList.contains('language-picker')),true);
@@ -35,5 +64,5 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  await page.selectOption('#units','imperial');assert.ok((await page.locator('#legend .legend-item').allTextContents()).includes('50,000 lb'),'native pounds need no same-system conversion');assert.match(await page.locator('#legend').innerText(),/24.8 short tons \(22,500 kg\)/,'only metric data converts in Imperial');
  await page.screenshot({path:`browser-review/axle-${kind}-native-imperial.png`});
  await page.selectOption('#units','metric');assert.ok((await page.locator('#legend .legend-item').allTextContents()).includes('22,500 kg'),'native kilograms need no same-system conversion');assert.match(await page.locator('#legend').innerText(),/22.68 t \(50,000 lb\)/,'only imperial data converts in Metric');
- console.log(`PASS: ${kind} kg/lb axle legend updates immediately`);await page.close();
+ assert.deepEqual(errors,[]);console.log(`PASS: ${kind} kg/lb axle legend updates immediately`);await page.close();
 }}finally{await browser.close();}

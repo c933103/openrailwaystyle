@@ -30,10 +30,11 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
     const gap = 8, sl = parseFloat(safe.paddingLeft) || 0, sr = parseFloat(safe.paddingRight) || 0;
     const st = parseFloat(safe.paddingTop) || 0, sb = parseFloat(safe.paddingBottom) || 0;
     const low = bottom - Math.max(10, sb), high = top + Math.max(10, st);
-    const narrow = right - left <= 650, menu = visible(panel);
+    const bottomSheet = window.matchMedia ? window.matchMedia('(max-width:650px)').matches : window.innerWidth <= 650;
+    const menu = visible(panel);
     // A short landscape is not a narrow portrait: an expanded menu still
     // occupies the left side, even when the compact-menu media query matches.
-    const x = Math.max(left + Math.max(10, sl), !narrow && menu ? menu.right + gap : 0);
+    const x = Math.max(left + Math.max(10, sl), !bottomSheet && menu ? menu.right + gap : 0);
     const available = Math.max(1, right - Math.max(10, sr) - x - 42);
     set('--map-control-left', x - f.left);
     set('--map-control-width', available);
@@ -46,10 +47,9 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
     // readout can wrap; its height is not a fixed 80-pixel clearance.
     const stack = corner.getBoundingClientRect(), height = stack.height;
     const detail = visible(details);
-    const bottomSheet = window.matchMedia ? window.matchMedia('(max-width:650px)').matches : window.innerWidth <= 650;
     const horizontalOverlap = rect => rect && rect.left < x + stack.width + gap && rect.right > x - gap;
     const desktopDetail = !bottomSheet && horizontalOverlap(detail);
-    let stackTop = narrow && menu ? Math.max(high, menu.top + 48 + gap) : high;
+    let stackTop = bottomSheet && menu ? Math.max(high, menu.top + 48 + gap) : high;
     if (desktopDetail) stackTop = Math.max(stackTop, detail.top + 48 + gap);
     // The credits popover ends 40px above the info button's bottom. Reserve
     // space above it for the ruler/readout and the narrow menu's header, so
@@ -71,7 +71,7 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
     }
     // On narrow screens there is no side lane. Reserve the bottom controls'
     // measured height and let the expanded menu scroll above that area.
-    set('--map-panel-height', narrow && menu ? Math.max(48, floor - height - gap - menu.top) : Math.max(48, bottom - (menu?.top || high) - Math.max(10, sb)));
+    set('--map-panel-height', bottomSheet && menu ? Math.max(48, floor - height - gap - menu.top) : Math.max(48, bottom - (menu?.top || high) - Math.max(10, sb)));
   }
   function schedule() {
     if (disposed || queued !== undefined) return;

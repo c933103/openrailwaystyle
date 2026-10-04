@@ -5,10 +5,11 @@ import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {installControlLayout} from '../styles/map-controls.mjs';
 const overlaps=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;
-function fixture(width,height,stackHeight,expanded,openDetails){
+function fixture(width,height,stackHeight,expanded,openDetails,visualWidth=width){
   const dom=new JSDOM('<div id="frame"><div id="map"><div class="maplibregl-ctrl-bottom-left"></div><details class="maplibregl-ctrl-attrib" open><div class="maplibregl-ctrl-attrib-inner"></div></details></div><aside id="panel"></aside><div id="status"></div><div id="details" hidden></div></div>',{pretendToBeVisual:true});
   const {window}=dom,document=window.document,root=document.documentElement;
   window.innerWidth=width;window.innerHeight=height;
+  window.visualViewport={offsetTop:0,offsetLeft:0,width:visualWidth,height,addEventListener(){},removeEventListener(){}};
   const element=id=>document.getElementById(id),number=(name,fallback)=>parseFloat(root.style.getPropertyValue(name))||fallback;
   const rect=(left,top,w,h)=>({left,top,width:w,height:h,right:left+w,bottom:top+h});
   const frame=element('frame'),mapElement=element('map'),panel=element('panel'),status=element('status'),details=element('details');
@@ -48,3 +49,11 @@ for(const [width,height] of [[1365,900],[800,400],[412,915],[320,568]])
         assert.deepEqual(f.corner.getBoundingClientRect(),before,'layout converges');
       }finally{f.layout.destroy();assert.equal(f.details.style.maxHeight,'','cleanup restores the original detail height');f.dom.window.close();}
     });
+
+test('a zoomed visual viewport keeps the CSS desktop menu out of the control lane',()=>{
+ const f=fixture(1365,900,42,true,false,620);
+ try{
+  const stack=f.corner.getBoundingClientRect();assert.ok(stack.left>f.panel.getBoundingClientRect().right);assert.ok(stack.right<=620);
+  assert.equal(overlaps(stack,f.panel.getBoundingClientRect()),false);
+ }finally{f.layout.destroy();f.dom.window.close();}
+});

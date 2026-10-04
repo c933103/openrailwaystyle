@@ -70,19 +70,19 @@ async function check(name){
   results.push({name,...g});
 }
 try{
-  await page.goto(base+'?mode=infrastructure&relief=0&inactive=0#7/34/129');await ready();
+  await page.goto(base+'?mode=infrastructure&relief=0&inactive=0#7/34/129',{waitUntil:'domcontentloaded'});await ready();
   assert.equal(await opened(),false,'fresh visit defaults to collapsed, not absent');
   await check('fresh desktop');
   const info=page.locator('.maplibregl-ctrl-attrib-button');
   await info.click();assert.equal(await opened(),true);assert.equal((await cookie()).attributionOpen,true);
-  await page.reload();await ready();assert.equal(await opened(),true,'open cookie restored after real reload');
+  await page.reload({waitUntil:'domcontentloaded'});await ready();assert.equal(await opened(),true,'open cookie restored after real reload');
   for(const bg of ['carto','satellite','hybrid','map']){
     await page.locator(`[data-background="${bg}"]`).click();
     await check(`open credits with ${bg}`);assert.equal(await opened(),true);
     assert.equal(await page.locator('.maplibregl-ctrl-attrib').evaluate(el=>el.getBoundingClientRect().width),32,'expanded info is still button-sized');
   }
   await info.focus();await page.keyboard.press('Space');assert.equal(await opened(),false);
-  assert.equal((await cookie()).attributionOpen,false);await page.reload();await ready();assert.equal(await opened(),false);
+  assert.equal((await cookie()).attributionOpen,false);await page.reload({waitUntil:'domcontentloaded'});await ready();assert.equal(await opened(),false);
   await info.focus();await page.keyboard.press('Enter');assert.equal(await opened(),true);await page.keyboard.press('Escape');assert.equal(await opened(),false);
   assert.equal((await cookie()).attributionOpen,false);
   // Menu state, long status, readout, detail scale, short landscape and insets
@@ -110,6 +110,7 @@ try{
             const level=map.classList.contains('detail-2')?2:map.classList.contains('detail')?1:0;
             return level===expected && button.title.startsWith(`More detail: map drawn at ${100/2**expected}%.`);
           },next,{timeout:5000});
+          await page.waitForFunction(expected=>{try{return JSON.parse(decodeURIComponent(document.cookie.match(/(?:^|; )atlas_settings=([^;]*)/)?.[1]||'%7B%7D')).detail===expected;}catch{return false;}},next);
           assert.equal((await cookie()).detail,next,'detail click persists the actual next level');
         }
       }
