@@ -83,8 +83,13 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
   for (const element of [frame, panel, status, readout, details, corner, attribution?.querySelector('.maplibregl-ctrl-attrib-inner')])
     if (element) resizer?.observe(element);
   // New status text can wrap the pill onto more lines: lay out at once, so
-  // the corner never waits for a later frame's resize notification.
-  const text = new window.MutationObserver(() => update());
+  // the corner never waits for a later frame's resize notification. The map
+  // rewrites the same text on every idle event; only a real change counts.
+  let statusText = status?.textContent;
+  const text = new window.MutationObserver(() => {
+    if (status.textContent === statusText) return;
+    statusText = status.textContent; update();
+  });
   if (status) text.observe(status, {childList: true, characterData: true, subtree: true});
   const changes = new window.MutationObserver(schedule);
   for (const element of [mapElement, panel, status, readout, details, attribution])
