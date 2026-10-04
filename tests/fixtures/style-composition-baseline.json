@@ -73,6 +73,23 @@
         "electrification-former-supply-names"
       ],
       "verification": "All remaining source definitions, layer definitions and their relative order match the base commit after atlas metadata normalization."
+    },
+    "deadContextFollowup": {
+      "reviewed": "2026-10-04",
+      "removedLayers": [
+        "context-constraints-heritage-area",
+        "context-constraints-heritage-edge",
+        "context-constraints-heritage-area-label",
+        "context-constraints-indigenous-park-area",
+        "context-constraints-indigenous-park-edge",
+        "context-constraints-indigenous-park-area-label"
+      ],
+      "changedLayers": [
+        "context-constraints-protected-area",
+        "context-constraints-protected-edge",
+        "context-constraints-protected-area-label"
+      ],
+      "reason": "OpenMapTiles park classes come from boundary=national_park/protected_area, leisure=nature_reserve and lower-cased protection_title; boundary=aboriginal_lands is only in the boundary layer. The removed filters could never match."
     }
   },
   "root": {
@@ -582,15 +599,7 @@
       "source": "openmaptiles",
       "sourceLayer": "park",
       "minzoom": 6,
-      "sha256": "c5c90ea44707bac7692c3a11c0d986ce9ced0859b160931bef46c366131ceed8"
-    },
-    {
-      "id": "context-constraints-heritage-area",
-      "type": "fill",
-      "source": "openmaptiles",
-      "sourceLayer": "park",
-      "minzoom": 10,
-      "sha256": "5de71916ec36f1521e2b3e51d33b6db24c604645c1962c9e5a1fc8ccb7f0d431"
+      "sha256": "841d15ae511f34e479e8ebdc5f5bb71db1cc03d637122d864a82ce7c84f073a2"
     },
     {
       "id": "context-constraints-indigenous-area",
@@ -599,14 +608,6 @@
       "sourceLayer": "boundary",
       "minzoom": 4,
       "sha256": "2aa3bea28e683bd22c47ca27c6688f3b72a5875ae6a3d33a19c3ea2676edaefe"
-    },
-    {
-      "id": "context-constraints-indigenous-park-area",
-      "type": "fill",
-      "source": "openmaptiles",
-      "sourceLayer": "park",
-      "minzoom": 6,
-      "sha256": "10def5d57e80627d2dd205a24af8520e867922304b0d1fcd428b11bd0047f364"
     },
     {
       "id": "context-constraints-military-area",
@@ -710,15 +711,7 @@
       "source": "openmaptiles",
       "sourceLayer": "park",
       "minzoom": 6,
-      "sha256": "e0ddb19ef127974fbb40e916d90d839871d67c493113294dd958a40735aa7a41"
-    },
-    {
-      "id": "context-constraints-heritage-edge",
-      "type": "line",
-      "source": "openmaptiles",
-      "sourceLayer": "park",
-      "minzoom": 10,
-      "sha256": "89715b5e183f72196928cb9c1fe634d136a80dafac6af8e0846dbf3c7dceda19"
+      "sha256": "4efa3e0eb38fded5cde85a912197337a944d4940a796532d4151b8041d323488"
     },
     {
       "id": "context-constraints-indigenous-edge",
@@ -727,14 +720,6 @@
       "sourceLayer": "boundary",
       "minzoom": 4,
       "sha256": "8b62c61bc618cc3112a7ae275254f9c2d810061c31ba62e6ef54afed1a7c16ed"
-    },
-    {
-      "id": "context-constraints-indigenous-park-edge",
-      "type": "line",
-      "source": "openmaptiles",
-      "sourceLayer": "park",
-      "minzoom": 6,
-      "sha256": "e29f8a0718a3e355e7ec3d73a6b928186f96d0e12f5643ce17be2681a47caa63"
     },
     {
       "id": "context-constraints-military-edge",
@@ -1831,15 +1816,7 @@
       "source": "openmaptiles",
       "sourceLayer": "park",
       "minzoom": 7,
-      "sha256": "6bd8104cef6f13c5acfd48481a2dd77fe5c99851645de0f3f9f7f9d4a1688c6a"
-    },
-    {
-      "id": "context-constraints-heritage-area-label",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "sourceLayer": "park",
-      "minzoom": 11,
-      "sha256": "227b3c410203412adbbc3bf22e85c840d881ccd617d3a0fd486dbe5c5f98f1d0"
+      "sha256": "2f4d87140242c3b2cb788db9f9bb856e6b293d0db7a558320cc9cd5b186eda18"
     },
     {
       "id": "context-constraints-indigenous-area-label",
@@ -1848,14 +1825,6 @@
       "sourceLayer": "boundary",
       "minzoom": 5,
       "sha256": "a6646f4a87b10eec3d41bf3b3d3913ce4d9997a4e7b4e309a5b154a7e0741efd"
-    },
-    {
-      "id": "context-constraints-indigenous-park-area-label",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "sourceLayer": "park",
-      "minzoom": 7,
-      "sha256": "6d948e13accb44211d72baf64103dc809d46d9587d2a2134f7eb57f62ac07ed8"
     },
     {
       "id": "context-constraints-military-area-label",
