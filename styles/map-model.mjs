@@ -1,6 +1,6 @@
-export {createPlatformLengths,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261004-polarlinks3';
+export {createPlatformLengths,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261004-pr53-repair3';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261004-polarlinks3';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261004-pr53-repair3';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
