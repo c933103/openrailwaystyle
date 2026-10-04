@@ -98,7 +98,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') { console.log('Browser resource:',msg.text()); if(/DataCloneError|already detached/.test(msg.text())) errors.push(msg.text()); }});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261004-pr71-repair1&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261004-frequency5&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
@@ -142,8 +142,8 @@ try{
   info=await attributionState();
   assert.deepEqual({compact:info.compact,open:info.open},{compact:true,open:false},'Closed state survives background changes');
   console.log('PASS: attribution stays a visible compact info button and remembers its state');
-  // On desktop the scale/readout corner must start to the right of the menu,
-  // and it must not cover the centred status pill.
+  // On desktop the scale/readout stays in the bottom-left corner below the
+  // shortened menu, and it must not cover the centred status pill.
   const overlayBoxes=()=>page.evaluate(()=>{
     const box=el=>{const r=el.getBoundingClientRect();return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height};};
     return {scale:box(document.querySelector('.maplibregl-ctrl-scale')),panel:box(document.querySelector('.panel')),status:box(document.querySelector('.map-status'))};
@@ -151,6 +151,7 @@ try{
   const overlaps=(a,b)=>a.left<b.right && a.right>b.left && a.top<b.bottom && a.bottom>b.top;
   let boxes=await overlayBoxes();
   assert.equal(overlaps(boxes.scale,boxes.panel),false,'Desktop scale ruler stays clear of the left menu');
+  assert.ok(boxes.scale.left<boxes.panel.right&&boxes.scale.top>boxes.panel.bottom,'Desktop scale ruler stays in the corner below the menu');
   assert.equal(overlaps(boxes.scale,boxes.status),false,'Desktop scale ruler stays clear of status text');
   console.log('PASS: desktop scale ruler clears the left menu and status');
   // Pan northwest at the SAME zoom before any visit to zoom 8.

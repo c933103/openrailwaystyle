@@ -116,3 +116,60 @@ test('close polar coordinates and drag scale retain sub-metre precision', async 
   near(globeRadiansPerPixel(2048,0),2*Math.PI/2048,1e-12);
   near(globeRadiansPerPixel(2048,60,60),2*Math.PI/2048,1e-12);
 });
+
+
+test('ground zoom stays continuous at either pole and reflects close-up scale',async()=>{
+  const {globeGroundZoom,zoomForLatitude,POLE_LIMIT}=await import('../styles/globe-drag.mjs');
+  near(globeGroundZoom(12,0),12);near(globeGroundZoom(2,60),3);
+  // The reported screenshot combines zoom 1.3 with a 50 m scale near the south pole.
+  near(globeGroundZoom(1.3,-89.99964),18.580072439802105,1e-5);
+  for(const latitude of [89.9,89.999,89.99999,POLE_LIMIT])for(const sign of [1,-1]){
+    const start=sign*latitude,expected=globeGroundZoom(2,start);
+    for(const target of [sign*POLE_LIMIT,-start,sign*(latitude-0.001)]){
+      near(globeGroundZoom(zoomForLatitude(2,start,target),target),expected,1e-10);
+    }
+  }
+});
+
+
+test('zooming towards a nearby polar anchor retains sub-metre angular precision',async()=>{
+  const {zoomTowards,startFrame,frameView}=await import('../styles/globe-drag.mjs');
+  for(const sign of [1,-1]){
+    const latitude=sign*89.99964,target=latitude+sign*0.0000005;
+    const result=frameView(zoomTowards(startFrame([20,latitude],0),[20,target],1));
+    near(result.center[1],(latitude+target)/2,1e-12);
+  }
+});
+
+
+test('readout zoom matches the flat map below 85.05° and stays continuous beyond',async()=>{
+  const {readoutZoom,zoomForLatitude,POLE_LIMIT}=await import('../styles/globe-drag.mjs');
+  for(const latitude of [0,22.3,60,-85])near(readoutZoom(3.9,latitude),3.9);
+  near(readoutZoom(5,85.051129),5,1e-9);near(readoutZoom(5,85.0512),5,1e-4);
+  // The reported 50 m scale at zoom 1.3 near the south pole reads as a close-up.
+  assert.ok(readoutZoom(1.3,-89.99964)>15);
+  for(const sign of [1,-1]){
+    const start=sign*89.99,expected=readoutZoom(2,start);
+    for(const target of [sign*POLE_LIMIT,-start,sign*86])near(readoutZoom(zoomForLatitude(2,start,target),target),expected,1e-10);
+  }
+});
+
+
+test('polar views survive the address: readout zoom and enough decimals',async()=>{
+  const {viewHash,parseViewHash,readoutZoom,globeGroundZoom}=await import('../styles/globe-drag.mjs');
+  // MapLibre's own hash wrote these as #1.3/-90/30 and #-4.41/90/30.
+  for(const [zoom,lat,lng] of [[1.3,-89.99964,30],[-4.41,89.99707,30],[12,89.99,-150.5],[5,60,10],[17,-85.06,0]]){
+    const hash=viewHash({zoom,lat,lng}),z=hash.slice(1).split('/')[0],view=parseViewHash(hash);
+    assert.ok(parseFloat(z)>=0,hash);near(parseFloat(z),readoutZoom(zoom,lat),0.006);
+    // Coordinates are rounded to the ground scale, as MapLibre does for its
+    // zoom; the zoom read back keeps that ground scale wherever the rounding
+    // puts the centre.
+    const step=10**-(hash.split('/')[1].split('.')[1]?.length||0);
+    near(view.center[1],lat,step/2+1e-12);near(view.center[0],lng,step/2+1e-12);
+    near(globeGroundZoom(view.zoom,view.center[1]),globeGroundZoom(zoom,lat),0.006);
+  }
+  assert.equal(viewHash({zoom:5,lat:60.123456,lng:10.5}),'#5/60.12/10.5','below 85.05° the address is as MapLibre wrote it');
+  assert.equal(viewHash({zoom:5,lat:60,lng:10,bearing:30,pitch:40}),'#5/60/10/30/40');
+  assert.deepEqual(parseViewHash('#5/60/10/30/40'),{center:[10,60],zoom:5,bearing:30,pitch:40});
+  for(const bad of ['','#','#5/60','#a/b/c','#5/95/10','#5x/60/10'])assert.equal(parseViewHash(bad),null,bad);
+});

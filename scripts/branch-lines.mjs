@@ -10,6 +10,21 @@ import vtpbf from 'vt-pbf';
 import {parseMaxspeed} from './lifecycle.mjs';
 
 export const MIN_ZOOM = 4, BRANCH_MAX_ZOOM = 6, METRO_MIN_ZOOM = 7, MAX_ZOOM = 9, LAYER = 'branch_lines';
+export const BRANCH_DATA_VERSION = 3;
+
+// A schema change queues the existing region stages for re-fetching. It only
+// updates progress state; the complete geometry table stays in place until
+// each region succeeds. Retain the previous completion date so deletion
+// checks still protect migrated stages from an incomplete refresh response.
+export function migrateBranchState(state) {
+  if (state.version === BRANCH_DATA_VERSION) return state;
+  for (const stage of Object.values(state.stages || {})) Object.assign(stage, {
+    previousCompleted: stage.completed || stage.previousCompleted || null,
+    completed: null, pending: null, seen: [],
+  });
+  state.version = BRANCH_DATA_VERSION;
+  return state;
+}
 
 // Regions fetched one stage at a time, in this order. A part is a bounding
 // box [south, west, north, east], optionally limited to OSM country areas
@@ -52,23 +67,41 @@ export function partQuery(part, box) {
   return `[out:json][timeout:180][maxsize:536870912];${areas}${set};out tags geom qt;`;
 }
 
-// Train protection as OpenRailwayMap's first system: the most advanced
-// recorded railway:<system> tag (ETCS and CTCS by level).
+// Train protection in provider-compatible slots, retaining concurrent
+// railway:<system> tags rather than stopping at the first matching system.
 const PROTECTION_ORDER = ['etcs', 'ctcs', 'ktcs', 'ptc', 'etms', 'itcs', 'eatc', 'atacs', 'cbtc', 'saet', 'nexteo', 'atms', 'tmacs',
   'lzb', 'tvm', 'zsl90', 'kcvb', 'kcvp', 'sacem', 'ouragan', 'octys', 'als', 'acses', 'ases', 'atb', 'ls', 'evm', 'atc',
   'pzb', 'zub', 'zbs', 'zsi127', 'kvb', 'kvbp', 'tpws', 'ebicab', 'jkv', 'satp', 'tbl', 'asfa', 'scmt', 'ssc', 'atp',
   'aws', 'caws', 'zst90', 'shp', 'ats'];
-export function trainProtection(tags) {
+export function trainProtections(tags) {
+  const systems = [];
+  let explicitlyAbsent = false;
   for (const system of PROTECTION_ORDER) {
     const value = tags[`railway:${system}`];
-    if (value === undefined || value === 'no') continue;
+    // Absence of one named system says nothing about other systems.
+    if (value === 'no') continue;
+    if (value === undefined || value === 'no' || value === '') continue;
     // Level 3 ETCS draws as level 2; CTCS levels 0 and 1 are plain ctcs.
-    if (system === 'etcs' && /^[1-3]$/.test(value)) return value === '1' ? 'etcs_1' : 'etcs_2';
-    if (system === 'ctcs' && /^[2-3]$/.test(value)) return `ctcs_${value}`;
-    return system;
+    if (system === 'etcs' && /^[1-3]$/.test(value)) systems.push(value === '1' ? 'etcs_1' : 'etcs_2');
+    else if (system === 'ctcs' && /^[2-3]$/.test(value)) systems.push(`ctcs_${value}`);
+    else systems.push(system);
   }
-  return undefined;
+  // The proposed list tag is already present in OSM. Only unprefixed codes
+  // known to this importer are folded to provider names: country/vendor
+  // prefixes and unfamiliar values stay distinct and use the unknown colour.
+  for (const value of String(tags['railway:train_protection'] || '').split(';').map(v => v.trim()).filter(Boolean)) {
+    const lower = value.toLowerCase();
+    if (lower === 'no') { explicitlyAbsent = true; continue; }
+    if (!PROTECTION_ORDER.includes(lower)) { systems.push(value); continue; }
+    const version = tags[`railway:train_protection:${value}`] ?? tags[`railway:train_protection:${lower}`];
+    if (lower === 'etcs' && /^[1-3]$/.test(version)) systems.push(version === '1' ? 'etcs_1' : 'etcs_2');
+    else if (lower === 'ctcs' && /^[2-3]$/.test(version)) systems.push(`ctcs_${version}`);
+    else systems.push(lower);
+  }
+  return systems.length ? [...new Set(systems)] : explicitlyAbsent ? ['none'] : [];
 }
+// Kept for existing callers that need the primary provider-style system.
+export const trainProtection = tags => trainProtections(tags)[0];
 const number = value => { const text = String(value ?? '').split(';')[0].trim(); const n = text === '' ? NaN : Number(text); return Number.isFinite(n) ? n : undefined; };
 const GAUGE_WORDS = {standard: 1435, broad: 1668, narrow: 1067};
 function gauges(value) {
@@ -183,7 +216,7 @@ export function toFeatures(json) {
     }
     const lines = parts.filter(part => part.length > 1).map(part => simplify(part).map(round));
     if (!lines.length) continue;
-    const [g0, g1] = gauges(tags.gauge), protection = trainProtection(tags), maxspeed = parseMaxspeed(speedTags(tags), 'present', true), label = speedLabel(tags);
+    const [g0, g1] = gauges(tags.gauge), protection = trainProtections(tags), maxspeed = parseMaxspeed(speedTags(tags), 'present', true), label = speedLabel(tags);
     const preferred = tags['railway:preferred_direction'];
     const properties = {
       osm_id: way.id, feature: tags.railway, usage: tags.railway === 'subway' ? (tags.usage || '') : 'branch', state: 'present',
@@ -196,7 +229,10 @@ export function toFeatures(json) {
       ...(g0 && {gauge0: g0.text, ...(g0.mm && {gaugeint0: g0.mm})}),
       ...(g1 && {gauge1: g1.text, ...(g1.mm && {gaugeint1: g1.mm})}),
       ...(tags.loading_gauge && {loading_gauge: tags.loading_gauge}),
-      ...(protection && {train_protection0: protection}),
+      ...Object.fromEntries(protection.slice(0, 3).map((code, i) => [`train_protection${i}`, code])),
+      // Tiles follow the provider's three slots; keep an exceptional longer
+      // list for the infobox instead of silently discarding its other systems.
+      ...(protection.length > 3 && {train_protection: protection.join(';')}),
       ...(tags.operator && {operator: tags.operator}),
       // Structures, as the detailed tiles' booleans (bridge=no and tunnel=no
       // are not structures).

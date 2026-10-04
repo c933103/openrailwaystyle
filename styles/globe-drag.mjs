@@ -132,6 +132,33 @@ export function frameView({c, u}) {
 const clampLat = lat => Math.max(-POLE_LIMIT, Math.min(POLE_LIMIT, lat));
 // The zoom that shows the planet at the same size with the centre moved
 // from oldLat to newLat (MapLibre's getZoomAdjustment).
+// Ground scale on the globe is proportional to cos(center latitude)/2^zoom.
+// Expose its equatorial equivalent for a stable readout while panning across
+// a pole. MapLibre's camera/hash continues to use the latitude-relative value.
+export const globeGroundZoom = (zoom, latitude) => zoomForLatitude(zoom, latitude, 0);
+// The zoom the readout shows: MapLibre's own (the same as on the flat map, so
+// it does not jump when the projection changes) up to 85.05°, and beyond it
+// the zoom at 85.05° with the same ground scale, which stays continuous across
+// a pole.
+export const readoutZoom = (zoom, latitude) => zoomForLatitude(zoom, latitude, Math.max(-MERCATOR_LIMIT, Math.min(MERCATOR_LIMIT, latitude)));
+// The view in the address (#zoom/lat/lng[/bearing[/pitch]], as MapLibre
+// writes it). The zoom written is the readout zoom, which near a pole keeps
+// the ground scale with a zoom the flat map can show, instead of MapLibre's
+// latitude-relative one (negative close to a pole); coordinates get enough
+// decimals for that ground scale, so a close-up polar view survives a link.
+export function viewHash({zoom, lat, lng, bearing = 0, pitch = 0}) {
+  const z = readoutZoom(zoom, lat), digits = Math.max(0, Math.ceil((z * Math.LN2 + Math.log(512 / 360 / 0.5)) / Math.LN10)), m = 10 ** digits;
+  const round = v => Math.round(v * m) / m, b = Math.round(bearing * 10) / 10, p = Math.round(pitch);
+  return `#${Math.round(z * 100) / 100}/${round(lat)}/${round(lng)}${b || p ? `/${b}` : ''}${p ? `/${p}` : ''}`;
+}
+export function parseViewHash(hash) {
+  const parts = String(hash || '').replace(/^#/, '').split('/');
+  if (parts.length < 3) return null;
+  const [z, lat, lng, bearing = 0, pitch = 0] = parts.map(Number);
+  if (![z, lat, lng, bearing, pitch].every(Number.isFinite) || Math.abs(lat) > 90) return null;
+  const zoom = Math.abs(lat) > MERCATOR_LIMIT ? zoomForLatitude(z, Math.sign(lat) * MERCATOR_LIMIT, lat) : z;
+  return {center: [lng, Math.max(-POLE_LIMIT, Math.min(POLE_LIMIT, lat))], zoom, bearing, pitch};
+}
 export const zoomForLatitude = (zoom, oldLat, newLat) => zoom + Math.log2(Math.cos(rad(clampLat(newLat))) / Math.cos(rad(clampLat(oldLat))));
 // MapLibre's globe radius is worldSize / (2π cos(latitude)). Use its
 // centre scale directly: inverse projection rounds very close polar
@@ -199,8 +226,8 @@ const POLAR_ZOOM_LATITUDE = 70;
 // `zoomed` levels, so that the point keeps its place on screen: the centre
 // covers the fraction 1 − 2^−zoomed of the way (backwards when zooming out).
 export function zoomTowards({c, u}, at, zoomed) {
-  const target = toVector(at), angle = Math.acos(Math.max(-1, Math.min(1, dot(c, target))));
-  const axis = cross(c, target), n = Math.hypot(...axis);
+  const target = toVector(at), axis = cross(c, target), n = Math.hypot(...axis);
+  const angle = Math.atan2(n,dot(c,target));
   if (n < 1e-12) return {c, u};
   const k = axis.map(v => v / n), w = angle * (1 - 2 ** -zoomed);
   const turn = v => { const kv = cross(k, v), kd = dot(k, v); return unit(v.map((x, i) => x * Math.cos(w) + kv[i] * Math.sin(w) + k[i] * kd * (1 - Math.cos(w)))); };
@@ -258,6 +285,15 @@ export function installGlobeDrag(map, {active, ignore = () => false}) {
   return {
     // MapLibre's panning is off while this handles the globe.
     sync: () => { if (active()) map.dragPan.disable(); else map.dragPan.enable(); },
+    // Pan by dx, dy pixels (as map.panBy) the way a drag does, over the
+    // poles; false when the flat map should pan instead.
+    pan: (dx, dy, eventData) => {
+      const scale = active() && radiansPerPixel();
+      if (!scale) return false;
+      const c = map.getCenter(), view = stepView({center: [c.lng, c.lat], bearing: map.getBearing()}, -dx, -dy, scale);
+      map.jumpTo({center: view.center, bearing: view.bearing, zoom: zoomForLatitude(map.getZoom(), c.lat, view.center[1])}, eventData);
+      return true;
+    },
     justDragged: () => Date.now() < quietUntil,
   };
 }

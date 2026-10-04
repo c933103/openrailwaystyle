@@ -10,7 +10,26 @@ concurrency:
   group: pages-${{ github.head_ref && format('refs/heads/{0}', github.head_ref) || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
+  facilities:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for the first complete worldwide facility snapshot
+        run: |
+          # The resumable maintenance build has its own 110-minute budget.
+          # Keep initial data readiness outside the browser validation budget.
+          for attempt in $(seq 1 115); do
+            status=0
+            git ls-remote --exit-code --heads origin traction-data || status=$?
+            if [ "$status" = 0 ]; then exit 0; fi
+            if [ "$status" != 2 ]; then exit "$status"; fi
+            sleep 60
+          done
+          echo 'No complete worldwide railway facility snapshot has been published.'
+          exit 1
   validate:
+    needs: facilities
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -131,6 +150,19 @@ jobs:
         run: |
           python3 scripts/load-frequency-snapshot.py
           node scripts/rebuild-service-frequency.mjs
+      - name: Load worldwide railway signals and energy supplies
+        run: |
+          mkdir -p styles/data/traction
+          git fetch --depth=1 origin traction-data
+          git archive FETCH_HEAD | tar -x -C styles/data/traction
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {readFile} from 'node:fs/promises';
+          for (const kind of ['power','signals']) {
+            const manifest=JSON.parse(await readFile(`styles/data/traction/${kind}/manifest.json`));
+            assert.equal(manifest.complete,true,`Incomplete ${kind} facility snapshot`);
+          }
+          JS
       - name: Install test browser
         run: npx playwright install --with-deps chromium
       - name: Start test server
@@ -164,6 +196,8 @@ jobs:
         run: node scripts/check-platform-browser.mjs
       - name: Verify platform references, signals and entrances
         run: node scripts/check-infrastructure-browser.mjs
+      - name: Verify concurrent train controls, signals and traction supplies
+        run: node scripts/check-signal-power-browser.mjs
       - name: Verify served build information on desktop and touch
         run: node scripts/check-build-browser.mjs
       - name: Save browser review

@@ -105,6 +105,8 @@ button.brand-mark:focus-visible{outline:3px solid #d58d13;outline-offset:3px}
 
 .maplibregl-ctrl-attrib .atlas-build { display: block; }
 
+.system-label{min-width:0}.system-label summary{list-style:none;text-decoration:underline dotted;text-underline-offset:3px}.system-label summary::-webkit-details-marker{display:none}.system-label summary:hover{color:#276e7c}.system-description{font-size:11px;line-height:1.5;color:#52665d;margin:5px 0 0}.system-list{display:flex;flex-wrap:wrap;gap:4px 10px}.system-list .system-label[open]{flex-basis:100%}.legend-item:has(.system-label[open]){grid-column:1/-1;align-items:flex-start}.legend-item:has(.system-label[open]) .swatch{margin-top:6px}
+
 #service-frequency-options { display:grid; gap:5px; margin:10px 0; }
 #service-frequency-options[hidden],#frequency-profile-options[hidden],#peak-phase-options[hidden],#frequency-hour-options[hidden] { display:none; }
 #service-frequency-options select { width:100%; margin-bottom:6px; }

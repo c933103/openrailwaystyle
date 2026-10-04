@@ -1,3 +1,4 @@
+import * as globeModule from '../styles/globe-drag.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -9,6 +10,7 @@ import * as departuresModule from '../styles/departures.mjs';
 import * as elevationModule from '../styles/elevation.mjs';
 import * as contextFeatures from '../styles/context.mjs';
 import * as frequencyModule from '../styles/service-frequency.mjs';
+import * as powerFacilities from '../styles/power-facilities.mjs';
 import * as controlFunctions from '../styles/map-controls.mjs';
 import * as watchModule from '../styles/watch-map.mjs';
 import * as layerSemantics from '../styles/layer-semantics.mjs';
@@ -35,10 +37,16 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     removeControl(control) { this.controls = this.controls.filter(c => c !== control); }
     addControl(control) { (this.controls ||= []).push(control); }
     addImage(id, data, options) { this.image = {id,data,options}; }
-    off(name) { delete this.handlers[name]; }
-    on(name, handler) { this.handlers[name] = handler; }
+    off(name, handler) {
+      if (!handler) { delete this.handlers[name]; delete this.listeners?.[name]; return; }
+      this.listeners?.[name]?.delete(handler);
+    }
+    on(name, handler) {
+      const listeners=(this.listeners ||= {})[name] ||= new Set();listeners.add(handler);
+      this.handlers[name]=(...args)=>{for(const listener of [...listeners])listener(...args);};
+    }
     getStyle() { return this.options.style; }
-    getSource(id) { return {setData(){},setUrl: url => {this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
+    getSource(id) { return {setData:data=>{(this.sourceData ||= {})[id]=data;},setUrl: url => {this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
     setLayoutProperty(id, property, value) { if (property === 'visibility') this.visibility[id] = value; else (this.layout ||= {})[id] = value; }
     setPaintProperty(id, property, value) { (this.paint ||= {})[id] = value; ((this.paintProperties ||= {})[id] ||= {})[property] = value; }
     setPixelRatio(ratio) { this.pixelRatio = ratio; }
@@ -50,10 +58,10 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     getLayer() {}
     addLayer(layer) { (this.added ||= []).push(layer.id); }
     addSource() {}
-    getCanvas() { return {style:{}}; }
+    getCanvas() { return this.canvas ||= {style:{}}; }
     getCanvasContainer() { return this.canvasContainer ||= window.document.createElement('div'); }
     doubleClickZoom = {enable:()=>{this.doubleClickEnabled=true;}, disable:()=>{this.doubleClickEnabled=false;}};
-    queryRenderedFeatures({layers}={}) {return (this.rendered||[]).filter(f=>!layers||layers.includes(f.layer?.id));}
+    queryRenderedFeatures(geometry, options) {const {layers}=options||geometry||{};return (this.rendered||[]).filter(f=>!layers||layers.includes(f.layer?.id));}
     querySourceFeatures(id,{sourceLayer}) { return (this.sourceFeatures || []).filter(f=>f.sourceLayer===sourceLayer); }
     isSourceLoaded() { return true; }
     projection = {type:'mercator'};
@@ -84,7 +92,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const dependency = new vm.SyntheticModule(Object.keys(model), function() {
     for (const [key,value] of Object.entries(model)) this.setExport(key,value);
   }, {context});
-  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','locate','buildInfo'],function(){this.setExport('buildInfo',labelBuild);this.setExport('installLabelProtocols',()=>{});this.setExport('localizeTile',x=>x);this.setExport('locate',()=>({atlas_han:'none',atlas_zh:''}));},{context});
+  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','locate','buildInfo'],function(){this.setExport('buildInfo',labelBuild);this.setExport('installLabelProtocols',()=>{});this.setExport('localizeTile',x=>x);this.setExport('locate',(lon,lat)=>{assert.ok(Number.isFinite(lon)&&Number.isFinite(lat),'label region lookup takes longitude and latitude separately');return {atlas_han:'none',atlas_zh:''};});},{context});
   // The label code is imported on demand, after the controls are wired.
   let loadLabels;
   const labelsReady=new Promise(resolve=>{loadLabels=resolve;});
@@ -110,12 +118,15 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const departures = new vm.SyntheticModule(Object.keys(departuresModule), function() {
     for (const [key,value] of Object.entries(departuresModule)) this.setExport(key, key === 'stationDepartures' ? async () => ({stops: [], rows: []}) : value);
   }, {context});
-  const globe = new vm.SyntheticModule(['installGlobeDrag','allowPolarCentres'], function() { this.setExport('installGlobeDrag', () => ({sync() {}, justDragged: () => false})); this.setExport('allowPolarCentres', () => ({refresh() {}})); }, {context});
+  const globe = new vm.SyntheticModule(['installGlobeDrag','allowPolarCentres','readoutZoom','viewHash','parseViewHash'], function() { this.setExport('installGlobeDrag', () => ({sync() {}, justDragged: () => false, pan: () => false})); this.setExport('allowPolarCentres', () => ({refresh() {}}));this.setExport('readoutZoom',zoom=>zoom);this.setExport('viewHash',globeModule.viewHash);this.setExport('parseViewHash',globeModule.parseViewHash);  }, {context});
   const keyboard = new vm.SyntheticModule(['installKeyboardPan'], function() { this.setExport('installKeyboardPan', () => {}); }, {context});
   const contextModule = new vm.SyntheticModule(Object.keys(contextFeatures),function() {
     for (const [key,value] of Object.entries(contextFeatures)) this.setExport(key,value);
   },{context});
   const frequency = new vm.SyntheticModule(Object.keys(frequencyModule),function(){for(const [key,value] of Object.entries(frequencyModule))this.setExport(key,frequencyClock&&key==='installFrequencyExpiry'?options=>value({...options,...frequencyClock}):frequencyClock&&key==='frequencyDetails'?(properties,profile)=>value(properties,profile,frequencyClock.now()):value);},{context});
+  const powerModule = new vm.SyntheticModule(Object.keys(powerFacilities),function() {
+    for (const [key,value] of Object.entries(powerFacilities)) this.setExport(key,value);
+  },{context});
   const semantics = new vm.SyntheticModule(Object.keys(layerSemantics), function() {
     for (const [key,value] of Object.entries(layerSemantics)) this.setExport(key,value);
   }, {context});
@@ -123,7 +134,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     for (const [key,value] of Object.entries(controlFunctions)) this.setExport(key,value);
   }, {context});
   const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
-  await app.link(specifier => specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  await app.link(specifier => specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries,loadLabels};
@@ -369,6 +380,136 @@ test('station inspection finds nearby interchanges and facility inspection avoid
   } finally {dom.window.close();}
 });
 
+test('museum and theatre context does not offer a pointer or intercept railway inspection',async()=>{
+  const {dom,window,maps}=await start();
+  try {
+    const map=maps[0];map.handlers['style.load']();map.zoom=14;map.isMoving=()=>false;
+    window.cancelAnimationFrame=()=>{};window.requestAnimationFrame=callback=>{callback();return 1;};
+    const point=(layer,properties)=>({source:'openmaptiles',sourceLayer:'poi',layer:{id:layer},properties,geometry:{type:'Point',coordinates:[0,0]}});
+    const event={point:{x:500,y:400},lngLat:{lng:0,lat:0},originalEvent:{buttons:0}};
+    for (const subclass of ['museum','theatre']) {
+      map.rendered=[point('context-destinations-culture-label',{name:`Test ${subclass}`,subclass})];
+      map.handlers.mousemove(event);
+      assert.equal(map.getCanvas().style.cursor,'',subclass);
+      map.handlers.click(event);
+      assert.equal(window.document.getElementById('details').hidden,true,subclass);
+    }
+    const station={source:'stations',sourceLayer:'standard_railway_text_stations',layer:{id:'station-detail-large-names'},properties:{name:'Station beneath theatre',station_size:'large',state:'present'},geometry:{type:'Point',coordinates:[0,0]}};
+    map.rendered=[point('context-destinations-culture-label',{name:'Theatre',subclass:'theatre'}),station];
+    map.handlers.click(event);
+    assert.match(window.document.getElementById('detail-content').textContent,/Station beneath theatre/);
+    const bus=point('context-transport-bus-label',{name:'Bus interchange',class:'bus',subclass:'bus_station'});
+    map.rendered=[bus];map.handlers.mousemove(event);
+    assert.equal(map.getCanvas().style.cursor,'pointer');
+    map.handlers.click(event);
+    assert.match(window.document.getElementById('detail-content').textContent,/TRANSPORT FACILITY/);
+  } finally {dom.window.close();}
+});
+
+test('concurrent train-control systems use compact names with complete hover and native expandable descriptions',async()=>{
+  const {dom,window,maps,errors}=await start({search:'?mode=control'});
+  try {
+    const map=maps[0];map.getLayer=id=>map.options.style.layers.find(layer=>layer.id===id);
+    map.handlers['style.load']();map.zoom=18;
+    const codes=['etcs_2','lzb','pzb'];
+    const feature={source:'railway',sourceLayer:'railway',layer:{id:'control-tracks'},properties:{name:'Shared protection systems',state:'present',train_protection0:'etcs_2',train_protection1:'lzb',train_protection2:'pzb',train_protection:'etcs_2;lzb;pzb;etcs_2'},geometry:{type:'LineString',coordinates:[[0,0],[0.001,0]]}};
+    map.rendered=[feature];
+    map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+    map.handlers.moveend();await new Promise(resolve=>setTimeout(resolve,300));
+    for (const container of [window.document.getElementById('detail-content'),window.document.getElementById('legend')]) {
+      const labels=[...container.querySelectorAll('details.system-label')];
+      assert.equal(labels.length,3,'all concurrent systems appear once despite repeated tags');
+      assert.deepEqual(labels.map(label=>label.querySelector('summary').textContent).sort(),['ETCS L2','LZB','PZB'].sort());
+      for (const code of codes) {
+        const system=model.trainProtection(code),label=labels.find(label=>label.querySelector('summary').textContent===model.trainProtectionShort(code));
+        const summary=label.querySelector('summary'),description=[system[1],model.CONTROL_LEVELS[system[3]],model.CONTROL_FAMILIES[system[2]].note].join(' · ');
+        assert.equal(label.open,false,'full descriptions start collapsed');
+        assert.equal(summary.title,description,'hover includes the complete name, level and compatibility explanation');
+        assert.equal(label.querySelector('.system-description').textContent,description);
+        assert.ok(label instanceof window.HTMLDetailsElement,'native details/summary keeps tap and keyboard access');
+        summary.click();assert.equal(label.open,true,'tapping the summary exposes its description');
+        summary.click();assert.equal(label.open,false);
+      }
+    }
+    assert.equal(errors.length,0);
+  } finally {dom.window.close();}
+});
+
+test('railway energy supplies download once at facility zoom and relocalize existing data on language changes',async()=>{
+  const requests=[],collection={type:'FeatureCollection',features:[{type:'Feature',id:'node-91',properties:{power_kind:'fuel',name:'Local railway depot','name:en':'Railway fuel depot','name:ja':'鉄道給油所'},geometry:{type:'Point',coordinates:[0,0]}}]};
+  const {dom,window,maps,errors}=await start({fetcher:async url=>{
+    const power=String(url).includes('/data/traction/power/power-facilities.geojson');
+    if(power)requests.push(String(url));
+    return {ok:true,json:async()=>structuredClone(power?collection:style)};
+  }});
+  try {
+    const map=maps[0];map.zoom=9;map.handlers['style.load']();
+    assert.equal(requests.length,0,'Infrastructure does not request the Power dataset');
+    window.document.querySelector('[data-mode="electrification"]').click();
+    assert.equal(requests.length,0,'Power overview does not request detailed facilities');
+    window.document.querySelector('[data-background="satellite"]').click();
+    map.zoom=12;map.handlers.moveend();
+    assert.equal(requests.length,0,'satellite without rail overlays does not request supplies');
+    window.document.querySelector('[data-background="carto"]').click();
+    await new Promise(resolve=>setTimeout(resolve,0));
+    assert.equal(requests.length,1);
+    const original=collection.features[0],loaded=map.sourceData.electricFacilities.features[0];
+    assert.equal(loaded.id,original.id);assert.equal(loaded.type,original.type);assert.deepEqual(loaded.geometry,original.geometry);
+    for(const [key,value] of Object.entries(original.properties))assert.equal(loaded.properties[key],value,'recorded supply tags are preserved');
+    assert.equal(loaded.properties.atlas_name,original.properties.name);
+    assert.equal(loaded.properties.atlas_language,'local');
+    map.rendered=[{...loaded,source:'electricFacilities',layer:{id:'electrification-supply-points'}}];
+    map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+    assert.equal(window.document.querySelector('#detail-content h2').textContent,original.properties.name);
+    const language=window.document.getElementById('language');
+    for(const code of ['en','ja']) {
+      language.value=code;language.dispatchEvent(new window.Event('change'));
+      await new Promise(resolve=>setTimeout(resolve,0));
+      const localized=map.sourceData.electricFacilities.features[0].properties;
+      assert.equal(localized.atlas_name,original.properties[`name:${code}`]);
+      assert.equal(localized.atlas_language,code);
+      for(const [key,value] of Object.entries(original.properties))assert.equal(localized[key],value,'language changes keep the original mapped tags');
+      assert.equal(window.document.querySelector('#detail-content h2').textContent,original.properties[`name:${code}`]);
+      assert.equal(requests.length,1,'language changes relocalize the loaded snapshot without another download');
+    }
+    map.handlers.moveend();map.handlers.moveend();
+    window.document.querySelector('[data-mode="infrastructure"]').click();
+    window.document.querySelector('[data-mode="electrification"]').click();
+    await new Promise(resolve=>setTimeout(resolve,0));
+    assert.equal(requests.length,1,'moving and returning to Power reuse the loaded snapshot');
+    assert.equal(errors.length,0);
+  } finally {dom.window.close();}
+});
+
+test('Power facilities inspect their supply type and source object without train speed or timetable fields',async()=>{
+  const {dom,window,maps,errors}=await start({search:'?mode=electrification',fetcher:async url=>({ok:true,json:async()=>String(url).includes('power-facilities.geojson')?{type:'FeatureCollection',features:[]}:structuredClone(style)})});
+  try {
+    const map=maps[0];map.handlers['style.load']();map.zoom=18;
+    const supplies=[
+      ['fuel','node',91,{railway:'fuel',fuel:'diesel'}],
+      ['coaling_facility','way',92,{railway:'coaling_facility'}],
+      ['water_tank','relation',93,{railway:'water_tank',content:'water',capacity:'100 m³'}],
+      ['plant','way',94,{power:'plant','plant:source':'hydro','plant:output:electricity':'20 MW'}],
+    ];
+    for (const [kind,type,id,tags] of supplies) {
+      const feature={source:'electricFacilities',layer:{id:'electrification-supply-points'},properties:{...tags,name:`Test ${kind}`,power_kind:kind,power_state:'present',osm_type:type,osm_id:String(id)},geometry:{type:'Point',coordinates:[0,0]}};
+      map.rendered=[feature];map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+      const detail=window.document.getElementById('detail-content');
+      assert.match(detail.textContent,/RAILWAY ENERGY SUPPLY/);
+      assert.ok(detail.textContent.includes(powerFacilities.POWER_FACILITY_KINDS[kind].label));
+      assert.equal(detail.querySelector(`a[href="https://www.openstreetmap.org/${type}/${id}"]`)?.textContent,`Open this ${type} on OpenStreetMap ↗`);
+      assert.doesNotMatch(detail.textContent,/Speed label|Train protection|Departures|RAILWAY INFRASTRUCTURE/);
+      if(tags.fuel)assert.match(detail.textContent,/Fueldiesel/);
+      if(tags.capacity)assert.match(detail.textContent,/Capacity100 m³/);
+      if(tags['plant:output:electricity'])assert.match(detail.textContent,/Output20 MW/);
+    }
+    map.rendered=[{source:'electricSubstations',sourceLayer:'electrification_substation',layer:{id:'electrification-substation-areas'},properties:{name:'Traction footprint',voltage:'25000'},geometry:{type:'Polygon',coordinates:[[[0,0],[0.001,0],[0,0.001],[0,0]]]}}];
+    map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+    assert.match(window.document.getElementById('detail-content').textContent,/Traction footprintTypeTraction substation/);
+    assert.equal(errors.length,0);
+  } finally {dom.window.close();}
+});
+
 test('close infrastructure details follow the mode, labels and background on the initial frame and after switching',async()=>{
  const {dom,window,maps}=await start({search:'?mode=speed&names=0'});
  try{
@@ -381,7 +522,9 @@ test('close infrastructure details follow the mode, labels and background on the
   for(const id of ['platform-edges','infrastructure-signal-points','infrastructure-entrance-points'])assert.equal(map.visibility[id],'visible',id);
   window.document.querySelector('[data-background="satellite"]').click();for(const id of ids)assert.equal(map.visibility[id],'none',id);
   window.document.querySelector('[data-background="hybrid"]').click();assert.equal(map.visibility['infrastructure-entrance-points'],'visible');
-  window.document.querySelector('[data-mode="control"]').click();for(const id of ids)assert.equal(map.visibility[id],'none',id);
+  window.document.querySelector('[data-mode="control"]').click();for(const id of ids)assert.equal(map.visibility[id],id==='infrastructure-signal-points'?'visible':'none',id);
+  window.document.getElementById('labels').click();
+  for(const id of ids)assert.equal(map.visibility[id],id.startsWith('infrastructure-signal-')?'visible':'none',id);
  }finally{dom.window.close();}
 });
 

@@ -1,4 +1,4 @@
-import { INFRASTRUCTURE, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, ownerPaint, loadingLabel, axlePaint, axleLabel, labelExpression, trainProtectionShort, TRAIN_PROTECTION } from '../../../styles/map-model.mjs';
+import { INFRASTRUCTURE, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, controlSystemExpression, controlCountExpression, gaugePaint, loadingPaint, ownerPaint, loadingLabel, axlePaint, axleLabel, labelExpression, trainProtectionShort, TRAIN_PROTECTION } from '../../../styles/map-model.mjs';
 import {present, notFerry, hasService, byKindZoom} from './railway-expressions.mjs';
 import {serviceFrequencyPaint} from '../../../styles/service-frequency.mjs';
 
@@ -24,6 +24,21 @@ export function createRailwayLayers() {
   // follow the same curve (zoom expressions cannot be nested in arithmetic).
   const trackWidth = (scale = 1) => ['interpolate', ['linear'], ['zoom'],
     7, 1.6 * scale, 11, ['case', hasService, 1.1 * scale, 2.8 * scale], 16, ['case', hasService, 2 * scale, 4.8 * scale], 20, 7 * scale];
+  // Concurrent protection systems occupy adjacent longitudinal bands. All
+  // bands use the same count and offsets, keeping them centred on the track.
+  // A small minimum band width preserves multiple colours at overview zooms.
+  // Bind the count once around each interpolation. MapLibre accepts a zoom
+  // curve inside a top-level let, keeping both parsing and transfer compact.
+  const controlCount = ['max', 1, controlCountExpression()];
+  const controlBandPaint = (baseWidth, index, minimum = 0.65) => {
+    const count = ['var','n'];
+    const band = value => ['case', ['>', count, 1], ['max', minimum, ['/', value, count]], value];
+    const scaled = fn => [...baseWidth.slice(0, 3), ...baseWidth.slice(3).flatMap((value, i) => i % 2 ? [fn(value)] : [value])];
+    return {
+      'line-width': ['let', 'n', controlCount, scaled(band)],
+      'line-offset': ['let', 'n', controlCount, scaled(value => ['*', band(value), ['-', index, ['/', ['-', count, 1], 2]]])],
+    };
+  };
   // Dual or multiple gauge: the track is split lengthwise, the first gauge's
   // colour on one half and the second's on the other. Dashes would clash with
   // the dashed tunnel core and the inactive-line patterns.
@@ -54,22 +69,38 @@ export function createRailwayLayers() {
     // (their tiles carry the fields of the detailed railway tiles).
     const modeLayers = [];
     modeLayers.push(line(`${mode}-branch-overview`, mode === 'axle' ? 'axleBranch' : 'branchLines', 'branch_lines', 4, 7, color,
-      mode === 'gauge' ? {'line-width': branchHalfWidth, 'line-offset': branchDualOffset(-1)} : {}));
+      mode === 'gauge' ? {'line-width': branchHalfWidth, 'line-offset': branchDualOffset(-1)} : mode === 'control' ? controlBandPaint(width, 0) : {}));
     // The second gauge of a branch line, also under the main lines.
     if (mode === 'gauge') modeLayers.push({id:'gauge-branch-dual', type:'line', source:'branchLines', 'source-layer':'branch_lines', minzoom:4, maxzoom:7,
       filter:['all', present, notFerry, isDual],
       layout:{'line-cap':'butt','line-join':'round'},
       paint:{'line-color':gaugePaint(1), 'line-width':branchHalfWidth, 'line-offset':branchDualOffset(1)}});
-    modeLayers.push(line(`${mode}-overview`, source, sourceLayer, 0, 7, color));
+    modeLayers.push(line(`${mode}-overview`, source, sourceLayer, 0, 7, color, mode === 'control' ? controlBandPaint(width, 0) : {}));
     const trackPaint = {
       'line-opacity': mode === 'infrastructure' ? 1 : ['case', ['==', ['get', 'tunnel'], true], 0.65, 1],
       'line-width': mode === 'gauge' ? halfWidth : trackWidth(),
       ...(mode === 'gauge' ? {'line-offset': dualOffset(-1)} : {}),
+      ...(mode === 'control' ? controlBandPaint(trackWidth(), 0, 0.8) : {}),
     };
     modeLayers.push(line(`${mode}-tracks`, mode === 'owner' ? 'ownerRail' : mode === 'axle' ? 'axleRail' : 'railway', 'railway_line_high', 7, undefined, color, trackPaint));
     // Metro lines at zooms 7–9 from the same snapshot (the detailed railway
     // tiles hold them only from zoom 10).
     modeLayers.push(line(`${mode}-metro-overview`, mode === 'axle' ? 'axleBranch' : 'branchLines', 'branch_lines', 7, 10, color, trackPaint));
+    if (mode === 'control') {
+      const bases = [...modeLayers]; modeLayers.length = 0;
+      for (const base of bases) {
+        base.layout['line-cap'] = 'butt'; modeLayers.push(base);
+        for (const index of [1, 2]) modeLayers.push({
+        ...structuredClone(base), id: `${base.id}-system-${index + 1}`,
+        filter: ['all', ...base.filter.slice(1), ['!=', controlSystemExpression(index), '']],
+        // Butt caps keep adjacent bands from covering one another at ends.
+        layout: {'line-cap': 'butt', 'line-join': 'round'},
+        paint: {...base.paint, 'line-color': controlPaint(index), ...controlBandPaint(
+          base.id.endsWith('-tracks') || base.id.endsWith('-metro-overview') ? trackWidth() : width, index,
+          base.id.endsWith('-tracks') || base.id.endsWith('-metro-overview') ? 0.8 : 0.65)},
+        });
+      }
+    }
     if (mode === 'infrastructure') {
       groups.overviewPrefix.push(modeLayers[0]);
       groups.overview.push(modeLayers[1]);
@@ -161,9 +192,9 @@ export function createRailwayLayers() {
   const kv = ['case', ['>=', volts, 1000], ['concat', ['to-string', ['/', ['round', ['/', volts, 10]], 100]], ' kV'], ['concat', ['to-string', volts], ' V']];
   valueLabel('electrification-labels', ['>', volts, 0],
     ['case', ['==', hz, 0], ['concat', kv, ' DC'], ['>', hz, 0], ['concat', kv, ' ', ['to-string', ['/', ['round', ['*', hz, 10]], 10]], ' Hz'], kv]);
-  const shortName = key => ['match', ['coalesce', ['get', key], ''], ...TRAIN_PROTECTION.flatMap(([code]) => [code, trainProtectionShort(code)]), ['coalesce', ['get', key], '']];
-  valueLabel('control-labels', ['has', 'train_protection0'],
-    ['case', ['has', 'train_protection1'], ['concat', shortName('train_protection0'), ' + ', shortName('train_protection1')], shortName('train_protection0')]);
+  const shortName = index => ['match', controlSystemExpression(index), ...TRAIN_PROTECTION.flatMap(([code]) => [code, trainProtectionShort(code)]), controlSystemExpression(index)];
+  valueLabel('control-labels', ['>', controlCountExpression(), 0],
+    ['concat', shortName(0), ...[1, 2].map(index => ['case', ['!=', controlSystemExpression(index), ''], ['concat', ' + ', shortName(index)], ''])]);
   valueLabel('gauge-labels', ['>', ['to-number', ['coalesce', ['get', 'gaugeint0'], 0], 0], 0],
     ['concat', ['get', 'gauge0'], ['case', ['has', 'gauge1'], ['concat', ' / ', ['get', 'gauge1']], ''], ' mm']);
   valueLabel('loading-labels', ['has', 'loading_gauge'], loadingLabel());
