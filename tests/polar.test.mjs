@@ -140,3 +140,16 @@ test('zooming towards a nearby polar anchor retains sub-metre angular precision'
     near(result.center[1],(latitude+target)/2,1e-12);
   }
 });
+
+
+test('readout zoom matches the flat map below 85.05° and stays continuous beyond',async()=>{
+  const {readoutZoom,zoomForLatitude,POLE_LIMIT}=await import('../styles/globe-drag.mjs');
+  for(const latitude of [0,22.3,60,-85])near(readoutZoom(3.9,latitude),3.9);
+  near(readoutZoom(5,85.051129),5,1e-9);near(readoutZoom(5,85.0512),5,1e-4);
+  // The reported 50 m scale at zoom 1.3 near the south pole reads as a close-up.
+  assert.ok(readoutZoom(1.3,-89.99964)>15);
+  for(const sign of [1,-1]){
+    const start=sign*89.99,expected=readoutZoom(2,start);
+    for(const target of [sign*POLE_LIMIT,-start,sign*86])near(readoutZoom(zoomForLatitude(2,start,target),target),expected,1e-10);
+  }
+});

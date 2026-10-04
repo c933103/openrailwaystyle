@@ -136,6 +136,11 @@ const clampLat = lat => Math.max(-POLE_LIMIT, Math.min(POLE_LIMIT, lat));
 // Expose its equatorial equivalent for a stable readout while panning across
 // a pole. MapLibre's camera/hash continues to use the latitude-relative value.
 export const globeGroundZoom = (zoom, latitude) => zoomForLatitude(zoom, latitude, 0);
+// The zoom the readout shows: MapLibre's own (the same as on the flat map, so
+// it does not jump when the projection changes) up to 85.05°, and beyond it
+// the zoom at 85.05° with the same ground scale, which stays continuous across
+// a pole.
+export const readoutZoom = (zoom, latitude) => zoomForLatitude(zoom, latitude, Math.max(-MERCATOR_LIMIT, Math.min(MERCATOR_LIMIT, latitude)));
 export const zoomForLatitude = (zoom, oldLat, newLat) => zoom + Math.log2(Math.cos(rad(clampLat(newLat))) / Math.cos(rad(clampLat(oldLat))));
 // MapLibre's globe radius is worldSize / (2π cos(latitude)). Use its
 // centre scale directly: inverse projection rounds very close polar
