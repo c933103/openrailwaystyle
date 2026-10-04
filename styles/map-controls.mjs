@@ -32,9 +32,9 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
     const low = bottom - Math.max(10, sb), high = top + Math.max(10, st);
     const bottomSheet = window.matchMedia ? window.matchMedia('(max-width:650px)').matches : window.innerWidth <= 650;
     const menu = visible(panel);
-    // A short landscape is not a narrow portrait: an expanded menu still
-    // occupies the left side, even when the compact-menu media query matches.
-    const x = Math.max(left + Math.max(10, sl), !bottomSheet && menu ? menu.right + gap : 0);
+    // The ruler and readout stay in the bottom-left corner; the menu above
+    // them is shortened instead of pushing them into the middle of the map.
+    const x = left + Math.max(10, sl);
     const available = Math.max(1, right - Math.max(10, sr) - x - 42);
     set('--map-control-left', x - f.left);
     set('--map-control-width', available);
@@ -49,16 +49,16 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
     const detail = visible(details);
     const horizontalOverlap = rect => rect && rect.left < x + stack.width + gap && rect.right > x - gap;
     const desktopDetail = !bottomSheet && horizontalOverlap(detail);
-    let stackTop = bottomSheet && menu ? Math.max(high, menu.top + 48 + gap) : high;
+    let stackTop = menu ? Math.max(high, menu.top + 48 + gap) : high;
     if (desktopDetail) stackTop = Math.max(stackTop, detail.top + 48 + gap);
     // The credits popover ends 40px above the info button's bottom. Reserve
     // space above it for the ruler/readout and the narrow menu's header, so
     // long credits scroll instead of pushing the controls above the viewport.
     set('--map-info-height', Math.max(1, low - 40 - stackTop - height - gap));
-    // Keep the status pill and its padding below both ruler and readout.
-    let floor = Math.min(low, visible(status)?.top - gap || low);
-    // Bottom sheets and the expanded credits are real obstacles as well.
-    for (const obstacle of [bottomSheet ? detail : null, visible(mapElement.querySelector('.maplibregl-ctrl-attrib-inner'))]) {
+    // The status pill, bottom sheets and expanded credits are obstacles only
+    // where they share the corner's column.
+    let floor = low;
+    for (const obstacle of [visible(status), bottomSheet ? detail : null, visible(mapElement.querySelector('.maplibregl-ctrl-attrib-inner'))]) {
       if (horizontalOverlap(obstacle) && obstacle.top < floor + gap && obstacle.bottom > floor - height - gap)
         floor = Math.min(floor, obstacle.top - gap);
     }
@@ -69,9 +69,9 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
       const cap = desktopDetail ? `${Math.max(48, Math.min(f.height - 80, floor - height - gap - detail.top))}px` : originalDetailsHeight;
       if (details.style.maxHeight !== cap) details.style.maxHeight = cap;
     }
-    // On narrow screens there is no side lane. Reserve the bottom controls'
-    // measured height and let the expanded menu scroll above that area.
-    set('--map-panel-height', bottomSheet && menu ? Math.max(48, floor - height - gap - menu.top) : Math.max(48, bottom - (menu?.top || high) - Math.max(10, sb)));
+    // Reserve the bottom controls' measured height and let the expanded menu
+    // scroll above that area.
+    set('--map-panel-height', menu ? Math.max(48, floor - height - gap - menu.top) : Math.max(48, bottom - high - Math.max(10, sb)));
   }
   function schedule() {
     if (disposed || queued !== undefined) return;
