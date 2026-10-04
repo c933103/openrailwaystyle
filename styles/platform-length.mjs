@@ -49,6 +49,9 @@ export const PLATFORM_OVERPASS='https://overpass-api.de/api/interpreter';
 export function platformOSMURL(object){return `${PLATFORM_OVERPASS}?data=${encodeURIComponent(`[out:json][timeout:15];${object.type}(${object.id});${object.type==='node'?'':'(._;>;);'}out;`)}`;}
 export function platformOSMDetails(data,object){
  const rows=data.elements||[],entry=rows.find(e=>e.type===object.type&&String(e.id)===String(object.id));
+ // Overpass reports some failures (timeouts, load) as HTTP 200 with a remark
+ // and no elements: retry those later instead of caching "not found".
+ if(!entry&&data.remark)throw new Error(`Overpass: ${data.remark}`);
  if(!entry)throw Object.assign(new Error('Platform object missing from OSM response'),{platformMissing:true});
  const tags=entry.tags||{},properties={name:tags.name||'',ref:tags.ref||'',complete:true};
  const tagged=parsePlatformLength(tags.length);

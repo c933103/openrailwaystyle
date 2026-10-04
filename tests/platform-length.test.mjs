@@ -237,3 +237,17 @@ test('an opened platform Overpass no longer has is cached as not found without p
   p.inspect(platform);await new Promise(r=>setTimeout(r,20));assert.equal(requests.length,2);assert.equal(data.features[0].properties.ref,'5');
  }finally{p.destroy();}
 });
+
+test('an Overpass remark is a transient failure, never a cached not-found',async()=>{
+ let requests=[];
+ const platform={properties:{id:'way-23'},geometry:{type:'Polygon',coordinates:[[[0,0],[.004,0],[.004,.0001],[0,.0001],[0,0]]]}};
+ const map={getZoom:()=>19,getLayer:()=>({}),queryRenderedFeatures:({layers})=>layers.includes('platform-edges')?[]:[platform],getSource:()=>({setData(){}})};
+ const p=createPlatformLengths(map,{delay:0,retryDelay:30,fetcher:async url=>{requests.push(url);return {ok:true,json:async()=>url.startsWith('https://overpass-api.de/')?(requests.length<3?{remark:'runtime error: Query timed out',elements:[]}:fullPlatform()):{properties:{ref:['1']}}};}});
+ let shown;
+ try{
+  p.update();await new Promise(r=>setTimeout(r,20));p.inspect(platform);await new Promise(r=>setTimeout(r,20));
+  assert.equal(requests.length,2);assert.equal(p.enrich({...platform,source:'platforms'}).properties.platform_length,undefined);
+  await new Promise(r=>setTimeout(r,80));assert.equal(requests.length,3,'retried after the pause');
+  shown=p.enrich({...platform,source:'platforms'});assert.ok(shown.properties.platform_length>444);
+ }finally{p.destroy();}
+});
