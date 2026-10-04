@@ -1,4 +1,4 @@
-export {createPlatformLengths,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261004-font3';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261004-font3';
 
 export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261004-font3';
 // The provider normalizes maxspeed to km/h; speed_label retains source units

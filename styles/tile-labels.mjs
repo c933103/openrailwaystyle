@@ -19,6 +19,16 @@ export function glyphRequestURL(value){
  url.pathname=parts.join('/');return url.href;
 }
 
+// Raw tile-coordinate pieces of one layer, for measuring objects across tile
+// edges (platform-length.mjs): {id, type (1 point, 2 line, 3 polygon), extent,
+// geometry: rings or lines of [x, y]}.
+export function platformTilePieces(data,layerName){
+ const layer=new VectorTile(new Pbf(new Uint8Array(data))).layers[layerName];if(!layer)return [];
+ const pieces=[];
+ for(let i=0;i<layer.length;i++){const f=layer.feature(i);pieces.push({id:f.properties.id??f.id,type:f.type,extent:layer.extent,geometry:f.loadGeometry().map(ring=>ring.map(p=>[p.x,p.y]))});}
+ return pieces;
+}
+
 export function readTile(data) {
   const tile = new VectorTile(new Pbf(new Uint8Array(data)));
   // vector-tile creates a new object on each feature() call. Retain mutations

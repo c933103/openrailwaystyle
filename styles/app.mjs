@@ -1,6 +1,6 @@
 import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-font3';
 import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261004-font3';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-font3';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-font3';
 
 import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-font3';
 import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-font3';
@@ -367,7 +367,6 @@ function stationObject(osmId) {
   return null;
 }
 function showDetails(feature) {
-  if(['platforms','platformNumbers'].includes(feature.source))platformLengths?.inspect(feature);
   if(['platformEdges','platformLengths','platforms','platformNumbers'].includes(feature.source))feature=platformLengths?.enrich(feature)||feature;
   currentFeature = feature;
   if(['railwaySignals','stationEntrances'].includes(feature.source)){showRailwayPointDetails(feature);return;}
@@ -1163,7 +1162,7 @@ async function initialize() {
   };
   if (map.isStyleLoaded?.()) styleReady(); else map.once('style.load', styleReady);
   map.on('idle', updateStatus);
-  platformLengths=createPlatformLengths(map,{active:()=>ready&&settings.mode==='infrastructure'&&settings.labels&&settings.background!=='satellite',onLength:(id,length)=>{if(length>0&&['platformEdges','platformLengths'].includes(currentFeature?.source)&&String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);},onPlatform:(id)=>{if(['platforms','platformNumbers'].includes(currentFeature?.source)&&String(currentFeature.properties.id)===id)showDetails(currentFeature);}});
+  platformLengths=createPlatformLengths(map,{geometry:createPlatformTileGeometry({tileURL:()=>map.getSource('platforms')?.tiles?.[0],decode:async data=>(await labels).platformTilePieces(data,'standard_railway_platforms')}),active:()=>ready&&settings.mode==='infrastructure'&&settings.labels&&settings.background!=='satellite',onLength:(id,length)=>{if(length>0&&['platformEdges','platformLengths'].includes(currentFeature?.source)&&String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);},onPlatform:(id)=>{if(['platforms','platformNumbers'].includes(currentFeature?.source)&&String(currentFeature.properties.id)===id)showDetails(currentFeature);}});
   map.on('moveend',()=>platformLengths.update());
   map.on('remove',()=>platformLengths.destroy());
   let platformFramePending=false;

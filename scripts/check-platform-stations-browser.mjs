@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import {waitUntil} from './wait-until.mjs';
+import {platformExtent} from '../styles/platform-length.mjs';
 
 // Complete OSM platform areas from the three reported stations, encoded with
 // the provider's real tile contract (typed identity/name, no ref or length).
@@ -32,15 +33,12 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  });
  await page.route('**/review-station-tiles/**',async route=>{
   const [,layer,z,x,y]=/review-station-tiles\/([^/]+)\/(\d+)\/(\d+)\/(\d+)\.pbf/.exec(route.request().url());
+  if(layer==='standard_railway_platforms'&&z==='15')requests.push(`${x}/${y}`);
   const tile=layer==='standard_railway_platforms'?index.getTile(+z,+x,+y):null;
   await route.fulfill({body:tile?Buffer.from(vtpbf.fromGeojsonVt({[layer]:tile},{version:2})):Buffer.alloc(0),contentType:'application/x-protobuf'});
  });
- await page.route('https://overpass-api.de/api/interpreter**',async route=>{
-  const [,id]=/^\[out:json\]\[timeout:15\];way\((\d+)\);\(\._;>;\);out;$/.exec(new URL(route.request().url()).searchParams.get('data')),f=byId.get(`way-${id}`);assert.ok(f);requests.push(id);
-  const coords=f.geometry.type==='Polygon'?f.geometry.coordinates[0]:f.geometry.coordinates,nodes=coords.map(([lon,lat],i)=>({type:'node',id:i+1,lon,lat})),ids=nodes.map(n=>n.id);
-  if(f.geometry.type==='Polygon')ids[ids.length-1]=ids[0];
-  await route.fulfill({json:{elements:[...nodes,{type:'way',id:+id,nodes:ids,tags:{ref:f.properties.ref,name:f.properties.name,railway:'platform'}}]}});
- });
+ // Nothing per platform may go to OSM; lengths come from the provider's tiles.
+ await page.route(/api\.openstreetmap\.org|overpass-api\.de/,route=>{errors.push(`Unexpected OSM request ${route.request().url()}`);return route.abort();});
  await page.goto(base+'?mode=infrastructure&language=zh-Hant&background=plain&relief=0&stations=0&names=0&inactive=0&trackCounts=0&transport=0&destinations=0&constraints=0#19/35.1167/129.0440',{waitUntil:'domcontentloaded'});
  await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:60000});
  await page.evaluate(async platforms=>{window.reviewMap=(await import(document.querySelector('script[type="module"]').src)).map;window.platformGeometries=Object.fromEntries(platforms.map(f=>[f.properties.id,f]));window.platformScreenAnchor=(await import('./platform-length.mjs')).platformScreenAnchor;},platforms);
@@ -54,42 +52,27 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
   assert.ok(result.stack.includes(`Atlas CJK ${code}`));assert.ok(result.font.includes(`Atlas CJK ${code}`),'actual TinySDF canvas must use the packaged font');assert.equal(result.visible,true);assert.equal(result.distinct,12,'missing-character boxes must not replace Simplified fallback glyphs');
  };
  await checkGlyphs('TC');
- if(await page.locator('#controls').isVisible())await page.locator('#collapse').click();
  for(const station of fixture.stations){
   await page.evaluate(center=>window.reviewMap.jumpTo({center,zoom:19,bearing:0,pitch:0}),station.center);
   try{await waitUntil(page,async()=>{
    // Renderer queries include buffered polygons whose bounding boxes touch the viewport even when their actual area is outside it. Require labels for complete fixture geometry that intersects it.
    const map=window.reviewMap,visible=[...new Set(map.queryRenderedFeatures({layers:['platform-areas']}).map(f=>f.properties.id))].filter(id=>window.platformScreenAnchor(window.platformGeometries[id],map)),data=(await map.getSource('platformNumbers').getData()).features;
-   // Before a platform is opened, only a recorded reference gives it a label.
-   const numbered=visible.filter(id=>window.platformGeometries[id].properties.ref);
-   return numbered.length>=1&&numbered.every(id=>data.some(f=>f.properties.id===id));
-  },undefined,{timeout:35000});
-  // Complete objects are fetched only for a platform the user opens.
-  assert.ok(!(await page.evaluate(async()=>(await window.reviewMap.getSource('platformNumbers').getData()).features.some(f=>f.properties.platform_length>0))),'visible platforms never fetch complete objects on their own');
-  const opened=await page.evaluate(async()=>{const map=window.reviewMap,data=(await map.getSource('platformNumbers').getData()).features;const c=map.getContainer(),onScreen=id=>{const f=data.find(f=>f.properties.id===id);if(!f)return false;const p=map.project(f.geometry.coordinates),r=c.getBoundingClientRect();return p.x>=4&&p.x<=c.clientWidth-4&&p.y>=4&&p.y<=c.clientHeight-4&&document.elementFromPoint(r.left+p.x,r.top+p.y)===map.getCanvas();};return [...new Set(map.queryRenderedFeatures({layers:['platform-areas']}).map(f=>f.properties.id))].filter(id=>window.platformScreenAnchor(window.platformGeometries[id],map)&&onScreen(id));});
-  if(!opened.length)console.error('OPEN_DIAG',station.name,kind,await page.evaluate(async()=>{const map=window.reviewMap,c=map.getContainer(),r=c.getBoundingClientRect(),data=(await map.getSource('platformNumbers').getData()).features;return JSON.stringify({r,ids:[...new Set(map.queryRenderedFeatures({layers:['platform-areas']}).map(f=>f.properties.id))],data:data.map(f=>{const p=map.project(f.geometry.coordinates),e=document.elementFromPoint(r.left+p.x,r.top+p.y);return [f.properties.id,Math.round(p.x),Math.round(p.y),e?.tagName+'.'+e?.className];})});}));
-  assert.ok(opened.length>=1);
-  for(const id of opened){
-   const point=await page.evaluate(async id=>{const map=window.reviewMap,f=(await map.getSource('platformNumbers').getData()).features.find(f=>f.properties.id===id),p=map.project(f.geometry.coordinates);return {x:p.x,y:p.y};},id);
-   const box=await page.locator('#map canvas').first().boundingBox();await page.mouse.click(box.x+point.x,box.y+point.y);
-   try{await page.waitForSelector('#details:not([hidden])',{timeout:8000});}catch(error){console.error('CLICK_DIAG',JSON.stringify(point),JSON.stringify(box),await page.evaluate(p=>{const e=document.elementFromPoint(p.x,p.y);return e?.outerHTML.slice(0,300)+' | '+e?.id;},{x:box.x+point.x,y:box.y+point.y}));await page.screenshot({path:'browser-review/click-diag.png'});throw error;}
-   await waitUntil(page,async id=>(await window.reviewMap.getSource('platformNumbers').getData()).features.some(f=>f.properties.id===id&&f.properties.platform_length>0&&f.properties.length_estimated),id,{timeout:20000});
-   await page.locator('#details-close').click();
-  }
-  }catch(error){console.error('PLATFORM_DIAGNOSTIC',station.name,requests,JSON.stringify(await page.evaluate(async()=>({zoom:window.reviewMap.getZoom(),bounds:window.reviewMap.getBounds(),areas:window.reviewMap.queryRenderedFeatures({layers:['platform-areas']}).map(f=>({properties:f.properties,geometry:f.geometry})),numbers:(await window.reviewMap.getSource('platformNumbers').getData()).features,visible:window.reviewMap.getStyle().layers.filter(l=>l.id.startsWith('platform-')).map(l=>({id:l.id,layout:l.layout}))}))));throw error;}
+   return visible.length>=2&&visible.every(id=>data.some(f=>f.properties.id===id&&f.properties.platform_length>0&&f.properties.length_estimated))&&data.every(f=>f.properties.ref===String(window.platformGeometries[f.properties.id]?.properties.ref||'').split(';').filter(Boolean).join(' / '));
+  },undefined,{timeout:35000});}catch(error){console.error('PLATFORM_DIAGNOSTIC',station.name,requests,JSON.stringify(await page.evaluate(async()=>({zoom:window.reviewMap.getZoom(),bounds:window.reviewMap.getBounds(),areas:window.reviewMap.queryRenderedFeatures({layers:['platform-areas']}).map(f=>({properties:f.properties,geometry:f.geometry})),numbers:(await window.reviewMap.getSource('platformNumbers').getData()).features,visible:window.reviewMap.getStyle().layers.filter(l=>l.id.startsWith('platform-')).map(l=>({id:l.id,layout:l.layout}))}))));throw error;}
   const labels=await page.evaluate(async()=>(await window.reviewMap.getSource('platformNumbers').getData()).features.map(f=>f.properties));
-  for(const p of labels){const f=byId.get(p.id);assert.ok(f);assert.equal(p.ref,f.properties.ref.split(';').filter(Boolean).join(' / '));if(requests.includes(p.id.replace('way-','')))assert.ok(p.platform_length>0&&p.platform_length<1200);}
-  try{await waitUntil(page,()=>window.reviewMap.queryRenderedFeatures({layers:['platform-numbers']}).length>0,undefined,{timeout:10000});}catch(error){console.error('RENDER_DIAG',await page.evaluate(async()=>{const map=window.reviewMap;return JSON.stringify({center:map.getCenter(),zoom:map.getZoom(),vis:map.getLayoutProperty('platform-numbers','visibility'),data:(await map.getSource('platformNumbers').getData()).features.map(f=>[f.properties,map.project(f.geometry.coordinates)])});}));throw error;}
+  for(const p of labels){const f=byId.get(p.id);assert.ok(f);assert.equal(p.ref,f.properties.ref.split(';').filter(Boolean).join(' / '));assert.ok(p.platform_length>0&&p.platform_length<1200);if(f.geometry.type==='Polygon'&&p.platform_length)assert.ok(Math.abs(p.platform_length-platformExtent(f.geometry))<1,`${p.id}: tile-measured ${p.platform_length} vs complete outline ${platformExtent(f.geometry)}`);}
+  // Symbol placement can trail the data update by a frame or two.
+  await waitUntil(page,()=>window.reviewMap.queryRenderedFeatures({layers:['platform-numbers']}).length>0,undefined,{timeout:10000});
   await page.screenshot({path:`browser-review/platform-${station.name}-${kind}.png`});
   // A viewport at a platform's end excludes its full midpoint. The label must
   // remain visible and retain the complete-object length at maximum zoom.
-  const f=station.platforms.find(f=>f.properties.ref&&requests.includes(f.properties.id.replace('way-',''))),tip=f.geometry.coordinates[0][0],before=labels.find(p=>p.id===f.properties.id)?.platform_length;
+  const f=station.platforms.find(f=>f.properties.ref),tip=f.geometry.coordinates[0][0],before=labels.find(p=>p.id===f.properties.id)?.platform_length;
   await page.evaluate(center=>window.reviewMap.jumpTo({center,zoom:22}),tip);
-  await waitUntil(page,async id=>window.reviewMap.queryRenderedFeatures({layers:['platform-numbers']}).some(f=>f.properties.id===id&&f.properties.platform_length>0),f.properties.id,{timeout:20000});
+  await waitUntil(page,async id=>window.reviewMap.queryRenderedFeatures({layers:['platform-numbers']}).some(f=>f.properties.id===id&&f.properties.platform_length>0&&f.properties.ref),f.properties.id,{timeout:20000});
   const p=await page.evaluate(async id=>(await window.reviewMap.getSource('platformNumbers').getData()).features.find(f=>f.properties.id===id).properties,f.properties.id);
   if(before)assert.equal(p.platform_length,before);assert.equal(p.ref,f.properties.ref.split(';').join(' / '));
   await page.evaluate(center=>window.reviewMap.jumpTo({center,zoom:22,bearing:45,pitch:45}),tip);
-  await waitUntil(page,async id=>window.reviewMap.queryRenderedFeatures({layers:['platform-numbers']}).some(f=>f.properties.id===id&&f.properties.platform_length>0),f.properties.id,{timeout:20000});
+  await waitUntil(page,async id=>window.reviewMap.queryRenderedFeatures({layers:['platform-numbers']}).some(f=>f.properties.id===id&&f.properties.platform_length>0&&f.properties.ref),f.properties.id,{timeout:20000});
   const anchor=await page.evaluate(async id=>{const map=window.reviewMap,f=(await map.getSource('platformNumbers').getData()).features.find(f=>f.properties.id===id),p=map.project(f.geometry.coordinates),c=map.getContainer();return {x:p.x,y:p.y,w:c.clientWidth,h:c.clientHeight};},f.properties.id);
   assert.ok(anchor.x>=0&&anchor.x<=anchor.w&&anchor.y>=0&&anchor.y<=anchor.h,'rotated/pitched platform label remains on screen');
   console.log(`PASS: ${kind} ${station.name}, complete area lengths, recorded numbers and visible end labels at zoom 22`);
@@ -98,6 +81,6 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  await page.selectOption('#language','zh-Hans');
  await page.waitForFunction(()=>document.fonts.check('24px "Atlas CJK SC"')&&window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Atlas CJK SC'),undefined,{timeout:30000});
  await checkGlyphs('SC');
- const counts=new Map();for(const id of requests)counts.set(id,(counts.get(id)||0)+1);assert.ok([...counts.values()].every(n=>n===1),'pans, zooms and font/style changes reuse complete-object cache');
+ const counts=new Map();for(const id of requests)counts.set(id,(counts.get(id)||0)+1);assert.ok([...counts.values()].every(n=>n===1),'pans, zooms and font/style changes reuse measuring tiles');
  assert.deepEqual(errors,[]);console.log(`PASS: ${kind} both packaged CJK fonts load without blocking startup`);await page.close();
 }}finally{await browser.close();}

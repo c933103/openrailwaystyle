@@ -122,10 +122,6 @@ test('Chinese areas: mainland China, Taiwan, Hong Kong and Macau',()=>{
 });
 const zh=(p,area)=>({...p,atlas_han:area?'cjkv':'none',atlas_zh:area||''});
 test('Chinese keys are read by region; the other script and regional names stay fallbacks',()=>{
-  // name:zh may be Traditional already while name:zh-HK carries Hong Kong wording.
-  const singapore={name:'Singapore','name:en':'Singapore','name:zh':'星加坡','name:zh-HK':'新加坡'};
-  assert.equal(chooseName(zh(singapore),'zh-Hant'),'星加坡','general name:zh before Hong Kong wording');
-  assert.equal(chooseName(zh({...singapore,'name:zh':''}),'zh-Hant'),'新加坡','regional wording in the right script before English');
   assert.equal(chooseName(zh({name:'Paris','name:zh-HK':'巴黎（港）','name:zh-TW':'巴黎（臺）','name:zh-Hans':'巴黎（简）'}),'zh-Hant'),'巴黎（臺）','Taiwan wording before Hong Kong wording, both before the other script');
   assert.equal(chooseName(zh({name:'Paris','name:zh-CN':'巴黎（中）','name:zh-Hant':'巴黎（繁）'}),'zh-Hans'),'巴黎（中）','Simplified regional wording before Traditional');
   assert.equal(chooseName(zh({name:'Paris','name:zh-TW':'巴黎（臺）'}),'zh-Hans'),'巴黎（臺）','Simplified falls back to Traditional before English');

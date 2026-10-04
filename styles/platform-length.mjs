@@ -21,13 +21,6 @@ export function platformLengthLabel(units='metric') {
 export function platformReference(value) {return (Array.isArray(value)?value:[value]).filter(v=>typeof v==='string'||typeof v==='number'&&Number.isFinite(v)).flatMap(v=>String(v).split(';')).map(v=>v.trim()).filter(Boolean).join(' / ');}
 export function platformObjectIdentity(feature) {const match=/^(node|way|relation)-([1-9]\d*)$/.exec(String(feature.properties?.id??feature.id??''));return match?{key:match[0],type:match[1],id:match[2]}:null;}
 export function platformIdentity(feature){const p=feature.properties||{},value=p.id??feature.id;const m=/^(?:way-)?(\d+)$/.exec(String(value??''));return m&&Number(m[1])>0?m[1]:null;}
-// OSM length values default to metres; explicit unit tags take precedence
-// over geometric estimates, including mixed-case customary units.
-export function parsePlatformLength(value){
- const match=/^\s*(\d+(?:\.\d+)?)\s*(m|km|ft|mi)?\s*$/i.exec(String(value??''));
- const length=match?Number(match[1])*({m:1,km:1000,ft:.3048,mi:1609.344}[match[2]?.toLowerCase()||'m']):0;
- return Number.isFinite(length)&&length>0?length:null;
-}
 // Anchor at the midpoint of the longest loaded piece; the API supplies the
 // full length independently of that visible/clipped piece.
 function longestPlatformLine(feature){
@@ -39,47 +32,75 @@ export function platformAnchor(feature){
  const best=longestPlatformLine(feature);if(!best)return null;const {line,lens,total}=best;let half=total/2;
  for(let i=0;i<lens.length;i++){if(half<=lens[i]){const t=lens[i]?half/lens[i]:0;return line[i].map((v,j)=>v+(line[i+1][j]-v)*t);}half-=lens[i];}return null;
 }
-// References and geometry must describe the complete OSM object, not a clipped
-// tile. The provider's platform feature API supplies references but no geometry.
-// The complete object comes from Overpass, the read-only OSM query service, and
-// only for a platform the user opens: the OSM editing API is not for read-only
-// use, and fetching every visible platform would load either service heavily.
-// Overpass returns the same element list as the editing API's full.json.
-export const PLATFORM_OVERPASS='https://overpass-api.de/api/interpreter';
-export function platformOSMURL(object){return `${PLATFORM_OVERPASS}?data=${encodeURIComponent(`[out:json][timeout:15];${object.type}(${object.id});${object.type==='node'?'':'(._;>;);'}out;`)}`;}
-export function platformOSMDetails(data,object){
- const rows=data.elements||[],entry=rows.find(e=>e.type===object.type&&String(e.id)===String(object.id));
- // Overpass reports some failures (timeouts, load) as HTTP 200 with a remark
- // and no elements: retry those later instead of caching "not found".
- if(!entry&&data.remark)throw new Error(`Overpass: ${data.remark}`);
- if(!entry)throw Object.assign(new Error('Platform object missing from OSM response'),{platformMissing:true});
- const tags=entry.tags||{},properties={name:tags.name||'',ref:tags.ref||'',complete:true};
- const tagged=parsePlatformLength(tags.length);
- if(tagged)return {...properties,length:tagged,length_basis:'mapped_tag'};
- if(rows.length>PLATFORM_GEOMETRY_LIMITS.elements||entry.members?.length>PLATFORM_GEOMETRY_LIMITS.members)return {...properties,geometry_limited:true};
- const elements=new Map(rows.map(e=>[`${e.type}/${e.id}`,e]));let vertices=0;
- const points=way=>{if(!way?.nodes)return;vertices+=way.nodes.length;if(vertices>PLATFORM_GEOMETRY_LIMITS.vertices)return;return way.nodes.map(id=>{const n=elements.get(`node/${id}`);return n&&Number.isFinite(n.lon)&&Number.isFinite(n.lat)?[n.lon,n.lat]:null;});};
- let geometry;
- if(object.type==='way'){
-  const line=points(entry);
-  if(line?.length>=2&&line.every(Boolean))geometry={type:entry.nodes[0]===entry.nodes.at(-1)?'Polygon':'LineString',coordinates:entry.nodes[0]===entry.nodes.at(-1)?[line]:line};
- }else if(object.type==='relation'){
-  const members=(entry.members||[]).filter(m=>m.type==='way'&&m.role!=='inner'),parts=members.map(m=>points(elements.get(`way/${m.ref}`)));
-  if(parts.length&&parts.every(p=>p?.length>=2&&p.every(Boolean))){
-   const rings=[],remaining=parts.map(p=>p.slice()),same=(a,b)=>a[0]===b[0]&&a[1]===b[1];
-   while(remaining.length){let ring=remaining.shift();
-    while(!same(ring[0],ring.at(-1))){const i=remaining.findIndex(p=>same(ring.at(-1),p[0])||same(ring.at(-1),p.at(-1)));if(i<0)break;const p=remaining.splice(i,1)[0];if(!same(ring.at(-1),p[0]))p.reverse();ring.push(...p.slice(1));}
-    if(!same(ring[0],ring.at(-1)))return properties;rings.push([ring]);
-   }
-   geometry={type:'MultiPolygon',coordinates:rings};
-  }
+// Complete platform geometry comes from the provider's own platform tiles at
+// zoom 15 (about 1.2 km a tile at the equator), read the way the map reads its
+// tiles, as upstream OpenRailwayMap does: no request per platform goes to OSM.
+// A piece that leaves its tile continues in the neighbouring tile, which is
+// then read too; a platform that needs more than PLATFORM_TILE_LIMIT tiles
+// gets no length rather than a short one.
+export const PLATFORM_TILE_ZOOM=15,PLATFORM_TILE_LIMIT=9;
+const RAD=Math.PI/180;
+const metres=(a,b)=>{const h=Math.sin((b[1]-a[1])*RAD/2)**2+Math.cos(a[1]*RAD)*Math.cos(b[1]*RAD)*Math.sin((b[0]-a[0])*RAD/2)**2;return 12742000*Math.asin(Math.min(1,Math.sqrt(h)));};
+export function tileToLngLat(z,x,y,extent,[px,py]){const n=2**z,t=Math.PI*(1-2*(y+py/extent)/n);return [(x+px/extent)/n*360-180,Math.atan(Math.sinh(t))/RAD];}
+export function platformTilesFor(coordinates,z=PLATFORM_TILE_ZOOM){
+ const n=2**z,points=[];const visit=v=>{if(typeof v?.[0]==='number')points.push(v);else for(const c of v||[])visit(c);};visit(coordinates);
+ const tiles=new Set();for(const [lng,lat] of points){const s=Math.sin(Math.max(-85.05,Math.min(85.05,lat))*RAD);
+  tiles.add(`${((Math.floor((lng+180)/360*n))%n+n)%n}/${Math.max(0,Math.min(n-1,Math.floor((.5-Math.log((1+s)/(1-s))/(4*Math.PI))*n)))}`);}
+ return [...tiles].map(k=>k.split('/').map(Number));
+}
+// Length of a tile piece inside its own tile only, so the buffer that tiles
+// share is never counted twice.
+function insideLength(z,x,y,extent,line){
+ let total=0;
+ for(let i=1;i<line.length;i++){
+  const a=line[i-1],b=line[i];let lo=0,hi=1;
+  for(let j=0;j<2;j++){const d=b[j]-a[j];if(!d){if(a[j]<0||a[j]>extent){lo=1;hi=0;}}else{const t1=(0-a[j])/d,t2=(extent-a[j])/d;lo=Math.max(lo,Math.min(t1,t2));hi=Math.min(hi,Math.max(t1,t2));}}
+  if(hi>lo)total+=metres(tileToLngLat(z,x,y,extent,a.map((v,j)=>v+(b[j]-v)*lo)),tileToLngLat(z,x,y,extent,a.map((v,j)=>v+(b[j]-v)*hi)));
  }
- // An explicitly mapped length takes precedence; a point still cannot give
- // a geometric measurement. A missing coordinate never becomes a short span.
- if(!geometry)return properties;
- if(geometry.type==='LineString')return {...properties,length:platformSpan({geometry}),length_basis:'mapped_line'};
- const length=platformExtent(geometry);
- return length>0?{...properties,length,length_estimated:true,length_basis:'mapped_extent'}:properties;
+ return total;
+}
+export function createPlatformTileGeometry({tileURL,decode,fetcher=fetch,zoom=PLATFORM_TILE_ZOOM,maxTiles=48,timeout=8000}={}){
+ const tiles=new Map();
+ const read=(x,y)=>{
+  const key=`${x}/${y}`;if(tiles.has(key)){const v=tiles.get(key);tiles.delete(key);tiles.set(key,v);return v;}
+  const template=tileURL();if(!template)return Promise.reject(new Error('Platform tiles not ready'));
+  const url=template.replace('{z}',zoom).replace('{x}',x).replace('{y}',y);
+  const promise=fetcher(url,{signal:AbortSignal.timeout(timeout)}).then(async r=>{
+   if(r.status===204||r.status===404)return [];
+   if(!r.ok)throw new Error(`Platform tile HTTP ${r.status}`);
+   return decode(await r.arrayBuffer());
+  });
+  promise.catch(()=>tiles.delete(key));
+  tiles.set(key,promise);while(tiles.size>maxTiles)tiles.delete(tiles.keys().next().value);
+  return promise;
+ };
+ // seeds: [[x,y]] tiles holding the visible piece. Resolves to
+ // {length, length_estimated, length_basis} or null when it cannot be complete.
+ async function measure(id,seeds){
+  const n=2**zoom,queue=seeds.map(([x,y])=>[x,y]),seen=new Set(),found=[];let vertices=0;
+  while(queue.length){
+   const [x,y]=queue.shift(),key=`${x}/${y}`;if(seen.has(key))continue;
+   if(seen.size>=PLATFORM_TILE_LIMIT)return null;seen.add(key);
+   for(const piece of await read(x,y)){
+    if(String(piece.id)!==String(id))continue;found.push({x,y,piece});
+    for(const ring of piece.geometry){vertices+=ring.length;if(vertices>PLATFORM_GEOMETRY_LIMITS.vertices*8)return null;
+     for(const [px,py] of ring){
+      for(const [dx,dy] of [[px<0?-1:px>piece.extent?1:0,0],[0,py<0?-1:py>piece.extent?1:0]])
+       if((dx||dy)&&y+dy>=0&&y+dy<n)queue.push([((x+dx)%n+n)%n,y+dy]);
+     }}
+   }
+  }
+  if(!found.length)return null;
+  if(found.every(f=>f.piece.type===2)){
+   const length=found.reduce((sum,{x,y,piece})=>sum+piece.geometry.reduce((s,line)=>s+insideLength(zoom,x,y,piece.extent,line),0),0);
+   return length>0?{length,length_basis:'mapped_line'}:null;
+  }
+  if(!found.every(f=>f.piece.type===3))return null;
+  const points=found.flatMap(({x,y,piece})=>piece.geometry.flat().map(p=>tileToLngLat(zoom,x,y,piece.extent,p)));
+  const length=extentOfPoints(points);
+  return length>0?{length,length_estimated:true,length_basis:'mapped_extent'}:null;
+ }
+ return {measure};
 }
 // Long side of the minimum-area oriented bounding rectangle of the full area.
 // This is an estimate of mapped longitudinal extent, never the polygon perimeter
@@ -87,16 +108,17 @@ export function platformOSMDetails(data,object){
 export function platformExtent(geometry){
  if(!boundedGeometry(geometry))return 0;
  const rings=geometry.type==='Polygon'?[geometry.coordinates[0]]:geometry.type==='MultiPolygon'?geometry.coordinates.map(p=>p[0]):[];
- return Math.max(0,...rings.map(ring=>{
-  if(ring.length<4)return 0;const origin=ring[0],rad=Math.PI/180,scale=6371000*rad,cos=Math.cos(origin[1]*rad);
-  const points=ring.slice(0,-1).map(p=>[(((p[0]-origin[0]+540)%360)-180)*scale*cos,(p[1]-origin[1])*scale]).sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+ return Math.max(0,...rings.map(ring=>ring.length<4?0:extentOfPoints(ring.slice(0,-1))));
+}
+export function extentOfPoints(list){
+  if(list.length<3)return 0;const origin=list[0],scale=6371000*RAD,cos=Math.cos(origin[1]*RAD);
+  const points=list.map(p=>[(((p[0]-origin[0]+540)%360)-180)*scale*cos,(p[1]-origin[1])*scale]).sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
   const cross=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]),half=list=>{const out=[];for(const p of list){while(out.length>1&&cross(out.at(-2),out.at(-1),p)<=0)out.pop();out.push(p);}return out.slice(0,-1);};
   const hull=[...half(points),...half(points.slice().reverse())];let bestArea=Infinity,bestLength=0;
   for(let i=0;i<hull.length;i++){const a=hull[i],b=hull[(i+1)%hull.length],theta=Math.atan2(b[1]-a[1],b[0]-a[0]),c=Math.cos(theta),s=Math.sin(theta);let xmin=Infinity,xmax=-Infinity,ymin=Infinity,ymax=-Infinity;
    for(const [x,y] of hull){const u=x*c+y*s,v=-x*s+y*c;xmin=Math.min(xmin,u);xmax=Math.max(xmax,u);ymin=Math.min(ymin,v);ymax=Math.max(ymax,v);}
    const width=xmax-xmin,height=ymax-ymin,area=width*height;if(area<bestArea){bestArea=area;bestLength=Math.max(width,height);}
   }return bestLength;
- }));
 }
 // A point label on the visible platform fragment avoids tiled polygon/line
 // anchors that lie offscreen at close zoom. Clip only for placement, never length.
@@ -163,11 +185,13 @@ function platformTextAnchor(map,coordinates,ref,length){
  const margin=Math.min(container.clientWidth/2,Math.max(60,(ref.length+(length?15:0))*3.5+10)),x=point.x<margin?'left':point.x>container.clientWidth-margin?'right':'',y=point.y<20?'top':point.y>container.clientHeight-20?'bottom':'';
  return [y,x].filter(Boolean).join('-')||'center';
 }
-// Both platform references and complete boarding-edge lengths use one bounded
-// request queue. Platform tiles contain name/id but deliberately omit ref;
-// edge tiles contain ref and can therefore label it before any API response.
-export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1100,maxEntries=512,cooldown=600000,retryDelay=30000,onLength=()=>{},onPlatform=()=>{}}={}){
- const cache=new Map(),pending=new Map(),drawn=new Map(),inspected=new Set();let desired=new Map(),timer,wakeTimer,busy=false,disposed=false,controller,inflight;let pausedUntil=0;
+// Platform references and complete boarding-edge lengths use one bounded
+// request queue to the provider's feature API, as on its own site. Platform
+// tiles contain name/id but omit ref; edge tiles contain ref and can label it
+// before any API response. Platform lengths are measured from the provider's
+// platform tiles (createPlatformTileGeometry), one platform at a time.
+export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1100,maxEntries=512,cooldown=600000,retryDelay=30000,geometry=null,onLength=()=>{},onPlatform=()=>{}}={}){
+ const cache=new Map(),pending=new Map(),drawn=new Map();let desired=new Map(),timer,wakeTimer,busy=false,disposed=false,controller,inflight,measuring=false,measureRetryAt=0,measureTimer;let pausedUntil=0;
  const remember=(key,properties)=>{cache.delete(key);cache.set(key,properties);while(cache.size>maxEntries)cache.delete(cache.keys().next().value);};
  const pause=duration=>{pausedUntil=Date.now()+duration;clearTimeout(wakeTimer);wakeTimer=setTimeout(()=>{wakeTimer=undefined;pausedUntil=0;update();},duration);};
  const draw=()=>{
@@ -194,13 +218,13 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
  async function next(){
   if(busy||disposed||Date.now()<pausedUntil)return;const entry=pending.entries().next().value;if(!entry)return;
   const [key,url]=entry,requested=desired.get(key);pending.delete(key);if(!requested){schedule();return;}busy=true;inflight=key;const requestController=new AbortController();controller=requestController;
-  const timeout=setTimeout(()=>requestController.abort(),requested.full?15000:5000);
+  const timeout=setTimeout(()=>requestController.abort(),5000);
   try {
    const r=await fetcher(url,{signal:requestController.signal});if(r.status===429){pause(cooldown);pending.clear();return;}
-   if(r.status===404||r.status===410){remember(key,{...cache.get(key),complete:!!requested.full});draw();return;}
+   if(r.status===404||r.status===410){remember(key,{...cache.get(key),fetched:true});draw();return;}
    if(!r.ok)throw new Error(`HTTP ${r.status}`);
    const data=await readPlatformResponse(r),entry=requested;if(disposed)return;
-   const raw=entry.full?platformOSMDetails(data,platformObjectIdentity(entry.feature)):data.properties||{},length=Number(raw.length),properties={...(entry.full?raw:{}),name:raw.name||entry.feature.properties?.name||'',ref:raw.ref??entry.feature.properties?.ref??''};
+   const raw=data.properties||{},length=Number(raw.length),properties={...cache.get(key),fetched:true,name:raw.name||entry.feature.properties?.name||'',ref:raw.ref??entry.feature.properties?.ref??''};
    if(entry.kind==='edge')properties.length=Number.isFinite(length)&&length>0?length:null;
    remember(key,properties);draw();
    if(entry.kind==='edge')onLength(entry.id,properties.length);else onPlatform(entry.id,properties);
@@ -208,7 +232,7 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
   // A pan, view change or temporary zoom reduction can hide and then reveal
   // this same key before its abort rejection settles. That cancellation is
   // not a provider failure; genuine failures and request timeouts still pause.
-  catch(error){if(error.platformBudget||error.platformMissing){remember(key,{...cache.get(key),complete:!!requested.full,...(error.platformBudget?{geometry_limited:true}:{})});draw();}else if(requestController.signal.reason!==OBSOLETE_REQUEST&&desired.get(key)?.url&&!disposed)pause(retryDelay);}
+  catch(error){if(error.platformBudget){remember(key,{...cache.get(key),fetched:true});draw();}else if(requestController.signal.reason!==OBSOLETE_REQUEST&&desired.get(key)?.url&&!disposed)pause(retryDelay);}
   // A reappearing key was skipped while it was inflight. Refresh desired and
   // pending entries after releasing it so it can be requested without a move.
   finally{clearTimeout(timeout);busy=false;inflight=undefined;controller=undefined;update();}
@@ -241,30 +265,34 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
     const prepared=prepare(f);if(!prepared)continue;
     const object=platformObjectIdentity(f);if(!object)continue;const key='platform/'+object.key,previous=desired.get(key);
     if(!previous&&desired.size>=PLATFORM_UPDATE_LIMITS.features)continue;
-    const full=inspected.has(key);
-    if(better(f,prepared.anchor,previous,geometrySpan))desired.set(key,{kind:'platform',id:object.key,feature:f,anchor:prepared.anchor,full,url:full?platformOSMURL(object):'https://openrailwaymap.app/api/feature/openrailwaymap_standard/standard_railway_platforms/'+object.key});
+    if(better(f,prepared.anchor,previous,geometrySpan))desired.set(key,{kind:'platform',id:object.key,feature:f,anchor:prepared.anchor,url:'https://openrailwaymap.app/api/feature/openrailwaymap_standard/standard_railway_platforms/'+object.key});
    }
   }
   for(const key of pending.keys())if(!desired.get(key)?.url)pending.delete(key);
-  for(const [key,entry] of desired){const wanted=entry.url&&(!cache.has(key)||entry.full&&!cache.get(key).complete);if(!wanted)pending.delete(key);else if(key!==inflight&&Date.now()>=pausedUntil)pending.set(key,entry.url);}
+  for(const [key,entry] of desired){const wanted=entry.url&&!cache.get(key)?.fetched;if(!wanted)pending.delete(key);else if(key!==inflight&&Date.now()>=pausedUntil)pending.set(key,entry.url);}
   if(inflight&&!desired.get(inflight)?.url)controller?.abort(OBSOLETE_REQUEST);
-  draw();schedule();
+  draw();schedule();measureNext();
  }
- // The user opened this platform: fetch its complete object once, ahead of the
- // queue. Only the last few opened platforms are kept as requests.
- function inspect(feature){
-  const object=platformObjectIdentity(feature);if(!object)return;const key='platform/'+object.key;
-  inspected.delete(key);inspected.add(key);while(inspected.size>16)inspected.delete(inspected.values().next().value);
-  update();const url=pending.get(key);
-  if(url){pending.delete(key);const rest=[...pending];pending.clear();pending.set(key,url);for(const [k,v] of rest)pending.set(k,v);}
+ // Lengths are shown from zoom 19; measure the visible platforms that still
+ // lack one, nearest the start of the list first.
+ async function measureNext(){
+  if(!geometry||measuring||disposed||map.getZoom()<19)return;
+  if(Date.now()<measureRetryAt){clearTimeout(measureTimer);measureTimer=setTimeout(measureNext,measureRetryAt-Date.now());return;}
+  const next=[...desired].find(([key,entry])=>entry.kind==='platform'&&!cache.get(key)?.measured&&platformObjectIdentity(entry.feature)?.type!=='node');if(!next)return;
+  const [key,entry]=next;measuring=true;
+  try{
+   const result=await geometry.measure(entry.id,platformTilesFor(entry.feature.geometry?.coordinates));if(disposed)return;
+   remember(key,{...cache.get(key),...result,measured:true});draw();onPlatform(entry.id,cache.get(key));
+  }catch{measureRetryAt=Date.now()+retryDelay;}
+  finally{measuring=false;if(!disposed)measureNext();}
  }
- function destroy(){disposed=true;clearTimeout(timer);clearTimeout(wakeTimer);controller?.abort(OBSOLETE_REQUEST);pending.clear();}
+ function destroy(){disposed=true;clearTimeout(timer);clearTimeout(wakeTimer);clearTimeout(measureTimer);controller?.abort(OBSOLETE_REQUEST);pending.clear();}
  function enrich(feature){
   const p=feature.properties||{},object=['platforms','platformNumbers'].includes(feature.source)?platformObjectIdentity(feature):null,id=object?.key||platformIdentity(feature);if(!id)return feature;
   const values=cache.get((object?'platform/':'edge/')+id)||{},length=Number(values.length);
   return {...feature,properties:{...p,...values,ref:platformReference(values.ref??p.ref),osm_type:object?.type||'way',osm_id:object?.id||id,feature:object?'platform':'platform_edge',...(length>0?{platform_length:length}:{})}};
  }
- return {update,destroy,enrich,inspect};
+ return {update,destroy,enrich};
 }
 // Prefer the largest visible fragment of a tiled platform, rather than whichever
 // fragment happens to be returned first. It is used for label placement only.
