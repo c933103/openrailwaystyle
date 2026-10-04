@@ -39,6 +39,10 @@ export function platformAnchor(feature){
 // then read too; a platform that needs more than PLATFORM_TILE_LIMIT tiles
 // gets no length rather than a short one.
 export const PLATFORM_TILE_ZOOM=15,PLATFORM_TILE_LIMIT=9;
+// Comparing two rings (ringsOverlap) costs about 9 × the product of their
+// vertex counts. Grouping that would exceed this budget gives no length, so
+// densely drawn interlocking parts cannot stall the page.
+export const PLATFORM_GROUP_WORK=4*1024*1024;
 const RAD=Math.PI/180;
 const metres=(a,b)=>{const h=Math.sin((b[1]-a[1])*RAD/2)**2+Math.cos(a[1]*RAD)*Math.cos(b[1]*RAD)*Math.sin((b[0]-a[0])*RAD/2)**2;return 12742000*Math.asin(Math.min(1,Math.sqrt(h)));};
 export function tileToLngLat(z,x,y,extent,[px,py]){const n=2**z,t=Math.PI*(1-2*(y+py/extent)/n);return [(x+px/extent)/n*360-180,Math.atan(Math.sinh(t))/RAD];}
@@ -125,7 +129,9 @@ export function createPlatformTileGeometry({tileURL,decode,fetcher=fetch,zoom=PL
   const rings=found.flatMap(({x,y,piece})=>piece.geometry.map(ring=>ring.map(p=>tileToLngLat(zoom,x,y,piece.extent,p)))).filter(r=>r.length);
   const bounds=rings.map(r=>r.reduce((b,[lng,lat])=>[Math.min(b[0],lng),Math.min(b[1],lat),Math.max(b[2],lng),Math.max(b[3],lat)],[Infinity,Infinity,-Infinity,-Infinity]));
   const parent=rings.map((_,i)=>i),root=i=>parent[i]===i?i:parent[i]=root(parent[i]),eps=360/2**zoom/(found[0].piece.extent||4096);
-  for(let i=0;i<rings.length;i++)for(let j=i+1;j<rings.length;j++){const a=bounds[i],b=bounds[j];if(a[0]<=b[2]+eps&&b[0]<=a[2]+eps&&a[1]<=b[3]+eps&&b[1]<=a[3]+eps&&ringsOverlap(rings[i],rings[j],eps))parent[root(i)]=root(j);}
+  const near=(i,j)=>{const a=bounds[i],b=bounds[j];return a[0]<=b[2]+eps&&b[0]<=a[2]+eps&&a[1]<=b[3]+eps&&b[1]<=a[3]+eps;},pairs=[];let work=0;
+  for(let i=0;i<rings.length;i++)for(let j=i+1;j<rings.length;j++)if(near(i,j)){work+=9*rings[i].length*rings[j].length;if(work>PLATFORM_GROUP_WORK)return null;pairs.push([i,j]);}
+  for(const [i,j] of pairs)if(root(i)!==root(j)&&ringsOverlap(rings[i],rings[j],eps))parent[root(i)]=root(j);
   const parts=new Map();rings.forEach((r,i)=>{const k=root(i);parts.set(k,[...(parts.get(k)||[]),...r]);});
   const length=Math.max(0,...[...parts.values()].map(extentOfPoints));
   return length>0?{length,length_estimated:true,length_basis:'mapped_extent',tiles:[...seen]}:null;

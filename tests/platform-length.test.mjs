@@ -290,3 +290,12 @@ test('a multipolygon part in tiles the first measurement never read is measured 
   assert.equal(p.enrich({source:'platforms',properties:{id:'relation-31'}}).properties.measuredTiles,undefined);
  }finally{p.destroy();}
 });
+test('grouping densely drawn interlocking parts stays within a work budget and gives no length',async()=>{
+ // Two comb-shaped parts whose teeth interlock without touching: bounds overlap and every pair must be compared.
+ const comb=(teeth,flip)=>{const ring=[],w=.00002,h=.0003,y0=flip?.0023:.002;for(let k=0;k<teeth;k++){const x=.0005+k*2*w+(flip?w:0);ring.push([x,y0],[x+w*.8,y0],[x+w*.8,flip?y0-h:y0+h],[x,flip?y0-h:y0+h]);}
+  const last=ring.at(-1);ring.push([last[0],y0+(flip?.00005:-.00005)],[ring[0][0],y0+(flip?.00005:-.00005)],ring[0]);return ring;};
+ const mp={type:'Feature',properties:{id:'relation-33'},geometry:{type:'MultiPolygon',coordinates:[[comb(300,false)],[comb(300,true)]]}};
+ const {geometry}=providerTiles([mp]);
+ const started=performance.now(),measured=await geometry.measure('relation-33',platformTilesFor(mp.geometry.coordinates));
+ assert.equal(measured,null);assert.ok(performance.now()-started<1000,`took ${performance.now()-started} ms`);
+});
