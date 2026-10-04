@@ -8,11 +8,12 @@ import assert from 'node:assert/strict';
 export async function clickVisibleControl(page, selector, timeout = 5000) {
   const deadline = Date.now() + timeout;
   const message = `Control is not visible, stable, enabled and unobscured: ${selector}`;
-  const withinDeadline = async promise => {
+  const withinDeadline = async (promise, phase) => {
+    const phaseStarted = Date.now();
     let timer;
     try {
       return await Promise.race([promise, new Promise((resolve, reject) => {
-        timer = setTimeout(() => reject(new assert.AssertionError({message})), Math.max(0, deadline - Date.now()));
+        timer = setTimeout(() => reject(new assert.AssertionError({message: `${message} (${timeout} ms budget expired during ${phase}; ${Date.now() - phaseStarted} ms in this phase)`})), Math.max(0, deadline - Date.now()));
       })]);
     } finally { clearTimeout(timer); }
   };
@@ -28,16 +29,16 @@ export async function clickVisibleControl(page, selector, timeout = 5000) {
         rect.right > innerWidth || rect.bottom > innerHeight ||
         !element.contains(document.elementFromPoint(x, y))) return null;
     return {x, y, width: rect.width, height: rect.height};
-  }, selector));
+  }, selector), 'animation frame and hit test');
   const same = (a, b) => a && b && ['x', 'y', 'width', 'height'].every(key => Math.abs(a[key] - b[key]) < 0.5);
   let previous;
   do {
     const current = await point();
     if (same(previous, current)) {
       // Hover can expose an overlay. Recheck the actual target after moving.
-      await withinDeadline(page.mouse.move(current.x, current.y));
+      await withinDeadline(page.mouse.move(current.x, current.y), 'pointer hover');
       if (same(current, await point())) {
-        await withinDeadline(page.mouse.click(current.x, current.y));
+        await withinDeadline(page.mouse.click(current.x, current.y), 'pointer click');
         return;
       }
     }
