@@ -75,14 +75,14 @@ try{
   await check('fresh desktop');
   const info=page.locator('.maplibregl-ctrl-attrib-button');
   await info.click();assert.equal(await opened(),true);assert.equal((await cookie()).attributionOpen,true);
-  await page.reload({waitUntil:'domcontentloaded'});await ready();assert.equal(await opened(),true,'open cookie restored after real reload');
+  await page.reload({waitUntil:'domcontentloaded',timeout:30000});await ready();assert.equal(await opened(),true,'open cookie restored after real reload');
   for(const bg of ['carto','satellite','hybrid','map']){
     await page.locator(`[data-background="${bg}"]`).click();
     await check(`open credits with ${bg}`);assert.equal(await opened(),true);
     assert.equal(await page.locator('.maplibregl-ctrl-attrib').evaluate(el=>el.getBoundingClientRect().width),32,'expanded info is still button-sized');
   }
   await info.focus();await page.keyboard.press('Space');assert.equal(await opened(),false);
-  assert.equal((await cookie()).attributionOpen,false);await page.reload({waitUntil:'domcontentloaded'});await ready();assert.equal(await opened(),false);
+  assert.equal((await cookie()).attributionOpen,false);await page.reload({waitUntil:'domcontentloaded',timeout:30000});await ready();assert.equal(await opened(),false);
   await info.focus();await page.keyboard.press('Enter');assert.equal(await opened(),true);await page.keyboard.press('Escape');assert.equal(await opened(),false);
   assert.equal((await cookie()).attributionOpen,false);
   // Menu state, long status, readout, detail scale, short landscape and insets
