@@ -1,10 +1,23 @@
 import assert from 'node:assert/strict';
 
 // Controls inside the counter-scaled map already occupy viewport CSS pixels.
-// Verify visibility, stability and hit targeting ourselves, then send a real
-// pointer click. No forced/DOM click and no scroll-into-view protocol call.
+// Verify visibility, stability and hit targeting on consecutive animation
+// frames before real pointer input. DOM geometry can settle before Chromium's
+// input hit testing catches up with the counter-scaled control container.
+// No forced/DOM click and no scroll-into-view protocol call.
 export async function clickVisibleControl(page, selector, timeout = 5000) {
-  const point = () => page.evaluate(selector => {
+  const deadline = Date.now() + timeout;
+  const message = `Control is not visible, stable, enabled and unobscured: ${selector}`;
+  const withinDeadline = async promise => {
+    let timer;
+    try {
+      return await Promise.race([promise, new Promise((resolve, reject) => {
+        timer = setTimeout(() => reject(new assert.AssertionError({message})), Math.max(0, deadline - Date.now()));
+      })]);
+    } finally { clearTimeout(timer); }
+  };
+  const point = () => withinDeadline(page.evaluate(async selector => {
+    await new Promise(resolve => requestAnimationFrame(resolve));
     const elements = document.querySelectorAll(selector);
     if (elements.length !== 1) return null;
     const element = elements[0], rect = element.getBoundingClientRect(), style = getComputedStyle(element);
@@ -15,22 +28,20 @@ export async function clickVisibleControl(page, selector, timeout = 5000) {
         rect.right > innerWidth || rect.bottom > innerHeight ||
         !element.contains(document.elementFromPoint(x, y))) return null;
     return {x, y, width: rect.width, height: rect.height};
-  }, selector);
+  }, selector));
   const same = (a, b) => a && b && ['x', 'y', 'width', 'height'].every(key => Math.abs(a[key] - b[key]) < 0.5);
-  const deadline = Date.now() + timeout;
   let previous;
   do {
     const current = await point();
     if (same(previous, current)) {
       // Hover can expose an overlay. Recheck the actual target after moving.
-      await page.mouse.move(current.x, current.y);
+      await withinDeadline(page.mouse.move(current.x, current.y));
       if (same(current, await point())) {
-        await page.mouse.click(current.x, current.y);
+        await withinDeadline(page.mouse.click(current.x, current.y));
         return;
       }
     }
     previous = current;
-    await page.waitForTimeout(25);
   } while (Date.now() < deadline);
-  assert.fail(`Control is not visible, stable, enabled and unobscured: ${selector}`);
+  assert.fail(message);
 }

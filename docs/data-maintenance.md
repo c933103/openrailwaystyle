@@ -97,3 +97,18 @@ For edits, choose a passenger-network role first, then verify the OSM object, it
 Run `npm run build` and commit both generated files, then `npm test`. Review derived tiers and the Chicago/NY/Tokyo sanity checks after changes; a newly verified candidate can defer a nearby label. Check globe zoom 3, regional zooms 4–6, language switching, source release at zoom 7 and station inspection. The runtime makes no Overpass, Nominatim or facility API calls to rank or populate these labels. Cached one-time Wikidata, limited facility identity responses and direct OSM object/selected-station-area reads were used for this audit; unresolved candidates were excluded.
 
 See [Axle load](axle-load.md) for the new view, national class distinctions, source references and the 28-day snapshot refresh.
+
+## Railway signals and traction supplies
+
+The manual or code-change-triggered `traction-facilities.yml` workflow prepares
+worldwide railway energy supply facilities and the railway signals omitted by
+the provider's direction-dependent signal source. It adds no schedule. Every
+world partition must complete before either dataset replaces `traction-data`;
+partial/error Overpass responses are rejected. Complete raw regions are kept
+for retries. The site workflow validates both manifests before copying
+`power/` and `signals/` under `styles/data/traction/`.
+
+Run `node scripts/build-power-facilities.mjs` and `node scripts/build-signals.mjs`
+for local maintenance. These builders use the public Overpass service; map
+visitors only fetch the resulting static files. See [power facilities](power-facilities.md)
+for the tag rules and primary references.
