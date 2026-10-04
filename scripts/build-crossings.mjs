@@ -58,9 +58,10 @@ async function fetchRegion(table, region, since, depth = 0) {
 // Overpass timestamps: the change query covers from a little before the
 // previous run began, so nothing edited while it ran is missed.
 const startedAt = new Date(Date.now() - 3600_000).toISOString().replace(/\.\d+Z$/, 'Z');
-// Table format version: 2 adds the minor-track flag, which a change query
-// cannot fill in for unchanged crossings, so an older table is fetched anew.
-const VERSION = 2;
+// Table format version: 2 adds the minor-track flag and 3 the crossing tags,
+// which a change query cannot fill in for unchanged crossings, so an older
+// table is fetched anew.
+const VERSION = 3;
 let table = new Map(), regions = startRegions(), since;
 if (previous) {
   try {
@@ -111,7 +112,8 @@ for (const [z, detail] of [[OVERVIEW_ZOOM, false], [DETAIL_ZOOM, true]]) {
 await writeFile(new URL('index.json', out), JSON.stringify({tiles: index.sort()}));
 const counts = {road: 0, foot: 0, minor: 0};
 for (const [, [, , kind, minor]] of table) { counts[kind]++; if (minor) counts.minor++; }
-const manifest = {generated: new Date().toISOString(), changesSince: since || null, crossings: table.size, road: counts.road, pedestrian: counts.foot, onMinorTracksOnly: counts.minor,
+// tags: the detail tiles carry the crossing tags (tables from version 3).
+const manifest = {generated: new Date().toISOString(), changesSince: since || null, tags: true, crossings: table.size, road: counts.road, pedestrian: counts.foot, onMinorTracksOnly: counts.minor,
   tiles: index.length, tileBytes: bytes, regions: regions.length, requests, downloadedBytes: downloaded, source: api,
   query: 'node[railway=level_crossing] and node[railway=crossing], by region; minor: only on tram, light rail, funicular, miniature, service or street-running tracks', license: 'ODbL-1.0',
   description: 'OpenStreetMap railway level crossings (road: railway=level_crossing; pedestrian: railway=crossing). Coverage follows OSM mapping.'};
