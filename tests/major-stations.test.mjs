@@ -1,9 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {MAJOR_STATION_DENSITY,validateStationCountries,majorStationsGeoJSON,selectMajorStations,distanceKm,separationPixels,duplicatesMajorStation,curatedStationFilter} from '../scripts/major-stations.mjs';
-import {createExpression} from '@maplibre/maplibre-gl-style-spec';
+import {MAJOR_STATION_DENSITY,validateStationCountries,majorStationsGeoJSON,selectMajorStations,distanceKm,separationPixels,duplicatesMajorStation} from '../scripts/major-stations.mjs';
 import {readFile} from 'node:fs/promises';
-import {chooseName,osmObject} from '../styles/map-model.mjs';
+import {osmObject} from '../styles/map-model.mjs';
 const entry=(id,lon,lat,extra={})=>({wikidata:`Q${id}`,osm:`node/${id}`,lon,lat,name:`Hub ${id}`,country:'X',metro:`City ${id}`,region:'Test',rank:id,minZoom:3,basis:'Curated passenger hub; https://www.wikidata.org/wiki/Q'+id,...extra});
 test('station selection spreads hubs globally and postpones a second station in one metropolis',()=>{
  const entries=[entry(1,139.767,35.681,{metro:'Tokyo'}),entry(2,139.7,35.69,{metro:'Tokyo',minZoom:5}),entry(3,-87.64,41.88,{metro:'Chicago'}),entry(4,-73.994,40.75,{metro:'New York'}),entry(5,-73.54,41.05,{metro:'Stamford',minZoom:6})];
@@ -30,9 +29,11 @@ test('overview density admits closer stations at each zoom without removing earl
   if(z>4){const prior=MAJOR_STATION_DENSITY[z-4];assert.ok(spacing<prior.spacing&&padding<prior.padding);}
  }
 });
-test('GeoJSON retains OSM identity and recorded names for regional language helpers',()=>{
- const e=entry(1,139,35,{name:'東京','name:en':'Tokyo','name:ja':'東京','name:zh-Hant':'東京'}),data=majorStationsGeoJSON([e]),f=data.features[0];
- assert.deepEqual(osmObject({...f,source:'stationMajor'}),{type:'node',id:'1'});assert.equal(chooseName(f.properties,'ja'),'東京');assert.equal(chooseName(f.properties,'en'),'Tokyo');
+test('curated GeoJSON retains identity but cannot supply a display name',()=>{
+ const e=entry(1,139,35,{name:'Readable source note','name:en':'Do not render this','name:ja':'表示しない'}),data=majorStationsGeoJSON([e]),f=data.features[0];
+ assert.deepEqual(osmObject({...f,source:'stationMajor'}),{type:'node',id:'1'});
+ assert.equal(Object.keys(f.properties).some(k=>k==='name'||k.startsWith('name:')),false,'curated metadata has no rendering name fields');
+ assert.equal(e.name,'Readable source note','the source note remains readable to maintainers');
  assert.ok(duplicatesMajorStation({osm_type:'node',osm_id:1},[e]));assert.ok(duplicatesMajorStation({osm_id:'node-1'},[e]));assert.ok(duplicatesMajorStation({id:'node-1-train-station'},[e]));assert.equal(duplicatesMajorStation({osm_type:'way',osm_id:1},[e]),false);
  assert.throws(()=>majorStationsGeoJSON([e,e]));
 });
@@ -62,17 +63,13 @@ test('provider fill remains available across regional overview zooms beneath cur
  for(const layer of fill){assert.equal(layer.minzoom,4);assert.equal(layer.maxzoom,7);assert.ok(style.layers.indexOf(layer)<style.layers.findIndex(l=>l.id==='station-major-6-names'));}
  const baseline=JSON.parse(await readFile(new URL('./fixtures/stations-before-density.json',import.meta.url)));
  const data=majorStationsGeoJSON(JSON.parse(await readFile(new URL('../styles/data-src/major-stations.json',import.meta.url))));
- for(const f of data.features)if(baseline[f.id])assert.ok(f.properties.tier<=baseline[f.id],`${f.properties.name} must not be deferred`);
+ for(const f of data.features)if(baseline[f.id])assert.ok(f.properties.tier<=baseline[f.id],`${f.id} must not be deferred`);
  for(const id of Object.keys(baseline))assert.ok(data.features.some(f=>f.id===id),`${id} must retain overview coverage`);
 });
 
-test('provider duplicates remain eligible until their curated replacement enters',()=>{
- const compiled=createExpression(curatedStationFilter([entry(1,0,0,{tier:3}),entry(2,10,0,{tier:6})]),{type:'boolean'});
- assert.equal(compiled.result,'success');
- const shown=(zoom,properties)=>compiled.value.evaluate({zoom},{type:1,properties});
- assert.equal(shown(4,{id:'node-1-train-station'}),false);
- assert.equal(shown(4,{id:'node-2-train-station'}),true);
- assert.equal(shown(5,{wikidata:'Q2'}),true);
- assert.equal(shown(6,{id:'node-2-train-station'}),false);
- assert.equal(shown(6,{id:'node-3-train-station'}),true);
+test('provider station names stay eligible even when the same identity is curated',async()=>{
+ const style=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url)));
+ const provider=style.layers.filter(l=>l.source==='stationLow'||l.source==='stationMed');
+ assert.ok(provider.length);
+ for(const layer of provider){const filter=JSON.stringify(layer.filter);assert.equal(filter.includes('Q54451'),false,layer.id);assert.equal(filter.includes('node-895371274'),false,layer.id);}
 });

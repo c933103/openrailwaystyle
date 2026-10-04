@@ -38,16 +38,18 @@ test('source mph and directional speed labels are preserved', async () => {
   assert.equal(formatSpeed({ speed_label: '- / 80' }).tagged, '- / 80 km/h');
 });
 test('shared URLs keep display settings and reject invalid map modes', () => {
-  assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',ui:'standard',background:'map',stations:false,trackCounts:true,labels:true,inactive:false,relief:true,names:true,autoGlobe:true,readout:true,transport:true,destinations:true,constraints:true,units:'metric',detail:0,language:'local',serviceWidth:'equal',frequencyPeriod:'offpeak',peakPhase:'am',frequencyHour:12 });
+  assert.deepEqual(readSettings('?mode=electrification&stations=0&inactive=0'), { mode:'electrification',ui:'standard',background:'map',stations:false,stationImportanceColors:false,trackCounts:true,labels:true,inactive:false,relief:true,names:true,autoGlobe:true,readout:true,transport:true,destinations:true,constraints:true,units:'metric',detail:0,language:'local',serviceWidth:'equal',frequencyPeriod:'offpeak',peakPhase:'am',frequencyHour:12 });
   assert.equal(readSettings('?mode=invalid').mode, 'infrastructure', 'the Infrastructure view on a first visit');
   assert.equal(readSettings('?background=hybrid&trackCounts=0').background, 'hybrid');
   assert.equal(readSettings('?background=hybrid&trackCounts=0').trackCounts, false);
+  assert.equal(readSettings('?stationImportanceColors=1').stationImportanceColors, true);
+  assert.equal(readSettings('').stationImportanceColors, false, 'low-zoom station importance colours are opt-in');
   assert.equal(readSettings('?background=photo').background, 'map');
   // A remembered language applies unless the URL names one.
   assert.equal(readSettings('', {language:'ja'}).language, 'ja');
   assert.equal(readSettings('?language=ko', {language:'ja'}).language, 'ko');
   assert.equal(readSettings('', {language:'xx'}).language, 'local');
-  assert.deepEqual(readSettings('?relief=1', {relief:false, stations:false, mode:'bogus', units:'imperial'}), {mode:'infrastructure',ui:'standard',background:'map',stations:false,trackCounts:true,labels:true,inactive:true,relief:true,names:true,autoGlobe:true,readout:true,transport:true,destinations:true,constraints:true,units:'imperial',detail:0,language:'local',serviceWidth:'equal',frequencyPeriod:'offpeak',peakPhase:'am',frequencyHour:12});
+  assert.deepEqual(readSettings('?relief=1', {relief:false, stations:false,stationImportanceColors:false, mode:'bogus', units:'imperial'}), {mode:'infrastructure',ui:'standard',background:'map',stations:false,stationImportanceColors:false,trackCounts:true,labels:true,inactive:true,relief:true,names:true,autoGlobe:true,readout:true,transport:true,destinations:true,constraints:true,units:'imperial',detail:0,language:'local',serviceWidth:'equal',frequencyPeriod:'offpeak',peakPhase:'am',frequencyHour:12});
 });
 test('cursor readout: hemispheres, longitude wrapped, zoom and the More detail scale', async () => {
   const {formatReadout} = await import('../styles/map-model.mjs');
@@ -92,7 +94,7 @@ test('regional stations have collision-aware markers and progressive size thresh
   for (const [id, source] of Object.entries(style.sources)) if (source.type === 'vector') assert.equal(source.tileSize ?? 512, 512, id);
   assert.match(style.sources.stationMed.url, /#minzoom=6&maxzoom=7&underzoom=7$/);
   assert.equal(shown(7, {station_size:'normal'}),true);
-  assert.equal(shown(6, {id:'node-2149761647-train-station',station_size:'large'}),false,'curated duplicate is absent from provider fill');
+  assert.equal(shown(6, {id:'node-2149761647-train-station',station_size:'large'}),true,'provider copy remains eligible beneath curated placement priority');
   assert.equal(shown(7, {id:'node-2149761647-train-station',station_size:'large'}),true,'provider labels take over at seven');
   assert.equal(shown(7, {station_size:'small'}),true);
   assert.equal(shown(9.9, {station_size:'small'}),true);
