@@ -3,23 +3,25 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {featureFilter,validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
 import {powerFacility,createPowerFacilityLoader} from '../styles/power-facilities.mjs';
-import {powerFacilitiesGeoJSON,powerFacilityQuery} from '../scripts/power-facility-data.mjs';
+import {powerFacilitiesGeoJSON,powerFacilityQuery,powerFacilityCacheRecordAccepted,powerFacilityCachedResponse} from '../scripts/power-facility-data.mjs';
 import {powerFacilityLayers} from '../scripts/style/layers/power-facilities.mjs';
 import {annotateLayers,layerVisibility} from '../styles/layer-semantics.mjs';
 
 function candidateSelector(query) {
   // Decode actual QL filters independently of the facility classifier.
-  const decode=text=>[...text.matchAll(/nwr(\.hints)?((?:\["(?:[^"\\]|\\.)*"~"(?:[^"\\]|\\.)*",i\])+)(\(-90,-180,0,-90\))?;/g)].map(([,set,filters,bbox])=>({set,bbox,
+  const decode=text=>[...text.matchAll(/nwr(\.(?:hints|potential))?((?:\["(?:[^"\\]|\\.)*"~"(?:[^"\\]|\\.)*",i\])+)(\(-90,-180,0,-90\))?;/g)].map(([,set,filters,bbox])=>({set,bbox,
     filters:[...filters.matchAll(/\[("(?:[^"\\]|\\.)*")~("(?:[^"\\]|\\.)*"),i\]/g)].map(([,key,value])=>({
       key:JSON.parse(key),value:new RegExp(JSON.parse(value).replaceAll('[[:space:]]','\\s'),'i'),
     })),
   }));
   const parts=query.split(')->.hints;');
   const hints=parts.length===2 ? decode(parts[0]) : [],selectors=decode(parts.at(-1));
+  const potentialKeys=[...parts.at(-1).matchAll(/is_tag\(("(?:[^"\\]|\\.)*")\)/g)].map(([,key])=>JSON.parse(key));
   const matches=(tags,filters)=>filters.every(({key,value})=>tags[key]!=null&&value.test(tags[key]));
-  return {hints,selectors,selected:tags=>{
+  return {hints,selectors,potentialKeys,selected:tags=>{
     const hinted=hints.some(({filters})=>matches(tags,filters));
-    return selectors.some(({set,filters})=>(!set||hinted)&&matches(tags,filters));
+    const potential=hinted&&potentialKeys.some(key=>Object.hasOwn(tags,key));
+    return selectors.some(({set,filters})=>(!set||(set==='.hints'?hinted:potential))&&matches(tags,filters));
   }};
 }
 
@@ -87,19 +89,94 @@ test('maintenance selectors include every supported token and lifecycle hint bef
 
 test('power/tank filters use only the bounded named hint set, avoiding global primary-tag scans',()=>{
   const query=powerFacilityQuery([-90,-180,0,-90]);
-  const {hints,selectors}=candidateSelector(query);
+  const {hints,selectors,potentialKeys}=candidateSelector(query);
   assert.equal(query.includes('[~'),false,'all tag keys stay literal');
   assert.equal(hints.length,13,'railway lifecycle hints and five explicit energy/usage hints');
   assert.ok(hints.every(selector=>selector.bbox&&!selector.set),'every hint search is spatially bounded');
   assert.equal(selectors.length,32);
-  const local=selectors.filter(selector=>selector.set==='.hints');
+  const local=selectors.filter(selector=>selector.set==='.potential');
   assert.equal(local.length,16);
   assert.ok(local.every(selector=>selector.filters.length===1&&/^(?:(?:construction|proposed|disused|abandoned|razed|demolished|removed):)?(?:power|man_made)$/.test(selector.filters[0].key)));
+  assert.deepEqual(potentialKeys,['','construction:','proposed:','disused:','abandoned:','razed:','demolished:','removed:'].flatMap(prefix=>['power','man_made'].map(key=>prefix+key)));
+  assert.equal(query.match(/nwr\.hints\(if:/g)?.length,1,'one bounded full-hint tag retrieval precedes local value filters');
   const direct=selectors.filter(selector=>!selector.set);
   assert.equal(direct.length,16);
   assert.ok(direct.every(selector=>selector.bbox&&selector.filters.length===1&&/railway(?::electricity)?$/.test(selector.filters[0].key)));
   assert.match(query,/\[maxsize:134217728\]/,'retain the existing memory cap and let the builder quarter failures');
   assert.equal(query.includes('out count'),false,'diagnostic count objects stay out of production snapshots');
+});
+
+test('key-presence prefilter preserves all v6 raw selections and classifier output',()=>{
+  const fixture=readFileSync(new URL('./fixtures/power-hints-v6-query.ql',import.meta.url),'utf8');
+  const prior=candidateSelector(fixture),current=candidateSelector(powerFacilityQuery([-90,-180,0,-90]));
+  const prefixes=['','construction:','proposed:','disused:','abandoned:','razed:','demolished:','removed:'];
+  const keys=prefixes.flatMap(prefix=>['power','man_made'].map(key=>prefix+key));
+  let compared=0;
+  const compare=tags=>{
+    assert.equal(current.selected(tags),prior.selected(tags),JSON.stringify(tags));
+    const accepted=Boolean(powerFacility(tags));
+    assert.equal(current.selected(tags)&&accepted,prior.selected(tags)&&accepted,JSON.stringify(tags));
+    compared++;
+  };
+  const kinds=['plant','generator','transformer','substation','converter','frequency_converter','water_tower','storage_tank','cable','unknown'];
+  const hints=[{}, {substation:' distribution ; TRACTION '},{transformer:' traction '},{usage:' industrial ; railway '},
+    {landuse:' railway '},{frequency:' 16.667 '},{frequency:'50'},{railway:'yes'},{railway:'fuel'},
+    {RAILWAY:'yes'},{usage:'not_railway'},...prefixes.map(prefix=>({[`${prefix}railway`]:' rail ; yes '}))];
+  for(const prefix of prefixes)for(const kind of kinds)for(const hint of hints)for(const key of ['power','man_made'])
+    compare({[`${prefix}${key}`]:` other ; ${kind.toUpperCase()} `,content:' water ; diesel ',...hint});
+  for(const prefix of prefixes)for(const kind of ['fuel','coaling_facility','water_tower','water_tank','water_crane','power_supply','preheating','power_station','substation'])
+    compare({[`${prefix}railway`]:` other ; ${kind.toUpperCase()} `});
+  assert.equal(compared,3112);
+  for(const key of keys)for(const value of ['', ';', 'plant', 'water_tower', 'PLANT', ' other ; plant ', ' power_station ', '\u00a0plant\u00a0', 'pl\u212Ant', 'unknown'])
+    for(const hint of [{usage:'railway'}, {railway:'fuel'}, {frequency:'16.7'}, {RAILWAY:'yes'}, {}]) {
+      compare({...hint,[key]:value});compare({...hint,[key.toUpperCase()]:value});compare({...hint,[`x${key}`]:value});
+    }
+  assert.equal(compared,5512);
+  const query=powerFacilityQuery([-90,-180,0,-90]);
+  assert.equal(query.replace(/nwr\.hints\(if:[^;]*\)->\.potential;/,'').replaceAll('nwr.potential[','nwr.hints['),fixture,
+    'only the tautological presence gate and input-set names differ from frozen v6');
+});
+
+test('reviewed v6 responses and split routes retain exact same-bbox compatibility and original freshness',()=>{
+  const box=[-90,-180,0,-90],query=powerFacilityQuery(box);
+  const legacy=readFileSync(new URL('./fixtures/power-hints-v6-query.ql',import.meta.url),'utf8');
+  const now=Date.UTC(2026,9,4),options={now,mtimeMs:now-27*86400_000};
+  const response={elements:[{type:'node',id:12,lat:34,lon:135,tags:{railway:'fuel'}}]};
+  for(const cachedQuery of [query,legacy]) {
+    const saved={query:cachedQuery,response},copy=structuredClone(saved);
+    assert.equal(powerFacilityCacheRecordAccepted(box,query,{query:cachedQuery},options),true,'split marker follows the same query allowlist');
+    assert.equal(powerFacilityCachedResponse(box,query,saved,options),response);
+    assert.deepEqual(saved,copy,'acceptance does not migrate or rewrite saved records');
+    assert.equal(powerFacilityCachedResponse(box,query,saved,{...options,refresh:true}),undefined);
+    assert.equal(powerFacilityCachedResponse(box,query,saved,{...options,mtimeMs:now-28*86400_000}),undefined);
+    assert.equal(powerFacilityCachedResponse(box,query,saved,{...options,mtimeMs:NaN}),undefined);
+    assert.throws(()=>powerFacilityCachedResponse(box,query,{query:cachedQuery,response:{remark:'runtime error: timed out',elements:[]}},options),/timed out/);
+    assert.throws(()=>powerFacilityCachedResponse(box,query,{query:cachedQuery,response:{elements:[{type:'node',id:12,tags:{railway:'fuel'}}]}},options),/Incomplete coordinates/);
+  }
+  assert.equal(powerFacilityCacheRecordAccepted([45,5.625,50.625,11.25],powerFacilityQuery([45,5.625,50.625,11.25]),{query:legacy},options),false);
+  for(const changed of [legacy+' ',legacy.replace('16\\\\.','17\\\\.'),legacy.replace('timeout:240','timeout:300')])
+    assert.equal(powerFacilityCacheRecordAccepted(box,query,{query:changed},options),false,'unknown query text never gains version-wide compatibility');
+  assert.equal(powerFacilityCacheRecordAccepted(box,query,{version:6,response},options),false);
+});
+
+test('future changes to base selectors or the prefilter disable legacy-cache compatibility',async()=>{
+  const url=new URL('../scripts/power-facility-data.mjs',import.meta.url);
+  const source=readFileSync(url,'utf8').replaceAll("'../styles/power-facilities.mjs'",JSON.stringify(new URL('../styles/power-facilities.mjs',url).href))
+    .replaceAll("'../styles/han-region.mjs'",JSON.stringify(new URL('../styles/han-region.mjs',url).href));
+  const legacy=readFileSync(new URL('./fixtures/power-hints-v6-query.ql',import.meta.url),'utf8');
+  const box=[-90,-180,0,-90],now=Date.UTC(2026,9,4),options={now,mtimeMs:now};
+  for(const changed of [source.replace("const SUPPLIES = 'fuel|","const SUPPLIES = 'new_supply|fuel|"),
+    source.replace("PREFIXES.flatMap(prefix=>['power','man_made'].map", "PREFIXES.flatMap(prefix=>['power'].map")]) {
+    assert.notEqual(changed,source);
+    const future=await import(`data:text/javascript;base64,${Buffer.from(changed).toString('base64')}`);
+    const query=future.powerFacilityQuery(box);
+    assert.equal(future.powerFacilityCacheRecordAccepted(box,query,{query:legacy},options),false,
+      'matching a changed generator is insufficient: both approved normalized query digests must match');
+    const changedLegacy=query.replace(/nwr\.hints\(if:[^;]*\)->\.potential;/,'').replaceAll('nwr.potential[','nwr.hints[');
+    assert.equal(future.powerFacilityCacheRecordAccepted(box,query,{query:changedLegacy},options),false,
+      'an unknown prefilter-free form cannot qualify merely by matching the changed base generator');
+    assert.equal(future.powerFacilityCacheRecordAccepted(box,query,{query},options),true,'exact future-current query caches remain valid');
+  }
 });
 
 test('named-set filtering preserves classifier-accepted supplies from the literal-query baseline',()=>{

@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261004-pr82-repair1';
+import { MODES } from './map-model.mjs?v=20261004-signal-power3';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;

@@ -3,6 +3,7 @@
 // OSM object identity and supply tags available in the infobox.
 import {powerFacility} from '../styles/power-facilities.mjs';
 import {hanRegion,chineseArea} from '../styles/han-region.mjs';
+import {createHash} from 'node:crypto';
 
 const SUPPLIES = 'fuel|coaling_facility|water_tower|water_tank|water_crane|power_supply|preheating|power_station|substation';
 const POWER = 'substation|plant|generator|converter|frequency_converter|transformer';
@@ -13,8 +14,13 @@ const tokenPattern = options => `(^|;)[[:space:]]*(${options})[[:space:]]*(;|$)`
 // regexes. Select complete semicolon-delimited values with native case-folding
 // and POSIX whitespace, then let the classifier decide railway supply use.
 const tagFilter = (key, options) => `[${JSON.stringify(key)}~${JSON.stringify(tokenPattern(options))},i]`;
+const potentialFilter = `nwr.hints(if:${PREFIXES.flatMap(prefix=>['power','man_made'].map(key=>`is_tag(${JSON.stringify(prefix+key)})`)).join('||')})->.potential;`;
+const withPotentialFilter = query => query.replace(')->.hints;',`)->.hints;${potentialFilter}`).replaceAll('nwr.hints[','nwr.potential[');
 
-export function powerFacilityQuery(box) {
+// Keep the prefilter-free v6 form available for completed response caches.
+// The compatibility digests below freeze both reviewed query forms; changing
+// a selector or the prefilter disables legacy reuse unless reviewed again.
+function powerFacilityQueryBase(box) {
   const bbox = box ? `(${box.join(',')})` : '';
   const hints=PREFIXES.map(prefix=>`nwr${tagFilter(`${prefix}railway`,RAIL)}${bbox};`);
   hints.push(`nwr${tagFilter('substation','traction')}${bbox};`,
@@ -35,6 +41,32 @@ export function powerFacilityQuery(box) {
   // tags-only output removes coordinates from nodes. center supplies only
   // way/relation centres, so body is necessary for mapped supply nodes.
   return `[out:json][timeout:240][maxsize:134217728];(${hints.join('')})->.hints;(${selectors.join('')});out body center qt;`;
+}
+
+export function powerFacilityQuery(box) {
+  // Load tags for the bounded hints once, then inspect power/tank values only
+  // on objects having a relevant exact key. Every downstream value match
+  // necessarily has that key, so this gate preserves the entire result set.
+  return withPotentialFilter(powerFacilityQueryBase(box));
+}
+
+const LEGACY_V6_DIGEST='cbb72dda62d31d579edf1cfb86bb4ff51aba969aa851baf9350dfa25ddba5695';
+const PREFILTER_V6_DIGEST='bd1af2628e20bf8003281ba36e28425cf03d165f76f83cc5b3782eb45a2dc920';
+const queryDigest = (query,box) => createHash('sha256').update(query.replaceAll(`(${box.join(',')})`,'(__POWER_FACILITY_BBOX__)')).digest('hex');
+const MAX_CACHE_AGE=28*86400_000;
+
+export function powerFacilityCacheRecordAccepted(box,query,saved,{mtimeMs,refresh=false,now=Date.now()}={}) {
+  if(refresh || !Number.isFinite(mtimeMs) || now-mtimeMs>=MAX_CACHE_AGE || typeof saved?.query!=='string')return false;
+  if(saved.query===query)return true;
+  const legacy=powerFacilityQueryBase(box);
+  return saved.query===legacy && query===withPotentialFilter(legacy) &&
+    queryDigest(legacy,box)===LEGACY_V6_DIGEST && queryDigest(query,box)===PREFILTER_V6_DIGEST;
+}
+
+export function powerFacilityCachedResponse(box,query,saved,options) {
+  if(!powerFacilityCacheRecordAccepted(box,query,saved,options))return undefined;
+  powerFacilitiesGeoJSON(saved.response); // Reject cached partial/error responses too.
+  return saved.response;
 }
 
 export function powerFacilitiesGeoJSON(json) {

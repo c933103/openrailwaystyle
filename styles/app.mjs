@@ -1,13 +1,14 @@
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-pr82-repair1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-pr82-repair1';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-signal-power3';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-signal-power3';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-signal-power3';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-pr82-repair1';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-pr82-repair1';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-pr82-repair1';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261004-pr82-repair1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-pr82-repair1';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-pr82-repair1';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-pr82-repair1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-signal-power3';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-signal-power3';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-signal-power3';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261004-signal-power3';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-signal-power3';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-signal-power3';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-signal-power3';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -42,7 +43,7 @@ let legendHelpOpen = false;
 let platformLengths;
 let powerFacilities;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-pr82-repair1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-signal-power3';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -277,7 +278,7 @@ function applySettings() {
   renderLegend();
   if (ready) { scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.(); }
 }
-let attribution, attributionCarto, attributionStateObserver, servedBuild;
+let attribution, attributionStateCleanup, controlLayout, servedBuild;
 function codeAttribution() {
   const span=document.createElement('span');span.className='atlas-build';
   span.append(`Build ${assetVersion} · `);
@@ -291,30 +292,13 @@ function codeAttribution() {
   return span.outerHTML;
 }
 function updateAttribution() {
-  if (!map) return;
-  const carto = settings.background === 'carto';
-  if (attribution && attributionCarto === carto) return;
-  attributionStateObserver?.disconnect(); attributionStateObserver = undefined;
-  if (attribution) map.removeControl(attribution);
-  attributionCarto = carto;
-  attribution = new maplibregl.AttributionControl({compact: !carto, customAttribution: codeAttribution()});
+  if (!map || attribution) return;
+  attribution = new maplibregl.AttributionControl({compact: true, customAttribution: codeAttribution()});
   map.addControl(attribution, 'bottom-right');
-  // MapLibre 5.24 initially expands compact attribution. Restore the user's
-  // remembered state instead; with no cookie, start closed so only the ⓘ
-  // button occupies the corner. Carto deliberately uses non-compact credits.
-  const container = attribution._container;
-  if (!carto && container?.classList.contains('maplibregl-compact')) {
-    container.classList.toggle('maplibregl-compact-show', settings.attributionOpen);
-    container.toggleAttribute('open', settings.attributionOpen);
-    attributionStateObserver = new MutationObserver(() => {
-      if (!container.classList.contains('maplibregl-compact')) return;
-      const open = container.classList.contains('maplibregl-compact-show');
-      if (open === settings.attributionOpen) return;
-      settings.attributionOpen = open;
-      saveSettings();
-    });
-    attributionStateObserver.observe(container, {attributes:true, attributeFilter:['class']});
-  }
+  attributionStateCleanup = rememberAttribution(
+    $('map').querySelector('.maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib'),
+    {open: settings.attributionOpen, changed: open => {settings.attributionOpen = open; saveSettings();}}
+  );
 }
 const SIGNAL_SOURCES = ['railwaySignals','railwaySignalSupplement','railwaySignalSupplementOverview'];
 const featurePickRank = f => [...SIGNAL_SOURCES,'stationEntrances','electricFacilities','electricSubstations'].includes(f.source) ? -1 : f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
@@ -1142,6 +1126,9 @@ async function initialize() {
   scale = new maplibregl.ScaleControl({ unit: settings.units });
   map.addControl(scale, 'bottom-left');
   map.on('move', fitScale); fitScale();
+  controlLayout = installControlLayout({frame: $('map-frame'), mapElement: $('map'),
+    panel: document.querySelector('.panel'), status: document.querySelector('.map-status'), readout, details: $('details')});
+  map.on('remove', () => {controlLayout.destroy(); attributionStateCleanup?.();});
   installKeyboardPan(map, {reducedMotion: () => matchMedia('(prefers-reduced-motion: reduce)').matches});
   drawing = new Drawing(map, {units: () => settings.units, status: text => { $('draw-status').textContent = text; }, changed: updateDrawing});
   measuring = new Measure(map, {units: () => settings.units, status: text => { $('measure-status').textContent = text; }, changed: updateDrawing, heights: elevation.heights});
@@ -1294,6 +1281,9 @@ $('units').addEventListener('change', () => {
   if (currentFeature) showDetails(currentFeature);
 });
 const compactControls = () => matchMedia('(max-width: 650px), (max-height: 500px)').matches;
+// Called when an explicit menu action changes its geometry; ResizeObserver
+// handles status wrapping, readout size, font changes and window resizing.
+function updateMapControlClearance() { controlLayout?.update(); }
 function setControlsExpanded(expanded, focus = false) {
   $('controls').hidden = !expanded;
   document.querySelector('.panel').classList.toggle('collapsed', !expanded);
@@ -1302,6 +1292,7 @@ function setControlsExpanded(expanded, focus = false) {
   $('collapse').setAttribute('aria-label', `${expanded ? 'Collapse' : 'Expand'} map controls`);
   $('controls-open').setAttribute('aria-expanded', String(expanded));
   $('controls-open').setAttribute('aria-label', expanded ? 'Collapse map controls' : 'Open map controls');
+  updateMapControlClearance();
   if (focus) (expanded || !compactControls() ? $('collapse') : $('controls-open')).focus();
 }
 $('collapse').addEventListener('click', () => setControlsExpanded($('controls').hidden, true));

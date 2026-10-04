@@ -9,6 +9,7 @@ import * as departuresModule from '../styles/departures.mjs';
 import * as elevationModule from '../styles/elevation.mjs';
 import * as contextFeatures from '../styles/context.mjs';
 import * as powerFacilities from '../styles/power-facilities.mjs';
+import * as controlFunctions from '../styles/map-controls.mjs';
 import * as layerSemantics from '../styles/layer-semantics.mjs';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
@@ -125,7 +126,10 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const semantics = new vm.SyntheticModule(Object.keys(layerSemantics), function() {
     for (const [key,value] of Object.entries(layerSemantics)) this.setExport(key,value);
   }, {context});
-  await app.link(specifier => specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  const mapControls = new vm.SyntheticModule(Object.keys(controlFunctions), function() {
+    for (const [key,value] of Object.entries(controlFunctions)) this.setExport(key,value);
+  }, {context});
+  await app.link(specifier => specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries,loadLabels};
@@ -488,14 +492,14 @@ test('signals and entrances inspect their mapped node and avoid track/timetable 
  }finally{dom.window.close();}
 });
 
-test('Carto shows railway overlays, honours terrain, hides duplicate basemap labels and keeps attribution open', async () => {
+test('Carto shows railway overlays, honours terrain, hides duplicate basemap labels and keeps compact attribution', async () => {
   const {dom,window,maps} = await start({search:'?background=carto'});
   try {
     const map=maps[0], layer=id=>map.options.style.layers.find(l=>l.id===id);
     assert.equal(layer('carto').layout.visibility,'visible');
     assert.equal(layer('satellite').layout.visibility,'none');
     assert.equal(layer('water').layout.visibility,'none');
-    assert.ok(map.controls.some(c=>c.options?.compact===false));
+    assert.ok(map.controls.some(c=>c.options?.compact===true),'Carto keeps the same compact info control');
     map.handlers['style.load']();
     assert.equal(map.visibility['infrastructure-tracks'],'visible');
     assert.equal(map.visibility['terrain-relief'],'visible');
@@ -568,7 +572,7 @@ test('map info identifies the executing cached asset and links to its build repo
  try {
   const attribution=()=>maps[0].controls.find(c=>c.options?.customAttribution)?.options;
   let info=attribution();assert.equal(info.compact,true);assert.match(info.customAttribution,/Build cached-42/);assert.ok(info.customAttribution.includes(`href="${sourceUrl}"`));assert.match(info.customAttribution,/Code aaaaaaaaaa/);
-  window.document.querySelector('[data-background="carto"]').click();info=attribution();assert.equal(info.compact,false);assert.match(info.customAttribution,/Build cached-42/);assert.match(info.customAttribution,new RegExp(commit));
+  window.document.querySelector('[data-background="carto"]').click();info=attribution();assert.equal(info.compact,true);assert.match(info.customAttribution,/Build cached-42/);assert.match(info.customAttribution,new RegExp(commit));
  } finally {dom.window.close();}
 });
 test('map info exposes mismatched cached bundle versions and handles a missing commit',async()=>{

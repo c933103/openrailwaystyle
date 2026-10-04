@@ -2,17 +2,14 @@
 // snapshot. Visitors fetch the published GeoJSON rather than querying Overpass.
 import {mkdir, readFile, writeFile, stat} from 'node:fs/promises';
 import {gzipSync} from 'node:zlib';
-import {powerFacilityQuery,powerFacilitiesGeoJSON} from './power-facility-data.mjs';
+import {powerFacilityQuery,powerFacilitiesGeoJSON,powerFacilityCacheRecordAccepted,powerFacilityCachedResponse} from './power-facility-data.mjs';
 
 const api=process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const output=process.env.POWER_OUTPUT || 'power-data';
 const cache='.snapshot-cache';
-// v1 omitted node coordinates; v3 added token/lifecycle selectors. v6 selects
-// bounded hints once and filters power/tank tags from that named input set.
-// Use a fresh cache epoch for this query and its literal lifecycle keys.
-// Bind every raw response to its exact query too,
-// so later selection changes cannot accidentally reuse an incomplete cache.
-const VERSION=6, MAX_AGE=28*86400_000;
+// v6 caches remain valid for the reviewed equivalent key-presence prefilter.
+// Exact query/digest, original age and payload validation protect their reuse.
+const VERSION=6;
 const regions=[];
 for (let south=-90;south<90;south+=90) for(let west=-180;west<180;west+=90) regions.push([south,west,south+90,west+90]);
 await mkdir(cache,{recursive:true});
@@ -28,17 +25,15 @@ async function collect(box,depth=0) {
   let json;
   try {
     const info=await stat(file);
-    if(process.env.POWER_REFRESH!=='1' && Date.now()-info.mtimeMs<MAX_AGE) {
-      const saved=JSON.parse(await readFile(file,'utf8'));
-      if(saved.query===query) {
-        powerFacilitiesGeoJSON(saved.response); // Reject cached partial/error responses too.
-        json=saved.response;
-      }
-    }
+    const saved=JSON.parse(await readFile(file,'utf8'));
+    json=powerFacilityCachedResponse(box,query,saved,{mtimeMs:info.mtimeMs,refresh:process.env.POWER_REFRESH==='1'});
   } catch {json=undefined;}
-  let split=false;
+  let split=false,cachedSplit=false;
   if (!json) {
-    try{split=JSON.parse(await readFile(splitFile,'utf8')).query===query;}catch{}
+    try {
+      const info=await stat(splitFile),saved=JSON.parse(await readFile(splitFile,'utf8'));
+      split=cachedSplit=powerFacilityCacheRecordAccepted(box,query,saved,{mtimeMs:info.mtimeMs,refresh:process.env.POWER_REFRESH==='1'});
+    } catch {}
     if(!split)for(let attempt=0;attempt<3;attempt++) {
       await sleep(requests ? Math.min(60000,attempt?20000*(attempt+1):10000) : 0);
       requests++;
@@ -63,8 +58,8 @@ async function collect(box,depth=0) {
     }
   }
   if(split) {
-    if(depth>=4)throw new Error(`Energy facility region could not complete: ${box}`);
-    await writeFile(splitFile,JSON.stringify({query}));
+    if(depth>=6)throw new Error(`Energy facility region could not complete: ${box}`);
+    if(!cachedSplit)await writeFile(splitFile,JSON.stringify({query}));
     const [s,w,n,e]=box,lat=(s+n)/2,lon=(w+e)/2;
     for(const child of [[s,w,lat,lon],[s,lon,lat,e],[lat,w,n,lon],[lat,lon,n,e]])await collect(child,depth+1);
     return;
