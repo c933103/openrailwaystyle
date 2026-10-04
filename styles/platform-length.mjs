@@ -4,6 +4,7 @@ export const PLATFORM_SOURCE='standard_railway_platform_edges';
 export const PLATFORM_API='https://openrailwaymap.app/api/feature/openrailwaymap_standard/'+PLATFORM_SOURCE+'/';
 const OBSOLETE_REQUEST=Symbol('obsolete platform request');
 export const PLATFORM_GEOMETRY_LIMITS={elements:4096,members:64,vertices:1024,responseBytes:2*1024*1024};
+export const PLATFORM_UPDATE_LIMITS={candidates:2048,features:512,vertices:16384,work:4*1024*1024};
 function boundedGeometry(geometry){let count=0;const visit=p=>Array.isArray(p)&&(!Array.isArray(p[0])?++count<=PLATFORM_GEOMETRY_LIMITS.vertices:p.every(visit));return !!geometry&&visit(geometry.coordinates);}
 export async function readPlatformResponse(response){
  if(!response.body?.getReader)return response.json();
@@ -167,11 +168,11 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
   for(const [key,entry] of desired){
    const {kind,id,feature:f}=entry,p={...f.properties,...cache.get(key)},ref=platformReference(p.ref);
    if(kind==='edge'){
-    const length=Number(p.length),coordinates=platformScreenAnchor(f,map);
+    const length=Number(p.length),coordinates=entry.anchor;
     if(coordinates&&(ref||length>0&&map.getZoom()>=19))edges.push({type:'Feature',id,geometry:{type:'Point',coordinates},properties:{id:`way-${id}`,osm_type:'way',osm_id:id,feature:'platform_edge',ref,label_anchor:platformTextAnchor(map,coordinates,ref,length),...(length>0&&Number.isFinite(length)&&map.getZoom()>=19?{platform_length:length}:{})}});
    }else if(ref||Number(p.length)>0&&map.getZoom()>=19){
     const object=platformObjectIdentity(f);
-    const coordinates=platformScreenAnchor(f,map);if(!coordinates)continue;
+    const coordinates=entry.anchor;if(!coordinates)continue;
     platforms.push({type:'Feature',id,geometry:{type:'Point',coordinates},properties:{id,osm_type:object.type,osm_id:object.id,feature:'platform',name:p.name||'',ref,label_anchor:platformTextAnchor(map,coordinates,ref,Number(p.length)),...(Number(p.length)>0&&map.getZoom()>=19?{platform_length:p.length,length_estimated:!!p.length_estimated,length_basis:p.length_basis}:{})}});
    }
   }
@@ -208,16 +209,32 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
  function update(){
   if(disposed)return;desired=new Map();
   if(active()&&map.getZoom()>=17){
-   const better=(f,previous,span)=>!previous||!!platformScreenAnchor(f,map)&&!platformScreenAnchor(previous.feature,map)||!!platformScreenAnchor(f,map)===!!platformScreenAnchor(previous.feature,map)&&span(f)>span(previous.feature);
+   let candidates=0,vertices=0,work=0;const anchors=new WeakMap();
+   const prepare=f=>{
+    if(++candidates>PLATFORM_UPDATE_LIMITS.candidates)return null;
+    if(anchors.has(f))return anchors.get(f);
+    let n=0;const visit=p=>Array.isArray(p)&&(!Array.isArray(p[0])?++n<=PLATFORM_GEOMETRY_LIMITS.vertices:p.every(visit));
+    if(!f.geometry||!visit(f.geometry.coordinates))return null;
+    const cost=['Polygon','MultiPolygon'].includes(f.geometry.type)?3*n*n:n;
+    if(vertices+n>PLATFORM_UPDATE_LIMITS.vertices||work+cost>PLATFORM_UPDATE_LIMITS.work)return null;
+    vertices+=n;work+=cost;const result={anchor:platformScreenAnchor(f,map)};anchors.set(f,result);return result;
+   };
+   const better=(f,anchor,previous,span)=>!previous||!!anchor&&!previous.anchor||!!anchor===!!previous.anchor&&span(f)>span(previous.feature);
    for(const f of map.queryRenderedFeatures({layers:['platform-edges']})){
+    if(candidates>=PLATFORM_UPDATE_LIMITS.candidates)break;
+    const prepared=prepare(f);if(!prepared)continue;
     const id=platformIdentity(f);if(!id)continue;const key='edge/'+id,previous=desired.get(key);
-    if(better(f,previous,platformSpan))desired.set(key,{kind:'edge',id,feature:f,url:map.getZoom()>=19?PLATFORM_API+id:null});
+    if(!previous&&desired.size>=PLATFORM_UPDATE_LIMITS.features)continue;
+    if(better(f,prepared.anchor,previous,platformSpan))desired.set(key,{kind:'edge',id,feature:f,anchor:prepared.anchor,url:map.getZoom()>=19?PLATFORM_API+id:null});
    }
    const layers=['platform-areas','platform-outlines','platform-points'].filter(id=>!map.getLayer||map.getLayer(id));
    for(const f of layers.length?map.queryRenderedFeatures({layers}):[]){
+    if(candidates>=PLATFORM_UPDATE_LIMITS.candidates)break;
+    const prepared=prepare(f);if(!prepared)continue;
     const object=platformObjectIdentity(f);if(!object)continue;const key='platform/'+object.key,previous=desired.get(key);
+    if(!previous&&desired.size>=PLATFORM_UPDATE_LIMITS.features)continue;
     const full=map.getZoom()>=19;
-    if(better(f,previous,geometrySpan))desired.set(key,{kind:'platform',id:object.key,feature:f,full,url:full?platformOSMURL(object):'https://openrailwaymap.app/api/feature/openrailwaymap_standard/standard_railway_platforms/'+object.key});
+    if(better(f,prepared.anchor,previous,geometrySpan))desired.set(key,{kind:'platform',id:object.key,feature:f,anchor:prepared.anchor,full,url:full?platformOSMURL(object):'https://openrailwaymap.app/api/feature/openrailwaymap_standard/standard_railway_platforms/'+object.key});
    }
   }
   for(const key of pending.keys())if(!desired.get(key)?.url)pending.delete(key);

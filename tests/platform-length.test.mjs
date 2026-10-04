@@ -214,3 +214,13 @@ test('large public platform geometry is withheld before quadratic hull and ancho
   const body='x'.repeat(PLATFORM_GEOMETRY_LIMITS.responseBytes+1);await assert.rejects(readPlatformResponse(new Response(body)),/response budget/);
   assert.deepEqual(await readPlatformResponse(new Response('{"elements":[]}')),{elements:[]});
 });
+
+test('dense platform tiles share one anchor budget and reuse anchors for redraws',async()=>{
+ const {PLATFORM_UPDATE_LIMITS}=await import('../styles/platform-length.mjs');
+ const ring=Array.from({length:1024},(_,i)=>[.001*Math.cos(i*2*Math.PI/1023),.001*Math.sin(i*2*Math.PI/1023)]);
+ const features=Array.from({length:500},(_,i)=>({properties:{id:`way-${i+1}`,ref:'1'},geometry:{type:'Polygon',coordinates:[ring]}}));
+ let projects=0,data;
+ const map={getZoom:()=>18,getLayer:()=>({}),getContainer:()=>({clientWidth:100,clientHeight:100}),project:([x,y])=>{projects++;return {x:50+x*1000,y:50+y*1000};},unproject:([x,y])=>({lng:(x-50)/1000,lat:(y-50)/1000}),queryRenderedFeatures:({layers})=>layers.includes('platform-edges')?[]:features,getSource:id=>id==='platformNumbers'?{setData:d=>data=d}:null};
+ const p=createPlatformLengths(map,{delay:0,fetcher:async()=>({ok:true,json:async()=>({properties:{ref:'1'}})})});
+ try{p.update();const first=projects;assert.ok(first>0&&first<PLATFORM_UPDATE_LIMITS.vertices);assert.ok(data.features.length>0&&data.features.length<500);await new Promise(r=>setTimeout(r,15));assert.ok(projects<=first*2+2,'the lookup redraw only projects its label point; its following update may recompute geometry anchors');}finally{p.destroy();}
+});
