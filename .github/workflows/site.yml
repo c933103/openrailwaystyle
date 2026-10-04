@@ -117,11 +117,18 @@ jobs:
       - name: Load historic areas
         run: |
           mkdir -p styles/data/heritage
-          if git ls-remote --exit-code --heads origin heritage-data; then
+          # Exit status 2: no snapshot yet. Any other failure stops the
+          # deploy rather than publishing the site without historic areas.
+          status=0
+          git ls-remote --exit-code --heads origin heritage-data || status=$?
+          if [ "$status" = 0 ]; then
             git fetch --depth=1 origin heritage-data
             git archive FETCH_HEAD | tar -x -C styles/data/heritage
-          else
+          elif [ "$status" = 2 ]; then
             echo '{"tiles":[]}' > styles/data/heritage/index.json
+          else
+            echo "Could not look up the heritage-data snapshot (git exit $status)"
+            exit 1
           fi
       # Operating branch lines for zooms 4–6 and metro lines for 7–9 (branch-lines.yml), filled in
       # region by region; without them the overview shows main lines only.
