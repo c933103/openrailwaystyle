@@ -1,0 +1,1266 @@
+{
+  "schema": 1,
+  "source": {
+    "id": "mtr-hk",
+    "name": "MTR published average headways",
+    "url": "https://www.mtr.com.hk/en/customer/services/train_service_index.html",
+    "checked": "2026-10-03",
+    "review_after_days": 30,
+    "sha256": "bcc686211a8d4cb2c40f30a645e7cebbc5d86f6c5c4332bbbe26aa7702501b8e",
+    "timezone": "Asia/Hong_Kong",
+    "quality": "published_headway_estimate",
+    "period_definition": "Operator's weekday morning peak, evening peak and non-peak categories; clock windows are not supplied on this page.",
+    "notes": [
+      "The hourly estimate is 60 divided by the reported minutes; it is not an exact departure count.",
+      "Use the lower hourly bound for width and retain both bounds in details.",
+      "Non-peak excludes early morning and late night exceptions.",
+      "Disneyland Resort Line has 10–20 minute headways while the park is closed; the normal-service profile does not cover that condition.",
+      "Route 751P adds weekday peak service on part of 751; its own headway is not published here and remains unknown.",
+      "Section-specific heavy-rail rows are retained but must not be applied to an entire branched route."
+    ]
+  },
+  "routes": [
+    {
+      "id": "mtr-hk/505",
+      "label": "Route 505",
+      "match": {
+        "ref": "505",
+        "network": "輕鐵 Light Rail",
+        "kind": "light_rail"
+      },
+      "scope": "whole_route",
+      "profiles": {
+        "am": {
+          "reported": "6-10",
+          "minutes": [
+            6.0,
+            10.0
+          ]
+        },
+        "pm": {
+          "reported": "7-12",
+          "minutes": [
+            7.0,
+            12.0
+          ]
+        },
+        "offpeak": {
+          "reported": "10-18",
+          "minutes": [
+            10.0,
+            18.0
+          ]
+        },
+        "saturday": {
+          "reported": "6-18",
+          "minutes": [
+            6.0,
+            18.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "6-18",
+          "minutes": [
+            6.0,
+            18.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/507",
+      "label": "Route 507",
+      "match": {
+        "ref": "507",
+        "network": "輕鐵 Light Rail",
+        "kind": "light_rail"
+      },
+      "scope": "whole_route",
+      "profiles": {
+        "am": {
+          "reported": "6-9",
+          "minutes": [
+            6.0,
+            9.0
+          ]
+        },
+        "pm": {
+          "reported": "7-10",
+          "minutes": [
+            7.0,
+            10.0
+          ]
+        },
+        "offpeak": {
+          "reported": "9-21",
+          "minutes": [
+            9.0,
+            21.0
+          ]
+        },
+        "saturday": {
+          "reported": "7-16",
+          "minutes": [
+            7.0,
+            16.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "8-17",
+          "minutes": [
+            8.0,
+            17.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/610",
+      "label": "Route 610",
+      "match": {
+        "ref": "610",
+        "network": "輕鐵 Light Rail",
+        "kind": "light_rail"
+      },
+      "scope": "whole_route",
+      "profiles": {
+        "am": {
+          "reported": "8-11",
+          "minutes": [
+            8.0,
+            11.0
+          ]
+        },
+        "pm": {
+          "reported": "7-12",
+          "minutes": [
+            7.0,
+            12.0
+          ]
+        },
+        "offpeak": {
+          "reported": "9-18",
+          "minutes": [
+            9.0,
+            18.0
+          ]
+        },
+        "saturday": {
+          "reported": "8-17",
+          "minutes": [
+            8.0,
+            17.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "7-17",
+          "minutes": [
+            7.0,
+            17.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/614",
+      "label": "Route 614",
+      "match": {
+        "ref": "614",
+        "network": "輕鐵 Light Rail",
+        "kind": "light_rail"
+      },
+      "scope": "whole_route",
+      "profiles": {
+        "am": {
+          "reported": "14-18",
+          "minutes": [
+            14.0,
+            18.0
+          ]
+        },
+        "pm": {
+          "reported": "14-18",
+          "minutes": [
+            14.0,
+            18.0
+          ]
+        },
+        "offpeak": {
+          "reported": "13-23",
+          "minutes": [
+            13.0,
+            23.0
+          ]
+        },
+        "saturday": {
+          "reported": "12-23",
+          "minutes": [
+            12.0,
+            23.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "14-23",
+          "minutes": [
+            14.0,
+            23.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/614P",
+      "label": "Route 614P",
+      "match": {
+        "ref": "614P",
+        "network": "輕鐵 Light Rail",
+        "kind": "light_rail"
+      },
+      "scope": "whole_route",
+      "profiles": {
+        "am": {
+          "reported": "6-16",
+          "minutes": [
+            6.0,
+            16.0
+          ]
+        },
+        "pm": {
+          "reported": "6-16",
+          "minutes": [
+            6.0,
+            16.0
+          ]
+        },
+        "offpeak": {
+          "reported": "8-20",
+          "minutes": [
+            8.0,
+            20.0
+          ]
+        },
+        "saturday": {
+          "reported": "7-23",
+          "minutes": [
+            7.0,
+            23.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "11-22",
+          "minutes": [
+            11.0,
+            22.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/615",
+      "label": "Route 615",
+      "match": {
+        "ref": "615",
+        "network": "輕鐵 Light Rail",
+        "kind": "light_rail"
+      },
+      "scope": "whole_route",
+      "profiles": {
+        "am": {
+          "reported": "15-19",
+          "minutes": [
+            15.0,
+            19.0
+          ]
+        },
+        "pm": {
+          "reported": "16-19",
+          "minutes": [
+            16.0,
+            19.0
+          ]
+        },
+        "offpeak": {
+          "reported": "15-24",
+          "minutes": [
+            15.0,
+            24.0
+          ]
+        },
+        "saturday": {
+          "reported": "13-24",
+          "minutes": [
+            13.0,
+            24.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "14-25",
+          "minutes": [
+            14.0,
+            25.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/615P",
+      "label": "Route 615P",
+      "match": {
+        "ref": "615P",
+        "network": "輕鐵 Light Rail",
+        "kind": "light_rail"
+      },
+      "scope": "whole_route",
+      "profiles": {
+        "am": {
+          "reported": "7-16",
+          "minutes": [
+            7.0,
+            16.0
+          ]
+        },
+        "pm": {
+          "reported": "6-16",
+          "minutes": [
+            6.0,
+            16.0
+          ]
+        },
+        "offpeak": {
+          "reported": "8-22",
+          "minutes": [
+            8.0,
+            22.0
+          ]
+        },
+        "saturday": {
+          "reported": "8-19",
+          "minutes": [
+            8.0,
+            19.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "12-23",
+          "minutes": [
+            12.0,
+            23.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/705",
+      "label": "Route 705",
+      "match": {
+        "ref": "705",
+        "network": "輕鐵 Light Rail",
+        "kind": "light_rail"
+      },
+      "scope": "whole_route",
+      "profiles": {
+        "am": {
+          "reported": "5-7",
+          "minutes": [
+            5.0,
+            7.0
+          ]
+        },
+        "pm": {
+          "reported": "4-6",
+          "minutes": [
+            4.0,
+            6.0
+          ]
+        },
+        "offpeak": {
+          "reported": "6-12",
+          "minutes": [
+            6.0,
+            12.0
+          ]
+        },
+        "saturday": {
+          "reported": "5-12",
+          "minutes": [
+            5.0,
+            12.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "6-12",
+          "minutes": [
+            6.0,
+            12.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/706",
+      "label": "Route 706",
+      "match": {
+        "ref": "706",
+        "network": "輕鐵 Light Rail",
+        "kind": "light_rail"
+      },
+      "scope": "whole_route",
+      "profiles": {
+        "am": {
+          "reported": "5-7",
+          "minutes": [
+            5.0,
+            7.0
+          ]
+        },
+        "pm": {
+          "reported": "4-7",
+          "minutes": [
+            4.0,
+            7.0
+          ]
+        },
+        "offpeak": {
+          "reported": "6-12",
+          "minutes": [
+            6.0,
+            12.0
+          ]
+        },
+        "saturday": {
+          "reported": "5-12",
+          "minutes": [
+            5.0,
+            12.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "6-12",
+          "minutes": [
+            6.0,
+            12.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/751",
+      "label": "Route 751",
+      "match": {
+        "ref": "751",
+        "network": "輕鐵 Light Rail",
+        "kind": "light_rail"
+      },
+      "scope": "whole_route",
+      "profiles": {
+        "am": {
+          "reported": "7-11",
+          "minutes": [
+            7.0,
+            11.0
+          ]
+        },
+        "pm": {
+          "reported": "7-11",
+          "minutes": [
+            7.0,
+            11.0
+          ]
+        },
+        "offpeak": {
+          "reported": "8-15",
+          "minutes": [
+            8.0,
+            15.0
+          ]
+        },
+        "saturday": {
+          "reported": "7-18",
+          "minutes": [
+            7.0,
+            18.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "7-17",
+          "minutes": [
+            7.0,
+            17.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/761P",
+      "label": "Route 761P",
+      "match": {
+        "ref": "761P",
+        "network": "輕鐵 Light Rail",
+        "kind": "light_rail"
+      },
+      "scope": "whole_route",
+      "profiles": {
+        "am": {
+          "reported": "5-8",
+          "minutes": [
+            5.0,
+            8.0
+          ]
+        },
+        "pm": {
+          "reported": "5-8",
+          "minutes": [
+            5.0,
+            8.0
+          ]
+        },
+        "offpeak": {
+          "reported": "7-16",
+          "minutes": [
+            7.0,
+            16.0
+          ]
+        },
+        "saturday": {
+          "reported": "5-15",
+          "minutes": [
+            5.0,
+            15.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "6-15",
+          "minutes": [
+            6.0,
+            15.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/AEL",
+      "label": "Airport Express",
+      "match": {
+        "ref": "AEL",
+        "network": "港鐵 MTR",
+        "kind": "subway"
+      },
+      "scope": "whole_route",
+      "profiles": {
+        "am": {
+          "reported": "10",
+          "minutes": [
+            10.0,
+            10.0
+          ]
+        },
+        "pm": {
+          "reported": "10",
+          "minutes": [
+            10.0,
+            10.0
+          ]
+        },
+        "offpeak": {
+          "reported": "10",
+          "minutes": [
+            10.0,
+            10.0
+          ]
+        },
+        "saturday": {
+          "reported": "10",
+          "minutes": [
+            10.0,
+            10.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "10",
+          "minutes": [
+            10.0,
+            10.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/DRL",
+      "label": "Disneyland Resort Line",
+      "match": {
+        "ref": "DRL",
+        "network": "港鐵 MTR",
+        "kind": "subway"
+      },
+      "scope": "whole_route",
+      "profiles": {
+        "am": {
+          "reported": "5",
+          "minutes": [
+            5.0,
+            5.0
+          ]
+        },
+        "pm": {
+          "reported": "5",
+          "minutes": [
+            5.0,
+            5.0
+          ]
+        },
+        "offpeak": {
+          "reported": "10",
+          "minutes": [
+            10.0,
+            10.0
+          ]
+        },
+        "saturday": {
+          "reported": "5-10",
+          "minutes": [
+            5.0,
+            10.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "5-10",
+          "minutes": [
+            5.0,
+            10.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/ISL",
+      "label": "Island Line",
+      "match": {
+        "ref": "ISL",
+        "network": "港鐵 MTR",
+        "kind": "subway"
+      },
+      "scope": "whole_route",
+      "profiles": {
+        "am": {
+          "reported": "1.9",
+          "minutes": [
+            1.9,
+            1.9
+          ]
+        },
+        "pm": {
+          "reported": "2.1",
+          "minutes": [
+            2.1,
+            2.1
+          ]
+        },
+        "offpeak": {
+          "reported": "3.6-5",
+          "minutes": [
+            3.6,
+            5.0
+          ]
+        },
+        "saturday": {
+          "reported": "2.8-5",
+          "minutes": [
+            2.8,
+            5.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "3.6-5",
+          "minutes": [
+            3.6,
+            5.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/SIL",
+      "label": "South Island Line",
+      "match": {
+        "ref": "SIL",
+        "network": "港鐵 MTR",
+        "kind": "subway"
+      },
+      "scope": "whole_route",
+      "profiles": {
+        "am": {
+          "reported": "3.3",
+          "minutes": [
+            3.3,
+            3.3
+          ]
+        },
+        "pm": {
+          "reported": "3.3",
+          "minutes": [
+            3.3,
+            3.3
+          ]
+        },
+        "offpeak": {
+          "reported": "5-7.5",
+          "minutes": [
+            5.0,
+            7.5
+          ]
+        },
+        "saturday": {
+          "reported": "3.2-7.5",
+          "minutes": [
+            3.2,
+            7.5
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "4.5-7.5",
+          "minutes": [
+            4.5,
+            7.5
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/TML",
+      "label": "Tuen Ma Line",
+      "match": {
+        "ref": "TML",
+        "network": "港鐵 MTR",
+        "kind": "subway"
+      },
+      "scope": "whole_route",
+      "profiles": {
+        "am": {
+          "reported": "2.7-3",
+          "minutes": [
+            2.7,
+            3.0
+          ]
+        },
+        "pm": {
+          "reported": "3.2-3.5",
+          "minutes": [
+            3.2,
+            3.5
+          ]
+        },
+        "offpeak": {
+          "reported": "6-7",
+          "minutes": [
+            6.0,
+            7.0
+          ]
+        },
+        "saturday": {
+          "reported": "4.7-7.3",
+          "minutes": [
+            4.7,
+            7.3
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "6-7.3",
+          "minutes": [
+            6.0,
+            7.3
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/TWL",
+      "label": "Tsuen Wan Line",
+      "match": {
+        "ref": "TWL",
+        "network": "港鐵 MTR",
+        "kind": "subway"
+      },
+      "scope": "whole_route",
+      "profiles": {
+        "am": {
+          "reported": "2.1",
+          "minutes": [
+            2.1,
+            2.1
+          ]
+        },
+        "pm": {
+          "reported": "2.1",
+          "minutes": [
+            2.1,
+            2.1
+          ]
+        },
+        "offpeak": {
+          "reported": "3.5-5",
+          "minutes": [
+            3.5,
+            5.0
+          ]
+        },
+        "saturday": {
+          "reported": "2.2-4.2",
+          "minutes": [
+            2.2,
+            4.2
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "3.1-5",
+          "minutes": [
+            3.1,
+            5.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/admiralty-lo-wu",
+      "label": "Admiralty-Lo Wu",
+      "match": null,
+      "scope": "section_requires_mapping",
+      "profiles": {
+        "am": {
+          "reported": "3-7",
+          "minutes": [
+            3.0,
+            7.0
+          ]
+        },
+        "pm": {
+          "reported": "3.2-6.3",
+          "minutes": [
+            3.2,
+            6.3
+          ]
+        },
+        "offpeak": {
+          "reported": "4-10",
+          "minutes": [
+            4.0,
+            10.0
+          ]
+        },
+        "saturday": {
+          "reported": "4-10",
+          "minutes": [
+            4.0,
+            10.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "4-10",
+          "minutes": [
+            4.0,
+            10.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/admiralty-lok-ma-chau",
+      "label": "Admiralty-Lok Ma Chau",
+      "match": null,
+      "scope": "section_requires_mapping",
+      "profiles": {
+        "am": {
+          "reported": "9-14",
+          "minutes": [
+            9.0,
+            14.0
+          ]
+        },
+        "pm": {
+          "reported": "6.3-10",
+          "minutes": [
+            6.3,
+            10.0
+          ]
+        },
+        "offpeak": {
+          "reported": "8-14",
+          "minutes": [
+            8.0,
+            14.0
+          ]
+        },
+        "saturday": {
+          "reported": "8-14",
+          "minutes": [
+            8.0,
+            14.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "8-14",
+          "minutes": [
+            8.0,
+            14.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/admiralty-sheung-shui",
+      "label": "Admiralty-Sheung Shui",
+      "match": null,
+      "scope": "section_requires_mapping",
+      "profiles": {
+        "am": {
+          "reported": "2.7-5.5",
+          "minutes": [
+            2.7,
+            5.5
+          ]
+        },
+        "pm": {
+          "reported": "3.2",
+          "minutes": [
+            3.2,
+            3.2
+          ]
+        },
+        "offpeak": {
+          "reported": "4-8",
+          "minutes": [
+            4.0,
+            8.0
+          ]
+        },
+        "saturday": {
+          "reported": "3.8-8",
+          "minutes": [
+            3.8,
+            8.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "3.8-8",
+          "minutes": [
+            3.8,
+            8.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/ho-man-tin-whampoa",
+      "label": "Ho Man Tin-Whampoa",
+      "match": null,
+      "scope": "section_requires_mapping",
+      "profiles": {
+        "am": {
+          "reported": "4.3",
+          "minutes": [
+            4.3,
+            4.3
+          ]
+        },
+        "pm": {
+          "reported": "4.6",
+          "minutes": [
+            4.6,
+            4.6
+          ]
+        },
+        "offpeak": {
+          "reported": "3.5-5",
+          "minutes": [
+            3.5,
+            5.0
+          ]
+        },
+        "saturday": {
+          "reported": "4.2-6.2",
+          "minutes": [
+            4.2,
+            6.2
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "5-6.2",
+          "minutes": [
+            5.0,
+            6.2
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/hong-kong-tsing-yi",
+      "label": "Hong Kong-Tsing Yi",
+      "match": null,
+      "scope": "section_requires_mapping",
+      "profiles": {
+        "am": {
+          "reported": "3-4",
+          "minutes": [
+            3.0,
+            4.0
+          ]
+        },
+        "pm": {
+          "reported": "3-5",
+          "minutes": [
+            3.0,
+            5.0
+          ]
+        },
+        "offpeak": {
+          "reported": "7-10",
+          "minutes": [
+            7.0,
+            10.0
+          ]
+        },
+        "saturday": {
+          "reported": "6.5-10",
+          "minutes": [
+            6.5,
+            10.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "6.5-10",
+          "minutes": [
+            6.5,
+            10.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/hong-kong-tung-chung",
+      "label": "Hong Kong-Tung Chung",
+      "match": null,
+      "scope": "section_requires_mapping",
+      "profiles": {
+        "am": {
+          "reported": "6-8",
+          "minutes": [
+            6.0,
+            8.0
+          ]
+        },
+        "pm": {
+          "reported": "4-9",
+          "minutes": [
+            4.0,
+            9.0
+          ]
+        },
+        "offpeak": {
+          "reported": "7-10",
+          "minutes": [
+            7.0,
+            10.0
+          ]
+        },
+        "saturday": {
+          "reported": "6.5-10",
+          "minutes": [
+            6.5,
+            10.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "6.5-10",
+          "minutes": [
+            6.5,
+            10.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/north-point-lohas-park",
+      "label": "North Point-LOHAS Park",
+      "match": null,
+      "scope": "section_requires_mapping",
+      "profiles": {
+        "am": {
+          "reported": "6.7",
+          "minutes": [
+            6.7,
+            6.7
+          ]
+        },
+        "pm": {
+          "reported": "6.7",
+          "minutes": [
+            6.7,
+            6.7
+          ]
+        },
+        "offpeak": {
+          "reported": "-",
+          "minutes": null
+        },
+        "saturday": {
+          "reported": "6.7 (For 07:00-10:15 only)",
+          "minutes": null
+        },
+        "sunday_holiday": {
+          "reported": "-",
+          "minutes": null
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/north-point-po-lam",
+      "label": "North Point-Po Lam",
+      "match": null,
+      "scope": "section_requires_mapping",
+      "profiles": {
+        "am": {
+          "reported": "2.5 / 4",
+          "minutes": null
+        },
+        "pm": {
+          "reported": "2.5 / 4",
+          "minutes": null
+        },
+        "offpeak": {
+          "reported": "4.5-6",
+          "minutes": [
+            4.5,
+            6.0
+          ]
+        },
+        "saturday": {
+          "reported": "2.5-5",
+          "minutes": [
+            2.5,
+            5.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "4.5-6",
+          "minutes": [
+            4.5,
+            6.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/north-point-tseung-kwan-o",
+      "label": "North Point-Tseung Kwan O",
+      "match": null,
+      "scope": "section_requires_mapping",
+      "profiles": {
+        "am": {
+          "reported": "2.2",
+          "minutes": [
+            2.2,
+            2.2
+          ]
+        },
+        "pm": {
+          "reported": "2.2",
+          "minutes": [
+            2.2,
+            2.2
+          ]
+        },
+        "offpeak": {
+          "reported": "-",
+          "minutes": null
+        },
+        "saturday": {
+          "reported": "2.2-2.5 (For 07:00-10:15 only)",
+          "minutes": null
+        },
+        "sunday_holiday": {
+          "reported": "-",
+          "minutes": null
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/tiu-keng-leng-ho-man-tin",
+      "label": "Tiu Keng Leng-Ho Man Tin",
+      "match": null,
+      "scope": "section_requires_mapping",
+      "profiles": {
+        "am": {
+          "reported": "2.1",
+          "minutes": [
+            2.1,
+            2.1
+          ]
+        },
+        "pm": {
+          "reported": "2.3",
+          "minutes": [
+            2.3,
+            2.3
+          ]
+        },
+        "offpeak": {
+          "reported": "3.5-5",
+          "minutes": [
+            3.5,
+            5.0
+          ]
+        },
+        "saturday": {
+          "reported": "2.5-5",
+          "minutes": [
+            2.5,
+            5.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "3.1-5",
+          "minutes": [
+            3.1,
+            5.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "mtr-hk/tiu-keng-leng-lohas-park",
+      "label": "Tiu Keng Leng-LOHAS Park",
+      "match": null,
+      "scope": "section_requires_mapping",
+      "profiles": {
+        "am": {
+          "reported": "-",
+          "minutes": null
+        },
+        "pm": {
+          "reported": "-",
+          "minutes": null
+        },
+        "offpeak": {
+          "reported": "9-14",
+          "minutes": [
+            9.0,
+            14.0
+          ]
+        },
+        "saturday": {
+          "reported": "8.2-10",
+          "minutes": [
+            8.2,
+            10.0
+          ]
+        },
+        "sunday_holiday": {
+          "reported": "9-14",
+          "minutes": [
+            9.0,
+            14.0
+          ]
+        }
+      }
+    }
+  ]
+}
