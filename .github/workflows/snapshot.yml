@@ -4,6 +4,7 @@ on:
     branches: [main, build/world-lifecycle]
     paths:
       - scripts/build-snapshot.mjs
+      - styles/pbf-utf8.mjs
       - scripts/lifecycle.mjs
       - scripts/snapshot-delta.mjs
       - scripts/refresh-snapshot-cache.mjs

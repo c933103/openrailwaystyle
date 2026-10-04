@@ -6,6 +6,7 @@ on:
       - .github/workflows/traction-facilities.yml
       - scripts/build-signals.mjs
       - scripts/signals-data.mjs
+      - styles/pbf-utf8.mjs
       - scripts/build-power-facilities.mjs
       - scripts/power-facility-data.mjs
       - styles/power-facilities.mjs
