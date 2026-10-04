@@ -5,7 +5,10 @@ import assert from 'node:assert/strict';
 // frames before real pointer input. DOM geometry can settle before Chromium's
 // input hit testing catches up with the counter-scaled control container.
 // No forced/DOM click and no scroll-into-view protocol call.
-export async function clickVisibleControl(page, selector, timeout = 5000) {
+// Three frame checks plus pointer input share the page's 10-second action
+// budget; software-rendered CI frames can take about two seconds each. The
+// caller separately checks the resulting state within five seconds.
+export async function clickVisibleControl(page, selector, timeout = 10000) {
   const deadline = Date.now() + timeout;
   const message = `Control is not visible, stable, enabled and unobscured: ${selector}`;
   const withinDeadline = async (promise, phase) => {
