@@ -15181,6 +15181,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -17346,6 +17347,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -21255,6 +21257,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -23420,6 +23423,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -27373,6 +27377,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -29582,6 +29587,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -33538,6 +33544,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -35706,6 +35713,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -54749,6 +54757,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "layout": {
@@ -54811,6 +54820,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "layout": {
@@ -54888,6 +54898,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -55826,6 +55837,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "id": "electrification-substation-areas",
@@ -55862,6 +55874,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "id": "electrification-substation-edges",
@@ -55897,6 +55910,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "filter": [
@@ -55967,6 +55981,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "filter": [
@@ -56035,6 +56050,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "filter": [
@@ -56095,6 +56111,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "filter": [
@@ -56158,6 +56175,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       },
       "filter": [
@@ -56241,6 +56259,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       },
       "filter": [
