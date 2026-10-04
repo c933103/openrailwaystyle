@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {featureFilter,validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
 import {powerFacility,createPowerFacilityLoader} from '../styles/power-facilities.mjs';
 import {powerFacilitiesGeoJSON,powerFacilityQuery} from '../scripts/power-facility-data.mjs';
@@ -8,12 +9,18 @@ import {annotateLayers,layerVisibility} from '../styles/layer-semantics.mjs';
 
 function candidateSelector(query) {
   // Decode actual QL filters independently of the facility classifier.
-  const selectors=[...query.matchAll(/nwr((?:\[~?"(?:[^"\\]|\\.)*"~"(?:[^"\\]|\\.)*",i\])+)\(-90,-180,0,-90\);/g)].map(([,text])=>
-    [...text.matchAll(/\[(~)?("(?:[^"\\]|\\.)*")~("(?:[^"\\]|\\.)*"),i\]/g)].map(([,keyRegex,key,value])=>({
-      key:JSON.parse(key),keyRegex:Boolean(keyRegex),value:new RegExp(JSON.parse(value).replaceAll('[[:space:]]','\\s'),'i'),
-    })));
-  return {selectors,selected:tags=>selectors.some(filters=>filters.every(({key,keyRegex,value})=>
-    Object.entries(tags).some(([name,text])=>(keyRegex?new RegExp(key,'i').test(name):name===key)&&value.test(text))))};
+  const decode=text=>[...text.matchAll(/nwr(\.hints)?((?:\["(?:[^"\\]|\\.)*"~"(?:[^"\\]|\\.)*",i\])+)(\(-90,-180,0,-90\))?;/g)].map(([,set,filters,bbox])=>({set,bbox,
+    filters:[...filters.matchAll(/\[("(?:[^"\\]|\\.)*")~("(?:[^"\\]|\\.)*"),i\]/g)].map(([,key,value])=>({
+      key:JSON.parse(key),value:new RegExp(JSON.parse(value).replaceAll('[[:space:]]','\\s'),'i'),
+    })),
+  }));
+  const parts=query.split(')->.hints;');
+  const hints=parts.length===2 ? decode(parts[0]) : [],selectors=decode(parts.at(-1));
+  const matches=(tags,filters)=>filters.every(({key,value})=>tags[key]!=null&&value.test(tags[key]));
+  return {hints,selectors,selected:tags=>{
+    const hinted=hints.some(({filters})=>matches(tags,filters));
+    return selectors.some(({set,filters})=>(!set||hinted)&&matches(tags,filters));
+  }};
 }
 
 test('power supplies select locomotive facilities without proximity or operator guesses',()=>{
@@ -36,8 +43,7 @@ test('maintenance selectors include every supported token and lifecycle hint bef
   // Decode the actual QL strings, including escaped regex dots. This checks
   // candidate selection independently of the JS classifier and catches tags
   // that fixture-only transform tests would accept but never download.
-  const {selectors,selected}=candidateSelector(query);
-  assert.equal(selectors.length,11,'eight lifecycle keys share eleven bounded selection rules');
+  const {selected}=candidateSelector(query);
   for(const tags of [
     {railway:' fuel ; WATER_CRANE '},
     {power:' generator ; converter ',railway:' rail ; yes '},
@@ -79,7 +85,46 @@ test('maintenance selectors include every supported token and lifecycle hint bef
     {power:'plant',frequency:'16.6667'},{railway:'oil_fuel'}])assert.equal(selected(tags),false,JSON.stringify(tags));
 });
 
-test('native key case overfetch does not publish uppercase-only or otherwise unqualified facilities',()=>{
+test('power/tank filters use only the bounded named hint set, avoiding global primary-tag scans',()=>{
+  const query=powerFacilityQuery([-90,-180,0,-90]);
+  const {hints,selectors}=candidateSelector(query);
+  assert.equal(query.includes('[~'),false,'all tag keys stay literal');
+  assert.equal(hints.length,13,'railway lifecycle hints and five explicit energy/usage hints');
+  assert.ok(hints.every(selector=>selector.bbox&&!selector.set),'every hint search is spatially bounded');
+  assert.equal(selectors.length,32);
+  const local=selectors.filter(selector=>selector.set==='.hints');
+  assert.equal(local.length,16);
+  assert.ok(local.every(selector=>selector.filters.length===1&&/^(?:(?:construction|proposed|disused|abandoned|razed|demolished|removed):)?(?:power|man_made)$/.test(selector.filters[0].key)));
+  const direct=selectors.filter(selector=>!selector.set);
+  assert.equal(direct.length,16);
+  assert.ok(direct.every(selector=>selector.bbox&&selector.filters.length===1&&/railway(?::electricity)?$/.test(selector.filters[0].key)));
+  assert.match(query,/\[maxsize:134217728\]/,'retain the existing memory cap and let the builder quarter failures');
+  assert.equal(query.includes('out count'),false,'diagnostic count objects stay out of production snapshots');
+});
+
+test('named-set filtering preserves classifier-accepted supplies from the literal-query baseline',()=>{
+  // Freeze the prior literal expansion independently of the production query
+  // generator, so moving a filter between stages cannot silently lose supplies.
+  const prior=candidateSelector(readFileSync(new URL('./fixtures/power-literal-query.ql',import.meta.url),'utf8'));
+  const current=candidateSelector(powerFacilityQuery([-90,-180,0,-90]));
+  assert.equal(prior.selectors.length,200);
+  const prefixes=['','construction:','proposed:','disused:','abandoned:','razed:','demolished:','removed:'];
+  const kinds=['plant','generator','transformer','substation','converter','frequency_converter','water_tower','storage_tank','cable','unknown'];
+  const hints=[{}, {substation:' distribution ; TRACTION '},{transformer:' traction '},{usage:' industrial ; railway '},
+    {landuse:' railway '},{frequency:' 16.667 '},{frequency:'50'},{railway:'yes'},{railway:'fuel'},
+    {RAILWAY:'yes'},{usage:'not_railway'},...prefixes.map(prefix=>({[`${prefix}railway`]:' rail ; yes '}))];
+  for(const prefix of prefixes)for(const kind of kinds)for(const hint of hints)for(const key of ['power','man_made']) {
+    const tags={[`${prefix}${key}`]:` other ; ${kind.toUpperCase()} `,content:' water ; diesel ',...hint};
+    const accepted=Boolean(powerFacility(tags));
+    assert.equal(current.selected(tags)&&accepted,prior.selected(tags)&&accepted,JSON.stringify(tags));
+  }
+  for(const prefix of prefixes)for(const kind of ['fuel','coaling_facility','water_tower','water_tank','water_crane','power_supply','preheating','power_station','substation']) {
+    const tags={[`${prefix}railway`]:` other ; ${kind.toUpperCase()} `};
+    assert.ok(powerFacility(tags));assert.ok(current.selected(tags));assert.ok(prior.selected(tags));
+  }
+});
+
+test('literal hints and classification reject uppercase-only and irrelevant energy hints',()=>{
   const {selected}=candidateSelector(powerFacilityQuery([-90,-180,0,-90]));
   const tags=[
     {POWER:'plant',usage:'railway'},
@@ -90,13 +135,14 @@ test('native key case overfetch does not publish uppercase-only or otherwise unq
     {power:'substation',SUBSTATION:'traction'},
     {power:'cable','disused:power':'plant',usage:'railway'},
     {power:'plant',usage:'not_railway'},
-    {railway:'\u00a0fuel',POWER:'plant',usage:'railway'},
+    {power:'plant',transformer:'traction'},
+    {man_made:'water_tower',frequency:'16.7'},
+    {man_made:'storage_tank',content:'water',substation:'traction'},
   ];
-  for(const id of [0,1,2,3,4,6])assert.equal(selected(tags[id]),true,JSON.stringify(tags[id]));
-  assert.equal(selected(tags[5]),false,'literal-key hint filters keep their original key case');
+  for(const id of [0,1,2,3,4,5,7])assert.equal(selected(tags[id]),false,JSON.stringify(tags[id]));
+  for(const id of [6,8,9,10])assert.equal(selected(tags[id]),true,'the classifier must discard irrelevant raw hint matches');
   const data=powerFacilitiesGeoJSON({elements:tags.map((tags,id)=>({type:'node',id,lat:0,lon:0,tags}))});
-  assert.deepEqual(data.features.map(f=>f.id),['node-8']);
-  assert.equal(data.features[0].properties.power_kind,'fuel','mixed tags still require a qualifying canonical supply');
+  assert.equal(data.features.length,0);
 });
 
 test('snapshot keeps node/way/relation identities and lifecycle instead of claiming former supplies are operating',()=>{
@@ -110,7 +156,7 @@ test('snapshot keeps node/way/relation identities and lifecycle instead of claim
   assert.equal(data.features.find(f=>f.id==='way-12').properties.power_state,'disused');
   assert.equal(data.features.find(f=>f.id==='relation-99').properties.osm_type,'relation');
   assert.throws(()=>powerFacilitiesGeoJSON({remark:'runtime error: timed out',elements:[]}),/timed out/);
-  assert.match(powerFacilityQuery([-90,-180,0,-90]),/nwr\[~/);
+  assert.match(powerFacilityQuery([-90,-180,0,-90]),/nwr\["railway"/);
   assert.match(powerFacilityQuery([-90,-180,0,-90]),/out body center qt/);
   // Overpass `out tags center` has ids/tags for nodes but no coordinates;
   // silently accepting this output would falsely publish complete coverage.

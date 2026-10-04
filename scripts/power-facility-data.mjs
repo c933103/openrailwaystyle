@@ -7,34 +7,34 @@ import {hanRegion,chineseArea} from '../styles/han-region.mjs';
 const SUPPLIES = 'fuel|coaling_facility|water_tower|water_tank|water_crane|power_supply|preheating|power_station|substation';
 const POWER = 'substation|plant|generator|converter|frequency_converter|transformer';
 const RAIL = 'yes|rail|narrow_gauge|light_rail|subway|tram|monorail|power_station|substation';
+const PREFIXES = ['', 'construction:', 'proposed:', 'disused:', 'abandoned:', 'razed:', 'demolished:', 'removed:'];
 const tokenPattern = options => `(^|;)[[:space:]]*(${options})[[:space:]]*(;|$)`;
 // JSON quoting is also QL string quoting, including doubled backslashes in
-// regexes. Match complete semicolon-delimited values with the same case and
-// whitespace rules as the classifier, then let that classifier decide use.
+// regexes. Select complete semicolon-delimited values with native case-folding
+// and POSIX whitespace, then let the classifier decide railway supply use.
 const tagFilter = (key, options) => `[${JSON.stringify(key)}~${JSON.stringify(tokenPattern(options))},i]`;
-// Collapse the eight lifecycle keys into one native key-regex scan. Its ,i
-// also admits differently cased keys; the unchanged classifier reads only
-// canonical keys and rejects unqualified facilities before publication.
-const familyFilter = (key, options) => `[~${JSON.stringify(`^((construction|proposed|disused|abandoned|razed|demolished|removed):)?${key}$`)}~${JSON.stringify(tokenPattern(options))},i]`;
-const railwayHint = familyFilter('railway',RAIL);
 
 export function powerFacilityQuery(box) {
   const bbox = box ? `(${box.join(',')})` : '';
-  const power = familyFilter('power', POWER), tank = familyFilter('man_made', 'water_tower|storage_tank');
-  const selectors=[`nwr${familyFilter('railway', SUPPLIES)}${bbox};`,
-    `nwr${familyFilter('railway:electricity', 'power_supply')}${bbox};`,
-    `nwr${power}${tagFilter('substation', 'traction')}${bbox};`,
-    `nwr${familyFilter('power', 'transformer')}${tagFilter('transformer', 'traction')}${bbox};`,
-    `nwr${power}${railwayHint}${bbox};`,
-    `nwr${power}${tagFilter('usage', 'railway|traction')}${bbox};`,
-    `nwr${power}${tagFilter('landuse', 'railway')}${bbox};`,
-    `nwr${power}${tagFilter('frequency', '16\\.(7|67|66[67]?)')}${bbox};`,
-    `nwr${tank}${railwayHint}${bbox};`,
-    `nwr${tank}${tagFilter('landuse', 'railway')}${bbox};`,
-    `nwr${tank}${tagFilter('usage', 'railway|traction')}${bbox};`];
+  const hints=PREFIXES.map(prefix=>`nwr${tagFilter(`${prefix}railway`,RAIL)}${bbox};`);
+  hints.push(`nwr${tagFilter('substation','traction')}${bbox};`,
+    `nwr${tagFilter('transformer','traction')}${bbox};`,
+    `nwr${tagFilter('usage','railway|traction')}${bbox};`,
+    `nwr${tagFilter('landuse','railway')}${bbox};`,
+    `nwr${tagFilter('frequency','16\\.(7|67|66[67]?)')}${bbox};`);
+  const selectors=[];
+  for (const prefix of PREFIXES) {
+    // Overpass Item_Constraint prefers the input set, so regex-value filters
+    // inspect local tags on these bounded objects instead of global power tags.
+    // The classifier discards tanks/power types lacking the relevant hint.
+    selectors.push(`nwr.hints${tagFilter(`${prefix}power`,POWER)};`,
+      `nwr.hints${tagFilter(`${prefix}man_made`,'water_tower|storage_tank')};`,
+      `nwr${tagFilter(`${prefix}railway`,SUPPLIES)}${bbox};`,
+      `nwr${tagFilter(`${prefix}railway:electricity`,'power_supply')}${bbox};`);
+  }
   // tags-only output removes coordinates from nodes. center supplies only
   // way/relation centres, so body is necessary for mapped supply nodes.
-  return `[out:json][timeout:240][maxsize:134217728];(${selectors.join('')});out body center qt;`;
+  return `[out:json][timeout:240][maxsize:134217728];(${hints.join('')})->.hints;(${selectors.join('')});out body center qt;`;
 }
 
 export function powerFacilitiesGeoJSON(json) {
