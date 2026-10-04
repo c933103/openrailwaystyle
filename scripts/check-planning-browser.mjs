@@ -45,6 +45,10 @@ try {
  await page.goto(base+'?mode=speed&language=en&relief=0&inactive=1#16/48.853/2.348',{waitUntil:'domcontentloaded'});
  await page.waitForSelector('body[data-map-ready="true"]',{state:'attached'});
  for(const id of ['building-footprints','building-outlines','road-local','road-walk','context-transport-bus-stop-label','context-transport-bike-rental-label','context-transport-taxi-label','context-constraints-religious-label'])await waitLayer(id);
+ // Complete the original railway download before replacing the language
+ // sources. The next assertions test reuse of loaded tiles across languages;
+ // cancelling an unfinished first download instead tests provider latency.
+ await waitLayer('speed-tracks');
  console.log('PASS: Paris building footprints, surface roads, paths, bus stops, taxi stands, bike rental and religious sites');
  await screenshot('STREET');
  await page.locator('#language').selectOption('fr');
