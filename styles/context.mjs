@@ -49,7 +49,7 @@ export function contextDescription(properties, sourceLayer) {
   const category = contextCategory(properties, sourceLayer);
   if (category) return category;
   if (sourceLayer === 'boundary' && properties.class === 'aboriginal_lands') return {group:'constraints',label:'Indigenous territory / non-administrative jurisdiction'};
-  if (sourceLayer === 'park') return {group:'constraints',label:properties.class==='aboriginal_lands'?'Indigenous territory / non-administrative jurisdiction':['archaeological_site','battlefield','district','historic'].includes(properties.class)?'Protected historic area':'Nature reserve / protected area'};
+  if (sourceLayer === 'park') return {group:'constraints',label:'Nature reserve / protected area'};
   if (sourceLayer === 'landuse') {
     if (['military','religious','cemetery'].includes(properties.class)) return {group:'constraints',label:{military:'Military area',religious:'Religious grounds',cemetery:'Cemetery'}[properties.class]};
     if (properties.class === 'bus_station') return categoryById.get('bus');

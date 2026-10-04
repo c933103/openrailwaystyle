@@ -1,5 +1,7 @@
 import * as globeModule from '../styles/globe-drag.mjs';
 import test from 'node:test';
+import * as labelModule from '../styles/tile-labels.mjs';
+import encodeTile from 'vt-pbf';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
@@ -20,7 +22,7 @@ const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '' } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -60,7 +62,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
       this.handlers[name]=(...args)=>{for(const listener of [...listeners])listener(...args);};
     }
     getStyle() { return this.options.style; }
-    getSource(id) { return {setData:data=>{(this.sourceData ||= {})[id]=data;},setUrl: url => {this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
+    getSource(id) { return (this.sources ||= {})[id] ||= {setData:data=>{(this.sourceData ||= {})[id]=data;},setUrl:url=>{this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
     setLayoutProperty(id, property, value) { if (property === 'visibility') this.visibility[id] = value; else (this.layout ||= {})[id] = value; }
     setPaintProperty(id, property, value) { (this.paint ||= {})[id] = value; }
     setPixelRatio(ratio) { this.pixelRatio = ratio; }
@@ -106,7 +108,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const dependency = new vm.SyntheticModule(Object.keys(model), function() {
     for (const [key,value] of Object.entries(model)) this.setExport(key,value);
   }, {context});
-  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','locate','buildInfo'],function(){this.setExport('buildInfo',labelBuild);this.setExport('installLabelProtocols',()=>{});this.setExport('localizeTile',x=>x);this.setExport('locate',(lon,lat)=>{assert.ok(Number.isFinite(lon)&&Number.isFinite(lat),'label region lookup takes longitude and latitude separately');return {atlas_han:'none',atlas_zh:''};});},{context});
+  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','locate','buildInfo','readTile'],function(){this.setExport('buildInfo',labelBuild);this.setExport('readTile',labelModule.readTile);this.setExport('installLabelProtocols',()=>stationTile?{stationTile}:undefined);this.setExport('localizeTile',x=>x);this.setExport('locate',(lon,lat)=>{assert.ok(Number.isFinite(lon)&&Number.isFinite(lat),'label region lookup takes longitude and latitude separately');return {atlas_han:'none',atlas_zh:''};});},{context});
   // The label code is imported on demand, after the controls are wired.
   let loadLabels;
   const labelsReady=new Promise(resolve=>{loadLabels=resolve;});
@@ -231,6 +233,19 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
     assert.equal(maps[0].visibility['speed-tracks'],'none');
     assert.equal(maps[0].visibility['infrastructure-tracks'],'visible');
     assert.equal(maps[0].visibility['station-stations-dots'],'visible');
+    const importanceColours = window.document.getElementById('stationImportanceColors');
+    assert.equal(importanceColours.checked,false,'low-zoom importance colours are off by default');
+    const uniformLowZoom=['step',['zoom'],'#123e52',7,['match',['get','station_size'],'large','#123e52','#0865c0']];
+    assert.equal(JSON.stringify(maps[0].paint['station-major-3-names']),JSON.stringify(uniformLowZoom));
+    assert.equal(JSON.stringify(maps[0].paint['station-stationLow-large-names']),JSON.stringify(uniformLowZoom));
+    assert.equal(JSON.stringify(maps[0].paint['station-stationMed-normal-names']),JSON.stringify(uniformLowZoom));
+    importanceColours.checked = true; importanceColours.dispatchEvent(new window.Event('change'));
+    const importance=['match',['get','station_size'],'large','#123e52','#0865c0'];
+    assert.equal(JSON.stringify(maps[0].paint['station-major-3-names']),JSON.stringify(importance));
+    assert.equal(JSON.stringify(maps[0].paint['station-stationLow-large-names']),JSON.stringify(importance));
+    assert.equal(JSON.stringify(maps[0].paint['station-stationMed-normal-names']),JSON.stringify(importance));
+    assert.match(decodeURIComponent(window.document.cookie),/"stationImportanceColors":true/);
+    assert.equal(JSON.stringify(maps[0].options.style.layers.find(l=>l.id==='station-detail-large-names').paint['text-color']),JSON.stringify(importance),'detailed station colours are unchanged');
     // Track-count boxes can be switched off.
     assert.equal(maps[0].visibility['infrastructure-track-count'],'visible');
     const counts = window.document.getElementById('trackCounts');
@@ -341,13 +356,15 @@ test('settings are remembered in a cookie; a shared link applies once and leaves
     try { assert.match(maps[0].options.style.sources.stations.url, new RegExp(`atlasstation://${expected}/`)); }
     finally {dom.window.close();}
   }
-  const saved = encodeURIComponent(JSON.stringify({mode:'electrification', relief:false, units:'imperial', detail:true, language:'ko'}));
+  const saved = encodeURIComponent(JSON.stringify({mode:'electrification', relief:false, stationImportanceColors:true, units:'imperial', detail:true, language:'ko'}));
   {
     const {dom,window,maps} = await start({cookie:`atlas_settings=${saved}`});
     try {
       assert.match(maps[0].options.style.sources.stations.url, /atlasstation:\/\/ko\//);
       assert.equal(window.document.querySelector('[data-mode="electrification"]').getAttribute('aria-pressed'),'true');
       assert.equal(window.document.getElementById('relief').checked,false);
+      assert.equal(window.document.getElementById('stationImportanceColors').checked,true);
+      assert.equal(JSON.stringify(maps[0].options.style.layers.find(l=>l.id==='station-major-3-names').paint['text-color']),JSON.stringify(['match',['get','station_size'],'large','#123e52','#0865c0']),'saved importance colours apply before first render');
       assert.equal(window.document.getElementById('units').value,'imperial');
       assert.equal(window.document.getElementById('map').classList.contains('detail'),true);
     } finally {dom.window.close();}
@@ -362,6 +379,34 @@ test('settings are remembered in a cookie; a shared link applies once and leaves
     } finally {dom.window.close();}
   }
 });
+test('curated hubs take their names from the provider station tiles by OSM identity, without OSM API requests',async()=>{
+ const penn=style.sources.stationMajor.data.features.find(f=>f.properties.wikidata==='Q54451');
+ const [first,alias]=penn.properties.osm_ids.split(';').concat([penn.properties.id]);
+ const requests=[],tileRequests=[];
+ const fetcher=async url=>{requests.push(String(url));return {ok:true,status:200,json:async()=>structuredClone(style)};};
+ // The provider names its grouped station after one member; here an alias.
+ const member=(alias||first).replace(/^(node|way|relation)-/, '$1-');
+ const stationTile=async(url,lang)=>{tileRequests.push([url,lang]);
+  const feature=(id,name,x)=>({type:1,id:x,tags:{id,name,atlas_name:`${name} (${lang})`,atlas_language:lang},geometry:[[2048+x,2048]]});
+  const result=encodeTile.fromGeojsonVt({standard_railway_text_stations:{features:[feature(`${member}-train-train-station`,'Provider Penn',1),feature('node-1-train-train-station','Elsewhere',2)]}},{version:2});
+  return result.buffer.slice(result.byteOffset,result.byteOffset+result.byteLength);};
+ const {dom,maps}=await start({search:'?language=en#3/40.75/-74',fetcher,stationTile});
+ try{
+  const map=maps[0],source=map.getSource.bind(map);
+  map.getSource=id=>id==='stations'?{tiles:['atlasstation://en/https://tiles.test/stations/{z}/{x}/{y}']}:source(id);
+  // New York two world copies east: the hub must still count as in view.
+  map.getBounds=()=>({getWest:()=>640,getEast:()=>650,getSouth:()=>35,getNorth:()=>45});
+  map.handlers['style.load']();
+  for(let i=0;i<50&&!map.sourceData?.stationMajor?.features.length;i++)await new Promise(r=>setTimeout(r,0));
+  const named=map.sourceData?.stationMajor?.features.find(f=>f.properties.wikidata==='Q54451');
+  assert.ok(named,'the curated hub in view is named');
+  assert.equal(named.properties.atlas_name,'Provider Penn (en)');
+  assert.ok(tileRequests.every(([url,lang])=>/^https:\/\/tiles\.test\/stations\/(8|10)\/\d+\/\d+$/.test(url)&&lang==='en'),'zoom-8 station tiles through the station pipeline');
+  assert.ok(!requests.some(url=>url.includes('openstreetmap.org')),'no OSM API requests');
+  assert.ok(map.sourceData.stationMajor.features.every(f=>f.properties.atlas_name),'unnamed hubs stay hidden rather than showing a source note');
+ }finally{dom.window.close();}
+});
+
 test('real renderer initialization failures reach the visible error message', async () => {
   const {dom,window,errors} = await start({failWebGL:true});
   try {
