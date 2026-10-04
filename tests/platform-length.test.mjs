@@ -234,3 +234,17 @@ test('dense platform tiles share one anchor budget and reuse anchors for redraws
  try{p.update();const first=projects;assert.ok(first>0&&first<PLATFORM_UPDATE_LIMITS.vertices);assert.ok(data.features.length>0&&data.features.length<500);await new Promise(r=>setTimeout(r,15));assert.ok(projects<=first*2+2,'the lookup redraw only projects its label point; its following update may recompute geometry anchors');}finally{p.destroy();}
 });
 
+
+test('separate parts of a multipolygon platform keep their own extents across tiles',async()=>{
+ // Two 0.004°-long parts 0.01° apart; one crosses the zoom-15 tile edge at 0.010986°.
+ const mp={type:'Feature',properties:{id:'relation-30'},geometry:{type:'MultiPolygon',coordinates:[
+  [[[.0095,.002],[.0135,.002],[.0135,.0021],[.0095,.0021],[.0095,.002]]],
+  [[[.0235,.002],[.0275,.002],[.0275,.0021],[.0235,.0021],[.0235,.002]]]]}};
+ const {geometry}=providerTiles([mp]);
+ const measured=await geometry.measure('relation-30',platformTilesFor(mp.geometry.coordinates));
+ assert.ok(Math.abs(measured.length-444.78)<.6,String(measured.length));
+});
+test('an oversized platform tile gives no pieces instead of decoding every feature',async()=>{
+ const {platformTilePieces}=await import('../styles/tile-labels.mjs');
+ assert.deepEqual(platformTilePieces(new ArrayBuffer(16),'x',{bytes:8,features:1,vertices:1}),[]);
+});

@@ -22,10 +22,17 @@ export function glyphRequestURL(value){
 // Raw tile-coordinate pieces of one layer, for measuring objects across tile
 // edges (platform-length.mjs): {id, type (1 point, 2 line, 3 polygon), extent,
 // geometry: rings or lines of [x, y]}.
-export function platformTilePieces(data,layerName){
- const layer=new VectorTile(new Pbf(new Uint8Array(data))).layers[layerName];if(!layer)return [];
- const pieces=[];
- for(let i=0;i<layer.length;i++){const f=layer.feature(i);pieces.push({id:f.properties.id??f.id,type:f.type,extent:layer.extent,geometry:f.loadGeometry().map(ring=>ring.map(p=>[p.x,p.y]))});}
+// Bounded: a tile over `limits` gives no pieces (so no lengths) rather than
+// parsing every feature on the page's thread.
+export function platformTilePieces(data,layerName,limits={bytes:1024*1024,features:4096,vertices:131072}){
+ if(data.byteLength>limits.bytes)return [];
+ const layer=new VectorTile(new Pbf(new Uint8Array(data))).layers[layerName];if(!layer||layer.length>limits.features)return [];
+ const pieces=[];let vertices=0;
+ for(let i=0;i<layer.length;i++){
+  const f=layer.feature(i),geometry=f.loadGeometry().map(ring=>ring.map(p=>[p.x,p.y]));
+  vertices+=geometry.reduce((n,ring)=>n+ring.length,0);if(vertices>limits.vertices)return [];
+  pieces.push({id:f.properties.id??f.id,type:f.type,extent:layer.extent,geometry});
+ }
  return pieces;
 }
 

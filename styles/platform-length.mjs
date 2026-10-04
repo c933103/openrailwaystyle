@@ -96,8 +96,15 @@ export function createPlatformTileGeometry({tileURL,decode,fetcher=fetch,zoom=PL
    return length>0?{length,length_basis:'mapped_line'}:null;
   }
   if(!found.every(f=>f.piece.type===3))return null;
-  const points=found.flatMap(({x,y,piece})=>piece.geometry.flat().map(p=>tileToLngLat(zoom,x,y,piece.extent,p)));
-  const length=extentOfPoints(points);
+  // Separate parts of a multipolygon are measured separately. Pieces of one
+  // part overlap in the buffer that neighbouring tiles share, and a hole lies
+  // within its outer ring, so rings whose bounds touch belong to one part.
+  const rings=found.flatMap(({x,y,piece})=>piece.geometry.map(ring=>ring.map(p=>tileToLngLat(zoom,x,y,piece.extent,p)))).filter(r=>r.length);
+  const bounds=rings.map(r=>r.reduce((b,[lng,lat])=>[Math.min(b[0],lng),Math.min(b[1],lat),Math.max(b[2],lng),Math.max(b[3],lat)],[Infinity,Infinity,-Infinity,-Infinity]));
+  const parent=rings.map((_,i)=>i),root=i=>parent[i]===i?i:parent[i]=root(parent[i]),eps=1e-7;
+  for(let i=0;i<rings.length;i++)for(let j=i+1;j<rings.length;j++){const a=bounds[i],b=bounds[j];if(a[0]<=b[2]+eps&&b[0]<=a[2]+eps&&a[1]<=b[3]+eps&&b[1]<=a[3]+eps)parent[root(i)]=root(j);}
+  const parts=new Map();rings.forEach((r,i)=>{const k=root(i);parts.set(k,[...(parts.get(k)||[]),...r]);});
+  const length=Math.max(0,...[...parts.values()].map(extentOfPoints));
   return length>0?{length,length_estimated:true,length_basis:'mapped_extent'}:null;
  }
  return {measure};
