@@ -5,7 +5,7 @@ import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR,
 import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-signal-power4';
 import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-signal-power4';
 import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-signal-power4';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261004-signal-power4';
+import { installGlobeDrag, allowPolarCentres, readoutZoom } from './globe-drag.mjs?v=20261004-signal-power4';
 import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-signal-power4';
 import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-signal-power4';
 import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-signal-power4';
@@ -771,7 +771,8 @@ const readout = Object.assign(textNode('div', '', 'maplibregl-ctrl map-readout')
 let readoutPoint = null;
 function updateReadout() {
   if (!map || readout.hidden) return;
-  readout.textContent = formatReadout(readoutPoint ? map.unproject(readoutPoint) : map.getCenter(), map.getZoom(), settings.detail);
+  const center=map.getCenter(),zoom=map.getProjection()?.type==='globe'?readoutZoom(map.getZoom(),center.lat):map.getZoom();
+  readout.textContent = formatReadout(readoutPoint ? map.unproject(readoutPoint) : center, zoom, settings.detail);
 }
 // Track-count badges (see build-style.mjs): running tracks, a group wholly
 // in tunnels, and all the tracks at a station.
