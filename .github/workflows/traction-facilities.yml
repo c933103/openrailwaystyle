@@ -1,0 +1,97 @@
+name: Build worldwide railway signals and energy supplies
+on:
+  push:
+    branches: [main, feature/signal-power-facilities]
+    paths:
+      - .github/workflows/traction-facilities.yml
+      - scripts/build-signals.mjs
+      - scripts/signals-data.mjs
+      - scripts/build-power-facilities.mjs
+      - scripts/power-facility-data.mjs
+      - styles/power-facilities.mjs
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: traction-facilities-snapshot
+  cancel-in-progress: false
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/cache/restore@v4
+        with:
+          path: .snapshot-cache
+          key: traction-facilities-v1-${{ github.run_id }}
+          restore-keys: traction-facilities-v1-
+      - name: Restore durable raw facility responses
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .snapshot-cache /tmp/traction-cache
+          if gh release download traction-facilities-cache --pattern traction-facilities-cache.tar.zst --dir /tmp; then
+            tar --zstd -xf /tmp/traction-facilities-cache.tar.zst -C /tmp/traction-cache
+            cp -a -u /tmp/traction-cache/.snapshot-cache/. .snapshot-cache/
+          fi
+      - name: Collect railway energy supplies worldwide
+        run: node scripts/build-power-facilities.mjs
+      - name: Collect signals missing provider direction data worldwide
+        run: node --max-old-space-size=6144 scripts/build-signals.mjs
+      - name: Preserve completed region responses
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .snapshot-cache
+          key: traction-facilities-v1-${{ github.run_id }}
+      - name: Preserve durable raw responses for resumable builds
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -d .snapshot-cache ]; then
+            tar --zstd -cf /tmp/traction-facilities-cache.tar.zst .snapshot-cache
+            gh release view traction-facilities-cache >/dev/null 2>&1 || gh release create traction-facilities-cache --target "$GITHUB_SHA" --prerelease --title 'Raw railway facility responses' --notes 'Cached OpenStreetMap Overpass responses, ODbL, for rebuilding worldwide railway signal and energy supply snapshots without repeating completed queries.'
+            gh release upload traction-facilities-cache /tmp/traction-facilities-cache.tar.zst --clobber
+          fi
+      - name: Validate complete snapshots
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {readFile} from 'node:fs/promises';
+          const power=JSON.parse(await readFile('power-data/manifest.json'));
+          const features=JSON.parse(await readFile('power-data/power-facilities.geojson'));
+          assert.equal(power.complete,true);
+          assert.equal(features.features.length,power.features);
+          assert.ok(power.coverage.length>=8 && power.features>0);
+          const signal=JSON.parse(await readFile('signal-data/manifest.json'));
+          assert.equal(signal.complete,true);
+          const index=JSON.parse(await readFile('signal-data/index.json'));
+          assert.ok(index.tiles.length>0);
+          console.log('Validated worldwide facilities:',power.features,'energy supply facilities; signals',signal);
+          JS
+      - name: Publish validated static facility data
+        run: |
+          mkdir -p /tmp/traction-publish
+          cp -r power-data /tmp/traction-publish/power
+          cp -r signal-data /tmp/traction-publish/signals
+          git checkout --orphan traction-data
+          git rm -rf .
+          git clean -fdx
+          cp -r /tmp/traction-publish/power /tmp/traction-publish/signals .
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add power signals
+          git commit -m 'Publish complete worldwide railway energy supplies and supplementary signals'
+          git push --force origin HEAD:refs/heads/traction-data
+      - name: Redeploy the site with the new facilities
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site.yml --ref main
