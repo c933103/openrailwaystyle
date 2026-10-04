@@ -17,6 +17,12 @@ import zipfile
 from zoneinfo import ZoneInfo
 
 
+MAX_EXPANDED_BYTES = 2_000_000_000
+MAX_TABLE_BYTES = 512_000_000
+MAX_TABLE_ROWS = 3_000_000
+MAX_TRIP_STOP_ROWS = 10_000
+
+
 def seconds(value):
     if not value:
         return None
@@ -29,8 +35,13 @@ def seconds(value):
 def read(z, name):
     if name not in z.namelist():
         return []
+    if z.getinfo(name).file_size > MAX_TABLE_BYTES:
+        raise ValueError(f"GTFS table {name} exceeds expanded byte budget")
     with z.open(name) as file:
-        yield from csv.DictReader(io.TextIOWrapper(file, encoding="utf-8-sig", newline=""))
+        for number, row in enumerate(csv.DictReader(io.TextIOWrapper(file, encoding="utf-8-sig", newline="")), 1):
+            if number > MAX_TABLE_ROWS:
+                raise ValueError(f"GTFS table {name} exceeds row budget")
+            yield row
 
 
 def rail_type(value):
@@ -101,6 +112,9 @@ def local_boundary(date, value, timezone):
 def compile_feed(path, config, date, geometry=False):
     date = dt.date.fromisoformat(date)
     z = zipfile.ZipFile(path)
+    if sum(info.file_size for info in z.infolist()) > MAX_EXPANDED_BYTES:
+        z.close()
+        raise ValueError("GTFS feed exceeds expanded byte budget")
     feed = list(read(z, "feed_info.txt"))
     attributions = list(read(z, 'attributions.txt'))
     lo, hi = None, None
@@ -127,6 +141,8 @@ def compile_feed(path, config, date, geometry=False):
     # Stream the full table; retain rail trips only, not the bus timetable.
     for row in read(z, "stop_times.txt"):
         if row["trip_id"] in trips:
+            if len(times[row["trip_id"]]) >= MAX_TRIP_STOP_ROWS:
+                raise ValueError("GTFS trip exceeds retained stop-row budget")
             times[row["trip_id"]].append(row)
     frequencies = defaultdict(list)
     for row in read(z, "frequencies.txt"):
@@ -222,7 +238,7 @@ def compile_feed(path, config, date, geometry=False):
         spec.loader.exec_module(module)
         paths = module.ShapePaths(read(z, "shapes.txt"), trips, times, stops,
                                   {**config, 'rail_route_types': {key: value['route_type'] for key, value in routes.items()}})
-    segments = {}
+    segments, inactive_segments = {}, {}
     boundaries = {}
     invalid_sequences, invalid_active = 0, set()
 
@@ -308,8 +324,12 @@ def compile_feed(path, config, date, geometry=False):
                 if a != b:
                     lo, hi = sorted((a, b))
                     mapped.append(((route_id, lo, hi), 0 if a == lo else 1, upstream, None))
+        # Calendar variants may share track with a currently applicable trip.
+        # Keep inactive-only branches auditable without contaminating current
+        # counts, expiry or expected directions on shared segments.
+        target_segments = inactive_segments if trip['_calendar_expired'] or trip['_calendar_future'] else segments
         for key, direction, upstream, coordinates in mapped:
-            segment = segments.setdefault(key, {"route_id": route_id, "agency_id": agency_id,
+            segment = target_segments.setdefault(key, {"route_id": route_id, "agency_id": agency_id,
                      "valid_until": trip['_calendar_until'],
                      "geometry": coordinates, "stops": list(key[1:]), "expected_directions": set(),
                      "counts": {p: [0.0, 0.0] for p in windows},
@@ -323,6 +343,7 @@ def compile_feed(path, config, date, geometry=False):
                 segment["unknown"][profile][direction] |= profile in unknown or trip['_calendar_expired'] or trip['_calendar_future']
                 segment["estimated"][profile] |= profile in estimated
 
+    segments.update({key: value for key, value in inactive_segments.items() if key not in segments})
     incomplete = set(invalid_active)
     if paths:
         for trip_id,trip in trips.items():

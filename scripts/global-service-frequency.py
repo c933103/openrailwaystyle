@@ -19,6 +19,9 @@ from pathlib import Path
 import re
 import signal
 import struct
+import subprocess
+import sys
+import tempfile
 from urllib.error import HTTPError
 from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
@@ -182,7 +185,10 @@ class RemoteZip:
 
     def table(self, name):
         if self.full is not None:
-            return zipfile.ZipFile(io.BytesIO(self.full)).read(name)
+            with zipfile.ZipFile(io.BytesIO(self.full)) as archive:
+                if archive.getinfo(name).file_size > 128_000_000:
+                    raise ValueError('Metadata table exceeds budget')
+                return archive.read(name)
         if self.directory is None:
             self.download()
             return self.table(name)
@@ -201,7 +207,10 @@ class RemoteZip:
         data = self.range(start+30+name_len+extra_len, start+30+name_len+extra_len+length-1)
         if method == 8:
             import zlib
-            data = zlib.decompress(data, -15)
+            inflater = zlib.decompressobj(-15)
+            data = inflater.decompress(data, expanded+1)
+            if inflater.unconsumed_tail or not inflater.eof:
+                raise ValueError('Metadata expansion exceeds declared budget')
         elif method != 0:
             raise ValueError('Unsupported ZIP compression')
         if len(data) != expanded:
@@ -334,6 +343,45 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
             'unmapped_segments': len(result.get('unmapped_segments', [])), 'source': source}
 
 
+def compile_entry_isolated(entry, cache, output, date, graph, max_bytes, profiles,
+                           max_seconds=600, max_memory_bytes=3_000_000_000):
+    """Keep a failed feed's memory/CPU budget separate from its worldwide shard."""
+    payload={'entry':entry,'cache':str(cache),'output':str(output),'date':date,
+             'graph':str(graph) if graph else None,'max_bytes':max_bytes,
+             'profiles':profiles,'max_seconds':max_seconds,'max_memory_bytes':max_memory_bytes}
+    with tempfile.TemporaryDirectory(prefix='frequency-compile-') as folder:
+        request, response = Path(folder)/'request.json', Path(folder)/'response.json'
+        request.write_text(json.dumps(payload))
+        process=subprocess.run([sys.executable,str(Path(__file__).resolve()),'--compile-one',str(request),str(response)],
+                               stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,text=True,
+                               timeout=2*max_seconds+300)
+        if not response.exists():
+            raise RuntimeError(f"Feed compiler exited {process.returncode}: {process.stderr[-2000:]}")
+        if response.stat().st_size > 8_000_000:
+            raise ValueError('Feed audit metadata exceeds byte budget')
+        result=json.loads(response.read_text())
+        if process.returncode or 'error' in result:
+            raise RuntimeError(result.get('error') or f'Feed compiler exited {process.returncode}')
+        return result['entry']
+
+
+def compile_one(request, response):
+    import resource
+    payload=json.loads(Path(request).read_text())
+    limit=payload.pop('max_memory_bytes')
+    resource.setrlimit(resource.RLIMIT_AS,(limit,limit))
+    for key in ['cache','output']:
+        payload[key]=Path(payload[key])
+    if payload['graph']:
+        payload['graph']=Path(payload['graph'])
+    try:
+        atomic_json(Path(response),{'entry':compile_entry(**payload)})
+    except Exception as error:
+        atomic_json(Path(response),{'error':f'{type(error).__name__}: {str(error)[:2000]}'})
+        return 1
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--catalogue', help='Local catalogue for offline reproduction; default downloads worldwide registry')
@@ -346,9 +394,10 @@ def main():
     parser.add_argument('--shards', type=int, default=1)
     parser.add_argument('--max-feed-bytes', type=int, default=600_000_000)
     parser.add_argument('--max-compile-seconds', type=int, default=600)
+    parser.add_argument('--max-compile-memory-bytes', type=int, default=3_000_000_000)
     parser.add_argument('--inventory-only', action='store_true')
     args = parser.parse_args()
-    if not 0 <= args.shard < args.shards or args.max_feed_bytes <= 0 or args.max_compile_seconds <= 0:
+    if not 0 <= args.shard < args.shards or args.max_feed_bytes <= 0 or args.max_compile_seconds <= 0 or args.max_compile_memory_bytes <= 0:
         parser.error('Invalid shard or byte budget')
     dt.date.fromisoformat(args.date)
     args.cache.mkdir(parents=True, exist_ok=True)
@@ -368,7 +417,7 @@ def main():
             continue
         if entry['status'] == 'pending' and not args.inventory_only:
             try:
-                entry = compile_entry(entry, args.cache, args.output, args.date, args.rail_graph, args.max_feed_bytes, rules.get('profiles', PROFILES), args.max_compile_seconds)
+                entry = compile_entry_isolated(entry, args.cache, args.output, args.date, args.rail_graph, args.max_feed_bytes, rules.get('profiles', PROFILES), args.max_compile_seconds, args.max_compile_memory_bytes)
             except Exception as error:
                 entry = {**entry, 'status': 'failed', 'reason': f'{type(error).__name__}: {error}'}
         outcomes.append(entry)
@@ -378,4 +427,6 @@ def main():
 
 
 if __name__ == '__main__':
+    if len(sys.argv)==4 and sys.argv[1]=='--compile-one':
+        sys.exit(compile_one(sys.argv[2],sys.argv[3]))
     main()

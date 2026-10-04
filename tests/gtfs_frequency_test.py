@@ -172,6 +172,82 @@ class GTFSFrequency(unittest.TestCase):
         self.assertEqual(segments[('B','C')]['profiles']['am']['display_tph'],.5)
         self.assertGreater(segments[('B','C')]['valid_until'],now)
 
+    def test_inactive_variants_cannot_suppress_current_shared_segments(self):
+        for future in [False,True]:
+            for reverse in [False,True]:
+                for same_route in [False,True]:
+                    with self.subTest(future=future,reverse=reverse,same_route=same_route):
+                        old=[('A','08:00:00'),('B','08:10:00'),('C','08:20:00')]
+                        if reverse:old=[('C','08:00:00'),('B','08:10:00'),('A','08:20:00')]
+                        patterns={'inactive':old,'current':[('B','08:00:00'),('C','08:10:00'),('D','08:20:00')]}
+                        path=self.feed(patterns,patterns)
+                        with zipfile.ZipFile(path) as z:files={n:z.read(n) for n in z.namelist() if n!='feed_info.txt'}
+                        if future:files['calendar.txt']=files['calendar.txt'].replace(b'20260101',b'20261101').replace(b'20261231',b'20261130')
+                        else:files['calendar.txt']=files['calendar.txt'].replace(b'20261231',b'20261002')
+                        files['calendar.txt']+=b'NOW,1,1,1,1,1,1,1,20260101,20261231\n'
+                        files['routes.txt']=b'route_id,route_type,agency_id,route_short_name\na,2,A,R\n'+(b'' if same_route else b'z,2,A,R\n')
+                        files['trips.txt']=b'trip_id,route_id,service_id\ninactive,a,W\ncurrent,'+(b'a' if same_route else b'z')+b',NOW\n'
+                        with zipfile.ZipFile(path,'w') as z:
+                            for name,data in files.items():z.writestr(name,data)
+                        result=compiler.compile_feed(path,{**CONFIG,'canonical_routes':True},'2026-10-05')
+                        segments={tuple(row['stops']):row for row in result['segments']}
+                        shared=segments[('B','C')]
+                        self.assertEqual(shared['profiles']['am']['display_tph'],.5)
+                        self.assertEqual(shared['expected_directions'],[0])
+                        self.assertEqual(shared['valid_until'],segments[('C','D')]['valid_until'])
+                        self.assertIsNone(segments[('A','B')]['profiles']['am']['display_tph'])
+                        self.assertLess(segments[('A','B')]['valid_until'],shared['valid_until'])
+
+    def test_expanded_table_and_row_budgets_are_checked_before_retention(self):
+        from unittest.mock import patch
+        patterns={'t':[('A','08:00:00'),('B','08:10:00')]}
+        path=self.feed(patterns,patterns)
+        for name in ['MAX_EXPANDED_BYTES','MAX_TABLE_BYTES','MAX_TABLE_ROWS']:
+            with self.subTest(budget=name),patch.object(compiler,name,1):
+                with self.assertRaisesRegex(ValueError,'budget'):
+                    compiler.compile_feed(path,CONFIG,'2026-10-05')
+        with patch.object(compiler,'MAX_TRIP_STOP_ROWS',1):
+            with self.assertRaisesRegex(ValueError,'retained stop-row budget'):
+                compiler.compile_feed(path,CONFIG,'2026-10-05')
+
+    def test_compressed_row_bomb_fails_in_isolation_and_next_feed_compiles(self):
+        import http.server
+        import threading
+        import contextlib
+        module_spec=importlib.util.spec_from_file_location('global_frequency',Path(__file__).parent.parent/'scripts/global-service-frequency.py')
+        global_compiler=importlib.util.module_from_spec(module_spec);module_spec.loader.exec_module(global_compiler)
+        patterns={'t':[('A','08:00:00'),('B','08:10:00')]}
+        good=self.feed(patterns,patterns)
+        with zipfile.ZipFile(good) as z:files={name:z.read(name) for name in z.namelist()}
+        files['stop_times.txt']=b'trip_id,stop_id,stop_sequence,departure_time\n'+b't,A,1,08:00:00\n'*(compiler.MAX_TRIP_STOP_ROWS+1)
+        buffer=io.BytesIO()
+        with zipfile.ZipFile(buffer,'w',compression=zipfile.ZIP_DEFLATED) as z:
+            for name,data in files.items():z.writestr(name,data)
+        bad=buffer.getvalue();valid=good.read_bytes()
+        self.assertLess(len(bad),len(files['stop_times.txt'])/20)
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                data=bad if self.path=='/bad.zip' else valid
+                self.send_response(200);self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
+            def log_message(self,*args):pass
+        server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler)
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        try:
+            with tempfile.TemporaryDirectory() as folder:
+                root=Path(folder);cache=root/'cache';cache.mkdir();output=root/'output'
+                url=f'http://127.0.0.1:{server.server_port}'
+                def entry(ident):
+                    return {'id':ident,'name':ident,'country':'FI','status':'pending','processed_url':url+'/'+ident+'.zip',
+                            'catalogue':{'source':url,'spdx_license_identifier':'CC0-1.0'}}
+                args=(cache,output,'2026-10-05',None,1_000_000,CONFIG['profiles'])
+                with self.assertRaisesRegex(RuntimeError,'retained stop-row budget'):
+                    global_compiler.compile_entry_isolated(entry('bad'),*args,max_seconds=10,max_memory_bytes=256*1024*1024)
+                result=global_compiler.compile_entry_isolated(entry('good'),*args,max_seconds=10,max_memory_bytes=256*1024*1024)
+                self.assertEqual(result['status'],'compiled')
+                self.assertTrue((output/result['output']).exists())
+        finally:
+            server.shutdown();server.server_close();thread.join()
+
     def test_shape_snap_distances_are_local_even_with_unrelated_latitudes(self):
         spec=importlib.util.spec_from_file_location('shape_paths',Path(__file__).parent.parent/'scripts/gtfs-shapes.py')
         shapes=importlib.util.module_from_spec(spec);spec.loader.exec_module(shapes)
