@@ -1,14 +1,15 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-signal-power3';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-signal-power3';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-signal-power3';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-signal-power4';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-signal-power4';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-signal-power4';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-signal-power3';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-signal-power3';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-signal-power3';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261004-signal-power3';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-signal-power3';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-signal-power3';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-signal-power3';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-signal-power4';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-signal-power4';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-signal-power4';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261004-signal-power4';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-signal-power4';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-signal-power4';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-signal-power4';
+import { installWatchGesture } from './watch-map.mjs?v=20261004-signal-power4';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -43,7 +44,7 @@ let legendHelpOpen = false;
 let platformLengths;
 let powerFacilities;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-signal-power3';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-signal-power4';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -254,6 +255,7 @@ function updateMajorStations(){
  }).catch(error=>console.warn('Major station list unavailable:',error.message));
 }
 function applySettings() {
+  syncWatchLayout();
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
   document.querySelectorAll('[data-background]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.background === settings.background)));
   $('legend').hidden = settings.background === 'satellite';
@@ -1200,6 +1202,7 @@ async function initialize() {
   syncPanning();
   map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'axleLow', 'axleRail', 'axleBranch', 'railway', 'branchLines', 'serviceRoutes'].includes(e.sourceId) && e.tile) scheduleLegend(); });
   map.on('click', event => {
+    if(settings.ui==='watch')return;
     // The release that ends a globe drag is not a click.
     if (globeDragged()) return;
     if (measuring.active) { measuring.click(event.lngLat, event.point); return; }
@@ -1512,6 +1515,53 @@ $('search-form').addEventListener('submit', async e => {
     if (controller !== searchController) return;
     $('search-status').textContent = 'Search is unavailable. Try again, or browse by panning and zooming.';
   } finally { clearTimeout(timeout); }
+});
+// Watch controls occupy the screen only after deliberate invocation. Normal
+// taps keep browsing the map rather than opening station/detail cards.
+const watchGesture=installWatchGesture($('map'),{active:()=>settings.ui==='watch'&&$('watch-menu').hidden,open:()=>openWatchMenu()});
+function closeWatchMenu() {
+  $('watch-menu').hidden=true;$('map-frame').inert=false;
+  const canvas=map?.getCanvas();canvas?.focus?.({preventScroll:true});
+}
+function syncWatchLayout() {
+  const watch=settings.ui==='watch',changed=document.body.dataset.ui!==settings.ui;
+  document.body.dataset.ui=settings.ui;$('watch-layout').checked=watch;
+  document.querySelector('.panel').inert=watch;
+  if(!changed)return;
+  closeWatchMenu();watchGesture.cancel();
+  if(watch){for(const tool of [drawing,measuring])if(tool?.active)tool.setMode(tool.mode);closeDetails();$('draw-toolbar').hidden=true;$('measure-toolbar').hidden=true;if($('about').open)$('about').close();}
+  $('map').setAttribute('aria-label',watch?'Interactive railway map. Hold to open controls, or use Shift F10.':'Interactive worldwide railway map');
+  map?.resize?.();
+}
+function openWatchMenu(page='main') {
+  if(settings.ui!=='watch')return;
+  const content=$('watch-content');content.replaceChildren();
+  const button=(label,action,parent=content)=>{const b=textNode('button',label);b.type='button';b.addEventListener('click',action);parent.append(b);return b;};
+  const select=(label,choices,value,change)=>{const s=document.createElement('select');s.setAttribute('aria-label',label);for(const [v,name] of choices){const o=textNode('option',name);o.value=v;s.append(o);}s.value=value;s.addEventListener('change',()=>change(s.value));content.append(s);return s;};
+  const commit=()=>{applySettings();saveSettings();closeWatchMenu();};
+  if(page==='main'){
+    select('Railway view',Array.from(document.querySelectorAll('[data-mode]'),b=>[b.dataset.mode,b.textContent]),settings.mode,value=>{settings.mode=value;commit();});
+    const choices=[['','Options'],['layers','Layers'],['info','Info'],['standard','Standard view']];
+    select('Map options',choices,'',value=>{if(value==='standard'){settings.ui='standard';commit();}else if(value)openWatchMenu(value);});
+  }else {
+    const scroll=textNode('div','','watch-scroll');content.append(scroll);
+    if(page==='layers')for(const [key,label] of [['stations','Stations'],['names','Route names'],['labels','Value labels'],['trackCounts','Track counts'],['inactive','Inactive railways'],['transport','Transport'],['destinations','Destinations'],['constraints','Boundaries'],['relief','Terrain']]){
+      const b=button(label,()=>{settings[key]=!settings[key];commit();},scroll);b.setAttribute('aria-pressed',String(settings[key]));
+    }else {
+      const credits=attribution?._container?.querySelector('.maplibregl-ctrl-attrib-inner');if(credits)scroll.append(credits.cloneNode(true));
+      else scroll.append(textNode('p','Railway Atlas · OpenStreetMap contributors · Open Railway Styles'));
+      if(status.classList.contains('error'))scroll.append(textNode('p',status.textContent));
+      scroll.append(textNode('p','Hold the map for controls. Drag to pan; pinch or double tap to zoom.'));
+
+    }
+  }
+  button('Map',closeWatchMenu);
+  $('watch-menu').hidden=false;$('map-frame').inert=true;content.scrollTop=0;content.querySelector('select,button,a')?.focus();
+}
+$('watch-layout').addEventListener('change',()=>{settings.ui=$('watch-layout').checked?'watch':'standard';applySettings();saveSettings();});
+$('watch-menu').addEventListener('keydown',event=>{
+  if(event.key==='Escape'){event.preventDefault();closeWatchMenu();}
+  if(event.key==='Tab'){const items=Array.from($('watch-content').querySelectorAll('select,button,a[href]'));const first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}
 });
 applySettings();
 initialize().catch(error => {

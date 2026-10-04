@@ -165,6 +165,8 @@ jobs:
         run: node scripts/serve.mjs &
       - name: Verify map controls, cookie restoration and responsive layout
         run: node scripts/check-map-controls-browser.mjs
+      - name: Verify map-only watch layout and direct gestures
+        run: node scripts/check-watch-browser.mjs
       - name: Verify curated station labels and details on the globe
         run: node scripts/check-major-stations-browser.mjs
       - name: Verify roads, planning boundaries and rail-road interfaces

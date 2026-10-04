@@ -10,6 +10,7 @@ import * as elevationModule from '../styles/elevation.mjs';
 import * as contextFeatures from '../styles/context.mjs';
 import * as powerFacilities from '../styles/power-facilities.mjs';
 import * as controlFunctions from '../styles/map-controls.mjs';
+import * as watchModule from '../styles/watch-map.mjs';
 import * as layerSemantics from '../styles/layer-semantics.mjs';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
@@ -57,7 +58,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     addSource() {}
     getCanvas() { return this.canvas ||= {style:{}}; }
     getCanvasContainer() { return this.canvasContainer ||= window.document.createElement('div'); }
-    doubleClickZoom = {enable(){}, disable(){}};
+    doubleClickZoom = {enable:()=>{this.doubleClickEnabled=true;}, disable:()=>{this.doubleClickEnabled=false;}};
     queryRenderedFeatures(geometry, options) {const {layers}=options||geometry||{};return (this.rendered||[]).filter(f=>!layers||layers.includes(f.layer?.id));}
     querySourceFeatures(id,{sourceLayer}) { return (this.sourceFeatures || []).filter(f=>f.sourceLayer===sourceLayer); }
     isSourceLoaded() { return true; }
@@ -129,7 +130,8 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const mapControls = new vm.SyntheticModule(Object.keys(controlFunctions), function() {
     for (const [key,value] of Object.entries(controlFunctions)) this.setExport(key,value);
   }, {context});
-  await app.link(specifier => specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
+  await app.link(specifier => specifier.includes('watch-map.mjs') ? watch : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries,loadLabels};
@@ -595,4 +597,39 @@ test('every versioned file the page loads asks for the page version', async () =
   const fallback = (await readFile(new URL('app.mjs', dir), 'utf8')).match(/get\('v'\) \|\| '([\w.-]+)'/)[1];
   assert.deepEqual(found, [], `page version ${page}`);
   assert.equal(fallback, page);
+});
+
+test('watch starts map-only and deliberate controls return to the map after each action',async()=>{
+  const {dom,window,maps,errors}=await start({search:'?ui=watch',cookie:'atlas_settings='+encodeURIComponent(JSON.stringify({attributionOpen:true}))});
+  try {
+    assert.equal(errors.length,0);const doc=window.document,map=maps[0];map.handlers['style.load']();
+    assert.equal(doc.body.dataset.ui,'watch');assert.equal(doc.querySelector('.panel').inert,true);
+    assert.equal(doc.getElementById('watch-menu').hidden,true);
+    map.handlers.click({point:{x:10,y:10}});assert.equal(doc.getElementById('details').hidden,true);
+    const open=()=>doc.getElementById('map').dispatchEvent(new window.Event('contextmenu',{cancelable:true}));
+    open();assert.equal(doc.getElementById('watch-menu').hidden,false);assert.equal(doc.getElementById('map-frame').inert,true);
+    let select=doc.querySelector('#watch-content select');select.value='service';select.dispatchEvent(new window.Event('change'));
+    assert.equal(doc.getElementById('watch-menu').hidden,true);assert.equal(map.visibility['service-routes'],'visible');
+    open();assert.equal(doc.querySelector('#watch-content option[value="frequency"]'),null,'basic watch view has no frequency dependency');
+    doc.querySelector('#watch-content button').click();
+    open();doc.getElementById('watch-menu').dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert.equal(doc.getElementById('watch-menu').hidden,true);
+    open();select=doc.querySelector('#watch-content select[aria-label="Map options"]');select.value='standard';select.dispatchEvent(new window.Event('change'));
+    assert.equal(doc.body.dataset.ui,'standard');assert.equal(doc.querySelector('.panel').inert,false);assert.equal(doc.getElementById('map-frame').inert,false);
+    assert.match(decodeURIComponent(doc.cookie),/"attributionOpen":true/);
+    assert.match(decodeURIComponent(doc.cookie),/"ui":"standard"/);
+  } finally {dom.window.close();}
+});
+test('entering watch mode deactivates hidden drawing and measurement input',async()=>{
+  const {dom,window,maps}=await start();
+  try {
+    const doc=window.document,map=maps[0];map.handlers['style.load']();
+    for(const selector of ['[data-draw="line"]','[data-measure="distance"]']){
+      const tool=doc.querySelector(selector);tool.click();assert.equal(map.doubleClickEnabled,false);
+      const watch=doc.getElementById('watch-layout');watch.checked=true;watch.dispatchEvent(new window.Event('change'));
+      assert.equal(map.doubleClickEnabled,true,'watch mode restores direct double-tap zoom');
+      assert.equal(tool.getAttribute('aria-pressed'),'false','the hidden tool is inactive');
+      assert.equal(doc.getElementById('draw-toolbar').hidden,true);assert.equal(doc.getElementById('measure-toolbar').hidden,true);
+      watch.checked=false;watch.dispatchEvent(new window.Event('change'));assert.equal(tool.getAttribute('aria-pressed'),'false','returning to normal does not restore hidden editing');
+    }
+  } finally {dom.window.close();}
 });
