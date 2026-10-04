@@ -50,10 +50,18 @@ for(const [width,height] of [[1365,900],[800,400],[412,915],[320,568]])
       }finally{f.layout.destroy();assert.equal(f.details.style.maxHeight,'','cleanup restores the original detail height');f.dom.window.close();}
     });
 
-test('a zoomed visual viewport keeps the CSS desktop menu out of the control lane',()=>{
+test('desktop controls stay in the bottom-left corner below a shortened menu',()=>{
+ const f=fixture(1365,900,42,true,false);
+ try{
+  const stack=f.corner.getBoundingClientRect(),panel=f.panel.getBoundingClientRect();
+  assert.equal(stack.left,10);assert.ok(panel.bottom<stack.top&&panel.height<900-70);
+ }finally{f.layout.destroy();f.dom.window.close();}
+});
+
+test('a zoomed visual viewport keeps the controls inside it',()=>{
  const f=fixture(1365,900,42,true,false,620);
  try{
-  const stack=f.corner.getBoundingClientRect();assert.ok(stack.left>f.panel.getBoundingClientRect().right);assert.ok(stack.right<=620);
+  const stack=f.corner.getBoundingClientRect();assert.equal(stack.left,10);assert.ok(stack.right<=620);
   assert.equal(overlaps(stack,f.panel.getBoundingClientRect()),false);
  }finally{f.layout.destroy();f.dom.window.close();}
 });
