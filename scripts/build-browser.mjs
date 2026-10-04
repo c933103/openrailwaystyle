@@ -15,6 +15,7 @@ const buildInfo={version,commit:commit.toLowerCase(),sourceUrl};
 await mkdir('styles/vendor',{recursive:true});
 await build({entryPoints:['styles/track-worker.mjs'],outfile:'styles/vendor/track-worker.js',bundle:true,format:'iife',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await build({entryPoints:['styles/tile-labels.mjs'],outfile:'styles/vendor/tile-labels.js',define:{__ATLAS_BUILD_INFO__:JSON.stringify(buildInfo)},bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
+await build({entryPoints:['styles/depth-worker.mjs'],outfile:'styles/vendor/depth-worker.js',bundle:true,format:'iife',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await build({entryPoints:['styles/dem-worker.mjs'],outfile:'styles/vendor/dem-worker.js',bundle:true,format:'iife',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await build({entryPoints:['styles/polar-layer.mjs'],outfile:'styles/vendor/polar-layer.js',bundle:true,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'eof'});
 await copyFile('node_modules/earcut/LICENSE','styles/vendor/earcut-LICENSE.txt');

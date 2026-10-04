@@ -15,7 +15,7 @@ const SOURCE_ORDER = [
   'stationLow', 'stationMed', 'stations', 'inactiveRegional', 'crossings',
   'crossingsOverview', 'crossingsDetail', 'branchLines', 'serviceRoutes',
   'streetRunning', 'contours', 'seabedContours', 'seabedContoursClose',
-  'satellite', 'carto', 'relief',
+  'satellite', 'carto', 'relief', 'bathymetry',
 ];
 
 export function createSources(majorStationData) {

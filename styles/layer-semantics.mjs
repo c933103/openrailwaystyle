@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261004-pole2';
+import { MODES } from './map-model.mjs?v=20261004-pr53-repair2';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
@@ -59,6 +59,7 @@ function legacySemantics(layer) {
     'atlas:terrain': terrain,
     'atlas:runtime': runtime,
     'atlas:background': background,
+    'atlas:hide-backgrounds': id === 'terrain-bathymetry' ? ['carto'] : [],
     'atlas:localize': layer.type === 'symbol' && id !== 'speed-labels' && id !== 'platform-lengths' && !terrain && (layer.source === 'openmaptiles' || station || names),
   };
 }
@@ -92,5 +93,6 @@ export function layerVisibility(layer, settings) {
   else if (settings.background === 'satellite' && !runtime) visible = false;
   else if (settings.background === 'hybrid' && semantics['atlas:base-map']) visible = false;
   else if (settings.background === 'carto' && semantics['atlas:base-map'] && !semantics['atlas:terrain']) visible = false;
+  if (semantics['atlas:hide-backgrounds']?.includes(settings.background)) visible = false;
   return visible;
 }

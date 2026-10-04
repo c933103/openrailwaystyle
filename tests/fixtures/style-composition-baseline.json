@@ -352,6 +352,10 @@
       ],
       "maxzoom": 15,
       "sha256": "996d4821b51e1a6ece384a47c7434c439dcd98084f647ab09a4678a258b67b56"
+    },
+    {
+      "id": "bathymetry",
+      "sha256": "8e57571bbfe95652d968b81db24d5192aa9fdd462c51734b1c34542788c0ac8f"
     }
   ],
   "layers": [
@@ -400,6 +404,10 @@
       "source": "openmaptiles",
       "sourceLayer": "water",
       "sha256": "8252b2042dddae0e97f3f123285aa8d85ec9a8ad66d8c11e81420b62aaec0b13"
+    },
+    {
+      "id": "terrain-bathymetry",
+      "sha256": "eb0886a59882716a0627abc800e7ad6ad31fcae579ef55eb4b68a3bde5ddde7e"
     },
     {
       "id": "water_intermittent",
@@ -689,7 +697,7 @@
       "sourceLayer": "contours",
       "minzoom": 5,
       "maxzoom": 11,
-      "sha256": "933905e87008e38a12575c483816bbf5650ad4d56a5dbc3f4ef568fa9b7477c6"
+      "sha256": "be7a0a352e6668285a4469698332041d588362fc10151e556bd6206012c731a9"
     },
     {
       "id": "terrain-seabed-contours-close",
@@ -697,7 +705,7 @@
       "source": "seabedContoursClose",
       "sourceLayer": "contours",
       "minzoom": 11,
-      "sha256": "d747dc59d7a063a77dfaaffd9920c9c0c591393e3bc40d9c380f6c6ed088357c"
+      "sha256": "9b2ff90a5cb51a553cbea4c80059bbabbe153323bc1c74b16ae1680ba37dafb2"
     },
     {
       "id": "waterway-tunnel",
