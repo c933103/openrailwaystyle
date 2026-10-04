@@ -12,6 +12,7 @@ import * as departuresModule from '../styles/departures.mjs';
 import * as elevationModule from '../styles/elevation.mjs';
 import * as contextFeatures from '../styles/context.mjs';
 import * as cjkFontFeatures from '../styles/cjk-font.mjs';
+import * as crossingTagFeatures from '../styles/crossing-tags.mjs';
 import * as frequencyModule from '../styles/service-frequency.mjs';
 import * as powerFacilities from '../styles/power-facilities.mjs';
 import * as controlFunctions from '../styles/map-controls.mjs';
@@ -139,6 +140,8 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const keyboard = new vm.SyntheticModule(['installKeyboardPan'], function() { this.setExport('installKeyboardPan', () => {}); }, {context});
   const cjkFontModule = new vm.SyntheticModule(Object.keys(cjkFontFeatures),function() {
     for (const [key,value] of Object.entries(cjkFontFeatures)) this.setExport(key,value);
+  const crossingTagModule = new vm.SyntheticModule(Object.keys(crossingTagFeatures),function() {
+    for (const [key,value] of Object.entries(crossingTagFeatures)) this.setExport(key,value);
   },{context});
   const contextModule = new vm.SyntheticModule(Object.keys(contextFeatures),function() {
     for (const [key,value] of Object.entries(contextFeatures)) this.setExport(key,value);
@@ -154,7 +157,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     for (const [key,value] of Object.entries(controlFunctions)) this.setExport(key,value);
   }, {context});
   const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
-  await app.link(specifier => specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  await app.link(specifier => specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries,loadLabels,fonts};

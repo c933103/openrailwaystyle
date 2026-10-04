@@ -7,7 +7,7 @@ on:
     - cron: '17 4 * * 0'
   push:
     branches: [main]
-    paths: ['scripts/build-crossings.mjs', 'scripts/crossing-data.mjs', '.github/workflows/crossings.yml']
+    paths: ['scripts/build-crossings.mjs', 'scripts/crossing-data.mjs', 'styles/crossing-tags.mjs', '.github/workflows/crossings.yml']
 permissions:
   contents: write
   actions: write
