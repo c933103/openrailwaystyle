@@ -24,7 +24,9 @@ export function panDirection(keys) {
   return length ? [x / length, y / length] : [0, 0];
 }
 
-export function installKeyboardPan(map, {reducedMotion = () => false} = {}) {
+// pan(dx, dy, eventData): pans the globe over the poles (globe-drag.mjs) and
+// returns true, or false to let the flat map pan.
+export function installKeyboardPan(map, {reducedMotion = () => false, pan = () => false} = {}) {
   // Keys are taken only from the map itself (its canvas container), not from
   // the zoom, compass and other controls, whose arrow keys stay their own.
   const container = map.getContainer(), surface = map.getCanvasContainer(), held = new Map();
@@ -61,7 +63,11 @@ export function installKeyboardPan(map, {reducedMotion = () => false} = {}) {
     const since = now - Math.min(...held.values()), {clientWidth: w, clientHeight: h} = container;
     direction = panDirection(keys);
     const distance = panSpeed(since, Math.min(w, h)) * dt / 1000;
-    if (distance > 0) { map.panBy([direction[0] * distance, direction[1] * distance], {animate: false}, {originalEvent: keyEvent}); moved += distance; }
+    if (distance > 0) {
+      const dx = direction[0] * distance, dy = direction[1] * distance;
+      if (!pan(dx, dy, {originalEvent: keyEvent})) map.panBy([dx, dy], {animate: false}, {originalEvent: keyEvent});
+      moved += distance;
+    }
     frame = requestAnimationFrame(tick);
   };
   const stop = (topUp = true) => {
@@ -69,8 +75,8 @@ export function installKeyboardPan(map, {reducedMotion = () => false} = {}) {
     release();
     // A short press moves at least one step, as MapLibre's did.
     if (topUp && moved < STEP && (direction[0] || direction[1])) {
-      const rest = STEP - moved;
-      map.panBy([direction[0] * rest, direction[1] * rest], {duration: reducedMotion() ? 0 : 160}, {originalEvent: keyEvent});
+      const rest = STEP - moved, dx = direction[0] * rest, dy = direction[1] * rest;
+      if (!pan(dx, dy, {originalEvent: keyEvent})) map.panBy([dx, dy], {duration: reducedMotion() ? 0 : 160}, {originalEvent: keyEvent});
     }
     moved = 0; direction = [0, 0];
   };

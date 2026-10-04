@@ -153,3 +153,23 @@ test('readout zoom matches the flat map below 85.05° and stays continuous beyon
     for(const target of [sign*POLE_LIMIT,-start,sign*86])near(readoutZoom(zoomForLatitude(2,start,target),target),expected,1e-10);
   }
 });
+
+
+test('polar views survive the address: readout zoom and enough decimals',async()=>{
+  const {viewHash,parseViewHash,readoutZoom,globeGroundZoom}=await import('../styles/globe-drag.mjs');
+  // MapLibre's own hash wrote these as #1.3/-90/30 and #-4.41/90/30.
+  for(const [zoom,lat,lng] of [[1.3,-89.99964,30],[-4.41,89.99707,30],[12,89.99,-150.5],[5,60,10],[17,-85.06,0]]){
+    const hash=viewHash({zoom,lat,lng}),z=hash.slice(1).split('/')[0],view=parseViewHash(hash);
+    assert.ok(parseFloat(z)>=0,hash);near(parseFloat(z),readoutZoom(zoom,lat),0.006);
+    // Coordinates are rounded to the ground scale, as MapLibre does for its
+    // zoom; the zoom read back keeps that ground scale wherever the rounding
+    // puts the centre.
+    const step=10**-(hash.split('/')[1].split('.')[1]?.length||0);
+    near(view.center[1],lat,step/2+1e-12);near(view.center[0],lng,step/2+1e-12);
+    near(globeGroundZoom(view.zoom,view.center[1]),globeGroundZoom(zoom,lat),0.006);
+  }
+  assert.equal(viewHash({zoom:5,lat:60.123456,lng:10.5}),'#5/60.12/10.5','below 85.05° the address is as MapLibre wrote it');
+  assert.equal(viewHash({zoom:5,lat:60,lng:10,bearing:30,pitch:40}),'#5/60/10/30/40');
+  assert.deepEqual(parseViewHash('#5/60/10/30/40'),{center:[10,60],zoom:5,bearing:30,pitch:40});
+  for(const bad of ['','#','#5/60','#a/b/c','#5/95/10','#5x/60/10'])assert.equal(parseViewHash(bad),null,bad);
+});
