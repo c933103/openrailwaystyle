@@ -1,16 +1,16 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-pr53-repair2';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-pr53-repair2';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-pr53-repair2';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-polarlinks3';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-polarlinks3';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-polarlinks3';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-pr53-repair2';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-pr53-repair2';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-pr53-repair2';
-import { installGlobeDrag, allowPolarCentres, readoutZoom } from './globe-drag.mjs?v=20261004-pr53-repair2';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-pr53-repair2';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-polarlinks3';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-polarlinks3';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-polarlinks3';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261004-polarlinks3';
 import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261004-pr53-repair2';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-pr53-repair2';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-pr53-repair2';
-import { installWatchGesture } from './watch-map.mjs?v=20261004-pr53-repair2';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-polarlinks3';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-polarlinks3';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-polarlinks3';
+import { installWatchGesture } from './watch-map.mjs?v=20261004-polarlinks3';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -45,7 +45,7 @@ let legendHelpOpen = false;
 let platformLengths;
 let powerFacilities;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-pr53-repair2';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-polarlinks3';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -808,7 +808,7 @@ function wantedProjection() {
   const zoom = map.getZoom() - settings.detail;
   return autoProjection(zoom, zoom < 4 ? 0 : polarShare());
 }
-let syncPanning = () => {}, globeDragged = () => false, polarCentres;
+let syncPanning = () => {}, globeDragged = () => false, globePan = () => false, polarCentres;
 function updatePolar() {
   if (!map) return;
   if (settings.autoGlobe) {
@@ -1060,14 +1060,17 @@ async function initialize() {
   }
   // Reopen where the last visit ended, unless the link gives a position; start
   // on the globe (or as last left) so the first frame is not the flat map.
-  const linked = /^#-?[\d.]+\//.test(location.hash), start = linked ? {} : rememberedView;
-  const startZoom = linked ? Number(location.hash.slice(1).split('/')[0]) : Number.isFinite(start.z) ? start.z : 1.8;
-  const startGlobe = typeof rememberedView.g === 'boolean' ? rememberedView.g : settings.autoGlobe && startZoom - settings.detail < 4;
+  const linkedView = parseViewHash(location.hash), linked = Boolean(linkedView), start = linked ? {} : rememberedView;
+  const startZoom = linked ? readoutZoom(linkedView.zoom, linkedView.center[1]) : Number.isFinite(start.z) ? start.z : 1.8;
+  // A centre beyond 85.05° exists only on the globe: open there, or the flat
+  // map would pull it back to its edge.
+  const startLat = linked ? linkedView.center[1] : Array.isArray(start.c) ? start.c[1] : 0;
+  const startGlobe = Math.abs(startLat) > 85.051129 || (typeof rememberedView.g === 'boolean' ? rememberedView.g : settings.autoGlobe && startZoom - settings.detail < 4);
   style.projection = {type: startGlobe ? 'globe' : 'mercator'};
   const validCenter = Array.isArray(start.c) && start.c.length === 2 && start.c.every(Number.isFinite);
   map = new maplibregl.Map({
     container: 'map', style, localIdeographFontFamily: cjkFont(settings.language), pixelRatio: devicePixelRatio / 2 ** settings.detail,
-    center: validCenter ? start.c : [15,23], zoom: Number.isFinite(start.z) ? start.z : 1.8, bearing: Number.isFinite(start.b) ? start.b : 0, pitch: Number.isFinite(start.p) ? start.p : 0, hash: true, minZoom: MIN_ZOOM + settings.detail, maxZoom: MAX_ZOOM + settings.detail,
+    center: validCenter ? start.c : [15,23], zoom: Number.isFinite(start.z) ? start.z : 1.8, bearing: Number.isFinite(start.b) ? start.b : 0, pitch: Number.isFinite(start.p) ? start.p : 0, hash: false, minZoom: MIN_ZOOM + settings.detail, maxZoom: MAX_ZOOM + settings.detail,
     renderWorldCopies: true, attributionControl: false,
   });
   powerFacilities = createPowerFacilityLoader(map, {url:new URL('./data/traction/power/power-facilities.geojson',import.meta.url),
@@ -1081,12 +1084,26 @@ async function initialize() {
   // map, where at low zoom the centre stays far from the poles (84° N at
   // zoom 3 opened at 80° N on a phone).
   polarCentres = allowPolarCentres(map, maplibregl.LngLat, () => MIN_ZOOM + settings.detail);
-  const [hashZoom, hashLat, hashLng] = linked ? location.hash.slice(1).split('/').map(Number) : [];
-  const wanted = linked ? {center: [hashLng, hashLat], zoom: hashZoom} : validCenter ? {center: start.c, zoom: start.z} : null;
-  if (wanted && (startGlobe || Math.abs(wanted.center[1]) > 85) && wanted.center.every(Number.isFinite)) {
+  const wanted = linked ? linkedView : validCenter ? {center: start.c, zoom: start.z} : null;
+  if (wanted && (linked || startGlobe || Math.abs(wanted.center[1]) > 85) && wanted.center.every(Number.isFinite)) {
     // Again once the style has put the map on the globe.
     map.jumpTo(wanted); map.once('style.load', () => map.jumpTo(wanted));
   }
+  // The view in the address (viewHash in globe-drag.mjs, in place of
+  // MapLibre's own, which near a pole wrote a negative zoom and rounded the
+  // latitude to 90°).
+  const writeHash = () => {
+    const c = map.getCenter(), hash = viewHash({zoom: map.getZoom(), lat: c.lat, lng: c.lng, bearing: map.getBearing(), pitch: map.getPitch()});
+    if (hash !== location.hash) { const url = new URL(location.href); url.hash = hash; history.replaceState(history.state, '', url); }
+  };
+  map.on('moveend', writeHash);
+  addEventListener('hashchange', () => {
+    const view = parseViewHash(location.hash);
+    if (!view) return;
+    // A centre beyond 85.05° exists only on the globe.
+    if (Math.abs(view.center[1]) > 85.051129 && !onGlobe()) map.setProjection({type: 'globe'});
+    map.jumpTo(view); updatePolar();
+  });
   map.on('styleimagemissing', event => {
     if (event.id.startsWith('context-')) {
       const icon = contextIcon(event.id,document);
@@ -1151,7 +1168,7 @@ async function initialize() {
   controlLayout = installControlLayout({frame: $('map-frame'), mapElement: $('map'),
     panel: document.querySelector('.panel'), status: document.querySelector('.map-status'), readout, details: $('details')});
   map.on('remove', () => {controlLayout.destroy(); attributionStateCleanup?.();});
-  installKeyboardPan(map, {reducedMotion: () => matchMedia('(prefers-reduced-motion: reduce)').matches});
+  installKeyboardPan(map, {reducedMotion: () => matchMedia('(prefers-reduced-motion: reduce)').matches, pan: (dx, dy, eventData) => globePan(dx, dy, eventData)});
   drawing = new Drawing(map, {units: () => settings.units, status: text => { $('draw-status').textContent = text; }, changed: updateDrawing});
   measuring = new Measure(map, {units: () => settings.units, status: text => { $('measure-status').textContent = text; }, changed: updateDrawing, heights: elevation.heights});
   map.on('style.load', installDrawing);
@@ -1218,7 +1235,7 @@ async function initialize() {
     const layers = ['drawing-handle-targets', 'measure-point-targets'].filter(id => map.getLayer(id));
     return layers.length > 0 && map.queryRenderedFeatures([point.x, point.y], {layers}).length > 0;
   }});
-  syncPanning = globeDrag.sync; globeDragged = globeDrag.justDragged;
+  syncPanning = globeDrag.sync; globeDragged = globeDrag.justDragged; globePan = globeDrag.pan;
   syncPanning();
   map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'axleLow', 'axleRail', 'axleBranch', 'railway', 'branchLines', 'serviceRoutes'].includes(e.sourceId) && e.tile) scheduleLegend(); });
   map.on('click', event => {
