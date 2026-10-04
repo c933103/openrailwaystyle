@@ -16,11 +16,16 @@ const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '' } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '' } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
   const errors = [], maps = [];
+  const fonts=[];
+  if(fontFaces){
+    const registered=new Set();Object.defineProperty(window.document,'fonts',{value:{ready:Promise.resolve(),add:f=>registered.add(f),delete:f=>registered.delete(f)}});
+    window.FontFace=class{constructor(family,url){this.family=family;this.url=url;fonts.push(this);}load(){return new Promise((resolve,reject)=>{this.finish=()=>resolve(this);this.fail=()=>reject(new Error('font offline'));});}};
+  }
   window.console.error = error => errors.push(error);
   class Map {
     constructor(options) {
@@ -122,8 +127,28 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   await app.link(specifier => specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
-  return {dom,window,maps,errors,loadLibraries,loadLabels};
+  return {dom,window,maps,errors,loadLibraries,loadLabels,fonts};
 }
+
+test('Chinese font downloads do not block startup and refresh glyphs only for the current script',async()=>{
+ const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true});
+ try{
+  assert.equal(maps.length,1,'map starts while font remains pending');assert.equal(fonts.length,1);assert.match(fonts[0].url,/atlas-cjk-tc-v1\.woff2/);
+  assert.deepEqual(errors,[]);const map=maps[0];map.handlers['style.load']();assert.equal(window.document.body.dataset.mapReady,'true');
+  const language=window.document.getElementById('language');language.value='zh-Hans';language.dispatchEvent(new window.Event('change'));assert.equal(fonts.length,2);
+  fonts[0].finish();await new Promise(r=>setTimeout(r,0));assert.ok(!map.styleOptions.localIdeographFontFamily.includes('Atlas CJK TC'),'a stale download cannot overwrite the selected script');
+  fonts[1].finish();await new Promise(r=>setTimeout(r,0));assert.equal(map.styleOptions.localIdeographFontFamily,'"Atlas CJK SC"');
+  assert.ok(map.options.style.layers.filter(l=>l.type==='symbol'&&l.layout?.['text-font']).every(l=>l.layout['text-font'].includes('Atlas CJK SC')),'explicit Noto stacks must also include the loaded Han font');
+  assert.match(map.options.style.glyphs,/^atlasglyph:\/\//,'Latin glyph requests strip the added local family');
+  language.value='zh-Hant';language.dispatchEvent(new window.Event('change'));assert.equal(fonts.length,2);assert.equal(map.styleOptions.localIdeographFontFamily,'"Atlas CJK TC"','previously loaded font is reused');
+  assert.ok(map.options.style.layers.filter(l=>l.type==='symbol'&&l.layout?.['text-font']).every(l=>l.layout['text-font'].includes('Atlas CJK TC')&&!l.layout['text-font'].includes('Atlas CJK SC')),'switching script replaces every explicit local font');
+ }finally{dom.window.close();}
+});
+
+test('unavailable Chinese font preserves a working map and system fallback',async()=>{
+ const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true});
+ try{assert.deepEqual(errors,[]);maps[0].handlers['style.load']();fonts[0].fail();await new Promise(r=>setTimeout(r,0));assert.equal(window.document.body.dataset.mapReady,'true');assert.match(maps[0].options.localIdeographFontFamily,/Noto Sans TC/);}finally{dom.window.close();}
+});
 
 test('app starts with the MapLibre 5 API and enables map controls', async () => {
   const {dom,window,maps,errors} = await start();
@@ -293,7 +318,7 @@ test('real renderer initialization failures reach the visible error message', as
 test('station inspection finds nearby interchanges and facility inspection avoids railway fields', async () => {
   const {dom,window,maps,errors}=await start();
   try {
-    const map=maps[0];map.handlers['style.load']();map.zoom=14;
+    assert.deepEqual(errors,[]);const map=maps[0];map.handlers['style.load']();map.zoom=14;
     const station={source:'stations',sourceLayer:'standard_railway_text_stations',layer:{id:'station-detail-large-names'},properties:{name:'Central',station_size:'large',state:'present'},geometry:{type:'Point',coordinates:[0,0]}};
     const bus={id:123,source:'openmaptiles',sourceLayer:'poi',layer:{id:'context-transport-bus-label'},properties:{name:'Central Bus Interchange',class:'bus',subclass:'bus_station'},geometry:{type:'Point',coordinates:[0.001,0]}};
     map.sourceFeatures=[bus,bus];map.rendered=[station];
@@ -335,7 +360,7 @@ test('close infrastructure details follow the mode, labels and background on the
 test('signals and entrances inspect their mapped node and avoid track/timetable fields',async()=>{
  const {dom,window,maps,errors}=await start();
  try{
-  const map=maps[0];map.handlers['style.load']();map.zoom=19;
+  assert.deepEqual(errors,[]);const map=maps[0];map.handlers['style.load']();map.zoom=19;
   for(const feature of [
    {source:'railwaySignals',sourceLayer:'railway_signals',layer:{id:'infrastructure-signal-points'},properties:{id:123,railway:'signal',ref:'S12',category0:'main',category1:'distant',deactivated1:true,direction_both:true},geometry:{type:'Point',coordinates:[0,0]}},
    {source:'stationEntrances',sourceLayer:'standard_station_entrances',layer:{id:'infrastructure-entrance-points'},properties:{id:456,label:'Exit A8'},geometry:{type:'Point',coordinates:[0,0]}}

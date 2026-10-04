@@ -10,7 +10,8 @@
 // libraries from the CDN are kept too: their addresses carry the version, so
 // a saved copy never goes stale and is used first. Map tiles and data files
 // are not handled here.
-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}11`, KEEP_VERSIONS = 2;
+const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}12`, KEEP_VERSIONS = 2;
+const FONT_CACHE='atlas-label-fonts-v1';
 // Shell 11 refreshes the repaired modules while migrate() keeps the previous app's
 // versioned modules. Stored user settings are not touched.
 // Keep in step with loadScript in app.mjs and the stylesheet in index.html.
@@ -135,6 +136,14 @@ self.addEventListener('fetch', event => {
     return;
   }
   if (request.method !== 'GET' || url.origin !== location.origin) return;
+  // Fonts are immutable, optional assets. Fetch only the selected script and
+  // retain it offline without making installation download both large files.
+  if(/\/fonts\/atlas-cjk-(tc|sc)-v1\.woff2$/.test(url.pathname)){
+    event.respondWith(caches.open(FONT_CACHE).then(async cache=>{
+      const saved=await cache.match(url.href);if(saved)return saved;
+      const response=await fetch(request);if(response.ok)await cache.put(url.href,response.clone());return response;
+    }));return;
+  }
   const scope = new URL(self.registration.scope).pathname, page = url.pathname === scope || url.pathname === scope + 'index.html';
   if (request.mode === 'navigate' ? !page : !SHELL.test(url.pathname)) return;
   const version = url.searchParams.get('v');

@@ -1,9 +1,43 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {osmObject} from '../styles/map-model.mjs';
-import {createPlatformLengths,platformIdentity,platformAnchor,formatPlatformLength,platformLengthLabel,platformReference,platformObjectIdentity} from '../styles/platform-length.mjs';
+import {createPlatformLengths,platformIdentity,platformAnchor,formatPlatformLength,platformLengthLabel,platformReference,platformObjectIdentity,platformOSMDetails,platformLabelAnchor,platformExtent} from '../styles/platform-length.mjs';
 import {createExpression} from '@maplibre/maplibre-gl-style-spec';
 const edge=(id=1)=>({properties:{id,ref:'2'},geometry:{type:'LineString',coordinates:[[0,0],[.001,0]]}});
+const fullPlatform=(type='way')=>({elements:[{type:'node',id:1,lon:0,lat:0},{type:'node',id:2,lon:.004,lat:0},{type:'node',id:3,lon:.004,lat:.0001},{type:'node',id:4,lon:0,lat:.0001},{type:'way',id:23,nodes:[1,2,3,4,1],tags:{railway:'platform',ref:'1;2'}},...(type==='relation'?[{type:'relation',id:24,tags:{ref:'3;4'},members:[{type:'way',ref:23,role:'outer'}]}]:[])]});
+
+test('complete platform areas give estimated extent, not perimeter or a clipped tile span',()=>{
+ for(const type of ['way','relation']){
+  const details=platformOSMDetails(fullPlatform(type),{type,id:type==='way'?'23':'24'});
+  assert.ok(Math.abs(details.length-444.7797)<.01);assert.equal(details.length_estimated,true);assert.equal(details.length_basis,'mapped_extent');assert.equal(details.complete,true);
+ }
+ const incomplete=fullPlatform();incomplete.elements=incomplete.elements.filter(n=>n.id!==3);
+ assert.equal(platformOSMDetails(incomplete,{type:'way',id:'23'}).length,undefined,'missing nodes cannot shorten a complete measurement');
+ const line=fullPlatform();line.elements.find(e=>e.type==='way').nodes=[1,2,3];
+ assert.ok(platformOSMDetails(line,{type:'way',id:'23'}).length>455,'a complete platform line follows its path');
+ const tagged=fullPlatform();tagged.elements.at(-1).tags.length='1000 ft';assert.equal(platformOSMDetails(tagged,{type:'way',id:'23'}).length,304.8);
+ const text=createExpression(platformLengthLabel()).value.evaluate({zoom:19},{type:1,properties:{ref:'1 / 2',platform_length:444.78,length_estimated:true}});assert.equal(text,'1 / 2 · ≈445 m');
+});
+
+test('platform label anchors stay in the visible tip at maximum zoom',()=>{
+ const bounds={getWest:()=>.0035,getEast:()=>.0041,getSouth:()=>-.00005,getNorth:()=>.00015};
+ const polygon={geometry:{type:'Polygon',coordinates:[[[0,0],[.004,0],[.004,.0001],[0,.0001],[0,0]]]}};
+ const at=platformLabelAnchor(polygon,bounds);assert.ok(at[0]>=.0035&&at[0]<=.004);assert.ok(at[1]>=0&&at[1]<=.0001);
+ assert.deepEqual(platformLabelAnchor({geometry:{type:'LineString',coordinates:[[0,0],[.004,0]]}},bounds),[.00375,0]);
+ assert.ok(Math.abs(platformExtent(polygon.geometry)-444.7797)<.01,'placement clipping never changes the complete area extent');
+});
+
+test('zoom 19 upgrades cached platform references to complete geometry and preserves object identity',async()=>{
+ let zoom=17,data,shown,requests=[];
+ const platform={properties:{id:'way-23'},geometry:{type:'Polygon',coordinates:[[[.0035,0],[.004,0],[.004,.0001],[.0035,.0001],[.0035,0]]]}};
+ const source={setData:d=>data=d},map={getZoom:()=>zoom,getLayer:()=>({}),queryRenderedFeatures:({layers})=>layers.includes('platform-edges')?[]:[platform],getSource:id=>id==='platformNumbers'?source:null};
+ const p=createPlatformLengths(map,{delay:0,onPlatform:()=>shown=p.enrich({...platform,source:'platforms'}),fetcher:async url=>{requests.push(url);return {ok:true,json:async()=>url.includes('openstreetmap.org')?fullPlatform():{properties:{ref:['1','2']}}};}});
+ try{
+  p.update();await new Promise(r=>setTimeout(r,20));assert.equal(data.features[0].properties.ref,'1 / 2');assert.equal(data.features[0].properties.platform_length,undefined);
+  zoom=19;p.update();await new Promise(r=>setTimeout(r,20));assert.equal(requests.length,2);assert.match(requests[1],/way\/23\/full\.json$/);assert.ok(data.features[0].properties.platform_length>444);assert.equal(data.features[0].geometry.type,'Point');assert.equal(shown.properties.length_estimated,true);assert.deepEqual(osmObject(data.features[0]),{type:'way',id:'23'});
+  zoom=18;p.update();assert.equal(data.features[0].properties.platform_length,undefined);zoom=22;p.update();assert.equal(requests.length,2);assert.ok(data.features[0].properties.platform_length>444);
+ }finally{p.destroy();}
+});
 test('platform lengths convert m/ft and anchor on line geometry without measuring its clipped span',()=>{
  assert.equal(formatPlatformLength(304.8,'imperial'),'1000 ft');assert.equal(formatPlatformLength(304.8),'305 m');assert.equal(formatPlatformLength(0),'');
  assert.equal(platformIdentity(edge()),'1');assert.equal(platformIdentity(edge('way-99')),'99');assert.equal(platformIdentity(edge('node-99')),null);
@@ -121,4 +155,38 @@ test('quickly reopening the view resumes an aborted object without a transient-e
   return Promise.resolve({ok:true,json:async()=>({properties:{length:350}})});
  }});
  try{p.update();await new Promise(r=>setTimeout(r,10));active=false;p.update();active=true;p.update();await new Promise(r=>setTimeout(r,20));assert.equal(requests,2);assert.equal(data.features[0].properties.platform_length,350);}finally{p.destroy();}
+});
+
+test('mapped unit lengths override area estimates and reject malformed lengths',()=>{
+ for(const [value,metres] of [['0.3 km',300],['0.2 mi',321.8688],['100 FT',30.48],['350 M',350],['425',425]]){
+  const data=fullPlatform();data.elements.at(-1).tags.length=value;
+  const details=platformOSMDetails(data,{type:'way',id:'23'});
+  assert.ok(Math.abs(details.length-metres)<1e-8,value);assert.equal(details.length_basis,'mapped_tag');assert.equal(details.length_estimated,undefined);
+ }
+ for(const value of ['0','-1','Infinity','300 boats']){
+  const data=fullPlatform();data.elements.at(-1).tags.length=value;
+  assert.equal(platformOSMDetails(data,{type:'way',id:'23'}).length_basis,'mapped_extent');
+ }
+});
+test('area labels stay inside concave polygons and outside their holes',()=>{
+ const concave=[[0,0],[4,0],[4,4],[3,4],[3,1],[1,1],[1,4],[0,4],[0,0]];
+ const point=platformLabelAnchor({geometry:{type:'Polygon',coordinates:[concave]}});
+ assert.ok(point&&(point[1]<1||point[0]<1||point[0]>3),JSON.stringify(point));
+ const outer=[[0,0],[4,0],[4,4],[0,4],[0,0]],hole=[[1,1],[3,1],[3,3],[1,3],[1,1]];
+ const feature={geometry:{type:'Polygon',coordinates:[outer,hole]}};
+ const at=platformLabelAnchor(feature);assert.ok(at&&(at[0]<1||at[0]>3||at[1]<1||at[1]>3));
+ const bounds={getWest:()=>1.2,getEast:()=>2.8,getSouth:()=>1.2,getNorth:()=>2.8};
+ assert.equal(platformLabelAnchor(feature,bounds),null,'viewport entirely in a hole has no platform interior');
+ const tip={getWest:()=>3.5,getEast:()=>4.5,getSouth:()=>2,getNorth:()=>3};
+ const visible=platformLabelAnchor(feature,tip);assert.ok(visible[0]>3.5&&visible[0]<4&&visible[1]>2&&visible[1]<3);
+});
+
+
+test('a larger buffered tile fragment outside the viewport cannot displace the visible fragment',async()=>{
+  const polygon=coordinates=>({properties:{id:'way-23'},geometry:{type:'Polygon',coordinates:[coordinates]}});
+  const outside=polygon([[0,0],[.01,0],[.01,.001],[0,.001],[0,0]]),visible=polygon([[.019,.0001],[.021,.0001],[.021,.0009],[.019,.0009],[.019,.0001]]);
+  const bounds={getWest:()=>.0195,getEast:()=>.0205,getSouth:()=>0,getNorth:()=>.001};let data;
+  const map={getZoom:()=>19,getBounds:()=>bounds,queryRenderedFeatures:({layers})=>layers.includes('platform-areas')?[visible,outside]:[],getSource:id=>id==='platformNumbers'?{setData:d=>data=d}:null};
+  const tracker=createPlatformLengths(map,{delay:0,fetcher:async()=>({ok:true,json:async()=>({elements:[{type:'way',id:23,tags:{ref:'1',length:'350'}}]})})});
+  try{tracker.update();await new Promise(r=>setTimeout(r,20));assert.equal(data.features.length,1);assert.equal(data.features[0].properties.platform_length,350);assert.ok(data.features[0].geometry.coordinates[0]>=.0195);}finally{tracker.destroy();}
 });

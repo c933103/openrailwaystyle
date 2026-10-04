@@ -26740,15 +26740,118 @@
       "minzoom": 17,
       "layout": {
         "text-field": [
-          "get",
-          "ref"
+          "concat",
+          [
+            "coalesce",
+            [
+              "get",
+              "ref"
+            ],
+            ""
+          ],
+          [
+            "case",
+            [
+              "all",
+              [
+                "!=",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "ref"
+                  ],
+                  ""
+                ],
+                ""
+              ],
+              [
+                ">",
+                [
+                  "to-number",
+                  [
+                    "get",
+                    "platform_length"
+                  ],
+                  0
+                ],
+                0
+              ]
+            ],
+            " · ",
+            ""
+          ],
+          [
+            "case",
+            [
+              ">",
+              [
+                "to-number",
+                [
+                  "get",
+                  "platform_length"
+                ],
+                0
+              ],
+              0
+            ],
+            [
+              "concat",
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "length_estimated"
+                  ],
+                  true
+                ],
+                "≈",
+                ""
+              ],
+              [
+                "to-string",
+                [
+                  "round",
+                  [
+                    "*",
+                    [
+                      "get",
+                      "platform_length"
+                    ],
+                    1
+                  ]
+                ]
+              ],
+              " m"
+            ],
+            ""
+          ]
         ],
         "text-font": [
           "Noto Sans Bold"
         ],
         "text-size": 12,
-        "text-padding": 10,
-        "text-allow-overlap": false
+        "text-padding": 2,
+        "text-anchor": [
+          "coalesce",
+          [
+            "get",
+            "label_anchor"
+          ],
+          "center"
+        ],
+        "text-allow-overlap": [
+          "step",
+          [
+            "zoom"
+          ],
+          false,
+          19,
+          true
+        ],
+        "text-ignore-placement": true
       },
       "paint": {
         "text-color": "#214b5b",
@@ -26838,6 +26941,19 @@
             [
               "concat",
               [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "length_estimated"
+                  ],
+                  true
+                ],
+                "≈",
+                ""
+              ],
+              [
                 "to-string",
                 [
                   "round",
@@ -26860,8 +26976,25 @@
           "Noto Sans Bold"
         ],
         "text-size": 11,
-        "text-padding": 10,
-        "text-allow-overlap": false
+        "text-padding": 2,
+        "text-anchor": [
+          "coalesce",
+          [
+            "get",
+            "label_anchor"
+          ],
+          "center"
+        ],
+        "text-allow-overlap": [
+          "step",
+          [
+            "zoom"
+          ],
+          false,
+          19,
+          true
+        ],
+        "text-ignore-placement": true
       },
       "paint": {
         "text-color": "#214b5b",
