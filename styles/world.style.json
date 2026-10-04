@@ -5199,6 +5199,14 @@
       "encoding": "terrarium",
       "maxzoom": 15,
       "attribution": "<a href=\"terrain-credits.html\">Terrain: Mapzen / AWS and data contributors</a>"
+    },
+    "bathymetry": {
+      "type": "raster",
+      "tiles": [
+        "atlas-depth://{z}/{x}/{y}"
+      ],
+      "tileSize": 512,
+      "maxzoom": 14
     }
   },
   "layers": [
@@ -5219,6 +5227,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -5243,6 +5252,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": "carto",
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -5267,6 +5277,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": "satellite",
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -5309,6 +5320,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -5348,6 +5360,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -5388,6 +5401,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -5431,6 +5445,34 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "terrain-bathymetry",
+      "type": "raster",
+      "source": "bathymetry",
+      "paint": {
+        "raster-fade-duration": 0,
+        "raster-resampling": "linear"
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "terrain",
+        "atlas:category": "raster",
+        "atlas:views": [],
+        "atlas:settings": [
+          "relief"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": true,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [
+          "carto"
+        ],
         "atlas:localize": false
       }
     },
@@ -5470,6 +5512,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -5501,6 +5544,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -5518,6 +5562,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "source": "openmaptiles",
@@ -5563,6 +5608,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -5603,6 +5649,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -5631,6 +5678,7 @@
         "atlas:terrain": true,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -5674,6 +5722,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -5716,6 +5765,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -5758,6 +5808,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -5804,6 +5855,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -5849,6 +5901,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -5892,6 +5945,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -5948,6 +6002,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -6003,6 +6058,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -6095,6 +6151,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -6147,6 +6204,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -6200,6 +6258,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -6238,6 +6297,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -6275,6 +6335,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -6319,6 +6380,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -6362,6 +6424,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -6405,6 +6468,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -6452,6 +6516,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -6498,6 +6563,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -6542,6 +6608,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -6677,6 +6744,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -6724,6 +6792,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -6796,6 +6865,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -6924,6 +6994,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -6993,6 +7064,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -7063,6 +7135,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -7158,6 +7231,7 @@
         "atlas:terrain": true,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -7236,9 +7310,93 @@
             "zoom"
           ],
           5,
-          0.4,
+          [
+            "*",
+            0.4,
+            [
+              "*",
+              [
+                "case",
+                [
+                  ">",
+                  [
+                    "get",
+                    "level"
+                  ],
+                  0
+                ],
+                1,
+                0.45
+              ],
+              [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "abs",
+                  [
+                    "get",
+                    "ele"
+                  ]
+                ],
+                0,
+                1,
+                200,
+                0.9,
+                1000,
+                0.45,
+                3000,
+                0.2,
+                6000,
+                0.1
+              ]
+            ]
+          ],
           12,
-          0.65
+          [
+            "*",
+            0.65,
+            [
+              "*",
+              [
+                "case",
+                [
+                  ">",
+                  [
+                    "get",
+                    "level"
+                  ],
+                  0
+                ],
+                1,
+                0.45
+              ],
+              [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "abs",
+                  [
+                    "get",
+                    "ele"
+                  ]
+                ],
+                0,
+                1,
+                200,
+                0.9,
+                1000,
+                0.45,
+                3000,
+                0.2,
+                6000,
+                0.1
+              ]
+            ]
+          ]
         ]
       },
       "metadata": {
@@ -7254,6 +7412,7 @@
         "atlas:terrain": true,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -7310,9 +7469,93 @@
             "zoom"
           ],
           5,
-          0.4,
+          [
+            "*",
+            0.4,
+            [
+              "*",
+              [
+                "case",
+                [
+                  ">",
+                  [
+                    "get",
+                    "level"
+                  ],
+                  0
+                ],
+                1,
+                0.45
+              ],
+              [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "abs",
+                  [
+                    "get",
+                    "ele"
+                  ]
+                ],
+                0,
+                1,
+                200,
+                0.9,
+                1000,
+                0.45,
+                3000,
+                0.2,
+                6000,
+                0.1
+              ]
+            ]
+          ],
           12,
-          0.65
+          [
+            "*",
+            0.65,
+            [
+              "*",
+              [
+                "case",
+                [
+                  ">",
+                  [
+                    "get",
+                    "level"
+                  ],
+                  0
+                ],
+                1,
+                0.45
+              ],
+              [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "abs",
+                  [
+                    "get",
+                    "ele"
+                  ]
+                ],
+                0,
+                1,
+                200,
+                0.9,
+                1000,
+                0.45,
+                3000,
+                0.2,
+                6000,
+                0.1
+              ]
+            ]
+          ]
         ]
       },
       "metadata": {
@@ -7328,6 +7571,7 @@
         "atlas:terrain": true,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -7396,6 +7640,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -7455,6 +7700,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -7517,6 +7763,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -7582,6 +7829,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -7634,6 +7882,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -7685,6 +7934,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -7748,6 +7998,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -7806,6 +8057,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -7838,6 +8090,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -7886,6 +8139,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -7938,6 +8192,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -8034,6 +8289,7 @@
         "atlas:terrain": true,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -8131,6 +8387,7 @@
         "atlas:terrain": true,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -8209,6 +8466,7 @@
         "atlas:terrain": true,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -8342,6 +8600,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -8416,6 +8675,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -8488,6 +8748,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -8562,6 +8823,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -8631,6 +8893,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -8707,6 +8970,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -8788,6 +9052,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -8861,6 +9126,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -8994,6 +9260,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -9111,6 +9378,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -9228,6 +9496,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -9296,6 +9565,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -9364,6 +9634,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -9408,6 +9679,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -9611,6 +9883,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -9773,6 +10046,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -9896,6 +10170,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -10019,6 +10294,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -10224,6 +10500,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -10388,6 +10665,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -10817,6 +11095,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -11246,6 +11525,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -11757,6 +12037,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -12227,6 +12508,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -13970,6 +14252,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -16135,6 +16418,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -18300,6 +18584,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -20043,6 +20328,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -22208,6 +22494,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -24373,6 +24660,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -26160,6 +26448,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -28369,6 +28658,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -30578,6 +30868,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -32324,6 +32615,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -34492,6 +34784,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -36660,6 +36953,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -36901,6 +37195,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -37158,6 +37453,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -37314,6 +37610,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -37801,6 +38098,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -38247,6 +38545,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -39222,6 +39521,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -40197,6 +40497,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -41254,6 +41555,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -42270,6 +42572,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -42398,6 +42701,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -42526,6 +42830,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -42736,6 +43041,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -42905,6 +43211,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -42987,6 +43294,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -43069,6 +43377,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -43233,6 +43542,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -43356,6 +43666,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -43431,6 +43742,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -43506,6 +43818,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -43663,6 +43976,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -43779,6 +44093,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -44162,6 +44477,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -44312,6 +44628,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -44433,6 +44750,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -44767,6 +45085,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -44839,6 +45158,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -44939,6 +45259,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -45039,6 +45360,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -45119,6 +45441,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -45199,6 +45522,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -45453,6 +45777,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -45648,6 +45973,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -45892,6 +46218,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -46077,6 +46404,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -46319,6 +46647,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -46502,6 +46831,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -46744,6 +47074,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -46927,6 +47258,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -47038,6 +47370,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -47432,6 +47765,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -51605,6 +51939,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -51749,6 +52084,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -52610,6 +52946,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -52807,6 +53144,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -52919,6 +53257,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -52952,6 +53291,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -52990,6 +53330,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -53025,6 +53366,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -53051,6 +53393,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -53091,6 +53434,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -53204,6 +53548,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -53263,6 +53608,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "layout": {
@@ -53340,6 +53686,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -53375,6 +53722,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "layout": {
@@ -53436,6 +53784,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -53496,6 +53845,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "layout": {
@@ -53558,6 +53908,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "layout": {
@@ -53635,6 +53986,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -53707,6 +54059,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -54066,6 +54419,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -54126,6 +54480,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -54203,6 +54558,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -54288,6 +54644,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -54364,6 +54721,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -54440,6 +54798,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -54499,6 +54858,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -54544,6 +54904,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -54564,6 +54925,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "id": "electrification-substation-areas",
@@ -54600,6 +54962,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "id": "electrification-substation-edges",
@@ -54635,6 +54998,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "filter": [
@@ -54705,6 +55069,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "filter": [
@@ -54773,6 +55138,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "filter": [
@@ -54833,6 +55199,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       },
       "filter": [
@@ -54896,6 +55263,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       },
       "filter": [
@@ -54979,6 +55347,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       },
       "filter": [
@@ -55214,6 +55583,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -55388,6 +55758,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -55718,6 +56089,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -55948,6 +56320,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -56167,6 +56540,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -56384,6 +56758,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -56602,6 +56977,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -56820,6 +57196,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -57039,6 +57416,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -57257,6 +57635,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -57478,6 +57857,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -57698,6 +58078,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -57920,6 +58301,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -58144,6 +58526,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -58357,6 +58740,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -58570,6 +58954,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -58783,6 +59168,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -58996,6 +59382,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -59247,6 +59634,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -59460,6 +59848,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -59673,6 +60062,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -59882,6 +60272,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -60099,6 +60490,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -61291,6 +61683,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -61527,6 +61920,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -61742,6 +62136,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -61940,6 +62335,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -62065,6 +62461,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -62141,6 +62538,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": false
       }
     },
@@ -62702,6 +63100,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -63281,6 +63680,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -63950,6 +64350,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -64493,6 +64894,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -65054,6 +65456,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -65705,6 +66108,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -66248,6 +66652,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -66809,6 +67214,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -67460,6 +67866,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -68041,6 +68448,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -68640,6 +69048,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -69329,6 +69738,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -69927,6 +70337,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -70543,6 +70954,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -71249,6 +71661,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -71839,6 +72252,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -72447,6 +72861,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -73145,6 +73560,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -73735,6 +74151,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -74343,6 +74760,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -75041,6 +75459,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -75394,6 +75813,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -75747,6 +76167,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -76100,6 +76521,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -76453,6 +76875,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -76737,6 +77160,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -77298,6 +77722,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -77841,6 +78266,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -78384,6 +78810,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -78965,6 +79392,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -79563,6 +79991,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -80153,6 +80582,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -80743,6 +81173,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -80823,6 +81254,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     },
@@ -80914,6 +81346,7 @@
         "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
+        "atlas:hide-backgrounds": [],
         "atlas:localize": true
       }
     }
