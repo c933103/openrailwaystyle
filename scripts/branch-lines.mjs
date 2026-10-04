@@ -7,6 +7,7 @@
 // Pure functions; scripts/build-branch-lines.mjs does the I/O.
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
+import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {parseMaxspeed} from './lifecycle.mjs';
 
 export const MIN_ZOOM = 4, BRANCH_MAX_ZOOM = 6, METRO_MIN_ZOOM = 7, MAX_ZOOM = 9, LAYER = 'branch_lines';

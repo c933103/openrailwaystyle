@@ -6,6 +6,7 @@
 // Pure functions; scripts/build-service-routes.mjs does the I/O.
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
+import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {simplify} from './branch-lines.mjs';
 import {frequencyBundle} from '../styles/service-frequency.mjs';
 

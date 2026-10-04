@@ -4,6 +4,7 @@
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import vtpbf from 'vt-pbf';
+import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {profileBundle,FREQUENCY_PROFILES} from '../styles/service-frequency.mjs';
 const identity=p=>[p.operator,p.ref,p.kind].map(s=>String(s||'').trim().toLowerCase()).join('|');
 export function mergeServiceTiles(buffers){
