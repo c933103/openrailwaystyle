@@ -299,3 +299,18 @@ test('grouping densely drawn interlocking parts stays within a work budget and g
  const started=performance.now(),measured=await geometry.measure('relation-33',platformTilesFor(mp.geometry.coordinates));
  assert.equal(measured,null);assert.ok(performance.now()-started<1000,`took ${performance.now()-started} ms`);
 });
+test('every visible part of a multipolygon platform seeds its measurement, not only the labelled one',async()=>{
+ // A compact 0.003° square (the larger diagonal, so it labels the platform) and
+ // a long thin 0.004° part about three zoom-15 tiles apart, both on screen at once.
+ const short=[[[.0015,.002],[.0045,.002],[.0045,.005],[.0015,.005],[.0015,.002]]],long=[[[.0365,.002],[.0405,.002],[.0405,.0021],[.0365,.0021],[.0365,.002]]];
+ const tiles=providerTiles([{type:'Feature',properties:{id:'relation-34'},geometry:{type:'MultiPolygon',coordinates:[short,long]}}]);
+ let data;
+ // The short part comes first; a renderer may return either fragment as the label anchor.
+ const fragments=[{properties:{id:'relation-34'},geometry:{type:'Polygon',coordinates:short}},{properties:{id:'relation-34'},geometry:{type:'Polygon',coordinates:long}}];
+ const map={getZoom:()=>19,getLayer:()=>({}),queryRenderedFeatures:({layers})=>layers.includes('platform-edges')?[]:fragments,getSource:id=>id==='platformNumbers'?{setData:d=>data=d}:null};
+ const p=createPlatformLengths(map,{delay:0,geometry:tiles.geometry,fetcher:async()=>({ok:true,json:async()=>({properties:{ref:'1'}})})});
+ try{
+  p.update();await new Promise(r=>setTimeout(r,40));
+  assert.ok(Math.abs(data.features[0].properties.platform_length-444.78)<.6,String(data.features[0].properties.platform_length));
+ }finally{p.destroy();}
+});

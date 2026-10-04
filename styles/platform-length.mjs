@@ -311,13 +311,18 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
     if(better(f,prepared.anchor,previous,platformSpan))desired.set(key,{kind:'edge',id,feature:f,anchor:prepared.anchor,url:map.getZoom()>=19?PLATFORM_API+id:null});
    }
    const layers=['platform-areas','platform-outlines','platform-points'].filter(id=>!map.getLayer||map.getLayer(id));
+   // Every rendered fragment seeds the measurement, so a separate visible
+   // part of a multipolygon is measured even when another labels it.
+   const seeds=new Map();
    for(const f of layers.length?map.queryRenderedFeatures({layers}):[]){
     if(candidates>=PLATFORM_UPDATE_LIMITS.candidates)break;
     const prepared=prepare(f);if(!prepared)continue;
     const object=platformObjectIdentity(f);if(!object)continue;const key='platform/'+object.key,previous=desired.get(key);
     if(!previous&&desired.size>=PLATFORM_UPDATE_LIMITS.features)continue;
+    const tiles=seeds.get(key)||new Map();for(const t of platformTilesFor(f.geometry?.coordinates))tiles.set(t.join('/'),t);seeds.set(key,tiles);
     if(better(f,prepared.anchor,previous,geometrySpan))desired.set(key,{kind:'platform',id:object.key,feature:f,anchor:prepared.anchor,url:'https://openrailwaymap.app/api/feature/openrailwaymap_standard/standard_railway_platforms/'+object.key});
    }
+   for(const [key,tiles] of seeds)if(desired.has(key))desired.get(key).seeds=[...tiles.values()];
   }
   for(const key of pending.keys())if(!desired.get(key)?.url)pending.delete(key);
   for(const [key,entry] of desired){const wanted=entry.url&&!cache.get(key)?.fetched;if(!wanted)pending.delete(key);else if(key!==inflight&&Date.now()>=pausedUntil)pending.set(key,entry.url);}
@@ -330,7 +335,7 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
  // tiles it never read, so a relation seen in such a tile is measured again
  // from there and keeps its longest part.
  const unread=(key,entry,values)=>{
-  const seeds=platformTilesFor(entry.feature.geometry?.coordinates);
+  const seeds=entry.seeds||platformTilesFor(entry.feature.geometry?.coordinates);
   if(!values?.measured)return seeds;
   if(platformObjectIdentity(entry.feature)?.type!=='relation')return null;
   const read=readTiles.get(key)||new Set(),fresh=seeds.filter(([x,y])=>!read.has(`${x}/${y}`));
