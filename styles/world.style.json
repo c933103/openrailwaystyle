@@ -5823,7 +5823,7 @@
       ],
       "minzoom": 7,
       "maxzoom": 12,
-      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a> · <a href=\"frequency-credits.html\">Timetable sources</a>"
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
     },
     "streetRunning": {
       "type": "vector",
@@ -21557,19 +21557,11 @@
             "zoom"
           ],
           7,
-          [
-            "*",
-            3.5,
-            0.5714285714285714
-          ],
+          2,
           12,
           3.5,
           16,
-          [
-            "*",
-            3.5,
-            1.4285714285714286
-          ]
+          5
         ],
         "line-offset": [
           "interpolate",
@@ -21583,29 +21575,25 @@
           [
             "*",
             [
-              "*",
+              "-",
               [
-                "-",
-                [
-                  "get",
-                  "i"
-                ],
-                [
-                  "/",
-                  [
-                    "-",
-                    [
-                      "get",
-                      "n"
-                    ],
-                    1
-                  ],
-                  2
-                ]
+                "get",
+                "i"
               ],
-              3.5
+              [
+                "/",
+                [
+                  "-",
+                  [
+                    "get",
+                    "n"
+                  ],
+                  1
+                ],
+                2
+              ]
             ],
-            0.5714285714285714
+            2
           ],
           12,
           [
@@ -21635,32 +21623,27 @@
           [
             "*",
             [
-              "*",
+              "-",
               [
-                "-",
-                [
-                  "get",
-                  "i"
-                ],
-                [
-                  "/",
-                  [
-                    "-",
-                    [
-                      "get",
-                      "n"
-                    ],
-                    1
-                  ],
-                  2
-                ]
+                "get",
+                "i"
               ],
-              3.5
+              [
+                "/",
+                [
+                  "-",
+                  [
+                    "get",
+                    "n"
+                  ],
+                  1
+                ],
+                2
+              ]
             ],
-            1.4285714285714286
+            5
           ]
-        ],
-        "line-opacity": 1
+        ]
       },
       "metadata": {
         "atlas:semantics-version": 1,

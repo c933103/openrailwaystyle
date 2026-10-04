@@ -2,15 +2,17 @@
 import assert from 'node:assert/strict';
 import {readFile,mkdir} from 'node:fs/promises';
 import {chromium} from 'playwright';
+import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 const root=process.env.ATLAS_TEST_URL || 'http://127.0.0.1:4173';
 const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 try {
-  const context=await browser.newContext({viewport:{width:240,height:240},hasTouch:true}),page=await context.newPage();
+  const context=await browser.newContext({viewport:{width:240,height:240},hasTouch:true,serviceWorkers:'block'}),page=await context.newPage();
+  await installEmptyMapProviders(context,root+'/');
   if(process.env.ATLAS_MAPLIBRE_ASSETS){
     for(const name of ['maplibre-gl.js','maplibre-gl.css'])await page.route(`**/maplibre-gl@5.24.0/dist/${name}`,async r=>r.fulfill({body:await readFile(`${process.env.ATLAS_MAPLIBRE_ASSETS}/${name}`),contentType:name.endsWith('.js')?'text/javascript':'text/css'}));
     await page.route('**/pmtiles@4.2.1/dist/pmtiles.js',async r=>r.fulfill({body:await readFile(`${process.env.ATLAS_MAPLIBRE_ASSETS}/pmtiles.js`),contentType:'text/javascript'}));
   }
-  await page.goto(root+'/?ui=watch&mode=service&serviceWidth=frequency#15/22.405/113.98',{waitUntil:'domcontentloaded'});
+  await page.goto(root+'/?ui=watch&mode=service#15/22.405/113.98',{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.body.dataset.mapReady==='true',{},{timeout:60000});
   await page.evaluate(async()=>{window.testMap=(await import(document.querySelector('script[type="module"]').src)).map;});
   await mkdir('browser-review',{recursive:true});
@@ -30,13 +32,12 @@ try {
     finally {await page.mouse.up();}
     const box=await page.locator('#watch-content').boundingBox();
     for(const [x,y] of [[box.x,box.y],[box.x+box.width,box.y],[box.x,box.y+box.height],[box.x+box.width,box.y+box.height]])assert.ok(Math.hypot(x-size/2,y-size/2)<=size/2,'controls fit inside a round watch face');
-    await page.locator('#watch-content select[aria-label="Map options"]').selectOption('frequency');
-    await page.locator('#watch-content select').selectOption('pm');
+    await page.locator('#watch-content select[aria-label="Railway view"]').selectOption('service');
     await page.locator('#watch-menu').waitFor({state:'hidden'});
     await page.touchscreen.tap(size/2,size/2);
     assert.equal(await page.locator('#details').isVisible(),false,'a tap does not open a detail card');
     await page.screenshot({path:`browser-review/watch-map-${size}.png`});
-    console.log(`${size}px: full-face idle map, round-safe controls and frequency selection verified`);
+    console.log(`${size}px: full-face idle map, round-safe controls and basic Service selection verified`);
   }
   const centre=await page.evaluate(()=>testMap.getCenter().toArray());
   await page.mouse.move(140,140);await page.mouse.down();await page.mouse.move(185,160,{steps:8});await page.mouse.up();

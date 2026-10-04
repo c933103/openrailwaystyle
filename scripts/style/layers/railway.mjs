@@ -1,6 +1,5 @@
 import { INFRASTRUCTURE, speedPaint as speedColours, speedLabel, electrificationPaint, controlPaint, gaugePaint, loadingPaint, ownerPaint, loadingLabel, axlePaint, axleLabel, labelExpression, trainProtectionShort, TRAIN_PROTECTION } from '../../../styles/map-model.mjs';
 import {present, notFerry, hasService, byKindZoom} from './railway-expressions.mjs';
-import {serviceFrequencyPaint} from '../../../styles/service-frequency.mjs';
 
 // Each group has a fixed position in the atlas composition. Returning separate
 // groups keeps roads and structural cues ordered without searching layer IDs.
@@ -84,10 +83,11 @@ export function createRailwayLayers() {
   groups.details.push(gaugeDual);
   // Each service along the tracks it runs on, in its own colour, side by side
   // where several share a track (i of n, drawn with an offset), and its name.
-  const servicePaint = serviceFrequencyPaint();
+  const serviceWidth = [2, 3.5, 5], serviceOffset = ['interpolate', ['linear'], ['zoom'],
+    ...[7, 12, 16].flatMap((z, k) => [z, ['*', ['-', ['get', 'i'], ['/', ['-', ['get', 'n'], 1], 2]], serviceWidth[k]]])];
   groups.details.push({id:'service-routes', type:'line', source:'serviceRoutes', 'source-layer':'service_routes', minzoom:7,
     layout:{'line-cap':'butt','line-join':'round'},
-    paint:{'line-color':['to-color', ['get', 'colour'], '#5d6b73'], 'line-width':servicePaint.width, 'line-offset':servicePaint.offset, 'line-opacity':servicePaint.opacity}});
+    paint:{'line-color':['to-color', ['get', 'colour'], '#5d6b73'], 'line-width':['interpolate', ['linear'], ['zoom'], 7, serviceWidth[0], 12, serviceWidth[1], 16, serviceWidth[2]], 'line-offset':serviceOffset}});
   groups.names.push({id:'service-names', type:'symbol', source:'serviceRoutes', 'source-layer':'service_routes', minzoom:9,
     // Names of services sharing a track stand side by side across it, in the
     // order of their lines, so one does not hide another.
@@ -95,7 +95,8 @@ export function createRailwayLayers() {
       // Every slot a way can have in practice (styles cannot build the offset
       // from a number, so each has its entry); beyond 64 services on one way,
       // the outermost names share the last offset.
-      'text-offset':servicePaint.labelOffset},
+      'text-offset':['match', ['get', 'slot'], ...Array.from({length: 127}, (_, k) => k - 63).filter(k => k).flatMap(k => [k, ['literal', [0, k * 0.65]]]),
+        ['literal', [0, 0]]]},
     paint:{'text-color':'#1c2b33', 'text-halo-color':'#ffffff', 'text-halo-width':2}});
   // Structural cues use shape as well as colour, in every view. A bridge has
   // dark parapets outside the track; tunnels use a pale dashed core. They start

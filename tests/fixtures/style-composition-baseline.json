@@ -284,7 +284,7 @@
       ],
       "minzoom": 7,
       "maxzoom": 12,
-      "sha256": "097b34c32d2b5be6665a22031ed09bb8bb800f68b6f82cc5c1a45460cd91579f"
+      "sha256": "52acda9c61eec79b8afec2323563d3b6288c4607bd17316048ada11e832859e7"
     },
     {
       "id": "streetRunning",
@@ -1245,7 +1245,7 @@
       "source": "serviceRoutes",
       "sourceLayer": "service_routes",
       "minzoom": 7,
-      "sha256": "b72fc4ff135db346eb7586f263e5a2c816c4930548deb95c9dd618a0e962e6ea"
+      "sha256": "138a90c72872654fb82fa857eed10600c83c3b6a816d1d13c50ac0a6d57e9acf"
     },
     {
       "id": "structure-tunnel",

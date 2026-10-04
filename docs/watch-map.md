@@ -15,7 +15,8 @@ gestures are never prevented. Shift F10/context menu is a keyboard alternative.
 
 Temporary controls fit inside a square occupying 70% of the shorter viewport
 dimension, safe inside a circular face. Choose a railway view directly; Options
-opens layers, Service frequency or source information. One layer/profile choice
+opens layers or source information. Service uses the ordinary route view,
+independent of timetable/frequency data. One layer choice
 returns to the map. **Map** or Escape closes controls. **Standard view** restores
 the ordinary interface. Credits remain available through Options → Info, with
 source links. Errors can be inspected there too. Browsing taps never open cards.

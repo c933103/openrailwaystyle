@@ -127,25 +127,14 @@ jobs:
             echo "Could not look up the service-data snapshot (git exit $status)"
             exit 1
           fi
-      - name: Add reviewed timetable shapes and peak/off-peak profiles to service tiles
-        run: |
-          python3 scripts/load-frequency-snapshot.py
-          node scripts/rebuild-service-frequency.mjs
       - name: Install test browser
         run: npx playwright install --with-deps chromium
       - name: Start test server
         run: node scripts/serve.mjs &
-      - name: Verify frequency widths and shared-track selection
-        run: node scripts/check-service-frequency-browser.mjs
+      - name: Verify map controls, cookie restoration and responsive layout
+        run: node scripts/check-map-controls-browser.mjs
       - name: Verify map-only watch layout and direct gestures
         run: node scripts/check-watch-browser.mjs
-      - name: Verify mapped frequency profiles across world regions
-        run: |
-          # Real dated feeds are test fixtures, never a production city list.
-          node scripts/rebuild-service-frequency.mjs styles/data/service-routes /tmp/frequency-fixture-credits.html --fixtures
-          node scripts/check-world-frequency-browser.mjs
-          # Restore the production worldwide snapshot after fixture checks.
-          node scripts/rebuild-service-frequency.mjs
       - name: Verify curated station labels and details on the globe
         run: node scripts/check-major-stations-browser.mjs
       - name: Verify roads, planning boundaries and rail-road interfaces

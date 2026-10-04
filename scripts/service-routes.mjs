@@ -7,11 +7,10 @@
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import {simplify} from './branch-lines.mjs';
-import {frequencyBundle} from '../styles/service-frequency.mjs';
 
 export const MIN_ZOOM = 7, LOCAL_MIN_ZOOM = 10, MAX_ZOOM = 12, LAYER = 'service_routes';
 // Light rail, trams and monorails from zoom 10, as in the other views.
-export const LOCAL_KINDS = ['light_rail', 'tram', 'monorail', 'funicular'];
+export const LOCAL_KINDS = ['light_rail', 'tram', 'monorail'];
 
 const areaFilter = spec => { const [key, value] = spec.split('='); return `area["${key}"="${value}"]`; };
 const SELECTS = ['rel[type=route][route~"^(subway|light_rail|tram|monorail)$"]', 'rel[type=route][route=train][service~"^(commuter|urban)$"]'];
@@ -254,7 +253,7 @@ export function orient(line) {
   const [a, b] = [line[0], line.at(-1)];
   return b[0] < a[0] || (b[0] === a[0] && b[1] < a[1]) ? [...line].reverse() : line;
 }
-const ORDER = {rail:0,commuter: 0, subway: 1, monorail: 2, light_rail: 3, tram: 4,funicular:5};
+const ORDER = {commuter: 0, subway: 1, monorail: 2, light_rail: 3, tram: 4};
 // Joins lines where one ends at the point the next starts (never reversing
 // one, which would put its route on the other side).
 export function joinLines(lines) {
@@ -281,7 +280,7 @@ export function joinLines(lines) {
 // route on each way: its label, colour, kind and place (i of n) among the
 // routes drawn on that way (at zooms 7–9 metro and commuter routes only;
 // from zoom 10 all of them).
-export function buildTiles({routes, ways}, {headways, timetable} = {}) {
+export function buildTiles({routes, ways}) {
   const out = new Map(), sets = [[new Map(), MIN_ZOOM, LOCAL_MIN_ZOOM - 1, r => !LOCAL_KINDS.includes(r.kind)], [new Map(), LOCAL_MIN_ZOOM, MAX_ZOOM, () => true]];
   const service = serviceRoutes({routes, ways});
   for (const way of ways.values()) {
@@ -292,7 +291,6 @@ export function buildTiles({routes, ways}, {headways, timetable} = {}) {
     if (!lines.length) continue;
     for (const [groups, , , shown] of sets) {
       const list = all.filter(shown);
-      const frequency = headways ? frequencyBundle(list, lines, headways) : null;
       // Names as name and name:xx, as the map's other labels, so they follow
       // the label language.
       list.forEach((route, i) => {
@@ -300,7 +298,6 @@ export function buildTiles({routes, ways}, {headways, timetable} = {}) {
           ref: route.ref, colour: route.colour, kind: route.kind, network: route.network, operator: route.operator, i, n: list.length,
           // Its place across the bundle (−(n−1) … n−1), for its name's offset.
           slot: Math.max(-63, Math.min(63, 2 * i - (list.length - 1)))};
-        if (frequency) Object.assign(properties, frequency[i]);
         const key = JSON.stringify(properties);
         if (!groups.has(key)) groups.set(key, {properties, lines: []});
         groups.get(key).lines.push(...lines);
@@ -309,13 +306,6 @@ export function buildTiles({routes, ways}, {headways, timetable} = {}) {
   }
   for (const set of sets) {
     const [groups, minZoom, maxZoom] = set;
-    for(const feature of (minZoom===MIN_ZOOM?timetable?.overview:timetable?.local)||[]){
-      const key=JSON.stringify(feature.properties);
-      if(!groups.has(key))groups.set(key,{properties:feature.properties,lines:[]});
-      if(feature.geometry.type==='LineString')groups.get(key).lines.push(feature.geometry.coordinates);
-      else if(feature.geometry.type==='MultiLineString')groups.get(key).lines.push(...feature.geometry.coordinates);
-      else throw new Error('Invalid timetable line geometry');
-    }
     // Consecutive ways with the same route in the same place become one
     // line, long enough for its name.
     const features = [...groups.values()].map(({properties, lines}) => {
