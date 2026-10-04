@@ -140,6 +140,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const keyboard = new vm.SyntheticModule(['installKeyboardPan'], function() { this.setExport('installKeyboardPan', () => {}); }, {context});
   const cjkFontModule = new vm.SyntheticModule(Object.keys(cjkFontFeatures),function() {
     for (const [key,value] of Object.entries(cjkFontFeatures)) this.setExport(key,value);
+  },{context});
   const crossingTagModule = new vm.SyntheticModule(Object.keys(crossingTagFeatures),function() {
     for (const [key,value] of Object.entries(crossingTagFeatures)) this.setExport(key,value);
   },{context});
