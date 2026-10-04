@@ -37,7 +37,8 @@ export function constraintLayers() {
     const polygon=['all',filter,['==',['geometry-type'],'Polygon']];
     areas.push({...base(`context-constraints-${id}-area`,'fill',source,zoom,polygon),paint:{'fill-color':color,'fill-opacity':id.startsWith('indigenous')?0.045:0.1}});
     lines.push({...base(`context-constraints-${id}-edge`,'line',source,zoom,polygon),paint:{'line-color':color,'line-width':['interpolate',['linear'],['zoom'],zoom,0.8,14,1.5],'line-opacity':0.8,'line-dasharray':id.startsWith('indigenous')?[8,2,1,2]:id==='military'?[2,2]:[6,2]}});
-    labels.push({...base(`context-constraints-${id}-area-label`,'symbol',source,zoom+1,filter),layout:{...nameLayout,'symbol-placement':source==='park'?'point':'line','symbol-spacing':500,'text-size':11},paint:{'text-color':color,'text-halo-color':'#fffef8','text-halo-width':1.5}});
+    // OpenMapTiles landuse features carry only a class, no name to label.
+    if(source!=='landuse') labels.push({...base(`context-constraints-${id}-area-label`,'symbol',source,zoom+1,filter),layout:{...nameLayout,'symbol-placement':source==='park'?'point':'line','symbol-spacing':500,'text-size':11},paint:{'text-color':color,'text-halo-color':'#fffef8','text-halo-width':1.5}});
   }
   return {areas,lines,labels};
 }

@@ -82,14 +82,16 @@
         "context-constraints-heritage-area-label",
         "context-constraints-indigenous-park-area",
         "context-constraints-indigenous-park-edge",
-        "context-constraints-indigenous-park-area-label"
+        "context-constraints-indigenous-park-area-label",
+        "context-constraints-military-area-label",
+        "context-constraints-religious-area-label"
       ],
       "changedLayers": [
         "context-constraints-protected-area",
         "context-constraints-protected-edge",
         "context-constraints-protected-area-label"
       ],
-      "reason": "OpenMapTiles park classes come from boundary=national_park/protected_area, leisure=nature_reserve and lower-cased protection_title; boundary=aboriginal_lands is only in the boundary layer. The removed filters could never match."
+      "reason": "OpenMapTiles park classes come from boundary=national_park/protected_area, leisure=nature_reserve and lower-cased protection_title; boundary=aboriginal_lands is only in the boundary layer. The removed filters could never match. The landuse layer has only a class field, so its area labels had no text."
     }
   },
   "root": {
@@ -1825,22 +1827,6 @@
       "sourceLayer": "boundary",
       "minzoom": 5,
       "sha256": "a6646f4a87b10eec3d41bf3b3d3913ce4d9997a4e7b4e309a5b154a7e0741efd"
-    },
-    {
-      "id": "context-constraints-military-area-label",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "sourceLayer": "landuse",
-      "minzoom": 9,
-      "sha256": "25ddc19bac81baeac104a291d96c4455ecdfa734bbfee932f5cfd8ea80b35c0c"
-    },
-    {
-      "id": "context-constraints-religious-area-label",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "sourceLayer": "landuse",
-      "minzoom": 13,
-      "sha256": "4a461b91748416d032f16f10307d285693c1158e26e7bb0991aa697bfcd0d863"
     },
     {
       "id": "context-constraints-religious-label",
