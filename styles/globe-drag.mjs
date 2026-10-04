@@ -142,23 +142,24 @@ export const globeGroundZoom = (zoom, latitude) => zoomForLatitude(zoom, latitud
 // a pole.
 export const readoutZoom = (zoom, latitude) => zoomForLatitude(zoom, latitude, Math.max(-MERCATOR_LIMIT, Math.min(MERCATOR_LIMIT, latitude)));
 // The view in the address (#zoom/lat/lng[/bearing[/pitch]], as MapLibre
-// writes it). The zoom written is the readout zoom, which near a pole keeps
-// the ground scale with a zoom the flat map can show, instead of MapLibre's
-// latitude-relative one (negative close to a pole); coordinates get enough
-// decimals for that ground scale, so a close-up polar view survives a link.
+// writes it). Beyond 85.05° the zoom written is the readout zoom, marked
+// with a trailing "r" (#18.58r/-89.99964/30): it keeps the ground scale with
+// a zoom the flat map can show, instead of MapLibre's latitude-relative one
+// (negative close to a pole). An unmarked zoom keeps MapLibre's meaning, so
+// older links open as before. Coordinates get enough decimals for the ground
+// scale, so a close-up polar view survives a link.
 export function viewHash({zoom, lat, lng, bearing = 0, pitch = 0}) {
   const z = readoutZoom(zoom, lat), digits = Math.max(0, Math.ceil((z * Math.LN2 + Math.log(512 / 360 / 0.5)) / Math.LN10)), m = 10 ** digits;
   const round = v => Math.round(v * m) / m, b = Math.round(bearing * 10) / 10, p = Math.round(pitch);
-  return `#${Math.round(z * 100) / 100}/${round(lat)}/${round(lng)}${b || p ? `/${b}` : ''}${p ? `/${p}` : ''}`;
+  return `#${Math.round(z * 100) / 100}${Math.abs(lat) > MERCATOR_LIMIT ? 'r' : ''}/${round(lat)}/${round(lng)}${b || p ? `/${b}` : ''}${p ? `/${p}` : ''}`;
 }
 export function parseViewHash(hash) {
   const parts = String(hash || '').replace(/^#/, '').split('/');
   if (parts.length < 3) return null;
-  const [z, lat, lng, bearing = 0, pitch = 0] = parts.map(Number);
+  const readout = /r$/.test(parts[0]);
+  const [z, lat, lng, bearing = 0, pitch = 0] = [parts[0].replace(/r$/, ''), ...parts.slice(1)].map(Number);
   if (![z, lat, lng, bearing, pitch].every(Number.isFinite) || Math.abs(lat) > 90) return null;
-  // Beyond 85.05° the readout zoom maps back to MapLibre's; a negative zoom
-  // there is an older address that held MapLibre's zoom as it was.
-  const zoom = Math.abs(lat) > MERCATOR_LIMIT && z >= 0 ? zoomForLatitude(z, Math.sign(lat) * MERCATOR_LIMIT, lat) : z;
+  const zoom = readout && Math.abs(lat) > MERCATOR_LIMIT ? zoomForLatitude(z, Math.sign(lat) * MERCATOR_LIMIT, lat) : z;
   return {center: [lng, Math.max(-POLE_LIMIT, Math.min(POLE_LIMIT, lat))], zoom, bearing, pitch};
 }
 export const zoomForLatitude = (zoom, oldLat, newLat) => zoom + Math.log2(Math.cos(rad(clampLat(newLat))) / Math.cos(rad(clampLat(oldLat))));

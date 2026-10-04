@@ -1080,7 +1080,10 @@ async function initialize() {
   map.on('moveend', writeHash);
   addEventListener('hashchange', () => {
     const view = parseViewHash(location.hash);
-    if (view) map.jumpTo(view);
+    if (!view) return;
+    // A centre beyond 85.05° exists only on the globe.
+    if (Math.abs(view.center[1]) > 85.051129 && !onGlobe()) map.setProjection({type: 'globe'});
+    map.jumpTo(view); updatePolar();
   });
   map.on('styleimagemissing', event => {
     if (event.id.startsWith('context-')) {
