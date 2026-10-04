@@ -6,7 +6,7 @@ export const MAJOR_STATION_DENSITY=Object.freeze([
  Object.freeze({zoom:3,spacing:null,padding:14}),
  Object.freeze({zoom:4,spacing:78,padding:14}),
  Object.freeze({zoom:5,spacing:68,padding:12}),
- Object.freeze({zoom:6,spacing:56,padding:10}),
+ Object.freeze({zoom:6,spacing:56,padding:8}),
 ]);
 export function distanceKm(a,b){const p=(b.lat-a.lat)*rad,l=(b.lon-a.lon)*rad,h=Math.sin(p/2)**2+Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin(l/2)**2;return 12742*Math.asin(Math.min(1,Math.sqrt(h)));}
 const mercator=p=>[(p.lon+180)/360, .5-Math.log(Math.tan(Math.PI/4+Math.max(-85.051129,Math.min(85.051129,p.lat))*rad/2))/(2*Math.PI)];
