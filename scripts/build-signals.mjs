@@ -74,7 +74,7 @@ for (const [key, data] of tiles) {
   index.push(key);
 }
 await writeFile(new URL('index.json', output), JSON.stringify({tiles:index.sort()}));
-const manifest = {generated:new Date().toISOString(), signals:features.length, tiles:tiles.size, requests, downloadedBytes:downloaded,
+const manifest = {complete:true, generated:new Date().toISOString(), signals:features.length, tiles:tiles.size, requests, downloadedBytes:downloaded,
   regions:regions.map(({box,generated}) => ({box,generated})), source:api, license:'ODbL-1.0',
   description:'Worldwide OSM railway=signal nodes without railway:signal:direction, supplementing the direction-dependent OpenRailwayMap signal source.'};
 await writeFile(new URL('manifest.json', output), JSON.stringify(manifest, null, 2));

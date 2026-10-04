@@ -7,7 +7,9 @@ import {powerFacilityQuery,powerFacilitiesGeoJSON} from './power-facility-data.m
 const api=process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const output=process.env.POWER_OUTPUT || 'power-data';
 const cache='.snapshot-cache';
-const VERSION=1, MAX_AGE=28*86400_000;
+// Version 1 used tags-only output and therefore lost every node coordinate.
+// Its raw caches cannot produce a complete map and must never be reused.
+const VERSION=2, MAX_AGE=28*86400_000;
 const regions=[];
 for (let south=-90;south<90;south+=90) for(let west=-180;west<180;west+=90) regions.push([south,west,south+90,west+90]);
 await mkdir(cache,{recursive:true});
