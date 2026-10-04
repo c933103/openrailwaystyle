@@ -8,14 +8,16 @@ import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import {colourPixels, oceanPolygons, maskOcean, encodePng} from './bathymetry.mjs';
 
-const KEEP = 64, polygons = new Map();
+// Active masks belong to individual tile requests. Paint or cancellation
+// releases them; an insertion-order cache limit must not evict live work.
+const polygons = new Map();
 self.onmessage = async ({data: message}) => {
   const {id, key} = message;
   if (message.drop) { polygons.delete(key); return; }
   try {
     if (message.water) {
       const found = message.water.byteLength ? oceanPolygons(new VectorTile(new Pbf(new Uint8Array(message.water)))) : [];
-      if (found.length) { polygons.set(key, found); while (polygons.size > KEEP) polygons.delete(polygons.keys().next().value); }
+      if (found.length) polygons.set(key, found);
       self.postMessage({id, ocean: found.length > 0});
       return;
     }

@@ -173,3 +173,29 @@ test('world-wrap requests of the same depth tile keep independent worker state',
  cancelled.abort();release.forEach(r=>r());await assert.rejects(first,{name:'AbortError'});
  assert.deepEqual([...new Uint8Array((await second).data)],[1]);assert.equal(polygons.size,0);
 });
+
+
+test('depth worker retains every active mask beyond 64 requests and releases painted or cancelled masks', async () => {
+  const {runInNewContext}=await import('node:vm');
+  const source=(await readFile(new URL('../styles/depth-worker.mjs',import.meta.url),'utf8')).replace(/^import .*;$/gm,'');
+  const replies=[],self={postMessage:message=>replies.push(message)};
+  // Exercise the real worker message lifecycle; decoding and canvas output
+  // are independent of whether queued water masks survive concurrent work.
+  runInNewContext(source,{self,Map,Uint8Array,Error,
+    VectorTile:class {},Pbf:class {},oceanPolygons:()=>[{}],
+    OffscreenCanvas:class {getContext(){return {putImageData(){}};}},
+    ImageData:class {},colourPixels:()=>new Uint8Array(4),maskOcean(){},
+    encodePng:async()=>new Uint8Array([7]).buffer,
+  });
+  const send=message=>self.onmessage({data:message});
+  for(let id=0;id<96;id++)await send({id,key:`tile-${id}`,water:new Uint8Array([1]).buffer});
+  assert.equal(replies.filter(reply=>reply.ocean).length,96);
+  for(let id=0;id<96;id++)await send({id:100+id,key:`tile-${id}`,heights:{},tile:{}});
+  assert.equal(replies.filter(reply=>reply.data).length,96,'every active tile must paint, including the oldest mask');
+  assert.deepEqual(replies.filter(reply=>reply.error),[]);
+  await send({id:300,key:'cancelled',water:new Uint8Array([1]).buffer});
+  await send({key:'cancelled',drop:true});
+  await send({id:301,key:'cancelled',heights:{},tile:{}});
+  await send({id:302,key:'tile-0',heights:{},tile:{}});
+  assert.deepEqual(replies.filter(reply=>reply.error).map(reply=>reply.id),[301,302],'cancelled and painted masks are released');
+});

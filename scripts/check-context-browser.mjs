@@ -44,7 +44,7 @@ async function screenshot(name) {
 await mkdir('browser-review',{recursive:true});
 try {
   const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
-  await page.goto(base+'?v=20261004-pr53-repair1&mode=speed&language=en&relief=0&inactive=0#14/22.299/114.172',{waitUntil:'domcontentloaded'});
+  await page.goto(base+'?v=20261004-pr53-repair2&mode=speed&language=en&relief=0&inactive=0#14/22.299/114.172',{waitUntil:'domcontentloaded'});
   await page.waitForSelector('body[data-map-ready="true"]',{state:'attached'});
   await waitContext('transport');await waitContext('destinations');await settleContext();
   console.log('CONTEXT_DATA',JSON.stringify(await evaluate(map=>({
@@ -114,24 +114,16 @@ try {
     {name:'Heathrow',center:[-0.4543,51.47],zoom:14},
     {name:'Haneda',center:[139.7798,35.5494],zoom:14},
     {name:'Dubai airport',center:[55.3644,25.2532],zoom:14},
+    {name:'Yakama region',center:[-120.58,46.3],zoom:10},
+    {name:'Yellowstone region',center:[-110.58,44.60],zoom:10},
+    {name:'Military land',center:[-0.78,51.28],zoom:14},
+    {name:'North America jurisdictions',center:[-105,45],zoom:6},
+    {name:'Australian jurisdictions',center:[134,-25],zoom:6},
+    {name:'Mediterranean heritage',center:[12,42],zoom:10},
   ];
-  const targetInfo=await evaluate(async map=>{
-    const {CONTEXT_CATEGORIES,AREA_CATEGORIES}=await import(new URL('./context.mjs',document.querySelector('script[type="module"]').src));
-    const targets=[];
-    for(const category of CONTEXT_CATEGORIES) targets.push({id:`context-${category.group}-${category.id}-label`,kind:'label'});
-    for(const area of AREA_CATEGORIES){
-      targets.push({id:`context-destinations-${area.id}-area`,kind:'area'});
-      targets.push({id:`context-destinations-${area.id}-edge`,kind:'area-edge'});
-    }
-    targets.push(
-      {id:'context-transport-grounds',kind:'transport-area'},
-      {id:'context-transport-grounds-edge',kind:'transport-area-edge'},
-      {id:'context-transport-airport-area',kind:'airport-area'},
-      {id:'context-transport-airport-runways',kind:'airport-runway'},
-      {id:'context-transport-ferry-routes',kind:'ferry-route'},
-    );
-    return {targets,categories:CONTEXT_CATEGORIES.map(c=>({id:c.id,group:c.group,zoom:c.id==='airport'?8:(c.zoom||12)})),areas:AREA_CATEGORIES};
-  });
+  const targets=await evaluate(map=>map.getStyle().layers
+    .filter(layer=>layer.id.startsWith('context-'))
+    .map(layer=>({id:layer.id,sourceLayer:layer['source-layer'],minzoom:layer.minzoom||0})));
   const candidates=new Map();
   for(const sample of discoverySamples){
     await evaluate(async(map,s)=>{
@@ -141,67 +133,46 @@ try {
     },sample);
     await waitUntil(page,async()=>{
       const {map}=await import(document.querySelector('script[type="module"]').src);
-      return map.getSource('openmaptiles')&&map.isSourceLoaded('openmaptiles');
+      return map.getSource('openmaptiles')&&map.isSourceLoaded('openmaptiles')&&['poi','landuse','aerodrome_label','aeroway','transportation','park','boundary'].some(sourceLayer=>map.querySourceFeatures('openmaptiles',{sourceLayer}).length>0);
     },undefined,{timeout:120000});
     await page.waitForTimeout(100);
-    const found=await evaluate(async(map,sample)=>{
-      const {CONTEXT_CATEGORIES,AREA_CATEGORIES,contextCategory}=await import(new URL('./context.mjs',document.querySelector('script[type="module"]').src));
-      const styleLayers=new Map(map.getStyle().layers.map(l=>[l.id,l]));
-      const representative=geometry=>{
-        const points=[];
-        const walk=value=>{
-          if(Array.isArray(value)&&value.length>=2&&typeof value[0]==='number'&&typeof value[1]==='number')points.push(value);
-          else if(Array.isArray(value))for(const child of value)walk(child);
-        };
-        walk(geometry?.coordinates);
-        if(!points.length)return null;
-        const xs=points.map(p=>p[0]),ys=points.map(p=>p[1]);
-        return [(Math.min(...xs)+Math.max(...xs))/2,(Math.min(...ys)+Math.max(...ys))/2];
-      };
-      const add=(out,id,feature)=>{
-        if(!styleLayers.has(id))return;
-        const center=representative(feature.geometry);if(!center)return;
-        out.push({id,center,zoom:sample.zoom,sample:sample.name,sourceLayer:feature.sourceLayer||feature.layer?.['source-layer']||''});
-      };
+    const found=await evaluate((map,sample)=>{
       const out=[];
-      for(const sourceLayer of ['poi','aerodrome_label']){
-        for(const f of map.querySourceFeatures('openmaptiles',{sourceLayer})){
-          const category=contextCategory(f.properties,sourceLayer);
-          if(category)add(out,`context-${category.group}-${category.id}-label`,{properties:f.properties,geometry:f.geometry,sourceLayer});
+      const atZoom=value=>Array.isArray(value)?value.length===1&&value[0]==='zoom'?['literal',sample.zoom]:value.map(atZoom):value;
+      for(const layer of map.getStyle().layers.filter(layer=>layer.id.startsWith('context-'))){
+        for(const feature of map.querySourceFeatures(layer.source,{sourceLayer:layer['source-layer'],filter:atZoom(layer.filter)})){
+          // Geometry is a getter on MapLibre's feature prototype. Read it
+          // directly rather than dropping it with an object spread.
+          const points=[];
+          const walk=value=>{
+            if(Array.isArray(value)&&value.length>=2&&typeof value[0]==='number'&&typeof value[1]==='number')points.push(value);
+            else if(Array.isArray(value))for(const child of value)walk(child);
+          };
+          walk(feature.geometry?.coordinates);
+          if(!points.length)continue;
+          let west=Infinity,east=-Infinity,south=Infinity,north=-Infinity;
+          for(const [x,y] of points){west=Math.min(west,x);east=Math.max(east,x);south=Math.min(south,y);north=Math.max(north,y);}
+          out.push({id:layer.id,center:[(west+east)/2,(south+north)/2],zoom:Math.max(sample.zoom,layer.minzoom||0),sample:sample.name,sourceLayer:layer['source-layer']});
         }
       }
-      for(const f of map.querySourceFeatures('openmaptiles',{sourceLayer:'landuse'})){
-        for(const area of AREA_CATEGORIES)if(area.values.includes(f.properties.class)){
-          add(out,`context-destinations-${area.id}-area`,{properties:f.properties,geometry:f.geometry,sourceLayer:'landuse'});
-          add(out,`context-destinations-${area.id}-edge`,{properties:f.properties,geometry:f.geometry,sourceLayer:'landuse'});
-        }
-        if(['bus_station','railway'].includes(f.properties.class)){
-          add(out,'context-transport-grounds',{properties:f.properties,geometry:f.geometry,sourceLayer:'landuse'});
-          add(out,'context-transport-grounds-edge',{properties:f.properties,geometry:f.geometry,sourceLayer:'landuse'});
-        }
-      }
-      for(const f of map.querySourceFeatures('openmaptiles',{sourceLayer:'aeroway'})){
-        if(['aerodrome','apron','terminal','runway','taxiway'].includes(f.properties.class)&&f.geometry?.type!=='LineString')
-          add(out,'context-transport-airport-area',{properties:f.properties,geometry:f.geometry,sourceLayer:'aeroway'});
-        if(['runway','taxiway'].includes(f.properties.class)&&/LineString/.test(f.geometry?.type||''))
-          add(out,'context-transport-airport-runways',{properties:f.properties,geometry:f.geometry,sourceLayer:'aeroway'});
-      }
-      for(const f of map.querySourceFeatures('openmaptiles',{sourceLayer:'transportation'}))
-        if(f.properties.class==='ferry')add(out,'context-transport-ferry-routes',{properties:f.properties,geometry:f.geometry,sourceLayer:'transportation'});
       return out;
     },sample);
     console.log('CONTEXT_SAMPLE',sample.name,found.length);
-    for(const item of found){const list=candidates.get(item.id)||[];if(list.length<8)list.push(item);candidates.set(item.id,list);}
-    if(candidates.size===targetInfo.targets.length)break;
+    for(const item of found){
+      const list=candidates.get(item.id)||[];
+      if(list.length<8&&list.filter(candidate=>candidate.sample===item.sample).length<2&&!list.some(candidate=>candidate.center[0]===item.center[0]&&candidate.center[1]===item.center[1]))list.push(item);
+      candidates.set(item.id,list);
+    }
+    if(candidates.size===targets.length)break;
   }
-  const missingTargets=targetInfo.targets.map(t=>t.id).filter(id=>!candidates.has(id));
+  const missingTargets=targets.map(t=>t.id).filter(id=>!candidates.has(id));
   console.log('CONTEXT_DISCOVERY',JSON.stringify({found:[...candidates.values()],missing:missingTargets}));
   assert.deepEqual(missingTargets,[],'real worldwide samples supply every generated context layer');
 
   // Keep the production collision policy. Try several real source features
   // rather than choosing the first offscreen/colliding candidate permanently.
   const renderedMatrix=[];
-  for(const target of targetInfo.targets){
+  for(const target of targets){
     let result;
     for(const candidate of candidates.get(target.id)){
       await evaluate(async(map,item)=>{await new Promise(resolve=>{map.once('render',resolve);map.jumpTo({center:item.center,zoom:item.zoom});map.triggerRepaint();});},{...candidate,id:target.id});
