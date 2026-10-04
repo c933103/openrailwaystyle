@@ -10,6 +10,15 @@ import {decodeLoadingGauges, wayId} from './loading-gauge-list.mjs';
 export {hanRegion, chineseArea};
 export const buildInfo=typeof __ATLAS_BUILD_INFO__ === 'undefined' ? {version:'development',commit:''} : __ATLAS_BUILD_INFO__;
 
+// MapLibre 5.24 uses an explicit layer font stack for local Han glyphs. Our
+// packaged CJK family therefore belongs in that stack, while Latin glyphs
+// still download from the provider's original Noto Sans stack.
+export function glyphRequestURL(value){
+ const url=new URL(value.replace(/^atlasglyph:\/\//,'')),parts=url.pathname.split('/'),stack=decodeURIComponent(parts.at(-2));
+ parts[parts.length-2]=encodeURIComponent(stack.split(',').filter(f=>!/^Atlas CJK (TC|SC)$/.test(f.trim())).join(','));
+ url.pathname=parts.join('/');return url.href;
+}
+
 export function readTile(data) {
   const tile = new VectorTile(new Pbf(new Uint8Array(data)));
   // vector-tile creates a new object on each feature() call. Retain mutations
@@ -140,6 +149,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
         error => { signal.removeEventListener('abort', cancel); reject(error); });
     });
   }
+  maplibregl.addProtocol('atlasglyph',async(params,controller)=>({data:await get(glyphRequestURL(params.url),controller.signal)}));
   // Track counts: a vector source of their own (atlastracks://14/x/y; see
   // track-tiles.mjs), counted in a worker off the page's main thread
   // (track-worker.mjs) from the provider's zoom-14 railway tiles (the ones

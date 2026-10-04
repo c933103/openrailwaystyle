@@ -143,6 +143,8 @@ jobs:
         run: node scripts/check-platform-browser.mjs
       - name: Verify platform references, signals and entrances
         run: node scripts/check-infrastructure-browser.mjs
+      - name: Verify reported station platform areas and Chinese fonts
+        run: node scripts/check-platform-stations-browser.mjs
       - name: Verify served build information on desktop and touch
         run: node scripts/check-build-browser.mjs
       - name: Save browser review

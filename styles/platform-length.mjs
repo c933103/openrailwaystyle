@@ -5,7 +5,7 @@ export const PLATFORM_API='https://openrailwaymap.app/api/feature/openrailwaymap
 const OBSOLETE_REQUEST=Symbol('obsolete platform request');
 export function formatPlatformLength(metres,units='metric') {if(!(metres>0&&Number.isFinite(metres)))return '';return `${Math.round(units==='imperial'?metres/0.3048:metres)} ${units==='imperial'?'ft':'m'}`;}
 export function platformLengthLabel(units='metric') {
- const length=['concat',['to-string',['round',['*',['get','platform_length'],units==='imperial'?1/0.3048:1]]],units==='imperial'?' ft':' m'];
+ const length=['concat',['case',['==',['get','length_estimated'],true],'≈',''],['to-string',['round',['*',['get','platform_length'],units==='imperial'?1/0.3048:1]]],units==='imperial'?' ft':' m'];
  const hasLength=['>',['to-number',['get','platform_length'],0],0],ref=['coalesce',['get','ref'],''];
  return ['concat',ref,['case',['all',['!=',ref,''],hasLength],' · ',''],['case',hasLength,length,'']];
 }
@@ -23,6 +23,78 @@ export function platformAnchor(feature){
  const best=longestPlatformLine(feature);if(!best)return null;const {line,lens,total}=best;let half=total/2;
  for(let i=0;i<lens.length;i++){if(half<=lens[i]){const t=lens[i]?half/lens[i]:0;return line[i].map((v,j)=>v+(line[i+1][j]-v)*t);}half-=lens[i];}return null;
 }
+// References and geometry must describe the complete OSM object, not a clipped
+// tile. The provider's platform feature API supplies references but no geometry.
+export function platformOSMURL(object){return `https://api.openstreetmap.org/api/0.6/${object.type}/${object.id}${object.type==='node'?'':'/full'}.json`;}
+export function platformOSMDetails(data,object){
+ const elements=new Map((data.elements||[]).map(e=>[`${e.type}/${e.id}`,e])),entry=elements.get(`${object.type}/${object.id}`);
+ if(!entry)throw new Error('Platform object missing from OSM response');
+ const tags=entry.tags||{},properties={name:tags.name||'',ref:tags.ref||'',complete:true};
+ const points=way=>way?.nodes?.map(id=>{const n=elements.get(`node/${id}`);return n&&Number.isFinite(n.lon)&&Number.isFinite(n.lat)?[n.lon,n.lat]:null;});
+ let geometry;
+ if(object.type==='way'){
+  const line=points(entry);
+  if(line?.length>=2&&line.every(Boolean))geometry={type:entry.nodes[0]===entry.nodes.at(-1)?'Polygon':'LineString',coordinates:entry.nodes[0]===entry.nodes.at(-1)?[line]:line};
+ }else if(object.type==='relation'){
+  const members=(entry.members||[]).filter(m=>m.type==='way'&&m.role!=='inner'),parts=members.map(m=>points(elements.get(`way/${m.ref}`)));
+  if(parts.length&&parts.every(p=>p?.length>=2&&p.every(Boolean))){
+   const rings=[],remaining=parts.map(p=>p.slice()),same=(a,b)=>a[0]===b[0]&&a[1]===b[1];
+   while(remaining.length){let ring=remaining.shift();
+    while(!same(ring[0],ring.at(-1))){const i=remaining.findIndex(p=>same(ring.at(-1),p[0])||same(ring.at(-1),p.at(-1)));if(i<0)break;const p=remaining.splice(i,1)[0];if(!same(ring.at(-1),p[0]))p.reverse();ring.push(...p.slice(1));}
+    if(!same(ring[0],ring.at(-1)))return properties;rings.push([ring]);
+   }
+   geometry={type:'MultiPolygon',coordinates:rings};
+  }
+ }
+ // An explicitly mapped length takes precedence; a point still cannot give
+ // a geometric measurement. A missing coordinate never becomes a short span.
+ const tagged=/^\s*(\d+(?:\.\d+)?)\s*(m|ft)?\s*$/.exec(tags.length||'');
+ if(tagged&&Number(tagged[1])>0)return {...properties,length:Number(tagged[1])*(tagged[2]==='ft'?.3048:1),length_basis:'mapped_tag'};
+ if(!geometry)return properties;
+ if(geometry.type==='LineString')return {...properties,length:platformSpan({geometry}),length_basis:'mapped_line'};
+ const length=platformExtent(geometry);
+ return length>0?{...properties,length,length_estimated:true,length_basis:'mapped_extent'}:properties;
+}
+// Long side of the minimum-area oriented bounding rectangle of the full area.
+// This is an estimate of mapped longitudinal extent, never the polygon perimeter
+// or a claim about usable boarding length. Separate multipolygon parts stay separate.
+export function platformExtent(geometry){
+ const rings=geometry.type==='Polygon'?[geometry.coordinates[0]]:geometry.type==='MultiPolygon'?geometry.coordinates.map(p=>p[0]):[];
+ return Math.max(0,...rings.map(ring=>{
+  if(ring.length<4)return 0;const origin=ring[0],rad=Math.PI/180,scale=6371000*rad,cos=Math.cos(origin[1]*rad);
+  const points=ring.slice(0,-1).map(p=>[(((p[0]-origin[0]+540)%360)-180)*scale*cos,(p[1]-origin[1])*scale]).sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  const cross=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]),half=list=>{const out=[];for(const p of list){while(out.length>1&&cross(out.at(-2),out.at(-1),p)<=0)out.pop();out.push(p);}return out.slice(0,-1);};
+  const hull=[...half(points),...half(points.slice().reverse())];let bestArea=Infinity,bestLength=0;
+  for(let i=0;i<hull.length;i++){const a=hull[i],b=hull[(i+1)%hull.length],theta=Math.atan2(b[1]-a[1],b[0]-a[0]),c=Math.cos(theta),s=Math.sin(theta);let xmin=Infinity,xmax=-Infinity,ymin=Infinity,ymax=-Infinity;
+   for(const [x,y] of hull){const u=x*c+y*s,v=-x*s+y*c;xmin=Math.min(xmin,u);xmax=Math.max(xmax,u);ymin=Math.min(ymin,v);ymax=Math.max(ymax,v);}
+   const width=xmax-xmin,height=ymax-ymin,area=width*height;if(area<bestArea){bestArea=area;bestLength=Math.max(width,height);}
+  }return bestLength;
+ }));
+}
+// A point label on the visible platform fragment avoids tiled polygon/line
+// anchors that lie offscreen at close zoom. Clip only for placement, never length.
+export function platformLabelAnchor(feature,bounds){
+ const g=feature.geometry;if(!g)return null;if(g.type==='Point')return g.coordinates;
+ const limits=bounds?[bounds.getWest(),bounds.getSouth(),bounds.getEast(),bounds.getNorth()]:null;
+ const inside=p=>!limits||p[0]>=limits[0]&&p[0]<=limits[2]&&p[1]>=limits[1]&&p[1]<=limits[3];
+ const clipSegment=(a,b)=>{let lo=0,hi=1;if(limits)for(let j=0;j<2;j++){const delta=b[j]-a[j];if(!delta){if(a[j]<limits[j]||a[j]>limits[j+2])return null;}else{const t1=(limits[j]-a[j])/delta,t2=(limits[j+2]-a[j])/delta;lo=Math.max(lo,Math.min(t1,t2));hi=Math.min(hi,Math.max(t1,t2));if(lo>hi)return null;}}return [a.map((v,j)=>v+(b[j]-v)*lo),a.map((v,j)=>v+(b[j]-v)*hi)];};
+ if(['LineString','MultiLineString'].includes(g.type)){
+  const lines=g.type==='LineString'?[g.coordinates]:g.coordinates,parts=[];
+  for(const line of lines){let current=[];for(let i=1;i<line.length;i++){const piece=clipSegment(line[i-1],line[i]);if(!piece){current=[];continue;}if(current.length&&current.at(-1).every((v,j)=>Math.abs(v-piece[0][j])<1e-10))current.push(piece[1]);else{current=piece;parts.push(current);}}}
+  return platformAnchor({geometry:{type:'MultiLineString',coordinates:parts}});
+ }
+ const polygons=g.type==='Polygon'?[g.coordinates]:g.type==='MultiPolygon'?g.coordinates:[];let best,area=0;
+ for(const polygon of polygons){let ring=polygon[0];
+  if(limits)for(let side=0;side<4;side++){const j=side%2,bound=limits[side],lower=side<2,inward=p=>lower?p[j]>=bound:p[j]<=bound,result=[];for(let i=0;i<ring.length;i++){const a=ring[i],b=ring[(i+1)%ring.length],ia=inward(a),ib=inward(b);if(ia)result.push(a);if(ia!==ib){const t=(bound-a[j])/(b[j]-a[j]);result.push(a.map((v,k)=>v+(b[k]-v)*t));}}ring=result;if(!ring.length)break;}
+  if(ring.length<3)continue;const origin=ring[0];let sum=0,x=0,y=0;for(let i=0;i<ring.length;i++){const a=ring[i].map((v,j)=>v-origin[j]),b=ring[(i+1)%ring.length].map((v,j)=>v-origin[j]),c=a[0]*b[1]-b[0]*a[1];sum+=c;x+=(a[0]+b[0])*c;y+=(a[1]+b[1])*c;}
+  if(Math.abs(sum)>area){area=Math.abs(sum);best=sum?[origin[0]+x/(3*sum),origin[1]+y/(3*sum)]:null;}
+ }return best&&inside(best)?best:null;
+}
+function platformTextAnchor(map,coordinates,ref,length){
+ const point=map.project?.(coordinates),container=map.getContainer?.();if(!point||!container?.clientWidth)return 'center';
+ const margin=Math.min(container.clientWidth/2,Math.max(60,(ref.length+(length?15:0))*3.5+10)),x=point.x<margin?'left':point.x>container.clientWidth-margin?'right':'',y=point.y<20?'top':point.y>container.clientHeight-20?'bottom':'';
+ return [y,x].filter(Boolean).join('-')||'center';
+}
 // Both platform references and complete boarding-edge lengths use one bounded
 // request queue. Platform tiles contain name/id but deliberately omit ref;
 // edge tiles contain ref and can therefore label it before any API response.
@@ -36,11 +108,12 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
   for(const [key,entry] of desired){
    const {kind,id,feature:f}=entry,p={...f.properties,...cache.get(key)},ref=platformReference(p.ref);
    if(kind==='edge'){
-    const length=Number(p.length),coordinates=platformAnchor(f);
-    if(coordinates&&(ref||length>0&&map.getZoom()>=19))edges.push({type:'Feature',id,geometry:{type:'Point',coordinates},properties:{id:`way-${id}`,osm_type:'way',osm_id:id,feature:'platform_edge',ref,...(length>0&&Number.isFinite(length)&&map.getZoom()>=19?{platform_length:length}:{})}});
-   }else if(ref){
+    const length=Number(p.length),coordinates=platformLabelAnchor(f,map.getBounds?.());
+    if(coordinates&&(ref||length>0&&map.getZoom()>=19))edges.push({type:'Feature',id,geometry:{type:'Point',coordinates},properties:{id:`way-${id}`,osm_type:'way',osm_id:id,feature:'platform_edge',ref,label_anchor:platformTextAnchor(map,coordinates,ref,length),...(length>0&&Number.isFinite(length)&&map.getZoom()>=19?{platform_length:length}:{})}});
+   }else if(ref||Number(p.length)>0&&map.getZoom()>=19){
     const object=platformObjectIdentity(f);
-    platforms.push({type:'Feature',id,geometry:f.geometry,properties:{id,osm_type:object.type,osm_id:object.id,feature:'platform',name:p.name||'',ref}});
+    const coordinates=platformLabelAnchor(f,map.getBounds?.());if(!coordinates)continue;
+    platforms.push({type:'Feature',id,geometry:{type:'Point',coordinates},properties:{id,osm_type:object.type,osm_id:object.id,feature:'platform',name:p.name||'',ref,label_anchor:platformTextAnchor(map,coordinates,ref,Number(p.length)),...(Number(p.length)>0&&map.getZoom()>=19?{platform_length:p.length,length_estimated:!!p.length_estimated,length_basis:p.length_basis}:{})}});
    }
   }
   for(const [id,features] of [['platformLengths',edges],['platformNumbers',platforms]]){
@@ -56,10 +129,10 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
   const timeout=setTimeout(()=>requestController.abort(),5000);
   try {
    const r=await fetcher(url,{signal:requestController.signal});if(r.status===429){pause(cooldown);pending.clear();return;}
-   if(r.status===404||r.status===410){remember(key,{});draw();return;}
+   if(r.status===404||r.status===410){remember(key,{...cache.get(key),complete:!!requested.full});draw();return;}
    if(!r.ok)throw new Error(`HTTP ${r.status}`);
    const data=await r.json(),entry=requested;if(disposed)return;
-   const raw=data.properties||{},length=Number(raw.length),properties={name:raw.name||entry.feature.properties?.name||'',ref:raw.ref??entry.feature.properties?.ref??''};
+   const raw=entry.full?platformOSMDetails(data,platformObjectIdentity(entry.feature)):data.properties||{},length=Number(raw.length),properties={...(entry.full?raw:{}),name:raw.name||entry.feature.properties?.name||'',ref:raw.ref??entry.feature.properties?.ref??''};
    if(entry.kind==='edge')properties.length=Number.isFinite(length)&&length>0?length:null;
    remember(key,properties);draw();
    if(entry.kind==='edge')onLength(entry.id,properties.length);else onPlatform(entry.id,properties);
@@ -83,17 +156,18 @@ export function createPlatformLengths(map,{active=()=>true,fetcher=fetch,delay=1
    const layers=['platform-areas','platform-outlines','platform-points'].filter(id=>!map.getLayer||map.getLayer(id));
    for(const f of layers.length?map.queryRenderedFeatures({layers}):[]){
     const object=platformObjectIdentity(f);if(!object)continue;const key='platform/'+object.key,previous=desired.get(key);
-    if(!previous||geometrySpan(f)>geometrySpan(previous.feature))desired.set(key,{kind:'platform',id:object.key,feature:f,url:'https://openrailwaymap.app/api/feature/openrailwaymap_standard/standard_railway_platforms/'+object.key});
+    const full=map.getZoom()>=19;
+    if(!previous||geometrySpan(f)>geometrySpan(previous.feature))desired.set(key,{kind:'platform',id:object.key,feature:f,full,url:full?platformOSMURL(object):'https://openrailwaymap.app/api/feature/openrailwaymap_standard/standard_railway_platforms/'+object.key});
    }
   }
   for(const key of pending.keys())if(!desired.get(key)?.url)pending.delete(key);
-  for(const [key,entry] of desired)if(entry.url&&!cache.has(key)&&!pending.has(key)&&key!==inflight&&Date.now()>=pausedUntil)pending.set(key,entry.url);
+  for(const [key,entry] of desired){const wanted=entry.url&&(!cache.has(key)||entry.full&&!cache.get(key).complete);if(!wanted)pending.delete(key);else if(key!==inflight&&Date.now()>=pausedUntil)pending.set(key,entry.url);}
   if(inflight&&!desired.get(inflight)?.url)controller?.abort(OBSOLETE_REQUEST);
   draw();schedule();
  }
  function destroy(){disposed=true;clearTimeout(timer);clearTimeout(wakeTimer);controller?.abort(OBSOLETE_REQUEST);pending.clear();}
  function enrich(feature){
-  const p=feature.properties||{},object=feature.source==='platforms'?platformObjectIdentity(feature):null,id=object?.key||platformIdentity(feature);if(!id)return feature;
+  const p=feature.properties||{},object=['platforms','platformNumbers'].includes(feature.source)?platformObjectIdentity(feature):null,id=object?.key||platformIdentity(feature);if(!id)return feature;
   const values=cache.get((object?'platform/':'edge/')+id)||{},length=Number(values.length);
   return {...feature,properties:{...p,...values,ref:platformReference(values.ref??p.ref),osm_type:object?.type||'way',osm_id:object?.id||id,feature:object?'platform':'platform_edge',...(length>0?{platform_length:length}:{})}};
  }

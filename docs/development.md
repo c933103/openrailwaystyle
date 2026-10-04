@@ -123,6 +123,7 @@ node scripts/check-context-browser.mjs
 node scripts/check-map-browser.mjs
 node scripts/check-major-stations-browser.mjs
 node scripts/check-platform-browser.mjs
+node scripts/check-platform-stations-browser.mjs
 node scripts/check-infrastructure-browser.mjs
 ```
 

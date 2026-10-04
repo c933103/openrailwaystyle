@@ -1,11 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import encode from 'vt-pbf';
-import {readTile,localizeTile,installLabelProtocols, timedSource,hanRegion,chineseArea} from '../styles/tile-labels.mjs';
+import {readTile,localizeTile,installLabelProtocols, timedSource,hanRegion,chineseArea,glyphRequestURL} from '../styles/tile-labels.mjs';
 import {chooseName,readSettings,stationLanguages,stationPending,labelExpression} from '../styles/map-model.mjs';
 
 // Tiles give every feature its Han-name region; tests state it explicitly.
 const at=(p,zone='cjkv')=>({...p,atlas_han:zone});
+test('explicit CJK font stacks preserve and share the original Latin glyph download',async()=>{
+ const url=stack=>`atlasglyph://https://example.org/fonts/${encodeURIComponent(stack)}/0-255.pbf`,protocols={},requests=[];
+ assert.equal(glyphRequestURL(url('Noto Sans Bold,Atlas CJK TC')),'https://example.org/fonts/Noto%20Sans%20Bold/0-255.pbf');
+ assert.equal(glyphRequestURL(url('Noto Sans Regular,Atlas CJK SC')),'https://example.org/fonts/Noto%20Sans%20Regular/0-255.pbf');
+ installLabelProtocols({addProtocol:(id,fn)=>protocols[id]=fn},{},async address=>{requests.push(address);return {ok:true,arrayBuffer:async()=>new Uint8Array([1,2,3]).buffer};});
+ const a=await protocols.atlasglyph({url:url('Noto Sans Bold,Atlas CJK TC')},new AbortController()),b=await protocols.atlasglyph({url:url('Noto Sans Bold,Atlas CJK SC')},new AbortController());
+ assert.deepEqual([...new Uint8Array(a.data)],[1,2,3]);assert.deepEqual([...new Uint8Array(b.data)],[1,2,3]);assert.equal(requests.length,1,'script changes reuse the provider glyph cache');
+});
 test('language fallbacks prefer English, Cyrillic, Hanja, Nôm and ordinary Japanese as requested',()=>{
   const korea=at({name:'진주','name:en':'Jinju','name:ko-Hani':'晉州'});
   for(const lang of ['en','fr','de','es','ru']) assert.equal(chooseName(korea,lang),'Jinju');

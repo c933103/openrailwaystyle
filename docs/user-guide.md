@@ -68,9 +68,9 @@ Community-hosted external services can be unavailable or change schema. The appl
 
 For sources and credits, use the map’s **?** help page or the [data and attribution reference](data-maintenance.md#sources-and-attribution).
 
-Metric/imperial units are directly below Language. They apply to speed, dimensions, axle loads and mapped platform boarding-edge lengths. Platform lengths come from complete mapped boarding edges; they are not a guarantee of usable train length.
+Metric/imperial units are directly below Language. They apply to speed, dimensions, axle loads and platform lengths. Separately mapped boarding edges show their complete length. Platforms mapped as areas show approximate longitudinal extent with **≈**; platforms mapped as lines show complete path length. These describe complete mapped geometry and are not a guarantee of usable train length.
 
-Infrastructure view shows mapped signals and train or subway station entrances from zoom 16. Platform numbers and boarding-edge references appear from zoom 17, with complete edge lengths added from zoom 19. Click these objects for their mapped details and OpenStreetMap link. The **Value labels** setting hides their text; the platform shapes, edges and point markers remain visible. Signal markers show mapped locations, not current aspects.
+Infrastructure view shows mapped signals and train or subway station entrances from zoom 16. Platform numbers and boarding-edge references appear from zoom 17, with lengths added from zoom 19. Click these objects for their mapped details and OpenStreetMap link. The **Value labels** setting hides their text; the platform shapes, edges and point markers remain visible. Signal markers show mapped locations, not current aspects.
 
 The **Carto** background shows OpenStreetMap Standard beneath the railways. Railway colours, station labels and the legend follow your settings. Carto provides its own place labels; the terrain and contour toggle still applies. Carto tiles are for online viewing and are not saved for offline use.
 
