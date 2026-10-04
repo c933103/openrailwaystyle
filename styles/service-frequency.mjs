@@ -1,6 +1,7 @@
-// One scale across AM peak, PM peak and off-peak; unknown is not zero.
-export const FREQUENCY_PROFILES = ['am', 'pm', 'offpeak'];
-export const FREQUENCY_LABELS = {am:'Weekday morning peak',pm:'Weekday evening peak',offpeak:'Weekday off-peak'};
+// One scale across periods and individual agency-local hours; unknown is not zero.
+export const HOURLY_PROFILES = Array.from({length:24},(_,hour)=>`h${String(hour).padStart(2,'0')}`);
+export const FREQUENCY_PROFILES = ['am', 'pm', 'offpeak', 'overnight', ...HOURLY_PROFILES];
+export const FREQUENCY_LABELS = {am:'Morning peak · 07:00–09:00',pm:'Evening peak · 16:00–18:00',offpeak:'Off-peak · 12:00–14:00',overnight:'Overnight · 00:00–05:00',...Object.fromEntries(HOURLY_PROFILES.map((profile,hour)=>[profile,`${String(hour).padStart(2,'0')}:00–${String(hour+1).padStart(2,'0')}:00`]))};
 const STOPS = [[0,1.5],[1,1.5],[2,2],[4,2.5],[6,3],[12,4],[24,5],[30,5.5]];
 export function frequencyWidth(rate) {
   if (rate === null || !Number.isFinite(rate) || rate < 0) return 3.5;
@@ -9,7 +10,7 @@ export function frequencyWidth(rate) {
   }
   return 5.5;
 }
-export const selectedFrequencyProfile = settings => settings.frequencyPeriod==='peak' ? (settings.peakPhase==='pm'?'pm':'am') : 'offpeak';
+export const selectedFrequencyProfile = settings => settings.frequencyPeriod==='hour' ? HOURLY_PROFILES[Number.isInteger(Number(settings.frequencyHour))&&Number(settings.frequencyHour)>=0&&Number(settings.frequencyHour)<24?Number(settings.frequencyHour):12] : settings.frequencyPeriod==='overnight' ? 'overnight' : settings.frequencyPeriod==='peak' ? (settings.peakPhase==='pm'?'pm':'am') : 'offpeak';
 export function matchHeadway(route, lines, catalog) {
   if(catalog?.schema!==1 || catalog.source?.id!=='mtr-hk')return null;
   // Ref alone is never enough. Scope by audited network/kind and Hong Kong

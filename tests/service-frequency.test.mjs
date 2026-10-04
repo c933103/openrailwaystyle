@@ -2,8 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createExpression,validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
-import {frequencyWidth,matchHeadway,frequencyBundle,serviceFrequencyPaint,frequencyOffset,frequencyDetails,nearestServiceFeature,installFrequencyExpiry} from '../styles/service-frequency.mjs';
+import {frequencyWidth,matchHeadway,frequencyBundle,serviceFrequencyPaint,frequencyOffset,frequencyDetails,nearestServiceFeature,installFrequencyExpiry,selectedFrequencyProfile,profileBundle,FREQUENCY_PROFILES} from '../styles/service-frequency.mjs';
 import {readSettings,settingsQuery} from '../styles/map-model.mjs';
+const requireProfiles=await readFile(new URL('../styles/data-src/frequency-source-rules.json',import.meta.url),'utf8').then(s=>JSON.stringify(JSON.parse(s).profiles));
 const catalog=JSON.parse(await readFile(new URL('../styles/service-headways.json',import.meta.url)));
 const now=Date.parse('2026-10-05T12:00:00Z'),line=[[[114.12,22.28],[114.13,22.29]]];
 const route=ref=>({ref,network:'港鐵 MTR',kind:'subway'});
@@ -61,8 +62,8 @@ test('old tiles and stale sources keep unknown distinct from zero and preserve e
 
 test('all profile styles validate against the pinned MapLibre specification',async()=>{
   const style=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url)));
-  for(const profile of ['am','pm','offpeak']){
-    const p=serviceFrequencyPaint({serviceWidth:'frequency',frequencyPeriod:profile==='offpeak'?'offpeak':'peak',peakPhase:profile},now);
+  for(const profile of FREQUENCY_PROFILES){
+    const p=serviceFrequencyPaint({serviceWidth:'frequency',frequencyPeriod:profile.startsWith('h')?'hour':['am','pm'].includes(profile)?'peak':profile,frequencyHour:Number(profile.slice(1)),peakPhase:profile},now);
     Object.assign(style.layers.find(l=>l.id==='service-routes').paint,{'line-width':p.width,'line-offset':p.offset,'line-opacity':p.opacity});
     style.layers.find(l=>l.id==='service-names').layout['text-offset']=p.labelOffset;
     assert.deepEqual(validateStyleMin(style).map(e=>e.message),[]);
@@ -98,4 +99,21 @@ test('loaded profiles expire without a reload and resume refreshes deferred pain
   assert.equal(evaluate(serviceFrequencyPaint(settings,stamp).opacity,properties),.45,'the stroke is unavailable immediately after expiry');
   visible=false;expiry.pause();stamp=5000;visible=true;expiry.resume();assert.equal(refreshes,2,'resuming a suspended tab reevaluates freshness');
   assert.ok(cleared>0);expiry.pause();
+});
+
+
+test('hour and overnight settings select separate profiles, preserve unknowns and share the width scale',()=>{
+  const profiles=JSON.parse(requireProfiles);
+  assert.deepEqual(Object.keys(profiles),FREQUENCY_PROFILES);
+  const bundle=profileBundle([{properties:{frequency_until:now/1000+86400},profiles:{h01:{rate:2,quality:'scheduled'},h02:{rate:12,quality:'scheduled'},overnight:{rate:4,quality:'scheduled'}}}])[0];
+  for(const [period,hour,profile,rate] of [['hour',1,'h01',2],['hour',2,'h02',12],['overnight',12,'overnight',4]]){
+    const settings=readSettings(`?mode=service&serviceWidth=frequency&frequencyPeriod=${period}&frequencyHour=${hour}&ui=watch`);
+    assert.deepEqual(readSettings('?'+settingsQuery(settings)),settings);
+    assert.equal(selectedFrequencyProfile(settings),profile);
+    assert.equal(evaluate(serviceFrequencyPaint(settings,now).width,bundle),frequencyWidth(rate));
+    assert.match(frequencyDetails(bundle,profile,now),new RegExp(`^${rate}/h/direction`));
+  }
+  const missing=serviceFrequencyPaint({serviceWidth:'frequency',frequencyPeriod:'hour',frequencyHour:3},now);
+  assert.equal(evaluate(missing.width,bundle),3.5);assert.equal(evaluate(missing.opacity,bundle),.45);
+  for(const hour of [-1,24,1.5,'invalid'])assert.equal(readSettings(`?frequencyHour=${hour}`).frequencyHour,12);
 });

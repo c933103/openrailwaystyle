@@ -349,6 +349,26 @@ class GTFSFrequency(unittest.TestCase):
         self.assertTrue(result['unmapped_segments'])
         self.assertTrue(any(s['profiles']['am']['display_tph'] is not None for s in result['unmapped_segments']))
 
+    def test_hourly_and_overnight_profiles_use_local_time_and_prior_service_days(self):
+        patterns={name:[('A',start),('B',end)] for name,start,end in [
+            ('late','25:30:00','25:40:00'),('boundary','02:00:00','02:10:00'),
+            ('morning','05:00:00','05:10:00'),('evening','23:30:00','23:40:00')]}
+        path=self.feed(patterns,patterns)
+        with zipfile.ZipFile(path) as z:files={n:z.read(n) for n in z.namelist()}
+        files['agency.txt']=files['agency.txt'].replace(b'Europe/Helsinki',b'America/New_York')
+        with zipfile.ZipFile(path,'w') as z:
+            for name,data in files.items():z.writestr(name,data)
+        profiles=json.loads((Path(__file__).parent.parent/'styles/data-src/frequency-source-rules.json').read_text())['profiles']
+        result=compiler.compile_feed(path,{**CONFIG,'profiles':profiles},'2026-10-05')
+        rates=result['segments'][0]['profiles']
+        self.assertEqual(len(rates),28)
+        self.assertEqual(rates['h01']['display_tph'],1) # Sunday's 25:30 is Monday's 01:30.
+        self.assertEqual(rates['h02']['display_tph'],1) # 02:00 is excluded from h01.
+        self.assertEqual(rates['h05']['display_tph'],1) # 05:00 is excluded from overnight.
+        self.assertEqual(rates['h23']['display_tph'],1)
+        self.assertEqual(rates['h00']['display_tph'],0)
+        self.assertAlmostEqual(rates['overnight']['display_tph'],.4) # Two departures / five hours.
+
     def test_service_times_over_48_hours_include_older_days(self):
         patterns={'t':[('A','49:00:00'),('B','49:10:00')]}
         path=self.feed(patterns,patterns)

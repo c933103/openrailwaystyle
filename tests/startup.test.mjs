@@ -9,6 +9,8 @@ import * as departuresModule from '../styles/departures.mjs';
 import * as elevationModule from '../styles/elevation.mjs';
 import * as contextFeatures from '../styles/context.mjs';
 import * as frequencyModule from '../styles/service-frequency.mjs';
+import * as controlFunctions from '../styles/map-controls.mjs';
+import * as watchModule from '../styles/watch-map.mjs';
 import * as layerSemantics from '../styles/layer-semantics.mjs';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
@@ -50,7 +52,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     addSource() {}
     getCanvas() { return {style:{}}; }
     getCanvasContainer() { return this.canvasContainer ||= window.document.createElement('div'); }
-    doubleClickZoom = {enable(){}, disable(){}};
+    doubleClickZoom = {enable:()=>{this.doubleClickEnabled=true;}, disable:()=>{this.doubleClickEnabled=false;}};
     queryRenderedFeatures({layers}={}) {return (this.rendered||[]).filter(f=>!layers||layers.includes(f.layer?.id));}
     querySourceFeatures(id,{sourceLayer}) { return (this.sourceFeatures || []).filter(f=>f.sourceLayer===sourceLayer); }
     isSourceLoaded() { return true; }
@@ -117,7 +119,11 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const semantics = new vm.SyntheticModule(Object.keys(layerSemantics), function() {
     for (const [key,value] of Object.entries(layerSemantics)) this.setExport(key,value);
   }, {context});
-  await app.link(specifier => specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  const mapControls = new vm.SyntheticModule(Object.keys(controlFunctions), function() {
+    for (const [key,value] of Object.entries(controlFunctions)) this.setExport(key,value);
+  }, {context});
+  const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
+  await app.link(specifier => specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('context.mjs') ? contextModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries,loadLabels};
@@ -138,6 +144,13 @@ test('service frequency profile is applied on the first frame and controls persi
     assert.match(JSON.stringify(map.paintProperties['service-routes']['line-offset']),/frequency_offset_offpeak/);
     assert.equal(doc.getElementById('peak-phase-options').hidden,true);
     assert.match(decodeURIComponent(doc.cookie),/"frequencyPeriod":"offpeak"/);
+    period.value='overnight';period.dispatchEvent(new window.Event('change'));
+    assert.match(JSON.stringify(map.paintProperties['service-routes']['line-width']),/frequency_width_overnight/);
+    period.value='hour';period.dispatchEvent(new window.Event('change'));
+    const hour=doc.getElementById('frequency-hour');hour.value='1';hour.dispatchEvent(new window.Event('change'));
+    assert.equal(doc.getElementById('frequency-hour-options').hidden,false);
+    assert.match(JSON.stringify(map.paintProperties['service-routes']['line-width']),/frequency_width_h01/);
+    assert.match(decodeURIComponent(doc.cookie),/"frequencyHour":1/);
     const width=doc.getElementById('service-width');width.value='equal';width.dispatchEvent(new window.Event('change'));
     assert.equal(doc.getElementById('frequency-profile-options').hidden,true);
     assert.doesNotMatch(JSON.stringify(map.paintProperties['service-routes']['line-width']),/frequency_width/);
@@ -390,14 +403,14 @@ test('signals and entrances inspect their mapped node and avoid track/timetable 
  }finally{dom.window.close();}
 });
 
-test('Carto shows railway overlays, honours terrain, hides duplicate basemap labels and keeps attribution open', async () => {
+test('Carto shows railway overlays, honours terrain, hides duplicate basemap labels and keeps compact attribution', async () => {
   const {dom,window,maps} = await start({search:'?background=carto'});
   try {
     const map=maps[0], layer=id=>map.options.style.layers.find(l=>l.id===id);
     assert.equal(layer('carto').layout.visibility,'visible');
     assert.equal(layer('satellite').layout.visibility,'none');
     assert.equal(layer('water').layout.visibility,'none');
-    assert.ok(map.controls.some(c=>c.options?.compact===false));
+    assert.ok(map.controls.some(c=>c.options?.compact===true),'Carto keeps the same compact info control');
     map.handlers['style.load']();
     assert.equal(map.visibility['infrastructure-tracks'],'visible');
     assert.equal(map.visibility['terrain-relief'],'visible');
@@ -470,7 +483,7 @@ test('map info identifies the executing cached asset and links to its build repo
  try {
   const attribution=()=>maps[0].controls.find(c=>c.options?.customAttribution)?.options;
   let info=attribution();assert.equal(info.compact,true);assert.match(info.customAttribution,/Build cached-42/);assert.ok(info.customAttribution.includes(`href="${sourceUrl}"`));assert.match(info.customAttribution,/Code aaaaaaaaaa/);
-  window.document.querySelector('[data-background="carto"]').click();info=attribution();assert.equal(info.compact,false);assert.match(info.customAttribution,/Build cached-42/);assert.match(info.customAttribution,new RegExp(commit));
+  window.document.querySelector('[data-background="carto"]').click();info=attribution();assert.equal(info.compact,true);assert.match(info.customAttribution,/Build cached-42/);assert.match(info.customAttribution,new RegExp(commit));
  } finally {dom.window.close();}
 });
 test('map info exposes mismatched cached bundle versions and handles a missing commit',async()=>{
@@ -493,4 +506,38 @@ test('every versioned file the page loads asks for the page version', async () =
   const fallback = (await readFile(new URL('app.mjs', dir), 'utf8')).match(/get\('v'\) \|\| '([\w.-]+)'/)[1];
   assert.deepEqual(found, [], `page version ${page}`);
   assert.equal(fallback, page);
+});
+
+test('watch starts map-only and deliberate controls return to the map after each action',async()=>{
+  const {dom,window,maps,errors}=await start({search:'?ui=watch',cookie:'atlas_settings='+encodeURIComponent(JSON.stringify({attributionOpen:true}))});
+  try {
+    assert.equal(errors.length,0);const doc=window.document,map=maps[0];map.handlers['style.load']();
+    assert.equal(doc.body.dataset.ui,'watch');assert.equal(doc.querySelector('.panel').inert,true);
+    assert.equal(doc.getElementById('watch-menu').hidden,true);
+    map.handlers.click({point:{x:10,y:10}});assert.equal(doc.getElementById('details').hidden,true);
+    const open=()=>doc.getElementById('map').dispatchEvent(new window.Event('contextmenu',{cancelable:true}));
+    open();assert.equal(doc.getElementById('watch-menu').hidden,false);assert.equal(doc.getElementById('map-frame').inert,true);
+    let select=doc.querySelector('#watch-content select');select.value='service';select.dispatchEvent(new window.Event('change'));
+    assert.equal(doc.getElementById('watch-menu').hidden,true);assert.equal(map.visibility['service-routes'],'visible');
+    assert.equal(doc.getElementById('service-width').value,'equal','basic Service remains the default in watch mode');
+    open();doc.getElementById('watch-menu').dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert.equal(doc.getElementById('watch-menu').hidden,true);
+    open();select=doc.querySelector('#watch-content select[aria-label="Map options"]');select.value='standard';select.dispatchEvent(new window.Event('change'));
+    assert.equal(doc.body.dataset.ui,'standard');assert.equal(doc.querySelector('.panel').inert,false);assert.equal(doc.getElementById('map-frame').inert,false);
+    assert.match(decodeURIComponent(doc.cookie),/"attributionOpen":true/);
+    assert.match(decodeURIComponent(doc.cookie),/"ui":"standard"/);
+  } finally {dom.window.close();}
+});
+test('entering watch mode deactivates hidden drawing and measurement input',async()=>{
+  const {dom,window,maps}=await start();
+  try {
+    const doc=window.document,map=maps[0];map.handlers['style.load']();
+    for(const selector of ['[data-draw="line"]','[data-measure="distance"]']){
+      const tool=doc.querySelector(selector);tool.click();assert.equal(map.doubleClickEnabled,false);
+      const watch=doc.getElementById('watch-layout');watch.checked=true;watch.dispatchEvent(new window.Event('change'));
+      assert.equal(map.doubleClickEnabled,true,'watch mode restores direct double-tap zoom');
+      assert.equal(tool.getAttribute('aria-pressed'),'false','the hidden tool is inactive');
+      assert.equal(doc.getElementById('draw-toolbar').hidden,true);assert.equal(doc.getElementById('measure-toolbar').hidden,true);
+      watch.checked=false;watch.dispatchEvent(new window.Event('change'));assert.equal(tool.getAttribute('aria-pressed'),'false','returning to normal does not restore hidden editing');
+    }
+  } finally {dom.window.close();}
 });

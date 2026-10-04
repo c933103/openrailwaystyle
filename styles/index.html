@@ -31,7 +31,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
   <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="app.css?v=20261004-pr75-repair1" rel="stylesheet">
+  <link href="app.css?v=20261004-frequency4" rel="stylesheet">
 </head>
 <body>
   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
@@ -58,7 +58,8 @@
       </div>
       <div id="service-frequency-options" hidden>
         <label for="service-width">Route width</label><select id="service-width"><option value="equal">Equal</option><option value="frequency">By frequency</option></select>
-        <div id="frequency-profile-options" hidden><label for="frequency-period">Frequency</label><select id="frequency-period"><option value="offpeak">Off-peak</option><option value="peak">Peak</option></select>
+        <div id="frequency-profile-options" hidden><label for="frequency-period">Frequency</label><select id="frequency-period"><option value="offpeak">Off-peak</option><option value="peak">Peak</option><option value="overnight">Overnight</option><option value="hour">Hour</option></select>
+          <div id="frequency-hour-options" hidden><label for="frequency-hour">Local hour</label><select id="frequency-hour"><option value="0">00:00–01:00</option><option value="1">01:00–02:00</option><option value="2">02:00–03:00</option><option value="3">03:00–04:00</option><option value="4">04:00–05:00</option><option value="5">05:00–06:00</option><option value="6">06:00–07:00</option><option value="7">07:00–08:00</option><option value="8">08:00–09:00</option><option value="9">09:00–10:00</option><option value="10">10:00–11:00</option><option value="11">11:00–12:00</option><option value="12">12:00–13:00</option><option value="13">13:00–14:00</option><option value="14">14:00–15:00</option><option value="15">15:00–16:00</option><option value="16">16:00–17:00</option><option value="17">17:00–18:00</option><option value="18">18:00–19:00</option><option value="19">19:00–20:00</option><option value="20">20:00–21:00</option><option value="21">21:00–22:00</option><option value="22">22:00–23:00</option><option value="23">23:00–24:00</option></select></div>
           <div id="peak-phase-options" hidden><label for="peak-phase">Peak</label><select id="peak-phase"><option value="am">Morning</option><option value="pm">Evening</option></select></div>
         </div>
       </div>
@@ -93,6 +94,7 @@
           <label><input type="checkbox" id="relief" checked> Terrain, seabed and contours</label>
         </fieldset>
         <fieldset><legend>Map</legend>
+          <label><input type="checkbox" id="watch-layout">Map-only watch layout (hold the map for controls)</label>
           <label><input type="checkbox" id="readout" checked> Cursor coordinates and zoom under the scale bar</label>
           <label><input type="checkbox" id="autoGlobe" checked> Switch to the globe when zoomed out (and near the poles)</label>
         </fieldset>
@@ -180,6 +182,7 @@
       status.textContent = 'The map could not load. Check your connection and reload the page.';
     }, true);
   </script>
-  <script type="module" src="app.mjs?v=20261004-pr75-repair1"></script>
+  <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
+  <script type="module" src="app.mjs?v=20261004-frequency4"></script>
 </body>
 </html>

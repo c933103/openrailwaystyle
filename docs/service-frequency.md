@@ -3,7 +3,7 @@
 [Documentation index](README.md)
 
 Service view offers **Route width → By frequency**, then **Peak → Morning / Evening**
-or **Off-peak**. Equal width remains the default. One shared scale applies across
+or **Off-peak**, **Overnight** and **Hour** (00–23). Equal width remains the default in standard and watch layouts; selecting an hour changes widths, offsets and click selection together. One shared scale applies across
 regions and periods. Settings persist in shared links. Unknown is not zero.
 
 ## Worldwide discovery and updates
@@ -94,7 +94,7 @@ services depend on upstream route typing and appear in source audit limitations.
 ## Counts, windows and expiry
 
 The default reference is the next Monday, or an explicitly supplied date. AM is
-07:00–09:00, PM 16:00–18:00 and off-peak 12:00–14:00 in **each agency timezone**.
+07:00–09:00, PM 16:00–18:00, off-peak 12:00–14:00 and overnight 00:00–05:00 in **each agency timezone**. Each of the 24 hours also has its own half-open one-hour window, including 23:00–24:00. Prior service days supply post-midnight trips, so overnight-running systems can retain their scheduled service. These 28 profiles force a new compilation cache signature.
 These are configured comparison windows, not asserted operator peak definitions.
 Calendar exceptions can make the reference date a holiday. They are scheduled,
 dated profiles, not live departures or a guarantee of service.
@@ -133,6 +133,7 @@ Loaded tabs reevaluate expiry on their timer and on resume.
 The pre-existing MTR headway table remains a separate dated estimate source.
 Only its 17 audited whole-route rows match OSM geometry; section-specific rows stay
 unmatched. Their published AM/PM/non-peak categories have no invented clock windows.
+It has no hourly or overnight observations; those selections remain unavailable for this source.
 No OSM relation count is interpreted as a train count.
 
 ## Reproduce

@@ -37,9 +37,7 @@ LICENSES = {'CC0-1.0', 'CC-BY-1.0', 'CC-BY-2.5', 'CC-BY-3.0', 'CC-BY-4.0',
             'CC-BY-SA-4.0', 'ODbL-1.0', 'ODC-By-1.0', 'OGL-UK-3.0',
             'etalab-2.0', 'NLOD-1.0', 'MIT', 'LicenseRef-MTA-Data', 'LicenseRef-MassDOT-Developers'}
 EXCLUDED = {'CN', 'RU', 'IR', 'KP'}
-PROFILES = {'am': {'start': '07:00:00', 'end': '09:00:00'},
-            'pm': {'start': '16:00:00', 'end': '18:00:00'},
-            'offpeak': {'start': '12:00:00', 'end': '14:00:00'}}
+PROFILES = json.loads((ROOT/'styles/data-src/frequency-source-rules.json').read_text())['profiles']
 spec = importlib.util.spec_from_file_location('gtfs_frequency', ROOT/'scripts/gtfs-frequency.py')
 compiler = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(compiler)

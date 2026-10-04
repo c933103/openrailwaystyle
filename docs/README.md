@@ -10,6 +10,7 @@
 - [Rendering reference](rendering.md): speed meanings, station hierarchy, track counts, lifecycle patterns, terrain, transport and planning context.
 - [Loading-gauge dimensions](loading-gauges.md): profile sizes, historical outlines, metro examples and their sources.
 - [Service frequency](service-frequency.md): peak/off-peak profiles, matched headways, prepared GTFS data, limitations and refresh commands.
+- [Watch map](watch-map.md): explicit full-face layout and temporary controls.
 - [Label languages](labels.md): name selection, Chinese tag priorities, regional boundaries and provider limitations.
 
 ## Working on the project

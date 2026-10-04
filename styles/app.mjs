@@ -1,13 +1,15 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261004-pr75-repair1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261004-pr75-repair1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-pr75-repair1';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-frequency4';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261004-frequency4';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-frequency4';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-pr75-repair1';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-pr75-repair1';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-pr75-repair1';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261004-pr75-repair1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-pr75-repair1';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-pr75-repair1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-frequency4';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-frequency4';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-frequency4';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261004-frequency4';
+import { installWatchGesture } from './watch-map.mjs?v=20261004-frequency4';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-frequency4';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-frequency4';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261004-frequency4';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -41,7 +43,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths,frequencyExpiry;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-pr75-repair1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-frequency4';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -217,7 +219,7 @@ function renderLegend() {
     infrastructure: 'Numbers in boxes count mapped tracks: running tracks side by side (not sidings, yards or crossovers), on every level; at a station, sidings are included. Ochre marks shared roadway; crossings are brown. Zoom in for platform references and complete boarding-edge lengths, purple signal locations and teal station entrances. Signal markers do not show a live aspect.',
   };
   let note = notes[settings.mode];
-  if(settings.mode==='service'&&settings.serviceWidth==='frequency')note+=' Width uses the same capped scale in each weekday profile, using the lower rate when the source publishes a range. Morning and evening peaks are separate. Early morning, late night and special operating conditions are excluded. Missing, expired or unmatched profiles remain unavailable.';
+  if(settings.mode==='service'&&settings.serviceWidth==='frequency')note+=' Width uses the same capped scale in each weekday profile, using the lower rate when the source publishes a range. Morning and evening peaks are separate. Overnight and individual hours use each agency’s local time on the reference date; temporary operating changes may be absent. Missing, expired or unmatched profiles remain unavailable.';
   if (settings.inactive && settings.mode === 'speed') note += ' Planned and former lines take the colour of their recorded limit, if any.';
   // Collapsed by default, so the legend stays short; stays open once opened.
   const help = Object.assign(textNode('details', '', 'legend-help'), {open: legendHelpOpen});
@@ -254,9 +256,12 @@ function applySettings() {
   $('service-frequency-options').hidden = settings.mode !== 'service';
   $('frequency-profile-options').hidden = settings.serviceWidth !== 'frequency';
   $('peak-phase-options').hidden = settings.frequencyPeriod !== 'peak';
+  $('frequency-hour-options').hidden = settings.frequencyPeriod !== 'hour';
+  $('frequency-hour').value = settings.frequencyHour;
   $('service-width').value = settings.serviceWidth;
   $('frequency-period').value = settings.frequencyPeriod;
   $('peak-phase').value = settings.peakPhase;
+  syncWatchLayout();
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
   document.querySelectorAll('[data-background]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.background === settings.background)));
   $('legend').hidden = settings.background === 'satellite';
@@ -285,7 +290,7 @@ function applySettings() {
   if (ready) { scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update(); }
   frequencyExpiry?.update();
 }
-let attribution, attributionCarto, attributionStateObserver, servedBuild;
+let attribution, attributionStateCleanup, controlLayout, servedBuild;
 function codeAttribution() {
   const span=document.createElement('span');span.className='atlas-build';
   span.append(`Build ${assetVersion} · `);
@@ -299,30 +304,13 @@ function codeAttribution() {
   return span.outerHTML;
 }
 function updateAttribution() {
-  if (!map) return;
-  const carto = settings.background === 'carto';
-  if (attribution && attributionCarto === carto) return;
-  attributionStateObserver?.disconnect(); attributionStateObserver = undefined;
-  if (attribution) map.removeControl(attribution);
-  attributionCarto = carto;
-  attribution = new maplibregl.AttributionControl({compact: !carto, customAttribution: codeAttribution()});
+  if (!map || attribution) return;
+  attribution = new maplibregl.AttributionControl({compact: true, customAttribution: codeAttribution()});
   map.addControl(attribution, 'bottom-right');
-  // MapLibre 5.24 initially expands compact attribution. Restore the user's
-  // remembered state instead; with no cookie, start closed so only the ⓘ
-  // button occupies the corner. Carto deliberately uses non-compact credits.
-  const container = attribution._container;
-  if (!carto && container?.classList.contains('maplibregl-compact')) {
-    container.classList.toggle('maplibregl-compact-show', settings.attributionOpen);
-    container.toggleAttribute('open', settings.attributionOpen);
-    attributionStateObserver = new MutationObserver(() => {
-      if (!container.classList.contains('maplibregl-compact')) return;
-      const open = container.classList.contains('maplibregl-compact-show');
-      if (open === settings.attributionOpen) return;
-      settings.attributionOpen = open;
-      saveSettings();
-    });
-    attributionStateObserver.observe(container, {attributes:true, attributeFilter:['class']});
-  }
+  attributionStateCleanup = rememberAttribution(
+    $('map').querySelector('.maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib'),
+    {open: settings.attributionOpen, changed: open => {settings.attributionOpen = open; saveSettings();}}
+  );
 }
 const featurePickRank = f => ['railwaySignals','stationEntrances'].includes(f.source) ? -1 : f.source?.startsWith('station') ? 0 : f.layer?.id.startsWith('context-') ? (f.geometry?.type === 'Point' ? 1 : 3) : 2;
 const INFRASTRUCTURE_POINTS = ['infrastructure-level-crossings','infrastructure-crossing-overview','infrastructure-crossing-dots','infrastructure-crossing-marks','infrastructure-street-running','infrastructure-signal-points','infrastructure-signal-references','infrastructure-entrance-points','infrastructure-entrance-references'];
@@ -466,7 +454,7 @@ function showServiceDetails(feature) {
   row(dl, 'Reference', p.ref);
   row(dl, 'Network', p.network);
   row(dl, 'Operator', p.operator);
-  for(const profile of ['am','pm','offpeak'])row(dl,FREQUENCY_LABELS[profile],frequencyDetails(p,profile)||'Frequency unavailable');
+  for(const profile of [...new Set(['am','pm','offpeak','overnight',selectedFrequencyProfile(settings)])])row(dl,FREQUENCY_LABELS[profile],frequencyDetails(p,profile)||'Frequency unavailable');
   if(p.frequency_source){row(dl,'Frequency source',`${p.frequency_source} · checked ${p.frequency_checked}`);row(dl,'Period definitions',p.frequency_definition);row(dl,'Source credit',p.frequency_credit);row(dl,'Licence',p.frequency_license);row(dl,'Schedule note',p.frequency_note);row(dl,'Geometry',p.geometry_source);}
   if(/^https:\/\//.test(p.frequency_url||'')){const link=textNode('a','Timetable source and terms');link.href=p.frequency_url;link.target='_blank';link.rel='noopener';panel.append(link);}
   if (p.n > 1) row(dl, 'Services on this track', String(p.n));
@@ -1111,6 +1099,9 @@ async function initialize() {
   scale = new maplibregl.ScaleControl({ unit: settings.units });
   map.addControl(scale, 'bottom-left');
   map.on('move', fitScale); fitScale();
+  controlLayout = installControlLayout({frame: $('map-frame'), mapElement: $('map'),
+    panel: document.querySelector('.panel'), status: document.querySelector('.map-status'), readout, details: $('details')});
+  map.on('remove', () => {controlLayout.destroy(); attributionStateCleanup?.();});
   installKeyboardPan(map, {reducedMotion: () => matchMedia('(prefers-reduced-motion: reduce)').matches});
   drawing = new Drawing(map, {units: () => settings.units, status: text => { $('draw-status').textContent = text; }, changed: updateDrawing});
   measuring = new Measure(map, {units: () => settings.units, status: text => { $('measure-status').textContent = text; }, changed: updateDrawing, heights: elevation.heights});
@@ -1181,6 +1172,7 @@ async function initialize() {
   syncPanning();
   map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'axleLow', 'axleRail', 'axleBranch', 'railway', 'branchLines', 'serviceRoutes'].includes(e.sourceId) && e.tile) scheduleLegend();if(e.sourceId==='serviceRoutes')frequencyExpiry?.update(); });
   map.on('click', event => {
+    if(settings.ui==='watch')return;
     // The release that ends a globe drag is not a click.
     if (globeDragged()) return;
     if (measuring.active) { measuring.click(event.lngLat, event.point); return; }
@@ -1221,7 +1213,7 @@ async function initialize() {
 document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
   settings.mode = button.dataset.mode; applySettings(); saveSettings();
 }));
-for(const [id,key] of [['service-width','serviceWidth'],['frequency-period','frequencyPeriod'],['peak-phase','peakPhase']])$(id).addEventListener('change',()=>{settings[key]=$(id).value;applySettings();saveSettings();if(currentFeature?.layer?.id==='service-routes')showServiceDetails(currentFeature);});
+for(const [id,key] of [['service-width','serviceWidth'],['frequency-period','frequencyPeriod'],['peak-phase','peakPhase'],['frequency-hour','frequencyHour']])$(id).addEventListener('change',()=>{settings[key]=key==='frequencyHour'?Number($(id).value):$(id).value;applySettings();saveSettings();if(currentFeature?.layer?.id==='service-routes')showServiceDetails(currentFeature);});
 document.querySelectorAll('[data-background]').forEach(button => button.addEventListener('click', () => {
   settings.background = button.dataset.background; applySettings(); saveSettings();
 }));
@@ -1263,6 +1255,9 @@ $('units').addEventListener('change', () => {
   if (currentFeature) showDetails(currentFeature);
 });
 const compactControls = () => matchMedia('(max-width: 650px), (max-height: 500px)').matches;
+// Called when an explicit menu action changes its geometry; ResizeObserver
+// handles status wrapping, readout size, font changes and window resizing.
+function updateMapControlClearance() { controlLayout?.update(); }
 function setControlsExpanded(expanded, focus = false) {
   $('controls').hidden = !expanded;
   document.querySelector('.panel').classList.toggle('collapsed', !expanded);
@@ -1271,6 +1266,7 @@ function setControlsExpanded(expanded, focus = false) {
   $('collapse').setAttribute('aria-label', `${expanded ? 'Collapse' : 'Expand'} map controls`);
   $('controls-open').setAttribute('aria-expanded', String(expanded));
   $('controls-open').setAttribute('aria-label', expanded ? 'Collapse map controls' : 'Open map controls');
+  updateMapControlClearance();
   if (focus) (expanded || !compactControls() ? $('collapse') : $('controls-open')).focus();
 }
 $('collapse').addEventListener('click', () => setControlsExpanded($('controls').hidden, true));
@@ -1504,6 +1500,63 @@ frequencyExpiry=installFrequencyExpiry({
 document.addEventListener('visibilitychange',()=>document.visibilityState==='visible'?frequencyExpiry.resume():frequencyExpiry.pause());
 addEventListener('pagehide',()=>frequencyExpiry.pause());
 addEventListener('pageshow',()=>frequencyExpiry.resume());
+// Watch controls occupy the screen only after deliberate invocation. Normal
+// taps keep browsing the map rather than opening station/detail cards.
+const watchGesture=installWatchGesture($('map'),{active:()=>settings.ui==='watch'&&$('watch-menu').hidden,open:()=>openWatchMenu()});
+function closeWatchMenu() {
+  $('watch-menu').hidden=true;$('map-frame').inert=false;
+  const canvas=map?.getCanvas();canvas?.focus?.({preventScroll:true});
+}
+function syncWatchLayout() {
+  const watch=settings.ui==='watch',changed=document.body.dataset.ui!==settings.ui;
+  document.body.dataset.ui=settings.ui;$('watch-layout').checked=watch;
+  document.querySelector('.panel').inert=watch;
+  if(!changed)return;
+  closeWatchMenu();watchGesture.cancel();
+  if(watch){for(const tool of [drawing,measuring])if(tool?.active)tool.setMode(tool.mode);closeDetails();$('draw-toolbar').hidden=true;$('measure-toolbar').hidden=true;if($('about').open)$('about').close();}
+  $('map').setAttribute('aria-label',watch?'Interactive railway map. Hold to open controls, or use Shift F10.':'Interactive worldwide railway map');
+  map?.resize?.();
+}
+function openWatchMenu(page='main') {
+  if(settings.ui!=='watch')return;
+  const content=$('watch-content');content.replaceChildren();
+  const button=(label,action,parent=content)=>{const b=textNode('button',label);b.type='button';b.addEventListener('click',action);parent.append(b);return b;};
+  const select=(label,choices,value,change)=>{const s=document.createElement('select');s.setAttribute('aria-label',label);for(const [v,name] of choices){const o=textNode('option',name);o.value=v;s.append(o);}s.value=value;s.addEventListener('change',()=>change(s.value));content.append(s);return s;};
+  const commit=()=>{applySettings();saveSettings();closeWatchMenu();};
+  if(page==='main'){
+    select('Railway view',Array.from(document.querySelectorAll('[data-mode]'),b=>[b.dataset.mode,b.textContent]),settings.mode,value=>{settings.mode=value;commit();});
+    const choices=[['','Options'],['layers','Layers'],...(settings.mode==='service'?[['frequency','Frequency']]:[]),['info','Info'],['standard','Standard view']];
+    select('Map options',choices,'',value=>{if(value==='standard'){settings.ui='standard';commit();}else if(value)openWatchMenu(value);});
+  }else if(page==='frequency'){
+    const selected=settings.serviceWidth==='equal'?'equal':settings.frequencyPeriod==='hour'?'hour':selectedFrequencyProfile(settings);
+    select('Route width and time',['equal','am','pm','offpeak','overnight','hour'].map(value=>[value,value==='equal'?'Equal widths':value==='hour'?'Choose local hour':FREQUENCY_LABELS[value]]),selected,value=>{
+      if(value==='hour'){openWatchMenu('hour');return;}
+      settings.serviceWidth=value==='equal'?'equal':'frequency';
+      if(value!=='equal'){settings.frequencyPeriod=['am','pm'].includes(value)?'peak':value;if(['am','pm'].includes(value))settings.peakPhase=value;}
+      commit();
+    });
+  }else if(page==='hour'){
+    select('Agency-local hour',Array.from({length:24},(_,hour)=>[String(hour),FREQUENCY_LABELS[`h${String(hour).padStart(2,'0')}`]]),String(settings.frequencyHour),value=>{settings.frequencyHour=Number(value);settings.frequencyPeriod='hour';settings.serviceWidth='frequency';commit();});
+  }else {
+    const scroll=textNode('div','','watch-scroll');content.append(scroll);
+    if(page==='layers')for(const [key,label] of [['stations','Stations'],['names','Route names'],['labels','Value labels'],['trackCounts','Track counts'],['inactive','Inactive railways'],['transport','Transport'],['destinations','Destinations'],['constraints','Boundaries'],['relief','Terrain']]){
+      const b=button(label,()=>{settings[key]=!settings[key];commit();},scroll);b.setAttribute('aria-pressed',String(settings[key]));
+    }else {
+      const credits=attribution?._container?.querySelector('.maplibregl-ctrl-attrib-inner');if(credits)scroll.append(credits.cloneNode(true));
+      else scroll.append(textNode('p','Railway Atlas · OpenStreetMap contributors · Open Railway Styles'));
+      if(status.classList.contains('error'))scroll.append(textNode('p',status.textContent));
+      scroll.append(textNode('p','Hold the map for controls. Drag to pan; pinch or double tap to zoom.'));
+
+    }
+  }
+  button('Map',closeWatchMenu);
+  $('watch-menu').hidden=false;$('map-frame').inert=true;content.scrollTop=0;content.querySelector('select,button,a')?.focus();
+}
+$('watch-layout').addEventListener('change',()=>{settings.ui=$('watch-layout').checked?'watch':'standard';applySettings();saveSettings();});
+$('watch-menu').addEventListener('keydown',event=>{
+  if(event.key==='Escape'){event.preventDefault();closeWatchMenu();}
+  if(event.key==='Tab'){const items=Array.from($('watch-content').querySelectorAll('select,button,a[href]'));const first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}
+});
 applySettings();
 initialize().catch(error => {
   console.error(error);
