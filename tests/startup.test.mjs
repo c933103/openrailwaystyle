@@ -108,7 +108,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const departures = new vm.SyntheticModule(Object.keys(departuresModule), function() {
     for (const [key,value] of Object.entries(departuresModule)) this.setExport(key, key === 'stationDepartures' ? async () => ({stops: [], rows: []}) : value);
   }, {context});
-  const globe = new vm.SyntheticModule(['installGlobeDrag','allowPolarCentres'], function() { this.setExport('installGlobeDrag', () => ({sync() {}, justDragged: () => false})); this.setExport('allowPolarCentres', () => ({refresh() {}})); }, {context});
+  const globe = new vm.SyntheticModule(['installGlobeDrag','allowPolarCentres','globeGroundZoom'], function() { this.setExport('installGlobeDrag', () => ({sync() {}, justDragged: () => false})); this.setExport('allowPolarCentres', () => ({refresh() {}}));this.setExport('globeGroundZoom',(zoom,latitude)=>zoom-Math.log2(Math.cos(latitude*Math.PI/180)));  }, {context});
   const keyboard = new vm.SyntheticModule(['installKeyboardPan'], function() { this.setExport('installKeyboardPan', () => {}); }, {context});
   const contextModule = new vm.SyntheticModule(Object.keys(contextFeatures),function() {
     for (const [key,value] of Object.entries(contextFeatures)) this.setExport(key,value);

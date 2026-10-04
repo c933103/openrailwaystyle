@@ -132,6 +132,10 @@ export function frameView({c, u}) {
 const clampLat = lat => Math.max(-POLE_LIMIT, Math.min(POLE_LIMIT, lat));
 // The zoom that shows the planet at the same size with the centre moved
 // from oldLat to newLat (MapLibre's getZoomAdjustment).
+// Ground scale on the globe is proportional to cos(center latitude)/2^zoom.
+// Expose its equatorial equivalent for a stable readout while panning across
+// a pole. MapLibre's camera/hash continues to use the latitude-relative value.
+export const globeGroundZoom = (zoom, latitude) => zoomForLatitude(zoom, latitude, 0);
 export const zoomForLatitude = (zoom, oldLat, newLat) => zoom + Math.log2(Math.cos(rad(clampLat(newLat))) / Math.cos(rad(clampLat(oldLat))));
 // MapLibre's globe radius is worldSize / (2π cos(latitude)). Use its
 // centre scale directly: inverse projection rounds very close polar
@@ -199,8 +203,8 @@ const POLAR_ZOOM_LATITUDE = 70;
 // `zoomed` levels, so that the point keeps its place on screen: the centre
 // covers the fraction 1 − 2^−zoomed of the way (backwards when zooming out).
 export function zoomTowards({c, u}, at, zoomed) {
-  const target = toVector(at), angle = Math.acos(Math.max(-1, Math.min(1, dot(c, target))));
-  const axis = cross(c, target), n = Math.hypot(...axis);
+  const target = toVector(at), axis = cross(c, target), n = Math.hypot(...axis);
+  const angle = Math.atan2(n,dot(c,target));
   if (n < 1e-12) return {c, u};
   const k = axis.map(v => v / n), w = angle * (1 - 2 ** -zoomed);
   const turn = v => { const kv = cross(k, v), kd = dot(k, v); return unit(v.map((x, i) => x * Math.cos(w) + kv[i] * Math.sin(w) + k[i] * kd * (1 - Math.cos(w)))); };

@@ -14,8 +14,8 @@ try {
   await page.route('**/globe-check.html',route=>route.fulfill({contentType:'text/html',body:`<!doctype html><html><body style="margin:0"><div id="map" style="width:100vw;height:100vh;touch-action:none"></div>
     <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
     <script type="module">
-    import {allowPolarCentres,installGlobeDrag,zoomForLatitude} from './globe-drag.mjs';
-    window.zoomForLatitude=zoomForLatitude;
+    import {allowPolarCentres,installGlobeDrag,zoomForLatitude,globeGroundZoom} from './globe-drag.mjs';
+    window.zoomForLatitude=zoomForLatitude;window.globeGroundZoom=globeGroundZoom;
     const map=window.map=new maplibregl.Map({container:'map',center:[0,0],zoom:2,maxZoom:22,attributionControl:false,style:{version:8,projection:{type:'globe'},sources:{},layers:[{id:'background',type:'background',paint:{'background-color':'#f2efe9'}}]}});
     allowPolarCentres(map,maplibregl.LngLat,()=>1);
     const drag=window.drag=installGlobeDrag(map,{active:()=>map.getProjection()?.type==='globe'});
@@ -43,6 +43,7 @@ try {
           min=Math.min(min,movement);max=Math.max(max,movement);previous=position.y;
           const expected=window.zoomForLatitude(zoom,sign*latitude,map.getCenter().lat);
           scaleError=Math.max(scaleError,Math.abs(map.getZoom()-expected));
+          scaleError=Math.max(scaleError,Math.abs(window.globeGroundZoom(map.getZoom(),map.getCenter().lat)-window.globeGroundZoom(zoom,sign*latitude)));
         }
         const far={center:map.getCenter().toArray(),bearing:map.getBearing(),zoom:map.getZoom()};
         window.dispatchEvent(event('pointerup',450+sign*steps*4));
