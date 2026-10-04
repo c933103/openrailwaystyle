@@ -394,6 +394,13 @@
       "sha256": "94d4300d59c2aafb5ad0cb35a5d8a2bf8c1ddcc315a182b2f37fbc8a796c9fa5"
     },
     {
+      "id": "heritageAreas",
+      "type": "vector",
+      "minzoom": 10,
+      "maxzoom": 12,
+      "sha256": "3e0f03f7b9eda42639a7038e611337bf8eb40bc161764d930ea91f6de81023c5"
+    },
+    {
       "id": "contours",
       "type": "vector",
       "tiles": [
@@ -604,6 +611,14 @@
       "sha256": "841d15ae511f34e479e8ebdc5f5bb71db1cc03d637122d864a82ce7c84f073a2"
     },
     {
+      "id": "context-constraints-heritage-area",
+      "type": "fill",
+      "source": "heritageAreas",
+      "sourceLayer": "heritage",
+      "minzoom": 10,
+      "sha256": "64c3669b7422ab40df4b4a6bedc42f65f0bad96c5ba06d4bea1955862ec48625"
+    },
+    {
       "id": "context-constraints-indigenous-area",
       "type": "fill",
       "source": "openmaptiles",
@@ -714,6 +729,14 @@
       "sourceLayer": "park",
       "minzoom": 6,
       "sha256": "4efa3e0eb38fded5cde85a912197337a944d4940a796532d4151b8041d323488"
+    },
+    {
+      "id": "context-constraints-heritage-edge",
+      "type": "line",
+      "source": "heritageAreas",
+      "sourceLayer": "heritage",
+      "minzoom": 10,
+      "sha256": "6c4808c153aae01c9d4eb26908c44886e4306cc9e3e73c9f58ddbe226207a6f3"
     },
     {
       "id": "context-constraints-indigenous-edge",
@@ -1821,6 +1844,14 @@
       "sha256": "2f4d87140242c3b2cb788db9f9bb856e6b293d0db7a558320cc9cd5b186eda18"
     },
     {
+      "id": "context-constraints-heritage-area-label",
+      "type": "symbol",
+      "source": "heritageAreas",
+      "sourceLayer": "heritage",
+      "minzoom": 11,
+      "sha256": "c6e72e4a4aaa5359782c89ddbbe2d442ac1ffedf6dc03d0bb4ac049851c83fb0"
+    },
+    {
       "id": "context-constraints-indigenous-area-label",
       "type": "symbol",
       "source": "openmaptiles",
@@ -2361,6 +2392,18 @@
         "station-stationMed-normal-names",
         "station-stationLow-large-names",
         "station-stationMed-large-names"
+      ]
+    },
+    {
+      "reviewed": "2026-10-04",
+      "reason": "Historic areas (archaeological sites, battlefields, historic districts, protect_class=22, World Heritage) come from the atlas snapshot built by scripts/build-heritage.mjs, because the basemap park layer cannot hold them.",
+      "layers": [
+        "context-constraints-heritage-area",
+        "context-constraints-heritage-edge",
+        "context-constraints-heritage-area-label"
+      ],
+      "sources": [
+        "heritageAreas"
       ]
     }
   ]

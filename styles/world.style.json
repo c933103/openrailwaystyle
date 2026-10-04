@@ -5139,6 +5139,15 @@
       "maxzoom": 12,
       "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
     },
+    "heritageAreas": {
+      "type": "vector",
+      "tiles": [
+        "heritagetiles://{z}/{x}/{y}"
+      ],
+      "minzoom": 10,
+      "maxzoom": 12,
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
+    },
     "contours": {
       "type": "vector",
       "tiles": [
@@ -5998,6 +6007,46 @@
       }
     },
     {
+      "id": "context-constraints-heritage-area",
+      "type": "fill",
+      "source": "heritageAreas",
+      "source-layer": "heritage",
+      "minzoom": 10,
+      "filter": [
+        "all",
+        [
+          "has",
+          "kind"
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ]
+      ],
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
+      },
+      "paint": {
+        "fill-color": "#956837",
+        "fill-opacity": 0.1
+      }
+    },
+    {
       "id": "context-constraints-indigenous-area",
       "type": "fill",
       "source": "openmaptiles",
@@ -6748,6 +6797,63 @@
         "atlas:runtime": false,
         "atlas:background": null,
         "atlas:localize": false
+      }
+    },
+    {
+      "id": "context-constraints-heritage-edge",
+      "type": "line",
+      "source": "heritageAreas",
+      "source-layer": "heritage",
+      "minzoom": 10,
+      "filter": [
+        "all",
+        [
+          "has",
+          "kind"
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ]
+      ],
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": false
+      },
+      "paint": {
+        "line-color": "#956837",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0.8,
+          14,
+          1.5
+        ],
+        "line-opacity": 0.8,
+        "line-dasharray": [
+          6,
+          2
+        ]
       }
     },
     {
@@ -55283,6 +55389,165 @@
         "atlas:runtime": false,
         "atlas:background": null,
         "atlas:localize": true
+      }
+    },
+    {
+      "id": "context-constraints-heritage-area-label",
+      "type": "symbol",
+      "source": "heritageAreas",
+      "source-layer": "heritage",
+      "minzoom": 11,
+      "filter": [
+        "has",
+        "kind"
+      ],
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "context",
+        "atlas:category": "constraints",
+        "atlas:views": [],
+        "atlas:settings": [
+          "constraints"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": true,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:localize": true
+      },
+      "layout": {
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "atlas_name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "atlas_name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:nonlatin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:nonlatin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name:latin"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "name:latin"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "label"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "label"
+            ]
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "to-string",
+            [
+              "get",
+              "ref"
+            ]
+          ],
+          ""
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "text-padding": 8,
+        "text-max-width": 12,
+        "symbol-placement": "point",
+        "symbol-spacing": 500
+      },
+      "paint": {
+        "text-color": "#956837",
+        "text-halo-color": "#fffef8",
+        "text-halo-width": 1.5
       }
     },
     {

@@ -112,6 +112,17 @@ jobs:
           else
             echo '{"tiles":[]}' > styles/data/level-crossings/index.json
           fi
+      # Historic areas (heritage.yml); without them the planning context
+      # shows no historic areas.
+      - name: Load historic areas
+        run: |
+          mkdir -p styles/data/heritage
+          if git ls-remote --exit-code --heads origin heritage-data; then
+            git fetch --depth=1 origin heritage-data
+            git archive FETCH_HEAD | tar -x -C styles/data/heritage
+          else
+            echo '{"tiles":[]}' > styles/data/heritage/index.json
+          fi
       # Operating branch lines for zooms 4–6 and metro lines for 7–9 (branch-lines.yml), filled in
       # region by region; without them the overview shows main lines only.
       - name: Load branch lines

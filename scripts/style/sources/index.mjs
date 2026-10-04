@@ -14,7 +14,7 @@ const SOURCE_ORDER = [
   'platformLengths', 'platformNumbers', 'railwaySignals', 'railwaySignalSupplementOverview', 'railwaySignalSupplement', 'electricSubstations', 'electricFacilities', 'stationEntrances',
   'stationLow', 'stationMed', 'stations', 'inactiveRegional', 'crossings',
   'crossingsOverview', 'crossingsDetail', 'branchLines', 'serviceRoutes',
-  'streetRunning', 'contours', 'seabedContours', 'seabedContoursClose',
+  'streetRunning', 'heritageAreas', 'contours', 'seabedContours', 'seabedContoursClose',
   'satellite', 'carto', 'relief',
 ];
 

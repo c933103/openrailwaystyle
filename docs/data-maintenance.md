@@ -52,6 +52,18 @@ The workflow [crossings.yml](../.github/workflows/crossings.yml) keeps a worldwi
 
 Each website build copies the tiles (`5/` overview, `9/` detail), `index.json`, `manifest.json` and the ODbL table `crossings.tsv.gz` into `styles/data/level-crossings/`. Before the first snapshot exists the site deploys without them. See [rail-road rendering](rendering.md#rail-road-interfaces) for how they are drawn.
 
+## Historic-area snapshot
+
+The basemap's `park` layer holds only national parks, protected areas and nature reserves, with the class taken from the free-text protection title, so historic areas cannot be picked out of it. The workflow [heritage.yml](../.github/workflows/heritage.yml) builds a worldwide table of OpenStreetMap areas (closed ways and multipolygon or boundary relations) tagged `historic=archaeological_site`, `historic=battlefield` or `historic=district`, `protect_class=22` (cultural protected areas), or `heritage=1` (World Heritage). It publishes tiles for zooms 10–12 to `heritage-data`, one commit replaced each time. The map overzooms the zoom-12 tiles beyond that. `scripts/build-heritage.mjs` and `scripts/heritage-data.mjs` do the work:
+
+- Regions are 45° squares, split into quarters where a query times out.
+- A response with an Overpass remark (partial data) is rejected. An empty world is not published.
+- Multipolygon rings are joined from their member ways. Each hole goes to the outer ring around it, and holes outside every outer ring are dropped. An area crossing the antimeridian is kept as one shape.
+- Each area keeps its OSM id, its kind and the `name` keys the label languages read; other tags are dropped.
+- The run is monthly (the 1st, 05:23 UTC), on a manual run, and when the builder changes on `main`. The download is capped at 1.5 GB.
+
+Each website build copies the tiles, `index.json` and `manifest.json` into `styles/data/heritage/`. Until the first snapshot exists the site deploys with an empty index and shows no historic areas.
+
 ## Branch-line snapshot
 
 OpenRailwayMap's zoom 0–6 tiles hold main lines only (`usage=main`), so branch lines (`usage=branch`, for example most JR local lines) appeared only from zoom 7. The workflow [branch-lines.yml](../.github/workflows/branch-lines.yml) keeps a worldwide table of operating branch lines (`railway=rail` or `narrow_gauge`, `usage=branch`, not service track), and of metro lines (`railway=subway`, not service track), which the provider's tiles hold only from zoom 10, simplified to about 50 m, and publishes it with tiles to `branch-data` (branch lines at z4–6, metro lines at z7–9), one commit replaced each time. `scripts/build-branch-lines.mjs` converts the tags to the fields of OpenRailwayMap's railway tiles (speed, current, gauge, loading gauge and train protection systems), so each view colours them as it colours the detailed tracks. The first three distinct protection systems occupy adjacent colour bands; the full recorded list remains available for inspection.
@@ -83,6 +95,7 @@ Each website build copies the tiles, `index.json`, `manifest.json` and the ODbL 
 | `axle-data` branch | Compact railway axle capacity/load-category lookup and snapshot date | `axle-load.yml` |
 | `street-data` branch | Street-running static tiles, index, manifest and GeoJSON | `street-running.yml` |
 | `crossing-data` branch | Level-crossing table, region state, static tiles, index and manifest | `crossings.yml` |
+| `heritage-data` branch | Historic-area static tiles, index and manifest | `heritage.yml` |
 | `overpass-cache` release | Raw responses for rebuilding the lifecycle snapshot | `snapshot.yml` |
 | `styles/data/` in the built site | Assembled published snapshots | `site.yml` |
 

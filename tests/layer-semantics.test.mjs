@@ -86,7 +86,8 @@ test('visibility and localization use declared roles even after every layer and 
 test('localization preserves unit values, references, contours, and track-count text', () => {
   const layers = annotateLayers(structuredClone(style.layers));
   for (const layer of layers) {
-    const expected = layer.type === 'symbol' && layer.id !== 'speed-labels' && layer.id !== 'platform-lengths' && !layer.id.startsWith('terrain-') && (layer.source === 'openmaptiles' || layer.id.startsWith('station-') || layer.id.endsWith('-names'));
+    // Historic area names come from the atlas's own snapshot, labelled like the basemap.
+    const expected = layer.type === 'symbol' && layer.id !== 'speed-labels' && layer.id !== 'platform-lengths' && !layer.id.startsWith('terrain-') && (layer.source === 'openmaptiles' || layer.source === 'heritageAreas' || layer.id.startsWith('station-') || layer.id.endsWith('-names'));
     assert.equal(shouldLocalizeLayer(layer), expected, layer.id);
   }
   for (const id of ['speed-labels', 'platform-lengths', 'terrain-contour-labels', 'infrastructure-track-count', 'infrastructure-level-crossings']) {
