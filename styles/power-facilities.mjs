@@ -41,7 +41,7 @@ export function powerFacility(tags = {}) {
   const feeding = lifecycleValue(tags,'railway:electricity');
   if (has(feeding.value,['power_supply'])) return {...POWER_FACILITY_KINDS.feeder, kind:'feeder', state:feeding.state};
   const kind = values(power.value).find(v=>POWER_TYPES.has(v));
-  if (kind && (has(tags.substation,['traction']) || railwayUse(tags,railway.value) || tractionFrequency(tags.frequency))) {
+  if (kind && (has(tags.substation,['traction']) || (kind === 'transformer' && has(tags.transformer,['traction'])) || railwayUse(tags,railway.value) || tractionFrequency(tags.frequency))) {
     const normalized = kind === 'frequency_converter' ? 'converter' : kind;
     return {...POWER_FACILITY_KINDS[normalized], kind:normalized, state:power.state};
   }

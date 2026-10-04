@@ -14,15 +14,18 @@ await mkdir(cacheRoot, {recursive:true});
 
 async function collect(box, depth = 0) {
   const key = box.join('_'), path = new URL(`signals-v1-${key}.json`, cacheRoot), query = signalQuery(box);
-  let cached;
-  try { cached = JSON.parse(await readFile(path, 'utf8')); } catch {}
+  let cached, cachedFeatures;
+  try {
+    cached = JSON.parse(await readFile(path, 'utf8'));
+    if (cached?.query === query && !cached.split) cachedFeatures = signalFeatures(cached.response);
+  } catch { cached = undefined; }
   if (cached?.query === query && Date.now() - Date.parse(cached.generated) < age) {
     if (cached.split) {
       const results = [];
       for (const child of quarters(box)) results.push(...await collect(child, depth + 1));
       return results;
     }
-    return [{box, generated:cached.generated, features:signalFeatures(cached.response)}];
+    return [{box, generated:cached.generated, features:cachedFeatures}];
   }
   for (let attempt = 0; attempt < 3; attempt++) {
     if (requests) await new Promise(resolve => setTimeout(resolve, attempt ? 30000 : 10000));
