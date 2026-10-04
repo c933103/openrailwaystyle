@@ -46,9 +46,19 @@ await context.route('**/*',async route=>{
 });
 const cookie=async()=>JSON.parse(decodeURIComponent((await context.cookies()).find(c=>c.name==='atlas_settings')?.value||'%7B%7D'));
 const opened=()=>page.locator('.maplibregl-ctrl-attrib').evaluate(e=>e.classList.contains('maplibregl-compact-show')&&e.open);
+async function waitForMapIdle(){
+  await waitUntil(page,async()=>{
+    const{map}=await import(document.querySelector('script[type="module"]').src);
+    await new Promise(resolve=>{map.once('idle',()=>resolve());map.triggerRepaint();});
+    const canvas=map.getCanvas(),container=map.getContainer(),ratio=map.getPixelRatio();
+    return map.loaded()&&map.areTilesLoaded()&&!map.isMoving()
+      && canvas.width===Math.floor(container.clientWidth*ratio)&&canvas.height===Math.floor(container.clientHeight*ratio);
+  },null,{timeout:10000});
+}
 async function ready(){
   await page.waitForSelector('body[data-map-ready="true"]');
   await page.locator('.maplibregl-ctrl-scale').waitFor();
+  await waitForMapIdle();
 }
 const geometry=()=>page.evaluate(()=>{
   const rect=el=>{if(!el||el.hidden)return null;const r=el.getBoundingClientRect(),s=getComputedStyle(el);if(s.display==='none'||s.visibility==='hidden'||!r.width||!r.height)return null;return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
@@ -89,7 +99,9 @@ try{
   // combine in the same application, rather than in isolated rectangle mocks.
   for(const size of [{width:1365,height:900},{width:800,height:400},{width:650,height:900},{width:412,height:915},{width:360,height:640},{width:320,height:568}]){
     await page.setViewportSize(size);
-    await page.evaluate(()=>{document.documentElement.style.setProperty('--map-safe-left','18px');document.documentElement.style.setProperty('--map-safe-right','12px');document.documentElement.style.setProperty('--map-safe-bottom','24px');});
+    // Device inset changes accompany a viewport resize. The first size is
+    // unchanged, so send the same signal after injecting the test insets.
+    await page.evaluate(()=>{document.documentElement.style.setProperty('--map-safe-left','18px');document.documentElement.style.setProperty('--map-safe-right','12px');document.documentElement.style.setProperty('--map-safe-bottom','24px');window.dispatchEvent(new Event('resize'));});
     for(const expanded of [true,false]){
       if((await page.locator('#controls').isHidden())===expanded)await page.locator('#controls-open').click();
       for(const readout of [true,false]){
@@ -97,6 +109,10 @@ try{
         // is collapsed; interactive menu access is tested above and below.
         await page.locator('#readout').evaluate((e,on)=>{e.checked=on;e.dispatchEvent(new Event('change',{bubbles:true}));},readout);
         for(let detail=0;detail<3;detail++){
+          // Each scale change starts new tile/placement work. Finish its real
+          // render before the next pointer action, then inject the long status
+          // so the idle handler cannot erase that layout scenario.
+          await waitForMapIdle();
           await page.evaluate(()=>{document.querySelector('#map-status').textContent='Some map data could not load. Check your connection or reload to retry. A longer status message must wrap without covering the ruler or coordinates.';});
           assert.equal(await page.locator('.map-readout').isVisible(),readout);
           await check(`${size.width}x${size.height}, menu=${expanded}, readout=${readout}, detail=${detail}`);

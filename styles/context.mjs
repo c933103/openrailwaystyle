@@ -19,7 +19,7 @@ export const CONTEXT_CATEGORIES = [
   {id:'sport', group:'destinations', label:'Stadium / sports centre', color:'#6c7730', icon:'stadium', values:['stadium','sports_centre']},
   {id:'visitor', group:'destinations', label:'Visitor attraction', color:'#8a5a87', icon:'castle', values:['theme_park','water_park','zoo','aquarium','attraction']},
   {id:'hotel', group:'destinations', label:'Hotel / accommodation', color:'#7b6a93', icon:'bed', values:['hotel','motel','hostel','guest_house'], zoom:14},
-  {id:'culture', group:'destinations', label:'Museum / culture', color:'#8a5a87', icon:'civic', values:['museum','gallery','theatre','arts_centre','library','cinema'], zoom:13},
+  {id:'culture', group:'destinations', label:'Museum / culture', color:'#8a5a87', icon:'civic', values:['museum','gallery','theatre','arts_centre','library','cinema'], zoom:13, interactive:false},
   {id:'civic', group:'destinations', label:'Government / community facility', color:'#61669a', icon:'civic', values:['government','townhall','town_hall','courthouse','public_building','community_centre','conference_centre','exhibition_centre'], zoom:13},
 ];
 export const AREA_CATEGORIES = [
@@ -30,6 +30,15 @@ export const AREA_CATEGORIES = [
   {id:'visitor', label:'Stadium / attraction grounds', color:'#a1ad73', values:['stadium','sports_centre','theme_park','zoo']},
 ];
 const categoryById = new Map(CONTEXT_CATEGORIES.map(c=>[c.id,c]));
+// Interaction is a category policy, separate from rendering: cultural sites
+// remain visible as destinations but should not intercept railway inspection.
+// Areas and planning constraints continue to provide visual context only.
+export function contextLayerInteractive(id) {
+  const match = /^context-(transport|destinations)-(.+)-label$/.exec(id || '');
+  if (!match) return false;
+  const category = categoryById.get(match[2]);
+  return category?.group === match[1] && category.interactive !== false;
+}
 export function contextCategory(properties, sourceLayer) {
   if (sourceLayer === 'aerodrome_label') return ['military','private'].includes(properties.class) ? null : categoryById.get('airport');
   if (sourceLayer !== 'poi') return null;

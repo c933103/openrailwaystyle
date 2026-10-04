@@ -276,6 +276,49 @@ test('train control: hue by lineage, shade by level of advancement', async () =>
   assert.equal(hex(paint.evaluate({zoom:8}, {properties:{train_protection0:'etcs_2'}})), color('etcs_2'));
   assert.equal(hex(paint.evaluate({zoom:8}, {properties:{}})), UNKNOWN_COLOR);
 });
+test('concurrent control systems retain distinct colours and centred bands at every rail scale', async () => {
+  const {trainProtectionSystems, controlPaint, controlSystemExpression, controlCountExpression, trainProtection, controlColor} = await import('../styles/map-model.mjs');
+  const {createRailwayLayers} = await import('../scripts/style/layers/railway.mjs');
+  const layers = createRailwayLayers().thematic;
+  const parse = (value, spec) => {
+    const parsed = spec ? styleSpec.expression.createPropertyExpression(value, spec) : styleSpec.expression.createExpression(value);
+    assert.equal(parsed.result, 'success', JSON.stringify(parsed.value)); return parsed.value;
+  };
+  const evalValue = (value, p, zoom = 14, spec) => parse(value, spec).evaluate({zoom}, {type:2, properties:p});
+  const hex = c => typeof c === 'string' ? c : '#' + [c.r, c.g, c.b].map(v => Math.round(v*255).toString(16).padStart(2,'0')).join('');
+  const color = code => { const [, , family, level] = trainProtection(code); return controlColor(family, level); };
+  const p = {feature:'rail', state:'present', train_protection0:'etcs_2', train_protection1:'lzb', train_protection2:'pzb'};
+  assert.deepEqual(trainProtectionSystems(p), ['etcs_2','lzb','pzb']);
+  assert.deepEqual(trainProtectionSystems({train_protection0:'PZB', train_protection2:'pzb', train_protection:'PZB;LZB;Unfamiliar:ATP'}), ['pzb','lzb','Unfamiliar:ATP']);
+  assert.deepEqual(trainProtectionSystems({train_protection:['etcs_2','lzb','pzb','aws']}), ['etcs_2','lzb','pzb','aws'], 'the infobox retains data beyond the provider tile cap');
+  for (const [baseId, zoom] of [['control-overview',5],['control-branch-overview',5],['control-metro-overview',8],['control-tracks',16]]) {
+    const bands = [baseId, `${baseId}-system-2`, `${baseId}-system-3`].map(id => layers.find(l => l.id === id));
+    assert.ok(bands.every(Boolean), `${baseId} contains all three bands`);
+    assert.deepEqual(bands.map(l => hex(evalValue(l.paint['line-color'], p, zoom, styleSpec.latest.paint_line['line-color']))), ['etcs_2','lzb','pzb'].map(color));
+    const widths = bands.map(l => evalValue(l.paint['line-width'], p, zoom, styleSpec.latest.paint_line['line-width']));
+    const offsets = bands.map(l => evalValue(l.paint['line-offset'], p, zoom, styleSpec.latest.paint_line['line-offset']));
+    assert.ok(widths.every(w => w >= 0.65), `${baseId} remains visible`);
+    assert.equal(offsets[0], -widths[0]); assert.equal(offsets[1], 0); assert.equal(offsets[2], widths[2]);
+    assert.ok(bands.every(l => !l.paint['line-dasharray']), 'coloured bands leave tunnel/lifecycle dashes unambiguous');
+  }
+  const duplicate = {train_protection0:'LZB', train_protection1:'lzb', train_protection2:'pzb'};
+  assert.equal(evalValue(controlCountExpression(), duplicate), 2);
+  assert.deepEqual([0,1,2].map(i => evalValue(controlSystemExpression(i), duplicate)), ['lzb','pzb','']);
+  const gap = {train_protection1:'etcs_2', train_protection2:'pzb'};
+  assert.deepEqual([0,1,2].map(i => evalValue(controlSystemExpression(i), gap)), ['etcs_2','pzb','']);
+  assert.equal(hex(evalValue(controlPaint(1), {train_protection0:'etcs_2', train_protection1:'Unfamiliar:ATP'})), UNKNOWN_COLOR);
+  assert.equal(evalValue(controlCountExpression(), {train_protection0:'acses', train_protection1:'ases'}), 2, 'same-colour codes remain distinct');
+  const single = {train_protection0:'pzb'};
+  const track = layers.find(l => l.id === 'control-tracks');
+  assert.equal(evalValue(track.paint['line-width'], single, 20, styleSpec.latest.paint_line['line-width']), 7, 'a single system keeps the existing track width');
+  assert.equal(evalValue(track.paint['line-offset'], single, 20, styleSpec.latest.paint_line['line-offset']), 0);
+  assert.equal(evalValue(controlCountExpression(), {}), 0);
+  assert.throws(() => controlPaint(3), /slot/);
+  const label = createRailwayLayers().values.find(l => l.id === 'control-labels');
+  assert.equal(evalValue(label.layout['text-field'], p), 'ETCS L2 + LZB + PZB');
+  assert.equal(evalValue(label.layout['text-field'], duplicate), 'LZB + PZB', 'duplicate slots do not lengthen the label');
+  assert.equal(evalValue(label.layout['text-field'], gap), 'ETCS L2 + PZB', 'missing earlier slots do not hide other systems');
+});
 test('gauge view: continuous scale, near-identical gauges share a colour', async () => {
   const {gaugePaint, GAUGE_ANCHORS, MODES} = await import('../styles/map-model.mjs');
   const {expression} = await import('@maplibre/maplibre-gl-style-spec');
