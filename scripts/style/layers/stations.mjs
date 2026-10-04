@@ -93,20 +93,30 @@ export function stationLayers(curatedFilter) {
    {id:'platform-lengths',type:'symbol',source:'platformLengths',minzoom:17,layout:{'text-field':platformLengthLabel(),'text-font':['Noto Sans Bold'],'text-size':11,'text-padding':2,'text-anchor':['coalesce',['get','label_anchor'],'center'],'text-allow-overlap':['step',['zoom'],false,19,true],'text-ignore-placement':true},paint:{'text-color':'#214b5b','text-halo-color':'#fffef8','text-halo-width':2}},
   );
   for(const [source,sourceLayer,kind,colour,label,minzoom] of [
-   ['railwaySignals','railway_signals','signal','#765484',['coalesce',['get','ref'],['get','caption'],''],18],
+   ['railwaySignals','railway_signals','signal','#765484',['coalesce',['get','ref'],['get','caption'],''],16],
    ['stationEntrances','standard_station_entrances','entrance','#167a78',['coalesce',['get','label'],''],17],
   ]){
    const point={source,'source-layer':sourceLayer,filter:['==',['geometry-type'],'Point']};
    // Neutral location markers identify mapped assets, not a live signal aspect.
-   platforms.push({...point,id:`infrastructure-${kind}-points`,type:'circle',minzoom:16,...(kind==='signal'?{filter:['all',point.filter,['==',['get','railway'],'signal']]}:{}),paint:{'circle-color':colour,'circle-radius':kind==='signal'?3:4,'circle-stroke-color':'#fffef8','circle-stroke-width':1.5}});
+   platforms.push({...point,id:`infrastructure-${kind}-points`,type:'circle',minzoom:kind==='signal'?13:16,...(kind==='signal'?{filter:['all',point.filter,['==',['get','railway'],'signal']]}:{}),paint:{'circle-color':colour,'circle-radius':kind==='signal'?['interpolate',['linear'],['zoom'],13,2,17,3]:4,'circle-stroke-color':'#fffef8','circle-stroke-width':1.5}});
    platforms.push({...point,id:`infrastructure-${kind}-references`,type:'symbol',minzoom,...(kind==='signal'?{filter:['all',point.filter,['==',['get','railway'],'signal']]}:{}),layout:{'text-field':label,'text-font':['Noto Sans Regular'],'text-size':11,'text-offset':[0,0.9],'text-anchor':'top','text-padding':5,'text-allow-overlap':false},paint:{'text-color':colour,'text-halo-color':'#fffef8','text-halo-width':1.5}});
   }
-  // These details belong to Infrastructure view; references and dimensions
-  // follow its numeric-label setting while location markers remain visible.
+  // The provider omits signals without a direction tag. Their published
+  // worldwide supplement uses the same neutral dots and reference labels.
+  // Separate native overview/detail zooms retain close-zoom positioning.
+  const signalDots = platforms.find(layer => layer.id === 'infrastructure-signal-points');
+  const signalReferences = platforms.find(layer => layer.id === 'infrastructure-signal-references');
+  platforms.push(
+   {...signalDots, id:'infrastructure-signal-supplement-overview', source:'railwaySignalSupplementOverview', maxzoom:16},
+   {...signalDots, id:'infrastructure-signal-supplement-points', source:'railwaySignalSupplement', minzoom:16},
+   {...signalReferences, id:'infrastructure-signal-supplement-references', source:'railwaySignalSupplement'},
+  );
+  // Signals are shared with Train control; platform/entrance details remain
+  // Infrastructure-only. References follow the numeric-label setting.
   for (const layer of platforms) layer.metadata = {
     'atlas:group': layer.id.startsWith('platform-') ? 'platforms' : 'railway',
     'atlas:category': layer.type === 'symbol' ? 'references' : 'geometry',
-    'atlas:views': ['infrastructure'],
+    'atlas:views': layer.id.startsWith('infrastructure-signal-') ? ['infrastructure','control'] : ['infrastructure'],
     'atlas:settings': layer.type === 'symbol' ? ['labels'] : [],
   };
   // Former, disused and planned stations rank last, from zoom 12, muted; their

@@ -1,4 +1,5 @@
 import {OVERVIEW_ZOOM, DETAIL_ZOOM} from '../../crossing-data.mjs';
+import {SIGNAL_OVERVIEW_ZOOM, SIGNAL_ZOOM} from '../../signals-data.mjs';
 
 const ATTRIBUTION = '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>';
 const snapshot = (protocol, minzoom, maxzoom, extra = {}) => ({
@@ -7,6 +8,7 @@ const snapshot = (protocol, minzoom, maxzoom, extra = {}) => ({
 
 export function atlasSources(majorStationData) {
   return {
+    electricFacilities: {type:'geojson',data:{type:'FeatureCollection',features:[]},attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>'},
     axleBranch: snapshot('axlebranch', 4, 9),
     // Kept inline for existing installed workers. The application defers
     // this GeoJSON source until the overview needs it.
@@ -14,6 +16,8 @@ export function atlasSources(majorStationData) {
       attribution:'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a> · <a href="https://www.wikidata.org/">Wikidata, CC0</a>'},
     platformLengths: {type:'geojson', data:{type:'FeatureCollection', features:[]}},
     platformNumbers: {type:'geojson', data:{type:'FeatureCollection', features:[]}},
+    railwaySignalSupplementOverview: snapshot('signaltiles', SIGNAL_OVERVIEW_ZOOM, SIGNAL_OVERVIEW_ZOOM, {promoteId:'id'}),
+    railwaySignalSupplement: snapshot('signaltiles', SIGNAL_ZOOM, SIGNAL_ZOOM, {promoteId:'id'}),
     inactiveRegional: snapshot('railtiles', 0, 10, {promoteId:'osm_id'}),
     crossingsOverview: snapshot('crossingtiles', OVERVIEW_ZOOM, OVERVIEW_ZOOM),
     crossingsDetail: snapshot('crossingtiles', DETAIL_ZOOM, DETAIL_ZOOM),
