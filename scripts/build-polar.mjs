@@ -3,33 +3,34 @@
 //   {cap}-{units}-{band}-{tx}-{ty}.json  contour tiles (ETOPO 2022, NOAA, public domain)
 //   {cap}-index.json           which contour tiles exist
 //   {cap}-features.json        OpenStreetMap water, runways and place names
+//   {cap}-carto-{tx}-{ty}.json  Carto-only buildings, roads/paths and facilities
 //   {cap}-relief.png           slopes for the relief shading (ETOPO 2022)
 // Elevation is fetched once and kept in .snapshot-cache; OpenStreetMap
 // data is re-fetched when older than POLAR_OSM_MAX_AGE_DAYS (default 28).
-import {readFile, writeFile, mkdir, stat, rm} from 'node:fs/promises';
+import {readFile, writeFile, mkdir, stat, rm, rename} from 'node:fs/promises';
 import {crc32, deflateSync} from 'node:zlib';
 import {createHash} from 'node:crypto';
 import polygonClipping from 'polygon-clipping';
 import {CAP_RADIUS, POLAR_BANDS, FEET, toPolar, encodeLine, fromPolar} from '../styles/polar.mjs';
+import {DETAIL_SIDE, detailQuery, detailTiles, parseOverpass} from './polar-features.mjs';
 import {isolineSegments, joinSegments, clipToDisc, clipToRect, simplify, levels} from './polar-contours.mjs';
 const CAPS = ['north', 'south'];
 const USER_AGENT = 'OpenRailwayAtlas-snapshot/1.0 (+https://github.com/c933103/openrailwaystyle)';
 const ETOPO = 'https://www.ngdc.noaa.gov/thredds/dodsC/global/ETOPO2022/60s/60s_surface_elev_netcdf/ETOPO_2022_v1_60s_N90W180_surface.nc';
-const OVERPASS = 'https://overpass-api.de/api/interpreter';
+const OVERPASS = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const LON_STRIDE = 10; // every 10th arc-minute of longitude (≤ 1.6 km at 85°)
 const STEP = 1.5;      // km between polar grid points
 const TOLERANCE = [1.2, 0.6, 0.25]; // km, per zoom band
-// Detail stops at the band for equatorial zoom 8 and below: the caps are
-// ice and sea, 550 km across, and finer contours there would add megabytes
-// for little. The map keeps drawing this band when zoomed further in.
-const BANDS = 1;
+// Restore all three existing contour bands. The viewer uses the finer two
+// only for Carto; their 2×2 and 4×4 tiles are loaded only where viewed.
 // Contour tiles per side, per zoom band: the cap square is split so the
 // finer bands load only where viewed.
 export const TILES_PER_SIDE = [1, 2, 4];
 await mkdir('.snapshot-cache', {recursive: true});
-// Start afresh, so no tiles of bands no longer prepared are published.
-await rm('snapshot/polar', {recursive: true, force: true});
-await mkdir('snapshot/polar', {recursive: true});
+// Build in staging; do not discard the previous complete assets on failure.
+const output = 'snapshot/polar.tmp';
+await rm(output, {recursive: true, force: true});
+await mkdir(output, {recursive: true});
 
 async function fetchText(url, options = {}) {
   for (let attempt = 0; ; attempt++) {
@@ -44,14 +45,14 @@ async function fetchText(url, options = {}) {
     }
   }
 }
-async function cached(file, maxAgeDays, load) {
+async function cached(file, maxAgeDays, load, validate = () => {}) {
   try {
     const info = await stat(file);
-    if (Date.now() - info.mtimeMs < maxAgeDays * 86400000) return await readFile(file, 'utf8');
+    if (Date.now() - info.mtimeMs < maxAgeDays * 86400000) { const text = await readFile(file, 'utf8'); validate(text); return text; }
   } catch {}
-  try { const text = await load(); await writeFile(file, text); return text; }
+  try { const text = await load(); validate(text); await writeFile(file, text); return text; }
   catch (error) {
-    try { console.warn('Using the previous copy:', error.message); return await readFile(file, 'utf8'); }
+    try { console.warn('Using the previous copy:', error.message); const text = await readFile(file, 'utf8'); validate(text); return text; }
     catch { throw error; }
   }
 }
@@ -60,16 +61,20 @@ async function cached(file, maxAgeDays, load) {
 // 1-arc-minute grid (rows run south to north).
 async function elevation(cap) {
   const rows = cap === 'south' ? '0:1:299' : '10500:1:10799';
-  const text = await cached(`.snapshot-cache/polar-dem-${cap}.txt`, 36500, () =>
-    fetchText(`${ETOPO}.ascii?z%5B${rows}%5D%5B0:${LON_STRIDE}:21599%5D`));
-  const data = text.slice(text.indexOf('z.z['));
-  const values = [];
-  for (const line of data.split('\n').slice(1)) {
-    if (!line.startsWith('[')) continue;
-    values.push(Float32Array.from(line.slice(line.indexOf(',') + 1).split(',').map(Number)));
-    if (values.length === 300) break;
-  }
-  if (values.length !== 300) throw new Error(`Elevation for the ${cap} cap is incomplete`);
+  let values;
+  const validate = text => {
+    const start = text.indexOf('z.z[');
+    if (start < 0) throw new Error(`Elevation for the ${cap} cap is incomplete`);
+    values = [];
+    for (const line of text.slice(start).split('\n').slice(1)) {
+      if (!line.startsWith('[')) continue;
+      values.push(Float32Array.from(line.slice(line.indexOf(',') + 1).split(',').map(v => v.trim() ? Number(v) : NaN)));
+      if (values.length === 300) break;
+    }
+    if (values.length !== 300 || values.some(row => row.length !== 2160 || row.some(v => !Number.isFinite(v)))) throw new Error(`Elevation for the ${cap} cap is incomplete`);
+  };
+  await cached(`.snapshot-cache/polar-dem-${cap}.txt`, 36500, () =>
+    fetchText(`${ETOPO}.ascii?z%5B${rows}%5D%5B0:${LON_STRIDE}:21599%5D`), validate);
   const firstLat = cap === 'south' ? -90 + 1 / 120 : 85 + 1 / 120, lonStep = LON_STRIDE / 60, firstLon = -180 + 1 / 120;
   const cols = values[0].length;
   // Bilinear, wrapping in longitude and holding the edge rows.
@@ -95,7 +100,7 @@ function contours(grid, units) {
   const scaled = {...grid, values: grid.values.map(v => v * scale)};
   let min = Infinity, max = -Infinity;
   for (const v of scaled.values) if (!Number.isNaN(v)) { min = Math.min(min, v); max = Math.max(max, v); }
-  return POLAR_BANDS[units].slice(0, BANDS).map((band, index) => {
+  return POLAR_BANDS[units].map((band, index) => {
     const wanted = [
       ...levels(Math.max(min, 0), max, band.land[0]).map(level => [level, band.land[1]]),
       ...levels(min, Math.min(max, 0), band.seabed[0]).filter(level => !band.shelfOnly || level > -200).map(level => [level, band.seabed[1]]),
@@ -171,7 +176,7 @@ async function features(cap) {
   const bbox = cap === 'north' ? '85,-180,90,180' : '-90,-180,-85,180';
   const query = `[out:json][timeout:240];(way[natural=water](${bbox});rel[natural=water][type=multipolygon](${bbox});way["glacier:type"=shelf](${bbox});rel["glacier:type"=shelf][type=multipolygon](${bbox});way[aeroway=runway](${bbox});node[place][name](${bbox}););out geom;`;
   const maxAge = Number(process.env.POLAR_OSM_MAX_AGE_DAYS || 28), version = createHash('sha1').update(query).digest('hex').slice(0, 8);
-  const json = JSON.parse(await cached(`.snapshot-cache/polar-osm-${cap}-${version}.json`, maxAge, () => fetchText(OVERPASS, {method: 'POST', body: new URLSearchParams({data: query})})));
+  const json = parseOverpass(await cached(`.snapshot-cache/polar-osm-${cap}-${version}.json`, maxAge, () => fetchText(OVERPASS, {method: 'POST', body: new URLSearchParams({data: query})}), parseOverpass));
   const project = ring => ring.map(([lon, lat]) => toPolar(cap, [lon, lat]));
   // An area as polygons in the polar plane, within the cap: its outer rings
   // less its inner ones.
@@ -207,17 +212,34 @@ for (const cap of CAPS) {
   for (const units of ['metric', 'imperial']) {
     index.units[units] = [];
     for (const band of contours(grid, units)) {
-      for (const [key, lines] of band.tiles) await writeFile(`snapshot/polar/${cap}-${units}-${band.band}-${key}.json`, JSON.stringify({lines}));
+      for (const [key, lines] of band.tiles) await writeFile(`${output}/${cap}-${units}-${band.band}-${key}.json`, JSON.stringify({lines}));
       index.units[units].push({from: band.from, n: band.n, tiles: [...band.tiles.keys()]});
       console.log(cap, units, 'band', band.band, band.tiles.size, 'tiles,', [...band.tiles.values()].reduce((s, l) => s + l.length, 0), 'lines');
     }
   }
-  await writeFile(`snapshot/polar/${cap}-relief.png`, relief(grid));
+  await writeFile(`${output}/${cap}-relief.png`, relief(grid));
   index.relief = {x0: grid.x0, step: grid.step, size: grid.cols};
-  await writeFile(`snapshot/polar/${cap}-index.json`, JSON.stringify(index));
-  try {
-    const data = await features(cap);
-    await writeFile(`snapshot/polar/${cap}-features.json`, JSON.stringify(data));
-    console.log(cap, 'features:', data.water.length, 'water,', data.iceShelves.length, 'ice shelves,', data.runways.length, 'runways,', data.places.length, 'places');
-  } catch (error) { console.warn(`OpenStreetMap data for the ${cap} cap unavailable:`, error.message); }
+  await writeFile(`${output}/${cap}-index.json`, JSON.stringify(index));
+  const data = await features(cap);
+  await writeFile(`${output}/${cap}-features.json`, JSON.stringify(data));
+  console.log(cap, 'features:', data.water.length, 'water,', data.iceShelves.length, 'ice shelves,', data.runways.length, 'runways,', data.places.length, 'places');
+  const elements = [];
+  for (let west = -180; west < 180; west += 90) {
+    const query = detailQuery(cap, west, west + 90), version = createHash('sha1').update(query).digest('hex').slice(0, 8);
+    const json = parseOverpass(await cached(`.snapshot-cache/polar-carto-${cap}-${version}.json`, Number(process.env.POLAR_OSM_MAX_AGE_DAYS || 28),
+      () => fetchText(OVERPASS, {method: 'POST', body: new URLSearchParams({data: query})}), parseOverpass));
+    elements.push(...json.elements);
+  }
+  const tiles = detailTiles(cap, elements);
+  for (const [key, tile] of tiles) await writeFile(`${output}/${cap}-carto-${key}.json`, JSON.stringify(tile));
+  index.carto = {from: 10, n: DETAIL_SIDE, tiles: [...tiles.keys()]};
+  // This remains ETOPO's 60 arc-second surface product, resampled to 1.5 km.
+  // Denser isolines do not imply a finer DEM or subglacial bedrock heights.
+  index.elevation = {source: 'NOAA ETOPO 2022', product: 'surface', arcSeconds: 60, gridStepKm: STEP};
+  await writeFile(`${output}/${cap}-index.json`, JSON.stringify(index));
+  console.log(cap, 'Carto detail:', tiles.size, 'tiles');
 }
+// Publish a complete pair of caps together. On any source/build failure the
+// previous published assets survive, rather than being replaced by half a cap.
+await rm('snapshot/polar', {recursive: true, force: true});
+await rename(output, 'snapshot/polar');

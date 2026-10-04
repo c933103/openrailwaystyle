@@ -1,7 +1,7 @@
 name: Build worldwide railway lifecycle snapshot
 on:
   push:
-    branches: [build/world-lifecycle]
+    branches: [main, build/world-lifecycle]
     paths:
       - scripts/build-snapshot.mjs
       - scripts/lifecycle.mjs
@@ -11,6 +11,7 @@ on:
       - styles/loading-gauge-list.mjs
       - scripts/build-polar.mjs
       - scripts/polar-contours.mjs
+      - scripts/polar-features.mjs
       - styles/polar.mjs
       - scripts/pack-snapshot.py
   workflow_dispatch:
@@ -87,9 +88,22 @@ jobs:
         run: node scripts/build-loading-gauge-list.mjs
       # The two caps beyond 85.05° that Web Mercator tiles miss: contours and
       # relief from ETOPO 2022 (fetched once, then cached) and OpenStreetMap
-      # water, ice shelves, runways and places (one small query per cap,
-      # renewed every 4 weeks). If a source is unreachable the cached copy is
-      # used; without any, the caps are left out of this snapshot.
+      # base features and Carto detail (four longitude sectors per cap,
+      # renewed every 4 weeks). Failed/partial queries cannot replace a
+      # complete published pair of caps.
+      - name: Restore the previous complete polar assets
+        run: |
+          status=0
+          git ls-remote --exit-code --heads origin rail-data || status=$?
+          if [ "$status" = 0 ]; then
+            git fetch --depth=1 origin rail-data
+            mkdir -p snapshot
+            if git cat-file -e FETCH_HEAD:polar; then
+              git archive FETCH_HEAD polar | tar -x -C snapshot
+            fi
+          elif [ "$status" != 2 ]; then
+            exit "$status"
+          fi
       - name: Prepare the polar caps
         continue-on-error: true
         run: node scripts/build-polar.mjs
