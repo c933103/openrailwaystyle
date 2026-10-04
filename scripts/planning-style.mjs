@@ -22,13 +22,14 @@ export function roadLayers() {
 }
 export function constraintLayers() {
   const areas=[],lines=[],labels=[];
+  // OpenMapTiles puts boundary=aboriginal_lands in the boundary layer; parks
+  // exclude it so a schema change cannot draw it twice. Park classes are
+  // free-text protection titles, so historic sites are shown by the heritage
+  // points rather than guessed park classes.
   const indigenous=match('class',['aboriginal_lands']);
-  const heritage=match('class',['archaeological_site','battlefield','district','historic']);
   const groups=[
-    ['protected','park',6,['all',['!',indigenous],['!',heritage]],'#59845b'],
-    ['heritage','park',10,heritage,'#956837'],
+    ['protected','park',6,['!',indigenous],'#59845b'],
     ['indigenous','boundary',4,indigenous,'#91689b'],
-    ['indigenous-park','park',6,indigenous,'#91689b'],
     ['military','landuse',8,match('class',['military']),'#b36765'],
     ['religious','landuse',12,match('class',['religious','cemetery']),'#968575'],
   ];
