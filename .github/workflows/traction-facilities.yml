@@ -41,10 +41,11 @@ jobs:
             tar --zstd -xf /tmp/traction-facilities-cache.tar.zst -C /tmp/traction-cache
             cp -a -u /tmp/traction-cache/.snapshot-cache/. .snapshot-cache/
           fi
+      # Allow reachable endpoints longer than Node's 250 ms per-address default.
       - name: Collect railway energy supplies worldwide
-        run: node scripts/build-power-facilities.mjs
+        run: node --network-family-autoselection-attempt-timeout=2000 scripts/build-power-facilities.mjs
       - name: Collect signals missing provider direction data worldwide
-        run: node --max-old-space-size=6144 scripts/build-signals.mjs
+        run: node --network-family-autoselection-attempt-timeout=2000 --max-old-space-size=6144 scripts/build-signals.mjs
       - name: Preserve completed region responses
         if: always()
         uses: actions/cache/save@v4
