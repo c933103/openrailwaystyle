@@ -122,9 +122,14 @@ try {
     {name:'Australian jurisdictions',center:[134,-25],zoom:6},
     {name:'Mediterranean heritage',center:[12,42],zoom:10},
   ];
-  const targets=await evaluate(map=>map.getStyle().layers
-    .filter(layer=>layer.id.startsWith('context-'))
-    .map(layer=>({id:layer.id,sourceLayer:layer['source-layer'],minzoom:layer.minzoom||0})));
+  // Historic areas come from the atlas's own snapshot (heritage.yml). Until
+  // its first build the site deploys with an empty index, and there is no
+  // real feature for those layers to render.
+  const heritagePublished=await page.evaluate(async()=>{const r=await fetch(new URL('data/heritage/index.json',document.baseURI));return r.ok&&(await r.json()).tiles.length>0;});
+  const targets=await evaluate((map,heritagePublished)=>map.getStyle().layers
+    .filter(layer=>layer.id.startsWith('context-')&&(heritagePublished||layer.source!=='heritageAreas'))
+    .map(layer=>({id:layer.id,sourceLayer:layer['source-layer'],minzoom:layer.minzoom||0})),heritagePublished);
+  if(!heritagePublished)console.log('CONTEXT_NOTE historic-area snapshot not yet published; its layers are not sampled');
   const candidates=new Map();
   for(const sample of discoverySamples){
     await evaluate(async(map,s)=>{
