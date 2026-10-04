@@ -1,0 +1,160 @@
+{
+  "schema": 1,
+  "catalogue_url": "https://raw.githubusercontent.com/public-transport/transitous/main/website/data/license.json",
+  "sources": {
+    "us-ma_MBTA.gtfs.zip": {
+      "expected_source": "https://cdn.mbta.com/MBTA_GTFS.zip",
+      "spdx_license_identifier": "LicenseRef-MassDOT-Developers",
+      "license_url": "https://github.com/mbta/gtfs-documentation/blob/master/developers-license-agreement.pdf",
+      "attribution_text": "Data provided by MassDOT / MBTA; derived scheduled path frequencies."
+    },
+    "us-ny_MTA-NYCSubway.gtfs.zip": {
+      "expected_source": "https://rrgtfsfeeds.s3.amazonaws.com/gtfs_subway.zip",
+      "spdx_license_identifier": "LicenseRef-MTA-Data",
+      "license_url": "https://www.mta.info/developers/terms-and-conditions",
+      "attribution_text": "Data provided by MTA New York City Transit; regular schedules exclude most temporary service changes."
+    }
+  },
+  "profiles": {
+    "am": {
+      "start": "07:00:00",
+      "end": "09:00:00",
+      "definition": "Configured morning reference"
+    },
+    "pm": {
+      "start": "16:00:00",
+      "end": "18:00:00",
+      "definition": "Configured evening reference"
+    },
+    "offpeak": {
+      "start": "12:00:00",
+      "end": "14:00:00",
+      "definition": "Configured daytime reference"
+    },
+    "overnight": {
+      "start": "00:00:00",
+      "end": "05:00:00",
+      "definition": "Configured overnight reference"
+    },
+    "h00": {
+      "start": "00:00:00",
+      "end": "01:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h01": {
+      "start": "01:00:00",
+      "end": "02:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h02": {
+      "start": "02:00:00",
+      "end": "03:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h03": {
+      "start": "03:00:00",
+      "end": "04:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h04": {
+      "start": "04:00:00",
+      "end": "05:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h05": {
+      "start": "05:00:00",
+      "end": "06:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h06": {
+      "start": "06:00:00",
+      "end": "07:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h07": {
+      "start": "07:00:00",
+      "end": "08:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h08": {
+      "start": "08:00:00",
+      "end": "09:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h09": {
+      "start": "09:00:00",
+      "end": "10:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h10": {
+      "start": "10:00:00",
+      "end": "11:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h11": {
+      "start": "11:00:00",
+      "end": "12:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h12": {
+      "start": "12:00:00",
+      "end": "13:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h13": {
+      "start": "13:00:00",
+      "end": "14:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h14": {
+      "start": "14:00:00",
+      "end": "15:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h15": {
+      "start": "15:00:00",
+      "end": "16:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h16": {
+      "start": "16:00:00",
+      "end": "17:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h17": {
+      "start": "17:00:00",
+      "end": "18:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h18": {
+      "start": "18:00:00",
+      "end": "19:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h19": {
+      "start": "19:00:00",
+      "end": "20:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h20": {
+      "start": "20:00:00",
+      "end": "21:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h21": {
+      "start": "21:00:00",
+      "end": "22:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h22": {
+      "start": "22:00:00",
+      "end": "23:00:00",
+      "definition": "Agency-local one-hour reference"
+    },
+    "h23": {
+      "start": "23:00:00",
+      "end": "24:00:00",
+      "definition": "Agency-local one-hour reference"
+    }
+  }
+}
