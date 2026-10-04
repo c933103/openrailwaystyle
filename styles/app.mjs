@@ -1,12 +1,12 @@
-import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261004-pole2';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-pole2';
+import {contextIcon, contextDescription, nearbyTransport} from './context.mjs?v=20261004-pr73-repair1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-pr73-repair1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-pole2';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-pole2';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-pole2';
-import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261004-pole2';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-pole2';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-pole2';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-pr73-repair1';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-pr73-repair1';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-pr73-repair1';
+import { installGlobeDrag, allowPolarCentres } from './globe-drag.mjs?v=20261004-pr73-repair1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-pr73-repair1';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-pr73-repair1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -40,7 +40,7 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-pole2';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-pr73-repair1';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -232,15 +232,138 @@ function shareURL() {
   return url.href;
 }
 saveSettings();
-const CHECKBOXES = ['stations', 'trackCounts', 'labels', 'inactive', 'relief', 'names', 'autoGlobe', 'readout', 'transport', 'destinations', 'constraints'];
-let majorStationData,majorStationsPromise;const majorStationLanguages=new WeakMap();
+const CHECKBOXES = ['stations', 'stationImportanceColors', 'trackCounts', 'labels', 'inactive', 'relief', 'names', 'autoGlobe', 'readout', 'transport', 'destinations', 'constraints'];
+const DEFAULT_STATION_TEXT_COLOR = ['match', ['get','station_size'], 'large', '#123e52', '#0865c0'];
+const LOW_ZOOM_STATION_TEXT_COLOR = '#123e52';
+const isLowZoomStationLayer = id => id.endsWith('-names') && (id.startsWith('station-major-') || id.startsWith('station-stationLow-') || id.startsWith('station-stationMed-'));
+const lowZoomStationTextColor = () => settings.stationImportanceColors
+  ? DEFAULT_STATION_TEXT_COLOR
+  : ['step', ['zoom'], LOW_ZOOM_STATION_TEXT_COLOR, 7, DEFAULT_STATION_TEXT_COLOR];
+const OSM_API='https://api.openstreetmap.org/api/0.6';
+const MAJOR_STATION_NAME_CACHE='atlas_major_station_osm_names_v2';
+const MAJOR_STATION_NAME_MAX_AGE=7*24*60*60*1000;
+let majorStationData,majorStationSearchData,majorStationsPromise,majorStationNamesPromise;
+let majorStationNameMemory,majorStationNextRefreshAt=0,majorStationRequestId=0;
+const majorStationLanguages=new WeakMap();
+const majorStationObjectKey=p=>`${p.osm_type}/${p.osm_id}`;
+// Match language-name syntax used by tileStations, plus two supported legacy aliases.
+const isStationNameTag=key=>/^name(:[a-z]{2,3}([-_][A-Za-z0-9]+)*)?$/.test(key)||key==='name:ko:hanja'||key==='name:vi:nom';
+const stationNameTags=tags=>{
+ if(!tags||typeof tags!=='object'||Array.isArray(tags))return null;
+ const entries=Object.entries(tags).filter(([key])=>isStationNameTag(key));
+ // Invalid name values are not evidence of a genuinely nameless object.
+ if(entries.some(([,value])=>typeof value!=='string'))return null;
+ return Object.fromEntries(entries);
+};
+function readMajorStationNameCache(){
+ if(majorStationNameMemory)return majorStationNameMemory;
+ const records=Object.create(null),now=Date.now();
+ try{
+  const cached=JSON.parse(localStorage.getItem(MAJOR_STATION_NAME_CACHE)||'null');
+  if(cached?.version===2&&cached.records&&typeof cached.records==='object'&&!Array.isArray(cached.records)){
+   for(const [key,record] of Object.entries(cached.records)){
+    if(!/^(node|way|relation)\/[1-9]\d*$/.test(key)||!record||!Number.isFinite(record.fetchedAt)||record.fetchedAt<0||record.fetchedAt>now||!record.tags||typeof record.tags!=='object'||Array.isArray(record.tags))continue;
+    const tags=stationNameTags(record.tags);
+    if(tags===null){
+     // A malformed translation invalidates freshness, not valid sibling names.
+     const fallback=Object.fromEntries(Object.entries(record.tags).filter(([tag,value])=>isStationNameTag(tag)&&typeof value==='string'));
+     if(Object.keys(fallback).length)records[key]={fetchedAt:0,tags:fallback};
+     continue;
+    }
+    records[key]={fetchedAt:record.fetchedAt,tags};
+   }
+  }
+ }catch{}
+ return majorStationNameMemory=records;
+}
+function writeMajorStationNameCache(records){
+ majorStationNameMemory=records;
+ try{localStorage.setItem(MAJOR_STATION_NAME_CACHE,JSON.stringify({version:2,records}));}catch{}
+}
+// Cache each successful OSM object separately. An omitted object is not a
+// successful empty name, and a failed relation request cannot erase node names.
+async function majorStationNameTags(data,{timeout=8000}={}){
+ const wanted=new Set(data.features.map(f=>majorStationObjectKey(f.properties)));
+ const existing=readMajorStationNameCache(),records=Object.create(null),now=Date.now();
+ for(const key of wanted)if(existing[key])records[key]=existing[key];
+ const fresh=key=>records[key]&&now-records[key].fetchedAt<MAJOR_STATION_NAME_MAX_AGE;
+ const groups={node:[],way:[],relation:[]};
+ for(const key of wanted){
+  const [type,id]=key.split('/');
+  if(!groups[type]||!/^[1-9]\d*$/.test(id))continue;
+  if(!fresh(key))groups[type].push(id);
+ }
+ if(Object.values(groups).some(ids=>ids.length)){
+  const controller=new AbortController();
+  let budget=32,timer;
+  // The deadline covers both response headers and body parsing, even for a
+  // transport which does not honour AbortSignal. Late bodies cannot modify records.
+  const expired=new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(new Error('Station name request timed out'));},timeout);});
+  const request=async(type,ids)=>{
+   if(!ids.length)return;
+   if(controller.signal.aborted||budget--<=0)throw new Error('Station name request budget exhausted');
+   const plural=`${type}s`,url=new URL(`${OSM_API}/${plural}.json`);
+   url.searchParams.set(plural,ids.join(','));
+   const answer=await Promise.race([expired,(async()=>{
+    const response=await fetch(url,{headers:{Accept:'application/json'},signal:controller.signal});
+    return{ok:response.ok,status:response.status,body:response.ok?await response.json():null};
+   })()]);
+   if(controller.signal.aborted)throw new Error('Station name request cancelled');
+   if(answer.status===404){
+    if(ids.length===1){delete records[`${type}/${ids[0]}`];return;}
+    const half=Math.ceil(ids.length/2);
+    // Preserve successful halves even if the other half fails.
+    await Promise.allSettled([request(type,ids.slice(0,half)),request(type,ids.slice(half))]);
+    return;
+   }
+   if(!answer.ok)throw new Error(`OpenStreetMap ${plural} returned ${answer.status}`);
+   if(!Array.isArray(answer.body?.elements))throw new Error('Invalid OpenStreetMap station response');
+   const requested=new Set(ids);
+   for(const element of answer.body.elements){
+    if(element?.type!==type||!requested.has(String(element.id)))continue;
+    const key=`${type}/${element.id}`;
+    if(element.visible===false){delete records[key];continue;}
+    if(element.tags!==undefined&&(!element.tags||typeof element.tags!=='object'||Array.isArray(element.tags)))continue;
+    const tags=stationNameTags(element.tags===undefined?{}:element.tags);
+    if(tags===null)continue;
+    records[key]={fetchedAt:Date.now(),tags};
+   }
+  };
+  try{
+   const tasks=[];
+   for(const [type,ids] of Object.entries(groups))for(let i=0;i<ids.length;i+=100)tasks.push(request(type,ids.slice(i,i+100)));
+   const results=await Promise.allSettled(tasks);
+   if(results.some(result=>result.status==='rejected'))console.warn('Some station names could not refresh; retaining available OSM names.');
+  }finally{clearTimeout(timer);}
+ }
+ writeMajorStationNameCache(records);
+ const checkedAt=Date.now(),expires=[...wanted].map(key=>records[key]?.fetchedAt+MAJOR_STATION_NAME_MAX_AGE);
+ // Retry missing/failed objects on a later interaction, not every move event.
+ majorStationNextRefreshAt=expires.some(time=>!Number.isFinite(time)||time<=checkedAt)?checkedAt+30000:Math.min(...expires);
+ return Object.fromEntries(Object.entries(records).map(([key,record])=>[key,record.tags]));
+}
 function updateMajorStations(){
  if(!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3||map.getZoom()>=7)return;
- const source=map.getSource('stationMajor'),language=settings.language;if(!source||majorStationLanguages.get(source)===language)return;
- majorStationsPromise ||= majorStationData ? Promise.resolve(majorStationData) : fetch(new URL(`major-stations.geojson?v=${assetVersion}`,import.meta.url)).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}).catch(error=>{majorStationsPromise=undefined;throw error;});
- majorStationsPromise.then(data=>{if(!ready||language!==settings.language||source!==map.getSource('stationMajor')||majorStationLanguages.get(source)===language)return;
-  source.setData({...data,features:data.features.map(f=>({...f,properties:{...f.properties,atlas_name:chooseName(f.properties,language),atlas_language:language}}))});majorStationLanguages.set(source,language);
- }).catch(error=>console.warn('Major station list unavailable:',error.message));
+ const source=map.getSource('stationMajor'),language=settings.language;
+ if(!source||(majorStationLanguages.get(source)===language&&Date.now()<majorStationNextRefreshAt))return;
+ // A cache refresh may finish while hidden. Until applied, the rendered
+ // source must not be marked current merely because the cache is fresh.
+ majorStationLanguages.delete(source);
+ const requestId=++majorStationRequestId;
+ majorStationsPromise ||= majorStationData?Promise.resolve(majorStationData):fetch(new URL(`major-stations.geojson?v=${assetVersion}`,import.meta.url)).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}).catch(error=>{majorStationsPromise=undefined;throw error;});
+ const namesPromise=majorStationNamesPromise ||= majorStationsPromise.then(data=>majorStationNameTags(data));
+ Promise.all([majorStationsPromise,namesPromise]).then(([data,names])=>{
+  if(requestId!==majorStationRequestId||!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3||map.getZoom()>=7||language!==settings.language||source!==map.getSource('stationMajor'))return;
+  const hydrated={...data,features:data.features.map(f=>{
+   // Strip any legacy name fields as well: only fetched OSM tags may name a hub.
+   const metadata=Object.fromEntries(Object.entries(f.properties).filter(([key])=>key!=='name'&&!key.startsWith('name:')&&!['atlas_name','label','ref'].includes(key)));
+   const properties={...metadata,...(names[majorStationObjectKey(metadata)]||{})};
+   return{...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language,atlas_name_source:'osm'}};
+  }).filter(f=>f.properties.atlas_name)};
+  majorStationSearchData=hydrated;
+  source.setData(hydrated);
+  majorStationLanguages.set(source,language);
+ }).catch(error=>console.warn('Major station names unavailable:',error.message)).finally(()=>{if(majorStationNamesPromise===namesPromise)majorStationNamesPromise=undefined;});
 }
 function applySettings() {
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
@@ -257,6 +380,7 @@ function applySettings() {
     if(layer.id==='polar-caps')map.triggerRepaint();
     const visible = layerVisibility(layer, settings);
     if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
+    if (isLowZoomStationLayer(layer.id)) map.setPaintProperty(layer.id, 'text-color', lowZoomStationTextColor());
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
     if ((visible ?? true) && isClickable(layer.id)) clickable.push(layer.id);
   }
@@ -1015,6 +1139,7 @@ async function initialize() {
   for (const layer of style.layers) {
     const visible=layerVisibility(layer, settings);
     if(visible!==undefined)(layer.layout ||= {}).visibility=visible?'visible':'none';
+    if (isLowZoomStationLayer(layer.id)) (layer.paint ||= {})['text-color'] = lowZoomStationTextColor();
   }
   // Reopen where the last visit ended, unless the link gives a position; start
   // on the globe (or as last left) so the first frame is not the flat map.
@@ -1436,7 +1561,7 @@ $('search-form').addEventListener('submit', async e => {
     // Only what the station layers draw at this zoom (no tram stops at zoom 8).
     const zoom = ready ? map.getZoom() : 0;
     const drawn = ready ? drawnStationQueries(map.getStyle().layers, zoom).flatMap(({source, sourceLayer, filter}) =>
-      source === 'stationMajor' ? (majorStationData?.features || []).filter(f => (f.properties?.tier ?? 7) <= zoom)
+      source === 'stationMajor' ? (majorStationSearchData?.features || []).filter(f => (f.properties?.tier ?? 7) <= zoom)
         : map.getSource(source) ? map.querySourceFeatures(source, {sourceLayer, filter}) : []) : [];
     const local = ready ? tileStations(drawn, q, map.getCenter().toArray(), facilities.value || []) : [];
     if (facilities.status === 'rejected' && places.status === 'rejected' && !local.length) throw facilities.reason;

@@ -35,7 +35,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     off(name) { delete this.handlers[name]; }
     on(name, handler) { this.handlers[name] = handler; }
     getStyle() { return this.options.style; }
-    getSource(id) { return {setData(){},setUrl: url => {this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
+    getSource(id) { return (this.sources ||= {})[id] ||= {setData:data=>{(this.sourceData ||= {})[id]=data;},setUrl:url=>{this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
     setLayoutProperty(id, property, value) { if (property === 'visibility') this.visibility[id] = value; else (this.layout ||= {})[id] = value; }
     setPaintProperty(id, property, value) { (this.paint ||= {})[id] = value; }
     setPixelRatio(ratio) { this.pixelRatio = ratio; }
@@ -145,6 +145,19 @@ test('app starts with the MapLibre 5 API and enables map controls', async () => 
     assert.equal(maps[0].visibility['speed-tracks'],'none');
     assert.equal(maps[0].visibility['infrastructure-tracks'],'visible');
     assert.equal(maps[0].visibility['station-stations-dots'],'visible');
+    const importanceColours = window.document.getElementById('stationImportanceColors');
+    assert.equal(importanceColours.checked,false,'low-zoom importance colours are off by default');
+    const uniformLowZoom=['step',['zoom'],'#123e52',7,['match',['get','station_size'],'large','#123e52','#0865c0']];
+    assert.equal(JSON.stringify(maps[0].paint['station-major-3-names']),JSON.stringify(uniformLowZoom));
+    assert.equal(JSON.stringify(maps[0].paint['station-stationLow-large-names']),JSON.stringify(uniformLowZoom));
+    assert.equal(JSON.stringify(maps[0].paint['station-stationMed-normal-names']),JSON.stringify(uniformLowZoom));
+    importanceColours.checked = true; importanceColours.dispatchEvent(new window.Event('change'));
+    const importance=['match',['get','station_size'],'large','#123e52','#0865c0'];
+    assert.equal(JSON.stringify(maps[0].paint['station-major-3-names']),JSON.stringify(importance));
+    assert.equal(JSON.stringify(maps[0].paint['station-stationLow-large-names']),JSON.stringify(importance));
+    assert.equal(JSON.stringify(maps[0].paint['station-stationMed-normal-names']),JSON.stringify(importance));
+    assert.match(decodeURIComponent(window.document.cookie),/"stationImportanceColors":true/);
+    assert.equal(JSON.stringify(maps[0].options.style.layers.find(l=>l.id==='station-detail-large-names').paint['text-color']),JSON.stringify(importance),'detailed station colours are unchanged');
     // Track-count boxes can be switched off.
     assert.equal(maps[0].visibility['infrastructure-track-count'],'visible');
     const counts = window.document.getElementById('trackCounts');
@@ -255,13 +268,15 @@ test('settings are remembered in a cookie; a shared link applies once and leaves
     try { assert.match(maps[0].options.style.sources.stations.url, new RegExp(`atlasstation://${expected}/`)); }
     finally {dom.window.close();}
   }
-  const saved = encodeURIComponent(JSON.stringify({mode:'electrification', relief:false, units:'imperial', detail:true, language:'ko'}));
+  const saved = encodeURIComponent(JSON.stringify({mode:'electrification', relief:false, stationImportanceColors:true, units:'imperial', detail:true, language:'ko'}));
   {
     const {dom,window,maps} = await start({cookie:`atlas_settings=${saved}`});
     try {
       assert.match(maps[0].options.style.sources.stations.url, /atlasstation:\/\/ko\//);
       assert.equal(window.document.querySelector('[data-mode="electrification"]').getAttribute('aria-pressed'),'true');
       assert.equal(window.document.getElementById('relief').checked,false);
+      assert.equal(window.document.getElementById('stationImportanceColors').checked,true);
+      assert.equal(JSON.stringify(maps[0].options.style.layers.find(l=>l.id==='station-major-3-names').paint['text-color']),JSON.stringify(['match',['get','station_size'],'large','#123e52','#0865c0']),'saved importance colours apply before first render');
       assert.equal(window.document.getElementById('units').value,'imperial');
       assert.equal(window.document.getElementById('map').classList.contains('detail'),true);
     } finally {dom.window.close();}
@@ -276,6 +291,30 @@ test('settings are remembered in a cookie; a shared link applies once and leaves
     } finally {dom.window.close();}
   }
 });
+test('curated priority gets its displayed names from OSM object tags, never the source note',async()=>{
+ const osmCalls=[];
+ const fetcher=async url=>{
+  const u=new URL(String(url));
+  if(u.hostname==='api.openstreetmap.org'){
+   osmCalls.push(u.href);
+   const plural=u.pathname.split('/').at(-1).replace(/\.json$/,''),type=plural.slice(0,-1),ids=(u.searchParams.get(plural)||'').split(',').filter(Boolean);
+   return {ok:true,status:200,json:async()=>({elements:ids.map(id=>({type,id:Number(id),tags:{name:`OSM local ${id}`,'name:en':`OSM English ${id}`}}))})};
+  }
+  return {ok:true,status:200,json:async()=>structuredClone(style)};
+ };
+ const {dom,maps}=await start({search:'?language=en#3/35.681/125',fetcher});
+ try{
+  const map=maps[0];map.handlers['style.load']();
+  for(let i=0;i<20&&!map.sourceData?.stationMajor;i++)await new Promise(r=>setTimeout(r,0));
+  const penn=map.sourceData?.stationMajor?.features.find(f=>f.properties.wikidata==='Q54451');
+  assert.ok(penn,'curated Penn feature is hydrated');
+  assert.equal(penn.properties.atlas_name,`OSM English ${penn.properties.osm_id}`);
+  assert.equal(penn.properties.atlas_name_source,'osm');
+  assert.notEqual(penn.properties.atlas_name,'New York Penn Station');
+  assert.ok(osmCalls.some(u=>u.includes('/nodes.json?')),'fixed OSM node identities are fetched in a batch');
+ }finally{dom.window.close();}
+});
+
 test('real renderer initialization failures reach the visible error message', async () => {
   const {dom,window,errors} = await start({failWebGL:true});
   try {
@@ -449,4 +488,69 @@ test('every versioned file the page loads asks for the page version', async () =
   const fallback = (await readFile(new URL('app.mjs', dir), 'utf8')).match(/get\('v'\) \|\| '([\w.-]+)'/)[1];
   assert.deepEqual(found, [], `page version ${page}`);
   assert.equal(fallback, page);
+});
+
+
+test('curated OSM labels remain searchable when both remote searches fail',async()=>{
+ const nameRequests=[];
+ const fetcher=async url=>{
+  const u=new URL(String(url));
+  if(u.hostname==='api.openstreetmap.org'){
+   nameRequests.push(u.href);
+   const plural=u.pathname.split('/').at(-1).replace(/\.json$/,''),type=plural.slice(0,-1);
+   const ids=(u.searchParams.get(plural)||'').split(',').filter(Boolean);
+   return{ok:true,status:200,json:async()=>({elements:ids.map(id=>({type,id:Number(id),tags:{name:`Mapped ${id}`,'name:en':`English Junction ${id}`,'name:de':`Deutscher Knoten ${id}`}}))})};
+  }
+  if(u.href.startsWith(model.SEARCH_API)||u.href.startsWith(model.PLACE_SEARCH_API))return{ok:false,status:503,json:async()=>[]};
+  return{ok:true,status:200,json:async()=>structuredClone(style)};
+ };
+ const {dom,window,maps}=await start({search:'?language=en#3/35.681/125',fetcher});
+ const wait=async condition=>{const until=Date.now()+5000;while(Date.now()<until){if(condition())return;await new Promise(resolve=>setTimeout(resolve,10));}assert.ok(condition(),'condition settled');};
+ try{
+  const map=maps[0],d=window.document;
+  map.getCenter=()=>({lng:0,lat:0,toArray:()=>[0,0]});
+  map.handlers['style.load']();
+  await wait(()=>map.sourceData?.stationMajor?.features.some(f=>f.properties.wikidata==='Q54451'));
+  const query=async text=>{
+   d.getElementById('search-input').value=text;
+   d.getElementById('search-form').dispatchEvent(new window.Event('submit',{cancelable:true}));
+   await wait(()=>!d.getElementById('search-status').textContent.includes('Searching'));
+  };
+  await query('Junction 8953');
+  assert.match(d.getElementById('search-results').textContent,/English Junction 895371274/);
+  assert.doesNotMatch(d.getElementById('search-status').textContent,/Search is unavailable/);
+  const requests=nameRequests.length;
+  const language=d.getElementById('language');language.value='de';language.dispatchEvent(new window.Event('change'));
+  await wait(()=>map.sourceData?.stationMajor?.features.some(f=>f.properties.wikidata==='Q54451'&&f.properties.atlas_language==='de'));
+  await query('Knoten 8953');
+  assert.match(d.getElementById('search-results').textContent,/Deutscher Knoten 895371274/);
+  assert.equal(nameRequests.length,requests,'switching language reuses OSM name tags');
+  await query('New York Penn Station');
+  assert.match(d.getElementById('search-status').textContent,/Search is unavailable/,'the maintenance note cannot satisfy local search');
+ }finally{dom.window.close();}
+});
+
+test('late OSM names cannot populate a hidden curated source',async()=>{
+ const pending=[];
+ const fetcher=async url=>{
+  const u=new URL(String(url));
+  if(u.hostname!=='api.openstreetmap.org')return{ok:true,status:200,json:async()=>structuredClone(style)};
+  const plural=u.pathname.split('/').at(-1).replace(/\.json$/,''),type=plural.slice(0,-1);
+  const ids=(u.searchParams.get(plural)||'').split(',').filter(Boolean);
+  return new Promise(resolve=>pending.push(()=>resolve({ok:true,status:200,json:async()=>({elements:ids.map(id=>({type,id:Number(id),tags:{name:`OSM ${id}`}}))})})));
+ };
+ const {dom,window,maps}=await start({search:'#3/35.681/125',fetcher});
+ try{
+  const map=maps[0];map.handlers['style.load']();
+  for(let i=0;i<30&&!pending.length;i++)await new Promise(resolve=>setTimeout(resolve,0));
+  assert.ok(pending.length);
+  const stations=window.document.getElementById('stations');stations.click();
+  assert.equal(stations.checked,false);
+  pending.splice(0).forEach(resolve=>resolve());
+  for(let i=0;i<20;i++)await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(map.sourceData?.stationMajor,undefined,'the hidden source receives no late data');
+  stations.click();
+  for(let i=0;i<30&&!map.sourceData?.stationMajor;i++)await new Promise(resolve=>setTimeout(resolve,0));
+  assert.ok(map.sourceData?.stationMajor?.features.length,'showing stations reuses valid OSM cache');
+ }finally{pending.forEach(resolve=>resolve());dom.window.close();}
 });

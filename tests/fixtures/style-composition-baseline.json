@@ -158,7 +158,7 @@
       "id": "stationMajor",
       "type": "geojson",
       "featureCount": 167,
-      "sha256": "bd73bb5c2ad2ed1161f872d36098e5f5ae00656fa5480ce54b6db0d500e7c65f"
+      "sha256": "2dd613414805ceef189603830862bfb8b32b3d13b23f28a48adc6b1dc3fcc6da"
     },
     {
       "id": "platforms",
@@ -1858,7 +1858,7 @@
       "sourceLayer": "standard_railway_text_stations_low",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "a3f4786caf1e354fa4f176034f29f5867735da8ca7d81c5d9c7cd9f573f995c2"
+      "sha256": "3d6bb2d712d07e0f262a8476e8e742723281440a8ea343d0047a5b0abfac01ea"
     },
     {
       "id": "station-stationMed-mover-names",
@@ -1867,7 +1867,7 @@
       "sourceLayer": "standard_railway_text_stations_med",
       "minzoom": 6,
       "maxzoom": 8,
-      "sha256": "589f1e16d88bd91a82da5f1e54ae76d8c4daf08d32b3f0cd910dc9ea87f89d3a"
+      "sha256": "4c59b253719d954f5a38ced5a6889a770b5479e5dcc5d4569e16bd3a6a85aff1"
     },
     {
       "id": "station-stations-mover-names",
@@ -1885,7 +1885,7 @@
       "sourceLayer": "standard_railway_text_stations_low",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "9004cf0417e353f5b4bc071935e273fd8d7e6082785e070507611eaca61a1092"
+      "sha256": "a7c7f2f41ede08b938c1ed3d3497fe86dc0c7cb2103daa7d9511a52a41e5c059"
     },
     {
       "id": "station-stationMed-light-rail-names",
@@ -1894,7 +1894,7 @@
       "sourceLayer": "standard_railway_text_stations_med",
       "minzoom": 6,
       "maxzoom": 8,
-      "sha256": "64797bbfe3639a34034cd54c22dc6eb725ce632520abcb13ded5c962ca9e7ade"
+      "sha256": "cd06e2fce91f2b514729d7f1c8bee1a8c467a1d021747603a0a91e0d75c6304c"
     },
     {
       "id": "station-stations-light-rail-names",
@@ -1912,7 +1912,7 @@
       "sourceLayer": "standard_railway_text_stations_low",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "d384b3128f430e73d72d4a28ab11c81bddac75ed58245e2c832427fd9234b7ca"
+      "sha256": "558e13d5e76e954add758796e94ade901ce0b4db520215757d4917f268f413a0"
     },
     {
       "id": "station-stationMed-metro-names",
@@ -1921,7 +1921,7 @@
       "sourceLayer": "standard_railway_text_stations_med",
       "minzoom": 6,
       "maxzoom": 8,
-      "sha256": "51acfe44a50c2e9b97e413933525397596e7403413032d4391d135ff07451da4"
+      "sha256": "35b4e37a5c339dd6176c13846b787cbffff958672e5c0f7c538f37d8ffacb3f9"
     },
     {
       "id": "station-stations-metro-names",
@@ -1939,7 +1939,7 @@
       "sourceLayer": "standard_railway_text_stations_low",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "12368be1d32a1c95371dc3372c76e7b57e8ef0e612a063a995287c0b01e6713f"
+      "sha256": "cbb553bb17c41593ce07a82000c40409fe876da9bfdf376bf958d07827a4bafe"
     },
     {
       "id": "station-stationMed-halt-names",
@@ -1948,7 +1948,7 @@
       "sourceLayer": "standard_railway_text_stations_med",
       "minzoom": 6,
       "maxzoom": 8,
-      "sha256": "a4b541ca2db4a8a73169b80040122396e6e662d0abcec6a98760d7400a686378"
+      "sha256": "956f1636ef2c2740f1931a4d6d5af9624aae415ae42f0421bd81be797116ea4b"
     },
     {
       "id": "station-stations-halt-names",
@@ -1966,7 +1966,7 @@
       "sourceLayer": "standard_railway_text_stations_low",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "f26a3bbaa0f12671e8818e921577a43feb1b7c27f69e8092323b8b5a6029d3c5"
+      "sha256": "780aa51f7d4a332a18240ae860505fd04d26f60964e577c06dd53f1a3e9c7133"
     },
     {
       "id": "station-stationMed-small-names",
@@ -1975,7 +1975,7 @@
       "sourceLayer": "standard_railway_text_stations_med",
       "minzoom": 6,
       "maxzoom": 8,
-      "sha256": "701e77f07774e81da650fe97611c2c16db1ecfc2e44bd44a31df0e67b5439fb5"
+      "sha256": "e48b9634c3e74c16aff17b37b4511515d80d9dcb4fd9a623a19f9ec1a3319b14"
     },
     {
       "id": "station-stations-small-names",
@@ -1993,7 +1993,7 @@
       "sourceLayer": "standard_railway_text_stations_low",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "b4781864fd548792d7c34544a5b576c4a7d85b4c7eb74554aca2c4b54d70fda7"
+      "sha256": "2ecfc187c6a300ac09f471eb6e801a40857eccf84a2247c296d30f4ed5188f76"
     },
     {
       "id": "station-stationMed-normal-names",
@@ -2002,7 +2002,7 @@
       "sourceLayer": "standard_railway_text_stations_med",
       "minzoom": 6,
       "maxzoom": 8,
-      "sha256": "5015d8a35412acfc9126dcfc6d3e4ec065f769e13f7df4ba4e8790d9d83d6590"
+      "sha256": "884f709b27a78b63c73ae91cee6b5f0bb2f71b661a962c8dac481cdafbc97911"
     },
     {
       "id": "station-stations-normal-names",
@@ -2020,7 +2020,7 @@
       "sourceLayer": "standard_railway_text_stations_low",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "3f84bdb07fc593f58f3c105389177a065674f2aaa8ba4e7fe85cb23cbbe7b809"
+      "sha256": "f882fb10b76c3822aada8fbdf7acabc20eed70e356ebc38e54b3318b05ebda97"
     },
     {
       "id": "station-stationMed-large-names",
@@ -2029,7 +2029,7 @@
       "sourceLayer": "standard_railway_text_stations_med",
       "minzoom": 6,
       "maxzoom": 8,
-      "sha256": "f1cb328bbc819d4e3695721d72c9c0975c3b806e75215e761151be81aa24a808"
+      "sha256": "58f00a45fc6002d4e753ec1bac768aee85fd984124d1179a6efd1ad8c24cef85"
     },
     {
       "id": "station-stations-large-names",
@@ -2153,6 +2153,29 @@
       "minzoom": 1,
       "maxzoom": 8,
       "sha256": "4255373d45d823c6f8ae88cbb6b400b59842e8d6f91954a687f83d7a37a597d4"
+    }
+  ],
+  "reviewedUpdates": [
+    {
+      "pr": 73,
+      "reason": "Curated names are maintenance notes only; provider fallback remains eligible until OSM names are available.",
+      "source": "stationMajor",
+      "layers": [
+        "station-stationLow-mover-names",
+        "station-stationMed-mover-names",
+        "station-stationLow-light-rail-names",
+        "station-stationMed-light-rail-names",
+        "station-stationLow-metro-names",
+        "station-stationMed-metro-names",
+        "station-stationLow-halt-names",
+        "station-stationMed-halt-names",
+        "station-stationLow-small-names",
+        "station-stationMed-small-names",
+        "station-stationLow-normal-names",
+        "station-stationMed-normal-names",
+        "station-stationLow-large-names",
+        "station-stationMed-large-names"
+      ]
     }
   ]
 }
