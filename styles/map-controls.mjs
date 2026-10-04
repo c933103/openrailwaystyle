@@ -84,6 +84,10 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
   resizer?.observe(inset, {box: 'border-box'});
   for (const element of [frame, panel, status, readout, details, corner, attribution?.querySelector('.maplibregl-ctrl-attrib-inner')])
     if (element) resizer?.observe(element);
+  // New status text can wrap the pill onto more lines: lay out at once, so
+  // the corner never waits for a later frame's resize notification.
+  const text = new window.MutationObserver(() => update());
+  if (status) text.observe(status, {childList: true, characterData: true, subtree: true});
   const changes = new window.MutationObserver(schedule);
   for (const element of [mapElement, panel, status, readout, details, attribution])
     if (element) changes.observe(element, {attributes: true, attributeFilter: ['class', 'hidden', 'open']});
@@ -94,7 +98,7 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
   update();
   return {update, destroy() {
     disposed = true; if (queued !== undefined) cancel(queued);
-    resizer?.disconnect(); changes.disconnect(); inset.remove();
+    resizer?.disconnect(); changes.disconnect(); text.disconnect(); inset.remove();
     if (details) details.style.maxHeight = originalDetailsHeight;
     window.removeEventListener('resize', schedule);
     window.visualViewport?.removeEventListener('resize', schedule);
