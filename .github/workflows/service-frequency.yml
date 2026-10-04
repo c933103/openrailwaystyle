@@ -8,6 +8,7 @@ on:
       - scripts/gtfs-shapes.py
       - scripts/gtfs-rail-paths.py
       - scripts/assemble-global-frequency.mjs
+      - scripts/frequency-tiling-budget.mjs
       - scripts/read-frequency-feed.mjs
       - scripts/gtfs-service.mjs
       - scripts/service-routes.mjs
@@ -29,6 +30,7 @@ on:
       - scripts/gtfs-shapes.py
       - scripts/gtfs-rail-paths.py
       - scripts/assemble-global-frequency.mjs
+      - scripts/frequency-tiling-budget.mjs
       - scripts/read-frequency-feed.mjs
       - scripts/gtfs-service.mjs
       - scripts/service-routes.mjs
