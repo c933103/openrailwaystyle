@@ -78,3 +78,16 @@ test('new status text that wraps the pill lifts the corner without waiting for a
   assert.ok(f.corner.getBoundingClientRect().bottom<=f.status.getBoundingClientRect().top,'the corner sits above the wrapped pill');
  }finally{f.layout.destroy();f.dom.window.close();}
 });
+
+test('rewriting the same status text does not lay the corner out again',async()=>{
+ const f=fixture(800,400,42,true,false);
+ try{
+  let measured=0;const original=f.corner.getBoundingClientRect;f.corner.getBoundingClientRect=()=>{measured++;return original();};
+  f.status.textContent='Explore the rail network';await new Promise(resolve=>setTimeout(resolve,0));
+  const after=measured;
+  for(let i=0;i<5;i++){f.status.textContent='Explore the rail network';await new Promise(resolve=>setTimeout(resolve,0));}
+  assert.equal(measured,after,'idle rewrites of unchanged text cost no layout');
+  f.status.textContent='A different message';await new Promise(resolve=>setTimeout(resolve,0));
+  assert.ok(measured>after,'a real change is laid out at once');
+ }finally{f.layout.destroy();f.dom.window.close();}
+});
