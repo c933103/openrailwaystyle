@@ -1,4 +1,6 @@
 import test from 'node:test';
+import * as labelModule from '../styles/tile-labels.mjs';
+import encodeTile from 'vt-pbf';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
@@ -18,7 +20,7 @@ const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '' } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -90,7 +92,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const dependency = new vm.SyntheticModule(Object.keys(model), function() {
     for (const [key,value] of Object.entries(model)) this.setExport(key,value);
   }, {context});
-  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','locate','buildInfo'],function(){this.setExport('buildInfo',labelBuild);this.setExport('installLabelProtocols',()=>{});this.setExport('localizeTile',x=>x);this.setExport('locate',(lon,lat)=>{assert.ok(Number.isFinite(lon)&&Number.isFinite(lat),'label region lookup takes longitude and latitude separately');return {atlas_han:'none',atlas_zh:''};});},{context});
+  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','locate','buildInfo','readTile'],function(){this.setExport('buildInfo',labelBuild);this.setExport('readTile',labelModule.readTile);this.setExport('installLabelProtocols',()=>stationTile?{stationTile}:undefined);this.setExport('localizeTile',x=>x);this.setExport('locate',(lon,lat)=>{assert.ok(Number.isFinite(lon)&&Number.isFinite(lat),'label region lookup takes longitude and latitude separately');return {atlas_han:'none',atlas_zh:''};});},{context});
   // The label code is imported on demand, after the controls are wired.
   let loadLabels;
   const labelsReady=new Promise(resolve=>{loadLabels=resolve;});
@@ -307,27 +309,30 @@ test('settings are remembered in a cookie; a shared link applies once and leaves
     } finally {dom.window.close();}
   }
 });
-test('curated priority gets its displayed names from OSM object tags, never the source note',async()=>{
- const osmCalls=[];
- const fetcher=async url=>{
-  const u=new URL(String(url));
-  if(u.hostname==='api.openstreetmap.org'){
-   osmCalls.push(u.href);
-   const plural=u.pathname.split('/').at(-1).replace(/\.json$/,''),type=plural.slice(0,-1),ids=(u.searchParams.get(plural)||'').split(',').filter(Boolean);
-   return {ok:true,status:200,json:async()=>({elements:ids.map(id=>({type,id:Number(id),tags:{name:`OSM local ${id}`,'name:en':`OSM English ${id}`}}))})};
-  }
-  return {ok:true,status:200,json:async()=>structuredClone(style)};
- };
- const {dom,maps}=await start({search:'?language=en#3/35.681/125',fetcher});
+test('curated hubs take their names from the provider station tiles by OSM identity, without OSM API requests',async()=>{
+ const penn=style.sources.stationMajor.data.features.find(f=>f.properties.wikidata==='Q54451');
+ const [first,alias]=penn.properties.osm_ids.split(';').concat([penn.properties.id]);
+ const requests=[],tileRequests=[];
+ const fetcher=async url=>{requests.push(String(url));return {ok:true,status:200,json:async()=>structuredClone(style)};};
+ // The provider names its grouped station after one member; here an alias.
+ const member=(alias||first).replace(/^(node|way|relation)-/, '$1-');
+ const stationTile=async(url,lang)=>{tileRequests.push([url,lang]);
+  const feature=(id,name,x)=>({type:1,id:x,tags:{id,name,atlas_name:`${name} (${lang})`,atlas_language:lang},geometry:[[2048+x,2048]]});
+  const result=encodeTile.fromGeojsonVt({standard_railway_text_stations:{features:[feature(`${member}-train-train-station`,'Provider Penn',1),feature('node-1-train-train-station','Elsewhere',2)]}},{version:2});
+  return result.buffer.slice(result.byteOffset,result.byteOffset+result.byteLength);};
+ const {dom,maps}=await start({search:'?language=en#3/40.75/-74',fetcher,stationTile});
  try{
-  const map=maps[0];map.handlers['style.load']();
-  for(let i=0;i<20&&!map.sourceData?.stationMajor;i++)await new Promise(r=>setTimeout(r,0));
-  const penn=map.sourceData?.stationMajor?.features.find(f=>f.properties.wikidata==='Q54451');
-  assert.ok(penn,'curated Penn feature is hydrated');
-  assert.equal(penn.properties.atlas_name,`OSM English ${penn.properties.osm_id}`);
-  assert.equal(penn.properties.atlas_name_source,'osm');
-  assert.notEqual(penn.properties.atlas_name,'New York Penn Station');
-  assert.ok(osmCalls.some(u=>u.includes('/nodes.json?')),'fixed OSM node identities are fetched in a batch');
+  const map=maps[0],source=map.getSource.bind(map);
+  map.getSource=id=>id==='stations'?{tiles:['atlasstation://en/https://tiles.test/stations/{z}/{x}/{y}']}:source(id);
+  map.getBounds=()=>({getWest:()=>-80,getEast:()=>-70,getSouth:()=>35,getNorth:()=>45});
+  map.handlers['style.load']();
+  for(let i=0;i<50&&!map.sourceData?.stationMajor?.features.length;i++)await new Promise(r=>setTimeout(r,0));
+  const named=map.sourceData?.stationMajor?.features.find(f=>f.properties.wikidata==='Q54451');
+  assert.ok(named,'the curated hub in view is named');
+  assert.equal(named.properties.atlas_name,'Provider Penn (en)');
+  assert.ok(tileRequests.every(([url,lang])=>/^https:\/\/tiles\.test\/stations\/(8|10)\/\d+\/\d+$/.test(url)&&lang==='en'),'zoom-8 station tiles through the station pipeline');
+  assert.ok(!requests.some(url=>url.includes('openstreetmap.org')),'no OSM API requests');
+  assert.ok(map.sourceData.stationMajor.features.every(f=>f.properties.atlas_name),'unnamed hubs stay hidden rather than showing a source note');
  }finally{dom.window.close();}
 });
 

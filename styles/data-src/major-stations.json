@@ -295,7 +295,9 @@
   },
   {
     "osm": "way/23641610",
-    "osmAliases": [],
+    "osmAliases": [
+      "node/3799089099"
+    ],
     "lon": 121.51722222222,
     "lat": 25.047777777778,
     "name": "臺北車站",
@@ -1165,7 +1167,9 @@
   },
   {
     "osm": "way/232514810",
-    "osmAliases": [],
+    "osmAliases": [
+      "node/13447631673"
+    ],
     "lon": 79.850833,
     "lat": 6.933611,
     "name": "Colombo Fort",
@@ -2392,7 +2396,9 @@
   },
   {
     "osm": "relation/7188623",
-    "osmAliases": [],
+    "osmAliases": [
+      "node/4919366664"
+    ],
     "lon": 5.3334,
     "lat": 60.3903,
     "name": "Bergen",
@@ -2904,7 +2910,9 @@
   },
   {
     "osm": "relation/1309225",
-    "osmAliases": [],
+    "osmAliases": [
+      "node/85698866"
+    ],
     "lon": 37.65566991,
     "lat": 55.7736109,
     "name": "Казанский вокзал",
@@ -3716,7 +3724,10 @@
   },
   {
     "osm": "way/8105832",
-    "osmAliases": [],
+    "osmAliases": [
+      "way/424572971",
+      "node/5368677484"
+    ],
     "lon": -46.63528,
     "lat": -23.53509,
     "name": "Estação da Luz",

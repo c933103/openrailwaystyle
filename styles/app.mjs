@@ -251,131 +251,73 @@ const isLowZoomStationLayer = id => id.endsWith('-names') && (id.startsWith('sta
 const lowZoomStationTextColor = () => settings.stationImportanceColors
   ? DEFAULT_STATION_TEXT_COLOR
   : ['step', ['zoom'], LOW_ZOOM_STATION_TEXT_COLOR, 7, DEFAULT_STATION_TEXT_COLOR];
-const OSM_API='https://api.openstreetmap.org/api/0.6';
-const MAJOR_STATION_NAME_CACHE='atlas_major_station_osm_names_v2';
-const MAJOR_STATION_NAME_MAX_AGE=7*24*60*60*1000;
-let majorStationData,majorStationSearchData,majorStationsPromise,majorStationNamesPromise;
-let majorStationNameMemory,majorStationNextRefreshAt=0,majorStationRequestId=0;
-const majorStationLanguages=new WeakMap();
-const majorStationObjectKey=p=>`${p.osm_type}/${p.osm_id}`;
-// Match language-name syntax used by tileStations, plus two supported legacy aliases.
-const isStationNameTag=key=>/^name(:[a-z]{2,3}([-_][A-Za-z0-9]+)*)?$/.test(key)||key==='name:ko:hanja'||key==='name:vi:nom';
-const stationNameTags=tags=>{
- if(!tags||typeof tags!=='object'||Array.isArray(tags))return null;
- const entries=Object.entries(tags).filter(([key])=>isStationNameTag(key));
- // Invalid name values are not evidence of a genuinely nameless object.
- if(entries.some(([,value])=>typeof value!=='string'))return null;
- return Object.fromEntries(entries);
-};
-function readMajorStationNameCache(){
- if(majorStationNameMemory)return majorStationNameMemory;
- const records=Object.create(null),now=Date.now();
- try{
-  const cached=JSON.parse(localStorage.getItem(MAJOR_STATION_NAME_CACHE)||'null');
-  if(cached?.version===2&&cached.records&&typeof cached.records==='object'&&!Array.isArray(cached.records)){
-   for(const [key,record] of Object.entries(cached.records)){
-    if(!/^(node|way|relation)\/[1-9]\d*$/.test(key)||!record||!Number.isFinite(record.fetchedAt)||record.fetchedAt<0||record.fetchedAt>now||!record.tags||typeof record.tags!=='object'||Array.isArray(record.tags))continue;
-    const tags=stationNameTags(record.tags);
-    if(tags===null){
-     // A malformed translation invalidates freshness, not valid sibling names.
-     const fallback=Object.fromEntries(Object.entries(record.tags).filter(([tag,value])=>isStationNameTag(tag)&&typeof value==='string'));
-     if(Object.keys(fallback).length)records[key]={fetchedAt:0,tags:fallback};
-     continue;
-    }
-    records[key]={fetchedAt:record.fetchedAt,tags};
-   }
+// Curated hubs (major-stations.geojson) decide which station is shown at
+// zooms 3–6. Their names come, like every other station label, from the
+// provider's station tiles through the same language handling: zoom 8 holds
+// nearly every hub; one the provider groups under a metro station appears
+// from zoom 10, which is read only when zoom 8 has no match. A tile entry is the curated
+// station when its OSM identity is the curated object or one of its aliases.
+const MAJOR_NAME_ZOOMS=[8,10],MAJOR_NAME_TILES=256;
+let majorStationData,majorStationSearchData,majorStationsPromise,stationTileFor=null,stationTileURL=null,majorStationGeneration=0;
+const majorStationTiles=new Map();
+const tileIdentity=id=>/^(node|way|relation)-[1-9]\d*/.exec(String(id??''))?.[0];
+function majorNameTile(language,z,x,y){
+ const key=`${language}/${z}/${x}/${y}`;
+ if(majorStationTiles.has(key)){const value=majorStationTiles.get(key);majorStationTiles.delete(key);majorStationTiles.set(key,value);return value;}
+ const url=stationTileURL.replace('{z}',z).replace('{x}',x).replace('{y}',y);
+ const promise=Promise.all([stationTileFor(url,language),labels]).then(([data,code])=>{
+  const byIdentity=new Map();
+  for(const layer of Object.values(code.readTile(data).layers))for(let i=0;i<layer.length;i++){
+   const p=layer.feature(i).properties,identity=tileIdentity(p.id);
+   if(identity&&p.atlas_name&&!byIdentity.has(identity))byIdentity.set(identity,p);
   }
- }catch{}
- return majorStationNameMemory=records;
+  return byIdentity;
+ });
+ promise.catch(()=>majorStationTiles.delete(key));
+ majorStationTiles.set(key,promise);
+ while(majorStationTiles.size>MAJOR_NAME_TILES)majorStationTiles.delete(majorStationTiles.keys().next().value);
+ return promise;
 }
-function writeMajorStationNameCache(records){
- majorStationNameMemory=records;
- try{localStorage.setItem(MAJOR_STATION_NAME_CACHE,JSON.stringify({version:2,records}));}catch{}
+// The tile holding a point, and its four neighbours: the provider places a
+// grouped station at the group's centre, which can lie across an edge.
+function majorNameTiles([lon,lat],z){
+ const n=2**z,s=Math.sin(Math.max(-85.05,Math.min(85.05,lat))*Math.PI/180);
+ const x=((Math.floor((lon+180)/360*n))%n+n)%n,y=Math.max(0,Math.min(n-1,Math.floor((.5-Math.log((1+s)/(1-s))/(4*Math.PI))*n)));
+ return [[x,y],[(x+1)%n,y],[(x+n-1)%n,y],[x,Math.min(n-1,y+1)],[x,Math.max(0,y-1)]];
 }
-// Cache each successful OSM object separately. An omitted object is not a
-// successful empty name, and a failed relation request cannot erase node names.
-async function majorStationNameTags(data,{timeout=8000}={}){
- const wanted=new Set(data.features.map(f=>majorStationObjectKey(f.properties)));
- const existing=readMajorStationNameCache(),records=Object.create(null),now=Date.now();
- for(const key of wanted)if(existing[key])records[key]=existing[key];
- const fresh=key=>records[key]&&now-records[key].fetchedAt<MAJOR_STATION_NAME_MAX_AGE;
- const groups={node:[],way:[],relation:[]};
- for(const key of wanted){
-  const [type,id]=key.split('/');
-  if(!groups[type]||!/^[1-9]\d*$/.test(id))continue;
-  if(!fresh(key))groups[type].push(id);
+async function majorStationName(feature,language){
+ const identities=new Set(String(feature.properties.osm_ids||feature.properties.id||'').split(';').filter(Boolean));
+ for(const z of MAJOR_NAME_ZOOMS)for(const [x,y] of majorNameTiles(feature.geometry.coordinates,z)){
+  const found=await majorNameTile(language,z,x,y);
+  for(const id of identities){const p=found?.get(id);if(p)return p;}
  }
- if(Object.values(groups).some(ids=>ids.length)){
-  const controller=new AbortController();
-  let budget=32,timer;
-  // The deadline covers both response headers and body parsing, even for a
-  // transport which does not honour AbortSignal. Late bodies cannot modify records.
-  const expired=new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(new Error('Station name request timed out'));},timeout);});
-  const request=async(type,ids)=>{
-   if(!ids.length)return;
-   if(controller.signal.aborted||budget--<=0)throw new Error('Station name request budget exhausted');
-   const plural=`${type}s`,url=new URL(`${OSM_API}/${plural}.json`);
-   url.searchParams.set(plural,ids.join(','));
-   const answer=await Promise.race([expired,(async()=>{
-    const response=await fetch(url,{headers:{Accept:'application/json'},signal:controller.signal});
-    return{ok:response.ok,status:response.status,body:response.ok?await response.json():null};
-   })()]);
-   if(controller.signal.aborted)throw new Error('Station name request cancelled');
-   if(answer.status===404){
-    if(ids.length===1){delete records[`${type}/${ids[0]}`];return;}
-    const half=Math.ceil(ids.length/2);
-    // Preserve successful halves even if the other half fails.
-    await Promise.allSettled([request(type,ids.slice(0,half)),request(type,ids.slice(half))]);
-    return;
-   }
-   if(!answer.ok)throw new Error(`OpenStreetMap ${plural} returned ${answer.status}`);
-   if(!Array.isArray(answer.body?.elements))throw new Error('Invalid OpenStreetMap station response');
-   const requested=new Set(ids);
-   for(const element of answer.body.elements){
-    if(element?.type!==type||!requested.has(String(element.id)))continue;
-    const key=`${type}/${element.id}`;
-    if(element.visible===false){delete records[key];continue;}
-    if(element.tags!==undefined&&(!element.tags||typeof element.tags!=='object'||Array.isArray(element.tags)))continue;
-    const tags=stationNameTags(element.tags===undefined?{}:element.tags);
-    if(tags===null)continue;
-    records[key]={fetchedAt:Date.now(),tags};
-   }
-  };
-  try{
-   const tasks=[];
-   for(const [type,ids] of Object.entries(groups))for(let i=0;i<ids.length;i+=100)tasks.push(request(type,ids.slice(i,i+100)));
-   const results=await Promise.allSettled(tasks);
-   if(results.some(result=>result.status==='rejected'))console.warn('Some station names could not refresh; retaining available OSM names.');
-  }finally{clearTimeout(timer);}
- }
- writeMajorStationNameCache(records);
- const checkedAt=Date.now(),expires=[...wanted].map(key=>records[key]?.fetchedAt+MAJOR_STATION_NAME_MAX_AGE);
- // Retry missing/failed objects on a later interaction, not every move event.
- majorStationNextRefreshAt=expires.some(time=>!Number.isFinite(time)||time<=checkedAt)?checkedAt+30000:Math.min(...expires);
- return Object.fromEntries(Object.entries(records).map(([key,record])=>[key,record.tags]));
+ return null;
 }
 function updateMajorStations(){
  if(!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3||map.getZoom()>=7)return;
  const source=map.getSource('stationMajor'),language=settings.language;
- if(!source||(majorStationLanguages.get(source)===language&&Date.now()<majorStationNextRefreshAt))return;
- // A cache refresh may finish while hidden. Until applied, the rendered
- // source must not be marked current merely because the cache is fresh.
- majorStationLanguages.delete(source);
- const requestId=++majorStationRequestId;
+ stationTileURL ||= map.getSource('stations')?.tiles?.[0]?.replace(/^atlasstation:\/\/[^/]+\//,'');
+ if(!source||!stationTileFor||!stationTileURL)return;
+ const generation=++majorStationGeneration,zoom=map.getZoom(),bounds=map.getBounds();
  majorStationsPromise ||= majorStationData?Promise.resolve(majorStationData):fetch(new URL(`major-stations.geojson?v=${assetVersion}`,import.meta.url)).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}).catch(error=>{majorStationsPromise=undefined;throw error;});
- const namesPromise=majorStationNamesPromise ||= majorStationsPromise.then(data=>majorStationNameTags(data));
- Promise.all([majorStationsPromise,namesPromise]).then(([data,names])=>{
-  if(requestId!==majorStationRequestId||!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3||map.getZoom()>=7||language!==settings.language||source!==map.getSource('stationMajor'))return;
-  const hydrated={...data,features:data.features.map(f=>{
-   // Strip any legacy name fields as well: only fetched OSM tags may name a hub.
-   const metadata=Object.fromEntries(Object.entries(f.properties).filter(([key])=>key!=='name'&&!key.startsWith('name:')&&!['atlas_name','label','ref'].includes(key)));
-   const properties={...metadata,...(names[majorStationObjectKey(metadata)]||{})};
-   return{...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language,atlas_name_source:'osm'}};
-  }).filter(f=>f.properties.atlas_name)};
-  majorStationSearchData=hydrated;
-  source.setData(hydrated);
-  majorStationLanguages.set(source,language);
- }).catch(error=>console.warn('Major station names unavailable:',error.message)).finally(()=>{if(majorStationNamesPromise===namesPromise)majorStationNamesPromise=undefined;});
+ majorStationsPromise.then(async data=>{
+  // Only the hubs this view can show are named; others wait for their view.
+  const west=bounds.getWest()-10,east=bounds.getEast()+10,south=bounds.getSouth()-10,north=bounds.getNorth()+10;
+  const wanted=data.features.filter(f=>{const [lon,lat]=f.geometry.coordinates,l=lon<west?lon+360:lon>east?lon-360:lon;return (f.properties.tier??7)<=Math.floor(zoom)&&l>=west&&l<=east&&lat>=south&&lat<=north;});
+  const named=await Promise.all(wanted.map(f=>majorStationName(f,language).catch(()=>null)));
+  if(generation!==majorStationGeneration||!ready||language!==settings.language||source!==map.getSource('stationMajor'))return;
+  const names=new Map(wanted.map((f,i)=>[f.id,named[i]]));
+  // Hubs named earlier for this language keep their names off-view, so
+  // panning back does not blank them while their tiles are read again.
+  const previous=new Map((majorStationSearchData?.language===language?majorStationSearchData.features:[]).map(f=>[f.id,f]));
+  const features=data.features.map(f=>{
+   const p=names.get(f.id);
+   if(p)return {...f,properties:{...f.properties,name:p.name,localized_name:p.localized_name,atlas_name:p.atlas_name,atlas_language:language}};
+   return previous.get(f.id)||null;
+  }).filter(Boolean);
+  majorStationSearchData={type:'FeatureCollection',language,features};
+  source.setData({type:'FeatureCollection',features});
+ }).catch(error=>console.warn('Major station names unavailable:',error.message));
 }
 function applySettings() {
   syncWatchLayout();
@@ -1114,6 +1056,7 @@ async function initialize() {
   maplibregl.addProtocol('pmtiles', protocol.tile);
   const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url),
     basemapArchive: url => new pmtiles.PMTiles(labelCode.timedSource(new pmtiles.FetchSource(url), 20000))});
+  stationTileFor=labelProtocols?.stationTile||null;
   // The contour worker with the terrain tiles' bad pixels repaired
   // (dem-worker.mjs); relief shading reads its tiles through it too.
   mlcontour.workerUrl = new URL(`vendor/dem-worker.js?v=${assetVersion}`, import.meta.url).href;

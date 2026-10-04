@@ -37,7 +37,7 @@ export function majorStationsGeoJSON(entries){
  }
  return {type:'FeatureCollection',features:selectMajorStations(entries).filter(e=>e.tier<=6).map(e=>{
   const [osm_type,osm_id]=e.osm.split('/'),atlas_han=hanRegion(e.lon,e.lat);
-  return {type:'Feature',id:e.wikidata,geometry:{type:'Point',coordinates:[e.lon,e.lat]},properties:{osm_type,osm_id,id:`${osm_type}-${osm_id}`,wikidata:e.wikidata,feature:'station',state:'present',station:e.station||'train',station_size:e.minZoom===3?'large':'normal',curated:true,mapped_feature:e.mappedFeature||'railway=station',tier:e.tier,rank:e.rank,basis:e.basis,atlas_han,atlas_zh:atlas_han==='cjkv'?chineseArea(e.lon,e.lat):''}};
+  return {type:'Feature',id:e.wikidata,geometry:{type:'Point',coordinates:[e.lon,e.lat]},properties:{osm_type,osm_id,id:`${osm_type}-${osm_id}`,osm_ids:[e.osm,...(e.osmAliases||[])].map(id=>id.replace('/','-')).join(';'),wikidata:e.wikidata,feature:'station',state:'present',station:e.station||'train',station_size:e.minZoom===3?'large':'normal',curated:true,mapped_feature:e.mappedFeature||'railway=station',tier:e.tier,rank:e.rank,basis:e.basis,atlas_han,atlas_zh:atlas_han==='cjkv'?chineseArea(e.lon,e.lat):''}};
  })};
 }
 export function stationAliases(entries){return [...new Set(entries.flatMap(e=>[e.osm,...(e.osmAliases||[])]).flatMap(id=>[id,id.replace('/','-')]))];}

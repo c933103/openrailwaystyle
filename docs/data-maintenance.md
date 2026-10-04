@@ -98,7 +98,7 @@ Run `npm run build` and commit both generated files, then `npm test`. Review der
 
 See [Axle load](axle-load.md) for the new view, national class distinctions, source references and the 28-day snapshot refresh.
 
-Each successful OSM object has its own cache timestamp. Failed, omitted or malformed responses do not become seven-day empty name records. A refresh has an eight-second overall deadline and a bounded subdivision budget; successful object types survive failures in another type. Stale OSM-sourced names remain available offline without being marked fresh. Missing or expired objects can be retried on a later map interaction after a thirty-second backoff. Curated local search uses the same OSM-hydrated names as the labels, never maintenance notes.
+Curated hubs carry no names: the client names them from the provider's station tiles by OSM identity ([label rules](labels.md)). When the provider keys a hub's grouped station on an OSM object other than the curated one, add that object to the entry's `osmAliases`; the provider's station feature API lists every OSM object in a group.
 
 ## Railway signals and traction supplies
 
