@@ -4,17 +4,17 @@ import {readFile} from 'node:fs/promises';
 import Pbf from 'pbf';
 import {VectorTile} from '@mapbox/vector-tile';
 import {featureFilter} from '@maplibre/maplibre-gl-style-spec';
-import {DETAIL_ZOOM, OVERVIEW_ZOOM, TAG_KEYS, applyChanges, buildTiles, parseCsv, quarters, readTable, regionQuery, replaceRegion, startRegions, writeTable} from '../scripts/crossing-data.mjs';
+import {DETAIL_ZOOM, OVERVIEW_ZOOM, SEP, TAG_KEYS, applyChanges, buildTiles, parseCsv, quarters, readTable, regionQuery, replaceRegion, startRegions, writeTable} from '../scripts/crossing-data.mjs';
 
-const csv = (rows, minor = []) => [...rows, [1, '', '', 'minor'], ...minor, [2, '', '', 'end']].map(r => r.join('\t')).join('\n') + '\n';
+const csv = (rows, minor = []) => [...rows, [1, '', '', 'minor'], ...minor, [2, '', '', 'end']].map(r => r.join(SEP)).join('\n') + '\n';
 const layer = bytes => new VectorTile(new Pbf(bytes)).layers.level_crossings;
 
 test('crossing responses: rows parse, minor after the marker; a response without the markers or with an error page is rejected', () => {
   assert.deepEqual(parseCsv(csv([[5, 22.3, 113.9, 'level_crossing'], [6, 22.4, 114.0, 'crossing']], [[7, 22.5, 114.1, 'level_crossing']])),
     [{id: 5, lat: 22.3, lon: 113.9, kind: 'road', minor: false, tags: {}}, {id: 6, lat: 22.4, lon: 114.0, kind: 'foot', minor: false, tags: {}}, {id: 7, lat: 22.5, lon: 114.1, kind: 'road', minor: true, tags: {}}]);
-  assert.deepEqual(parseCsv('1\t\t\tminor\n2\t\t\tend\n'), []);
-  assert.throws(() => parseCsv('5\t22.3\t113.9\tlevel_crossing\n'), /no end marker/);
-  assert.throws(() => parseCsv('5\t22.3\t113.9\tlevel_crossing\n1\t\t\tend\n'), /no minor marker/);
+  assert.deepEqual(parseCsv(`1${SEP}${SEP}${SEP}minor\n2${SEP}${SEP}${SEP}end\n`), []);
+  assert.throws(() => parseCsv(`5${SEP}22.3${SEP}113.9${SEP}level_crossing\n`), /no end marker/);
+  assert.throws(() => parseCsv(`5${SEP}22.3${SEP}113.9${SEP}level_crossing\n1${SEP}${SEP}${SEP}end\n`), /no minor marker/);
   assert.throws(() => parseCsv('<?xml version="1.0"?><html><p>runtime error: Query timed out</p></html>'), /error page.*timed out/);
   assert.throws(() => parseCsv(csv([[5, 'x', 113.9, 'level_crossing']])), /Unexpected/);
   assert.match(regionQuery([0, 90, 45, 135]), /node\[railway=level_crossing\]\(0,90,45,135\);node\[railway=crossing\]\(0,90,45,135\);\)->\.c;way\(bn\.c\)\[railway\]->\.w;/);
@@ -82,22 +82,26 @@ test('style: crossing dots from zoom 5 in the Infrastructure view (not those on 
   assert.deepEqual([style.sources.crossingsOverview.minzoom, style.sources.crossingsOverview.maxzoom, style.sources.crossingsDetail.minzoom], [5, 5, 9]);
 });
 
-test('crossing tags: the query asks for every shown tag; values with tabs or line breaks stay in their row', () => {
-  assert.ok(regionQuery([0, 90, 45, 135]).startsWith(`[out:csv(::id,::lat,::lon,railway,${TAG_KEYS.map(key => `"${key}"`).join(',')};false)]`));
-  const tagged = (values) => TAG_KEYS.map(key => values[key] ?? '');
-  const text = [[5, 22.3, 113.9, 'level_crossing', ...tagged({'crossing:barrier': 'full', 'crossing:light': 'yes', ref: '12'})].join('\t'),
-    [6, 22.4, 114.0, 'crossing', ...tagged({name: 'Mill\tLane', description: 'first line\nsecond\tpart'})].join('\t'),
-    ['1', '', '', 'minor', ...tagged({})].join('\t'), ['2', '', '', 'end', ...tagged({})].join('\t')].join('\n') + '\n';
+test('crossing tags: the query asks for every shown tag; tabs and line breaks in values stay exact; a stray separator leaves the tags unreadable, never shifted', () => {
+  assert.ok(regionQuery([0, 90, 45, 135]).startsWith(`[out:csv(::id,::lat,::lon,railway,${TAG_KEYS.map(key => `"${key}"`).join(',')};false;"${SEP}")]`));
+  const row = (values, tags = {}) => [...values, ...TAG_KEYS.map(key => tags[key] ?? '')].join(SEP);
+  const text = [row([5, 22.3, 113.9, 'level_crossing'], {'crossing:barrier': 'full', 'crossing:light': 'yes', ref: '12'}),
+    row([6, 22.4, 114.0, 'crossing'], {name: 'Mill\tLane\nnorth', description: 'first line\nsecond\tpart'}),
+    row([8, 22.5, 114.1, 'crossing'], {name: `odd${SEP}value`, ref: '7'}),
+    row([1, '', '', 'minor']), row([2, '', '', 'end'])].join('\n') + '\n';
   const rows = parseCsv(text);
+  assert.deepEqual(rows.map(r => r.id), [5, 6, 8], 'a line break inside a value does not start a row');
   assert.deepEqual(rows[0].tags, {'crossing:barrier': 'full', 'crossing:light': 'yes', ref: '12'});
-  assert.equal(rows.length, 2, 'a line break inside a value does not start a row');
-  assert.equal(rows[1].tags.description.includes('second'), true, 'overflowing text joins the final free-text column');
-  assert.throws(() => parseCsv('stray text\n1\t\t\tminor\n2\t\t\tend\n'), /Unexpected/);
-  const table = new Map([[5, [22.3, 113.9, 'road', false, rows[0].tags]], [6, [22.4, 114.0, 'foot', true, {name: 'a\tb\nc'}]]]);
-  assert.deepEqual(readTable(writeTable(table)), table, 'tags survive the table file, tabs and line breaks included');
+  assert.deepEqual(rows[1].tags, {name: 'Mill\tLane\nnorth', description: 'first line\nsecond\tpart'});
+  assert.equal(rows[2].tags, null, 'tags are not guessed when a value holds the separator');
+  assert.deepEqual([rows[2].lat, rows[2].kind], [22.5, 'foot']);
+  assert.throws(() => parseCsv(`stray text\n1${SEP}${SEP}${SEP}minor\n2${SEP}${SEP}${SEP}end\n`), /Unexpected/);
+  const table = new Map([[5, [22.3, 113.9, 'road', false, rows[0].tags]], [6, [22.4, 114.0, 'foot', true, rows[1].tags]], [8, [22.5, 114.1, 'foot', false, null]]]);
+  assert.deepEqual(readTable(writeTable(table)), table, 'tags survive the table file, tabs, line breaks and unreadable marks included');
   const byId = {};
   for (const tile of buildTiles(table, DETAIL_ZOOM, {detail: true}).values()) { const d = layer(tile); for (let i = 0; i < d.length; i++) byId[d.feature(i).id] = d.feature(i).properties; }
   assert.deepEqual(byId[5], {kind: 'road', 'crossing:barrier': 'full', 'crossing:light': 'yes', ref: '12'}, 'detail tiles carry the tags, so a click needs no request');
-  assert.deepEqual(byId[6], {kind: 'foot', minor: true, name: 'a\tb\nc'});
+  assert.deepEqual(byId[6], {kind: 'foot', minor: true, ...rows[1].tags});
+  assert.deepEqual(byId[8], {kind: 'foot', tags_unreadable: true});
   for (const tile of buildTiles(table, OVERVIEW_ZOOM).values()) for (let i = 0, o = layer(tile); i < o.length; i++) assert.deepEqual(Object.keys(o.feature(i).properties).filter(k => k !== 'minor'), ['kind'], 'overview tiles stay tag-free');
 });
