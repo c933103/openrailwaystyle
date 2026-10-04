@@ -287,7 +287,8 @@ function majorNameTiles([lon,lat],z){
 async function majorStationName(feature,language){
  const identities=new Set(String(feature.properties.osm_ids||feature.properties.id||'').split(';').filter(Boolean));
  for(const z of MAJOR_NAME_ZOOMS)for(const [x,y] of majorNameTiles(feature.geometry.coordinates,z)){
-  const found=await majorNameTile(language,z,x,y);
+  // A tile that fails is skipped; the remaining candidates may still name it.
+  const found=await majorNameTile(language,z,x,y).catch(()=>null);
   for(const id of identities){const p=found?.get(id);if(p)return p;}
  }
  return null;
@@ -311,7 +312,7 @@ function updateMajorStations(){
   const previous=new Map((majorStationSearchData?.language===language?majorStationSearchData.features:[]).map(f=>[f.id,f]));
   const features=data.features.map(f=>{
    const p=names.get(f.id);
-   if(p)return {...f,properties:{...f.properties,name:p.name,localized_name:p.localized_name,atlas_name:p.atlas_name,atlas_language:language}};
+   if(p)return {...f,properties:{...f.properties,name:p.name,localized_name:p.localized_name,atlas_name:p.atlas_name,atlas_language:language,atlas_name_source:'provider'}};
    return previous.get(f.id)||null;
   }).filter(Boolean);
   majorStationSearchData={type:'FeatureCollection',language,features};
@@ -1056,6 +1057,7 @@ async function initialize() {
   const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url),
     basemapArchive: url => new pmtiles.PMTiles(labelCode.timedSource(new pmtiles.FetchSource(url), 20000))});
   stationTileFor=labelProtocols?.stationTile||null;
+  if(ready)updateMajorStations();
   // The contour worker with the terrain tiles' bad pixels repaired
   // (dem-worker.mjs); relief shading reads its tiles through it too.
   mlcontour.workerUrl = new URL(`vendor/dem-worker.js?v=${assetVersion}`, import.meta.url).href;
@@ -1257,6 +1259,9 @@ async function initialize() {
   map.on('moveend', scheduleLegend);
   map.on('moveend', () => powerFacilities?.());
   map.on('moveend',updateMajorStations);
+  // Curated names need the station source's tile address, known once its
+  // TileJSON arrives (possibly after the first frame, with no move to follow).
+  map.on('sourcedata',e=>{if(e.sourceId==='stations'&&e.sourceDataType==='metadata'&&!stationTileURL)updateMajorStations();});
   map.on('moveend', scheduleNearbyTransport);
   map.on('sourcedata', e => { if (e.sourceId === 'openmaptiles' && e.isSourceLoaded) scheduleNearbyTransport(); });
   map.on('moveend', updatePolar);
