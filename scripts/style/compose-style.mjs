@@ -10,6 +10,7 @@ import {createRailwayLayers} from './layers/railway.mjs';
 import {lifecycleLayers} from './layers/lifecycle.mjs';
 import {stationLayers} from './layers/stations.mjs';
 import {infrastructureContextLayers} from './layers/infrastructure.mjs';
+import {powerFacilityLayers} from './layers/power-facilities.mjs';
 import {roadLayers, constraintLayers} from '../planning-style.mjs';
 import {contextLayers} from '../context-style.mjs';
 import {assertSourceContracts} from './source-contract.mjs';
@@ -33,7 +34,7 @@ export function composeStyle({majorStationData, curatedFilter}) {
     ...rail.infrastructureTracks, ...rail.thematic, ...rail.details,
     ...lifecycle.lines, ...rail.values,
     ...stations.platforms, ...stations.dots, ...placeLayers,
-    ...infrastructure.crossings,
+    ...infrastructure.crossings, ...powerFacilityLayers(),
     ...roads.names, ...constraints.labels, ...context.labels,
     ...rail.names, ...lifecycle.names, ...rail.badges,
     ...stations.names, ...countryLayers,

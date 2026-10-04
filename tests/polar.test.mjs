@@ -116,3 +116,40 @@ test('close polar coordinates and drag scale retain sub-metre precision', async 
   near(globeRadiansPerPixel(2048,0),2*Math.PI/2048,1e-12);
   near(globeRadiansPerPixel(2048,60,60),2*Math.PI/2048,1e-12);
 });
+
+
+test('ground zoom stays continuous at either pole and reflects close-up scale',async()=>{
+  const {globeGroundZoom,zoomForLatitude,POLE_LIMIT}=await import('../styles/globe-drag.mjs');
+  near(globeGroundZoom(12,0),12);near(globeGroundZoom(2,60),3);
+  // The reported screenshot combines zoom 1.3 with a 50 m scale near the south pole.
+  near(globeGroundZoom(1.3,-89.99964),18.580072439802105,1e-5);
+  for(const latitude of [89.9,89.999,89.99999,POLE_LIMIT])for(const sign of [1,-1]){
+    const start=sign*latitude,expected=globeGroundZoom(2,start);
+    for(const target of [sign*POLE_LIMIT,-start,sign*(latitude-0.001)]){
+      near(globeGroundZoom(zoomForLatitude(2,start,target),target),expected,1e-10);
+    }
+  }
+});
+
+
+test('zooming towards a nearby polar anchor retains sub-metre angular precision',async()=>{
+  const {zoomTowards,startFrame,frameView}=await import('../styles/globe-drag.mjs');
+  for(const sign of [1,-1]){
+    const latitude=sign*89.99964,target=latitude+sign*0.0000005;
+    const result=frameView(zoomTowards(startFrame([20,latitude],0),[20,target],1));
+    near(result.center[1],(latitude+target)/2,1e-12);
+  }
+});
+
+
+test('readout zoom matches the flat map below 85.05° and stays continuous beyond',async()=>{
+  const {readoutZoom,zoomForLatitude,POLE_LIMIT}=await import('../styles/globe-drag.mjs');
+  for(const latitude of [0,22.3,60,-85])near(readoutZoom(3.9,latitude),3.9);
+  near(readoutZoom(5,85.051129),5,1e-9);near(readoutZoom(5,85.0512),5,1e-4);
+  // The reported 50 m scale at zoom 1.3 near the south pole reads as a close-up.
+  assert.ok(readoutZoom(1.3,-89.99964)>15);
+  for(const sign of [1,-1]){
+    const start=sign*89.99,expected=readoutZoom(2,start);
+    for(const target of [sign*POLE_LIMIT,-start,sign*86])near(readoutZoom(zoomForLatitude(2,start,target),target),expected,1e-10);
+  }
+});

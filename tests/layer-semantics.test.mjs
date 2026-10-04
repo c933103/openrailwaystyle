@@ -5,8 +5,9 @@ import { MODES, BACKGROUNDS } from '../styles/map-model.mjs';
 import { annotateLayers, getLayerSemantics, isBaseMap, layerVisibility, shouldLocalizeLayer } from '../styles/layer-semantics.mjs';
 
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
-// An independent copy of the pre-refactor browser policy. This intentionally
-// does not call the annotation adapter: it detects mistakes in that conversion.
+// An independent copy of the browser policy, with the explicitly requested
+// shared signal and Power-supply controls. This does not call the annotation
+// adapter: it detects mistakes in that conversion.
 function originalVisibility(layer, settings) {
   const runtime = /^(drawing|measure)-|^polar-caps$/.test(layer.id);
   const valueLabels = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
@@ -18,6 +19,8 @@ function originalVisibility(layer, settings) {
   if (layer.id.endsWith('-names') && !layer.id.startsWith('station-')) visible = settings.names && (!layer.id.startsWith('inactive-') || settings.inactive) && (!layer.id.startsWith('service-') || settings.mode === 'service');
   if (layer.id.startsWith('platform-')) visible = settings.mode === 'infrastructure' && (!['platform-lengths', 'platform-numbers'].includes(layer.id) || settings.labels);
   if (/^infrastructure-(signal|entrance)-references$/.test(layer.id)) visible = settings.mode === 'infrastructure' && settings.labels;
+  if (layer.id.startsWith('infrastructure-signal-')) visible = ['infrastructure','control'].includes(settings.mode) && (!layer.id.endsWith('-references') || settings.labels);
+  if (/^electrification-(former-)?supply-/.test(layer.id)) visible = settings.mode === 'electrification' && (!layer.id.endsWith('-names') || settings.labels) && (!layer.id.startsWith('electrification-former-') || settings.inactive);
   if (layer.id.startsWith('terrain-')) visible = settings.relief;
   if (layer.id.startsWith('context-transport-')) visible = settings.transport;
   if (layer.id.startsWith('context-destinations-')) visible = settings.destinations;
@@ -102,4 +105,39 @@ test('new modules may declare semantic controls independently of provider and na
   assert.equal(layerVisibility(layer, {mode: 'infrastructure', labels: false, background: 'map'}), false);
   assert.equal(shouldLocalizeLayer(layer), false);
   assert.equal(layer.layout.visibility, 'none');
+});
+
+test('signal locations share Infrastructure and train-control visibility while references follow labels',()=>{
+  const signals=style.layers.filter(layer=>layer.id.startsWith('infrastructure-signal-'));
+  assert.ok(signals.length>=4,'provider and supplementary signal layers are present');
+  const settings={...Object.fromEntries(booleans.map(key=>[key,true])),background:'map'};
+  for (const signal of signals) {
+    assert.deepEqual(getLayerSemantics(signal)['atlas:views'],['infrastructure','control'],signal.id);
+    for (const mode of ['infrastructure','control']) {
+      assert.equal(layerVisibility(signal,{...settings,mode}),true,`${signal.id} in ${mode}`);
+      assert.equal(layerVisibility(signal,{...settings,mode,labels:false}),!signal.id.endsWith('-references'),signal.id);
+      assert.equal(layerVisibility(signal,{...settings,mode,background:'hybrid'}),true,signal.id);
+      assert.equal(layerVisibility(signal,{...settings,mode,background:'carto'}),true,signal.id);
+      assert.equal(layerVisibility(signal,{...settings,mode,background:'satellite'}),false,signal.id);
+    }
+    assert.equal(layerVisibility(signal,{...settings,mode:'speed'}),false,signal.id);
+    assert.equal(shouldLocalizeLayer(signal),false,'signal references remain mapped identifiers');
+  }
+});
+
+test('Power facility names follow labels, former supplies follow inactive, and both stay in Power view',()=>{
+  const supplies=style.layers.filter(layer=>layer.source==='electricFacilities');
+  assert.equal(supplies.length,6);
+  const settings={...Object.fromEntries(booleans.map(key=>[key,true])),mode:'electrification',background:'map',names:false};
+  for (const supply of supplies) {
+    const former=supply.id.startsWith('electrification-former-'),name=supply.id.endsWith('-names');
+    assert.equal(layerVisibility(supply,settings),true,supply.id);
+    assert.equal(layerVisibility(supply,{...settings,mode:'control'}),false,supply.id);
+    assert.equal(layerVisibility(supply,{...settings,labels:false}),!name,supply.id);
+    assert.equal(layerVisibility(supply,{...settings,inactive:false}),!former,supply.id);
+    assert.equal(layerVisibility(supply,{...settings,background:'hybrid'}),true,supply.id);
+    assert.equal(layerVisibility(supply,{...settings,background:'carto'}),true,supply.id);
+    assert.equal(layerVisibility(supply,{...settings,background:'satellite'}),false,supply.id);
+    assert.equal(shouldLocalizeLayer(supply),name,supply.id);
+  }
 });
