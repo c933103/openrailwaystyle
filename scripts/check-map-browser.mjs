@@ -37,7 +37,15 @@ async function finishFrame(){
   // tiles, placement and transitions are all complete.
   await page.evaluate(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
-    await Promise.race([new Promise(resolve=>{map.once('idle',resolve);map.triggerRepaint();}),new Promise(resolve=>setTimeout(resolve,30000))]);
+    // A map which is already idle need not emit another idle event. The
+    // previous unconditional listener added a 30-second wait to such captures.
+    if (map.loaded() && !map.isMoving()) return;
+    await new Promise(resolve => {
+      let timer;
+      const done=()=>{clearTimeout(timer);map.off('idle',done);resolve();};
+      map.once('idle',done);timer=setTimeout(done,30000);
+      if (map.loaded() && !map.isMoving()) done(); else map.triggerRepaint();
+    });
   });
   // Finish fades first, then submit and finish the final GPU frame immediately
   // before capture, rather than letting another asynchronous frame replace it.
@@ -90,7 +98,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') { console.log('Browser resource:',msg.text()); if(/DataCloneError|already detached/.test(msg.text())) errors.push(msg.text()); }});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261004-pr73-repair1&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261004-curated2&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
@@ -103,30 +111,59 @@ try{
   console.log(`PASS: About opened while loading (map ready at click: ${earlyReady})`);
   await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:120000});
   await page.waitForFunction(()=>+document.querySelector('#map-status').dataset.renderedTracks>0,undefined,{timeout:120000});
-  // The bottom-right info/attribution control starts closed on a first visit,
-  // records manual open/close state in the settings cookie, and restores that
-  // state when the compact control is recreated.
-  const attributionState=()=>page.locator('.maplibregl-ctrl-attrib').evaluate(el=>({compact:el.classList.contains('maplibregl-compact'),open:el.classList.contains('maplibregl-compact-show')}));
-  assert.deepEqual(await attributionState(),{compact:true,open:false},'Attribution info starts compact and closed');
+  // The bottom-right info/attribution control is always the compact ⓘ control.
+  // It starts closed when no state is stored, keeps its state across background
+  // changes (including Carto), and writes that state into atlas_settings.
+  const attributionState=()=>page.locator('.maplibregl-ctrl-attrib').evaluate(el=>{
+    const r=el.getBoundingClientRect(),button=el.querySelector('.maplibregl-ctrl-attrib-button')?.getBoundingClientRect();
+    return {compact:el.classList.contains('maplibregl-compact'),open:el.classList.contains('maplibregl-compact-show'),width:r.width,
+      button:button?{width:button.width,height:button.height,left:button.left,right:button.right,top:button.top,bottom:button.bottom}:null,
+      viewport:{width:innerWidth,height:innerHeight}};
+  });
+  let info=await attributionState();
+  assert.equal(info.compact,true,'Attribution always uses the compact info control');
+  assert.equal(info.open,false,'Attribution info starts closed when no state is stored');
+  assert.ok(info.button && info.button.width>0 && info.button.height>0,'The collapsed info button remains visible');
+  assert.ok(info.width<=50,'Collapsed attribution is an info button, not a bottom bar');
   await page.locator('.maplibregl-ctrl-attrib-button').click();
   assert.equal((await attributionState()).open,true,'The info button opens attribution');
   let settingsCookie=(await page.context().cookies()).find(c=>c.name==='atlas_settings');
   assert.equal(JSON.parse(decodeURIComponent(settingsCookie.value)).attributionOpen,true,'Open attribution is remembered in the settings cookie');
   await page.locator('[data-background="carto"]').click();
-  assert.equal((await attributionState()).compact,false,'Carto keeps its full attribution');
-  await page.locator('[data-background="map"]').click();
-  assert.deepEqual(await attributionState(),{compact:true,open:true},'Remembered attribution state survives control recreation');
+  info=await attributionState();
+  assert.deepEqual({compact:info.compact,open:info.open},{compact:true,open:true},'Carto keeps the compact control and inherited open state');
   await page.locator('.maplibregl-ctrl-attrib-button').click();
-  assert.equal((await attributionState()).open,false,'The info button closes attribution');
+  info=await attributionState();
+  assert.equal(info.open,false,'The info button closes attribution');
+  assert.ok(info.width<=50,'Closed Carto attribution is an info button, not a bottom bar');
   settingsCookie=(await page.context().cookies()).find(c=>c.name==='atlas_settings');
   assert.equal(JSON.parse(decodeURIComponent(settingsCookie.value)).attributionOpen,false,'Closed attribution is remembered in the settings cookie');
-  console.log('PASS: attribution info starts closed and remembers open/closed state');
+  await page.locator('[data-background="map"]').click();
+  info=await attributionState();
+  assert.deepEqual({compact:info.compact,open:info.open},{compact:true,open:false},'Closed state survives background changes');
+  console.log('PASS: attribution stays a visible compact info button and remembers its state');
+  // On desktop the scale/readout corner must start to the right of the menu,
+  // and it must not cover the centred status pill.
+  const overlayBoxes=()=>page.evaluate(()=>{
+    const box=el=>{const r=el.getBoundingClientRect();return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height};};
+    return {scale:box(document.querySelector('.maplibregl-ctrl-scale')),panel:box(document.querySelector('.panel')),status:box(document.querySelector('.map-status'))};
+  });
+  const overlaps=(a,b)=>a.left<b.right && a.right>b.left && a.top<b.bottom && a.bottom>b.top;
+  let boxes=await overlayBoxes();
+  assert.equal(overlaps(boxes.scale,boxes.panel),false,'Desktop scale ruler stays clear of the left menu');
+  assert.equal(overlaps(boxes.scale,boxes.status),false,'Desktop scale ruler stays clear of status text');
+  console.log('PASS: desktop scale ruler clears the left menu and status');
   // Pan northwest at the SAME zoom before any visit to zoom 8.
   await moveTo(7,128.1,35.65);
   await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     // The borders below come from the basemap, which can load after the railway.
-    return Math.abs(map.getCenter().lng-128.1)<0.01 && (map.getSource('inactiveRegional') && map.isSourceLoaded('inactiveRegional')) && map.isSourceLoaded('openmaptiles') && document.querySelector('#map-status').dataset.lifecycleNames?.includes('남부내륙');
+    return Math.abs(map.getCenter().lng-128.1)<0.01
+      && (map.getSource('inactiveRegional') && map.isSourceLoaded('inactiveRegional'))
+      && map.isSourceLoaded('openmaptiles')
+      && map.queryRenderedFeatures({layers:['regional-borders']}).length>0
+      && map.queryRenderedFeatures().some(f=>f.layer.id.startsWith('station-'))
+      && document.querySelector('#map-status').dataset.lifecycleNames?.includes('남부내륙');
   },undefined,{timeout:120000});
   console.log('PASS: 남부내륙선 rendered after pan at zoom 7, before visiting zoom 8');
   console.log('Inspecting rendered line extent, stations and borders');
@@ -320,7 +357,9 @@ try{
   assert.ok(compass && zoomIn && compass.y<zoomIn.y,'The compass sits above the zoom buttons');
   await page.evaluate(async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);map.setBearing(40);});
   await page.locator('.maplibregl-ctrl-compass').click();
-  await waitUntil(page,async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return Math.abs(map.getBearing())<0.5 && !map.isMoving();},undefined,{timeout:10000});
+  // A compass reset must finish its camera movement as well as reach north.
+  // Do not stop the camera from the test or relax the movement assertion.
+  await waitUntil(page,async()=>{const {map}=await import(document.querySelector('script[type="module"]').src);return Math.abs(map.getBearing())<0.5 && !map.isMoving();},undefined,{timeout:30000});
   console.log('PASS: compass resets north');
   await page.locator('#collapse').click();
   await page.locator('[data-mode="speed"]').click();
@@ -438,49 +477,43 @@ try{
   // coordinate readout, and the bottom-left control stack respects display
   // safe-area insets instead of being hidden on phones.
   await page.setViewportSize({width:412,height:915});
-  await page.waitForTimeout(150);
+  await waitUntil(page,()=>{
+    const scale=document.querySelector('.maplibregl-ctrl-scale'),status=document.querySelector('.map-status');
+    if(!scale||!status)return false;
+    const a=scale.getBoundingClientRect(),b=status.getBoundingClientRect();
+    return a.width>0&&a.height>0&&a.left>=0&&a.top>=0&&a.right<=innerWidth&&a.bottom<=innerHeight&&a.bottom<b.top;
+  },undefined,{timeout:10000});
   const compactControls=await page.evaluate(()=>{
     const box=el=>{const r=el.getBoundingClientRect();return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height};};
-    const scale=document.querySelector('.maplibregl-ctrl-scale'),readout=document.querySelector('.map-readout');
-    return {display:getComputedStyle(scale).display,scale:box(scale),readout:readout.hidden?null:box(readout),viewport:{width:innerWidth,height:innerHeight}};
+    const scale=document.querySelector('.maplibregl-ctrl-scale'),readout=document.querySelector('.map-readout'),status=document.querySelector('#map-status');
+    return {display:getComputedStyle(scale).display,scale:box(scale),readout:readout.hidden?null:box(readout),status:box(document.querySelector('.map-status')),viewport:{width:innerWidth,height:innerHeight}};
   });
   assert.notEqual(compactControls.display,'none','The scale ruler stays visible on compact screens');
   assert.ok(compactControls.scale.left>=0 && compactControls.scale.top>=0 && compactControls.scale.right<=compactControls.viewport.width && compactControls.scale.bottom<=compactControls.viewport.height,'The compact scale ruler stays inside the visible viewport');
+  assert.ok(compactControls.scale.bottom<=compactControls.status.top-1,'The mobile scale ruler stays above status text instead of overlapping it');
   if(compactControls.readout) assert.ok(compactControls.scale.bottom<=compactControls.readout.top+1,'The scale ruler sits above the coordinate readout instead of being covered by it');
   console.log('PASS: compact-screen scale ruler stays visible and above the bottom readout');
   await page.setViewportSize({width:1365,height:900});
   assert.deepEqual(errors,[]);
   console.log('PASS: one shared language, name fallbacks, contours, structures and lifecycle controls; no JavaScript exceptions');
 } catch(error) {
-  console.log('Failure diagnostics',await page.evaluate(async()=>{
-    const {map}=await import(document.querySelector('script[type="module"]').src);
-    return {zoom:map.getZoom(),stationSources:['stationLow','stationMed','stations'].map(id=>({id,loaded:map.isSourceLoaded(id),url:map.getStyle().sources[id].url,features:map.querySourceFeatures(id).slice(0,3).map(f=>f.properties)})),renderedStations:map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-')).slice(0,10).map(f=>({source:f.source,properties:f.properties})),status:document.querySelector('#map-status').dataset, layers:map.getStyle().layers.filter(l=>l.id.endsWith('-names') && !l.id.startsWith('station-')), named:map.queryRenderedFeatures().filter(f=>['inactiveRegional','railway'].includes(f.source)&&f.properties.name).slice(0,12).map(f=>({layer:f.layer.id,name:f.properties.name}))};
-  }));
-  // MapLibre internals: which tiles each source holds and whether they can
-  // still be queried. Compare queries before and after a forced redraw.
-  const internals=async()=>page.evaluate(async()=>{
-    const {map}=await import(document.querySelector('script[type="module"]').src);
-    const caches=map.style.sourceCaches||map.style.tileManagers||{};
-    const sources={};
-    for(const id of ['railway','stationMed','stations','openmaptiles','inactiveRegional']) {
-      const cache=caches[id];
-      const tiles=Object.values(cache?._tiles||{});
-      sources[id]={loaded:cache?.loaded(),tiles:tiles.map(t=>`${t.tileID.canonical.z}/${t.tileID.canonical.x}/${t.tileID.canonical.y} ${t.state}${t.latestFeatureIndex?'':' no-index'}${t.latestFeatureIndex&&!t.latestFeatureIndex.rawTileData?' no-raw':''}`).slice(0,12),
-        queried:map.queryRenderedFeatures().filter(f=>f.source===id).length};
-    }
-    return {mapLoaded:map.loaded(),styleLoaded:map.isStyleLoaded(),moving:map.isMoving(),language:new URL(location.href).searchParams.get('language'),sources};
-  });
-  console.log('Page errors so far',JSON.stringify(errors));
-  console.log('Requests still pending',JSON.stringify([...pendingRequests].map(r=>`${Math.round((Date.now()-requestStart.get(r))/1000)}s ${r.url().slice(0,160)}`)));
-  console.log('Font requests made',requests.filter(u=>u.includes('/fonts/')).length);
-  console.log('Map internals',JSON.stringify(await internals()));
-  await page.evaluate(async()=>{
-    const {map}=await import(document.querySelector('script[type="module"]').src);
-    await new Promise(resolve=>{map.once('render',resolve);map.triggerRepaint();});
-  });
-  await page.waitForTimeout(5000);
-  console.log('Map internals after redraw',JSON.stringify(await internals()));
-  const failure=await page.screenshot({path:'browser-review/failure.jpg',type:'jpeg',quality:45});
-  console.log('FAIL_IMAGE_START'+failure.toString('base64')+'FAIL_IMAGE_END');
+  console.error('BROWSER_ASSERTION_FAILURE',error.stack||String(error));
+  console.error('Page errors',JSON.stringify(errors));
+  console.error('Pending requests',JSON.stringify([...pendingRequests].map(r=>r.url()).slice(0,20)));
+  let timer;
+  try {
+    await Promise.race([
+      (async()=>{
+        console.log('Failure diagnostics',await page.evaluate(async()=>{
+          const {map}=await import(document.querySelector('script[type="module"]').src);
+          const box=selector=>{const e=document.querySelector(selector);if(!e)return null;const r=e.getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height,display:getComputedStyle(e).display};};
+          return {zoom:map.getZoom(),mapLoaded:map.loaded(),moving:map.isMoving(),viewport:[innerWidth,innerHeight],scale:box('.maplibregl-ctrl-scale'),readout:box('.map-readout'),menu:box('.panel'),status:box('.map-status')};
+        }));
+        await page.screenshot({path:'browser-review/failure.jpg',type:'jpeg',quality:45,timeout:5000});
+      })(),
+      new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Diagnostic capture exceeded five seconds')),5000);}),
+    ]);
+  } catch(diagnosticError) { console.error('Diagnostic capture:',diagnosticError.message); }
+  finally { clearTimeout(timer); }
   throw error;
-} finally {await browser.close();}
+} finally {clearTimeout(deadline);await browser.close();}

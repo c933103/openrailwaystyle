@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {featureFilter} from '@maplibre/maplibre-gl-style-spec';
-import {contextCategory, nearbyTransport, distanceMetres} from '../styles/context.mjs';
+import {contextCategory, contextLayerInteractive, nearbyTransport, distanceMetres} from '../styles/context.mjs';
 import {readSettings,settingsQuery} from '../styles/map-model.mjs';
 const style=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url)));
 const visible=(layer,properties,zoom=14)=>zoom>=layer.minzoom && featureFilter(layer.filter).filter({zoom},{type:1,properties});
@@ -31,6 +31,16 @@ test('requested destination types are selected without turning every shop or spo
   assert.ok(!areas.some(l=>visible(l,{class:'residential'},14)));
   const lastContext=Math.max(...style.layers.map((l,i)=>l.id.startsWith('context-')&&l.type==='symbol'?i:-1));
   assert.ok(style.layers.findIndex(l=>l.id==='station-detail-large-names')>lastContext,'rail stations keep placement priority');
+});
+test('cultural destination labels remain drawn without taking clicks from railways',()=>{
+  const culture=style.layers.find(l=>l.id==='context-destinations-culture-label');
+  for (const subclass of ['museum','gallery','theatre','arts_centre','library','cinema']) {
+    assert.ok(visible(culture,{class:'generic',subclass}),subclass);
+    const category=contextCategory({subclass},'poi');
+    assert.equal(contextLayerInteractive(`context-${category.group}-${category.id}-label`),false,subclass);
+  }
+  for (const id of ['context-transport-bus-label','context-transport-bus-stop-label','context-transport-airport-label','context-destinations-hospital-label','context-destinations-hotel-label']) assert.equal(contextLayerInteractive(id),true,id);
+  for (const id of ['context-destinations-hospital-area','context-destinations-hospital-edge','context-constraints-heritage-label','context-constraints-religious-label','context-destinations-unknown-label','context-transport-culture-label']) assert.equal(contextLayerInteractive(id),false,id);
 });
 test('nearby transport deduplicates buffered tiles, respects distance and ranks terminals before local stops and excludes marinas',()=>{
   const point=(id,subclass,x=0,y=0,sourceLayer='poi')=>({id,sourceLayer,properties:{subclass},geometry:{type:'Point',coordinates:[x,y]}});

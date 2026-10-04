@@ -5,6 +5,7 @@
 // tiles' edge are simply below 0 (north) or above 1 (south); the shader
 // turns them into points on the sphere like any other.
 import earcut from 'earcut';
+import {globeGroundZoom} from './globe-drag.mjs';
 import {CAP_RADIUS, MERCATOR_LIMIT, POLAR_DETAIL_ZOOM, polarBandFor, decodeLine, fromPolar, toPolar} from './polar.mjs';
 
 // Style colours (world.style.json): land background, water, ice shelf
@@ -357,7 +358,7 @@ export class PolarLayer {
     if (!(transition > 0.01) || this.map.getProjection?.()?.type !== 'globe') { this.syncDetail(false);this.visibleKeys=new Set();this.pruneTiles();this.places([]); return; }
     const center = this.map.getCenter();
     // Zoom by the planet's size (MapLibre's zoom depends on the latitude).
-    const zoom = this.map.getZoom() - Math.log2(Math.cos(Math.max(-89.9, Math.min(89.9, center.lat)) * Math.PI / 180));
+    const zoom = globeGroundZoom(this.map.getZoom(),center.lat);
     const fade = transition ** 4, units = this.units(), labels = [];
     // Line quads come in either winding, so nothing is culled.
     gl.disable(gl.CULL_FACE); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
