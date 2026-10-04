@@ -14,7 +14,9 @@ const renderer=await rendererFixture();
 const browser=await chromium.launch({headless:true,...(process.env.BROWSER_PATH?{executablePath:process.env.BROWSER_PATH}:{}),args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const context=await browser.newContext({viewport:{width:1365,height:900},serviceWorkers:'block'});
 const page=await context.newPage();
-page.setDefaultTimeout(10000);
+// Frames at the largest More detail scale can take seconds on a small CI
+// runner, and page evaluation waits for them.
+page.setDefaultTimeout(30000);
 const errors=[],results=[],pending=new Set(),requestFailures=[];
 page.on('request',r=>pending.add(r));
 page.on('requestfinished',r=>pending.delete(r));
@@ -46,6 +48,8 @@ await context.route('**/*',async route=>{
 });
 const cookie=async()=>JSON.parse(decodeURIComponent((await context.cookies()).find(c=>c.name==='atlas_settings')?.value||'%7B%7D'));
 const opened=()=>page.locator('.maplibregl-ctrl-attrib').evaluate(e=>e.classList.contains('maplibregl-compact-show')&&e.open);
+// Settling, not speed, is checked here: at the largest More detail scale a
+// small CI runner can take about 15 seconds to load and place everything.
 async function waitForMapIdle(){
   await waitUntil(page,async()=>{
     const{map}=await import(document.querySelector('script[type="module"]').src);
@@ -53,7 +57,7 @@ async function waitForMapIdle(){
     const canvas=map.getCanvas(),container=map.getContainer(),ratio=map.getPixelRatio();
     return map.loaded()&&map.areTilesLoaded()&&!map.isMoving()
       && canvas.width===Math.floor(container.clientWidth*ratio)&&canvas.height===Math.floor(container.clientHeight*ratio);
-  },null,{timeout:10000});
+  },null,{timeout:60000});
 }
 async function ready(){
   await page.waitForSelector('body[data-map-ready="true"]');
@@ -129,7 +133,7 @@ try{
             const map=document.querySelector('#map'),button=document.querySelector('button.atlas-ctrl[title^="More detail:"]');
             const level=map.classList.contains('detail-2')?2:map.classList.contains('detail')?1:0;
             return level===expected && button.title.startsWith(`More detail: map drawn at ${100/2**expected}%.`);
-          },next,{timeout:5000});
+          },next,{timeout:20000});
           await page.waitForFunction(expected=>{try{return JSON.parse(decodeURIComponent(document.cookie.match(/(?:^|; )atlas_settings=([^;]*)/)?.[1]||'%7B%7D')).detail===expected;}catch{return false;}},next);
           assert.equal((await cookie()).detail,next,'detail click persists the actual next level');
         }
