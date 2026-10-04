@@ -1,15 +1,15 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-statuslayout2';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-statuslayout2';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-statuslayout2';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-curated8';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-curated8';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-curated8';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-statuslayout2';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-statuslayout2';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-statuslayout2';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261004-statuslayout2';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-statuslayout2';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-statuslayout2';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-statuslayout2';
-import { installWatchGesture } from './watch-map.mjs?v=20261004-statuslayout2';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-curated8';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-curated8';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-curated8';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261004-curated8';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-curated8';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-curated8';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-curated8';
+import { installWatchGesture } from './watch-map.mjs?v=20261004-curated8';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -44,7 +44,7 @@ let legendHelpOpen = false;
 let platformLengths;
 let powerFacilities;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-statuslayout2';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-curated8';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -244,15 +244,100 @@ function shareURL() {
   return url.href;
 }
 saveSettings();
-const CHECKBOXES = ['stations', 'trackCounts', 'labels', 'inactive', 'relief', 'names', 'autoGlobe', 'readout', 'transport', 'destinations', 'constraints'];
-let majorStationData,majorStationsPromise;const majorStationLanguages=new WeakMap();
+const CHECKBOXES = ['stations', 'stationImportanceColors', 'trackCounts', 'labels', 'inactive', 'relief', 'names', 'autoGlobe', 'readout', 'transport', 'destinations', 'constraints'];
+const DEFAULT_STATION_TEXT_COLOR = ['match', ['get','station_size'], 'large', '#123e52', '#0865c0'];
+const LOW_ZOOM_STATION_TEXT_COLOR = '#123e52';
+const isLowZoomStationLayer = id => id.endsWith('-names') && (id.startsWith('station-major-') || id.startsWith('station-stationLow-') || id.startsWith('station-stationMed-'));
+const lowZoomStationTextColor = () => settings.stationImportanceColors
+  ? DEFAULT_STATION_TEXT_COLOR
+  : ['step', ['zoom'], LOW_ZOOM_STATION_TEXT_COLOR, 7, DEFAULT_STATION_TEXT_COLOR];
+// Curated hubs (major-stations.geojson) decide which station is shown at
+// zooms 3–6. Their names come, like every other station label, from the
+// provider's station tiles through the same language handling: zoom 8 is
+// the first zoom whose tiles hold every railway station. A tile entry is the curated
+// station when its OSM identity is the curated object or one of its aliases.
+const MAJOR_NAME_ZOOMS=[8],MAJOR_NAME_TILES=256;
+let majorStationData,majorStationSearchData,majorStationsPromise,stationTileFor=null,stationTileURL=null,majorStationGeneration=0;
+const majorStationTiles=new Map();
+const tileIdentity=id=>/^(node|way|relation)-[1-9]\d*/.exec(String(id??''))?.[0];
+function majorNameTile(language,z,x,y){
+ const key=`${language}/${z}/${x}/${y}`;
+ if(majorStationTiles.has(key)){const value=majorStationTiles.get(key);majorStationTiles.delete(key);majorStationTiles.set(key,value);return value;}
+ const url=stationTileURL.replace('{z}',z).replace('{x}',x).replace('{y}',y);
+ const promise=Promise.all([stationTileFor(url,language),labels]).then(([data,code])=>{
+  const byIdentity=new Map();
+  for(const layer of Object.values(code.readTile(data).layers))for(let i=0;i<layer.length;i++){
+   const p=layer.feature(i).properties,identity=tileIdentity(p.id);
+   if(identity&&p.atlas_name&&!byIdentity.has(identity))byIdentity.set(identity,p);
+  }
+  return byIdentity;
+ });
+ promise.catch(()=>majorStationTiles.delete(key));
+ majorStationTiles.set(key,promise);
+ while(majorStationTiles.size>MAJOR_NAME_TILES)majorStationTiles.delete(majorStationTiles.keys().next().value);
+ return promise;
+}
+// The tile holding a point, and its four neighbours: the provider places a
+// grouped station at the group's centre, which can lie across an edge.
+function majorNameTiles([lon,lat],z){
+ const n=2**z,s=Math.sin(Math.max(-85.05,Math.min(85.05,lat))*Math.PI/180);
+ const x=((Math.floor((lon+180)/360*n))%n+n)%n,y=Math.max(0,Math.min(n-1,Math.floor((.5-Math.log((1+s)/(1-s))/(4*Math.PI))*n)));
+ return [[x,y],[(x+1)%n,y],[(x+n-1)%n,y],[x,Math.min(n-1,y+1)],[x,Math.max(0,y-1)]];
+}
+async function majorStationName(feature,language){
+ const identities=new Set(String(feature.properties.osm_ids||feature.properties.id||'').split(';').filter(Boolean));
+ for(const z of MAJOR_NAME_ZOOMS)for(const [x,y] of majorNameTiles(feature.geometry.coordinates,z)){
+  // A tile that fails is skipped; the remaining candidates may still name it.
+  const found=await majorNameTile(language,z,x,y).catch(()=>null);
+  for(const id of identities){const p=found?.get(id);if(p)return p;}
+ }
+ return null;
+}
 function updateMajorStations(){
  if(!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3||map.getZoom()>=7)return;
- const source=map.getSource('stationMajor'),language=settings.language;if(!source||majorStationLanguages.get(source)===language)return;
- majorStationsPromise ||= majorStationData ? Promise.resolve(majorStationData) : fetch(new URL(`major-stations.geojson?v=${assetVersion}`,import.meta.url)).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}).catch(error=>{majorStationsPromise=undefined;throw error;});
- majorStationsPromise.then(data=>{if(!ready||language!==settings.language||source!==map.getSource('stationMajor')||majorStationLanguages.get(source)===language)return;
-  source.setData({...data,features:data.features.map(f=>({...f,properties:{...f.properties,atlas_name:chooseName(f.properties,language),atlas_language:language}}))});majorStationLanguages.set(source,language);
- }).catch(error=>console.warn('Major station list unavailable:',error.message));
+ const source=map.getSource('stationMajor'),language=settings.language;
+ stationTileURL ||= map.getSource('stations')?.tiles?.[0]?.replace(/^atlasstation:\/\/[^/]+\//,'');
+ if(!source||!stationTileFor||!stationTileURL)return;
+ const generation=++majorStationGeneration,zoom=map.getZoom(),bounds=map.getBounds();
+ majorStationsPromise ||= majorStationData?Promise.resolve(majorStationData):fetch(new URL(`major-stations.geojson?v=${assetVersion}`,import.meta.url)).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}).catch(error=>{majorStationsPromise=undefined;throw error;});
+ majorStationsPromise.then(async data=>{
+  // Only the hubs this view can show are named; others wait for their view.
+  const west=bounds.getWest()-10,east=bounds.getEast()+10,south=bounds.getSouth()-10,north=bounds.getNorth()+10;
+  // Into the world copy the view shows, however far it was panned.
+  const centre=(west+east)/2;
+  const wanted=data.features.filter(f=>{const [lon,lat]=f.geometry.coordinates,l=lon+360*Math.round((centre-lon)/360);return (f.properties.tier??7)<=Math.floor(zoom)&&l>=west&&l<=east&&lat>=south&&lat<=north;});
+  const named=await Promise.all(wanted.map(f=>majorStationName(f,language).catch(()=>null)));
+  if(generation!==majorStationGeneration||!ready||language!==settings.language||source!==map.getSource('stationMajor'))return;
+  const names=new Map(wanted.map((f,i)=>[f.id,named[i]]));
+  // Hubs named earlier for this language keep their names off-view, so
+  // panning back does not blank them while their tiles are read again.
+  const previous=new Map((majorStationSearchData?.language===language?majorStationSearchData.features:[]).map(f=>[f.id,f]));
+  const features=data.features.map(f=>{
+   const p=names.get(f.id);
+   if(p)return {...f,properties:{...f.properties,name:p.name,localized_name:p.localized_name,atlas_name:p.atlas_name,atlas_language:language,atlas_name_source:'provider'}};
+   return previous.get(f.id)||null;
+  }).filter(Boolean);
+  majorStationSearchData={type:'FeatureCollection',language,features};
+  source.setData({type:'FeatureCollection',features});
+ }).catch(error=>console.warn('Major station names unavailable:',error.message));
+}
+// An open curated station's panel follows a language change on its own,
+// whether or not the overview currently shows that hub.
+function renameOpenMajorStation(){
+ const open=currentFeature;
+ const curatedData=majorStationsPromise||(majorStationData&&Promise.resolve(majorStationData));
+ if(open?.source!=='stationMajor'||$('details').hidden||!stationTileFor||!curatedData)return;
+ stationTileURL ||= map.getSource('stations')?.tiles?.[0]?.replace(/^atlasstation:\/\/[^/]+\//,'');
+ if(!stationTileURL)return;
+ const language=settings.language;
+ curatedData.then(data=>{
+  const curated=data.features.find(f=>f.properties.id===open.properties?.id);
+  return curated&&majorStationName(curated,language).then(p=>{
+   if(!p||currentFeature!==open||language!==settings.language||$('details').hidden)return;
+   open.properties={...curated.properties,name:p.name,localized_name:p.localized_name,atlas_name:p.atlas_name,atlas_language:language,atlas_name_source:'provider'};
+   showDetails(open);
+  });
+ }).catch(()=>{});
 }
 function applySettings() {
   syncWatchLayout();
@@ -270,6 +355,7 @@ function applySettings() {
     if(layer.id==='polar-caps')map.triggerRepaint();
     const visible = layerVisibility(layer, settings);
     if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
+    if (isLowZoomStationLayer(layer.id)) map.setPaintProperty(layer.id, 'text-color', lowZoomStationTextColor());
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) map.setPaintProperty(layer.id, 'line-color', inactivePaint(settings.mode, settings.units));
     if ((visible ?? true) && isClickable(layer.id)) clickable.push(layer.id);
   }
@@ -990,6 +1076,8 @@ async function initialize() {
   maplibregl.addProtocol('pmtiles', protocol.tile);
   const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url),
     basemapArchive: url => new pmtiles.PMTiles(labelCode.timedSource(new pmtiles.FetchSource(url), 20000))});
+  stationTileFor=labelProtocols?.stationTile||null;
+  if(ready)updateMajorStations();
   // The contour worker with the terrain tiles' bad pixels repaired
   // (dem-worker.mjs); relief shading reads its tiles through it too.
   mlcontour.workerUrl = new URL(`vendor/dem-worker.js?v=${assetVersion}`, import.meta.url).href;
@@ -1038,6 +1126,7 @@ async function initialize() {
   for (const layer of style.layers) {
     const visible=layerVisibility(layer, settings);
     if(visible!==undefined)(layer.layout ||= {}).visibility=visible?'visible':'none';
+    if (isLowZoomStationLayer(layer.id)) (layer.paint ||= {})['text-color'] = lowZoomStationTextColor();
   }
   // Reopen where the last visit ended, unless the link gives a position; start
   // on the globe (or as last left) so the first frame is not the flat map.
@@ -1207,6 +1296,9 @@ async function initialize() {
   map.on('moveend', scheduleLegend);
   map.on('moveend', () => powerFacilities?.());
   map.on('moveend',updateMajorStations);
+  // Curated names need the station source's tile address, known once its
+  // TileJSON arrives (possibly after the first frame, with no move to follow).
+  map.on('sourcedata',e=>{if(e.sourceId==='stations'&&e.sourceDataType==='metadata'&&!stationTileURL)updateMajorStations();});
   map.on('moveend', scheduleNearbyTransport);
   map.on('sourcedata', e => { if (e.sourceId === 'openmaptiles' && e.isSourceLoaded) scheduleNearbyTransport(); });
   map.on('moveend', updatePolar);
@@ -1281,7 +1373,7 @@ function reloadLanguage() {
     if(appliedLanguage!==settings.language) {reloadLanguage();return;}
     applySettings();applyUnits();updateStatus();
     document.body.dataset.mapReady = 'true';
-    if(currentFeature) showDetails(currentFeature);
+    if(currentFeature) {showDetails(currentFeature);renameOpenMajorStation();}
     const action = pendingView; pendingView = undefined; action?.();
   });
   map.setStyle(style,{diff:false,localIdeographFontFamily:cjkFont(appliedLanguage)});
@@ -1489,7 +1581,7 @@ $('search-form').addEventListener('submit', async e => {
     // Only what the station layers draw at this zoom (no tram stops at zoom 8).
     const zoom = ready ? map.getZoom() : 0;
     const drawn = ready ? drawnStationQueries(map.getStyle().layers, zoom).flatMap(({source, sourceLayer, filter}) =>
-      source === 'stationMajor' ? (majorStationData?.features || []).filter(f => (f.properties?.tier ?? 7) <= zoom)
+      source === 'stationMajor' ? (majorStationSearchData?.features || []).filter(f => (f.properties?.tier ?? 7) <= zoom)
         : map.getSource(source) ? map.querySourceFeatures(source, {sourceLayer, filter}) : []) : [];
     const local = ready ? tileStations(drawn, q, map.getCenter().toArray(), facilities.value || []) : [];
     if (facilities.status === 'rejected' && places.status === 'rejected' && !local.length) throw facilities.reason;

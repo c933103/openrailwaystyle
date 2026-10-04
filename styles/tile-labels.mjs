@@ -319,20 +319,9 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     const result = encode.fromGeojsonVt(layers, {version:2, extent:4096});
     return result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength);
   }
-  maplibregl.addProtocol('atlasstation',async (params,controller)=>{
-    let [,lang,url] = /^atlasstation:\/\/([^/]+)\/(.+)$/.exec(params.url) || [];
-    if (!url) throw new Error('Invalid station request');
-    const signal = controller.signal;
-    if (params.type === 'json') {
-      // A fragment on the source URL (never requested) can override the
-      // provider's zoom range. underzoom=N builds tiles below zoom N from
-      // their zoom-N children, for providers that return nothing there.
-      const [address, fragment = ''] = url.split('#');
-      const data = await get(address,signal,true), options = new URLSearchParams(fragment);
-      const zoom = key => { const value = Number(options.get(key)); return Number.isInteger(value) && value >= 0 ? {[key]:value} : {}; };
-      const underzoom = zoom('underzoom').underzoom;
-      return {data:{...data,...zoom('minzoom'),...zoom('maxzoom'),tiles:data.tiles.map(t=>`atlasstation://${lang}/${t}${underzoom ? `#underzoom=${underzoom}` : ''}`)}};
-    }
+  // A station tile with its names in `lang`: the provider's tile in its
+  // own names, merged with the translations any station still lacks.
+  async function stationTile(url, lang, signal = new AbortController().signal) {
     const [address, fragment = ''] = url.split('#');
     const coordinates = tileCoordinates(address), target = Number(new URLSearchParams(fragment).get('underzoom'));
     const underzoom = coordinates && Number.isInteger(target) && target > coordinates.z ? target : 0;
@@ -365,11 +354,27 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       const byId=new Map(features(translated).map(f=>[String(f.properties.id ?? f.id),f.properties]));
       for(const f of features(primary)) mergeStationTranslation(f.properties,byId.get(String(f.properties.id ?? f.id)),candidate);
     }
-    try { return {data:writeLabels(primary,lang)}; }
+    try { return writeLabels(primary,lang); }
     catch (error) {
       console.error('Station labels unavailable:', error?.message || String(error));
-      return {data:primaryData.slice(0)};
+      return primaryData.slice(0);
     }
+  }
+  maplibregl.addProtocol('atlasstation',async (params,controller)=>{
+    let [,lang,url] = /^atlasstation:\/\/([^/]+)\/(.+)$/.exec(params.url) || [];
+    if (!url) throw new Error('Invalid station request');
+    const signal = controller.signal;
+    if (params.type === 'json') {
+      // A fragment on the source URL (never requested) can override the
+      // provider's zoom range. underzoom=N builds tiles below zoom N from
+      // their zoom-N children, for providers that return nothing there.
+      const [address, fragment = ''] = url.split('#');
+      const data = await get(address,signal,true), options = new URLSearchParams(fragment);
+      const zoom = key => { const value = Number(options.get(key)); return Number.isInteger(value) && value >= 0 ? {[key]:value} : {}; };
+      const underzoom = zoom('underzoom').underzoom;
+      return {data:{...data,...zoom('minzoom'),...zoom('maxzoom'),tiles:data.tiles.map(t=>`atlasstation://${lang}/${t}${underzoom ? `#underzoom=${underzoom}` : ''}`)}};
+    }
+    return {data:await stationTile(url,lang,controller.signal)};
   });
-  return {axleTile};
+  return {axleTile, stationTile};
 }
