@@ -1,19 +1,19 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-font12';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261004-font12';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261004-font12';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-font12';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-font12';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-font13';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261004-font13';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261004-font13';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-font13';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-font13';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-font12';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-font12';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-font12';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261004-font12';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261004-font12';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-font12';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-font12';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-font12';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261004-font12';
-import { installWatchGesture } from './watch-map.mjs?v=20261004-font12';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-font13';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-font13';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-font13';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261004-font13';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261004-font13';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-font13';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-font13';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-font13';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261004-font13';
+import { installWatchGesture } from './watch-map.mjs?v=20261004-font13';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -48,7 +48,7 @@ let legendHelpOpen = false;
 let platformLengths,frequencyExpiry;
 let powerFacilities;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-font12';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-font13';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -72,7 +72,7 @@ function cjkScript(lang) {
   const browser = (navigator.languages || [navigator.language]).map(l => l || '').find(l => /^(zh|ja|ko)/i.test(l)) || '';
   return /^zh-(Hant|TW|HK|MO)/i.test(browser) ? 'zh-Hant' : /^ja/i.test(browser) ? 'ja' : /^ko/i.test(browser) ? 'ko' : 'zh-Hans';
 }
-const loadedCjkFonts=new Set(),cjkFontLoads=new Map(),cjkChoices=new Map();let cjkFontRefresh=false;
+const loadedCjkFonts=new Set(),cjkFontLoads=new Map(),cjkChoices=new Map(),cjkFontFailures=new Map();let cjkFontRefresh=false;
 const bundledCjkFamily=script=>`Atlas CJK ${script==='zh-Hant'?'TC':'SC'}`;
 // The packaged font when loaded, else the installed font chosen by probing,
 // else the script's candidate list for the system to resolve.
@@ -114,15 +114,23 @@ function ensureCjkChoice(script){
 function loadCjkFont(script){
   const choice=cjkChoices.get(script);
   if(!['zh-Hant','zh-Hans'].includes(script)||!choice?.family||choice.complete||!window.FontFace||!document.fonts)return;
-  if(cjkFontLoads.has(script))return;
+  if(cjkFontLoads.has(script)||Date.now()<(cjkFontFailures.get(script)?.until??0))return;
   const code=script==='zh-Hant'?'tc':'sc',face=new FontFace(bundledCjkFamily(script),`url("${new URL(`fonts/atlas-cjk-${code}-v1.woff2`,import.meta.url).href}")`);
   document.fonts.add(face);
   const pending=face.load().then(()=>{
     loadedCjkFonts.add(script);
     if(cjkScript(settings.language)===script)refreshCjkFont();
-  }).catch(error=>{document.fonts.delete(face);cjkFontLoads.delete(script);console.warn('Chinese label font unavailable:',error?.message||String(error));});
+  }).catch(error=>{
+    // Labels keep the installed font meanwhile. Each failure doubles the wait
+    // before the next attempt (30 s to 10 min); going back online retries.
+    document.fonts.delete(face);cjkFontLoads.delete(script);
+    const delay=Math.min(2*(cjkFontFailures.get(script)?.delay??15000),600000);
+    cjkFontFailures.set(script,{delay,until:Date.now()+delay});
+    console.warn('Chinese label font unavailable:',error?.message||String(error));
+  });
   cjkFontLoads.set(script,pending);
 }
+window.addEventListener?.('online',()=>cjkFontFailures.clear());
 ensureCjkChoice(cjkScript(settings.language));
 // Named fonts are missing on many systems (Android exposes none), and the
 // generic fallback then picks glyph shapes by language. MapLibre draws on a

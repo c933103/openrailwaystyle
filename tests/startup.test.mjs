@@ -209,6 +209,22 @@ test('a partial installed Chinese font fetches the packaged font only once Han l
  }finally{dom.window.close();}
 });
 
+test('a failed packaged Chinese font download waits before trying again, and retries when back online',async()=>{
+ const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true,installedFonts:{'Microsoft JhengHei':'頓嘢冧俆㜏駅峠畑\uF900\uFA11㐀㙟'}});
+ const warn=console.warn;console.warn=()=>{};
+ try{
+  fonts[0].finish();await new Promise(r=>setTimeout(r,0));maps[0].handlers['style.load']();await new Promise(r=>setTimeout(r,0));
+  const glyphs=new window.CanvasRenderingContext2D();glyphs.font='400 24px "Microsoft JhengHei",sans-serif';
+  assert.equal(fonts.length,2);fonts[1].fail();await new Promise(r=>setTimeout(r,0));
+  for(let i=0;i<5;i++)glyphs.font='400 24px "Microsoft JhengHei",sans-serif';
+  assert.equal(fonts.length,2,'later label drawing does not fetch the font again at once');
+  assert.equal(maps[0].styleOptions.localIdeographFontFamily,'"Microsoft JhengHei",sans-serif','the installed font stays in use');
+  window.dispatchEvent(new window.Event('online'));glyphs.font='400 24px "Microsoft JhengHei",sans-serif';
+  assert.equal(fonts.length,3,'going back online retries');
+  assert.deepEqual(errors,[]);
+ }finally{console.warn=warn;dom.window.close();}
+});
+
 test('Japanese labels keep the installed Japanese font even when it is partial',async()=>{
  const {dom,window,maps,fonts}=await start({search:'?language=ja',fontFaces:true,installedFonts:{'Yu Gothic':'頓駅峠畑\uF900\uFA11㐀'}});
  try{
