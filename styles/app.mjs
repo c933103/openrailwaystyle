@@ -1,16 +1,17 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-font7';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-frequency7';
 import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261004-font7';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-font7';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-font7';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-frequency7';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-frequency7';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-font7';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-font7';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-font7';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261004-font7';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-font7';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-font7';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-font7';
-import { installWatchGesture } from './watch-map.mjs?v=20261004-font7';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-frequency7';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-frequency7';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-frequency7';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261004-frequency7';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-frequency7';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-frequency7';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-frequency7';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261004-frequency7';
+import { installWatchGesture } from './watch-map.mjs?v=20261004-frequency7';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -42,10 +43,10 @@ const settings = readSettings(location.search, {language: readCookie(LANGUAGE_CO
 settings.attributionOpen = typeof remembered.attributionOpen === 'boolean' ? remembered.attributionOpen : false;
 const status = $('map-status');
 let legendHelpOpen = false;
-let platformLengths;
+let platformLengths,frequencyExpiry;
 let powerFacilities;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-font7';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-frequency7';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -190,8 +191,8 @@ const IN_VIEW = {
   // Services in view, by colour (a line's branches usually share one).
   service: p => p.kind ? [p.colour || SERVICE_UNCOLOURED, displayName(p, settings.language) || p.ref, SERVICE_ORDER[p.kind]] : null,
 };
-const SERVICE_ORDER = {commuter: 0, subway: 1, monorail: 2, light_rail: 3, tram: 4}, SERVICE_UNCOLOURED = '#5d6b73';
-const SERVICE_KINDS = {commuter: 'Commuter rail', subway: 'Metro', monorail: 'Monorail', light_rail: 'Light rail', tram: 'Tram'};
+const SERVICE_ORDER = {rail:0,commuter: 0, subway: 1, monorail: 2, light_rail: 3, tram: 4,funicular:5}, SERVICE_UNCOLOURED = '#5d6b73';
+const SERVICE_KINDS = {rail:'Rail',commuter: 'Commuter rail', subway: 'Metro', monorail: 'Monorail', light_rail: 'Light rail', tram: 'Tram',funicular:'Funicular'};
 function updateInView() {
   const describe = IN_VIEW[settings.mode];
   if (!ready || !describe) return;
@@ -259,6 +260,12 @@ function renderLegend() {
     }
   }
   box.append(grid);
+  if(settings.mode==='service'&&settings.serviceWidth==='frequency'){
+    const key=textNode('div','','frequency-key');
+    key.append(textNode('p',FREQUENCY_LABELS[selectedFrequencyProfile(settings)],'small'));
+    for(const rate of [1,6,12,24,30]){const sample=textNode('span','','frequency-sample'),mark=textNode('i');mark.style.height=frequencyWidth(rate)+'px';sample.append(mark,textNode('span',`${rate===30?'30+':rate}/h`));key.append(sample);}
+    key.append(textNode('p','Subdued line: frequency unavailable. Rates are per direction; published headways are estimates.','small'));box.append(key);
+  }
   const notes = {
     speed: settings.units === 'imperial' ? 'Labels in mph; limits tagged in mph keep their directional values. Grey means no numeric limit is recorded.' : 'Labels keep tagged units: bare numbers are km/h, mph is written out. Grey means no numeric limit is recorded.',
     electrification: 'Track hue is the current type (DC, or AC by frequency); darker is higher voltage. A train needs both to match, unless built for several systems. E/F/C/W markers identify railway electricity, fuel, coal and steam-water supplies. Hollow markers identify planned or former facilities when those are enabled. Grey means not recorded.',
@@ -267,10 +274,11 @@ function renderLegend() {
     axle: 'Colour shows the mapped axle load or the load category’s reference axle load. Load per metre and additional operating restrictions also matter. Numeric US/Canadian classes describe speed, and Finnish superstructure classes do not give a single axle-load limit. Grey means not recorded.',
     loading: 'Colour follows the envelope’s height above rail, so equal sizes match across regions; Britain’s W gauges share one height and form their own ladder. Click a track for dimensions. Grey means not recorded.',
     owner: 'Each owner of the infrastructure, as recorded in OpenStreetMap, has its own colour, the same everywhere; the owner is not always the operator. Click a track for its owner and operator. Grey means no owner is recorded.',
-    service: 'Metro, light rail, tram, monorail and commuter rail services, each in its own colour along the tracks it runs on, side by side where they share a track; long-distance trains are not shown. Click a service for its details. Grey tracks have no such service mapped.',
+    service: 'Scheduled rail services from the worldwide feed catalogue, plus mapped urban services, each in its own colour along its path. Click a service for its dated frequencies and sources. Coverage depends on available timetables and geometry; grey tracks have no service mapped.',
     infrastructure: 'Numbers in boxes count mapped tracks: running tracks side by side (not sidings, yards or crossovers), on every level; at a station, sidings are included. Ochre marks shared roadway; crossings are brown. Zoom in for platform references and complete boarding-edge lengths, purple signal locations and teal station entrances. Signal markers do not show a live aspect.',
   };
   let note = notes[settings.mode];
+  if(settings.mode==='service'&&settings.serviceWidth==='frequency')note+=' Width uses the same capped scale in each weekday profile, using the lower rate when the source publishes a range. Morning and evening peaks are separate. Overnight and individual hours use each agency’s local time on the reference date; temporary operating changes may be absent. Missing, expired or unmatched profiles remain unavailable.';
   if (settings.inactive && settings.mode === 'speed') note += ' Planned and former lines take the colour of their recorded limit, if any.';
   // Collapsed by default, so the legend stays short; stays open once opened.
   const help = Object.assign(textNode('details', '', 'legend-help'), {open: legendHelpOpen});
@@ -389,6 +397,14 @@ function renameOpenMajorStation(){
  }).catch(()=>{});
 }
 function applySettings() {
+  $('service-frequency-options').hidden = settings.mode !== 'service';
+  $('frequency-profile-options').hidden = settings.serviceWidth !== 'frequency';
+  $('peak-phase-options').hidden = settings.frequencyPeriod !== 'peak';
+  $('frequency-hour-options').hidden = settings.frequencyPeriod !== 'hour';
+  $('frequency-hour').value = settings.frequencyHour;
+  $('service-width').value = settings.serviceWidth;
+  $('frequency-period').value = settings.frequencyPeriod;
+  $('peak-phase').value = settings.peakPhase;
   syncWatchLayout();
   document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === settings.mode)));
   document.querySelectorAll('[data-background]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.background === settings.background)));
@@ -398,10 +414,13 @@ function applySettings() {
   $('units').value = settings.units;
   readout.hidden = !settings.readout; updateReadout();
   if (ready) clickable = [];
+  const frequencyPaint=serviceFrequencyPaint(settings);
   if (ready) for (const layer of map.getStyle().layers) {
     // Shown unless a setting hides it (a layer hidden under the imagery comes
     // back with the map).
     if(layer.id==='polar-caps')map.triggerRepaint();
+    if(layer.id==='service-routes')for(const [property,value] of [['line-width',frequencyPaint.width],['line-offset',frequencyPaint.offset],['line-opacity',frequencyPaint.opacity]])map.setPaintProperty(layer.id,property,value);
+    if(layer.id==='service-names')map.setLayoutProperty(layer.id,'text-offset',frequencyPaint.labelOffset);
     const visible = layerVisibility(layer, settings);
     if (visible !== undefined) map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
     if (isLowZoomStationLayer(layer.id)) map.setPaintProperty(layer.id, 'text-color', lowZoomStationTextColor());
@@ -414,6 +433,7 @@ function applySettings() {
   inView = [];
   renderLegend();
   if (ready) { scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.(); }
+  frequencyExpiry?.update();
 }
 let attribution, attributionStateCleanup, controlLayout, servedBuild;
 function codeAttribution() {
@@ -516,7 +536,7 @@ function showDetails(feature) {
   if([...SIGNAL_SOURCES,'stationEntrances'].includes(feature.source)){showRailwayPointDetails(feature);return;}
   if (INFRASTRUCTURE_POINTS.includes(feature.layer?.id)) { showInfrastructureContext(feature); return; }
   if (feature.layer?.id.startsWith('context-')) { showContextDetails(feature); return; }
-  if (feature.layer?.id === 'service-routes') { showServiceDetails(feature); return; }
+  if (feature.layer?.id === 'service-routes') { showServiceDetails(feature); frequencyExpiry?.update(); return; }
   const p = feature.properties;
   const isPlatform=['platformLengths','platformEdges','platforms','platformNumbers'].includes(feature.source);
   const isStation = feature.source?.startsWith('station') || feature.kind === 'station';
@@ -583,22 +603,7 @@ function showDetails(feature) {
 // shifted sideways by its place in the bundle, as service-routes draws it)
 // passes nearest the point.
 function nearestService(services, point) {
-  const z = map.getZoom(), width = z <= 12 ? 2 + (Math.max(7, z) - 7) * 0.3 : 3.5 + (Math.min(16, z) - 12) * 0.375;
-  let best = services[0], bestDistance = Infinity;
-  for (const f of services) {
-    const offset = (f.properties.i - (f.properties.n - 1) / 2) * width;
-    const lines = f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.coordinates;
-    for (const line of lines) for (let k = 1; k < line.length; k++) {
-      const a = map.project(line[k - 1]), b = map.project(line[k]), dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
-      if (!len) continue;
-      // The segment shifted to the right of its direction (screen y points down).
-      const nx = -dy / len * offset, ny = dx / len * offset;
-      const t = Math.max(0, Math.min(1, ((point.x - a.x - nx) * dx + (point.y - a.y - ny) * dy) / (len * len)));
-      const d = Math.hypot(a.x + nx + t * dx - point.x, a.y + ny + t * dy - point.y);
-      if (d < bestDistance) { bestDistance = d; best = f; }
-    }
-  }
-  return best;
+  return nearestServiceFeature(services,point,p=>map.project(p),map.getZoom(),settings);
 }
 // An urban rail service (Service view): the route, its network and operator.
 function showServiceDetails(feature) {
@@ -609,6 +614,9 @@ function showServiceDetails(feature) {
   row(dl, 'Reference', p.ref);
   row(dl, 'Network', p.network);
   row(dl, 'Operator', p.operator);
+  for(const profile of [...new Set(['am','pm','offpeak','overnight',selectedFrequencyProfile(settings)])])row(dl,FREQUENCY_LABELS[profile],frequencyDetails(p,profile)||'Frequency unavailable');
+  if(p.frequency_source){row(dl,'Frequency source',`${p.frequency_source} · checked ${p.frequency_checked}`);row(dl,'Period definitions',p.frequency_definition);row(dl,'Source credit',p.frequency_credit);row(dl,'Licence',p.frequency_license);row(dl,'Schedule note',p.frequency_note);row(dl,'Geometry',p.geometry_source);}
+  if(/^https:\/\//.test(p.frequency_url||'')){const link=textNode('a','Timetable source and terms');link.href=p.frequency_url;link.target='_blank';link.rel='noopener';panel.append(link);}
   if (p.n > 1) row(dl, 'Services on this track', String(p.n));
   panel.append(dl);
   osmLink(panel, feature);
@@ -818,7 +826,10 @@ function gauge(value) {
 }
 // Units change speed colours and labels, contour intervals and the scale bar.
 function unitStyle(style) {
+  const frequencyPaint=serviceFrequencyPaint(settings);
   for (const layer of style.layers) {
+    if(layer.id==='service-routes')Object.assign(layer.paint,{'line-width':frequencyPaint.width,'line-offset':frequencyPaint.offset,'line-opacity':frequencyPaint.opacity});
+    if(layer.id==='service-names')layer.layout['text-offset']=frequencyPaint.labelOffset;
     if (/^speed-(branch-overview|metro-overview|overview|tracks)$/.test(layer.id)) layer.paint['line-color'] = speedPaint(settings.units);
     if(['platform-lengths','platform-numbers'].includes(layer.id))layer.layout['text-field']=platformLengthLabel(settings.units);
     if (layer.id === 'axle-labels') layer.layout['text-field'] = axleLabel(settings.units);
@@ -1368,7 +1379,7 @@ async function initialize() {
   }});
   syncPanning = globeDrag.sync; globeDragged = globeDrag.justDragged; globePan = globeDrag.pan;
   syncPanning();
-  map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'axleLow', 'axleRail', 'axleBranch', 'railway', 'branchLines', 'serviceRoutes'].includes(e.sourceId) && e.tile) scheduleLegend(); });
+  map.on('sourcedata', e => { if (['electric', 'control', 'gaugeLow', 'loadingLow', 'ownerLow', 'ownerRail', 'axleLow', 'axleRail', 'axleBranch', 'railway', 'branchLines', 'serviceRoutes'].includes(e.sourceId) && e.tile) scheduleLegend();if(e.sourceId==='serviceRoutes')frequencyExpiry?.update(); });
   map.on('click', event => {
     if(settings.ui==='watch')return;
     // The release that ends a globe drag is not a click.
@@ -1411,6 +1422,7 @@ async function initialize() {
 document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
   settings.mode = button.dataset.mode; applySettings(); saveSettings();
 }));
+for(const [id,key] of [['service-width','serviceWidth'],['frequency-period','frequencyPeriod'],['peak-phase','peakPhase'],['frequency-hour','frequencyHour']])$(id).addEventListener('change',()=>{settings[key]=key==='frequencyHour'?Number($(id).value):$(id).value;applySettings();saveSettings();if(currentFeature?.layer?.id==='service-routes')showServiceDetails(currentFeature);});
 document.querySelectorAll('[data-background]').forEach(button => button.addEventListener('click', () => {
   settings.background = button.dataset.background; applySettings(); saveSettings();
 }));
@@ -1534,7 +1546,7 @@ function profileChart(profile, km, units) {
   svg.addEventListener('pointerleave', () => { cursor.setAttribute('visibility', 'hidden'); readout.textContent = ''; profileMarker?.remove(); });
   return svg;
 }
-function closeDetails() { $('details').hidden = true; currentFeature = null; profileMarker?.remove(); }
+function closeDetails() { $('details').hidden = true; currentFeature = null; profileMarker?.remove(); frequencyExpiry?.update(); }
 $('details-close').addEventListener('click', closeDetails);
 addEventListener('keydown', event => { if (event.key === 'Escape' && !$('details').hidden && !drawing?.active && !measuring?.active && !document.querySelector('dialog[open]')) closeDetails(); });
 $('about-open').addEventListener('click', () => $('about').showModal());
@@ -1685,6 +1697,19 @@ $('search-form').addEventListener('submit', async e => {
     $('search-status').textContent = 'Search is unavailable. Try again, or browse by panning and zooming.';
   } finally { clearTimeout(timeout); }
 });
+frequencyExpiry=installFrequencyExpiry({
+  active:()=>ready&&document.visibilityState!=='hidden'&&(settings.mode==='service'||currentFeature?.layer?.id==='service-routes'),
+  features:()=>[...map.querySourceFeatures('serviceRoutes',{sourceLayer:'service_routes'}),...(currentFeature?.layer?.id==='service-routes'?[currentFeature]:[])],
+  refresh:()=>{
+    const p=serviceFrequencyPaint(settings);
+    if(map.getStyle().layers.some(l=>l.id==='service-routes'))for(const [key,value] of [['line-width',p.width],['line-offset',p.offset],['line-opacity',p.opacity]])map.setPaintProperty('service-routes',key,value);
+    if(map.getStyle().layers.some(l=>l.id==='service-names'))map.setLayoutProperty('service-names','text-offset',p.labelOffset);
+    if(currentFeature?.layer?.id==='service-routes')showServiceDetails(currentFeature);
+  }
+});
+document.addEventListener('visibilitychange',()=>document.visibilityState==='visible'?frequencyExpiry.resume():frequencyExpiry.pause());
+addEventListener('pagehide',()=>frequencyExpiry.pause());
+addEventListener('pageshow',()=>frequencyExpiry.resume());
 // Watch controls occupy the screen only after deliberate invocation. Normal
 // taps keep browsing the map rather than opening station/detail cards.
 const watchGesture=installWatchGesture($('map'),{active:()=>settings.ui==='watch'&&$('watch-menu').hidden,open:()=>openWatchMenu()});
@@ -1710,8 +1735,18 @@ function openWatchMenu(page='main') {
   const commit=()=>{applySettings();saveSettings();closeWatchMenu();};
   if(page==='main'){
     select('Railway view',Array.from(document.querySelectorAll('[data-mode]'),b=>[b.dataset.mode,b.textContent]),settings.mode,value=>{settings.mode=value;commit();});
-    const choices=[['','Options'],['layers','Layers'],['info','Info'],['standard','Standard view']];
+    const choices=[['','Options'],['layers','Layers'],...(settings.mode==='service'?[['frequency','Frequency']]:[]),['info','Info'],['standard','Standard view']];
     select('Map options',choices,'',value=>{if(value==='standard'){settings.ui='standard';commit();}else if(value)openWatchMenu(value);});
+  }else if(page==='frequency'){
+    const selected=settings.serviceWidth==='equal'?'equal':settings.frequencyPeriod==='hour'?'hour':selectedFrequencyProfile(settings);
+    select('Route width and time',['equal','am','pm','offpeak','overnight','hour'].map(value=>[value,value==='equal'?'Equal widths':value==='hour'?'Choose local hour':FREQUENCY_LABELS[value]]),selected,value=>{
+      if(value==='hour'){openWatchMenu('hour');return;}
+      settings.serviceWidth=value==='equal'?'equal':'frequency';
+      if(value!=='equal'){settings.frequencyPeriod=['am','pm'].includes(value)?'peak':value;if(['am','pm'].includes(value))settings.peakPhase=value;}
+      commit();
+    });
+  }else if(page==='hour'){
+    select('Agency-local hour',Array.from({length:24},(_,hour)=>[String(hour),FREQUENCY_LABELS[`h${String(hour).padStart(2,'0')}`]]),String(settings.frequencyHour),value=>{settings.frequencyHour=Number(value);settings.frequencyPeriod='hour';settings.serviceWidth='frequency';commit();});
   }else {
     const scroll=textNode('div','','watch-scroll');content.append(scroll);
     if(page==='layers')for(const [key,label] of [['stations','Stations'],['names','Route names'],['labels','Value labels'],['trackCounts','Track counts'],['inactive','Inactive railways'],['transport','Transport'],['destinations','Destinations'],['constraints','Boundaries'],['relief','Terrain']]){
