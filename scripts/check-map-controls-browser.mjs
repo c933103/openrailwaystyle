@@ -73,6 +73,10 @@ try{
   await page.goto(base+'?mode=infrastructure&relief=0&inactive=0#7/34/129',{waitUntil:'domcontentloaded'});await ready();
   assert.equal(await opened(),false,'fresh visit defaults to collapsed, not absent');
   await check('fresh desktop');
+  // Insets move the status pill without resizing it. The observed inset
+  // probe must move the control stack too, even before any status text change.
+  await page.evaluate(()=>document.documentElement.style.setProperty('--map-safe-bottom','24px'));
+  await check('desktop position-only safe inset change');
   const info=page.locator('.maplibregl-ctrl-attrib-button');
   await info.click();assert.equal(await opened(),true);assert.equal((await cookie()).attributionOpen,true);
   await page.reload({waitUntil:'domcontentloaded',timeout:30000});await ready();assert.equal(await opened(),true,'open cookie restored after real reload');

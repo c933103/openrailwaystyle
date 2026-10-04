@@ -80,6 +80,8 @@ export function installControlLayout({frame, mapElement, panel, status, readout,
   const resizer = typeof window.ResizeObserver === 'function' ? new window.ResizeObserver(schedule) : null;
   const corner = mapElement.querySelector('.maplibregl-ctrl-bottom-left');
   const attribution = mapElement.querySelector('.maplibregl-ctrl-attrib');
+  // The inset probe has an empty content box; padding changes its border box.
+  resizer?.observe(inset, {box: 'border-box'});
   for (const element of [frame, panel, status, readout, details, corner, attribution?.querySelector('.maplibregl-ctrl-attrib-inner')])
     if (element) resizer?.observe(element);
   const changes = new window.MutationObserver(schedule);
