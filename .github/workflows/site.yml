@@ -127,6 +127,27 @@ jobs:
             echo "Could not look up the service-data snapshot (git exit $status)"
             exit 1
           fi
+      - name: Load worldwide railway signals and energy supplies
+        run: |
+          for attempt in $(seq 1 40); do
+            if git ls-remote --exit-code --heads origin traction-data; then break; fi
+            if [ "$attempt" = 40 ]; then
+              echo 'No complete railway facility snapshot has been published.'
+              exit 1
+            fi
+            sleep 30
+          done
+          mkdir -p styles/data/traction
+          git fetch --depth=1 origin traction-data
+          git archive FETCH_HEAD | tar -x -C styles/data/traction
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {readFile} from 'node:fs/promises';
+          for (const kind of ['power','signals']) {
+            const manifest=JSON.parse(await readFile(`styles/data/traction/${kind}/manifest.json`));
+            assert.equal(manifest.complete,true,`Incomplete ${kind} facility snapshot`);
+          }
+          JS
       - name: Install test browser
         run: npx playwright install --with-deps chromium
       - name: Start test server
@@ -143,6 +164,8 @@ jobs:
         run: node scripts/check-platform-browser.mjs
       - name: Verify platform references, signals and entrances
         run: node scripts/check-infrastructure-browser.mjs
+      - name: Verify concurrent train controls, signals and traction supplies
+        run: node scripts/check-signal-power-browser.mjs
       - name: Verify served build information on desktop and touch
         run: node scripts/check-build-browser.mjs
       - name: Save browser review

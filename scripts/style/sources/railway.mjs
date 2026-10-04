@@ -45,7 +45,8 @@ export function railwaySources() {
     trackCounts: {type:'vector', tiles:['atlastracks://{z}/{x}/{y}'], minzoom:14, maxzoom:14, attribution:RAIL_ATTRIBUTION},
     platforms: railwayVector('standard_railway_platforms', 17, 22),
     platformEdges: railwayVector('standard_railway_platform_edges', 17, 22),
-    railwaySignals: railwayVector('railway_signals', 16, 22),
+    railwaySignals: railwayVector('railway_signals', 13, 22),
+    electricSubstations: railwayVector('electrification_substation', 13, 22),
     stationEntrances: railwayVector('standard_station_entrances', 16, 22),
     stationLow: railwayVector('standard_railway_text_stations_low', 4, 6),
     // This fragment tells the adapter to derive z6 from four z7 children;

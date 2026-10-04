@@ -10,7 +10,7 @@
 // REFRESH_DAYS, which also removes deleted and retagged lines.
 import {mkdir, readFile, writeFile, rm, appendFile} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
-import {STAGES, MIN_ZOOM, MAX_ZOOM, buildTiles, partQuery, quarters, readTable, toFeatures, writeTable} from './branch-lines.mjs';
+import {STAGES, MIN_ZOOM, MAX_ZOOM, migrateBranchState, buildTiles, partQuery, quarters, readTable, toFeatures, writeTable} from './branch-lines.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const previous = process.env.PREVIOUS_DATA ? new URL(`file://${process.env.PREVIOUS_DATA.replace(/\/?$/, '/')}`) : null;
@@ -39,13 +39,10 @@ if (previous) {
   }
 }
 
-// Format 2 adds metro lines: every stage of an older snapshot is fetched
-// again, in order, keeping its branch lines until then.
-const VERSION = 2;
-if (state.version !== VERSION) {
-  for (const s of Object.values(state.stages)) Object.assign(s, {completed: null, pending: null, seen: []});
-  state.version = VERSION;
-}
+// Format 3 retains concurrent train-protection systems. Old tiles/table only
+// contain the primary code, so re-fetch every region through the existing
+// staged refresh while keeping its previous geometries until it succeeds.
+migrateBranchState(state);
 state.runs = (state.runs || []).filter(run => Date.now() - Date.parse(run.at) < 86400_000);
 const lastDay = state.runs.reduce((sum, run) => sum + run.bytes, 0);
 const BUDGET_BYTES = Math.min(RUN_BUDGET, DAY_BUDGET - lastDay);
@@ -143,10 +140,10 @@ if (!current.pending.length) {
   // A refresh that would remove over a fifth of a stage's lines points to an
   // incomplete response: the lines stay, and the stage is tried again at its
   // next refresh (the run's downloads are still recorded).
-  const suspicious = current.completed && before > 100 && stale.length > before * 0.2;
+  const suspicious = (current.completed || current.previousCompleted) && before > 100 && stale.length > before * 0.2;
   if (suspicious) console.warn(`Refresh of ${stage.name} would remove ${stale.length} of ${before} lines; keeping them`);
   else for (const f of stale) table.delete(f.id);
-  Object.assign(current, {completed: now, pending: null, seen: [], lines: before - (suspicious ? 0 : stale.length), ...(suspicious ? {kept: stale.length} : {kept: 0})});
+  Object.assign(current, {completed: now, previousCompleted: null, pending: null, seen: [], lines: before - (suspicious ? 0 : stale.length), ...(suspicious ? {kept: stale.length} : {kept: 0})});
   console.log(`Stage ${stage.name} complete: ${current.lines} lines (${suspicious ? 0 : stale.length} removed)`);
 } else console.log(`Stage ${stage.name} continues next run (${current.pending.length} region(s) left): ${stopped}`);
 // With nothing fetched and no region split, an unavailable server leaves the

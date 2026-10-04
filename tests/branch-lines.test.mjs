@@ -4,7 +4,28 @@ import {readFile} from 'node:fs/promises';
 import Pbf from 'pbf';
 import {VectorTile} from '@mapbox/vector-tile';
 import {formatSpeed} from '../styles/map-model.mjs';
-import {STAGES, buildTiles, partQuery, quarters, readTable, simplify, toFeatures, trainProtection, writeTable} from '../scripts/branch-lines.mjs';
+import {STAGES, BRANCH_DATA_VERSION, migrateBranchState, buildTiles, partQuery, quarters, readTable, simplify, toFeatures, trainProtection, trainProtections, writeTable} from '../scripts/branch-lines.mjs';
+
+test('branch schema migration requeues all regions without losing completion safeguards or daily budget history', () => {
+  const completed = '2026-10-03T00:00:00Z', runs = [{at: completed, bytes: 12345678}];
+  const state = {version:2, stages:Object.fromEntries(STAGES.map((stage,i) => [stage.name, {
+    completed, pending:i === 1 ? [{part:0,box:[1,2,3,4]}] : null, seen:[201,202], lines:321,
+  }])), runs};
+  assert.equal(migrateBranchState(state), state);
+  assert.equal(state.version, BRANCH_DATA_VERSION); assert.equal(BRANCH_DATA_VERSION, 3);
+  assert.equal(state.runs, runs, 'a migration retains download budget history');
+  for (const stage of Object.values(state.stages)) {
+    assert.equal(stage.completed, null, 'all regions will be fetched in existing order');
+    assert.equal(stage.pending, null, 'an old partial pass restarts instead of keeping first-code-only rows');
+    assert.deepEqual(stage.seen, []);
+    assert.equal(stage.lines, 321, 'published coverage counts survive until each region is updated');
+    assert.equal(stage.previousCompleted, completed, 'mass-deletion safeguard still recognizes a migrated refresh');
+  }
+  state.stages.japan.pending = [{part:0,box:[20,122,46,154]}]; state.stages.japan.seen = [203];
+  const progress = structuredClone(state);
+  migrateBranchState(state);
+  assert.deepEqual(state, progress, 'subsequent version3 runs continue their saved progress');
+});
 
 test('branch-line stages: the requested order, Japan first and the rest of the world last', () => {
   assert.deepEqual(STAGES.map(s => s.name), ['japan', 'east-asia', 'china', 'russia', 'europe', 'india', 'asia', 'north-america', 'americas', 'world']);
@@ -76,6 +97,28 @@ test('branch-line table and tiles: z4–6 only, the style\'s fields and the OSM 
   const layer = new VectorTile(new Pbf(tiles.get([...tiles.keys()].find(k => k.startsWith('6/'))))).layers.branch_lines;
   assert.equal(layer.feature(0).id, 7);
   assert.deepEqual([layer.feature(0).properties.usage, layer.feature(0).properties.maxspeed, layer.feature(0).properties.stage], ['branch', 85, undefined]);
+});
+test('branch and metro tiles preserve simultaneous control systems and unknown list codes', () => {
+  const tags = {'railway:etcs':'2','railway:lzb':'yes','railway:pzb':'yes'};
+  assert.deepEqual(trainProtections(tags), ['etcs_2','lzb','pzb']);
+  assert.deepEqual(trainProtections({'railway:train_protection':'ETCS;LZB;PZB;ETCS', 'railway:train_protection:ETCS':'2'}), ['etcs_2','lzb','pzb']);
+  assert.deepEqual(trainProtections({'railway:pzb':'yes', 'railway:train_protection':'PZB;Unfamiliar:ATP'}), ['pzb','Unfamiliar:ATP']);
+  assert.deepEqual(trainProtections({'railway:train_protection':'no'}), ['none']);
+  assert.deepEqual(trainProtections({'railway:pzb':'no'}), ['none']);
+  assert.deepEqual(trainProtections({}), [], 'missing data does not mean no protection');
+  const features = toFeatures({elements:[
+    {type:'way',id:201,tags:{railway:'rail',usage:'branch',...tags},geometry:[{lat:35,lon:139},{lat:35.01,lon:139.01}]},
+    {type:'way',id:202,tags:{railway:'subway',...tags},geometry:[{lat:35,lon:139},{lat:35.01,lon:139.01}]},
+  ]});
+  for (const feature of features) assert.deepEqual([0,1,2].map(i => feature.properties[`train_protection${i}`]), ['etcs_2','lzb','pzb']);
+  const tiles = buildTiles(new Map(features.map(f => [f.id,f])));
+  for (const zoom of [6,9]) {
+    const key = [...tiles.keys()].find(k => k.startsWith(`${zoom}/`));
+    const layer = new VectorTile(new Pbf(tiles.get(key))).layers.branch_lines;
+    assert.deepEqual([0,1,2].map(i => layer.feature(0).properties[`train_protection${i}`]), ['etcs_2','lzb','pzb']);
+  }
+  const [longList] = toFeatures({elements:[{type:'way',id:203,tags:{railway:'rail',usage:'branch',...tags,'railway:aws':'yes'},geometry:[{lat:35,lon:139},{lat:35.01,lon:139.01}]}]});
+  assert.equal(longList.properties.train_protection, 'etcs_2;lzb;pzb;aws', 'exceptional fourth system retained for details');
 });
 test('metro lines: kept with their own usage, tiled at z7–9 only, apart from branch lines', () => {
   const [metro] = toFeatures({elements: [{type: 'way', id: 8, tags: {railway: 'subway', name: '銀座線', maxspeed: '65'}, geometry: [{lat: 35.67, lon: 139.70}, {lat: 35.71, lon: 139.80}]}]});
