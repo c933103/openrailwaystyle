@@ -270,10 +270,10 @@ jobs:
       - name: Run browser checks
         run: node scripts/run-browser-checks.mjs --concurrency 2 --label "$GROUP" $CHECKS
       - name: Prune browser tile cache
-        if: always() && hashFiles('.browser-tiles/.changed') != ''
+        if: success() && hashFiles('.browser-tiles/.changed') != ''
         run: node scripts/browser.mjs prune .browser-tiles
       - name: Save browser tile cache
-        if: always() && hashFiles('.browser-tiles/.changed') != ''
+        if: success() && hashFiles('.browser-tiles/.changed') != ''
         uses: actions/cache/save@v4
         with:
           path: .browser-tiles

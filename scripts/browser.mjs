@@ -7,8 +7,7 @@
 //
 // With BROWSER_TILE_CACHE, GET responses from other origins (map tiles,
 // glyphs, provider APIs) are kept in that directory and served from it for
-// TILE_CACHE_DAYS (7): checks wait for the network far less, and a provider
-// hiccup cannot fail them. The site under test is never cached, and the
+// TILE_CACHE_DAYS (7): checks wait for the network far less. The site under test is never cached, and the
 // deploy job checks the published site without a cache. Routes a check sets
 // itself take precedence; this one only sees what they pass on.
 import {chromium} from 'playwright';
@@ -19,8 +18,10 @@ import {join} from 'node:path';
 export const BROWSER_ARGS = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'];
 export const TILE_CACHE_DAYS = 7;
 // Responses worth replaying: success, partial content (PMTiles ranges) and
-// the not-found or no-content answers that providers give for empty tiles.
-const CACHED_STATUS = new Set([200, 204, 206, 404]);
+// the no-content answer providers give for empty tiles. A 404 can be a
+// provider's passing fault, and replaying it for a week would hide its
+// recovery, so it is always fetched again.
+const CACHED_STATUS = new Set([200, 204, 206]);
 // Set by the browser per response; replaying them would misdescribe the
 // decoded body Playwright hands over.
 const DROPPED_HEADERS = new Set(['content-encoding', 'content-length', 'transfer-encoding', 'connection', 'set-cookie']);
