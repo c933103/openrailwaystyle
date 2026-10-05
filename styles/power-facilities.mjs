@@ -84,7 +84,12 @@ export function createPowerFacilityLoader(map, {url, active = ()=>true, fetcher 
     if (showing!==nextLanguage) return;
     showing=undefined;
     if (language()!==nextLanguage) return show();
-    map.getSource('electricFacilities')?.setData(data);
+    // A style being replaced can lack the source for a moment; the language
+    // counts as shown only once a source has the data, so the next refresh
+    // fills the new one.
+    const source=map.getSource('electricFacilities');
+    if (!source) return;
+    source.setData(data);
     shownLanguage=nextLanguage;
   };
   return async function refresh() {

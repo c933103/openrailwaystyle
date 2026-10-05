@@ -137,3 +137,19 @@ test('power facility names wait for their glyphs, and a newer language wins', as
   waits[1]();await second;
   assert.deepEqual(shown, ['\u{2A700} zh']);
 });
+
+test('power facility names whose source vanished while their glyphs loaded are shown by the next refresh', async () => {
+  const {createPowerFacilityLoader} = await import('../styles/power-facilities.mjs');
+  const shown = [], waits = [];let present = true;
+  const map = {getSource: () => present ? {setData: data => shown.push(data.features.length)} : undefined};
+  const refresh = createPowerFacilityLoader(map, {url: 'https://atlas.example/power.geojson', language: () => 'zh',
+    fetcher: async () => ({ok: true, json: async () => ({type: 'FeatureCollection', features: [{type: 'Feature', properties: {name: 'x'}, geometry: {type: 'Point', coordinates: [0, 0]}}]})}),
+    glyphs: () => waits.length ? Promise.resolve() : new Promise(resolve => waits.push(resolve))});
+  const first = refresh();
+  for (let i = 0; i < 20 && !waits.length; i++) await new Promise(resolve => setTimeout(resolve, 0));
+  present = false;waits[0]();await first;
+  assert.deepEqual(shown, [], 'the style was being replaced');
+  present = true;await refresh();
+  assert.deepEqual(shown, [1], 'the replacement source gets the names');
+  await refresh();assert.deepEqual(shown, [1], 'and is not set twice for the same language');
+});
