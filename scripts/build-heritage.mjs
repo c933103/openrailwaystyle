@@ -28,25 +28,31 @@ async function collect(box, depth = 0) {
   if (!json) for (let attempt = 0; ; attempt++) {
     await sleep(attempt ? HERITAGE_RETRY_DELAYS[attempt - 1] : requests ? 10000 : 0);
     requests++;
+    let failure;
     try {
       console.log('Fetching historic areas', box.join(','), 'attempt', attempt + 1);
-      const response = await fetch(api, {method:'POST', body:new URLSearchParams({data:query}),
-        headers:{'User-Agent':'RailwayAtlas-heritage/1.0 (+https://github.com/c933103/openrailwaystyle)'}, signal:AbortSignal.timeout(360000)});
-      const text = await response.text();
+      let response, text;
+      try {
+        response = await fetch(api, {method:'POST', body:new URLSearchParams({data:query}),
+          headers:{'User-Agent':'RailwayAtlas-heritage/1.0 (+https://github.com/c933103/openrailwaystyle)'}, signal:AbortSignal.timeout(360000)});
+        text = await response.text();
+      } catch (error) { throw new Error(`Network: ${error.message}`); }
       downloaded += Buffer.byteLength(text);
       if (downloaded > 1_500_000_000) throw new Error('Historic area download budget exceeded');
       if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 160)}`);
-      json = JSON.parse(text);
+      try { json = JSON.parse(text); } catch (error) { throw new Error(`Invalid response: ${error.message}`); }
       heritageFeatures(json);
+    } catch (error) { failure = error; }
+    if (!failure) {
+      // Outside the retry policy: a cache that cannot be written fails the run.
       await writeFile(file, JSON.stringify({query, response:json}));
       break;
-    } catch (error) {
-      json = undefined;
-      console.warn(box.join(','), error.message);
-      const next = heritageFailure(error.message, attempt, depth);
-      if (next === 'fail') throw error;
-      if (next === 'split') { split = true; break; }
     }
+    json = undefined;
+    console.warn(box.join(','), failure.message);
+    const next = heritageFailure(failure.message, attempt, depth);
+    if (next === 'fail') throw failure;
+    if (next === 'split') { split = true; break; }
   }
   if (split) {
     console.log('Splitting historic area region', box.join(','));
