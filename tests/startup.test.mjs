@@ -275,6 +275,17 @@ test('service frequency profile is applied on the first frame and controls persi
     assert.equal(doc.getElementById('service-frequency-options').hidden,true);
   } finally {dom.window.close();}
 });
+test('frequency periods no applied source covers are not offered, and a link to one falls back',async()=>{
+  const fetcher=async url=>String(url).includes('frequency-manifest.json')?{ok:true,json:async()=>({profiles:['am','pm','offpeak']})}:{ok:true,json:async()=>structuredClone(style)};
+  const {dom,window,errors}=await start({search:'?mode=service&serviceWidth=frequency&frequencyPeriod=overnight',fetcher});
+  try {
+    assert.equal(errors.length,0);
+    for(let i=0;i<20&&!window.document.querySelector('#frequency-period option[value="overnight"]').hidden;i++)await new Promise(r=>setTimeout(r,0));
+    const options=Object.fromEntries([...window.document.getElementById('frequency-period').options].map(o=>[o.value,o.hidden]));
+    assert.deepEqual(options,{offpeak:false,peak:false,overnight:true,hour:true});
+    assert.equal(window.document.getElementById('frequency-period').value,'offpeak','a period without a source falls back');
+  } finally {dom.window.close();}
+});
 test('equal-width service details expire even after the inspected route leaves loaded tiles',async()=>{
   let stamp=1000,scheduled;
   const frequencyClock={now:()=>stamp,setTimer:(fn,delay)=>(scheduled={fn,delay}),clearTimer:()=>{scheduled=undefined;}};

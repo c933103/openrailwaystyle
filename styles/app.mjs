@@ -1,21 +1,21 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261005-service2';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261005-service2';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261005-service2';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261005-service2';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261005-service2';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261005-service2';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261005-service3';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261005-service3';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261005-service3';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261005-service3';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261005-service3';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261005-service3';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261005-service2';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261005-service2';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261005-service2';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261005-service2';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261005-service2';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261005-service2';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261005-service2';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261005-service2';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261005-service2';
-import { installWatchGesture } from './watch-map.mjs?v=20261005-service2';
-import { createBundleReader } from './tile-bundles.mjs?v=20261005-service2';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261005-service3';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261005-service3';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261005-service3';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261005-service3';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261005-service3';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261005-service3';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261005-service3';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261005-service3';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261005-service3';
+import { installWatchGesture } from './watch-map.mjs?v=20261005-service3';
+import { createBundleReader } from './tile-bundles.mjs?v=20261005-service3';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -50,7 +50,7 @@ let legendHelpOpen = false;
 let platformLengths,frequencyExpiry;
 let powerFacilities;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261005-service2';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261005-service3';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -636,7 +636,7 @@ function showServiceDetails(feature) {
   row(dl, 'Reference', p.ref);
   row(dl, 'Network', p.network);
   row(dl, 'Operator', p.operator);
-  for(const profile of [...new Set(['am','pm','offpeak','overnight',selectedFrequencyProfile(settings)])])row(dl,FREQUENCY_LABELS[profile],frequencyDetails(p,profile)||'Frequency unavailable');
+  for(const profile of [...new Set(['am','pm','offpeak','overnight',selectedFrequencyProfile(settings)])].filter(profileCovered))row(dl,FREQUENCY_LABELS[profile],frequencyDetails(p,profile)||'Frequency unavailable');
   if(p.frequency_source){row(dl,'Frequency source',`${p.frequency_source} · checked ${p.frequency_checked}`);row(dl,'Period definitions',p.frequency_definition);row(dl,'Source credit',p.frequency_credit);row(dl,'Licence',p.frequency_license);row(dl,'Schedule note',p.frequency_note);row(dl,'Geometry',p.geometry_source);}
   if(/^https:\/\//.test(p.frequency_url||'')){const link=textNode('a','Timetable source and terms');link.href=p.frequency_url;link.target='_blank';link.rel='noopener';panel.append(link);}
   if (p.n > 1) row(dl, 'Services on this track', String(p.n));
@@ -1490,6 +1490,20 @@ async function initialize() {
 document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
   settings.mode = button.dataset.mode; applySettings(); saveSettings();
 }));
+// Frequency periods that some applied source covers (frequency-manifest.json);
+// a period no source covers is not offered. Unknown until the manifest loads,
+// or for a snapshot without the list: every period stays available.
+let coveredProfiles=null;
+const profileCovered=profile=>!coveredProfiles||coveredProfiles.has(profile);
+const periodCovered=period=>period==='peak'?profileCovered('am')||profileCovered('pm'):period==='hour'?HOURLY_PROFILES.some(profileCovered):profileCovered(period);
+function applyCoveredPeriods(){
+  for(const option of $('frequency-period').options)option.hidden=option.disabled=!periodCovered(option.value);
+  if(!periodCovered(settings.frequencyPeriod)){const fallback=['offpeak','peak'].find(periodCovered);if(fallback){settings.frequencyPeriod=fallback;applySettings();}}
+}
+fetch(new URL('./data/service-routes/frequency-manifest.json',import.meta.url)).then(r=>r.ok?r.json():null).then(manifest=>{
+  if(!Array.isArray(manifest?.profiles))return;
+  coveredProfiles=new Set(manifest.profiles);applyCoveredPeriods();
+}).catch(()=>{});
 for(const [id,key] of [['service-width','serviceWidth'],['frequency-period','frequencyPeriod'],['peak-phase','peakPhase'],['frequency-hour','frequencyHour']])$(id).addEventListener('change',()=>{settings[key]=key==='frequencyHour'?Number($(id).value):$(id).value;applySettings();saveSettings();if(currentFeature?.layer?.id==='service-routes')showServiceDetails(currentFeature);});
 document.querySelectorAll('[data-background]').forEach(button => button.addEventListener('click', () => {
   settings.background = button.dataset.background; applySettings(); saveSettings();
@@ -1807,7 +1821,7 @@ function openWatchMenu(page='main') {
     select('Map options',choices,'',value=>{if(value==='standard'){settings.ui='standard';commit();}else if(value)openWatchMenu(value);});
   }else if(page==='frequency'){
     const selected=settings.serviceWidth==='equal'?'equal':settings.frequencyPeriod==='hour'?'hour':selectedFrequencyProfile(settings);
-    select('Route width and time',['equal','am','pm','offpeak','overnight','hour'].map(value=>[value,value==='equal'?'Equal widths':value==='hour'?'Choose local hour':FREQUENCY_LABELS[value]]),selected,value=>{
+    select('Route width and time',['equal','am','pm','offpeak','overnight','hour'].filter(value=>value==='equal'||(value==='hour'?periodCovered('hour'):profileCovered(value))).map(value=>[value,value==='equal'?'Equal widths':value==='hour'?'Choose local hour':FREQUENCY_LABELS[value]]),selected,value=>{
       if(value==='hour'){openWatchMenu('hour');return;}
       settings.serviceWidth=value==='equal'?'equal':'frequency';
       if(value!=='equal'){settings.frequencyPeriod=['am','pm'].includes(value)?'peak':value;if(['am','pm'].includes(value))settings.peakPhase=value;}
