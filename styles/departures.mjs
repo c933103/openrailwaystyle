@@ -39,13 +39,19 @@ export function pickStops(candidates, station, limit = 2) {
 // A route "name" that only repeats the numeric end of its route ID (some
 // feeds give every trip pattern its own numbered route) is not a line name.
 const opaqueName = (name, routeId) => /^\d{5,}$/.test(name || '') && String(routeId || '').endsWith(name);
+// Rows of different families (main-line rail, metro, tram, funicular, cable
+// car) are never one train. A feed that classifies a train differently from
+// another leaves two rows rather than hiding a departure.
+const MODE_FAMILY = {METRO: 'metro', SUBWAY: 'metro', TRAM: 'tram', FUNICULAR: 'funicular', CABLE_CAR: 'cable'};
+const modeFamily = mode => MODE_FAMILY[mode] || 'rail';
 const squash = text => String(text || '').replace(/[\s()（）]/g, '');
 // Board rows from departure lists (one list per stop; merged, earliest first,
 // rail modes only, one row per train). Within one list only an exact repeat is
 // the same train: two services of one feed can leave together. Across lists,
 // two feeds can describe one train with different names and destination texts
 // ("桜木町" and "(普通 Local) 桜木町 Sakuragichō"). Rows from different lists
-// are compatible when they leave in the same scheduled minute, their
+// are compatible when they are of the same mode family, leave in the same
+// scheduled minute, their
 // destinations are non-empty and contain one another, and at least one has no
 // line name or both have the same one. A compatible pair is merged only when
 // each is the other's only compatible row in that list, and a merged group
@@ -74,7 +80,7 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
       list, key, to: squash(time.headsign || time.tripTo?.name || ''), minute: Math.floor(scheduled / 60000),
     });
   }
-  const compatible = (a, b) => a.list !== b.list && a.minute === b.minute && a.to && b.to &&
+  const compatible = (a, b) => a.list !== b.list && modeFamily(a.mode) === modeFamily(b.mode) && a.minute === b.minute && a.to && b.to &&
     (a.to.includes(b.to) || b.to.includes(a.to)) && (!a.line || !b.line || a.line === b.line);
   const only = (a, list) => rows.filter(r => r.list === list && compatible(a, r)).length === 1;
   const parent = rows.map((_, i) => i), find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));

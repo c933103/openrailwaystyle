@@ -85,6 +85,14 @@ test('ambiguous cross-feed matches stay separate whatever the order', () => {
   }
 });
 
+test('a regional train and a metro train leaving together are never merged', () => {
+  const now = Date.parse('2026-10-05T12:00:00Z'), at = '2026-10-05T13:40:00Z';
+  const t = fields => ({realTime: false, place: {scheduledDeparture: at, departure: at, tz: 'Asia/Tokyo'}, ...fields});
+  const rows = departureRows([[t({mode: 'REGIONAL_RAIL', displayName: '12345678', routeId: 'x_12345678', headsign: '大宮'})], [t({mode: 'SUBWAY', displayName: 'N', routeId: 'a_N', headsign: '大宮'})]], {now});
+  assert.equal(rows.length, 2);
+  assert.equal(departureRows([[t({mode: 'REGIONAL_RAIL', displayName: '12345678', routeId: 'x_12345678', headsign: '大宮'})], [t({mode: 'SUBURBAN', displayName: 'JK', routeId: 'a_JK', headsign: '大宮'})]], {now}).length, 1, 'main-line modes are one family');
+});
+
 test('journey links and the station board request', async () => {
   assert.equal(plannerLink('from', 'jp-japan-rail_1748', '東京'), 'https://api.transitous.org/?fromPlace=jp-japan-rail_1748&fromName=%E6%9D%B1%E4%BA%AC');
   const urls = [];
