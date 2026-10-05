@@ -102,3 +102,19 @@ test('a slow slice holds a tile back no longer than the wait', async () => {
   assert.ok(Date.now() - started < 1000);
   await createRareHanFonts({root: 'https://atlas.example/f/', FontFace: undefined, fonts}).ensure(new Set([0x2a7]));
 });
+
+test('an unanswered index request is bounded by the wait and later counts as failed', async () => {
+  let clock = 0, requests = 0;
+  const {FontFace, fonts} = fakeFonts();
+  const loader = createRareHanFonts({root: 'https://atlas.example/f/', FontFace, fonts, wait: 30, indexTimeout: 60, retryDelay: 1000, now: () => clock,
+    fetcher: () => { requests++; return new Promise(() => {}); }});
+  const started = Date.now();
+  await loader.ensure(new Set([0x2a7]));
+  assert.ok(Date.now() - started < 1000, 'the tile is not held back by the index');
+  await new Promise(resolve => setTimeout(resolve, 80));
+  await loader.ensure(new Set([0x2a7]));
+  assert.equal(requests, 1, 'a timed-out index waits for the retry delay');
+  clock = 2000;
+  await loader.ensure(new Set([0x2a7]));
+  assert.equal(requests, 2);
+});

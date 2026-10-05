@@ -499,6 +499,30 @@ test('curated hubs take their names from the provider station tiles by OSM ident
  }finally{dom.window.close();}
 });
 
+test('curated hub names with rare Han wait for their slices before reaching the map',async()=>{
+ const penn=style.sources.stationMajor.data.features.find(f=>f.properties.wikidata==='Q54451');
+ const member=penn.properties.osm_ids.split(';').concat([penn.properties.id])[0];
+ const fetcher=async url=>String(url).includes('rare-han-v1/index.json')?{ok:true,status:200,json:async()=>({blocks:[0x2a7]})}:{ok:true,status:200,json:async()=>structuredClone(style)};
+ const stationTile=async(url,lang)=>{
+  const result=encodeTile.fromGeojsonVt({standard_railway_text_stations:{features:[{type:1,id:1,tags:{id:`${member}-train-train-station`,name:'\u{2A700}站',atlas_name:'\u{2A700}站',atlas_language:lang},geometry:[[2049,2048]]}]}},{version:2});
+  return result.buffer.slice(result.byteOffset,result.byteOffset+result.byteLength);};
+ const {dom,maps,fonts}=await start({search:'?language=local#3/40.75/-74',fetcher,stationTile,fontFaces:true});
+ try{
+  const map=maps[0],source=map.getSource.bind(map);
+  map.getSource=id=>id==='stations'?{tiles:['atlasstation://local/https://tiles.test/stations/{z}/{x}/{y}']}:source(id);
+  map.getBounds=()=>({getWest:()=>-80,getEast:()=>-70,getSouth:()=>35,getNorth:()=>45});
+  map.handlers['style.load']();
+  const slice=()=>fonts.find(f=>/rare-han-v1\/2a7\.woff2/.test(f.url));
+  for(let i=0;i<100&&!slice();i++)await new Promise(r=>setTimeout(r,0));
+  assert.ok(slice(),'the slice of the hub name is requested');
+  const named=()=>map.sourceData?.stationMajor?.features.find(f=>f.properties.wikidata==='Q54451');
+  assert.equal(named(),undefined,'the name waits for its slice');
+  slice().finish();
+  for(let i=0;i<50&&!named();i++)await new Promise(r=>setTimeout(r,0));
+  assert.equal(named()?.properties.atlas_name,'\u{2A700}站');
+ }finally{dom.window.close();}
+});
+
 test('real renderer initialization failures reach the visible error message', async () => {
   const {dom,window,errors} = await start({failWebGL:true});
   try {

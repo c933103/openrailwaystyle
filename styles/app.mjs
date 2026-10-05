@@ -1,6 +1,6 @@
 import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261005-rarehan2';
 import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261005-rarehan2';
-import {RARE_HAN_FAMILY, createRareHanFonts} from './rare-han.mjs?v=20261005-rarehan2';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261005-rarehan2';
 import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261005-rarehan2';
 import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261005-rarehan2';
 import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261005-rarehan2';
@@ -391,6 +391,10 @@ function updateMajorStations(){
    if(p)return {...f,properties:{...f.properties,name:p.name,localized_name:p.localized_name,atlas_name:p.atlas_name,atlas_language:language,atlas_name_source:'provider'}};
    return previous.get(f.id)||null;
   }).filter(Boolean);
+  // These names reach the map as GeoJSON, not through a tile protocol, so
+  // their rare Han slices load here (the layers draw atlas_name, else name).
+  const glyphs=new Set();for(const f of features)rareHanBlocks(f.properties.atlas_name||f.properties.name,glyphs);
+  if(glyphs.size){await rareHanFonts.ensure(glyphs);if(generation!==majorStationGeneration||!ready||language!==settings.language||source!==map.getSource('stationMajor'))return;}
   majorStationSearchData={type:'FeatureCollection',language,features};
   source.setData({type:'FeatureCollection',features});
  }).catch(error=>console.warn('Major station names unavailable:',error.message));

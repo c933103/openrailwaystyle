@@ -21,17 +21,21 @@ export function rareHanBlocks(text, into = new Set()) {
 const hex = value => value.toString(16).toUpperCase();
 export const rareHanRange = block => `U+${hex(block << 8)}-${hex((block << 8) + 255)}`;
 
-// ensure(blocks) resolves once those slices are loaded, after `wait` ms, or
-// at once for blocks without a slice; it never rejects, so a missing font
-// cannot hold back the map. A failed slice or index is retried only after
-// `retryDelay`, not by every tile that needs it.
-export function createRareHanFonts({root, fetcher = fetch, FontFace = globalThis.FontFace, fonts = globalThis.document?.fonts, wait = 8000, retryDelay = 60000, now = Date.now} = {}) {
+// ensure(blocks) resolves once those slices are loaded, after `wait` ms
+// (the index included), or at once for blocks without a slice; it never
+// rejects, so a missing font cannot hold back the map. A failed slice or
+// index is retried only after `retryDelay`, not by every tile that needs it;
+// an index request still unanswered after `indexTimeout` counts as failed.
+export function createRareHanFonts({root, fetcher = fetch, FontFace = globalThis.FontFace, fonts = globalThis.document?.fonts, wait = 8000, retryDelay = 60000, indexTimeout = 30000, now = Date.now} = {}) {
   const loads = new Map(), failed = new Map();
   let index, indexRetry = 0;
   const available = () => {
     if (!index && now() >= indexRetry) {
-      index = Promise.resolve().then(() => fetcher(new URL('index.json', root).href))
-        .then(response => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+      let timer;
+      const request = Promise.resolve().then(() => fetcher(new URL('index.json', root).href))
+        .then(response => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)));
+      index = Promise.race([request, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Index timed out')), indexTimeout); })])
+        .finally(() => clearTimeout(timer))
         .then(data => new Set(Array.isArray(data?.blocks) ? data.blocks : []))
         .catch(() => { index = undefined; indexRetry = now() + retryDelay; return new Set(); });
     }
@@ -52,11 +56,9 @@ export function createRareHanFonts({root, fetcher = fetch, FontFace = globalThis
   };
   async function ensure(blocks) {
     if (!blocks?.size || !FontFace || !fonts) return;
-    const have = await available();
-    const pending = [...blocks].filter(block => have.has(block)).map(load);
-    if (!pending.length) return;
+    const work = available().then(have => Promise.all([...blocks].filter(block => have.has(block)).map(load)));
     let timer;
-    await Promise.race([Promise.all(pending), new Promise(resolve => { timer = setTimeout(resolve, wait); })]);
+    await Promise.race([work, new Promise(resolve => { timer = setTimeout(resolve, wait); })]);
     clearTimeout(timer);
   }
   return {ensure};
