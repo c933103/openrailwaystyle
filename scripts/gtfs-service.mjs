@@ -13,7 +13,8 @@ export async function loadTimetableServices(registryPath=new URL('../styles/data
   for(const entry of registry.feeds)feeds.push(JSON.parse(gunzipSync(await readFile(new URL(entry.output,base))).toString()));
   return {registry,feeds};
 }
-export function timetableFeatures(feeds,now=Date.now()) {
+// summaryOnly: the per-feed summary alone, without copying any geometry.
+export function timetableFeatures(feeds,now=Date.now(),{summaryOnly=false}={}) {
   const edges=new Map(),summary=[];
   for(const feed of feeds){
     const source=feed.source,agencies=new Map(feed.agencies.map(a=>[a.agency_id||'single-agency',a])),routes=new Map(feed.routes.map(r=>[r.route_id,r]));
@@ -28,15 +29,15 @@ export function timetableFeatures(feeds,now=Date.now()) {
       const route=routes.get(segment.route_id),agency=agencies.get(segment.agency_id);
       if(!route||!agency)throw new Error(`Broken route/agency in ${source.id}`);
       const until=Math.min(feedUntil,route.valid_until??Infinity,segment.valid_until??Infinity);
-      const coordinates=segment.geometry.map(p=>p.map(round)),key=JSON.stringify(coordinates);
-      if(!edges.has(key))edges.set(key,{coordinates,records:[]});
+      const coordinates=summaryOnly?null:segment.geometry.map(p=>p.map(round)),key=summaryOnly?null:JSON.stringify(coordinates);
+      if(!summaryOnly&&!edges.has(key))edges.set(key,{coordinates,records:[]});
       const profiles=Object.fromEntries(Object.entries(segment.profiles).map(([p,v])=>[p,{rate:v.display_tph,high:v.display_tph,quality:v.quality,forward:v.forward_tph,backward:v.backward_tph}]));
       const windows=Object.entries(feed.profiles).map(([p,v])=>`${p}: ${v.start.slice(0,5)}–${v.end.slice(0,5)}`).join('; ');
       const record={properties:{id:`gtfs:${source.id}:${route.route_id}`,gtfs_route_id:route.route_id,geometry_source:source.geometry||'GTFS supplied shape',name:route.route_long_name||route.route_short_name||route.route_id,
         ref:route.route_short_name||route.route_long_name||route.route_id,colour:/^[0-9a-f]{6}$/i.test(route.route_color||'')?`#${route.route_color}`:'',kind:kind(route.route_type),network:source.name,operator:agency.agency_name,
         frequency_id:`${source.id}:${route.route_id}`,frequency_source:source.name,frequency_url:source.terms_url,frequency_checked:checked,frequency_credit:source.attribution,frequency_license:source.license,
         frequency_date:source.service_date,frequency_timezone:agency.agency_timezone,frequency_definition:`Configured weekday reference windows (${agency.agency_timezone}): ${windows}. Counts anchored at the preceding served stop.`,frequency_note:source.note||'',frequency_until:until},profiles};
-      edges.get(key).records.push(record);mapped.add(route.route_id);
+      if(!summaryOnly)edges.get(key).records.push(record);mapped.add(route.route_id);
       if(until*1000>=now&&Object.values(profiles).some(p=>p.rate!==null)){available++;known.add(route.route_id);}
     }
     summary.push({id:source.id,name:source.name,region:source.region,source,feedRoutes:feed.routes.length,mappedRoutes:mapped.size,routesWithProfiles:known.size,pathSegments:feed.segments.length,availableSegments:available,geometryAudit:source.geometry_audit,feedEnd:end});
@@ -59,5 +60,5 @@ export function timetableFeatures(feeds,now=Date.now()) {
       return {type:'Feature',properties,geometry:joined.length===1?{type:'LineString',coordinates:joined[0]}:{type:'MultiLineString',coordinates:joined}};
     });
   };
-  return {overview:make(false),local:make(true),summary};
+  return summaryOnly?{summary}:{overview:make(false),local:make(true),summary};
 }

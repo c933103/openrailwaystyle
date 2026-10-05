@@ -24,7 +24,7 @@ export function atlasSources(majorStationData) {
     crossingsDetail: snapshot('crossingtiles', DETAIL_ZOOM, DETAIL_ZOOM),
     // The provider's low-zoom mainline data omits these operating branches.
     branchLines: snapshot('branchtiles', 4, 9),
-    serviceRoutes: {...snapshot('servicetiles', 7, 12), attribution:ATTRIBUTION+' · <a href="frequency-credits.html">Timetable sources</a>'},
+    serviceRoutes: {...snapshot('servicetiles', 7, 12), attribution:ATTRIBUTION+' · <a href="frequency-credits.html">Frequency sources</a>'},
     streetRunning: snapshot('streettiles', 12, 12),
     // Historic areas the basemap's park layer does not hold (heritage-data.mjs).
     heritageAreas: snapshot('heritagetiles', HERITAGE_MIN_ZOOM, HERITAGE_MAX_ZOOM),

@@ -2,9 +2,14 @@
 
 [Documentation index](README.md)
 
-Service view offers **Route width → By frequency**, then **Peak → Morning / Evening**
-or **Off-peak**, **Overnight** and **Hour** (00–23). Equal width remains the default in standard and watch layouts; selecting an hour changes widths, offsets and click selection together. One shared scale applies across
-regions and periods. Settings persist in shared links. Unknown is not zero.
+Service view offers **Route width → By frequency**, then the periods some applied
+source covers, as listed in `profiles` in `frequency-manifest.json`. With only
+published headways applied, that is **Peak → Morning / Evening** and **Off-peak**;
+**Overnight** and **Hour** (00–23) appear once a source covers them, and a shared
+link to an uncovered period falls back to off-peak. Equal width remains the default
+in standard and watch layouts; selecting an hour changes widths, offsets and click
+selection together. One shared scale applies across regions and periods. Settings
+persist in shared links. Unknown is not zero.
 
 ## Worldwide discovery and updates
 
@@ -37,28 +42,36 @@ Every entry ends as excluded, no rail, compiled or failed. The assembler refuses
 missing batches, duplicate feed IDs or inconsistent catalogue/reference dates.
 It removes cached outputs absent from the current compiled inventory before
 publishing, including retired/failed/excluded feeds and interrupted writes.
-It builds static service tiles one feed and one encoded tile at a time; the viewer
-never downloads feeds or queries an extraction API. Scheduled main-branch runs
+It summarises each compiled feed one at a time and builds no map tiles: the
+Service view draws OpenStreetMap routes only (`scripts/service-routes.mjs`).
+Compiled timetables are kept for matching to those routes (#111); until then
+none is applied, and the viewer never downloads feeds or queries an extraction API. Scheduled main-branch runs
 publish the complete snapshot in the `service-frequency-data` data release and
 trigger site assembly. PR runs create reviewable artifacts without publishing.
 The site uses the published worldwide snapshot; absent data remains unknown.
 The four earlier city datasets are now **test fixtures only**.
 
-Per-feed assembly budgets bound features, vertices, projected tile fan-out and estimated encoded bytes before tile indexing. A feed that exceeds them is recorded as failed at assembly and contributes no partial tiles; other verified feeds can still publish.
+Assembly applies no size limit to a feed, since it builds no tiles; a large valid
+feed stays compiled.
 
 National outputs can exceed JavaScript's single-string limit. The assembler
-streams and decodes their top-level array records, then compacts consecutive
-equal-profile edges before tile indexing. Python writes gzip JSON incrementally
+streams and decodes their top-level array records and keeps only each feed's
+summary. Python writes gzip JSON incrementally
 and releases stale cached outputs before recompilation.
 
 Coverage is not complete worldwide: a catalogue can omit operators, a feed can be
 expired/unlicensed/unavailable, and a geometry match can fail. The site's
 `data/service-frequency/inventory.json` records every outcome;
 `data/service-frequency/manifest.json` records the actual mapped sources and counts.
-`frequency-credits.html`, downloadable per-feed data and route details preserve
-provenance. An inventory entry or an unmatched frequency is not mapped coverage.
+Until timetables are matched, frequency widths come only from published operator
+headways, and `frequency-credits.html` lists only the sources actually applied.
+Compiled per-feed data is not published with the site. An inventory entry or an
+unmatched frequency is not mapped coverage.
 
 ## Geometry and service identity
+
+The compiled geometry below is kept for matching timetable routes to
+OpenStreetMap routes; it is never drawn as a Service route.
 
 Supplied GTFS shapes are clipped to served stops and split at station projections
 and source vertices. Collinear vertices within 15 cm are reconciled; differently
@@ -87,9 +100,8 @@ undercount from its successfully matched subset.
 Calendar/direction route IDs are consolidated only with the same agency,
 reference/name, mode and colour **and connected served stations**. Disconnected
 networks with the same name stay separate. Original IDs remain in metadata.
-Encoded tile merging deduplicates exact path/operator/reference/mode matches;
-conflicting duplicate-source rates are withheld. Approximate OSM/GTFS paths can
-still appear as separate services: proximity alone is not enough to reconcile them.
+Matching timetable routes to OpenStreetMap routes is not yet implemented (#111);
+proximity alone will not be enough to reconcile them.
 Explicit `R-Bus` replacement platforms are excluded; other misclassified replacement
 services depend on upstream route typing and appear in source audit limitations.
 
@@ -154,7 +166,8 @@ node scripts/assemble-global-frequency.mjs /path/to/frequency-output
 assembly. The manifest fixes catalogue/input hashes and actual outcomes.
 
 For a published snapshot, `python3 scripts/load-frequency-snapshot.py` followed
-by `node scripts/rebuild-service-frequency.mjs` merges its static tiles into the
-existing OSM service tiles. `npm run build` and `npm test` validate the app.
-`--fixtures` is reserved for the actual-feed browser regression tests, and those
-tiles are restored to the production snapshot after testing.
+by `node scripts/rebuild-service-frequency.mjs` rebuilds the OSM service tiles
+with published headways and writes the manifest (including the covered frequency
+periods) and credits; the snapshot's feeds add no lines. `npm run build` and
+`npm test` validate the app. `--fixtures` is reserved for the browser regression
+check that timetable fixtures draw nothing.

@@ -7,7 +7,7 @@
     {
       "region": "Worldwide",
       "status": "Not assembled",
-      "reason": "The worldwide refresh workflow supplies frequency tiles; no city allow-list or city data fallback."
+      "reason": "The worldwide timetable scan runs in its own workflow, with no city allow-list; its timetables are not yet matched to OpenStreetMap routes, so none is applied."
     }
   ]
 }

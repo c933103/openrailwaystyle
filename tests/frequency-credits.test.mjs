@@ -18,3 +18,12 @@ test('source credit links allow HTTP(S) and render unsafe URL labels as text',as
   }
  }finally{await rm(temp,{recursive:true,force:true});}
 });
+test('with no timetable applied, the credits describe published headways, not timetables',async()=>{
+ const temp=await mkdtemp(join(tmpdir(),'atlas-credits-'));
+ try{
+  const file=join(temp,'credits.html');
+  await writeFrequencyCredits([],[],{source:{url:'https://example.org/headways',name:'Operator headways'},routes:[]},file);
+  const html=await readFile(file,'utf8');
+  assert.match(html,/published headways/);assert.doesNotMatch(html,/schedule\/reference profiles/);
+ }finally{await rm(temp,{recursive:true,force:true});}
+});
