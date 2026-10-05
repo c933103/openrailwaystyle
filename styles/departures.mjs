@@ -52,7 +52,7 @@ const squash = text => String(text || '').replace(/[\s()（）]/g, '');
 // whole minutes.
 export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
   const rows = [];
-  for (const time of lists.flat()) {
+  for (const [list, times] of lists.entries()) for (const time of times) {
     if (!RAIL_MODES.has(time.mode)) continue;
     const place = time.place || {}, departure = Date.parse(place.departure ?? place.arrival), scheduled = Date.parse(place.scheduledDeparture ?? place.scheduledArrival ?? place.departure);
     if (!Number.isFinite(departure) || departure < now - 60_000) continue;
@@ -65,24 +65,28 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
       track: place.track || place.scheduledTrack || '', live: time.realTime === true,
       delay: time.realTime === true && Number.isFinite(scheduled) ? Math.round((departure - scheduled) / 60000) : null,
       cancelled: time.cancelled === true || time.tripCancelled === true || place.cancelled === true, mode: time.mode,
+      list, key: `${time.displayName || time.routeShortName || line}|${time.headsign}|${scheduled}`,
     };
     const minute = Math.floor(scheduled / 60000), to = squash(row.headsign);
-    const same = to ? rows.findIndex(other => {
+    // Within one list only an exact repeat is the same train; two services
+    // of one feed can leave together. Across lists the texts may differ.
+    const same = rows.findIndex(other => {
+      if (other.list === list) return other.key === row.key;
       const theirs = squash(other.headsign);
-      return theirs && Math.floor(other.scheduled / 60000) === minute && (theirs.includes(to) || to.includes(theirs)) &&
+      return to && theirs && Math.floor(other.scheduled / 60000) === minute && (theirs.includes(to) || to.includes(theirs)) &&
         (!other.line || !row.line || other.line === row.line);
-    }) : -1;
+    });
     if (same < 0) { rows.push(row); continue; }
     // One train: the line name and colours of the named row, and real-time
     // state (live time, delay, cancellation, platform) from whichever row has it.
     const held = rows[same], keep = !held.line && row.line ? row : held, other = keep === row ? held : row;
-    const timed = r => r.live || r.cancelled;
-    const merged = {...keep};
-    if (timed(other) && !timed(keep)) Object.assign(merged, {departure: other.departure, live: other.live, delay: other.delay, cancelled: other.cancelled, track: other.track || keep.track});
+        const merged = {...keep};
+    if (other.live && !keep.live) Object.assign(merged, {departure: other.departure, live: true, delay: other.delay, track: other.track || keep.track});
     else if (!merged.track) merged.track = other.track;
+    merged.cancelled = keep.cancelled || other.cancelled;
     rows[same] = merged;
   }
-  return rows.sort((a, b) => a.departure - b.departure).slice(0, count);
+  return rows.sort((a, b) => a.departure - b.departure).slice(0, count).map(({list, key, ...row}) => row);
 }
 
 // Clock time at the station (its own time zone).

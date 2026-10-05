@@ -49,10 +49,20 @@ test('merged rows keep real-time state from either feed; rows without a destinat
     [t({displayName: 'JK', routeId: 'b_JK', headsign: '(普通) 大宮', realTime: true, place: undefined}, '2026-10-05T13:40:00Z')]].map(list => list.map(x => x.place ? x : {...x, place: {scheduledDeparture: '2026-10-05T13:40:00Z', departure: '2026-10-05T13:43:00Z', tz: 'Asia/Tokyo', track: '3'}})), {now});
   assert.equal(live.length, 1);
   assert.deepEqual([live[0].line, live[0].headsign, live[0].live, live[0].delay, live[0].track], ['JK', '大宮', true, 3, '3']);
-  const cancelled = departureRows([[t({displayName: '12345678', routeId: 'x_12345678', headsign: '大宮', cancelled: true}, '2026-10-05T13:40:00Z'), t({displayName: 'JK', routeId: 'a_JK', headsign: '大宮'}, '2026-10-05T13:40:00Z')]], {now});
+  const cancelled = departureRows([[t({displayName: '12345678', routeId: 'x_12345678', headsign: '大宮', cancelled: true}, '2026-10-05T13:40:00Z')], [t({displayName: 'JK', routeId: 'a_JK', headsign: '大宮'}, '2026-10-05T13:40:00Z')]], {now});
   assert.deepEqual(cancelled.map(r => [r.line, r.cancelled]), [['JK', true]], 'the named row carries the cancellation');
-  const blank = departureRows([[t({displayName: '12345678', routeId: 'x_12345678', headsign: ''}, '2026-10-05T13:40:00Z'), t({displayName: 'JK', routeId: 'a_JK', headsign: '大宮'}, '2026-10-05T13:40:00Z')]], {now});
+  const blank = departureRows([[t({displayName: '12345678', routeId: 'x_12345678', headsign: ''}, '2026-10-05T13:40:00Z')], [t({displayName: 'JK', routeId: 'a_JK', headsign: '大宮'}, '2026-10-05T13:40:00Z')]], {now});
   assert.equal(blank.length, 2, 'a row without a destination matches nothing');
+});
+
+test('a live row and a cancelled duplicate merge as cancelled; one list keeps two simultaneous services', () => {
+  const now = Date.parse('2026-10-05T12:00:00Z'), at = '2026-10-05T13:40:00Z';
+  const t = fields => ({mode: 'REGIONAL_RAIL', realTime: false, place: {scheduledDeparture: at, departure: at, tz: 'Asia/Tokyo'}, ...fields});
+  const merged = departureRows([[t({displayName: 'JK', routeId: 'a_JK', headsign: '大宮', realTime: true})], [t({displayName: 'JK', routeId: 'b_JK', headsign: '大宮', realTime: true, cancelled: true})]], {now});
+  assert.deepEqual(merged.map(r => [r.line, r.live, r.cancelled]), [['JK', true, true]]);
+  const one = departureRows([[t({displayName: '12345678', routeId: 'x_12345678', headsign: '大宮'}), t({displayName: '87654321', routeId: 'x_87654321', headsign: '大宮'})]], {now});
+  assert.equal(one.length, 2, 'two unnamed services in one list stay two');
+  assert.equal(departureRows([[t({displayName: 'JK', routeId: 'a_JK', headsign: '大宮'}), t({displayName: 'JK', routeId: 'a_JK', headsign: '大宮'})]], {now}).length, 1, 'an exact repeat in one list is one train');
 });
 
 test('journey links and the station board request', async () => {
