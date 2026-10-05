@@ -54,7 +54,8 @@ export const cacheKey = (url, range = '') => createHash('sha256').update(`${url}
 export async function cacheOtherOrigins(context, directory, {now = Date.now, maxAge = TILE_CACHE_DAYS * 86400000} = {}) {
   await mkdir(directory, {recursive: true});
   // A check may close its page or context while a request is still on its
-  // way; the route then fails quietly instead of crashing the check.
+  // way; the route then fails quietly instead of crashing the check, and an
+  // answer that cannot be kept is simply not kept.
   await context.route(url => !local(url.href ?? url), route => serve(route, directory, {now, maxAge}).catch(() => route.abort().catch(() => {})));
 }
 async function serve(route, directory, {now, maxAge}) {
@@ -69,21 +70,22 @@ async function serve(route, directory, {now, maxAge}) {
       return await route.fulfill({status: entry.status, headers: entry.headers, body});
     }
   } catch {}
-  const response = await route.fetch(), body = await response.body(), headers = {};
-  for (const [name, value] of Object.entries(response.headers())) if (!DROPPED_HEADERS.has(name.toLowerCase())) headers[name] = value;
-  if (CACHED_STATUS.has(response.status())) {
-    // Written under a temporary name and renamed, so a concurrent check
-    // never reads half an entry.
-    const temporary = `${file}.${process.pid}.${Math.random().toString(36).slice(2)}`;
-    try {
-      await writeFile(`${temporary}.body`, body);
-      await rename(`${temporary}.body`, `${file}.body`);
-      await writeFile(`${temporary}.json`, JSON.stringify({url: request.url(), range, status: response.status(), headers, size: body.length, saved: now()}));
-      await rename(`${temporary}.json`, `${file}.json`);
-      await writeFile(join(directory, '.changed'), '');
-    } catch {}
-  }
-  await route.fulfill({status: response.status(), headers, body});
+  // A miss goes out from the browser itself, as it would without the cache:
+  // fetching it through Playwright instead made a run with an empty cache
+  // far slower than one without any. The answer is kept once it arrives.
+  await route.continue();
+  const response = await request.response();
+  if (!response || !CACHED_STATUS.has(response.status())) return;
+  const body = await response.body(), headers = {};
+  for (const [name, value] of Object.entries(await response.allHeaders())) if (!DROPPED_HEADERS.has(name.toLowerCase())) headers[name] = value;
+  // Written under a temporary name and renamed, so a concurrent check never
+  // reads half an entry.
+  const temporary = `${file}.${process.pid}.${Math.random().toString(36).slice(2)}`;
+  await writeFile(`${temporary}.body`, body);
+  await rename(`${temporary}.body`, `${file}.body`);
+  await writeFile(`${temporary}.json`, JSON.stringify({url: request.url(), range, status: response.status(), headers, size: body.length, saved: now()}));
+  await rename(`${temporary}.json`, `${file}.json`);
+  await writeFile(join(directory, '.changed'), '');
 }
 
 // Drops expired entries and the marker, before a cache is saved:

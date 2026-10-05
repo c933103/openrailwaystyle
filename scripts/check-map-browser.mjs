@@ -4,7 +4,9 @@ import {mkdir} from 'node:fs/promises';
 import {waitUntil,setDefaultTimeout} from './wait-until.mjs';
 // A hang guard only: every wait below has its own timeout. The whole check
 // already takes about nine minutes on CI's software renderer.
-const deadline=setTimeout(()=>{console.error('Browser validation exceeded fifteen minutes');process.exit(1);},900000);deadline.unref();
+// Twenty minutes: with an empty provider tile cache (scripts/browser.mjs)
+// every request goes to the network, and runs took up to fifteen.
+const deadline=setTimeout(()=>{console.error('Browser validation exceeded twenty minutes');process.exit(1);},1200000);deadline.unref();
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1365,height:900},deviceScaleFactor:1});
 setDefaultTimeout(page,120000);
