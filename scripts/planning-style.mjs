@@ -1,6 +1,6 @@
 import {labelExpression} from '../styles/map-model.mjs';
 const match=(key,values)=>['match',['coalesce',['get',key],''],values,true,false];
-const base=(id,type,sourceLayer,minzoom,filter)=>({id,type,source:'openmaptiles','source-layer':sourceLayer,minzoom,filter});
+const base=(id,type,sourceLayer,minzoom,filter,source='openmaptiles')=>({id,type,source,'source-layer':sourceLayer,minzoom,filter});
 const nameLayout={'text-field':labelExpression('local'),'text-font':['Noto Sans Regular'],'text-size':11,'text-padding':8,'text-max-width':12};
 export function roadLayers() {
   const roads=[], names=[];
@@ -24,21 +24,24 @@ export function constraintLayers() {
   const areas=[],lines=[],labels=[];
   // OpenMapTiles puts boundary=aboriginal_lands in the boundary layer; parks
   // exclude it so a schema change cannot draw it twice. Park classes are
-  // free-text protection titles, so historic sites are shown by the heritage
-  // points rather than guessed park classes.
+  // free-text protection titles, so historic areas come from the atlas's own
+  // snapshot (heritage-data.mjs) rather than guessed park classes.
   const indigenous=match('class',['aboriginal_lands']);
   const groups=[
     ['protected','park',6,['!',indigenous],'#59845b'],
+    ['heritage','heritage',10,['has','kind'],'#956837','heritageAreas'],
     ['indigenous','boundary',4,indigenous,'#91689b'],
     ['military','landuse',8,match('class',['military']),'#b36765'],
     ['religious','landuse',12,match('class',['religious','cemetery']),'#968575'],
   ];
-  for(const [id,source,zoom,filter,color] of groups) {
+  for(const [id,source,zoom,filter,color,tiles] of groups) {
     const polygon=['all',filter,['==',['geometry-type'],'Polygon']];
-    areas.push({...base(`context-constraints-${id}-area`,'fill',source,zoom,polygon),paint:{'fill-color':color,'fill-opacity':id.startsWith('indigenous')?0.045:0.1}});
-    lines.push({...base(`context-constraints-${id}-edge`,'line',source,zoom,polygon),paint:{'line-color':color,'line-width':['interpolate',['linear'],['zoom'],zoom,0.8,14,1.5],'line-opacity':0.8,'line-dasharray':id.startsWith('indigenous')?[8,2,1,2]:id==='military'?[2,2]:[6,2]}});
+    // The snapshot is drawn with the basemap and named like it.
+    const layer=(...args)=>{const l=base(...args,tiles);if(tiles)l.metadata={'atlas:base-map':true,...(l.type==='symbol'?{'atlas:localize':true}:{})};return l;};
+    areas.push({...layer(`context-constraints-${id}-area`,'fill',source,zoom,polygon),paint:{'fill-color':color,'fill-opacity':id.startsWith('indigenous')?0.045:0.1}});
+    lines.push({...layer(`context-constraints-${id}-edge`,'line',source,zoom,polygon),paint:{'line-color':color,'line-width':['interpolate',['linear'],['zoom'],zoom,0.8,14,1.5],'line-opacity':0.8,'line-dasharray':id.startsWith('indigenous')?[8,2,1,2]:id==='military'?[2,2]:[6,2]}});
     // OpenMapTiles landuse features carry only a class, no name to label.
-    if(source!=='landuse') labels.push({...base(`context-constraints-${id}-area-label`,'symbol',source,zoom+1,filter),layout:{...nameLayout,'symbol-placement':source==='park'?'point':'line','symbol-spacing':500,'text-size':11},paint:{'text-color':color,'text-halo-color':'#fffef8','text-halo-width':1.5}});
+    if(source!=='landuse') labels.push({...layer(`context-constraints-${id}-area-label`,'symbol',source,zoom+1,filter),layout:{...nameLayout,'symbol-placement':source==='boundary'?'line':'point','symbol-spacing':500,'text-size':11},paint:{'text-color':color,'text-halo-color':'#fffef8','text-halo-width':1.5}});
   }
   return {areas,lines,labels};
 }

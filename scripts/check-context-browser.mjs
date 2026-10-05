@@ -44,7 +44,7 @@ async function screenshot(name) {
 await mkdir('browser-review',{recursive:true});
 try {
   const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
-  await page.goto(base+'?v=20261004-font15&mode=speed&language=en&relief=0&inactive=0#14/22.299/114.172',{waitUntil:'domcontentloaded'});
+  await page.goto(base+'?v=20261004-heritage3&mode=speed&language=en&relief=0&inactive=0#14/22.299/114.172',{waitUntil:'domcontentloaded'});
   await page.waitForSelector('body[data-map-ready="true"]',{state:'attached'});
   await waitContext('transport');await waitContext('destinations');await settleContext();
   console.log('CONTEXT_DATA',JSON.stringify(await evaluate(map=>({
@@ -122,9 +122,14 @@ try {
     {name:'Australian jurisdictions',center:[134,-25],zoom:6},
     {name:'Mediterranean heritage',center:[12,42],zoom:10},
   ];
-  const targets=await evaluate(map=>map.getStyle().layers
-    .filter(layer=>layer.id.startsWith('context-'))
-    .map(layer=>({id:layer.id,sourceLayer:layer['source-layer'],minzoom:layer.minzoom||0})));
+  // Historic areas come from the atlas's own snapshot (heritage.yml). Until
+  // its first build the site deploys with an empty index, and there is no
+  // real feature for those layers to render.
+  const heritagePublished=await page.evaluate(async()=>{const r=await fetch(new URL('data/heritage/index.json',document.baseURI));return r.ok&&(await r.json()).tiles.length>0;});
+  const targets=await evaluate((map,heritagePublished)=>map.getStyle().layers
+    .filter(layer=>layer.id.startsWith('context-')&&(heritagePublished||layer.source!=='heritageAreas'))
+    .map(layer=>({id:layer.id,sourceLayer:layer['source-layer'],minzoom:layer.minzoom||0})),heritagePublished);
+  if(!heritagePublished)console.log('CONTEXT_NOTE historic-area snapshot not yet published; its layers are not sampled');
   const candidates=new Map();
   for(const sample of discoverySamples){
     await evaluate(async(map,s)=>{

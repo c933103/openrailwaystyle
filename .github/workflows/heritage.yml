@@ -1,0 +1,52 @@
+name: Refresh worldwide historic areas
+on:
+  workflow_dispatch:
+  # The 1st of each month at 05:23 UTC: historic areas change slowly.
+  schedule:
+    - cron: '23 5 1 * *'
+  push:
+    branches: [main]
+    paths: ['scripts/build-heritage.mjs', 'scripts/heritage-data.mjs', '.github/workflows/heritage.yml']
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: heritage-data
+  cancel-in-progress: false
+jobs:
+  snapshot:
+    # Only main publishes the shared snapshot.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Build historic areas from OpenStreetMap
+        run: node scripts/build-heritage.mjs
+      - name: Publish complete data snapshot
+        run: |
+          mkdir /tmp/heritage-publish
+          cd /tmp/heritage-publish
+          git init
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # One commit, replaced each time: the history of the tiles is not needed.
+          git checkout --orphan heritage-data
+          cp -r "$GITHUB_WORKSPACE/heritage-data/." .
+          git add .
+          git commit -q -m "Worldwide historic areas $(date -u +%Y-%m-%d)"
+          if ! git push --force origin HEAD:heritage-data; then
+            # The server may have accepted the update before the connection
+            # reported failure. Accept only this exact published commit.
+            test "$(git ls-remote origin refs/heads/heritage-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
+      - name: Redeploy the site with refreshed data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site.yml --ref main
