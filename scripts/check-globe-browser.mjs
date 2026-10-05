@@ -1,10 +1,10 @@
 // Exercise the production drag/constrain code with the same MapLibre version
 // as the app, independently of remote tiles and fonts.
-import {chromium} from 'playwright';
+import {launchBrowser} from './browser.mjs';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 
-const browser = await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+const browser = await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 try {
   const page = await browser.newPage({viewport:{width:1000,height:900},hasTouch:true}), errors=[];
   page.on('pageerror',e=>{errors.push(e.message);console.log('Page error',e.message);});

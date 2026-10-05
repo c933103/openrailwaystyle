@@ -1,11 +1,11 @@
-import {chromium} from 'playwright';
+import {launchBrowser} from './browser.mjs';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {waitUntil,setDefaultTimeout} from './wait-until.mjs';
 // A hang guard only: every wait below has its own timeout. The whole check
 // already takes about nine minutes on CI's software renderer.
 const deadline=setTimeout(()=>{console.error('Browser validation exceeded fifteen minutes');process.exit(1);},900000);deadline.unref();
-const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1365,height:900},deviceScaleFactor:1});
 setDefaultTimeout(page,120000);
 // Retain completed WebGL frames for reliable headless screenshots.
@@ -446,7 +446,9 @@ try{
     return rendered.some(f=>f.layer.id==='drawing-line') && rendered.some(f=>f.layer.id==='drawing-line-labels' && /km|m$/.test(f.properties.measure));
   },'A drawn line and its length label must be on the map');
   const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#draw-save').click()]);
-  const saved=JSON.parse(await (await import('node:fs/promises')).readFile(await download.path(),'utf8'));
+  // saveAs works with a shared browser too (scripts/browser.mjs), path() does not.
+  const savedPath=`browser-review/drawing-${process.pid}.geojson`;await download.saveAs(savedPath);
+  const saved=JSON.parse(await (await import('node:fs/promises')).readFile(savedPath,'utf8'));
   assert.equal(saved.features[0].geometry.type,'LineString');
   assert.equal(saved.features[0].geometry.coordinates.length,3);
   await page.locator('#draw-close').click();

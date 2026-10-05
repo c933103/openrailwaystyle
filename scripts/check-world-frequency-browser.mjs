@@ -2,10 +2,10 @@
 // regions. The deterministic clock tests a dated fixture after it expires.
 import assert from 'node:assert/strict';
 import {readFile,mkdir} from 'node:fs/promises';
-import {chromium} from 'playwright';
+import {launchBrowser} from './browser.mjs';
 const root=process.env.ATLAS_TEST_URL||'http://127.0.0.1:4173';
 const examples=[{id:'hsl',lat:60.17,lon:24.94},{id:'nyct',lat:40.75,lon:-73.99},{id:'mbta',lat:42.355,lon:-71.062},{id:'auckland',lat:-36.851,lon:174.768}];
-const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 try {
   const context=await browser.newContext({viewport:{width:720,height:600}}),page=await context.newPage();
   await page.clock.install({time:new Date('2026-10-05T12:00:00Z')});
@@ -15,7 +15,7 @@ try {
   }
   await mkdir('browser-review',{recursive:true});
   for(const example of examples){
-    await page.goto(`${root}/?mode=service&serviceWidth=frequency&frequencyPeriod=peak&peakPhase=am#12/${example.lat}/${example.lon}`,{waitUntil:'domcontentloaded'});
+    await page.goto(`${root}/?mode=service&relief=0&serviceWidth=frequency&frequencyPeriod=peak&peakPhase=am#12/${example.lat}/${example.lon}`,{waitUntil:'domcontentloaded'});
     await page.waitForFunction(()=>document.body.dataset.mapReady==='true',{},{timeout:60000});
     await page.evaluate(async()=>window.testMap=(await import(document.querySelector('script[type="module"]').src)).map);
     await page.waitForFunction(id=>testMap.queryRenderedFeatures({layers:['service-routes']}).some(f=>f.properties.id.startsWith(`gtfs:${id}:`)&&f.properties.frequency_am!==undefined),example.id,{timeout:30000});

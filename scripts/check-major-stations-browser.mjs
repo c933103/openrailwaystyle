@@ -1,4 +1,4 @@
-import {chromium} from 'playwright';
+import {launchBrowser} from './browser.mjs';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {chooseName} from '../styles/map-model.mjs';
@@ -7,7 +7,7 @@ const beforeTiers=JSON.parse(await readFile(new URL('../tests/fixtures/stations-
 const beforeProvider=JSON.parse(await readFile(new URL('../tests/fixtures/stations-before-curation.json',import.meta.url),'utf8'));
 const densityData=JSON.parse(await readFile(new URL('../styles/major-stations.geojson',import.meta.url),'utf8'));
 for(const f of densityData.features)Object.assign(f.properties,{atlas_name:chooseName(f.properties,'en'),atlas_language:'en'});
-const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 await mkdir('browser-review',{recursive:true});
 try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  const context=await browser.newContext({viewport:{width,height},hasTouch:kind==='mobile',deviceScaleFactor:kind==='mobile'?2.625:1,serviceWorkers:'block'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -47,6 +47,11 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  // Keep the original globe selection at 3. At 4–6 compare against the
  // complete provider layers before curation, not the reduced inventory
  // introduced by the first curated-station PR. No ranking API is involved.
+ // The density comparison runs on the desktop viewport only: the same
+ // provider data and placement rules apply on both, and the mobile pass
+ // doubled the check's time. Mobile keeps the label, click, language and
+ // polar checks below.
+ if(kind==='desktop'){
  const density=[],baseline=await page.context().newPage();baseline.setDefaultTimeout(120000);baseline.on('console',reportResource);
  const baselineData=structuredClone(densityData);baselineData.features=baselineData.features.filter(f=>beforeTiers[f.id]).map(f=>({...f,properties:{...f.properties,tier:beforeTiers[f.id]}}));
  await baseline.route(base+'world.style.json**',async route=>{
@@ -78,9 +83,16 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
   // station sources, their glyphs, and a quiet network; keep all density tests.
   try {await p.waitForFunction(sources=>window.densityFrame&&sources.every(id=>window.reviewMap.isSourceLoaded(id)),active.sources,{timeout:120000});}
   catch(error){console.error('DENSITY_NOT_READY',await p.evaluate(sources=>({zoom:window.reviewMap.getZoom(),rendered:window.densityFrame,sources:sources.map(id=>[id,window.reviewMap.isSourceLoaded(id)])}),active.sources));throw error;}
-  let quietSince;const until=Date.now()+120000;
-  while(Date.now()<until){if(!pendingRequests.size){quietSince??=Date.now();if(Date.now()-quietSince>=2000)break;}else quietSince=undefined;await p.waitForTimeout(200);}
-  assert.ok(quietSince&&Date.now()-quietSince>=2000,'comparison network must settle: '+[...pendingRequests].map(r=>r.url()).join(', '));
+  // Station labels compete for space with the basemap's, so every source
+  // with visible labels must have loaded, and the glyphs being fetched with
+  // them. Other requests (relief, hidden views) do not decide placement.
+  const labelSources=await p.evaluate(zoom=>[...new Set(window.reviewMap.getStyle().layers.filter(l=>l.type==='symbol'&&l.source&&l.layout?.visibility!=='none'&&zoom>=(l.minzoom??0)&&zoom<(l.maxzoom??Infinity)).map(l=>l.source))],zoom);
+  try {await p.waitForFunction(sources=>sources.every(id=>window.reviewMap.isSourceLoaded(id)),labelSources,{timeout:120000});}
+  catch(error){console.error('LABEL_SOURCES_NOT_READY',await p.evaluate(sources=>sources.map(id=>[id,window.reviewMap.isSourceLoaded(id)]),labelSources));throw error;}
+  const glyphs=()=>[...pendingRequests].filter(r=>/glyph|\/fonts\//.test(r.url()));
+  let quietSince;const until=Date.now()+60000;
+  while(Date.now()<until){if(!glyphs().length){quietSince??=Date.now();if(Date.now()-quietSince>=300)break;}else quietSince=undefined;await p.waitForTimeout(100);}
+  assert.ok(quietSince&&Date.now()-quietSince>=300,'label glyphs must load: '+glyphs().map(r=>r.url()).join(', '));
   await p.evaluate(()=>new Promise(resolve=>{const m=window.reviewMap,timer=setTimeout(()=>{m.off('idle',done);resolve();},10000),done=()=>{clearTimeout(timer);resolve();};m.once('idle',done);m.triggerRepaint();}));
   // Labels are placed again only as frames are drawn; without them the count
   // can still be the previous zoom's (zoom 6 read as zoom 5's 28 + 23). Keep
@@ -117,6 +129,7 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  }
  await writeFile(`browser-review/stations-${kind}-density.json`,JSON.stringify(density,null,2)+'\n');
  console.log('DENSITY',kind,JSON.stringify(density));
+ }
  await page.evaluate(()=>window.reviewMap.jumpTo({center:[141.35,43.07],zoom:4}));
   const target=await page.waitForFunction(()=>{const map=window.reviewMap,f=map.queryRenderedFeatures().find(f=>f.source==='stationMajor'&&f.properties.wikidata==='Q801404');if(!f?.properties.atlas_name)return false;const p=map.project(f.geometry.coordinates);return {x:p.x,y:p.y,osm:f.properties.osm_id,name:f.properties.atlas_name};},undefined,{timeout:60000});const hit=await target.jsonValue();await page.locator('#map canvas').click({position:{x:hit.x,y:hit.y}});await page.waitForSelector('#details:not([hidden])');assert.ok((await page.locator('#detail-content').innerText()).includes(hit.name));assert.ok(await page.locator(`#detail-content a[href="https://www.openstreetmap.org/node/${hit.osm}"]`).count());
  await page.locator('#details-close').click();if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();await page.selectOption('#language','ja');

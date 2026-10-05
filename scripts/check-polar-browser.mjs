@@ -1,13 +1,13 @@
 // Deterministic WebGL coverage: both caps, view gating, unit switching and
 // coarse-only snapshot compatibility. No railway/DEM provider availability
 // is needed; fixtures exercise the production bundled custom layer.
-import {chromium} from 'playwright';
+import {launchBrowser} from './browser.mjs';
 import assert from 'node:assert/strict';
 import {mkdir, readFile} from 'node:fs/promises';
 import {CAP_RADIUS, encodeLine, fromPolar} from '../styles/polar.mjs';
 import {detailTiles} from './polar-features.mjs';
 
-const browser = await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+const browser = await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 try {
   for (const cap of ['south','north']) {
     const page = await browser.newPage({viewport:{width:1000,height:700}}), errors = [], warnings = [], requests = [];

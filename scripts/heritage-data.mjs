@@ -119,3 +119,30 @@ export function heritageBundles(tiles, zoom = HERITAGE_BUNDLE_ZOOM) {
   }
   return bundles;
 }
+
+// What to do after a failed Overpass request (attempt counts from 0): wait
+// HERITAGE_RETRY_DELAYS[attempt] and try again, split the region into
+// quarters, or give up. Only failures of the request itself are retried, as
+// the builder labels them: `Network:` (no response), `Invalid response:` (a
+// cut-off body), `Incomplete heritage response:` (an Overpass remark) and
+// HTTP 5xx or 429. A query that timed out or ran out of memory is split at
+// once; a server that keeps failing is given smaller queries, which it may
+// still manage, rather than failing the whole monthly run. A rate limit that
+// outlasts the retries fails: smaller queries would only add requests to a
+// limit that applies to the whole endpoint. Anything else (a
+// rejected query, the download budget, a local error) fails the run.
+export const HERITAGE_RETRY_DELAYS = [30000, 60000, 120000];
+export function heritageFailure(message, attempt, depth, maxDepth = 6) {
+  const status = Number(/^HTTP (\d+):/.exec(message)?.[1]);
+  const request = /^(Network|Invalid response|Incomplete heritage response):/.test(message);
+  // An executed query that ran out of time or memory, reported in a remark or
+  // an HTTP 5xx body ("runtime error: Query timed out ...", "... out of
+  // memory"), or one the client stopped waiting for. Retrying it would run
+  // the same heavy query again; an admission error ("Gateway timeout") or a
+  // server fault ("runtime error: open64") is retried.
+  const tooHeavy = /runtime error[^]*?(timed? ?out|out of memory)/i.test(message) || /^Network: .*timeout/i.test(message);
+  if ((request || status >= 500) && tooHeavy) return depth < maxDepth ? 'split' : 'fail';
+  if (!request && !(status >= 500 || status === 429)) return 'fail';
+  if (attempt < HERITAGE_RETRY_DELAYS.length) return 'retry';
+  return depth < maxDepth && status !== 429 ? 'split' : 'fail';
+}
