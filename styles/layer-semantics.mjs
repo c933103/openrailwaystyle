@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261005-rarehan4';
+import { MODES } from './map-model.mjs?v=20261005-rarehan5';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;

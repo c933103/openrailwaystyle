@@ -397,11 +397,17 @@ test('railway tiles drawn as stored or re-encoded load the rare Han of their tex
   const bytes=name=>Uint8Array.from(tile({name,owner:name,maxspeed:268439664})).buffer;
   const tiles={'/rare/':bytes('\u{2A700}線'),'/plain/':bytes('Plain')};
   installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},async url=>({ok:true,status:200,arrayBuffer:async()=>tiles[Object.keys(tiles).find(k=>String(url).includes(k))].slice(0),json:async()=>({})}),{rareGlyphs:async found=>{requested.push([...found]);}});
-  for(const scheme of ['atlasrail','atlasowner','atlasaxle']){
+  for(const scheme of ['atlasrail','atlasowner','atlasaxle','atlastext']){
     requested.length=0;
     await protocols[scheme]({url:`${scheme}://https://example.org/plain/14/1/1`},new AbortController());
     assert.deepEqual(requested,[],`${scheme}: a number whose bytes look like UTF-8 requests nothing`);
     await protocols[scheme]({url:`${scheme}://https://example.org/rare/14/1/1`},new AbortController());
     assert.deepEqual(requested,[[0x2a7]],scheme);
   }
+});
+test('other labelled provider sources keep their tiles behind the rare Han scan',async()=>{
+  const protocols={};
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},async()=>({ok:true,status:200,json:async()=>({tiles:['https://example.org/railway_signals/{z}/{x}/{y}']})}));
+  const {data}=await protocols.atlastext({url:'atlastext://https://example.org/railway_signals',type:'json'},new AbortController());
+  assert.deepEqual(data.tiles,['atlastext://https://example.org/railway_signals/{z}/{x}/{y}']);
 });

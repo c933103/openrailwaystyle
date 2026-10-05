@@ -240,16 +240,17 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     const out = encode.fromGeojsonVt(layers, {version: 2, extent});
     return {data: out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength)};
   });
-  maplibregl.addProtocol('atlasrail',async (params,controller)=>{
-    const url = params.url.replace(/^atlasrail:\/\//,'');
+  // Railway tiles (atlasrail) and any other provider source drawn as stored
+  // (atlastext: signals, entrances, points of interest) load the rare Han of
+  // their text values before they are drawn.
+  for (const scheme of ['atlasrail','atlastext']) maplibregl.addProtocol(scheme,async (params,controller)=>{
+    const url = params.url.slice(`${scheme}://`.length);
     if (params.type === 'json') {
       const data = await get(url,controller.signal,true);
-      return {data:{...data,tiles:data.tiles.map(t=>`atlasrail://${t}`)}};
+      return {data:{...data,tiles:data.tiles.map(t=>`${scheme}://${t}`)}};
     }
     // MapLibre transfers this buffer to its worker, detaching it. Keep the
     // cache's original for language changes, return visits and track counts.
-    // Railway labels are drawn as stored, so the tile's text values give their
-    // glyphs.
     const data = (await get(url, controller.signal)).slice(0);
     return {data: await storedGlyphs(data)};
   });
