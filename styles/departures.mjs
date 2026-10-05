@@ -36,19 +36,40 @@ export function pickStops(candidates, station, limit = 2) {
   return picked.slice(0, limit).map(c => c.stop);
 }
 
-// Board rows from departure lists (merged, earliest first, rail modes only,
-// one row per train where two timetables list it). A row is live when the
-// operator's real-time feed covers that trip; delay in whole minutes.
+// A route "name" that only repeats the numeric end of its route ID (some
+// feeds give every trip pattern its own numbered route) is not a line name.
+const opaqueName = (name, routeId) => /^\d{5,}$/.test(name || '') && String(routeId || '').endsWith(name);
+// Rows of different families (main-line rail, metro, tram, funicular, cable
+// car) are never one train. A feed that classifies a train differently from
+// another leaves two rows rather than hiding a departure.
+const MODE_FAMILY = {METRO: 'metro', SUBWAY: 'metro', TRAM: 'tram', FUNICULAR: 'funicular', CABLE_CAR: 'cable'};
+const modeFamily = mode => MODE_FAMILY[mode] || 'rail';
+const squash = text => String(text || '').replace(/[\s()（）]/g, '');
+// Board rows from departure lists (one list per stop; merged, earliest first,
+// rail modes only, one row per train). Within one list only an exact repeat is
+// the same train: two services of one feed can leave together. Across lists,
+// two feeds can describe one train with different names and destination texts
+// ("桜木町" and "(普通 Local) 桜木町 Sakuragichō"). Rows from different lists
+// are compatible when they are of the same mode family, leave in the same
+// scheduled minute, their
+// destinations are non-empty and contain one another, and at least one has no
+// line name or both have the same one. A compatible pair is merged only when
+// each is the other's only compatible row in that list, and a merged group
+// never holds two rows of one list; anything ambiguous stays separate, so the
+// result does not depend on the order of the lists or rows. A merged train has
+// the named row's line and colours, real-time state from a live row, and is
+// cancelled if any row is. A row is live when the operator's real-time feed
+// covers that trip; delay in whole minutes.
 export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
-  const seen = new Set(), rows = [];
-  for (const time of lists.flat()) {
+  const rows = [];
+  for (const [list, times] of lists.entries()) for (const time of times) {
     if (!RAIL_MODES.has(time.mode)) continue;
     const place = time.place || {}, departure = Date.parse(place.departure ?? place.arrival), scheduled = Date.parse(place.scheduledDeparture ?? place.scheduledArrival ?? place.departure);
     if (!Number.isFinite(departure) || departure < now - 60_000) continue;
-    const line = time.displayName || time.routeShortName || time.tripShortName || time.routeLongName || '';
-    const key = `${line}|${time.headsign}|${scheduled}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    const named = [time.displayName, time.routeShortName].find(name => name && !opaqueName(name, time.routeId));
+    const line = named || time.tripShortName || time.routeLongName || '';
+    const key = `${time.displayName || time.routeShortName || line}|${time.headsign}|${scheduled}`;
+    if (rows.some(r => r.list === list && r.key === key)) continue;
     rows.push({
       departure, scheduled, tz: place.tz, line, headsign: time.headsign || time.tripTo?.name || '',
       color: /^[0-9a-f]{6}$/i.test(time.routeColor || '') ? `#${time.routeColor}` : null,
@@ -56,9 +77,26 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
       track: place.track || place.scheduledTrack || '', live: time.realTime === true,
       delay: time.realTime === true && Number.isFinite(scheduled) ? Math.round((departure - scheduled) / 60000) : null,
       cancelled: time.cancelled === true || time.tripCancelled === true || place.cancelled === true, mode: time.mode,
+      list, key, to: squash(time.headsign || time.tripTo?.name || ''), minute: Math.floor(scheduled / 60000),
     });
   }
-  return rows.sort((a, b) => a.departure - b.departure).slice(0, count);
+  const compatible = (a, b) => a.list !== b.list && modeFamily(a.mode) === modeFamily(b.mode) && a.minute === b.minute && a.to && b.to &&
+    (a.to.includes(b.to) || b.to.includes(a.to)) && (!a.line || !b.line || a.line === b.line);
+  const only = (a, list) => rows.filter(r => r.list === list && compatible(a, r)).length === 1;
+  const parent = rows.map((_, i) => i), find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
+  for (let i = 0; i < rows.length; i++) for (let j = i + 1; j < rows.length; j++)
+    if (compatible(rows[i], rows[j]) && only(rows[i], rows[j].list) && only(rows[j], rows[i].list)) parent[find(j)] = find(i);
+  const groups = new Map();
+  rows.forEach((row, i) => { const g = find(i); groups.set(g, [...(groups.get(g) || []), row]); });
+  const out = [];
+  for (const group of groups.values()) {
+    if (new Set(group.map(r => r.list)).size < group.length) { out.push(...group); continue; }
+    const keep = group.find(r => r.line) || group[0], live = group.find(r => r.live);
+    const merged = {...keep, cancelled: group.some(r => r.cancelled), track: keep.track || group.find(r => r.track)?.track || ''};
+    if (live && !keep.live) Object.assign(merged, {departure: live.departure, live: true, delay: live.delay, track: live.track || merged.track});
+    out.push(merged);
+  }
+  return out.sort((a, b) => a.departure - b.departure || a.list - b.list).slice(0, count).map(({list, key, to, minute, ...row}) => row);
 }
 
 // Clock time at the station (its own time zone).
