@@ -38,7 +38,7 @@ export async function assemble(directory){
     const feed=await readFrequencyFeed(join(directory,entry.output));
     if(feed.source.id!==entry.id||feed.source.sha256!==entry.sha256||feed.source.service_date!==inventory.service_date)throw new Error(`Unverified feed ${entry.id}`);
     // No tiles are built, so a feed's size no longer fails it here.
-    const data=timetableFeatures([feed]);
+    const data=timetableFeatures([feed],Date.now(),{summaryOnly:true});
     summary.push(...data.summary);
     console.log(entry.id,feed.routes.length,'rail services');
   }

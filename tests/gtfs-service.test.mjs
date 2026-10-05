@@ -97,3 +97,8 @@ test('global route types preserve cable trams, extended monorails and funiculars
     assert.equal((features.local[0]||features.overview[0]).properties.kind,kind);
   }
 });
+
+test('a summary-only pass reports the same feed summary without building features',()=>{
+  const full=timetableFeatures([feed],now),summary=timetableFeatures([feed],now,{summaryOnly:true});
+  assert.deepEqual(summary,{summary:full.summary});
+});
