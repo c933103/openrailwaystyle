@@ -7,24 +7,21 @@ import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 const feed={source:{id:'fixture',name:'Fixture Rail',url:'https://example.org/feed.zip',terms_url:'https://example.org/terms',retrieved:'2026-10-03',service_date:'2026-10-05',review_after_days:30,valid_until:1791504000,attribution:'Fixture provider',license:'CC-BY-4.0',feed_info:{}},agencies:[{agency_id:'a',agency_name:'Operator',agency_timezone:'Europe/Helsinki'}],routes:[{route_id:'r',route_short_name:'R',route_long_name:'Rail route',route_type:'1',route_color:'ff0000'}],profiles:{am:{start:'07:00:00',end:'09:00:00'},pm:{start:'16:00:00',end:'18:00:00'},offpeak:{start:'12:00:00',end:'14:00:00'}},segments:[{route_id:'r',agency_id:'a',geometry:[[24,60],[24.01,60.01]],profiles:{am:{display_tph:4,forward_tph:6,backward_tph:4,quality:'scheduled'},pm:{display_tph:3,forward_tph:3,backward_tph:5,quality:'scheduled'},offpeak:{display_tph:0,forward_tph:0,backward_tph:0,quality:'scheduled'}}}]};
 const now=Date.parse('2026-10-03');
-test('GTFS shapes populate service tiles with no OSM snapshot, date and directional provenance',()=>{
-  const data=timetableFeatures([feed],now),tiles=buildTiles(readTable(''),{timetable:data});
-  assert.ok(tiles.size>0);
-  const bytes=[...tiles.entries()].find(([key])=>key.startsWith('12/'));
-  const f=new VectorTile(new Pbf(bytes[1])).layers.service_routes.feature(0).properties;
+test('timetables draw no Service lines of their own; profiles keep date and directional provenance',()=>{
+  const data=timetableFeatures([feed],now);
+  assert.equal(buildTiles(readTable(''),{timetable:data}).size,0,'only OSM routes are drawn');
+  const f=data.local[0].properties;
   assert.equal(f.id,'gtfs:fixture:r');assert.equal(f.kind,'subway');assert.equal(f.frequency_am,4);assert.equal(f.frequency_offpeak,0);assert.equal(f.frequency_credit,'Fixture provider');assert.equal(f.frequency_until,feed.source.valid_until);
   const details=frequencyDetails(f,'am',now);
   assert.match(details,/scheduled.*2026-10-05.*directions 6 \/ 4/);assert.doesNotMatch(details,/undefined|min\)/);
   assert.equal(data.summary[0].routesWithProfiles,1);
   assert.equal(timetableFeatures([feed],feed.source.valid_until*1000+1).summary[0].routesWithProfiles,0);
 });
-test('route calendar expiry reaches encoded tiles even while its feed remains current',()=>{
+test('route calendar expiry reaches the profile even while its feed remains current',()=>{
   for(const scope of ['route','segment']){
     const bounded=structuredClone(feed),until=now/1000-1;
     (scope==='route'?bounded.routes[0]:bounded.segments[0]).valid_until=until;
-    const data=timetableFeatures([bounded],now),tiles=buildTiles(readTable(''),{timetable:data});
-    const bytes=[...tiles.entries()].find(([key])=>key.startsWith('12/'));
-    const feature=new VectorTile(new Pbf(bytes[1])).layers.service_routes.feature(0).properties;
+    const data=timetableFeatures([bounded],now),feature=data.local[0].properties;
     assert.equal(feature.frequency_until,until,scope);
     assert.equal(data.summary[0].routesWithProfiles,0);
     assert.equal(frequencyDetails(feature,'am',now),null);
@@ -44,8 +41,7 @@ test('national feeds compact consecutive equal-profile edges while keeping disco
   assert.equal(data.local.length,1);assert.equal(data.overview.length,1);
   assert.equal(data.local[0].geometry.type,'MultiLineString');
   assert.deepEqual(data.local[0].geometry.coordinates,[[[24,60],[24.01,60.01],[24.02,60.02]],[[25,60],[25.01,60.01]]]);
-  const tiles=buildTiles(readTable(''),{timetable:data});
-  assert.ok(tiles.size>0);assert.equal(data.summary[0].availableSegments,3);
+  assert.equal(data.summary[0].availableSegments,3);
 });
 test('dated multi-region fixtures supply actual mapped rail shapes and profiles',async()=>{
   const {feeds,registry}=await loadTimetableServices(new URL('./fixtures/service-frequency/registry.json',import.meta.url));
@@ -73,10 +69,10 @@ test('fixture assembly succeeds when the OSM service-data branch supplies no tab
     assert.equal(run.status,0,run.stderr);
     await assert.rejects(access(join(directory,'3','1','1.pbf.gz')),'obsolete tiles are removed before the new set is written');
     const index=JSON.parse(await readFile(join(directory,'index.json'),'utf8'));
-    assert.ok(index.tiles.length>0,'official paths remain usable without the OSM snapshot');
+    assert.deepEqual(index.tiles,[],'timetables alone draw no lines');
     const manifest=JSON.parse(await readFile(join(directory,'frequency-manifest.json'),'utf8'));
-    assert.equal(manifest.feeds.length,4);assert.ok(manifest.feeds.every(f=>f.mappedRoutes>0));
-    assert.match(await readFile(join(directory,'credits.html'),'utf8'),/MassDOT|Auckland Transport/);
+    assert.deepEqual(manifest.feeds,[],'no timetable is applied or credited');
+    assert.doesNotMatch(await readFile(join(directory,'credits.html'),'utf8'),/MassDOT|Auckland Transport/);
   } finally {await rm(directory,{recursive:true,force:true});}
 });
 

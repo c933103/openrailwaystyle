@@ -5,10 +5,6 @@ import {mergeInventories,pruneFrequencyOutputs,assemble} from '../scripts/assemb
 import {mkdtemp,mkdir,writeFile,readdir,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {mergeServiceTiles} from '../scripts/merge-service-tiles.mjs';
-import vtpbf from 'vt-pbf';
-import {VectorTile} from '@mapbox/vector-tile';
-import Pbf from 'pbf';
 test('worldwide discovery, selective downloads and shapeless data processing',()=>{
   const run=spawnSync('python3',['-m','unittest','discover','-s','tests','-p','global_frequency_test.py'],{encoding:'utf8'});
   assert.equal(run.status,0,run.stdout+run.stderr);
@@ -34,15 +30,6 @@ test('published feed directories retain only current verified inventory outputs'
     assert.deepEqual(await readdir(join(root,'feeds')),['current.json.gz']);
   }finally{await rm(root,{recursive:true,force:true});}
 });
-test('tile merging retains distinct services and withholds conflicting duplicate rates',()=>{
-  const tile=(id,ref,rate)=>vtpbf.fromGeojsonVt({service_routes:{features:[{type:2,geometry:[[[1,2],[3,4]]],tags:{id,operator:'Rail',ref,kind:'rail',frequency_id:id,frequency_until:1900000000,frequency_am:rate}}]}},{version:2});
-  let layer=new VectorTile(new Pbf(mergeServiceTiles([tile('a','A',4),tile('b','B',2)]))).layers.service_routes;
-  assert.equal(layer.length,2);assert.equal(layer.feature(0).properties.n,2);
-  assert.notEqual(layer.feature(0).properties.frequency_offset_am,layer.feature(1).properties.frequency_offset_am);
-  layer=new VectorTile(new Pbf(mergeServiceTiles([tile('a','A',4),tile('dup','A',6)]))).layers.service_routes;
-  assert.equal(layer.length,1);assert.equal(layer.feature(0).properties.frequency_am,undefined);
-  assert.match(layer.feature(0).properties.frequency_note,/disagree/);
-});
 
 test('snapshot asset and release lookup follow the publishing repository',()=>{
   const run=spawnSync('python3',['-m','unittest','discover','-s','tests','-p','load_frequency_snapshot_test.py'],{encoding:'utf8'});
@@ -63,7 +50,7 @@ test('pathological per-feed tile fan-out is rejected before indexing; ordinary a
 });
 
 
-test('an excessive feed contributes no partial tiles and is audited while verified peers publish',async()=>{
+test('an excessive feed is audited while verified peers publish, and no feed builds map tiles',async()=>{
   const {gzipSync}=await import('node:zlib');const root=await mkdtemp(join(tmpdir(),'atlas-assembly-budget-'));
   const make=id=>({schema:1,source:{id,sha256:id,service_date:'2026-10-05',checked:'2026-10-04',name:id,feed_info:{},valid_until:1900000000},agencies:[{agency_id:'a',agency_name:id,agency_timezone:'America/New_York'}],routes:[{route_id:'r',route_type:'1',route_short_name:'R'}],profiles:{h01:{start:'01:00:00',end:'02:00:00'}},segments:[{route_id:'r',agency_id:'a',geometry:[[-73.99,40.75],[-73.98,40.76]],profiles:{h01:{display_tph:2,forward_tph:2,backward_tph:2,quality:'scheduled'}}}]});
   try{
@@ -71,7 +58,7 @@ test('an excessive feed contributes no partial tiles and is audited while verifi
     for(const feed of [good,bad])await writeFile(join(root,`feeds/${feed.source.id}.json.gz`),gzipSync(JSON.stringify(feed)));
     const entries=['bad','good'].map(id=>({id,status:'compiled',output:`feeds/${id}.json.gz`,sha256:id,country:'US'}));
     await writeFile(join(root,'inventory-0.json'),JSON.stringify({schema:2,shard:0,shards:1,catalogue_sha256:'verified',catalogue_entries:2,service_date:'2026-10-05',entries}));
-    const manifest=await assemble(root);assert.equal(manifest.counts.failed,1);assert.equal(manifest.counts.compiled,1);assert.deepEqual(manifest.feeds.map(f=>f.id),['good']);assert.ok(manifest.tiles>0);
+    const manifest=await assemble(root);assert.equal(manifest.counts.failed,1);assert.equal(manifest.counts.compiled,1);assert.deepEqual(manifest.feeds.map(f=>f.id),['good']);assert.equal(manifest.tiles,0,'timetables build no map tiles');
     const inventory=JSON.parse(await (await import('node:fs/promises')).readFile(join(root,'inventory.json'),'utf8'));assert.equal(inventory.entries[0].failure_stage,'assembly');assert.deepEqual(inventory.counts,manifest.counts,'the published inventory totals match its entries after assembly');assert.match(inventory.entries[0].error,/fan-out/);assert.deepEqual(await readdir(join(root,'feeds')),['good.json.gz']);
   }finally{await rm(root,{recursive:true,force:true});}
 });

@@ -209,7 +209,7 @@ jobs:
             echo "Could not look up the service-data snapshot (git exit $status)"
             exit 1
           fi
-      - name: Add reviewed timetable shapes and peak/off-peak profiles to service tiles
+      - name: Add published headways to the OSM service tiles (timetables draw no lines)
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
