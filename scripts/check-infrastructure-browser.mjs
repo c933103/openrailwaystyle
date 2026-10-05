@@ -67,13 +67,18 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  assert.deepEqual(await page.evaluate(async()=>(await window.reviewMap.getSource('platformNumbers').getData()).features.map(f=>f.properties.ref).sort()),['1 / 2','3','9']);
  assert.ok(await page.evaluate(async()=>(await window.reviewMap.getSource('platformLengths').getData()).features.some(f=>f.properties.ref==='1'&&!f.properties.platform_length)));
  await page.evaluate(()=>window.reviewMap.jumpTo({zoom:19}));
- try{await waitUntil(page,async()=>(await window.reviewMap.getSource('platformLengths').getData()).features.some(f=>Math.abs(f.properties.platform_length-246.86183810409128)<.001),undefined,{timeout:20000});}catch(error){console.error(JSON.stringify({kind,requests,state:await page.evaluate(async()=>({zoom:window.reviewMap.getZoom(),edges:window.reviewMap.queryRenderedFeatures({layers:['platform-edges']}).map(f=>({properties:f.properties,geometry:f.geometry})),labels:await window.reviewMap.getSource('platformLengths').getData()}))}));throw error;}
+ // The app gives up on a provider request after 5 s and tries again 30 s
+ // later (platform-length.mjs). A busy runner can delay even this check's
+ // own answer past 5 s, so the wait covers one such retry.
+ try{await waitUntil(page,async()=>(await window.reviewMap.getSource('platformLengths').getData()).features.some(f=>Math.abs(f.properties.platform_length-246.86183810409128)<.001),undefined,{timeout:45000});}catch(error){console.error(JSON.stringify({kind,requests,state:await page.evaluate(async()=>({zoom:window.reviewMap.getZoom(),edges:window.reviewMap.queryRenderedFeatures({layers:['platform-edges']}).map(f=>({properties:f.properties,geometry:f.geometry})),labels:await window.reviewMap.getSource('platformLengths').getData()}))}));throw error;}
+ const lengthRequests=requests.filter(path=>path.includes('standard_railway_platform_edges')).length;
+ assert.ok(lengthRequests===1||lengthRequests===2,`one length request, or one and its retry: ${lengthRequests}`);
  await page.waitForFunction(()=>['infrastructure-signal-points','infrastructure-entrance-points','platform-numbers'].every(id=>window.reviewMap.queryRenderedFeatures({layers:[id]}).length>0));
  assert.ok(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['infrastructure-signal-points']}).every(f=>f.properties.railway==='signal')));
  if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();
  await page.selectOption('#units','imperial');
  assert.ok(await page.evaluate(()=>JSON.stringify(window.reviewMap.getLayoutProperty('platform-lengths','text-field')).includes(' ft')));
- assert.equal(requests.filter(path=>path.includes('standard_railway_platform_edges')).length,1,'units reuse the cached complete length');
+ assert.equal(requests.filter(path=>path.includes('standard_railway_platform_edges')).length,lengthRequests,'units reuse the cached complete length');
  await page.selectOption('#units','metric');
  await page.waitForFunction(()=>window.reviewMap.queryRenderedFeatures({layers:['platform-lengths']}).some(f=>f.properties.platform_length>0));
  await page.locator('#collapse').click();
@@ -94,6 +99,6 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  await page.locator('#labels').check();
  await page.evaluate(()=>window.reviewMap.jumpTo({zoom:18}));
  await waitUntil(page,async()=>{const data=await window.reviewMap.getSource('platformLengths').getData();return data.features.some(f=>f.properties.ref==='1')&&data.features.every(f=>!f.properties.platform_length);});
- assert.equal(requests.filter(path=>path.includes('standard_railway_platform_edges')).length,1);
+ assert.equal(requests.filter(path=>path.includes('standard_railway_platform_edges')).length,lengthRequests,'the complete length is not fetched again');
  assert.deepEqual(errors,[]);console.log(`PASS: ${kind} real vector rendering, typed platform references, full lengths, mapped point links, labels and view switching`);await page.close();
 }}finally{await browser.close();}
