@@ -7,6 +7,10 @@ import {waitUntil,setDefaultTimeout} from './wait-until.mjs';
 const deadline=setTimeout(()=>{console.error('Browser validation exceeded fifteen minutes');process.exit(1);},900000);deadline.unref();
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1365,height:900},deviceScaleFactor:1});
+// A crashed renderer or an unexpected reload otherwise surfaces only as a
+// later timeout or a destroyed execution context.
+page.on('crash',()=>console.error('PAGE_CRASHED',new Date().toISOString()));
+page.on('framenavigated',frame=>{if(frame===page.mainFrame())console.error('MAIN_FRAME_NAVIGATED',new Date().toISOString(),frame.url());});
 setDefaultTimeout(page,120000);
 // Retain completed WebGL frames for reliable headless screenshots.
 await page.addInitScript(()=>{
