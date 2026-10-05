@@ -65,13 +65,24 @@ test('a live row and a cancelled duplicate merge as cancelled; one list keeps tw
   assert.equal(departureRows([[t({displayName: 'JK', routeId: 'a_JK', headsign: '大宮'}), t({displayName: 'JK', routeId: 'a_JK', headsign: '大宮'})]], {now}).length, 1, 'an exact repeat in one list is one train');
 });
 
-test('a row that absorbed another list keeps that list, so a second service from it stays separate', () => {
+test('a named row with two candidates in another list merges with neither, in either order', () => {
   const now = Date.parse('2026-10-05T12:00:00Z'), at = '2026-10-05T13:40:00Z';
   const t = fields => ({mode: 'REGIONAL_RAIL', realTime: false, place: {scheduledDeparture: at, departure: at, tz: 'Asia/Tokyo'}, ...fields});
   const named = [t({displayName: 'JK', routeId: 'a_JK', headsign: '大宮'})];
   const unnamed = [t({displayName: '12345678', routeId: 'x_12345678', headsign: '大宮'}), t({displayName: '87654321', routeId: 'x_87654321', headsign: '大宮'})];
-  assert.equal(departureRows([named, unnamed], {now}).length, 2);
-  assert.equal(departureRows([unnamed, named], {now}).length, 2, 'list order does not change the result');
+  assert.equal(departureRows([named, unnamed], {now}).length, 3, 'which unnamed row is the JK train is unknown');
+  assert.equal(departureRows([unnamed, named], {now}).length, 3, 'list order does not change the result');
+});
+
+test('ambiguous cross-feed matches stay separate whatever the order', () => {
+  const now = Date.parse('2026-10-05T12:00:00Z'), at = '2026-10-05T13:40:00Z';
+  const t = fields => ({mode: 'REGIONAL_RAIL', realTime: false, place: {scheduledDeparture: at, departure: at, tz: 'Asia/Tokyo'}, ...fields});
+  const named = [t({displayName: 'JK', routeId: 'a_JK', headsign: '大宮'})];
+  const unnamed = t({displayName: '12345678', routeId: 'x_12345678', headsign: '大宮'}), sameLine = t({displayName: 'JK', routeId: 'b_JK', headsign: '(普通) 大宮'});
+  for (const second of [[unnamed, sameLine], [sameLine, unnamed]]) for (const lists of [[named, second], [second, named]]) {
+    // The named JK row has two candidates in the other list: nothing is merged.
+    assert.equal(departureRows(lists, {now}).length, 3, JSON.stringify(lists.map(l => l.map(x => x.displayName))));
+  }
 });
 
 test('journey links and the station board request', async () => {
