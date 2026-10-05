@@ -65,13 +65,13 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
       track: place.track || place.scheduledTrack || '', live: time.realTime === true,
       delay: time.realTime === true && Number.isFinite(scheduled) ? Math.round((departure - scheduled) / 60000) : null,
       cancelled: time.cancelled === true || time.tripCancelled === true || place.cancelled === true, mode: time.mode,
-      list, key: `${time.displayName || time.routeShortName || line}|${time.headsign}|${scheduled}`,
+      lists: new Set([list]), key: `${time.displayName || time.routeShortName || line}|${time.headsign}|${scheduled}`,
     };
     const minute = Math.floor(scheduled / 60000), to = squash(row.headsign);
     // Within one list only an exact repeat is the same train; two services
     // of one feed can leave together. Across lists the texts may differ.
     const same = rows.findIndex(other => {
-      if (other.list === list) return other.key === row.key;
+      if (other.lists.has(list)) return other.key === row.key || other.keys?.has(row.key);
       const theirs = squash(other.headsign);
       return to && theirs && Math.floor(other.scheduled / 60000) === minute && (theirs.includes(to) || to.includes(theirs)) &&
         (!other.line || !row.line || other.line === row.line);
@@ -84,9 +84,13 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
     if (other.live && !keep.live) Object.assign(merged, {departure: other.departure, live: true, delay: other.delay, track: other.track || keep.track});
     else if (!merged.track) merged.track = other.track;
     merged.cancelled = keep.cancelled || other.cancelled;
+    // The merged row carries every source list and raw key it absorbed, so a
+    // second service from an absorbed list is never fuzzily folded in too.
+    merged.lists = new Set([...held.lists, ...row.lists]);
+    merged.keys = new Set([...(held.keys || [held.key]), row.key]);
     rows[same] = merged;
   }
-  return rows.sort((a, b) => a.departure - b.departure).slice(0, count).map(({list, key, ...row}) => row);
+  return rows.sort((a, b) => a.departure - b.departure).slice(0, count).map(({lists, key, keys, ...row}) => row);
 }
 
 // Clock time at the station (its own time zone).
