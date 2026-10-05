@@ -42,6 +42,19 @@ test('one train from two feeds is one row under its line name; numbered route ID
   assert.equal(both.length, 2);
 });
 
+test('merged rows keep real-time state from either feed; rows without a destination are not merged', () => {
+  const now = Date.parse('2026-10-05T12:00:00Z');
+  const t = (fields, at, actual = at) => ({mode: 'REGIONAL_RAIL', realTime: false, place: {scheduledDeparture: at, departure: actual, tz: 'Asia/Tokyo'}, ...fields});
+  const live = departureRows([[t({displayName: 'JK', routeId: 'a_JK', headsign: '大宮'}, '2026-10-05T13:40:00Z')],
+    [t({displayName: 'JK', routeId: 'b_JK', headsign: '(普通) 大宮', realTime: true, place: undefined}, '2026-10-05T13:40:00Z')]].map(list => list.map(x => x.place ? x : {...x, place: {scheduledDeparture: '2026-10-05T13:40:00Z', departure: '2026-10-05T13:43:00Z', tz: 'Asia/Tokyo', track: '3'}})), {now});
+  assert.equal(live.length, 1);
+  assert.deepEqual([live[0].line, live[0].headsign, live[0].live, live[0].delay, live[0].track], ['JK', '大宮', true, 3, '3']);
+  const cancelled = departureRows([[t({displayName: '12345678', routeId: 'x_12345678', headsign: '大宮', cancelled: true}, '2026-10-05T13:40:00Z'), t({displayName: 'JK', routeId: 'a_JK', headsign: '大宮'}, '2026-10-05T13:40:00Z')]], {now});
+  assert.deepEqual(cancelled.map(r => [r.line, r.cancelled]), [['JK', true]], 'the named row carries the cancellation');
+  const blank = departureRows([[t({displayName: '12345678', routeId: 'x_12345678', headsign: ''}, '2026-10-05T13:40:00Z'), t({displayName: 'JK', routeId: 'a_JK', headsign: '大宮'}, '2026-10-05T13:40:00Z')]], {now});
+  assert.equal(blank.length, 2, 'a row without a destination matches nothing');
+});
+
 test('journey links and the station board request', async () => {
   assert.equal(plannerLink('from', 'jp-japan-rail_1748', '東京'), 'https://api.transitous.org/?fromPlace=jp-japan-rail_1748&fromName=%E6%9D%B1%E4%BA%AC');
   const urls = [];

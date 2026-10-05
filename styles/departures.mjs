@@ -45,7 +45,9 @@ const squash = text => String(text || '').replace(/[\s()（）]/g, '');
 // train with different names and destination texts ("桜木町" and
 // "(普通 Local) 桜木町 Sakuragichō"): rows at the same scheduled minute
 // whose destinations contain one another are the same train when at least
-// one has no line name or both have the same one, and the named row is kept.
+// one has no line name or both have the same one: the named row is kept,
+// with real-time state from whichever row has it. Rows without a
+// destination are never merged.
 // A row is live when the operator's real-time feed covers that trip; delay in
 // whole minutes.
 export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
@@ -65,11 +67,20 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
       cancelled: time.cancelled === true || time.tripCancelled === true || place.cancelled === true, mode: time.mode,
     };
     const minute = Math.floor(scheduled / 60000), to = squash(row.headsign);
-    const same = rows.findIndex(other => Math.floor(other.scheduled / 60000) === minute &&
-      (squash(other.headsign).includes(to) || to.includes(squash(other.headsign))) &&
-      (!other.line || !row.line || other.line === row.line));
-    if (same < 0) rows.push(row);
-    else if (!rows[same].line && row.line) rows[same] = row;
+    const same = to ? rows.findIndex(other => {
+      const theirs = squash(other.headsign);
+      return theirs && Math.floor(other.scheduled / 60000) === minute && (theirs.includes(to) || to.includes(theirs)) &&
+        (!other.line || !row.line || other.line === row.line);
+    }) : -1;
+    if (same < 0) { rows.push(row); continue; }
+    // One train: the line name and colours of the named row, and real-time
+    // state (live time, delay, cancellation, platform) from whichever row has it.
+    const held = rows[same], keep = !held.line && row.line ? row : held, other = keep === row ? held : row;
+    const timed = r => r.live || r.cancelled;
+    const merged = {...keep};
+    if (timed(other) && !timed(keep)) Object.assign(merged, {departure: other.departure, live: other.live, delay: other.delay, cancelled: other.cancelled, track: other.track || keep.track});
+    else if (!merged.track) merged.track = other.track;
+    rows[same] = merged;
   }
   return rows.sort((a, b) => a.departure - b.departure).slice(0, count);
 }
