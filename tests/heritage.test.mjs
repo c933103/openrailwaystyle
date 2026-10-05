@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
-import {heritageQuery, heritageFeatures, heritageGeometry, heritageKind, heritageTiles, heritageBundles, NAME_KEYS, HERITAGE_LAYER, HERITAGE_BUNDLE_ZOOM} from '../scripts/heritage-data.mjs';
+import {heritageQuery, heritageFeatures, heritageGeometry, heritageKind, heritageTiles, heritageBundles, heritageFailure, HERITAGE_RETRY_DELAYS, NAME_KEYS, HERITAGE_LAYER, HERITAGE_BUNDLE_ZOOM} from '../scripts/heritage-data.mjs';
 import {gunzipSync} from 'node:zlib';
 import {decodeBundle, bundleKey} from '../styles/tile-bundles.mjs';
 
@@ -113,4 +113,19 @@ test('tiles are published in zoom-8 bundles that hold every tile unchanged', () 
   }
   assert.deepEqual([...unpacked.keys()].sort(), [...tiles.keys()].sort());
   for (const [key, data] of tiles) assert.ok(unpacked.get(key).equals(Buffer.from(data)), key);
+});
+
+test('a failing Overpass server is retried, then given smaller regions, rather than failing the run', () => {
+  // The message of run 37254966281, where one region failed three times.
+  const busy = 'HTTP 504: OSM3S Response The data included in this document is from www.openstreetmap.org. Error : runtime error: open64: 0 Succes';
+  for (let attempt = 0; attempt < HERITAGE_RETRY_DELAYS.length; attempt++) assert.equal(heritageFailure(busy, attempt, 0), 'retry');
+  assert.equal(heritageFailure(busy, HERITAGE_RETRY_DELAYS.length, 0), 'split');
+  assert.equal(heritageFailure(busy, HERITAGE_RETRY_DELAYS.length, 6), 'fail', 'not split without end');
+  assert.equal(heritageFailure('HTTP 429: Too Many Requests', 0, 0), 'retry');
+  assert.equal(heritageFailure('fetch failed', HERITAGE_RETRY_DELAYS.length, 2), 'split', 'no response at all');
+  assert.equal(heritageFailure('runtime error: Query timed out in "query" at line 1 after 301 seconds.', 0, 0), 'split');
+  assert.equal(heritageFailure('HTTP 504: Gateway timeout', 0, 0), 'retry', 'an admission error saying timeout did not run the query');
+  assert.equal(heritageFailure('HTTP 400: parse error', 0, 0), 'fail');
+  assert.equal(heritageFailure('Historic area download budget exceeded', 0, 0), 'fail');
+  assert.ok(HERITAGE_RETRY_DELAYS.reduce((a, b) => a + b) >= 180000, 'a busy server gets minutes, not seconds, before the region is split');
 });

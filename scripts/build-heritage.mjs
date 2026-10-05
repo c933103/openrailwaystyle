@@ -1,7 +1,7 @@
 // Maintenance only. Build the worldwide historic-area tiles (heritage-data.mjs)
 // from Overpass, region by region. Run: node scripts/build-heritage.mjs
 import {mkdir, readFile, rm, writeFile} from 'node:fs/promises';
-import {heritageQuery, heritageFeatures, heritageTiles, heritageBundles, HERITAGE_MIN_ZOOM, HERITAGE_MAX_ZOOM, HERITAGE_BUNDLE_ZOOM} from './heritage-data.mjs';
+import {heritageQuery, heritageFeatures, heritageFailure, HERITAGE_RETRY_DELAYS, heritageTiles, heritageBundles, HERITAGE_MIN_ZOOM, HERITAGE_MAX_ZOOM, HERITAGE_BUNDLE_ZOOM} from './heritage-data.mjs';
 import {BUNDLE_FORMAT} from '../styles/tile-bundles.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
@@ -25,8 +25,8 @@ async function collect(box, depth = 0) {
     if (saved.query === query && process.env.HERITAGE_REFRESH !== '1') json = saved.response;
   } catch {}
   let split = false;
-  if (!json) for (let attempt = 0; attempt < 3; attempt++) {
-    await sleep(requests ? (attempt ? 20000 * (attempt + 1) : 10000) : 0);
+  if (!json) for (let attempt = 0; ; attempt++) {
+    await sleep(attempt ? HERITAGE_RETRY_DELAYS[attempt - 1] : requests ? 10000 : 0);
     requests++;
     try {
       console.log('Fetching historic areas', box.join(','), 'attempt', attempt + 1);
@@ -43,14 +43,13 @@ async function collect(box, depth = 0) {
     } catch (error) {
       json = undefined;
       console.warn(box.join(','), error.message);
-      if (/budget exceeded/.test(error.message)) throw error;
-      // Admission HTTP errors can say "timeout" without running the query.
-      if (!/^HTTP \d+:/.test(error.message) && /timed? ?out|out of memory|memory/i.test(error.message)) { split = true; break; }
-      if (attempt === 2) throw error;
+      const next = heritageFailure(error.message, attempt, depth);
+      if (next === 'fail') throw error;
+      if (next === 'split') { split = true; break; }
     }
   }
   if (split) {
-    if (depth >= 6) throw new Error(`Historic area region could not complete: ${box}`);
+    console.log('Splitting historic area region', box.join(','));
     const [s, w, n, e] = box, lat = (s + n) / 2, lon = (w + e) / 2;
     for (const child of [[s, w, lat, lon], [s, lon, lat, e], [lat, w, n, lon], [lat, lon, n, e]]) await collect(child, depth + 1);
     return;

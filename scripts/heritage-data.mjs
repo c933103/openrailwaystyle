@@ -119,3 +119,20 @@ export function heritageBundles(tiles, zoom = HERITAGE_BUNDLE_ZOOM) {
   }
   return bundles;
 }
+
+// What to do after a failed Overpass request (attempt counts from 0): wait
+// HERITAGE_RETRY_DELAYS[attempt] and try again, split the region into
+// quarters, or give up. A query that timed out or ran out of memory is split
+// at once. A server that keeps failing (5xx, 429 or no response) is given
+// smaller queries, which it may still manage, rather than failing the whole
+// monthly run; a rejected query (other 4xx) or the download budget fails.
+export const HERITAGE_RETRY_DELAYS = [30000, 60000, 120000];
+export function heritageFailure(message, attempt, depth, maxDepth = 6) {
+  if (/budget exceeded/.test(message)) return 'fail';
+  const status = Number(/^HTTP (\d+):/.exec(message)?.[1]);
+  if (!status && /timed? ?out|out of memory|memory/i.test(message)) return depth < maxDepth ? 'split' : 'fail';
+  const transient = !status || status >= 500 || status === 429;
+  if (!transient) return 'fail';
+  if (attempt < HERITAGE_RETRY_DELAYS.length) return 'retry';
+  return depth < maxDepth ? 'split' : 'fail';
+}
