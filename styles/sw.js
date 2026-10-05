@@ -138,8 +138,10 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET' || url.origin !== location.origin) return;
   // Fonts are immutable, optional assets. Fetch only the selected script and
   // retain it offline without making installation download both large files.
-  // Rare Han slices (rare-han.mjs) are kept the same way, one per 256 characters.
-  if(/\/fonts\/atlas-cjk-(tc|sc)-v1\.woff2$/.test(url.pathname)||/\/fonts\/rare-han-v1\/[0-9a-f]{3}\.woff2$/.test(url.pathname)){
+  // Rare Han slices (rare-han.mjs) are kept the same way, one per 256
+  // characters, with the index that lists them: without it no saved slice is
+  // used offline.
+  if(/\/fonts\/atlas-cjk-(tc|sc)-v1\.woff2$/.test(url.pathname)||/\/fonts\/rare-han-v1\/([0-9a-f]{3}\.woff2|index\.json)$/.test(url.pathname)){
     // Keeping a copy is best effort: without Cache Storage, or with it full,
     // the downloaded font is still served.
     event.respondWith((async()=>{

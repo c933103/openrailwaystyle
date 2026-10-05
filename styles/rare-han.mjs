@@ -18,20 +18,6 @@ export function rareHanBlocks(text, into = new Set()) {
   }
   return into;
 }
-// The same from UTF-8 bytes (a vector tile whose names are drawn as
-// stored): U+20000-U+3FFFF are the 4-byte sequences F0 A0-BF xx xx.
-export function rareHanBlocksInBytes(data, into = new Set()) {
-  const bytes = data instanceof Uint8Array ? data : new Uint8Array(data || new ArrayBuffer(0));
-  for (let i = 0; i + 3 < bytes.length; i++) {
-    if (bytes[i] !== 0xF0 || bytes[i + 1] < 0xA0 || bytes[i + 1] > 0xBF) continue;
-    const b2 = bytes[i + 2], b3 = bytes[i + 3];
-    if ((b2 & 0xC0) !== 0x80 || (b3 & 0xC0) !== 0x80) continue;
-    // The lead byte F0 contributes no bits; A0-BF gives 0x20-0x3F << 12.
-    into.add((((bytes[i + 1] & 0x3F) << 12) | ((b2 & 0x3F) << 6) | (b3 & 0x3F)) >> 8);
-    i += 3;
-  }
-  return into;
-}
 const hex = value => value.toString(16).toUpperCase();
 export const rareHanRange = block => `U+${hex(block << 8)}-${hex((block << 8) + 255)}`;
 

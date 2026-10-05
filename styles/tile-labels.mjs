@@ -8,7 +8,7 @@ import {chooseName, mergeStationTranslation, stationLanguages, stationPending, O
 import {hanRegion, chineseArea} from './han-region.mjs';
 import {axleLoad} from './axle-load.mjs';
 import {isLocalFamily} from './cjk-font.mjs';
-import {rareHanBlocks, rareHanBlocksInBytes} from './rare-han.mjs';
+import {rareHanBlocks} from './rare-han.mjs';
 import {decodeLoadingGauges, wayId} from './loading-gauge-list.mjs';
 export {hanRegion, chineseArea};
 export const buildInfo=typeof __ATLAS_BUILD_INFO__ === 'undefined' ? {version:'development',commit:''} : __ATLAS_BUILD_INFO__;
@@ -126,6 +126,16 @@ export function timedSource(inner, ms) {
     },
   };
 }
+// Rare Han blocks in a tile's string values: each layer's value table, which
+// @mapbox/vector-tile 1.3.1 decodes with the layer (_values) without reading
+// features or geometry. Numbers, IDs and geometry are never mistaken for text.
+export function tileTextBlocks(data, found = new Set()) {
+  try {
+    for (const layer of Object.values(new VectorTile(new Pbf(new Uint8Array(data))).layers))
+      for (const value of layer._values) rareHanBlocks(value, found);
+  } catch {}
+  return found;
+}
 export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch, {dataRoot, timeout = 12000, basemapRetries = [500, 2000], basemapArchive, tileRetries = [1000], rareGlyphs} = {}) {
   // Rare-Han glyph slices for a tile's labels load before the tile is drawn.
   const withGlyphs = async (data, found) => { if (found.size && rareGlyphs) await rareGlyphs(found); return data; };
@@ -236,9 +246,10 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     }
     // MapLibre transfers this buffer to its worker, detaching it. Keep the
     // cache's original for language changes, return visits and track counts.
-    // Railway names are drawn as stored, so the tile's bytes give their glyphs.
+    // Railway labels are drawn as stored, so the tile's text values give their
+    // glyphs.
     const data = (await get(url, controller.signal)).slice(0);
-    return {data: await withGlyphs(data, rareHanBlocksInBytes(data))};
+    return {data: await withGlyphs(data, tileTextBlocks(data))};
   });
   // Overview tiles (zoom 0–6) carry way IDs but no loading gauge: add it
   // from the published way ID list (data/loading-gauge.json, about 250 kB
