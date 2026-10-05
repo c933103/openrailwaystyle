@@ -24,6 +24,24 @@ test('departure rows: rail only, merged in time order, one row per train, live d
   assert.equal(clock(rows[1].departure, rows[1].tz), '07:35', 'the station\'s own time zone');
 });
 
+test('one train from two feeds is one row under its line name; numbered route IDs are not line names', () => {
+  // Ōji, 2026-10-05, as returned by Transitous: jp_japan-rail gives each trip
+  // pattern a numbered route; jp_tokyo-rail names the line and the train.
+  const now = Date.parse('2026-10-05T12:00:00Z');
+  const t = (fields, at) => ({mode: 'REGIONAL_RAIL', realTime: false, place: {scheduledDeparture: at, departure: at, tz: 'Asia/Tokyo'}, ...fields});
+  const rows = departureRows([
+    [t({displayName: '8913771', routeShortName: '8913771', routeLongName: '', routeId: 'jp-japan-rail_8913771', headsign: '桜木町'}, '2026-10-05T13:31:00Z'),
+     t({displayName: '7348861', routeShortName: '7348861', routeLongName: '', routeId: 'jp-japan-rail_7348861', headsign: '大船'}, '2026-10-05T13:38:00Z')],
+    [t({displayName: 'JK', routeShortName: 'JK', routeLongName: 'JR京浜東北線・根岸線 JR Keihin-Tohoku-Negishi Line', tripShortName: '2223A', routeId: 'jp-tokyo-rail_JR-East.KeihinTohokuNegishi', headsign: '(普通 Local) 桜木町 Sakuragichō'}, '2026-10-05T13:31:00Z'),
+     t({displayName: 'N', routeShortName: 'N', routeId: 'jp-tokyo-rail_TokyoMetro.Namboku', headsign: '(普通 Local) 白金高輪 Shirokane-takanawa'}, '2026-10-05T13:31:00Z')],
+  ], {now});
+  assert.deepEqual(rows.map(r => [r.line, r.headsign]), [
+    ['JK', '(普通 Local) 桜木町 Sakuragichō'], ['N', '(普通 Local) 白金高輪 Shirokane-takanawa'], ['', '大船']]);
+  // Two named lines leaving the same minute for the same place stay two trains.
+  const both = departureRows([[t({displayName: 'JK', routeId: 'a_JK', headsign: '大宮'}, '2026-10-05T13:40:00Z'), t({displayName: 'JU', routeId: 'a_JU', headsign: '大宮'}, '2026-10-05T13:40:00Z')]], {now});
+  assert.equal(both.length, 2);
+});
+
 test('journey links and the station board request', async () => {
   assert.equal(plannerLink('from', 'jp-japan-rail_1748', '東京'), 'https://api.transitous.org/?fromPlace=jp-japan-rail_1748&fromName=%E6%9D%B1%E4%BA%AC');
   const urls = [];

@@ -36,27 +36,40 @@ export function pickStops(candidates, station, limit = 2) {
   return picked.slice(0, limit).map(c => c.stop);
 }
 
+// A route "name" that only repeats the numeric end of its route ID (some
+// feeds give every trip pattern its own numbered route) is not a line name.
+const opaqueName = (name, routeId) => /^\d{5,}$/.test(name || '') && String(routeId || '').endsWith(name);
+const squash = text => String(text || '').replace(/[\s()（）]/g, '');
 // Board rows from departure lists (merged, earliest first, rail modes only,
-// one row per train where two timetables list it). A row is live when the
-// operator's real-time feed covers that trip; delay in whole minutes.
+// one row per train where two timetables list it). Two feeds can list one
+// train with different names and destination texts ("桜木町" and
+// "(普通 Local) 桜木町 Sakuragichō"): rows at the same scheduled minute
+// whose destinations contain one another are the same train when at least
+// one has no line name or both have the same one, and the named row is kept.
+// A row is live when the operator's real-time feed covers that trip; delay in
+// whole minutes.
 export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
-  const seen = new Set(), rows = [];
+  const rows = [];
   for (const time of lists.flat()) {
     if (!RAIL_MODES.has(time.mode)) continue;
     const place = time.place || {}, departure = Date.parse(place.departure ?? place.arrival), scheduled = Date.parse(place.scheduledDeparture ?? place.scheduledArrival ?? place.departure);
     if (!Number.isFinite(departure) || departure < now - 60_000) continue;
-    const line = time.displayName || time.routeShortName || time.tripShortName || time.routeLongName || '';
-    const key = `${line}|${time.headsign}|${scheduled}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    rows.push({
+    const named = [time.displayName, time.routeShortName].find(name => name && !opaqueName(name, time.routeId));
+    const line = named || time.tripShortName || time.routeLongName || '';
+    const row = {
       departure, scheduled, tz: place.tz, line, headsign: time.headsign || time.tripTo?.name || '',
       color: /^[0-9a-f]{6}$/i.test(time.routeColor || '') ? `#${time.routeColor}` : null,
       textColor: /^[0-9a-f]{6}$/i.test(time.routeTextColor || '') ? `#${time.routeTextColor}` : null,
       track: place.track || place.scheduledTrack || '', live: time.realTime === true,
       delay: time.realTime === true && Number.isFinite(scheduled) ? Math.round((departure - scheduled) / 60000) : null,
       cancelled: time.cancelled === true || time.tripCancelled === true || place.cancelled === true, mode: time.mode,
-    });
+    };
+    const minute = Math.floor(scheduled / 60000), to = squash(row.headsign);
+    const same = rows.findIndex(other => Math.floor(other.scheduled / 60000) === minute &&
+      (squash(other.headsign).includes(to) || to.includes(squash(other.headsign))) &&
+      (!other.line || !row.line || other.line === row.line));
+    if (same < 0) rows.push(row);
+    else if (!rows[same].line && row.line) rows[same] = row;
   }
   return rows.sort((a, b) => a.departure - b.departure).slice(0, count);
 }
