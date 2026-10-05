@@ -1,11 +1,11 @@
-import {chromium} from 'playwright';
+import {launchBrowser} from './browser.mjs';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {waitUntil,setDefaultTimeout} from './wait-until.mjs';
 // A hang guard only: every wait below has its own timeout. The whole check
 // already takes about nine minutes on CI's software renderer.
 const deadline=setTimeout(()=>{console.error('Browser validation exceeded fifteen minutes');process.exit(1);},900000);deadline.unref();
-const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1365,height:900},deviceScaleFactor:1});
 setDefaultTimeout(page,120000);
 // Retain completed WebGL frames for reliable headless screenshots.

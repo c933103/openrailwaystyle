@@ -1,4 +1,4 @@
-import {chromium} from 'playwright';
+import {launchBrowser} from './browser.mjs';
 import {readFile,mkdir} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import geojsonvt from 'geojson-vt';
@@ -14,7 +14,7 @@ archive[96]=1;archive[97]=archive[98]=archive[99]=1;archive[101]=22;
 for(const [offset,value] of [[102,-1800000000],[106,-850000000],[110,1800000000],[114,850000000]])archive.writeInt32LE(value,offset);
 archive.write('{}',128);
 const runtime=process.env.ATLAS_BROWSER_RUNTIME,glyphFile=process.env.ATLAS_BROWSER_GLYPHS;
-const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');await mkdir('browser-review',{recursive:true});
 try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  const page=await browser.newPage({viewport:{width,height},hasTouch:kind==='mobile',deviceScaleFactor:kind==='mobile'?2.625:1,serviceWorkers:'block'});let requests=0;

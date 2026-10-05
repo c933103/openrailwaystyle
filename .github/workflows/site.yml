@@ -31,8 +31,8 @@ jobs:
   validate:
     needs: facilities
     runs-on: ubuntu-latest
-    # The browser checks alone take about 55 minutes on software rendering
-    # (the curated-station globe check about 25); 60 left no headroom.
+    # The browser checks took about 55 minutes one after another on
+    # software rendering; they now run two at a time with cached tiles.
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
@@ -187,45 +187,59 @@ jobs:
           JS
       - name: Install test browser
         run: npx playwright install --with-deps chromium
+      # Map tiles, glyphs and provider API answers the checks fetch, kept for
+      # a week (scripts/browser.mjs). The site under test is never cached.
+      - name: Restore browser tile cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .browser-tiles
+          key: browser-tiles-v1-${{ github.run_id }}
+          restore-keys: browser-tiles-v1-
       - name: Start test server
-        run: node scripts/serve.mjs &
-      - name: Verify frequency widths and shared-track selection
-        run: node scripts/check-service-frequency-browser.mjs
+        run: |
+          rm -f .browser-tiles/.changed
+          node scripts/serve.mjs &
       - name: Verify mapped frequency profiles across world regions
+        env:
+          BROWSER_TILE_CACHE: ${{ github.workspace }}/.browser-tiles
         run: |
           # Real dated feeds are test fixtures, never a production city list.
+          # This check replaces the service data, so it runs alone.
           node scripts/rebuild-service-frequency.mjs styles/data/service-routes /tmp/frequency-fixture-credits.html --fixtures
           node scripts/check-world-frequency-browser.mjs
           # Restore the production worldwide snapshot after fixture checks.
           node scripts/rebuild-service-frequency.mjs
-      - name: Verify map controls, cookie restoration and responsive layout
-        run: node scripts/check-map-controls-browser.mjs
-      - name: Verify map-only watch layout and direct gestures
-        run: node scripts/check-watch-browser.mjs
-      - name: Verify curated station labels and details on the globe
-        run: node scripts/check-major-stations-browser.mjs
-      - name: Verify bathymetric depth colours
-        run: node scripts/check-bathymetry-browser.mjs
-      - name: Verify roads, planning boundaries and rail-road interfaces
-        run: node scripts/check-planning-browser.mjs
-      - name: Verify transport and destination context
-        run: node scripts/check-context-browser.mjs
-      - name: Verify actual WebGL rendering and zoom-7 panning
-        run: node scripts/check-map-browser.mjs
-      - name: Verify Carto-only detailed polar rendering and view switching
-        run: node scripts/check-polar-browser.mjs
-      - name: Verify close-up globe dragging across both poles
-        run: node scripts/check-globe-browser.mjs
-      - name: Verify platform length labels and main Units selector
-        run: node scripts/check-platform-browser.mjs
-      - name: Verify platform references, signals and entrances
-        run: node scripts/check-infrastructure-browser.mjs
-      - name: Verify reported station platform areas and Chinese fonts
-        run: node scripts/check-platform-stations-browser.mjs
-      - name: Verify concurrent train controls, signals and traction supplies
-        run: node scripts/check-signal-power-browser.mjs
-      - name: Verify served build information on desktop and touch
-        run: node scripts/check-build-browser.mjs
+      # Two at a time, longest first, each slot with its own browser
+      # (scripts/run-browser-checks.mjs).
+      - name: Verify the map in Chromium
+        env:
+          BROWSER_TILE_CACHE: ${{ github.workspace }}/.browser-tiles
+        run: >-
+          node scripts/run-browser-checks.mjs --concurrency 2 --label all
+          check-major-stations-browser.mjs
+          check-map-browser.mjs
+          check-context-browser.mjs
+          check-map-controls-browser.mjs
+          check-planning-browser.mjs
+          check-signal-power-browser.mjs
+          check-platform-browser.mjs
+          check-infrastructure-browser.mjs
+          check-platform-stations-browser.mjs
+          check-bathymetry-browser.mjs
+          check-globe-browser.mjs
+          check-build-browser.mjs
+          check-watch-browser.mjs
+          check-polar-browser.mjs
+          check-service-frequency-browser.mjs
+      - name: Prune browser tile cache
+        if: always() && hashFiles('.browser-tiles/.changed') != ''
+        run: node scripts/browser.mjs prune .browser-tiles
+      - name: Upload browser tile cache
+        if: always() && hashFiles('.browser-tiles/.changed') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .browser-tiles
+          key: browser-tiles-v1-${{ github.run_id }}
       - name: Save browser review
         if: always()
         uses: actions/upload-artifact@v4
