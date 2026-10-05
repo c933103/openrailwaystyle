@@ -167,6 +167,8 @@ jobs:
             exit 1
           fi
       - name: Add reviewed timetable shapes and peak/off-peak profiles to service tiles
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           python3 scripts/load-frequency-snapshot.py
           node scripts/rebuild-service-frequency.mjs

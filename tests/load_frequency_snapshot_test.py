@@ -17,4 +17,10 @@ class SnapshotRepository(unittest.TestCase):
     def test_local_default_and_invalid_repository(self):
         self.assertIn('/c933103/openrailwaystyle/',self.load({}).URL)
         with self.assertRaises(ValueError):self.load({'GITHUB_REPOSITORY':'../other/repository'})
+    def test_release_lookup_uses_the_workflow_token(self):
+        loader=self.load({'GITHUB_TOKEN':'secret'})
+        with patch.dict(os.environ,{'GITHUB_TOKEN':'secret'}):
+            self.assertEqual(loader.release_request().get_header('Authorization'),'Bearer secret')
+        with patch.dict(os.environ,{},clear=True):
+            self.assertIsNone(loader.release_request().get_header('Authorization'))
 if __name__=='__main__':unittest.main()
