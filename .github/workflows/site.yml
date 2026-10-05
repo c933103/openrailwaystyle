@@ -215,6 +215,9 @@ jobs:
         run: |
           python3 scripts/load-frequency-snapshot.py
           node scripts/rebuild-service-frequency.mjs
+          # Compiled feeds are kept for matching, not published: no timetable
+          # is applied yet. The manifest and inventory stay as coverage records.
+          rm -rf styles/data/service-frequency/feeds styles/data/service-frequency/tiles
       - name: Load worldwide railway signals and energy supplies
         run: |
           mkdir -p styles/data/traction
