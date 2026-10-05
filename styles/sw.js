@@ -139,10 +139,15 @@ self.addEventListener('fetch', event => {
   // Fonts are immutable, optional assets. Fetch only the selected script and
   // retain it offline without making installation download both large files.
   if(/\/fonts\/atlas-cjk-(tc|sc)-v1\.woff2$/.test(url.pathname)){
-    event.respondWith(caches.open(FONT_CACHE).then(async cache=>{
-      const saved=await cache.match(url.href);if(saved)return saved;
-      const response=await fetch(request);if(response.ok)await cache.put(url.href,response.clone());return response;
-    }));return;
+    // Keeping a copy is best effort: without Cache Storage, or with it full,
+    // the downloaded font is still served.
+    event.respondWith((async()=>{
+      const cache=await caches.open(FONT_CACHE).catch(()=>null);
+      const saved=await cache?.match(url.href).catch(()=>null);if(saved)return saved;
+      const response=await fetch(request);
+      if(response.ok&&cache)await cache.put(url.href,response.clone()).catch(()=>{});
+      return response;
+    })());return;
   }
   const scope = new URL(self.registration.scope).pathname, page = url.pathname === scope || url.pathname === scope + 'index.html';
   if (request.mode === 'navigate' ? !page : !SHELL.test(url.pathname)) return;

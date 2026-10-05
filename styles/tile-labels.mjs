@@ -26,13 +26,26 @@ export function glyphRequestURL(value){
 // geometry: rings or lines of [x, y]}.
 // Bounded: a tile over `limits` gives no pieces (so no lengths) rather than
 // parsing every feature on the page's thread.
+// The points loadGeometry() would return, counted from the command stream
+// without building them (@mapbox/vector-tile 1.3.1 keeps the stream's
+// position in _geometry; closePath repeats the first point).
+export function geometryVertices(feature){
+ const pbf=feature._pbf;pbf.pos=feature._geometry;
+ const end=pbf.readVarint()+pbf.pos;let count=0,cmd=1,length=0;
+ while(pbf.pos<end){
+  if(length<=0){const value=pbf.readVarint();cmd=value&7;length=value>>3;}
+  length--;
+  if(cmd===1||cmd===2){pbf.readVarint();pbf.readVarint();count++;}else if(cmd===7)count++;else throw new Error('unknown command '+cmd);
+ }
+ return count;
+}
 export function platformTilePieces(data,layerName,limits={bytes:1024*1024,features:4096,vertices:131072}){
  if(data.byteLength>limits.bytes)return [];
  const layer=new VectorTile(new Pbf(new Uint8Array(data))).layers[layerName];if(!layer||layer.length>limits.features)return [];
  const pieces=[];let vertices=0;
  for(let i=0;i<layer.length;i++){
-  const f=layer.feature(i),geometry=f.loadGeometry().map(ring=>ring.map(p=>[p.x,p.y]));
-  vertices+=geometry.reduce((n,ring)=>n+ring.length,0);if(vertices>limits.vertices)return [];
+  const f=layer.feature(i);vertices+=geometryVertices(f);if(vertices>limits.vertices)return [];
+  const geometry=f.loadGeometry().map(ring=>ring.map(p=>[p.x,p.y]));
   pieces.push({id:f.properties.id??f.id,type:f.type,extent:layer.extent,geometry});
  }
  return pieces;

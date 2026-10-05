@@ -15,3 +15,11 @@ test('Chinese fonts are optional during installation and cached for offline use 
  await assert.rejects(get('fonts/atlas-cjk-sc-v1.woff2'),/offline/,'a missing other-script font stays optional');
  assert.equal(requests.filter(url=>url.includes('atlas-cjk-tc')).length,1);
 });
+test('a Chinese font is still served when Cache Storage is unavailable or full',async()=>{
+ const source=await readFile(new URL('../styles/sw.js',import.meta.url),'utf8'),scope='https://atlas.test/',handlers={};
+ for(const caches of [{open:async()=>{throw Error('storage denied');}},{open:async()=>({match:async()=>undefined,put:async()=>{throw Error('QuotaExceededError');}})}]){
+  vm.runInNewContext(source,{URL,Response,Request,location:{origin:'https://atlas.test'},caches,fetch:async()=>new Response('font'),self:{registration:{scope},addEventListener:(name,handler)=>handlers[name]=handler,skipWaiting:async()=>{},clients:{claim:async()=>{}}}});
+  let result;handlers.fetch({request:{method:'GET',url:new URL('fonts/atlas-cjk-sc-v1.woff2',scope).href,mode:'cors'},respondWith:p=>result=p});
+  assert.equal(await (await result).text(),'font');
+ }
+});

@@ -314,3 +314,57 @@ test('every visible part of a multipolygon platform seeds its measurement, not o
   assert.ok(Math.abs(data.features[0].properties.platform_length-444.78)<.6,String(data.features[0].properties.platform_length));
  }finally{p.destroy();}
 });
+test('a platform area crossing the antimeridian is measured as one part',async()=>{
+ const crossing={type:'Feature',properties:{id:'way-35'},geometry:{type:'Polygon',coordinates:[[[179.998,.002],[180.002,.002],[180.002,.0021],[179.998,.0021],[179.998,.002]]]}};
+ const {geometry,requests}=providerTiles([crossing]);
+ const measured=await geometry.measure('way-35',platformTilesFor([[179.999,.002]]));
+ assert.ok(Math.abs(measured.length-444.78)<.6,String(measured?.length));
+ assert.ok(requests.some(url=>/\/15\/0\//.test(url)),'the wrapped first tile column is read');
+});
+// Measurement stub: platforms listed in `hang` wait until aborted, those in `fail` reject.
+function stubGeometry({hang=new Set(),fail=new Set()}={}){
+ const calls=[],signals=new Map();
+ return {calls,signals,measure:(id,seeds,signal)=>{calls.push(id);signals.set(id,signal);
+  if(hang.has(id))return new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(signal.reason)));
+  if(fail.has(id))return Promise.reject(new Error('tile unavailable'));
+  return Promise.resolve({length:100,length_estimated:true,length_basis:'mapped_extent',tiles:seeds.map(([x,y])=>`${x}/${y}`)});}};
+}
+const platformArea=id=>({properties:{id},geometry:{type:'Polygon',coordinates:[[[.0015,.002],[.0035,.002],[.0035,.0021],[.0015,.0021],[.0015,.002]]]}});
+function platformMap(visible){
+ return {getZoom:()=>19,getLayer:()=>({}),queryRenderedFeatures:({layers})=>layers.includes('platform-edges')?[]:visible(),getSource:id=>id==='platformNumbers'?{setData:()=>{}}:null};
+}
+test('a measurement for a platform no longer in view is cancelled and frees the slot',async()=>{
+ const geometry=stubGeometry({hang:new Set(['way-40'])});let visible=[platformArea('way-40')];
+ const p=createPlatformLengths(platformMap(()=>visible),{delay:0,geometry,fetcher:async()=>({ok:true,json:async()=>({properties:{ref:'1'}})})});
+ try{
+  p.update();await new Promise(r=>setTimeout(r,10));assert.deepEqual(geometry.calls,['way-40']);
+  visible=[platformArea('way-41')];p.update();await new Promise(r=>setTimeout(r,10));
+  assert.equal(geometry.signals.get('way-40').aborted,true);
+  assert.deepEqual(geometry.calls,['way-40','way-41'],'the newly visible platform is measured at once');
+ }finally{p.destroy();}
+});
+test('a platform whose tiles keep failing does not hold back the others',async()=>{
+ const geometry=stubGeometry({fail:new Set(['way-42'])});
+ const p=createPlatformLengths(platformMap(()=>[platformArea('way-42'),platformArea('way-43')]),{delay:0,retryDelay:50,geometry,fetcher:async()=>({ok:true,json:async()=>({properties:{ref:'1'}})})});
+ try{
+  p.update();await new Promise(r=>setTimeout(r,20));
+  assert.deepEqual(geometry.calls,['way-42','way-43'],'the next platform is measured after one fails');
+  await new Promise(r=>setTimeout(r,80));
+  assert.equal(geometry.calls.filter(id=>id==='way-42').length,2,'and is tried again after the delay');
+ }finally{p.destroy();}
+});
+test('a tile is rejected by its vertex count before any geometry is built',async()=>{
+ const {platformTilePieces,geometryVertices}=await import('../styles/tile-labels.mjs');
+ const {VectorTile}=await import('@mapbox/vector-tile'),{default:Pbf}=await import('pbf'),{default:vtpbf}=await import('vt-pbf');
+ const ring=Array.from({length:2001},(_,i)=>{const a=i/2000*2*Math.PI;return [.003+.002*Math.cos(a),.003+.002*Math.sin(a)];});
+ const index=geojsonvt({type:'FeatureCollection',features:[{type:'Feature',properties:{id:'way-44'},geometry:{type:'Polygon',coordinates:[ring]}}]},{maxZoom:15,indexMaxZoom:15,extent:4096,buffer:64,tolerance:0});
+ const [x,y]=platformTilesFor([[.003,.003]])[0],bytes=vtpbf.fromGeojsonVt({platforms:index.getTile(15,x,y)},{version:2});
+ const data=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);
+ const feature=new VectorTile(new Pbf(new Uint8Array(data))).layers.platforms.feature(0),count=geometryVertices(feature);
+ assert.equal(count,feature.loadGeometry().reduce((n,r)=>n+r.length,0));assert.ok(count>1000,String(count));
+ const proto=Object.getPrototypeOf(feature),load=proto.loadGeometry;let built=0;proto.loadGeometry=function(){built++;return load.call(this);};
+ try{
+  assert.deepEqual(platformTilePieces(data,'platforms',{bytes:1<<20,features:10,vertices:count-1}),[]);assert.equal(built,0);
+  assert.equal(platformTilePieces(data,'platforms',{bytes:1<<20,features:10,vertices:count})[0].geometry[0].length,count);
+ }finally{proto.loadGeometry=load;}
+});
