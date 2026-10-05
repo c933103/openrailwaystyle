@@ -48,6 +48,14 @@ Coasts are simplified to about 1 km. Sea within 12 nautical miles goes to the ne
 
 Unicode script checks include supplementary-plane Han characters; names are never automatically translated, transliterated or converted between character standards. If no preferred name exists, the native name remains visible.
 
+Chinese labels load a packaged regional CJK font with coverage of both Chinese
+scripts, so a name drawn in either script, or mixing both, uses one consistent
+font. A Simplified name shown in the Traditional view (and the reverse) is drawn
+as recorded. Fonts load alongside the map and replace cached glyphs
+when ready; each selected script's font is cached for later offline use. Neither
+font is part of mandatory app installation. Source, coverage and regeneration
+instructions are in [the font reference](../styles/fonts/README.md).
+
 ## Provider handling
 
 `styles/tile-labels.mjs` preserves vector tile geometry and attaches the selected display name. The station provider exposes one translation per request, so the client requests fallback languages only while current-view stations remain unresolved and retains a bounded cache. Missing translations are distinguished from the provider's native-name substitution. Failed optional translation lookups retain already loaded stations. Snapshot line names retain OSM `name:*` tags. The operating-line provider generally exposes **only local names**, so translations omitted from those tiles cannot be recovered by the selector. Search results depend on the separate search API. Railway names appear along tracks from zoom 9; speed labels retain source units.

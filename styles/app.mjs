@@ -1,19 +1,20 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261005-bundles1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261005-bundles1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261005-bundles1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261005-bundles1';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261005-font19';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261005-font19';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261005-font19';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261005-font19';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261005-font19';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261005-bundles1';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261005-bundles1';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261005-bundles1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261005-bundles1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261005-bundles1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261005-bundles1';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261005-bundles1';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261005-bundles1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261005-bundles1';
-import { installWatchGesture } from './watch-map.mjs?v=20261005-bundles1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261005-bundles1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261005-font19';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261005-font19';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261005-font19';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261005-font19';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261005-font19';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261005-font19';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261005-font19';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261005-font19';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261005-font19';
+import { installWatchGesture } from './watch-map.mjs?v=20261005-font19';
+import { createBundleReader } from './tile-bundles.mjs?v=20261005-font19';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -48,7 +49,7 @@ let legendHelpOpen = false;
 let platformLengths,frequencyExpiry;
 let powerFacilities;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261005-bundles1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261005-font19';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -65,12 +66,6 @@ libraries.catch(() => {}); labels.catch(() => {});
 // Han characters are drawn with local fonts. One font per label language keeps
 // glyph styles consistent: with a generic family, browsers mix fonts, e.g.
 // a Japanese font for shared characters and a Chinese one for the rest.
-const CJK_FONTS = {
-  'zh-Hans': '"Noto Sans SC","Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei","Hiragino Sans GB",sans-serif',
-  'zh-Hant': '"Noto Sans TC","Noto Sans CJK TC","Source Han Sans TC","PingFang TC","Microsoft JhengHei",sans-serif',
-  ja: '"Noto Sans JP","Noto Sans CJK JP","Source Han Sans JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo",sans-serif',
-  ko: '"Noto Sans KR","Noto Sans CJK KR","Source Han Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif',
-};
 function cjkScript(lang) {
   if (CJK_FONTS[lang]) return lang;
   // Other label languages follow the browser's language, else Simplified
@@ -78,20 +73,82 @@ function cjkScript(lang) {
   const browser = (navigator.languages || [navigator.language]).map(l => l || '').find(l => /^(zh|ja|ko)/i.test(l)) || '';
   return /^zh-(Hant|TW|HK|MO)/i.test(browser) ? 'zh-Hant' : /^ja/i.test(browser) ? 'ja' : /^ko/i.test(browser) ? 'ko' : 'zh-Hans';
 }
-const cjkFont = lang => CJK_FONTS[cjkScript(lang)];
+const loadedCjkFonts=new Set(),cjkFontLoads=new Map(),cjkChoices=new Map(),cjkFontFailures=new Map();let cjkFontRefresh=false;
+const bundledCjkFamily=script=>`Atlas CJK ${script==='zh-Hant'?'TC':'SC'}`;
+// The packaged font when loaded, else the installed font chosen by probing,
+// else the script's candidate list for the system to resolve.
+const cjkFont = lang => {
+  const script=cjkScript(lang),family=cjkChoices.get(script)?.family;
+  return loadedCjkFonts.has(script)?`"${bundledCjkFamily(script)}"`:family?`"${family}",sans-serif`:CJK_FONTS[script];
+};
+// Installed fonts are probed once per script (cjk-font.mjs). Nothing is
+// downloaded for a device whose own font covers every character set.
+let probeMeasure;
+function cjkMeasure(){
+  probeMeasure ||= (async()=>{
+    if(!window.FontFace||!document.fonts)return null;
+    const face=new FontFace(PROBE_FAMILY,`url("${PROBE_FONT}")`);await face.load();document.fonts.add(face);
+    const canvas=typeof OffscreenCanvas==='function'?new OffscreenCanvas(64,64):document.createElement('canvas'),ctx=canvas.getContext('2d');
+    if(!ctx?.measureText)return null;
+    ctx.atlasProbe=true;
+    return (family,character)=>{ctx.font=`32px "${family}","${PROBE_FAMILY}"`;return ctx.measureText(character).width;};
+  })().catch(()=>null);
+  return probeMeasure;
+}
+function refreshCjkFont(){if(ready)reloadLanguage();else if(map)cjkFontRefresh=true;}
+function ensureCjkChoice(script){
+  if(cjkChoices.has(script))return;
+  cjkChoices.set(script,null);
+  const candidates=familyNames(CJK_FONTS[script]);
+  cjkMeasure().then(async measure=>{
+    // A family provided as a page font must load before it can be measured;
+    // installed fonts need no request.
+    if(measure)await Promise.all(candidates.map(f=>document.fonts.load?.(`32px "${f}"`,Object.values(PROBE_SETS).join('')).catch(()=>{})));
+    const choice=measure?chooseCjkFont(candidates,measure):null;
+    cjkChoices.set(script,choice);
+    if(choice?.family&&cjkScript(settings.language)===script)refreshCjkFont();
+  });
+}
+// The packaged Chinese font is fetched only when Han labels are actually
+// drawn and the installed Chinese font misses some character set. Japanese
+// and Korean keep their installed fonts: the packaged ones are Chinese designs.
+function loadCjkFont(script){
+  const choice=cjkChoices.get(script);
+  if(!['zh-Hant','zh-Hans'].includes(script)||!choice?.family||choice.complete||!window.FontFace||!document.fonts)return;
+  if(cjkFontLoads.has(script)||Date.now()<(cjkFontFailures.get(script)?.until??0))return;
+  const code=script==='zh-Hant'?'tc':'sc',face=new FontFace(bundledCjkFamily(script),`url("${new URL(`fonts/atlas-cjk-${code}-v1.woff2`,import.meta.url).href}")`);
+  document.fonts.add(face);
+  const pending=face.load().then(()=>{
+    loadedCjkFonts.add(script);
+    if(cjkScript(settings.language)===script)refreshCjkFont();
+  }).catch(error=>{
+    // Labels keep the installed font meanwhile. Each failure doubles the wait
+    // before the next attempt (30 s to 10 min); going back online retries.
+    document.fonts.delete(face);cjkFontLoads.delete(script);
+    const delay=Math.min(2*(cjkFontFailures.get(script)?.delay??15000),600000);
+    cjkFontFailures.set(script,{delay,until:Date.now()+delay});
+    console.warn('Chinese label font unavailable:',error?.message||String(error));
+  });
+  cjkFontLoads.set(script,pending);
+}
+window.addEventListener?.('online',()=>cjkFontFailures.clear());
+ensureCjkChoice(cjkScript(settings.language));
 // Named fonts are missing on many systems (Android exposes none), and the
 // generic fallback then picks glyph shapes by language. MapLibre draws on a
 // canvas outside the page, which has no language, so the browser's default
 // applies: often Japanese shapes for Chinese names (e.g. 门). Give the canvas
 // the label language whenever MapLibre sets up one of these fonts.
 const CANVAS_LANG = {'zh-Hans':'zh-CN', 'zh-Hant':'zh-TW', ja:'ja', ko:'ko'};
-{
-  const context = window.CanvasRenderingContext2D?.prototype;
+// MapLibre may draw glyphs on an OffscreenCanvas, whose context is another class.
+for (const context of [window.CanvasRenderingContext2D?.prototype, window.OffscreenCanvasRenderingContext2D?.prototype]) {
   const font = context && Object.getOwnPropertyDescriptor(context, 'font');
-  if (font?.set && 'lang' in context) Object.defineProperty(context, 'font', {...font, set(value) {
+  if (font?.set) Object.defineProperty(context, 'font', {...font, set(value) {
     font.set.call(this, value);
-    const script = Object.keys(CJK_FONTS).find(key => String(value).includes(CJK_FONTS[key]));
-    if (script) this.lang = CANVAS_LANG[script];
+    if (this.atlasProbe) return;
+    const text = String(value), chosen = key => cjkChoices.get(key)?.family;
+    const script = Object.keys(CJK_FONTS).find(key => text.includes(CJK_FONTS[key])||text.includes(bundledCjkFamily(key))||(chosen(key)&&text.includes(chosen(key))));
+    // MapLibre is drawing Han glyphs in this script's font.
+    if (script) {if ('lang' in this) this.lang = CANVAS_LANG[script]; loadCjkFont(script);}
   }});
 }
 // Run once the map has loaded, or now if it has.
@@ -484,7 +541,7 @@ function stationObject(osmId) {
   return null;
 }
 function showDetails(feature) {
-  if(['platformEdges','platformLengths','platforms'].includes(feature.source))feature=platformLengths?.enrich(feature)||feature;
+  if(['platformEdges','platformLengths','platforms','platformNumbers'].includes(feature.source))feature=platformLengths?.enrich(feature)||feature;
   currentFeature = feature;
   if (['electricFacilities','electricSubstations'].includes(feature.source)) { showPowerFacilityDetails(feature); return; }
   if([...SIGNAL_SOURCES,'stationEntrances'].includes(feature.source)){showRailwayPointDetails(feature);return;}
@@ -501,7 +558,7 @@ function showDetails(feature) {
   row(dl, 'Type', p.feature || p.railway || (isStation ? 'station' : undefined));
   row(dl, 'Status', p.state || 'present');
   row(dl, 'Reference', p.label || p.ref || p.railway_ref || p['railway:ref']);
-  if(isPlatform){row(dl,'Boarding edge length',formatPlatformLength(Number(p.platform_length),settings.units));row(dl,'Platform',p.ref);}
+  if(isPlatform){row(dl,p.feature==='platform_edge'?'Boarding edge length':p.length_estimated?'Estimated platform extent':'Mapped platform length',formatPlatformLength(Number(p.platform_length),settings.units));if(p.length_estimated)panel.append(textNode('p','Approximate longitudinal extent of the complete mapped platform area; usable boarding length can differ.','small'));row(dl,'Platform',p.ref);}
   else if (isStation) {
     row(dl, 'Station type', p.station);
     if(p.curated){row(dl,'Selection',p.basis);row(dl,'Mapped object',p.mapped_feature);}else if(!p.curated) row(dl, 'Mapped size', p.station_size);
@@ -781,7 +838,7 @@ function unitStyle(style) {
     if(layer.id==='service-routes')Object.assign(layer.paint,{'line-width':frequencyPaint.width,'line-offset':frequencyPaint.offset,'line-opacity':frequencyPaint.opacity});
     if(layer.id==='service-names')layer.layout['text-offset']=frequencyPaint.labelOffset;
     if (/^speed-(branch-overview|metro-overview|overview|tracks)$/.test(layer.id)) layer.paint['line-color'] = speedPaint(settings.units);
-    if(layer.id==='platform-lengths')layer.layout['text-field']=platformLengthLabel(settings.units);
+    if(['platform-lengths','platform-numbers'].includes(layer.id))layer.layout['text-field']=platformLengthLabel(settings.units);
     if (layer.id === 'axle-labels') layer.layout['text-field'] = axleLabel(settings.units);
     if (layer.id === 'speed-labels') layer.layout['text-field'] = speedLabel(settings.units);
     if (/^inactive-(regional|railways)-/.test(layer.id) && layer.type === 'line' && !layer.id.includes('bridge')) layer.paint['line-color'] = inactivePaint(settings.mode, settings.units);
@@ -811,6 +868,7 @@ function applyUnits() {
   unitStyle(style);
   for (const layer of style.layers) {
     if (/^speed-(branch-overview|metro-overview|overview|tracks)$/.test(layer.id) || (/^inactive-(regional|railways)-/.test(layer.id) && !layer.id.includes('bridge'))) map.setPaintProperty(layer.id, 'line-color', layer.paint['line-color']);
+    if (layer.id === 'speed-labels' || layer.id === 'axle-labels' || ['platform-lengths','platform-numbers'].includes(layer.id) || /^terrain-(seabed-)?contour-labels/.test(layer.id)) map.setLayoutProperty(layer.id, 'text-field', layer.layout['text-field']);
     if (layer.id === 'speed-labels' || layer.id === 'axle-labels' || layer.id === 'platform-lengths' || /^terrain-(seabed-)?contour-labels/.test(layer.id)) map.setLayoutProperty(layer.id, 'text-field', layer.layout['text-field']);
     if (/^terrain-seabed-contours(?:-close)?$/.test(layer.id)) map.setPaintProperty(layer.id, 'line-opacity', layer.paint['line-opacity']);
   }
@@ -841,9 +899,18 @@ function updateStatus() {
 }
 const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg|owner|axle):\/\//,'');
 function localizeStyle(style) {
+  // MapLibre draws Han glyphs with each layer's own font stack, so the Han
+  // font (packaged or chosen installed) joins every explicit stack.
+  const script=cjkScript(settings.language),family=loadedCjkFonts.has(script)?bundledCjkFamily(script):cjkChoices.get(script)?.family||null;
   for (const layer of style.layers) {
     if (shouldLocalizeLayer(layer)) layer.layout['text-field'] = labelExpression(settings.language);
+    const fonts=layer.layout?.['text-font'];
+    if(Array.isArray(fonts)&&fonts.every(f=>typeof f==='string')){
+      const original=fonts.filter(f=>!isLocalFamily(f));
+      layer.layout['text-font']=family?[...original,family]:original;
+    }
   }
+  if(style.glyphs)style.glyphs='atlasglyph://'+style.glyphs.replace(/^atlasglyph:\/\//,'');
   style.sources.openmaptiles.url = `atlasbase://${settings.language}/${unwrap(style.sources.openmaptiles.url).replace(/^pmtiles:\/\//,'')}`;
   for(const id of ['stationLow','stationMed','stations']) style.sources[id].url = `atlasstation://${settings.language}/${unwrap(style.sources[id].url)}`;
   style.sources.streetRunning.tiles = [`streettiles://{z}/{x}/{y}?lang=${settings.language}`];
@@ -1311,7 +1378,7 @@ async function initialize() {
   const styleReady = () => {
     ready = true;
     // Settings changed while the map was loading take effect now.
-    if (styleLanguage !== settings.language) { reloadLanguage(); return; }
+    if (styleLanguage !== settings.language||cjkFontRefresh) {cjkFontRefresh=false;reloadLanguage(); return; }
     installDrawing();
     // A remembered globe/flat choice holds until the automatic choice changes.
     if (typeof rememberedView.g === 'boolean') lastAutoProjection = wantedProjection();
@@ -1321,7 +1388,7 @@ async function initialize() {
   };
   if (map.isStyleLoaded?.()) styleReady(); else map.once('style.load', styleReady);
   map.on('idle', updateStatus);
-  platformLengths=createPlatformLengths(map,{active:()=>ready&&settings.mode==='infrastructure'&&settings.labels&&settings.background!=='satellite',onLength:(id,length)=>{if(length>0&&['platformEdges','platformLengths'].includes(currentFeature?.source)&&String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);},onPlatform:(id)=>{if(currentFeature?.source==='platforms'&&String(currentFeature.properties.id)===id)showDetails(currentFeature);}});
+  platformLengths=createPlatformLengths(map,{geometry:createPlatformTileGeometry({tileURL:()=>map.getSource('platforms')?.tiles?.[0],decode:async data=>(await labels).platformTilePieces(data,'standard_railway_platforms')}),active:()=>ready&&settings.mode==='infrastructure'&&settings.labels&&settings.background!=='satellite',onLength:(id,length)=>{if(length>0&&['platformEdges','platformLengths'].includes(currentFeature?.source)&&String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);},onPlatform:(id)=>{if(['platforms','platformNumbers'].includes(currentFeature?.source)&&String(currentFeature.properties.id)===id)showDetails(currentFeature);}});
   map.on('moveend',()=>platformLengths.update());
   map.on('remove',()=>platformLengths.destroy());
   let platformFramePending=false;
@@ -1410,7 +1477,7 @@ function reloadLanguage() {
   // Camera and display options persist; protocol/HTTP caches reuse the data.
   map.once('style.load',()=>{
     ready=true;
-    if(appliedLanguage!==settings.language) {reloadLanguage();return;}
+    if(appliedLanguage!==settings.language||cjkFontRefresh) {cjkFontRefresh=false;reloadLanguage();return;}
     applySettings();applyUnits();updateStatus();
     document.body.dataset.mapReady = 'true';
     if(currentFeature) {showDetails(currentFeature);renameOpenMajorStation();}
@@ -1424,6 +1491,7 @@ function reloadLanguage() {
   select.value=settings.language;
   select.addEventListener('change',()=>{
     settings.language=select.value;
+    ensureCjkChoice(cjkScript(settings.language));
     if(ready) reloadLanguage();
     saveSettings();
   });
