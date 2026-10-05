@@ -1,9 +1,9 @@
-import {chromium} from 'playwright';
+import {launchBrowser} from './browser.mjs';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
-const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 await mkdir('browser-review',{recursive:true});
 try {
  for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]) {

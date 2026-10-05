@@ -1,4 +1,4 @@
-import {chromium} from 'playwright';
+import {launchBrowser} from './browser.mjs';
 import assert from 'node:assert/strict';
 import {mkdir, readFile} from 'node:fs/promises';
 
@@ -10,7 +10,7 @@ const library = app.match(/loadScript\('([^']+maplibre-gl[^']+\.js)'/)[1];
 const deadline=setTimeout(()=>{console.error('Bathymetry validation exceeded five minutes');process.exit(1);},300000);deadline.unref();
 const proxyURL=process.env.HTTPS_PROXY || process.env.https_proxy;
 const proxy=proxyURL ? {server:proxyURL,bypass:'localhost,127.0.0.1'} : undefined;
-const browser = await chromium.launch({headless:true,proxy,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+const browser = await launchBrowser({headless:true,proxy,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page = await browser.newPage({viewport:{width:1365,height:900},deviceScaleFactor:1});
 const errors = [];
 page.on('pageerror',error=>errors.push(error.message));

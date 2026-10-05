@@ -5,7 +5,7 @@ import {readFile,mkdir} from 'node:fs/promises';
 import {gunzipSync} from 'node:zlib';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
-import {chromium} from 'playwright';
+import {launchBrowser} from './browser.mjs';
 const root=process.env.ATLAS_TEST_URL || 'http://127.0.0.1:4173';
 const key='12/3344/1785', [z,x,y]=key.split('/').map(Number);
 const layer=new VectorTile(new Pbf(gunzipSync(await readFile(`styles/data/service-routes/${key}.pbf.gz`)))).layers.service_routes;
@@ -18,7 +18,7 @@ assert.equal(bundle.length,chosen.properties.n,'every service in the bundle is r
 // The fresh-data fixture remains testable after its live profile expires.
 // Unit tests separately verify the stale/unavailable fallback.
 const fixtureNow=(chosen.properties.frequency_until-86400)*1000;
-const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 try {
   const page=await browser.newPage({viewport:{width:480,height:480}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
