@@ -8,13 +8,22 @@ import tarfile
 import tempfile
 import time
 from urllib.error import HTTPError
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 REPOSITORY=os.environ.get('GITHUB_REPOSITORY','c933103/openrailwaystyle')
 if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',REPOSITORY):
     raise ValueError('Invalid GITHUB_REPOSITORY')
 URL=f'https://github.com/{REPOSITORY}/releases/download/service-frequency-data/frequency-snapshot.tar.gz'
 RELEASE_URL=f'https://api.github.com/repos/{REPOSITORY}/releases/tags/service-frequency-data'
+
+
+def release_request():
+    # Anonymous API calls share a small per-address rate limit on hosted
+    # runners, so a 403 there could hide whether the release exists.
+    token=os.environ.get('GITHUB_TOKEN')
+    headers={'Accept':'application/vnd.github+json'}
+    if token:headers['Authorization']=f'Bearer {token}'
+    return Request(RELEASE_URL,headers=headers)
 
 
 def unpack(path, output):
@@ -55,7 +64,7 @@ def main():
                 # An existing release with a temporarily replaced/missing
                 # asset must not be mistaken for initial no-data startup.
                 try:
-                    with urlopen(RELEASE_URL,timeout=30):pass
+                    with urlopen(release_request(),timeout=30):pass
                 except HTTPError as release_error:
                     if release_error.code!=404:raise
                     print('No worldwide frequency release yet; frequency coverage remains unknown.');return

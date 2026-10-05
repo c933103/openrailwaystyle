@@ -61,6 +61,15 @@ cp -R "$snapshot_dir/street-data/12" "$snapshot_dir/street-data/index.json" "$sn
 
 mkdir -p styles/data/level-crossings
 cp -R "$snapshot_dir/crossing-data/5" "$snapshot_dir/crossing-data/9" "$snapshot_dir/crossing-data/index.json" "$snapshot_dir/crossing-data/manifest.json" styles/data/level-crossings/
+
+# Optional historic areas; without them the planning context shows none.
+mkdir -p styles/data/heritage
+if git ls-remote --exit-code --heads https://github.com/c933103/openrailwaystyle.git heritage-data; then
+  git clone --depth 1 --single-branch --branch heritage-data https://github.com/c933103/openrailwaystyle.git "$snapshot_dir/heritage-data"
+  cp -R "$snapshot_dir"/heritage-data/* styles/data/heritage/
+else
+  echo '{"tiles":[]}' > styles/data/heritage/index.json
+fi
 ```
 
 For the facility overlays, load the validated `traction-data` snapshot as well:

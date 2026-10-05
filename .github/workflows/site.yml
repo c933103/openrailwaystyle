@@ -128,6 +128,24 @@ jobs:
           else
             echo '{"tiles":[]}' > styles/data/level-crossings/index.json
           fi
+      # Historic areas (heritage.yml); without them the planning context
+      # shows no historic areas.
+      - name: Load historic areas
+        run: |
+          mkdir -p styles/data/heritage
+          # Exit status 2: no snapshot yet. Any other failure stops the
+          # deploy rather than publishing the site without historic areas.
+          status=0
+          git ls-remote --exit-code --heads origin heritage-data || status=$?
+          if [ "$status" = 0 ]; then
+            git fetch --depth=1 origin heritage-data
+            git archive FETCH_HEAD | tar -x -C styles/data/heritage
+          elif [ "$status" = 2 ]; then
+            echo '{"tiles":[]}' > styles/data/heritage/index.json
+          else
+            echo "Could not look up the heritage-data snapshot (git exit $status)"
+            exit 1
+          fi
       # Operating branch lines for zooms 4–6 and metro lines for 7–9 (branch-lines.yml), filled in
       # region by region; without them the overview shows main lines only.
       - name: Load branch lines
@@ -163,6 +181,8 @@ jobs:
             exit 1
           fi
       - name: Add reviewed timetable shapes and peak/off-peak profiles to service tiles
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           python3 scripts/load-frequency-snapshot.py
           node scripts/rebuild-service-frequency.mjs
