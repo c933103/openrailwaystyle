@@ -6,7 +6,7 @@ on:
     - cron: '23 5 1 * *'
   push:
     branches: [main]
-    paths: ['scripts/build-heritage.mjs', 'scripts/heritage-data.mjs', '.github/workflows/heritage.yml']
+    paths: ['scripts/build-heritage.mjs', 'scripts/heritage-data.mjs', 'styles/pbf-utf8.mjs', '.github/workflows/heritage.yml']
 permissions:
   contents: write
   actions: write
