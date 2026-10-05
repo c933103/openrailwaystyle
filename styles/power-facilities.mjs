@@ -72,17 +72,24 @@ export function powerFacilityName(properties = {}) {
 
 // The dataset is downloaded only once the Power view needs it. Visitors read
 // the prepared snapshot; there are no live Overpass requests in the browser.
-export function createPowerFacilityLoader(map, {url, active = ()=>true, fetcher = fetch, onError = ()=>{}, language = ()=>'', localize = data=>data} = {}) {
-  let pending, raw, shownLanguage, retryAfter = 0;
-  const show = () => {
+// glyphs(data) may delay showing localized names, for fonts they need.
+export function createPowerFacilityLoader(map, {url, active = ()=>true, fetcher = fetch, onError = ()=>{}, language = ()=>'', localize = data=>data, glyphs = async()=>{}} = {}) {
+  let pending, raw, shownLanguage, retryAfter = 0, showing;
+  const show = async () => {
     const nextLanguage=language();
-    if (!raw || nextLanguage===shownLanguage) return;
-    map.getSource('electricFacilities')?.setData(localize(structuredClone(raw),nextLanguage));
+    if (!raw || nextLanguage===shownLanguage || showing===nextLanguage) return;
+    showing=nextLanguage;
+    const data=localize(structuredClone(raw),nextLanguage);
+    try { await glyphs(data); } catch {}
+    if (showing!==nextLanguage) return;
+    showing=undefined;
+    if (language()!==nextLanguage) return show();
+    map.getSource('electricFacilities')?.setData(data);
     shownLanguage=nextLanguage;
   };
   return async function refresh() {
     if (!active() || !map.getSource('electricFacilities')) return;
-    if (raw) {show();return;}
+    if (raw) return show();
     if (Date.now()<retryAfter) return;
     if (pending) return pending;
     pending = (async()=>{
@@ -91,7 +98,7 @@ export function createPowerFacilityLoader(map, {url, active = ()=>true, fetcher 
       const data = await response.json();
       if (data?.type !== 'FeatureCollection' || !Array.isArray(data.features)) throw new Error('Invalid railway energy supply snapshot');
       raw = data;
-      show();
+      await show();
     })().catch(error=>{retryAfter=Date.now()+60000;onError(error);}).finally(()=>{pending=undefined;});
     return pending;
   };

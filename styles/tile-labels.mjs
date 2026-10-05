@@ -139,6 +139,8 @@ export function tileTextBlocks(data, found = new Set()) {
 export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch, {dataRoot, timeout = 12000, basemapRetries = [500, 2000], basemapArchive, tileRetries = [1000], rareGlyphs} = {}) {
   // Rare-Han glyph slices for a tile's labels load before the tile is drawn.
   const withGlyphs = async (data, found) => { if (found.size && rareGlyphs) await rareGlyphs(found); return data; };
+  // A tile drawn as stored: the rare Han of its text values.
+  const storedGlyphs = data => withGlyphs(data, tileTextBlocks(data));
   // Only current-view requests are made. Keep a bounded cache of successful
   // responses so language changes can reuse downloaded station tiles.
   const cache = new ByteCache();
@@ -249,7 +251,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     // Railway labels are drawn as stored, so the tile's text values give their
     // glyphs.
     const data = (await get(url, controller.signal)).slice(0);
-    return {data: await withGlyphs(data, tileTextBlocks(data))};
+    return {data: await storedGlyphs(data)};
   });
   // Overview tiles (zoom 0–6) carry way IDs but no loading gauge: add it
   // from the published way ID list (data/loading-gauge.json, about 250 kB
@@ -272,14 +274,14 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     const [response, list] = await Promise.all([fetcher(url,{signal:controller.signal}), loadingGaugeList()]);
     if (!response.ok && response.status !== 204) throw new Error(`Railway tile returned ${response.status}`);
     const data = await response.arrayBuffer();
-    if (!data.byteLength || !list.size) return {data};
+    if (!data.byteLength || !list.size) return {data: await storedGlyphs(data)};
     const tile = readTile(data);
     for (const f of features(tile)) {
       const value = list.get(wayId(f.properties.id));
       if (value) f.properties.loading_gauge = value;
     }
     const result = encode(tile);
-    return {data: result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength)};
+    return {data: await storedGlyphs(result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength))};
   });
   // The snapshot is fetched only when an Axle load tile is requested.
   let axleList;
@@ -310,7 +312,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       const data=await get(url,controller.signal,true);
       return {data:{...data,tiles:data.tiles.map(t=>`atlasaxle://${t}`)}};
     }
-    return {data:await axleTile(await get(url,controller.signal))};
+    return {data:await storedGlyphs(await axleTile(await get(url,controller.signal)))};
   });
   // Owner view: the railway tiles with each line's owner colour added
   // (owner_color, from the name; ownerColor).
@@ -328,7 +330,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       if (color) f.properties.owner_color = color;
     }
     const result = encode(tile);
-    return {data: result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength)};
+    return {data: await storedGlyphs(result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength))};
   });
   maplibregl.addProtocol('atlasbase',async (params,controller)=>{
     const [,lang,url] = /^atlasbase:\/\/([^/]+)\/(.+)$/.exec(params.url) || [];

@@ -1195,11 +1195,10 @@ async function initialize() {
     if (!response.ok) throw new Error(`Railway tile returned ${response.status}`);
     const [z,x,y] = key.split('/').map(Number);
     const data = await decodeLifecycleTile(await response.arrayBuffer());
-    if(scheme==='axlebranch') return {data:await labelProtocols.axleTile(data)};
     if (!names) {
-      const found = tileTextBlocks(data);
+      const stored = scheme==='axlebranch' ? await labelProtocols.axleTile(data) : data, found = tileTextBlocks(stored);
       if (found.size) await rareHanFonts.ensure(found);
-      return {data};
+      return {data: stored};
     }
     const found = new Set(), localized = localizeTile(data,lang,{z,x,y},found);
     if (found.size) await rareHanFonts.ensure(found);
@@ -1273,6 +1272,7 @@ async function initialize() {
   powerFacilities = createPowerFacilityLoader(map, {url:new URL('./data/traction/power/power-facilities.geojson',import.meta.url),
     active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=10,
     language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>{const properties={...f.properties,...locate(...f.geometry.coordinates)};return {...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language}};})}),
+    glyphs:async data=>{const found=new Set();for(const f of data.features)rareHanBlocks(f.properties.atlas_name,found);if(found.size)await rareHanFonts.ensure(found);},
     fetcher:fetch,onError:error=>console.warn('Railway energy supplies unavailable:',error.message)});
   updateAttribution();
   // The globe may be centred beyond 85° (globe-drag.mjs); a view left or

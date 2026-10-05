@@ -392,3 +392,16 @@ test('label protocols hand a tile to the map only after the glyph slices its rar
   await new Promise(r=>setTimeout(r,0));release();await rail;
   assert.deepEqual(asked,[[0x300]],'railway names, drawn as stored, are read from the tile bytes');
 });
+test('railway tiles drawn as stored or re-encoded load the rare Han of their text',async()=>{
+  const protocols={},requested=[];
+  const bytes=name=>Uint8Array.from(tile({name,owner:name,maxspeed:268439664})).buffer;
+  const tiles={'/rare/':bytes('\u{2A700}線'),'/plain/':bytes('Plain')};
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},async url=>({ok:true,status:200,arrayBuffer:async()=>tiles[Object.keys(tiles).find(k=>String(url).includes(k))].slice(0),json:async()=>({})}),{rareGlyphs:async found=>{requested.push([...found]);}});
+  for(const scheme of ['atlasrail','atlasowner','atlasaxle']){
+    requested.length=0;
+    await protocols[scheme]({url:`${scheme}://https://example.org/plain/14/1/1`},new AbortController());
+    assert.deepEqual(requested,[],`${scheme}: a number whose bytes look like UTF-8 requests nothing`);
+    await protocols[scheme]({url:`${scheme}://https://example.org/rare/14/1/1`},new AbortController());
+    assert.deepEqual(requested,[[0x2a7]],scheme);
+  }
+});
