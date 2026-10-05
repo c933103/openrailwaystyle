@@ -72,9 +72,11 @@ test('every browser check launches through the shared helper', async () => {
   }
 });
 
-test('the site workflow runs every browser check', async () => {
+test('the site workflow plans the browser checks and runs them through the runner', async () => {
   const workflow = await readFile(new URL('../.github/workflows/site.yml', import.meta.url), 'utf8');
-  const validate = workflow.slice(workflow.indexOf('\n  validate:'), workflow.indexOf('\n  deploy:'));
-  for (const name of (await readdir(new URL('../scripts/', import.meta.url))).filter(name => /^check-.*-browser\.mjs$/.test(name)))
-    assert.ok(validate.includes(name), `${name} is not run by the validate job`);
+  assert.match(workflow, /run: node scripts\/ci-plan\.mjs/);
+  assert.match(workflow, /matrix: \$\{\{ fromJSON\(needs\.plan\.outputs\.matrix\) \}\}/);
+  assert.match(workflow, /node scripts\/run-browser-checks\.mjs --concurrency 2 --label "\$GROUP" \$CHECKS/);
+  assert.match(workflow, /BROWSER_TILE_CACHE: \$\{\{ github\.workspace \}\}\/\.browser-tiles/);
+  // Every check is named in exactly one job of scripts/ci-plan.mjs (tests/ci-plan.test.mjs).
 });

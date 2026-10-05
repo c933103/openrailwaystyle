@@ -28,12 +28,43 @@ jobs:
           done
           echo 'No complete worldwide railway facility snapshot has been published.'
           exit 1
+  # Which browser checks this run needs (scripts/ci-plan.mjs): all when the
+  # site changes, only a check's own when only its files change, none for
+  # tests, docs and other pipelines, and none again on main for a tree that
+  # already passed in its pull request.
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      statuses: read
+      pull-requests: read
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      browser: ${{ steps.plan.outputs.browser }}
+      tree: ${{ steps.plan.outputs.tree }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          REF: ${{ github.ref }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ci-plan.mjs
+  # Builds and unit-tests the site and hands it to the browser jobs and the
+  # deploy job.
   validate:
     needs: facilities
     runs-on: ubuntu-latest
-    # The browser checks took about 55 minutes one after another on
-    # software rendering; they now run two at a time with cached tiles.
-    timeout-minutes: 90
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -185,75 +216,111 @@ jobs:
             assert.equal(manifest.complete,true,`Incomplete ${kind} facility snapshot`);
           }
           JS
-      - name: Install test browser
-        run: npx playwright install --with-deps chromium
-      # Map tiles, glyphs and provider API answers the checks fetch, kept for
-      # a week (scripts/browser.mjs). The site under test is never cached.
-      - name: Restore browser tile cache
-        uses: actions/cache/restore@v4
-        with:
-          path: .browser-tiles
-          key: browser-tiles-v1-${{ github.run_id }}
-          restore-keys: browser-tiles-v1-
-      - name: Start test server
-        run: |
-          rm -f .browser-tiles/.changed
-          node scripts/serve.mjs &
-      - name: Verify mapped frequency profiles across world regions
-        env:
-          BROWSER_TILE_CACHE: ${{ github.workspace }}/.browser-tiles
-        run: |
-          # Real dated feeds are test fixtures, never a production city list.
-          # This check replaces the service data, so it runs alone.
-          node scripts/rebuild-service-frequency.mjs styles/data/service-routes /tmp/frequency-fixture-credits.html --fixtures
-          node scripts/check-world-frequency-browser.mjs
-          # Restore the production worldwide snapshot after fixture checks.
-          node scripts/rebuild-service-frequency.mjs
-      # Two at a time, longest first, each slot with its own browser
-      # (scripts/run-browser-checks.mjs).
-      - name: Verify the map in Chromium
-        env:
-          BROWSER_TILE_CACHE: ${{ github.workspace }}/.browser-tiles
-        run: >-
-          node scripts/run-browser-checks.mjs --concurrency 2 --label all
-          check-major-stations-browser.mjs
-          check-map-browser.mjs
-          check-context-browser.mjs
-          check-map-controls-browser.mjs
-          check-planning-browser.mjs
-          check-signal-power-browser.mjs
-          check-platform-browser.mjs
-          check-infrastructure-browser.mjs
-          check-platform-stations-browser.mjs
-          check-bathymetry-browser.mjs
-          check-globe-browser.mjs
-          check-build-browser.mjs
-          check-watch-browser.mjs
-          check-polar-browser.mjs
-          check-service-frequency-browser.mjs
-      - name: Prune browser tile cache
-        if: always() && hashFiles('.browser-tiles/.changed') != ''
-        run: node scripts/browser.mjs prune .browser-tiles
-      - name: Upload browser tile cache
-        if: always() && hashFiles('.browser-tiles/.changed') != ''
-        uses: actions/cache/save@v4
-        with:
-          path: .browser-tiles
-          key: browser-tiles-v1-${{ github.run_id }}
-      - name: Save browser review
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: browser-review
-          path: browser-review
+      # Already-compressed tiles: zipping them again only costs time.
       - name: Save reviewable site
         uses: actions/upload-artifact@v4
         with:
           name: railway-world-site
           path: styles
+          compression-level: 0
+  # The browser checks, in parallel jobs of a few checks each, two at a time
+  # within a job (scripts/run-browser-checks.mjs), with provider tiles cached
+  # per job for a week (scripts/browser.mjs).
+  browser:
+    name: browser (${{ matrix.group }})
+    needs: [plan, validate]
+    if: needs.plan.outputs.browser == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      BROWSER_TILE_CACHE: ${{ github.workspace }}/.browser-tiles
+      GROUP: ${{ matrix.group }}
+      CHECKS: ${{ matrix.checks }}
+      PREPARE: ${{ matrix.prepare }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          name: railway-world-site
+          path: styles
+      - name: Install test browser
+        run: npx playwright install --with-deps chromium
+      - name: Restore browser tile cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .browser-tiles
+          key: browser-tiles-v1-${{ matrix.group }}-${{ github.run_id }}
+          restore-keys: browser-tiles-v1-${{ matrix.group }}-
+      - name: Start test server
+        run: |
+          rm -f .browser-tiles/.changed
+          node scripts/serve.mjs &
+      # Real dated feeds are test fixtures, never a production city list;
+      # this job's copy of the site is discarded afterwards.
+      - name: Prepare check data
+        if: matrix.prepare != ''
+        run: bash -c "$PREPARE"
+      - name: Run browser checks
+        run: node scripts/run-browser-checks.mjs --concurrency 2 --label "$GROUP" $CHECKS
+      - name: Prune browser tile cache
+        if: always() && hashFiles('.browser-tiles/.changed') != ''
+        run: node scripts/browser.mjs prune .browser-tiles
+      - name: Save browser tile cache
+        if: always() && hashFiles('.browser-tiles/.changed') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .browser-tiles
+          key: browser-tiles-v1-${{ matrix.group }}-${{ github.run_id }}
+      - name: Save browser review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-review-${{ matrix.group }}
+          path: browser-review
+          compression-level: 0
+  # One status for all browser jobs, whichever ran.
+  browser-checks:
+    needs: [plan, browser]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          PLAN: ${{ needs.plan.result }}
+          NEEDED: ${{ needs.plan.outputs.browser }}
+          BROWSER: ${{ needs.browser.result }}
+        run: |
+          echo "plan: $PLAN, browser checks needed: $NEEDED, browser jobs: $BROWSER"
+          [ "$PLAN" = success ] || exit 1
+          [ "$BROWSER" = success ] || { [ "$BROWSER" = skipped ] && [ "$NEEDED" != true ]; }
+  # A pull request records the tree that passed, so its merge into main need
+  # not run the browser checks again (scripts/ci-plan.mjs). Pull requests
+  # from forks cannot write statuses; their merges simply run the checks.
+  record:
+    needs: [plan, validate, browser-checks]
+    if: always() && github.event_name == 'pull_request' && needs.plan.result == 'success' && needs.validate.result == 'success' && needs.browser-checks.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          URL: ${{ github.api_url }}/repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}
+          TREE: ${{ needs.plan.outputs.tree }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl -fsS -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H 'Accept: application/vnd.github+json' "$URL" \
+            -d "{\"state\":\"success\",\"context\":\"site/browser-checks\",\"description\":\"tree $TREE\",\"target_url\":\"$RUN\"}"
   deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: validate
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.validate.result == 'success' && needs.browser-checks.result == 'success'
+    needs: [validate, browser-checks]
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
