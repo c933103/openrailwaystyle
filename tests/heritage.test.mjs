@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
-import {heritageQuery, heritageFeatures, heritageGeometry, heritageKind, heritageTiles, NAME_KEYS, HERITAGE_LAYER} from '../scripts/heritage-data.mjs';
+import {heritageQuery, heritageFeatures, heritageGeometry, heritageKind, heritageTiles, heritageBundles, NAME_KEYS, HERITAGE_LAYER, HERITAGE_BUNDLE_ZOOM} from '../scripts/heritage-data.mjs';
+import {gunzipSync} from 'node:zlib';
+import {decodeBundle, bundleKey} from '../styles/tile-bundles.mjs';
 
 const way = (id, coordinates, tags) => ({type:'way', id, tags, geometry:coordinates.map(([lon, lat]) => ({lon, lat}))});
 const square = (west, south, size) => [[west, south], [west + size, south], [west + size, south + size], [west, south + size], [west, south]];
@@ -90,6 +92,25 @@ test('the map reads the snapshot through its own tile protocol, localized and dr
   }
   assert.equal(layers[2].metadata['atlas:localize'], true);
   const app = await readFile(new URL('../styles/app.mjs', import.meta.url), 'utf8');
-  assert.match(app, /\['heritagetiles','heritage'\]/);
+  assert.match(app, /addProtocol\('heritagetiles'/);
+  assert.match(app, /createBundleReader\(\{root:new URL\('\.\/data\/heritage\/'/);
   assert.match(app, /heritageAreas\.tiles = \[`heritagetiles:\/\/\{z\}\/\{x\}\/\{y\}\?lang=\$\{settings\.language\}`\]/);
+});
+
+test('tiles are published in zoom-8 bundles that hold every tile unchanged', () => {
+  const features = heritageFeatures({elements:[way(5, square(12.48, 41.89, .005), {historic:'archaeological_site', name:'Forum'}), way(6, square(-0.12, 51.5, .004), {historic:'district', name:'Old Town'})]});
+  const tiles = heritageTiles(features), bundles = heritageBundles(tiles);
+  assert.equal(HERITAGE_BUNDLE_ZOOM, 8);
+  assert.ok(bundles.size < tiles.size, `${bundles.size} bundles for ${tiles.size} tiles`);
+  const unpacked = new Map();
+  for (const [path, data] of bundles) {
+    assert.match(path, /^8\/\d+\/\d+$/);
+    for (const [key, bytes] of decodeBundle(gunzipSync(data))) {
+      const [z, x, y] = key.split('/').map(Number);
+      assert.equal(`8/${bundleKey(z, x, y, 8)}`, path, `${key} sits in its own bundle`);
+      unpacked.set(key, Buffer.from(bytes));
+    }
+  }
+  assert.deepEqual([...unpacked.keys()].sort(), [...tiles.keys()].sort());
+  for (const [key, data] of tiles) assert.ok(unpacked.get(key).equals(Buffer.from(data)), key);
 });
