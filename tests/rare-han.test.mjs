@@ -45,13 +45,14 @@ test('a stored tile reports the rare Han of its text values, not of numbers whos
   assert.deepEqual([...tileTextBlocks(new ArrayBuffer(3))], [], 'an unreadable tile reports nothing');
 });
 
-function fakeFonts({fail = new Set(), hang = new Set()} = {}) {
+function fakeFonts({fail = new Set(), hang = new Set(), defer = new Map()} = {}) {
   const faces = [], added = new Set();
   class FontFace {
     constructor(family, source, descriptors) { Object.assign(this, {family, source, descriptors}); faces.push(this); }
     load() {
       const block = parseInt(/\/([0-9a-f]{3})\.woff2/.exec(this.source)[1], 16);
       if (hang.has(block)) return new Promise(() => {});
+      if (defer.has(block)) return new Promise(resolve => defer.set(block, () => resolve(this)));
       return fail.has(block) ? Promise.reject(new Error('offline')) : Promise.resolve(this);
     }
   }
@@ -101,6 +102,25 @@ test('a slow slice holds a tile back no longer than the wait', async () => {
   await loader.ensure(new Set([0x2a7]));
   assert.ok(Date.now() - started < 1000);
   await createRareHanFonts({root: 'https://atlas.example/f/', FontFace: undefined, fonts}).ensure(new Set([0x2a7]));
+});
+
+test('a slice that loads after its tile was released redraws labels; one loaded in time does not', async () => {
+  const defer = new Map([[0x2a7, null], [0x300, null]]), notified = [];
+  const {FontFace, fonts} = fakeFonts({defer});
+  const loader = createRareHanFonts({root: 'https://atlas.example/f/', FontFace, fonts, wait: 30, notifyDelay: 10, onLoad: blocks => notified.push([...blocks]),
+    fetcher: async () => ({ok: true, json: async () => ({blocks: [0x2a7, 0x300]})})});
+  const inTime = loader.ensure(new Set([0x300]));
+  for (let i = 0; i < 20 && !defer.get(0x300); i++) await new Promise(resolve => setTimeout(resolve, 0));
+  defer.get(0x300)();await inTime;
+  await loader.ensure(new Set([0x2a7]));
+  await new Promise(resolve => setTimeout(resolve, 30));
+  assert.deepEqual(notified, [], 'nothing was drawn without its glyphs yet');
+  defer.get(0x2a7)();
+  await new Promise(resolve => setTimeout(resolve, 30));
+  assert.deepEqual(notified, [[0x2a7]]);
+  await loader.ensure(new Set([0x2a7]));
+  await new Promise(resolve => setTimeout(resolve, 30));
+  assert.equal(notified.length, 1, 'a loaded slice does not redraw again');
 });
 
 test('an unanswered index request is bounded by the wait and later counts as failed', async () => {
