@@ -1,0 +1,497 @@
+{
+  "version": 6,
+  "built": "2026-10-05T13:18:53.282Z",
+  "source": "OpenStreetMap via Overpass",
+  "license": "ODbL-1.0",
+  "complete": true,
+  "features": 17016,
+  "counts": {
+    "feeder": 1712,
+    "power_supply": 1795,
+    "substation": 10911,
+    "transformer": 847,
+    "fuel": 329,
+    "water_crane": 373,
+    "preheating": 449,
+    "converter": 98,
+    "water_tower": 420,
+    "generator": 33,
+    "coaling_facility": 37,
+    "water_tank": 2,
+    "plant": 10
+  },
+  "coverage": [
+    {
+      "bbox": [
+        -90,
+        -180,
+        0,
+        -90
+      ],
+      "timestamp": "2026-10-04T02:08:21Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        -90,
+        -90,
+        0,
+        0
+      ],
+      "timestamp": "2026-10-04T02:08:21Z",
+      "features": 141
+    },
+    {
+      "bbox": [
+        -90,
+        0,
+        0,
+        90
+      ],
+      "timestamp": "2026-10-04T02:12:21Z",
+      "features": 573
+    },
+    {
+      "bbox": [
+        -90,
+        90,
+        0,
+        180
+      ],
+      "timestamp": "2026-10-04T02:14:20Z",
+      "features": 229
+    },
+    {
+      "bbox": [
+        0,
+        -180,
+        45,
+        -135
+      ],
+      "timestamp": "2026-10-04T02:22:36Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        0,
+        -135,
+        22.5,
+        -112.5
+      ],
+      "timestamp": "2026-10-04T02:27:37Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        0,
+        -112.5,
+        22.5,
+        -90
+      ],
+      "timestamp": "2026-10-04T02:28:40Z",
+      "features": 28
+    },
+    {
+      "bbox": [
+        22.5,
+        -135,
+        45,
+        -112.5
+      ],
+      "timestamp": "2026-10-04T02:29:43Z",
+      "features": 25
+    },
+    {
+      "bbox": [
+        22.5,
+        -112.5,
+        45,
+        -90
+      ],
+      "timestamp": "2026-10-04T02:31:49Z",
+      "features": 55
+    },
+    {
+      "bbox": [
+        45,
+        -180,
+        90,
+        -135
+      ],
+      "timestamp": "2026-10-04T02:34:49Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        45,
+        -135,
+        90,
+        -90
+      ],
+      "timestamp": "2026-10-04T02:35:56Z",
+      "features": 179
+    },
+    {
+      "bbox": [
+        0,
+        -90,
+        22.5,
+        -67.5
+      ],
+      "timestamp": "2026-10-04T02:47:05Z",
+      "features": 20
+    },
+    {
+      "bbox": [
+        0,
+        -67.5,
+        22.5,
+        -45
+      ],
+      "timestamp": "2026-10-04T02:48:03Z",
+      "features": 1
+    },
+    {
+      "bbox": [
+        22.5,
+        -90,
+        33.75,
+        -78.75
+      ],
+      "timestamp": "2026-10-04T02:53:05Z",
+      "features": 2
+    },
+    {
+      "bbox": [
+        22.5,
+        -78.75,
+        33.75,
+        -67.5
+      ],
+      "timestamp": "2026-10-04T02:55:09Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        33.75,
+        -90,
+        45,
+        -78.75
+      ],
+      "timestamp": "2026-10-04T02:55:09Z",
+      "features": 134
+    },
+    {
+      "bbox": [
+        33.75,
+        -78.75,
+        45,
+        -67.5
+      ],
+      "timestamp": "2026-10-04T02:59:19Z",
+      "features": 246
+    },
+    {
+      "bbox": [
+        22.5,
+        -67.5,
+        45,
+        -45
+      ],
+      "timestamp": "2026-10-04T03:03:20Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        0,
+        -45,
+        45,
+        0
+      ],
+      "timestamp": "2026-10-04T03:04:17Z",
+      "features": 551
+    },
+    {
+      "bbox": [
+        45,
+        -90,
+        90,
+        -45
+      ],
+      "timestamp": "2026-10-04T03:10:27Z",
+      "features": 41
+    },
+    {
+      "bbox": [
+        45,
+        -45,
+        90,
+        0
+      ],
+      "timestamp": "2026-10-04T03:12:35Z",
+      "features": 799
+    },
+    {
+      "bbox": [
+        0,
+        0,
+        22.5,
+        22.5
+      ],
+      "timestamp": "2026-10-04T03:27:55Z",
+      "features": 0
+    },
+    {
+      "bbox": [
+        0,
+        22.5,
+        22.5,
+        45
+      ],
+      "timestamp": "2026-10-04T03:29:59Z",
+      "features": 25
+    },
+    {
+      "bbox": [
+        22.5,
+        0,
+        45,
+        22.5
+      ],
+      "timestamp": "2026-10-04T03:31:01Z",
+      "features": 599
+    },
+    {
+      "bbox": [
+        22.5,
+        22.5,
+        45,
+        45
+      ],
+      "timestamp": "2026-10-04T03:39:01Z",
+      "features": 259
+    },
+    {
+      "bbox": [
+        0,
+        45,
+        45,
+        90
+      ],
+      "timestamp": "2026-10-04T03:41:02Z",
+      "features": 267
+    },
+    {
+      "bbox": [
+        45,
+        0,
+        50.625,
+        5.625
+      ],
+      "timestamp": "2026-10-04T04:06:35Z",
+      "features": 530
+    },
+    {
+      "bbox": [
+        45,
+        5.625,
+        50.625,
+        11.25
+      ],
+      "timestamp": "2026-10-04T04:23:38Z",
+      "features": 1286
+    },
+    {
+      "bbox": [
+        50.625,
+        0,
+        56.25,
+        5.625
+      ],
+      "timestamp": "2026-10-04T04:47:04Z",
+      "features": 413
+    },
+    {
+      "bbox": [
+        50.625,
+        5.625,
+        56.25,
+        11.25
+      ],
+      "timestamp": "2026-10-04T04:49:15Z",
+      "features": 1013
+    },
+    {
+      "bbox": [
+        45,
+        11.25,
+        50.625,
+        16.875
+      ],
+      "timestamp": "2026-10-04T04:56:21Z",
+      "features": 1095
+    },
+    {
+      "bbox": [
+        45,
+        16.875,
+        50.625,
+        22.5
+      ],
+      "timestamp": "2026-10-04T04:59:19Z",
+      "features": 775
+    },
+    {
+      "bbox": [
+        50.625,
+        11.25,
+        56.25,
+        16.875
+      ],
+      "timestamp": "2026-10-04T05:02:16Z",
+      "features": 2602
+    },
+    {
+      "bbox": [
+        50.625,
+        16.875,
+        56.25,
+        22.5
+      ],
+      "timestamp": "2026-10-04T05:04:26Z",
+      "features": 1176
+    },
+    {
+      "bbox": [
+        56.25,
+        0,
+        67.5,
+        11.25
+      ],
+      "timestamp": "2026-10-04T05:06:33Z",
+      "features": 75
+    },
+    {
+      "bbox": [
+        56.25,
+        11.25,
+        67.5,
+        22.5
+      ],
+      "timestamp": "2026-10-04T05:07:34Z",
+      "features": 101
+    },
+    {
+      "bbox": [
+        45,
+        22.5,
+        67.5,
+        45
+      ],
+      "timestamp": "2026-10-04T05:08:34Z",
+      "features": 1424
+    },
+    {
+      "bbox": [
+        67.5,
+        0,
+        90,
+        22.5
+      ],
+      "timestamp": "2026-10-04T05:12:46Z",
+      "features": 1
+    },
+    {
+      "bbox": [
+        67.5,
+        22.5,
+        90,
+        45
+      ],
+      "timestamp": "2026-10-04T05:13:47Z",
+      "features": 4
+    },
+    {
+      "bbox": [
+        45,
+        45,
+        90,
+        90
+      ],
+      "timestamp": "2026-10-04T05:13:47Z",
+      "features": 559
+    },
+    {
+      "bbox": [
+        0,
+        90,
+        22.5,
+        112.5
+      ],
+      "timestamp": "2026-10-04T05:21:43Z",
+      "features": 35
+    },
+    {
+      "bbox": [
+        0,
+        112.5,
+        22.5,
+        135
+      ],
+      "timestamp": "2026-10-04T05:22:56Z",
+      "features": 13
+    },
+    {
+      "bbox": [
+        22.5,
+        90,
+        45,
+        112.5
+      ],
+      "timestamp": "2026-10-04T05:23:58Z",
+      "features": 273
+    },
+    {
+      "bbox": [
+        22.5,
+        112.5,
+        45,
+        135
+      ],
+      "timestamp": "2026-10-04T05:26:02Z",
+      "features": 827
+    },
+    {
+      "bbox": [
+        0,
+        135,
+        45,
+        180
+      ],
+      "timestamp": "2026-10-04T05:27:05Z",
+      "features": 452
+    },
+    {
+      "bbox": [
+        45,
+        90,
+        90,
+        135
+      ],
+      "timestamp": "2026-10-04T05:30:02Z",
+      "features": 181
+    },
+    {
+      "bbox": [
+        45,
+        135,
+        90,
+        180
+      ],
+      "timestamp": "2026-10-04T05:31:06Z",
+      "features": 7
+    }
+  ],
+  "downloadedBytes": 0,
+  "selection": "Explicit railway supplies, traction substations, railway-tagged power/storage facilities and 16.7/16.67 Hz traction power facilities. Ordinary utility, road fuel and general water facilities are excluded."
+}
