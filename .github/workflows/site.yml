@@ -210,13 +210,14 @@ jobs:
           node scripts/check-world-frequency-browser.mjs
           # Restore the production worldwide snapshot after fixture checks.
           node scripts/rebuild-service-frequency.mjs
-      # Two at a time, longest first, each slot with its own browser
-      # (scripts/run-browser-checks.mjs).
+      # One at a time in a shared browser (scripts/run-browser-checks.mjs):
+      # two at once on one runner slowed the timing-sensitive platform checks
+      # until they failed.
       - name: Verify the map in Chromium
         env:
           BROWSER_TILE_CACHE: ${{ github.workspace }}/.browser-tiles
         run: >-
-          node scripts/run-browser-checks.mjs --concurrency 2 --label all
+          node scripts/run-browser-checks.mjs --concurrency 1 --label all
           check-major-stations-browser.mjs
           check-map-browser.mjs
           check-context-browser.mjs
