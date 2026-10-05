@@ -1,5 +1,6 @@
 import {OVERVIEW_ZOOM, DETAIL_ZOOM} from '../../crossing-data.mjs';
 import {SIGNAL_OVERVIEW_ZOOM, SIGNAL_ZOOM} from '../../signals-data.mjs';
+import {HERITAGE_MIN_ZOOM, HERITAGE_MAX_ZOOM} from '../../heritage-data.mjs';
 
 const ATTRIBUTION = '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, ODbL</a>';
 const snapshot = (protocol, minzoom, maxzoom, extra = {}) => ({
@@ -25,5 +26,7 @@ export function atlasSources(majorStationData) {
     branchLines: snapshot('branchtiles', 4, 9),
     serviceRoutes: {...snapshot('servicetiles', 7, 12), attribution:ATTRIBUTION+' · <a href="frequency-credits.html">Timetable sources</a>'},
     streetRunning: snapshot('streettiles', 12, 12),
+    // Historic areas the basemap's park layer does not hold (heritage-data.mjs).
+    heritageAreas: snapshot('heritagetiles', HERITAGE_MIN_ZOOM, HERITAGE_MAX_ZOOM),
   };
 }
