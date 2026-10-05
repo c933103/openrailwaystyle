@@ -284,6 +284,7 @@ test('frequency periods no applied source covers are not offered, and a link to 
     const options=Object.fromEntries([...window.document.getElementById('frequency-period').options].map(o=>[o.value,o.hidden]));
     assert.deepEqual(options,{offpeak:false,peak:false,overnight:true,hour:true});
     assert.equal(window.document.getElementById('frequency-period').value,'offpeak','a period without a source falls back');
+    assert.doesNotMatch(window.document.getElementById('legend').textContent,/Overnight and individual hours/,'the legend does not describe uncovered periods');
   } finally {dom.window.close();}
 });
 test('equal-width service details expire even after the inspected route leaves loaded tiles',async()=>{

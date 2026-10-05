@@ -1,21 +1,21 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261005-service3';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261005-service3';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261005-service3';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261005-service3';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261005-service3';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261005-service3';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261005-service4';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261005-service4';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261005-service4';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261005-service4';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261005-service4';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261005-service4';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261005-service3';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261005-service3';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261005-service3';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261005-service3';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261005-service3';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261005-service3';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261005-service3';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261005-service3';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261005-service3';
-import { installWatchGesture } from './watch-map.mjs?v=20261005-service3';
-import { createBundleReader } from './tile-bundles.mjs?v=20261005-service3';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261005-service4';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261005-service4';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261005-service4';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261005-service4';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261005-service4';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261005-service4';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261005-service4';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261005-service4';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261005-service4';
+import { installWatchGesture } from './watch-map.mjs?v=20261005-service4';
+import { createBundleReader } from './tile-bundles.mjs?v=20261005-service4';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -50,7 +50,7 @@ let legendHelpOpen = false;
 let platformLengths,frequencyExpiry;
 let powerFacilities;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261005-service3';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261005-service4';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -76,6 +76,12 @@ function cjkScript(lang) {
 }
 const loadedCjkFonts=new Set(),cjkFontLoads=new Map(),cjkChoices=new Map(),cjkFontFailures=new Map();let cjkFontRefresh=false;
 const bundledCjkFamily=script=>`Atlas CJK ${script==='zh-Hant'?'TC':'SC'}`;
+// Frequency periods that some applied source covers (frequency-manifest.json);
+// a period no source covers is not offered. Unknown until the manifest loads,
+// or for a snapshot without the list: every period stays available.
+let coveredProfiles=null;
+const profileCovered=profile=>!coveredProfiles||coveredProfiles.has(profile);
+const periodCovered=period=>period==='peak'?profileCovered('am')||profileCovered('pm'):period==='hour'?HOURLY_PROFILES.some(profileCovered):profileCovered(period);
 // Rare Han glyph slices, loaded for the labels of each tile before it is drawn;
 // one that arrives after a label was drawn without it redraws the labels.
 const rareHanFonts=createRareHanFonts({root:new URL('fonts/rare-han-v1/', import.meta.url),fetcher:(...args)=>fetch(...args),FontFace:window.FontFace,fonts:document.fonts,onLoad:()=>refreshCjkFont()});
@@ -296,7 +302,7 @@ function renderLegend() {
     infrastructure: 'Numbers in boxes count mapped tracks: running tracks side by side (not sidings, yards or crossovers), on every level; at a station, sidings are included. Ochre marks shared roadway; crossings are brown. Zoom in for platform references and complete boarding-edge lengths, purple signal locations and teal station entrances. Signal markers do not show a live aspect.',
   };
   let note = notes[settings.mode];
-  if(settings.mode==='service'&&settings.serviceWidth==='frequency')note+=' Width uses the same capped scale in each weekday profile, using the lower rate when the source publishes a range. Morning and evening peaks are separate. Overnight and individual hours use each agency’s local time on the reference date; temporary operating changes may be absent. Missing, expired or unmatched profiles remain unavailable.';
+  if(settings.mode==='service'&&settings.serviceWidth==='frequency')note+=' Width uses the same capped scale in each weekday profile, using the lower rate when the source publishes a range. Morning and evening peaks are separate.'+(periodCovered('overnight')||periodCovered('hour')?' Overnight and individual hours use each agency’s local time on the reference date; temporary operating changes may be absent.':'')+' Missing, expired or unmatched profiles remain unavailable.';
   if (settings.inactive && settings.mode === 'speed') note += ' Planned and former lines take the colour of their recorded limit, if any.';
   // Collapsed by default, so the legend stays short; stays open once opened.
   const help = Object.assign(textNode('details', '', 'legend-help'), {open: legendHelpOpen});
@@ -1490,19 +1496,13 @@ async function initialize() {
 document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
   settings.mode = button.dataset.mode; applySettings(); saveSettings();
 }));
-// Frequency periods that some applied source covers (frequency-manifest.json);
-// a period no source covers is not offered. Unknown until the manifest loads,
-// or for a snapshot without the list: every period stays available.
-let coveredProfiles=null;
-const profileCovered=profile=>!coveredProfiles||coveredProfiles.has(profile);
-const periodCovered=period=>period==='peak'?profileCovered('am')||profileCovered('pm'):period==='hour'?HOURLY_PROFILES.some(profileCovered):profileCovered(period);
 function applyCoveredPeriods(){
   for(const option of $('frequency-period').options)option.hidden=option.disabled=!periodCovered(option.value);
   if(!periodCovered(settings.frequencyPeriod)){const fallback=['offpeak','peak'].find(periodCovered);if(fallback){settings.frequencyPeriod=fallback;applySettings();}}
 }
 fetch(new URL('./data/service-routes/frequency-manifest.json',import.meta.url)).then(r=>r.ok?r.json():null).then(manifest=>{
   if(!Array.isArray(manifest?.profiles))return;
-  coveredProfiles=new Set(manifest.profiles);applyCoveredPeriods();
+  coveredProfiles=new Set(manifest.profiles);applyCoveredPeriods();renderLegend();
 }).catch(()=>{});
 for(const [id,key] of [['service-width','serviceWidth'],['frequency-period','frequencyPeriod'],['peak-phase','peakPhase'],['frequency-hour','frequencyHour']])$(id).addEventListener('change',()=>{settings[key]=key==='frequencyHour'?Number($(id).value):$(id).value;applySettings();saveSettings();if(currentFeature?.layer?.id==='service-routes')showServiceDetails(currentFeature);});
 document.querySelectorAll('[data-background]').forEach(button => button.addEventListener('click', () => {
