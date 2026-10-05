@@ -376,3 +376,38 @@ test('generated Latin transliteration cannot replace a local name as English fal
   assert.ok(keys.indexOf('name')<keys.indexOf('name:latin'));
 });
 
+test('label protocols hand a tile to the map only after the glyph slices its rare Han names need',async()=>{
+  const protocols={},asked=[];let release;
+  const rareGlyphs=blocks=>{asked.push([...blocks]);return new Promise(resolve=>{release=resolve;});};
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{tile:async()=>({data:tile({name:'\u{2A700}村','name:en':'Plain'})})},async()=>({ok:true,arrayBuffer:async()=>tile({name:'\u{30000}線'}).buffer}),{rareGlyphs});
+  let done=false;
+  const local=protocols.atlasbase({url:'atlasbase://local/https://example.org/world.pmtiles/7/1/1'},new AbortController()).then(r=>{done=true;return r;});
+  await new Promise(r=>setTimeout(r,0));
+  assert.deepEqual(asked,[[0x2a7]]);assert.equal(done,false,'the tile waits for its slice');
+  release();assert.equal(readTile((await local).data).layers.stations.feature(0).properties.atlas_name,'\u{2A700}村');
+  asked.length=0;
+  await protocols.atlasbase({url:'atlasbase://en/https://example.org/world.pmtiles/7/1/1'},new AbortController());
+  assert.deepEqual(asked,[],'an English label needs no rare slice');
+  const rail=protocols.atlasrail({url:'atlasrail://https://example.org/rail/7/1/1'},new AbortController());
+  await new Promise(r=>setTimeout(r,0));release();await rail;
+  assert.deepEqual(asked,[[0x300]],'railway names, drawn as stored, are read from the tile bytes');
+});
+test('railway tiles drawn as stored or re-encoded load the rare Han of their text',async()=>{
+  const protocols={},requested=[];
+  const bytes=name=>Uint8Array.from(tile({name,owner:name,maxspeed:268439664})).buffer;
+  const tiles={'/rare/':bytes('\u{2A700}線'),'/plain/':bytes('Plain')};
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},async url=>({ok:true,status:200,arrayBuffer:async()=>tiles[Object.keys(tiles).find(k=>String(url).includes(k))].slice(0),json:async()=>({})}),{rareGlyphs:async found=>{requested.push([...found]);}});
+  for(const scheme of ['atlasrail','atlasowner','atlasaxle','atlastext']){
+    requested.length=0;
+    await protocols[scheme]({url:`${scheme}://https://example.org/plain/14/1/1`},new AbortController());
+    assert.deepEqual(requested,[],`${scheme}: a number whose bytes look like UTF-8 requests nothing`);
+    await protocols[scheme]({url:`${scheme}://https://example.org/rare/14/1/1`},new AbortController());
+    assert.deepEqual(requested,[[0x2a7]],scheme);
+  }
+});
+test('other labelled provider sources keep their tiles behind the rare Han scan',async()=>{
+  const protocols={};
+  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},async()=>({ok:true,status:200,json:async()=>({tiles:['https://example.org/railway_signals/{z}/{x}/{y}']})}));
+  const {data}=await protocols.atlastext({url:'atlastext://https://example.org/railway_signals',type:'json'},new AbortController());
+  assert.deepEqual(data.tiles,['atlastext://https://example.org/railway_signals/{z}/{x}/{y}']);
+});

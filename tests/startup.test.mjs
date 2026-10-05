@@ -12,6 +12,7 @@ import * as departuresModule from '../styles/departures.mjs';
 import * as elevationModule from '../styles/elevation.mjs';
 import * as contextFeatures from '../styles/context.mjs';
 import * as cjkFontFeatures from '../styles/cjk-font.mjs';
+import * as rareHanFeatures from '../styles/rare-han.mjs';
 import * as bathymetryModule from '../styles/bathymetry.mjs';
 import * as crossingTagFeatures from '../styles/crossing-tags.mjs';
 import * as frequencyModule from '../styles/service-frequency.mjs';
@@ -96,7 +97,8 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   // This is the MapLibre 5 public surface used by the app. In particular,
   // supported() is absent: older Mapbox examples must not gate startup.
   const libraries = {};
-  libraries.maplibregl = {Map, addProtocol(){}, NavigationControl:class { constructor(options) { maps.controls.push(options); } }, GeolocateControl:class { constructor(options) { maps.controls.push(options); } }, AttributionControl:class {constructor(options){this.options=options;}}, ScaleControl:class { constructor(options) { this.unit = options.unit; maps.scale = this; } setUnit(unit) { this.unit = unit; } }};
+  maps.protocols = {};
+  libraries.maplibregl = {Map, addProtocol(id,handler){maps.protocols[id]=handler;}, NavigationControl:class { constructor(options) { maps.controls.push(options); } }, GeolocateControl:class { constructor(options) { maps.controls.push(options); } }, AttributionControl:class {constructor(options){this.options=options;}}, ScaleControl:class { constructor(options) { this.unit = options.unit; maps.scale = this; } setUnit(unit) { this.unit = unit; } }};
   maps.controls = [];
   libraries.pmtiles = {
     Protocol:class { constructor(){this.tiles=new globalThis.Map();maps.pmtiles=this;} tile() {} },
@@ -116,7 +118,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const dependency = new vm.SyntheticModule(Object.keys(model), function() {
     for (const [key,value] of Object.entries(model)) this.setExport(key,value);
   }, {context});
-  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','locate','buildInfo','timedSource','readTile'],function(){this.setExport('buildInfo',labelBuild);this.setExport('readTile',labelModule.readTile);this.setExport('installLabelProtocols',()=>stationTile?{stationTile}:{});this.setExport('timedSource',(inner,ms)=>({inner,ms,getKey:()=>inner.url}));this.setExport('localizeTile',x=>x);this.setExport('locate',(lon,lat)=>{assert.ok(Number.isFinite(lon)&&Number.isFinite(lat),'label region lookup takes longitude and latitude separately');return {atlas_han:'none',atlas_zh:''};});},{context});
+  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','tileTextBlocks','locate','buildInfo','timedSource','readTile'],function(){this.setExport('buildInfo',labelBuild);this.setExport('readTile',labelModule.readTile);this.setExport('tileTextBlocks',labelModule.tileTextBlocks);this.setExport('installLabelProtocols',()=>stationTile?{stationTile}:{});this.setExport('timedSource',(inner,ms)=>({inner,ms,getKey:()=>inner.url}));this.setExport('localizeTile',x=>x);this.setExport('locate',(lon,lat)=>{assert.ok(Number.isFinite(lon)&&Number.isFinite(lat),'label region lookup takes longitude and latitude separately');return {atlas_han:'none',atlas_zh:''};});},{context});
   // The label code is imported on demand, after the controls are wired.
   let loadLabels;
   const labelsReady=new Promise(resolve=>{loadLabels=resolve;});
@@ -144,6 +146,9 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   }, {context});
   const globe = new vm.SyntheticModule(['installGlobeDrag','allowPolarCentres','readoutZoom','viewHash','parseViewHash'], function() { this.setExport('installGlobeDrag', () => ({sync() {}, justDragged: () => false, pan: () => false})); this.setExport('allowPolarCentres', () => ({refresh() {}}));this.setExport('readoutZoom',zoom=>zoom);this.setExport('viewHash',globeModule.viewHash);this.setExport('parseViewHash',globeModule.parseViewHash);  }, {context});
   const keyboard = new vm.SyntheticModule(['installKeyboardPan'], function() { this.setExport('installKeyboardPan', () => {}); }, {context});
+  const rareHanModule = new vm.SyntheticModule(Object.keys(rareHanFeatures),function() {
+    for (const [key,value] of Object.entries(rareHanFeatures)) this.setExport(key,value);
+  },{context});
   const cjkFontModule = new vm.SyntheticModule(Object.keys(cjkFontFeatures),function() {
     for (const [key,value] of Object.entries(cjkFontFeatures)) this.setExport(key,value);
   },{context});
@@ -168,7 +173,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   }, {context});
   const bundles = new vm.SyntheticModule(Object.keys(tileBundleModule),function(){for(const [key,value] of Object.entries(tileBundleModule))this.setExport(key,value);},{context});
   const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
-  await app.link(specifier => specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  await app.link(specifier => specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries,loadLabels,fonts};
@@ -181,7 +186,7 @@ test('a complete installed Chinese font is used without any download',async()=>{
   assert.equal(fonts.length,1,'only the 676-byte probe font');assert.equal(fonts[0].family,'Atlas Probe');
   fonts[0].finish();await new Promise(r=>setTimeout(r,0));
   const map=maps[0];map.handlers['style.load']();await new Promise(r=>setTimeout(r,0));
-  assert.equal(map.styleOptions?.localIdeographFontFamily??map.options.localIdeographFontFamily,'"Noto Sans CJK TC",sans-serif');
+  assert.equal(map.styleOptions?.localIdeographFontFamily??map.options.localIdeographFontFamily,'"Noto Sans CJK TC","Atlas Rare Han",sans-serif');
   const glyphs=new dom.window.CanvasRenderingContext2D();glyphs.font='400 24px "Noto Sans CJK TC",sans-serif';
   assert.equal(glyphs.lang,'zh-TW');assert.equal(fonts.length,1,'drawing Han labels with a complete font downloads nothing');assert.deepEqual(errors,[]);
  }finally{dom.window.close();}
@@ -193,7 +198,7 @@ test('a partial installed Chinese font fetches the packaged font only once Han l
  try{
   fonts[0].finish();await new Promise(r=>setTimeout(r,0));
   const map=maps[0];map.handlers['style.load']();await new Promise(r=>setTimeout(r,0));
-  assert.equal(map.styleOptions.localIdeographFontFamily,'"Microsoft JhengHei",sans-serif','the best installed font meanwhile');
+  assert.equal(map.styleOptions.localIdeographFontFamily,'"Microsoft JhengHei","Atlas Rare Han",sans-serif','the best installed font meanwhile');
   assert.equal(fonts.length,1,'nothing is fetched before Han labels are drawn');
   const glyphs=new window.CanvasRenderingContext2D();glyphs.font='400 24px "Microsoft JhengHei",sans-serif';
   assert.equal(fonts.length,2);assert.match(fonts[1].url,/atlas-cjk-tc-v1\.woff2/);
@@ -202,10 +207,10 @@ test('a partial installed Chinese font fetches the packaged font only once Han l
   fonts[1].finish();await new Promise(r=>setTimeout(r,0));assert.ok(!map.styleOptions.localIdeographFontFamily.includes('Atlas CJK TC'),'a stale download cannot overwrite the selected script');
   glyphs.font='400 24px "Microsoft YaHei",sans-serif';
   assert.equal(fonts.length,3);assert.match(fonts[2].url,/atlas-cjk-sc-v1\.woff2/);
-  fonts[2].finish();await new Promise(r=>setTimeout(r,0));assert.equal(map.styleOptions.localIdeographFontFamily,'"Atlas CJK SC"');
+  fonts[2].finish();await new Promise(r=>setTimeout(r,0));assert.equal(map.styleOptions.localIdeographFontFamily,'"Atlas CJK SC","Atlas Rare Han"');
   assert.ok(map.options.style.layers.filter(l=>l.type==='symbol'&&l.layout?.['text-font']).every(l=>l.layout['text-font'].includes('Atlas CJK SC')),'explicit Noto stacks must also include the loaded Han font');
   assert.match(map.options.style.glyphs,/^atlasglyph:\/\//,'Latin glyph requests strip the added local family');
-  language.value='zh-Hant';language.dispatchEvent(new window.Event('change'));assert.equal(fonts.length,3);assert.equal(map.styleOptions.localIdeographFontFamily,'"Atlas CJK TC"','previously loaded font is reused');
+  language.value='zh-Hant';language.dispatchEvent(new window.Event('change'));assert.equal(fonts.length,3);assert.equal(map.styleOptions.localIdeographFontFamily,'"Atlas CJK TC","Atlas Rare Han"','previously loaded font is reused');
   assert.ok(map.options.style.layers.filter(l=>l.type==='symbol'&&l.layout?.['text-font']).every(l=>l.layout['text-font'].includes('Atlas CJK TC')&&!l.layout['text-font'].includes('Atlas CJK SC')),'switching script replaces every explicit local font');
   assert.deepEqual(errors,[]);
  }finally{dom.window.close();}
@@ -220,7 +225,7 @@ test('a failed packaged Chinese font download waits before trying again, and ret
   assert.equal(fonts.length,2);fonts[1].fail();await new Promise(r=>setTimeout(r,0));
   for(let i=0;i<5;i++)glyphs.font='400 24px "Microsoft JhengHei",sans-serif';
   assert.equal(fonts.length,2,'later label drawing does not fetch the font again at once');
-  assert.equal(maps[0].styleOptions.localIdeographFontFamily,'"Microsoft JhengHei",sans-serif','the installed font stays in use');
+  assert.equal(maps[0].styleOptions.localIdeographFontFamily,'"Microsoft JhengHei","Atlas Rare Han",sans-serif','the installed font stays in use');
   window.dispatchEvent(new window.Event('online'));glyphs.font='400 24px "Microsoft JhengHei",sans-serif';
   assert.equal(fonts.length,3,'going back online retries');
   assert.deepEqual(errors,[]);
@@ -492,6 +497,52 @@ test('curated hubs take their names from the provider station tiles by OSM ident
   assert.ok(tileRequests.every(([url,lang])=>/^https:\/\/tiles\.test\/stations\/(8|10)\/\d+\/\d+$/.test(url)&&lang==='en'),'zoom-8 station tiles through the station pipeline');
   assert.ok(!requests.some(url=>url.includes('openstreetmap.org')),'no OSM API requests');
   assert.ok(map.sourceData.stationMajor.features.every(f=>f.properties.atlas_name),'unnamed hubs stay hidden rather than showing a source note');
+ }finally{dom.window.close();}
+});
+
+test('curated hub names with rare Han wait for their slices before reaching the map',async()=>{
+ const penn=style.sources.stationMajor.data.features.find(f=>f.properties.wikidata==='Q54451');
+ const member=penn.properties.osm_ids.split(';').concat([penn.properties.id])[0];
+ const fetcher=async url=>String(url).includes('rare-han-v1/index.json')?{ok:true,status:200,json:async()=>({blocks:[0x2a7]})}:{ok:true,status:200,json:async()=>structuredClone(style)};
+ const stationTile=async(url,lang)=>{
+  const result=encodeTile.fromGeojsonVt({standard_railway_text_stations:{features:[{type:1,id:1,tags:{id:`${member}-train-train-station`,name:'\u{2A700}站',atlas_name:'\u{2A700}站',atlas_language:lang},geometry:[[2049,2048]]}]}},{version:2});
+  return result.buffer.slice(result.byteOffset,result.byteOffset+result.byteLength);};
+ const {dom,maps,fonts}=await start({search:'?language=local#3/40.75/-74',fetcher,stationTile,fontFaces:true});
+ try{
+  const map=maps[0],source=map.getSource.bind(map);
+  map.getSource=id=>id==='stations'?{tiles:['atlasstation://local/https://tiles.test/stations/{z}/{x}/{y}']}:source(id);
+  map.getBounds=()=>({getWest:()=>-80,getEast:()=>-70,getSouth:()=>35,getNorth:()=>45});
+  map.handlers['style.load']();
+  const slice=()=>fonts.find(f=>/rare-han-v1\/2a7\.woff2/.test(f.url));
+  for(let i=0;i<100&&!slice();i++)await new Promise(r=>setTimeout(r,0));
+  assert.ok(slice(),'the slice of the hub name is requested');
+  const named=()=>map.sourceData?.stationMajor?.features.find(f=>f.properties.wikidata==='Q54451');
+  assert.equal(named(),undefined,'the name waits for its slice');
+  slice().finish();
+  for(let i=0;i<50&&!named();i++)await new Promise(r=>setTimeout(r,0));
+  assert.equal(named()?.properties.atlas_name,'\u{2A700}站');
+ }finally{dom.window.close();}
+});
+
+test('tiles served as stored load the rare Han slices of their text, such as service route names',async()=>{
+ const tile=name=>{const result=encodeTile.fromGeojsonVt({service_routes:{features:[{type:2,id:1,tags:{name,trains:268439664},geometry:[[[0,0],[4096,4096]]]}]}},{version:2});return result.buffer.slice(result.byteOffset,result.byteOffset+result.byteLength);};
+ const tiles={'8/1/1':tile('\u{2A700}線'),'8/1/2':tile('Plain line')};
+ const fetcher=async url=>{url=String(url);
+  if(url.includes('rare-han-v1/index.json'))return {ok:true,status:200,json:async()=>({blocks:[0x2a7]})};
+  if(url.includes('service-routes/index.json'))return {ok:true,status:200,json:async()=>({tiles:Object.keys(tiles)})};
+  const key=/service-routes\/(\d+\/\d+\/\d+)\.pbf\.gz/.exec(url)?.[1];
+  if(key)return {ok:true,status:200,arrayBuffer:async()=>tiles[key].slice(0)};
+  return {ok:true,status:200,json:async()=>structuredClone(style)};};
+ const {dom,maps,fonts}=await start({fetcher,fontFaces:true});
+ try{
+  for(let i=0;i<100&&!maps.protocols.servicetiles;i++)await new Promise(r=>setTimeout(r,0));
+  const plain=await maps.protocols.servicetiles({url:'servicetiles://8/1/2'},new AbortController());
+  assert.ok(plain.data.byteLength>0);assert.equal(fonts.filter(f=>/rare-han/.test(f.url)).length,0,'a number whose bytes look like UTF-8 loads nothing');
+  let done=false;const pending=maps.protocols.servicetiles({url:'servicetiles://8/1/1'},new AbortController()).then(r=>{done=true;return r;});
+  const slice=()=>fonts.find(f=>/rare-han-v1\/2a7\.woff2/.test(f.url));
+  for(let i=0;i<100&&!slice();i++)await new Promise(r=>setTimeout(r,0));
+  assert.ok(slice(),'the route name requests its slice');assert.equal(done,false,'the tile waits for it');
+  slice().finish();assert.ok((await pending).data.byteLength>0);
  }finally{dom.window.close();}
 });
 

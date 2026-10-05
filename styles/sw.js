@@ -19,7 +19,7 @@ const LIBRARIES = ['https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibr
 const SHELL = /\/(app\.css|[\w-]+\.mjs|vendor\/[\w-]+\.js|world\.style\.json|major-stations\.geojson|manifest\.webmanifest|atlas-icon[\w-]*\.(?:png|svg))$/;
 // Saved at installation, so an app installed on the first visit (before this
 // worker controlled the page) also opens offline.
-const PRECACHE = ['./', 'app.css', 'app.mjs', 'bathymetry.mjs', 'map-model.mjs', 'layer-semantics.mjs', 'map-controls.mjs', 'platform-length.mjs', 'context.mjs', 'cjk-font.mjs', 'crossing-tags.mjs', 'power-facilities.mjs', 'draw.mjs', 'elevation.mjs', 'dem-repair.mjs', 'globe-drag.mjs', 'keyboard-pan.mjs', 'watch-map.mjs', 'tile-bundles.mjs', 'service-frequency.mjs', 'departures.mjs', 'polar.mjs', 'track-count.mjs', 'track-tiles.mjs', 'han-region.mjs', 'han-region-data.mjs', 'loading-gauge-list.mjs', 'axle-load.mjs', 'vendor/tile-labels.js', 'vendor/track-worker.js', 'vendor/polar-layer.js', 'vendor/maplibre-contour.js', 'vendor/dem-worker.js', 'vendor/depth-worker.js', 'world.style.json', 'major-stations.geojson', 'manifest.webmanifest', 'atlas-icon.svg', 'atlas-icon-192.png', 'atlas-icon-512.png', 'atlas-icon-maskable-512.png', 'atlas-icon-touch-180.png'];
+const PRECACHE = ['./', 'app.css', 'app.mjs', 'bathymetry.mjs', 'map-model.mjs', 'layer-semantics.mjs', 'map-controls.mjs', 'platform-length.mjs', 'context.mjs', 'cjk-font.mjs', 'rare-han.mjs', 'crossing-tags.mjs', 'power-facilities.mjs', 'draw.mjs', 'elevation.mjs', 'dem-repair.mjs', 'globe-drag.mjs', 'keyboard-pan.mjs', 'watch-map.mjs', 'tile-bundles.mjs', 'service-frequency.mjs', 'departures.mjs', 'polar.mjs', 'track-count.mjs', 'track-tiles.mjs', 'han-region.mjs', 'han-region-data.mjs', 'loading-gauge-list.mjs', 'axle-load.mjs', 'vendor/tile-labels.js', 'vendor/track-worker.js', 'vendor/polar-layer.js', 'vendor/maplibre-contour.js', 'vendor/dem-worker.js', 'vendor/depth-worker.js', 'world.style.json', 'major-stations.geojson', 'manifest.webmanifest', 'atlas-icon.svg', 'atlas-icon-192.png', 'atlas-icon-512.png', 'atlas-icon-maskable-512.png', 'atlas-icon-touch-180.png'];
 
 // The version the page asks for, read from its module script.
 const pageVersion = html => html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1] ?? null;
@@ -138,7 +138,10 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET' || url.origin !== location.origin) return;
   // Fonts are immutable, optional assets. Fetch only the selected script and
   // retain it offline without making installation download both large files.
-  if(/\/fonts\/atlas-cjk-(tc|sc)-v1\.woff2$/.test(url.pathname)){
+  // Rare Han slices (rare-han.mjs) are kept the same way, one per 256
+  // characters, with the index that lists them: without it no saved slice is
+  // used offline.
+  if(/\/fonts\/atlas-cjk-(tc|sc)-v1\.woff2$/.test(url.pathname)||/\/fonts\/rare-han-v1\/([0-9a-f]{3}\.woff2|index\.json)$/.test(url.pathname)){
     // Keeping a copy is best effort: without Cache Storage, or with it full,
     // the downloaded font is still served.
     event.respondWith((async()=>{

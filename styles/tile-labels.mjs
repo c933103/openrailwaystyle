@@ -8,6 +8,7 @@ import {chooseName, mergeStationTranslation, stationLanguages, stationPending, O
 import {hanRegion, chineseArea} from './han-region.mjs';
 import {axleLoad} from './axle-load.mjs';
 import {isLocalFamily} from './cjk-font.mjs';
+import {rareHanBlocks} from './rare-han.mjs';
 import {decodeLoadingGauges, wayId} from './loading-gauge-list.mjs';
 export {hanRegion, chineseArea};
 export const buildInfo=typeof __ATLAS_BUILD_INFO__ === 'undefined' ? {version:'development',commit:''} : __ATLAS_BUILD_INFO__;
@@ -85,20 +86,23 @@ export function locateFeatures(tile, coordinates) {
     Object.assign(f.properties, locate(tx/n*360-180, Math.atan(Math.sinh(Math.PI*(1-2*ty/n)))*180/Math.PI));
   }
 }
-export function writeLabels(tile, lang) {
+// `found` (optional) collects the rare-Han blocks of the names written, so
+// their glyph slices can load before the tile is drawn (rare-han.mjs).
+export function writeLabels(tile, lang, found) {
   for (const f of features(tile)) {
     f.properties.atlas_name = chooseName(f.properties,lang);
     f.properties.atlas_language = lang;
+    if (found) rareHanBlocks(f.properties.atlas_name, found);
   }
   const result = encode(tile);
   return result.buffer.slice(result.byteOffset,result.byteOffset+result.byteLength);
 }
-export function localizeTile(data, lang, coordinates) {
+export function localizeTile(data, lang, coordinates, found) {
   if (!data?.byteLength) return data;
   try {
     const tile = readTile(data);
     locateFeatures(tile,coordinates);
-    return writeLabels(tile,lang);
+    return writeLabels(tile,lang,found);
   } catch (error) {
     // A labelling failure must not hide map data; styles fall back to the
     // names recorded in the tile.
@@ -122,7 +126,21 @@ export function timedSource(inner, ms) {
     },
   };
 }
-export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch, {dataRoot, timeout = 12000, basemapRetries = [500, 2000], basemapArchive, tileRetries = [1000]} = {}) {
+// Rare Han blocks in a tile's string values: each layer's value table, which
+// @mapbox/vector-tile 1.3.1 decodes with the layer (_values) without reading
+// features or geometry. Numbers, IDs and geometry are never mistaken for text.
+export function tileTextBlocks(data, found = new Set()) {
+  try {
+    for (const layer of Object.values(new VectorTile(new Pbf(new Uint8Array(data))).layers))
+      for (const value of layer._values) rareHanBlocks(value, found);
+  } catch {}
+  return found;
+}
+export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fetch, {dataRoot, timeout = 12000, basemapRetries = [500, 2000], basemapArchive, tileRetries = [1000], rareGlyphs} = {}) {
+  // Rare-Han glyph slices for a tile's labels load before the tile is drawn.
+  const withGlyphs = async (data, found) => { if (found.size && rareGlyphs) await rareGlyphs(found); return data; };
+  // A tile drawn as stored: the rare Han of its text values.
+  const storedGlyphs = data => withGlyphs(data, tileTextBlocks(data));
   // Only current-view requests are made. Keep a bounded cache of successful
   // responses so language changes can reuse downloaded station tiles.
   const cache = new ByteCache();
@@ -222,15 +240,19 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     const out = encode.fromGeojsonVt(layers, {version: 2, extent});
     return {data: out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength)};
   });
-  maplibregl.addProtocol('atlasrail',async (params,controller)=>{
-    const url = params.url.replace(/^atlasrail:\/\//,'');
+  // Railway tiles (atlasrail) and any other provider source drawn as stored
+  // (atlastext: signals, entrances, points of interest) load the rare Han of
+  // their text values before they are drawn.
+  for (const scheme of ['atlasrail','atlastext']) maplibregl.addProtocol(scheme,async (params,controller)=>{
+    const url = params.url.slice(`${scheme}://`.length);
     if (params.type === 'json') {
       const data = await get(url,controller.signal,true);
-      return {data:{...data,tiles:data.tiles.map(t=>`atlasrail://${t}`)}};
+      return {data:{...data,tiles:data.tiles.map(t=>`${scheme}://${t}`)}};
     }
     // MapLibre transfers this buffer to its worker, detaching it. Keep the
     // cache's original for language changes, return visits and track counts.
-    return {data: (await get(url, controller.signal)).slice(0)};
+    const data = (await get(url, controller.signal)).slice(0);
+    return {data: await storedGlyphs(data)};
   });
   // Overview tiles (zoom 0–6) carry way IDs but no loading gauge: add it
   // from the published way ID list (data/loading-gauge.json, about 250 kB
@@ -253,14 +275,14 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     const [response, list] = await Promise.all([fetcher(url,{signal:controller.signal}), loadingGaugeList()]);
     if (!response.ok && response.status !== 204) throw new Error(`Railway tile returned ${response.status}`);
     const data = await response.arrayBuffer();
-    if (!data.byteLength || !list.size) return {data};
+    if (!data.byteLength || !list.size) return {data: await storedGlyphs(data)};
     const tile = readTile(data);
     for (const f of features(tile)) {
       const value = list.get(wayId(f.properties.id));
       if (value) f.properties.loading_gauge = value;
     }
     const result = encode(tile);
-    return {data: result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength)};
+    return {data: await storedGlyphs(result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength))};
   });
   // The snapshot is fetched only when an Axle load tile is requested.
   let axleList;
@@ -291,7 +313,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       const data=await get(url,controller.signal,true);
       return {data:{...data,tiles:data.tiles.map(t=>`atlasaxle://${t}`)}};
     }
-    return {data:await axleTile(await get(url,controller.signal))};
+    return {data:await storedGlyphs(await axleTile(await get(url,controller.signal)))};
   });
   // Owner view: the railway tiles with each line's owner colour added
   // (owner_color, from the name; ownerColor).
@@ -309,7 +331,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       if (color) f.properties.owner_color = color;
     }
     const result = encode(tile);
-    return {data: result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength)};
+    return {data: await storedGlyphs(result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength))};
   });
   maplibregl.addProtocol('atlasbase',async (params,controller)=>{
     const [,lang,url] = /^atlasbase:\/\/([^/]+)\/(.+)$/.exec(params.url) || [];
@@ -332,7 +354,8 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       }
     }
     if (params.type === 'json') return {...result,data:{...result.data,tiles:result.data.tiles.map(t=>t.replace('pmtiles://',`atlasbase://${lang}/`))}};
-    return {...result,data:localizeTile(result.data,lang,tileCoordinates(url))};
+    const found = new Set();
+    return {...result,data:await withGlyphs(localizeTile(result.data,lang,tileCoordinates(url),found),found)};
   });
   // A tile below the provider's first zoom, made from its children at that
   // zoom: points only (station tiles), duplicates across child buffers
@@ -364,7 +387,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   }
   // A station tile with its names in `lang`: the provider's tile in its
   // own names, merged with the translations any station still lacks.
-  async function stationTile(url, lang, signal = new AbortController().signal) {
+  async function stationTile(url, lang, signal = new AbortController().signal, found) {
     const [address, fragment = ''] = url.split('#');
     const coordinates = tileCoordinates(address), target = Number(new URLSearchParams(fragment).get('underzoom'));
     const underzoom = coordinates && Number.isInteger(target) && target > coordinates.z ? target : 0;
@@ -397,7 +420,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       const byId=new Map(features(translated).map(f=>[String(f.properties.id ?? f.id),f.properties]));
       for(const f of features(primary)) mergeStationTranslation(f.properties,byId.get(String(f.properties.id ?? f.id)),candidate);
     }
-    try { return writeLabels(primary,lang); }
+    try { return writeLabels(primary,lang,found); }
     catch (error) {
       console.error('Station labels unavailable:', error?.message || String(error));
       return primaryData.slice(0);
@@ -417,7 +440,8 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       const underzoom = zoom('underzoom').underzoom;
       return {data:{...data,...zoom('minzoom'),...zoom('maxzoom'),tiles:data.tiles.map(t=>`atlasstation://${lang}/${t}${underzoom ? `#underzoom=${underzoom}` : ''}`)}};
     }
-    return {data:await stationTile(url,lang,controller.signal)};
+    const found = new Set();
+    return {data:await withGlyphs(await stationTile(url,lang,controller.signal,found),found)};
   });
   return {axleTile, stationTile};
 }

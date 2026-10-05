@@ -1,20 +1,21 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261005-font19';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261005-font19';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261005-font19';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261005-font19';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261005-font19';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261005-rarehan5';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261005-rarehan5';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261005-rarehan5';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261005-rarehan5';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261005-rarehan5';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261005-rarehan5';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261005-font19';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261005-font19';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261005-font19';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261005-font19';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261005-font19';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261005-font19';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261005-font19';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261005-font19';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261005-font19';
-import { installWatchGesture } from './watch-map.mjs?v=20261005-font19';
-import { createBundleReader } from './tile-bundles.mjs?v=20261005-font19';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261005-rarehan5';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261005-rarehan5';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261005-rarehan5';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261005-rarehan5';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261005-rarehan5';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261005-rarehan5';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261005-rarehan5';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261005-rarehan5';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261005-rarehan5';
+import { installWatchGesture } from './watch-map.mjs?v=20261005-rarehan5';
+import { createBundleReader } from './tile-bundles.mjs?v=20261005-rarehan5';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -49,7 +50,7 @@ let legendHelpOpen = false;
 let platformLengths,frequencyExpiry;
 let powerFacilities;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261005-font19';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261005-rarehan5';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -75,11 +76,17 @@ function cjkScript(lang) {
 }
 const loadedCjkFonts=new Set(),cjkFontLoads=new Map(),cjkChoices=new Map(),cjkFontFailures=new Map();let cjkFontRefresh=false;
 const bundledCjkFamily=script=>`Atlas CJK ${script==='zh-Hant'?'TC':'SC'}`;
+// Rare Han glyph slices, loaded for the labels of each tile before it is drawn;
+// one that arrives after a label was drawn without it redraws the labels.
+const rareHanFonts=createRareHanFonts({root:new URL('fonts/rare-han-v1/', import.meta.url),fetcher:(...args)=>fetch(...args),FontFace:window.FontFace,fonts:document.fonts,onLoad:()=>refreshCjkFont()});
 // The packaged font when loaded, else the installed font chosen by probing,
 // else the script's candidate list for the system to resolve.
+// Rare Han slices (rare-han.mjs) fill characters the Han font lacks; they
+// come before the generic family, after which no family is consulted.
+const withRareHan = stack => /,\s*sans-serif\s*$/.test(stack) ? stack.replace(/,\s*sans-serif\s*$/,`,"${RARE_HAN_FAMILY}",sans-serif`) : `${stack},"${RARE_HAN_FAMILY}"`;
 const cjkFont = lang => {
   const script=cjkScript(lang),family=cjkChoices.get(script)?.family;
-  return loadedCjkFonts.has(script)?`"${bundledCjkFamily(script)}"`:family?`"${family}",sans-serif`:CJK_FONTS[script];
+  return withRareHan(loadedCjkFonts.has(script)?`"${bundledCjkFamily(script)}"`:family?`"${family}",sans-serif`:CJK_FONTS[script]);
 };
 // Installed fonts are probed once per script (cjk-font.mjs). Nothing is
 // downloaded for a device whose own font covers every character set.
@@ -146,7 +153,7 @@ for (const context of [window.CanvasRenderingContext2D?.prototype, window.Offscr
     font.set.call(this, value);
     if (this.atlasProbe) return;
     const text = String(value), chosen = key => cjkChoices.get(key)?.family;
-    const script = Object.keys(CJK_FONTS).find(key => text.includes(CJK_FONTS[key])||text.includes(bundledCjkFamily(key))||(chosen(key)&&text.includes(chosen(key))));
+    const script = Object.keys(CJK_FONTS).find(key => text.includes(CJK_FONTS[key])||text.includes(withRareHan(CJK_FONTS[key]))||text.includes(bundledCjkFamily(key))||(chosen(key)&&text.includes(chosen(key))));
     // MapLibre is drawing Han glyphs in this script's font.
     if (script) {if ('lang' in this) this.lang = CANVAS_LANG[script]; loadCjkFont(script);}
   }});
@@ -385,6 +392,10 @@ function updateMajorStations(){
    if(p)return {...f,properties:{...f.properties,name:p.name,localized_name:p.localized_name,atlas_name:p.atlas_name,atlas_language:language,atlas_name_source:'provider'}};
    return previous.get(f.id)||null;
   }).filter(Boolean);
+  // These names reach the map as GeoJSON, not through a tile protocol, so
+  // their rare Han slices load here (the layers draw atlas_name, else name).
+  const glyphs=new Set();for(const f of features)rareHanBlocks(f.properties.atlas_name||f.properties.name,glyphs);
+  if(glyphs.size){await rareHanFonts.ensure(glyphs);if(generation!==majorStationGeneration||!ready||language!==settings.language||source!==map.getSource('stationMajor'))return;}
   majorStationSearchData={type:'FeatureCollection',language,features};
   source.setData({type:'FeatureCollection',features});
  }).catch(error=>console.warn('Major station names unavailable:',error.message));
@@ -897,7 +908,7 @@ function updateStatus() {
   status.dataset.renderedFormer = String(regional.filter(f => !['proposed','construction'].includes(f.properties.state)).length);
   status.dataset.numericSpeeds = String(tracks.filter(f => numericSpeed(f.properties.maxspeed) !== null).length);
 }
-const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg|owner|axle):\/\//,'');
+const unwrap = url => url.replace(/^atlas(?:base|station):\/\/[^/]+\//,'').replace(/^atlas(?:rail|lg|owner|axle|text):\/\//,'');
 function localizeStyle(style) {
   // MapLibre draws Han glyphs with each layer's own font stack, so the Han
   // font (packaged or chosen installed) joins every explicit stack.
@@ -907,7 +918,7 @@ function localizeStyle(style) {
     const fonts=layer.layout?.['text-font'];
     if(Array.isArray(fonts)&&fonts.every(f=>typeof f==='string')){
       const original=fonts.filter(f=>!isLocalFamily(f));
-      layer.layout['text-font']=family?[...original,family]:original;
+      layer.layout['text-font']=[...original,...(family?[family]:[]),RARE_HAN_FAMILY];
     }
   }
   if(style.glyphs)style.glyphs='atlasglyph://'+style.glyphs.replace(/^atlasglyph:\/\//,'');
@@ -922,6 +933,15 @@ function localizeStyle(style) {
   style.sources.axleLow.url = `atlasaxle://${unwrap(style.sources.axleLow.url)}`;
   style.sources.axleRail.url = `atlasaxle://${unwrap(style.sources.axleRail.url)}`;
   style.sources.ownerRail.url = `atlasowner://${unwrap(style.sources.ownerRail.url)}`;
+  // Every other provider source with labels is drawn as stored; its tiles
+  // still pass through the rare Han glyph scan.
+  const labelled=new Set(style.layers.filter(l=>l.type==='symbol'&&l.layout?.['text-field']).map(l=>l.source));
+  for(const id of labelled){
+    const source=style.sources[id];
+    if(source?.type!=='vector')continue;
+    if(/^https?:\/\//.test(source.url||''))source.url=`atlastext://${source.url}`;
+    if(Array.isArray(source.tiles))source.tiles=source.tiles.map(t=>/^https?:\/\//.test(t)?`atlastext://${t}`:t);
+  }
   unitStyle(style);
   styleLanguage = settings.language;
 }
@@ -1146,7 +1166,7 @@ let pendingDraw;
 let locate = () => ({});
 async function initialize() {
   const [, labelCode] = await Promise.all([libraries, labels]);
-  const {installLabelProtocols, localizeTile} = labelCode;
+  const {installLabelProtocols, localizeTile, tileTextBlocks} = labelCode;
   locate = labelCode.locate;
   servedBuild = labelCode.buildInfo;
   if (!window.maplibregl || !window.pmtiles) throw new Error('Map libraries could not load. Check your connection and reload.');
@@ -1159,7 +1179,7 @@ async function initialize() {
   // Create it with the timeout wrapper once, before either consumer can ask
   // Protocol.tile() to create an untimed default FetchSource for that URL.
   const basemapArchive = url => new pmtiles.PMTiles(labelCode.timedSource(new pmtiles.FetchSource(url), 20000));
-  const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url), basemapArchive});
+  const labelProtocols = installLabelProtocols(maplibregl,protocol,fetch,{dataRoot:new URL('./data/', import.meta.url), basemapArchive, rareGlyphs:rareHanFonts.ensure});
   stationTileFor=labelProtocols?.stationTile||null;
   if(ready)updateMajorStations();
   // The contour worker with the terrain tiles' bad pixels repaired
@@ -1167,7 +1187,8 @@ async function initialize() {
   mlcontour.workerUrl = new URL(`vendor/dem-worker.js?v=${assetVersion}`, import.meta.url).href;
   dem = new mlcontour.DemSource({url:DEM_URL,encoding:'terrarium',maxzoom:15,worker:true,cacheSize:200,timeoutMs:20000,id:'atlas'});
   dem.setupMaplibre(maplibregl);
-  // Level crossings and branch lines are served as stored (no label names).
+  // Level crossings, branch lines, service routes and signals are served as
+  // stored (names not localized); the rare Han in their text still loads.
   for (const [scheme,folder,names = true] of [['railtiles','lifecycle'],['streettiles','street-running'],['crossingtiles','level-crossings',false],['branchtiles','branch-lines',false],['axlebranch','branch-lines',false],['servicetiles','service-routes',false],['signaltiles','traction/signals',false]]) {
   const lifecycleRoot = new URL(`./data/${folder}/`, import.meta.url);
   let tileIndex;
@@ -1184,8 +1205,14 @@ async function initialize() {
     if (!response.ok) throw new Error(`Railway tile returned ${response.status}`);
     const [z,x,y] = key.split('/').map(Number);
     const data = await decodeLifecycleTile(await response.arrayBuffer());
-    if(scheme==='axlebranch') return {data:await labelProtocols.axleTile(data)};
-    return {data: names ? localizeTile(data,lang,{z,x,y}) : data};
+    if (!names) {
+      const stored = scheme==='axlebranch' ? await labelProtocols.axleTile(data) : data, found = tileTextBlocks(stored);
+      if (found.size) await rareHanFonts.ensure(found);
+      return {data: stored};
+    }
+    const found = new Set(), localized = localizeTile(data,lang,{z,x,y},found);
+    if (found.size) await rareHanFonts.ensure(found);
+    return {data: localized};
   });
   }
   // Historic areas come in bundles of tiles (tile-bundles.mjs); a snapshot in
@@ -1196,7 +1223,10 @@ async function initialize() {
     if (!/^\d+\/\d+\/\d+$/.test(key)) throw new Error('Invalid historic area tile');
     const [z,x,y] = key.split('/').map(Number);
     const data = await heritage.tile(z,x,y,controller.signal);
-    return {data: data ? localizeTile(data,new URLSearchParams(query).get('lang') || 'local',{z,x,y}) : new ArrayBuffer(0)};
+    if (!data) return {data: new ArrayBuffer(0)};
+    const found = new Set(), localized = localizeTile(data,new URLSearchParams(query).get('lang') || 'local',{z,x,y},found);
+    if (found.size) await rareHanFonts.ensure(found);
+    return {data: localized};
   });
   const styleURL = new URL(`world.style.json?v=${encodeURIComponent(assetVersion)}`, import.meta.url);
   const response = await fetch(styleURL);
@@ -1252,6 +1282,7 @@ async function initialize() {
   powerFacilities = createPowerFacilityLoader(map, {url:new URL('./data/traction/power/power-facilities.geojson',import.meta.url),
     active:()=>ready&&settings.mode==='electrification'&&settings.background!=='satellite'&&map.getZoom()>=10,
     language:()=>settings.language,localize:(data,language)=>({...data,features:data.features.map(f=>{const properties={...f.properties,...locate(...f.geometry.coordinates)};return {...f,properties:{...properties,atlas_name:chooseName(properties,language),atlas_language:language}};})}),
+    glyphs:async data=>{const found=new Set();for(const f of data.features)rareHanBlocks(f.properties.atlas_name,found);if(found.size)await rareHanFonts.ensure(found);},
     fetcher:fetch,onError:error=>console.warn('Railway energy supplies unavailable:',error.message)});
   updateAttribution();
   // The globe may be centred beyond 85° (globe-drag.mjs); a view left or

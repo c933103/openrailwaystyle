@@ -9,6 +9,10 @@ import {waitUntil,setDefaultTimeout} from './wait-until.mjs';
 const deadline=setTimeout(()=>{console.error('Browser validation exceeded twenty minutes');process.exit(1);},1200000);deadline.unref();
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1365,height:900},deviceScaleFactor:1});
+// A crashed renderer or an unexpected reload otherwise surfaces only as a
+// later timeout or a destroyed execution context.
+page.on('crash',()=>console.error('PAGE_CRASHED',new Date().toISOString()));
+page.on('framenavigated',frame=>{if(frame===page.mainFrame())console.error('MAIN_FRAME_NAVIGATED',new Date().toISOString(),frame.url());});
 setDefaultTimeout(page,120000);
 // Retain completed WebGL frames for reliable headless screenshots.
 await page.addInitScript(()=>{
@@ -102,7 +106,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') { console.log('Browser resource:',msg.text()); if(/DataCloneError|already detached/.test(msg.text())) errors.push(msg.text()); }});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261005-font19&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261005-rarehan5&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');

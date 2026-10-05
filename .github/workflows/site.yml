@@ -107,6 +107,20 @@ jobs:
           python scripts/unpack-snapshot.py /tmp/lifecycle.pmtiles
           node scripts/build-overview-tiles.mjs
           cat lifecycle-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
+      # Rare Han glyph slices (styles/rare-han.mjs): Jigmo's Plane 2 and 3
+      # fonts in 256-character WOFF2 files, about 20 MB. The build script pins
+      # the release and its SHA-256, so its own hash keys the cache.
+      - name: Restore rare Han glyph slices
+        id: rare-han
+        uses: actions/cache@v4
+        with:
+          path: styles/fonts/rare-han-v1
+          key: rare-han-${{ hashFiles('scripts/build-rare-han.py') }}
+      - name: Build rare Han glyph slices
+        if: steps.rare-han.outputs.cache-hit != 'true'
+        run: |
+          pip install fonttools==4.66.1 brotli==1.2.0
+          python scripts/build-rare-han.py
       - name: Load the published axle-load lookup
         run: |
           if git ls-remote --exit-code --heads origin axle-data; then
