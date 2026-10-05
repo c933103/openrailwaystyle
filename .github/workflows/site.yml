@@ -209,12 +209,15 @@ jobs:
             echo "Could not look up the service-data snapshot (git exit $status)"
             exit 1
           fi
-      - name: Add reviewed timetable shapes and peak/off-peak profiles to service tiles
+      - name: Add published headways to the OSM service tiles (timetables draw no lines)
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           python3 scripts/load-frequency-snapshot.py
           node scripts/rebuild-service-frequency.mjs
+          # Compiled feeds are kept for matching, not published: no timetable
+          # is applied yet. The manifest and inventory stay as coverage records.
+          rm -rf styles/data/service-frequency/feeds styles/data/service-frequency/tiles
       - name: Load worldwide railway signals and energy supplies
         run: |
           mkdir -p styles/data/traction

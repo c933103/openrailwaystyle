@@ -106,7 +106,7 @@ page.on('requestfailed',req=>{if(basemap(req.url())) console.log('Basemap reques
 page.on('console',msg=>{if(msg.type()==='error') { console.log('Browser resource:',msg.text()); if(/DataCloneError|already detached/.test(msg.text())) errors.push(msg.text()); }});
 await mkdir('browser-review',{recursive:true});
 try{
-  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261005-rarehan5&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
+  await page.goto((process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/,'/')+'?v=20261005-service5&mode=speed&language=ko#7/34.229/129.245',{waitUntil:'domcontentloaded'});
   // Controls must respond while the map is still loading.
   await page.locator('#about-open').click();
   const earlyReady=await page.evaluate(()=>document.body.dataset.mapReady==='true');
@@ -493,7 +493,8 @@ try{
     if(!scale||!status)return false;
     const a=scale.getBoundingClientRect(),b=status.getBoundingClientRect();
     return a.width>0&&a.height>0&&a.left>=0&&a.top>=0&&a.right<=innerWidth&&a.bottom<=innerHeight&&a.bottom<b.top;
-  },undefined,{timeout:10000});
+  // The resize lands after the globe's polar frame, slowly on a busy runner.
+  },undefined,{timeout:30000});
   const compactControls=await page.evaluate(()=>{
     const box=el=>{const r=el.getBoundingClientRect();return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height};};
     const scale=document.querySelector('.maplibregl-ctrl-scale'),readout=document.querySelector('.map-readout'),status=document.querySelector('#map-status');

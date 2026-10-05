@@ -5128,7 +5128,7 @@
       ],
       "minzoom": 7,
       "maxzoom": 12,
-      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a> · <a href=\"frequency-credits.html\">Timetable sources</a>"
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a> · <a href=\"frequency-credits.html\">Frequency sources</a>"
     },
     "streetRunning": {
       "type": "vector",
