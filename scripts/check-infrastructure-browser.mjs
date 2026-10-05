@@ -72,6 +72,7 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  // own answer past 5 s, so the wait covers one such retry.
  try{await waitUntil(page,async()=>(await window.reviewMap.getSource('platformLengths').getData()).features.some(f=>Math.abs(f.properties.platform_length-246.86183810409128)<.001),undefined,{timeout:45000});}catch(error){console.error(JSON.stringify({kind,requests,state:await page.evaluate(async()=>({zoom:window.reviewMap.getZoom(),edges:window.reviewMap.queryRenderedFeatures({layers:['platform-edges']}).map(f=>({properties:f.properties,geometry:f.geometry})),labels:await window.reviewMap.getSource('platformLengths').getData()}))}));throw error;}
  const lengthRequests=requests.filter(path=>path.includes('standard_railway_platform_edges')).length;
+ assert.ok(lengthRequests===1||lengthRequests===2,`one length request, or one and its retry: ${lengthRequests}`);
  await page.waitForFunction(()=>['infrastructure-signal-points','infrastructure-entrance-points','platform-numbers'].every(id=>window.reviewMap.queryRenderedFeatures({layers:[id]}).length>0));
  assert.ok(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['infrastructure-signal-points']}).every(f=>f.properties.railway==='signal')));
  if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();
