@@ -188,7 +188,8 @@ jobs:
       - name: Install test browser
         run: npx playwright install --with-deps chromium
       # Map tiles, glyphs and provider API answers the checks fetch, kept for
-      # a week (scripts/browser.mjs). The site under test is never cached.
+      # a week (scripts/browser.mjs) and saved only after the checks pass.
+      # The site under test is never cached.
       - name: Restore browser tile cache
         uses: actions/cache/restore@v4
         with:
@@ -232,10 +233,10 @@ jobs:
           check-polar-browser.mjs
           check-service-frequency-browser.mjs
       - name: Prune browser tile cache
-        if: always() && hashFiles('.browser-tiles/.changed') != ''
+        if: success() && hashFiles('.browser-tiles/.changed') != ''
         run: node scripts/browser.mjs prune .browser-tiles
       - name: Upload browser tile cache
-        if: always() && hashFiles('.browser-tiles/.changed') != ''
+        if: success() && hashFiles('.browser-tiles/.changed') != ''
         uses: actions/cache/save@v4
         with:
           path: .browser-tiles

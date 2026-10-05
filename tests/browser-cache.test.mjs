@@ -27,7 +27,7 @@ test('other origins are served from the cache until it expires; the site and non
   let clock = 1000;
   const network = {calls: 0, respond: (url, range) => range
     ? {status: 206, headers: {'content-range': 'bytes 0-1/4', 'content-encoding': 'gzip', 'access-control-allow-origin': '*'}, body: 'ab'}
-    : url.endsWith('/missing') ? {status: 404, headers: {}, body: ''} : url.endsWith('/error') ? {status: 503, headers: {}, body: 'busy'} : {status: 200, headers: {'content-type': 'application/x-protobuf'}, body: 'tile'}};
+    : url.endsWith('/empty') ? {status: 204, headers: {}, body: ''} : url.endsWith('/missing') ? {status: 404, headers: {}, body: ''} : url.endsWith('/error') ? {status: 503, headers: {}, body: 'busy'} : {status: 200, headers: {'content-type': 'application/x-protobuf'}, body: 'tile'}};
   await cacheOtherOrigins(context, directory, {now: () => clock, maxAge: 5000});
   assert.equal(context.match(new URL('https://tiles.example/1/2/3')), true);
   assert.equal(context.match(new URL('http://127.0.0.1:4173/data/x.pbf')), false, 'the site under test is never cached');
@@ -45,14 +45,16 @@ test('other origins are served from the cache until it expires; the site and non
   await call('https://tiles.example/archive.pmtiles', {range: 'bytes=0-1'});await call('https://tiles.example/archive.pmtiles', {range: 'bytes=2-3'});
   assert.equal(network.calls, 3, 'each byte range is its own entry');
 
-  assert.equal((await call('https://tiles.example/missing')).fulfilled.status, 404);await call('https://tiles.example/missing');
+  assert.equal((await call('https://tiles.example/empty')).fulfilled.status, 204);await call('https://tiles.example/empty');
   assert.equal(network.calls, 4, 'an empty tile answer is kept too');
+  assert.equal((await call('https://tiles.example/missing')).fulfilled.status, 404);await call('https://tiles.example/missing');
+  assert.equal(network.calls, 6, 'a 404, possibly a passing fault, is never kept');
   await call('https://tiles.example/error');await call('https://tiles.example/error');
-  assert.equal(network.calls, 6, 'a server error is never kept');
+  assert.equal(network.calls, 8, 'a server error is never kept');
   assert.equal((await call('https://api.example/search', {method: 'POST'})).fallback, true);
 
   clock += 6000;await call('https://tiles.example/1/2/3');
-  assert.equal(network.calls, 7, 'an expired entry is fetched again');
+  assert.equal(network.calls, 9, 'an expired entry is fetched again');
   const entry = JSON.parse(await readFile(join(directory, `${cacheKey('https://tiles.example/1/2/3')}.json`), 'utf8'));
   assert.equal(entry.saved, clock);
   assert.ok((await readdir(directory)).includes('.changed'), 'a run that added entries is marked for saving');
