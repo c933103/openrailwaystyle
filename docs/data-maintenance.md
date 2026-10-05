@@ -62,7 +62,15 @@ The basemap's `park` layer holds only national parks, protected areas and nature
 - Each area keeps its OSM id, its kind and the `name` keys the label languages read; other tags are dropped.
 - The run is monthly (the 1st, 05:23 UTC), on a manual run, and when the builder changes on `main`. The download is capped at 1.5 GB.
 
-Each website build copies the tiles, `index.json` and `manifest.json` into `styles/data/heritage/`. Until the first snapshot exists the site deploys with an empty index and shows no historic areas.
+The tiles are published in bundles (`styles/tile-bundles.mjs`): one file per zoom-8 tile, holding every zoom 10–12 tile under it, gzip-compressed together.
+- The first worldwide build had 70,530 areas in 142,087 tiles: 49 MB in 142,087 files, plus a 2 MB index every visitor downloaded first.
+- As bundles the same tiles are 3,131 files and 11.6 MB, with a 28 KB index. The largest bundle is 396 KB.
+- A map view at zoom 10–12 needs one to four bundles. Each bundle is fetched whole, because GitHub Pages applies byte ranges to its gzip-encoded responses, so a range-based archive such as PMTiles would read wrong bytes.
+- The page keeps the last 24 bundles it decoded. A bundle request is shared by all the tiles that need it.
+
+Each website build copies the bundles, `index.json` and `manifest.json` into `styles/data/heritage/`.
+- Until the first snapshot exists the site deploys with an empty index and shows no historic areas.
+- The map still reads a snapshot in the earlier one-file-per-tile layout (manifest version 1), whose index lists `tiles` rather than `bundles`. A site deployed between this change and the next build therefore keeps showing historic areas.
 
 ## Branch-line snapshot
 
