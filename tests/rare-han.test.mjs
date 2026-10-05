@@ -123,6 +123,33 @@ test('a slice that loads after its tile was released redraws labels; one loaded 
   assert.equal(notified.length, 1, 'a loaded slice does not redraw again');
 });
 
+test('a failed slice or index is retried for a waiting label without another tile, backing off', async () => {
+  let indexOk = false, sliceOk = false;
+  const notified = [], loads = [];
+  class FontFace {
+    constructor(family, source) { this.source = source; }
+    load() { loads.push(this.source); return sliceOk ? Promise.resolve(this) : Promise.reject(new Error('offline')); }
+  }
+  const fonts = {add() {}, delete() {}};
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms)), started = Date.now(), until = ms => sleep(ms - (Date.now() - started));
+  const loader = createRareHanFonts({root: 'https://atlas.example/f/', FontFace, fonts, wait: 30, retryDelay: 200, notifyDelay: 5, onLoad: blocks => notified.push([...blocks]),
+    fetcher: async () => indexOk ? {ok: true, json: async () => ({blocks: [0x2a7]})} : {ok: false, status: 503}});
+  await loader.ensure(new Set([0x2a7]));
+  indexOk = true;
+  // Index retry at ~250 ms loads the slice, which fails; retries follow at
+  // ~500 ms and, the delay doubled, at ~950 ms.
+  await until(375);
+  assert.equal(loads.length, 1, 'the index retry loads the waiting slice');
+  await until(725);
+  assert.equal(loads.length, 2);
+  sliceOk = true;
+  await until(825);
+  assert.equal(loads.length, 2, 'the third attempt waits for the doubled delay');
+  await until(1150);
+  assert.equal(loads.length, 3);
+  assert.deepEqual(notified, [[0x2a7]], 'the label is redrawn once the retry succeeds');
+});
+
 test('an unanswered index request is bounded by the wait and later counts as failed', async () => {
   let clock = 0, requests = 0;
   const {FontFace, fonts} = fakeFonts();

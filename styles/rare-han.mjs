@@ -24,14 +24,24 @@ export const rareHanRange = block => `U+${hex(block << 8)}-${hex((block << 8) + 
 // ensure(blocks) resolves once those slices are loaded, after `wait` ms
 // (the index included), or at once for blocks without a slice; it never
 // rejects, so a missing font cannot hold back the map. A failed slice or
-// index is retried only after `retryDelay`, not by every tile that needs it;
-// an index request still unanswered after `indexTimeout` counts as failed.
+// index is retried only after `retryDelay` (doubling on each further failure
+// up to 16 times), not by every tile that needs it, and then also without a
+// new tile when a label released without its slice is still waiting; an
+// index request still unanswered after `indexTimeout` counts as failed.
 // MapLibre keeps the bitmap of a glyph drawn before its slice arrived, so a
 // slice that loads after a tile was released without it calls onLoad(blocks)
 // (gathered over `notifyDelay` ms) for the app to redraw its labels.
 export function createRareHanFonts({root, fetcher = fetch, FontFace = globalThis.FontFace, fonts = globalThis.document?.fonts, wait = 8000, retryDelay = 60000, indexTimeout = 30000, now = Date.now, onLoad, notifyDelay = 1000} = {}) {
   const loads = new Map(), failed = new Map(), loaded = new Set(), missed = new Set(), late = new Set();
+  const attempts = new Map();
   let index, indexRetry = 0, notifyTimer;
+  const backoff = key => { const n = attempts.get(key) ?? 0; attempts.set(key, n + 1); return retryDelay * 2 ** Math.min(n, 4); };
+  const retryLater = delay => {
+    const timer = setTimeout(() => {
+      if (missed.size) available().then(have => { for (const block of missed) if (have.has(block)) load(block); });
+    }, delay + 50);
+    timer.unref?.();
+  };
   const notify = block => {
     late.add(block);
     notifyTimer ??= setTimeout(() => { notifyTimer = undefined; const blocks = new Set(late); late.clear(); onLoad?.(blocks); }, notifyDelay);
@@ -43,8 +53,8 @@ export function createRareHanFonts({root, fetcher = fetch, FontFace = globalThis
         .then(response => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)));
       index = Promise.race([request, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Index timed out')), indexTimeout); })])
         .finally(() => clearTimeout(timer))
-        .then(data => new Set(Array.isArray(data?.blocks) ? data.blocks : []))
-        .catch(() => { index = undefined; indexRetry = now() + retryDelay; return new Set(); });
+        .then(data => { attempts.delete('index'); return new Set(Array.isArray(data?.blocks) ? data.blocks : []); })
+        .catch(() => { const delay = backoff('index'); index = undefined; indexRetry = now() + delay; retryLater(delay); return new Set(); });
     }
     return index || Promise.resolve(new Set());
   };
@@ -55,11 +65,12 @@ export function createRareHanFonts({root, fetcher = fetch, FontFace = globalThis
     const face = new FontFace(RARE_HAN_FAMILY, `url("${url}")`, {unicodeRange: rareHanRange(block)});
     fonts.add(face);
     const pending = face.load().then(() => {
-      loaded.add(block);
+      loaded.add(block); attempts.delete(block);
       if (missed.delete(block)) notify(block);
       return true;
     }, () => {
-      fonts.delete(face); loads.delete(block); failed.set(block, now() + retryDelay);
+      const delay = backoff(block);
+      fonts.delete(face); loads.delete(block); failed.set(block, now() + delay); retryLater(delay);
       return false;
     });
     loads.set(block, pending);
