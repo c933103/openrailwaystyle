@@ -13,6 +13,7 @@ on:
       - scripts/gtfs-service.mjs
       - scripts/service-routes.mjs
       - scripts/merge-service-tiles.mjs
+      - styles/pbf-utf8.mjs
       - styles/service-frequency.mjs
       - styles/data-src/frequency-source-rules.json
       - .github/workflows/service-frequency.yml
@@ -35,6 +36,7 @@ on:
       - scripts/gtfs-service.mjs
       - scripts/service-routes.mjs
       - scripts/merge-service-tiles.mjs
+      - styles/pbf-utf8.mjs
       - styles/service-frequency.mjs
       - styles/data-src/frequency-source-rules.json
       - .github/workflows/service-frequency.yml

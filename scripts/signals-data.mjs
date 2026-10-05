@@ -3,6 +3,7 @@
 // markers do not require a direction: this published supplement fills that
 // specific gap without visitors querying an editing API.
 import vtpbf from 'vt-pbf';
+import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 
 export const SIGNAL_OVERVIEW_ZOOM = 12, SIGNAL_ZOOM = 16, SIGNAL_EXTENT = 8192;
 const BUFFER = 128;
