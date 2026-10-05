@@ -133,7 +133,13 @@ export const HERITAGE_RETRY_DELAYS = [30000, 60000, 120000];
 export function heritageFailure(message, attempt, depth, maxDepth = 6) {
   const status = Number(/^HTTP (\d+):/.exec(message)?.[1]);
   const request = /^(Network|Invalid response|Incomplete heritage response):/.test(message);
-  if (request && /timed? ?out|out of memory|memory/i.test(message)) return depth < maxDepth ? 'split' : 'fail';
+  // An executed query that ran out of time or memory, reported in a remark or
+  // an HTTP 5xx body ("runtime error: Query timed out ...", "... out of
+  // memory"), or one the client stopped waiting for. Retrying it would run
+  // the same heavy query again; an admission error ("Gateway timeout") or a
+  // server fault ("runtime error: open64") is retried.
+  const tooHeavy = /runtime error[^]*?(timed? ?out|out of memory)/i.test(message) || /^Network: .*timeout/i.test(message);
+  if ((request || status >= 500) && tooHeavy) return depth < maxDepth ? 'split' : 'fail';
   if (!request && !(status >= 500 || status === 429)) return 'fail';
   if (attempt < HERITAGE_RETRY_DELAYS.length) return 'retry';
   return depth < maxDepth ? 'split' : 'fail';
