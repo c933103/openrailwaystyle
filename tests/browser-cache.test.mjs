@@ -11,11 +11,15 @@ function fakeContext() {
   const context = {route: async (match, handler) => { context.match = match; context.handler = handler; }};
   return context;
 }
+// A miss continues to the network from the browser; the answer it receives
+// is what the fake request's response() gives, and what the page sees.
 function fakeRoute(url, {method = 'GET', range, network}) {
   const result = {};
+  let answer;
   return {result, route: {
-    request: () => ({url: () => url, method: () => method, allHeaders: async () => range ? {range} : {}}),
-    fetch: async () => { network.calls++; const r = network.respond(url, range); return {status: () => r.status, headers: () => r.headers, body: async () => Buffer.from(r.body)}; },
+    request: () => ({url: () => url, method: () => method, allHeaders: async () => range ? {range} : {},
+      response: async () => answer && {status: () => answer.status, allHeaders: async () => answer.headers, body: async () => Buffer.from(answer.body)}}),
+    continue: async () => { network.calls++; answer = network.respond(url, range); result.fulfilled = {status: answer.status, headers: answer.headers, body: Buffer.from(answer.body)}; },
     fulfill: async options => { result.fulfilled = options; },
     fallback: async () => { result.fallback = true; },
     abort: async () => { result.aborted = true; },
@@ -39,10 +43,11 @@ test('other origins are served from the cache until it expires; the site and non
   assert.equal(String((await call('https://tiles.example/1/2/3')).fulfilled.body), 'tile');
   assert.equal(network.calls, 1, 'the second request is served from the cache');
 
+  assert.equal((await call('https://tiles.example/archive.pmtiles', {range: 'bytes=0-1'})).fulfilled.status, 206);
   const ranged = await call('https://tiles.example/archive.pmtiles', {range: 'bytes=0-1'});
-  assert.equal(ranged.fulfilled.status, 206);assert.equal(ranged.fulfilled.headers['content-encoding'], undefined, 'the body handed over is already decoded');
-  assert.equal(ranged.fulfilled.headers['access-control-allow-origin'], '*');
-  await call('https://tiles.example/archive.pmtiles', {range: 'bytes=0-1'});await call('https://tiles.example/archive.pmtiles', {range: 'bytes=2-3'});
+  assert.equal(ranged.fulfilled.status, 206);assert.equal(String(ranged.fulfilled.body), 'ab');
+  assert.equal(ranged.fulfilled.headers['content-encoding'], undefined, 'a replayed body is already decoded');
+  assert.equal(ranged.fulfilled.headers['access-control-allow-origin'], '*');await call('https://tiles.example/archive.pmtiles', {range: 'bytes=2-3'});
   assert.equal(network.calls, 3, 'each byte range is its own entry');
 
   assert.equal((await call('https://tiles.example/empty')).fulfilled.status, 204);await call('https://tiles.example/empty');
@@ -69,8 +74,9 @@ test('a request whose page closes mid-flight fails quietly instead of crashing t
   await cacheOtherOrigins(context, directory);
   let aborted = false;
   const route = {
-    request: () => ({url: () => 'https://tiles.example/closing', method: () => 'GET', allHeaders: async () => ({})}),
-    fetch: async () => ({status: () => 200, headers: () => ({}), body: async () => { throw new Error('apiResponse.body: Response has been disposed'); }}),
+    request: () => ({url: () => 'https://tiles.example/closing', method: () => 'GET', allHeaders: async () => ({}),
+      response: async () => ({status: () => 200, allHeaders: async () => ({}), body: async () => { throw new Error('response.body: Target page, context or browser has been closed'); }})}),
+    continue: async () => {},
     fulfill: async () => { throw new Error('Target page, context or browser has been closed'); },
     fallback: async () => {}, abort: async () => { aborted = true; throw new Error('closed'); },
   };
