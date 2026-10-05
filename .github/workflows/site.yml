@@ -237,9 +237,11 @@ jobs:
           name: railway-world-site
           path: styles
           compression-level: 0
-  # The browser checks, in parallel jobs of a few checks each, two at a time
-  # within a job (scripts/run-browser-checks.mjs), with provider tiles cached
-  # per job for a week (scripts/browser.mjs).
+  # The browser checks, in parallel jobs of a few checks each, one at a time
+  # in a shared browser within a job (scripts/run-browser-checks.mjs), with
+  # provider tiles cached per job for a week (scripts/browser.mjs). Two at
+  # once on one runner slowed the timing-sensitive platform checks until
+  # they failed, and gained nothing once the jobs run in parallel.
   browser:
     name: browser (${{ matrix.group }})
     needs: [plan, validate]
@@ -282,7 +284,7 @@ jobs:
         if: matrix.prepare != ''
         run: bash -c "$PREPARE"
       - name: Run browser checks
-        run: node scripts/run-browser-checks.mjs --concurrency 2 --label "$GROUP" $CHECKS
+        run: node scripts/run-browser-checks.mjs --concurrency 1 --label "$GROUP" $CHECKS
       - name: Prune browser tile cache
         if: success() && hashFiles('.browser-tiles/.changed') != ''
         run: node scripts/browser.mjs prune .browser-tiles

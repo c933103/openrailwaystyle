@@ -64,6 +64,20 @@ test('other origins are served from the cache until it expires; the site and non
   assert.deepEqual((await readdir(directory)).filter(name => !name.startsWith('.')).sort(), [`${cacheKey('https://tiles.example/1/2/3')}.body`, `${cacheKey('https://tiles.example/1/2/3')}.json`]);
 });
 
+test('a request whose page closes mid-flight fails quietly instead of crashing the check', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'tile-cache-')), context = fakeContext();
+  await cacheOtherOrigins(context, directory);
+  let aborted = false;
+  const route = {
+    request: () => ({url: () => 'https://tiles.example/closing', method: () => 'GET', allHeaders: async () => ({})}),
+    fetch: async () => ({status: () => 200, headers: () => ({}), body: async () => { throw new Error('apiResponse.body: Response has been disposed'); }}),
+    fulfill: async () => { throw new Error('Target page, context or browser has been closed'); },
+    fallback: async () => {}, abort: async () => { aborted = true; throw new Error('closed'); },
+  };
+  await context.handler(route);
+  assert.equal(aborted, true);
+});
+
 test('every browser check launches through the shared helper', async () => {
   const scripts = (await readdir(new URL('../scripts/', import.meta.url))).filter(name => /^check-.*-browser\.mjs$/.test(name));
   assert.ok(scripts.length >= 16);
@@ -78,7 +92,7 @@ test('the site workflow plans the browser checks and runs them through the runne
   const workflow = await readFile(new URL('../.github/workflows/site.yml', import.meta.url), 'utf8');
   assert.match(workflow, /run: node scripts\/ci-plan\.mjs/);
   assert.match(workflow, /matrix: \$\{\{ fromJSON\(needs\.plan\.outputs\.matrix\) \}\}/);
-  assert.match(workflow, /node scripts\/run-browser-checks\.mjs --concurrency 2 --label "\$GROUP" \$CHECKS/);
+  assert.match(workflow, /node scripts\/run-browser-checks\.mjs --concurrency 1 --label "\$GROUP" \$CHECKS/);
   assert.match(workflow, /BROWSER_TILE_CACHE: \$\{\{ github\.workspace \}\}\/\.browser-tiles/);
   // Every check is named in exactly one job of scripts/ci-plan.mjs (tests/ci-plan.test.mjs).
 });

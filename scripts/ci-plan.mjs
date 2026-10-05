@@ -21,15 +21,17 @@ import {createHash} from 'node:crypto';
 import {readdir, readFile} from 'node:fs/promises';
 import {dirname, join, normalize} from 'node:path';
 
-// Longest first within a group; the station and map checks take the longest
-// and get jobs of their own. The world-frequency check replaces the service
+// Longest first within a group, no job much longer than the station and map
+// checks, which take the longest (about 13 minutes each) and get jobs of
+// their own. The world-frequency check replaces the service
 // data with fixtures, so it runs alone after `prepare`.
 export const GROUPS = [
   {group: 'stations', checks: ['check-major-stations-browser.mjs']},
   {group: 'map', checks: ['check-map-browser.mjs']},
   {group: 'context', checks: ['check-context-browser.mjs', 'check-planning-browser.mjs', 'check-bathymetry-browser.mjs', 'check-globe-browser.mjs', 'check-polar-browser.mjs']},
   {group: 'controls', checks: ['check-map-controls-browser.mjs', 'check-build-browser.mjs', 'check-watch-browser.mjs', 'check-service-frequency-browser.mjs']},
-  {group: 'infrastructure', checks: ['check-signal-power-browser.mjs', 'check-platform-browser.mjs', 'check-infrastructure-browser.mjs', 'check-platform-stations-browser.mjs']},
+  {group: 'infrastructure', checks: ['check-signal-power-browser.mjs', 'check-platform-browser.mjs', 'check-infrastructure-browser.mjs']},
+  {group: 'platforms', checks: ['check-platform-stations-browser.mjs']},
   {group: 'frequency', checks: ['check-world-frequency-browser.mjs'], prepare: 'node scripts/rebuild-service-frequency.mjs styles/data/service-routes /tmp/frequency-fixture-credits.html --fixtures'},
 ];
 export const VALIDATED_CONTEXT = 'site/browser-checks';

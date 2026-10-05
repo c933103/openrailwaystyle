@@ -53,37 +53,37 @@ export const cacheKey = (url, range = '') => createHash('sha256').update(`${url}
 
 export async function cacheOtherOrigins(context, directory, {now = Date.now, maxAge = TILE_CACHE_DAYS * 86400000} = {}) {
   await mkdir(directory, {recursive: true});
-  await context.route(url => !local(url.href ?? url), async route => {
-    const request = route.request();
-    if (request.method() !== 'GET') return route.fallback();
-    const range = (await request.allHeaders()).range || '';
-    const key = cacheKey(request.url(), range), file = join(directory, key);
-    try {
-      const entry = JSON.parse(await readFile(`${file}.json`, 'utf8'));
-      if (now() - entry.saved < maxAge) {
-        const body = entry.size ? await readFile(`${file}.body`) : Buffer.alloc(0);
-        return await route.fulfill({status: entry.status, headers: entry.headers, body});
-      }
-    } catch {}
-    let response;
-    try { response = await route.fetch(); }
-    catch { return route.abort().catch(() => {}); }
-    const body = await response.body(), headers = {};
-    for (const [name, value] of Object.entries(response.headers())) if (!DROPPED_HEADERS.has(name.toLowerCase())) headers[name] = value;
-    if (CACHED_STATUS.has(response.status())) {
-      // Written under a temporary name and renamed, so a concurrent check
-      // never reads half an entry.
-      const temporary = `${file}.${process.pid}.${Math.random().toString(36).slice(2)}`;
-      try {
-        await writeFile(`${temporary}.body`, body);
-        await rename(`${temporary}.body`, `${file}.body`);
-        await writeFile(`${temporary}.json`, JSON.stringify({url: request.url(), range, status: response.status(), headers, size: body.length, saved: now()}));
-        await rename(`${temporary}.json`, `${file}.json`);
-        await writeFile(join(directory, '.changed'), '');
-      } catch {}
+  // A check may close its page or context while a request is still on its
+  // way; the route then fails quietly instead of crashing the check.
+  await context.route(url => !local(url.href ?? url), route => serve(route, directory, {now, maxAge}).catch(() => route.abort().catch(() => {})));
+}
+async function serve(route, directory, {now, maxAge}) {
+  const request = route.request();
+  if (request.method() !== 'GET') return route.fallback();
+  const range = (await request.allHeaders()).range || '';
+  const key = cacheKey(request.url(), range), file = join(directory, key);
+  try {
+    const entry = JSON.parse(await readFile(`${file}.json`, 'utf8'));
+    if (now() - entry.saved < maxAge) {
+      const body = entry.size ? await readFile(`${file}.body`) : Buffer.alloc(0);
+      return await route.fulfill({status: entry.status, headers: entry.headers, body});
     }
-    await route.fulfill({status: response.status(), headers, body}).catch(() => {});
-  });
+  } catch {}
+  const response = await route.fetch(), body = await response.body(), headers = {};
+  for (const [name, value] of Object.entries(response.headers())) if (!DROPPED_HEADERS.has(name.toLowerCase())) headers[name] = value;
+  if (CACHED_STATUS.has(response.status())) {
+    // Written under a temporary name and renamed, so a concurrent check
+    // never reads half an entry.
+    const temporary = `${file}.${process.pid}.${Math.random().toString(36).slice(2)}`;
+    try {
+      await writeFile(`${temporary}.body`, body);
+      await rename(`${temporary}.body`, `${file}.body`);
+      await writeFile(`${temporary}.json`, JSON.stringify({url: request.url(), range, status: response.status(), headers, size: body.length, saved: now()}));
+      await rename(`${temporary}.json`, `${file}.json`);
+      await writeFile(join(directory, '.changed'), '');
+    } catch {}
+  }
+  await route.fulfill({status: response.status(), headers, body});
 }
 
 // Drops expired entries and the marker, before a cache is saved:

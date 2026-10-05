@@ -446,7 +446,9 @@ try{
     return rendered.some(f=>f.layer.id==='drawing-line') && rendered.some(f=>f.layer.id==='drawing-line-labels' && /km|m$/.test(f.properties.measure));
   },'A drawn line and its length label must be on the map');
   const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#draw-save').click()]);
-  const saved=JSON.parse(await (await import('node:fs/promises')).readFile(await download.path(),'utf8'));
+  // saveAs works with a shared browser too (scripts/browser.mjs), path() does not.
+  const savedPath=`browser-review/drawing-${process.pid}.geojson`;await download.saveAs(savedPath);
+  const saved=JSON.parse(await (await import('node:fs/promises')).readFile(savedPath,'utf8'));
   assert.equal(saved.features[0].geometry.type,'LineString');
   assert.equal(saved.features[0].geometry.coordinates.length,3);
   await page.locator('#draw-close').click();
