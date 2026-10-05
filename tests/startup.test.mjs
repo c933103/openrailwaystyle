@@ -97,7 +97,8 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   // This is the MapLibre 5 public surface used by the app. In particular,
   // supported() is absent: older Mapbox examples must not gate startup.
   const libraries = {};
-  libraries.maplibregl = {Map, addProtocol(){}, NavigationControl:class { constructor(options) { maps.controls.push(options); } }, GeolocateControl:class { constructor(options) { maps.controls.push(options); } }, AttributionControl:class {constructor(options){this.options=options;}}, ScaleControl:class { constructor(options) { this.unit = options.unit; maps.scale = this; } setUnit(unit) { this.unit = unit; } }};
+  maps.protocols = {};
+  libraries.maplibregl = {Map, addProtocol(id,handler){maps.protocols[id]=handler;}, NavigationControl:class { constructor(options) { maps.controls.push(options); } }, GeolocateControl:class { constructor(options) { maps.controls.push(options); } }, AttributionControl:class {constructor(options){this.options=options;}}, ScaleControl:class { constructor(options) { this.unit = options.unit; maps.scale = this; } setUnit(unit) { this.unit = unit; } }};
   maps.controls = [];
   libraries.pmtiles = {
     Protocol:class { constructor(){this.tiles=new globalThis.Map();maps.pmtiles=this;} tile() {} },
@@ -117,7 +118,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const dependency = new vm.SyntheticModule(Object.keys(model), function() {
     for (const [key,value] of Object.entries(model)) this.setExport(key,value);
   }, {context});
-  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','locate','buildInfo','timedSource','readTile'],function(){this.setExport('buildInfo',labelBuild);this.setExport('readTile',labelModule.readTile);this.setExport('installLabelProtocols',()=>stationTile?{stationTile}:{});this.setExport('timedSource',(inner,ms)=>({inner,ms,getKey:()=>inner.url}));this.setExport('localizeTile',x=>x);this.setExport('locate',(lon,lat)=>{assert.ok(Number.isFinite(lon)&&Number.isFinite(lat),'label region lookup takes longitude and latitude separately');return {atlas_han:'none',atlas_zh:''};});},{context});
+  const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','tileTextBlocks','locate','buildInfo','timedSource','readTile'],function(){this.setExport('buildInfo',labelBuild);this.setExport('readTile',labelModule.readTile);this.setExport('tileTextBlocks',labelModule.tileTextBlocks);this.setExport('installLabelProtocols',()=>stationTile?{stationTile}:{});this.setExport('timedSource',(inner,ms)=>({inner,ms,getKey:()=>inner.url}));this.setExport('localizeTile',x=>x);this.setExport('locate',(lon,lat)=>{assert.ok(Number.isFinite(lon)&&Number.isFinite(lat),'label region lookup takes longitude and latitude separately');return {atlas_han:'none',atlas_zh:''};});},{context});
   // The label code is imported on demand, after the controls are wired.
   let loadLabels;
   const labelsReady=new Promise(resolve=>{loadLabels=resolve;});
@@ -520,6 +521,28 @@ test('curated hub names with rare Han wait for their slices before reaching the 
   slice().finish();
   for(let i=0;i<50&&!named();i++)await new Promise(r=>setTimeout(r,0));
   assert.equal(named()?.properties.atlas_name,'\u{2A700}站');
+ }finally{dom.window.close();}
+});
+
+test('tiles served as stored load the rare Han slices of their text, such as service route names',async()=>{
+ const tile=name=>{const result=encodeTile.fromGeojsonVt({service_routes:{features:[{type:2,id:1,tags:{name,trains:268439664},geometry:[[[0,0],[4096,4096]]]}]}},{version:2});return result.buffer.slice(result.byteOffset,result.byteOffset+result.byteLength);};
+ const tiles={'8/1/1':tile('\u{2A700}線'),'8/1/2':tile('Plain line')};
+ const fetcher=async url=>{url=String(url);
+  if(url.includes('rare-han-v1/index.json'))return {ok:true,status:200,json:async()=>({blocks:[0x2a7]})};
+  if(url.includes('service-routes/index.json'))return {ok:true,status:200,json:async()=>({tiles:Object.keys(tiles)})};
+  const key=/service-routes\/(\d+\/\d+\/\d+)\.pbf\.gz/.exec(url)?.[1];
+  if(key)return {ok:true,status:200,arrayBuffer:async()=>tiles[key].slice(0)};
+  return {ok:true,status:200,json:async()=>structuredClone(style)};};
+ const {dom,maps,fonts}=await start({fetcher,fontFaces:true});
+ try{
+  for(let i=0;i<100&&!maps.protocols.servicetiles;i++)await new Promise(r=>setTimeout(r,0));
+  const plain=await maps.protocols.servicetiles({url:'servicetiles://8/1/2'},new AbortController());
+  assert.ok(plain.data.byteLength>0);assert.equal(fonts.filter(f=>/rare-han/.test(f.url)).length,0,'a number whose bytes look like UTF-8 loads nothing');
+  let done=false;const pending=maps.protocols.servicetiles({url:'servicetiles://8/1/1'},new AbortController()).then(r=>{done=true;return r;});
+  const slice=()=>fonts.find(f=>/rare-han-v1\/2a7\.woff2/.test(f.url));
+  for(let i=0;i<100&&!slice();i++)await new Promise(r=>setTimeout(r,0));
+  assert.ok(slice(),'the route name requests its slice');assert.equal(done,false,'the tile waits for it');
+  slice().finish();assert.ok((await pending).data.byteLength>0);
  }finally{dom.window.close();}
 });
 

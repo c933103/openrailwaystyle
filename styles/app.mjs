@@ -1156,7 +1156,7 @@ let pendingDraw;
 let locate = () => ({});
 async function initialize() {
   const [, labelCode] = await Promise.all([libraries, labels]);
-  const {installLabelProtocols, localizeTile} = labelCode;
+  const {installLabelProtocols, localizeTile, tileTextBlocks} = labelCode;
   locate = labelCode.locate;
   servedBuild = labelCode.buildInfo;
   if (!window.maplibregl || !window.pmtiles) throw new Error('Map libraries could not load. Check your connection and reload.');
@@ -1177,7 +1177,8 @@ async function initialize() {
   mlcontour.workerUrl = new URL(`vendor/dem-worker.js?v=${assetVersion}`, import.meta.url).href;
   dem = new mlcontour.DemSource({url:DEM_URL,encoding:'terrarium',maxzoom:15,worker:true,cacheSize:200,timeoutMs:20000,id:'atlas'});
   dem.setupMaplibre(maplibregl);
-  // Level crossings and branch lines are served as stored (no label names).
+  // Level crossings, branch lines, service routes and signals are served as
+  // stored (names not localized); the rare Han in their text still loads.
   for (const [scheme,folder,names = true] of [['railtiles','lifecycle'],['streettiles','street-running'],['crossingtiles','level-crossings',false],['branchtiles','branch-lines',false],['axlebranch','branch-lines',false],['servicetiles','service-routes',false],['signaltiles','traction/signals',false]]) {
   const lifecycleRoot = new URL(`./data/${folder}/`, import.meta.url);
   let tileIndex;
@@ -1195,7 +1196,11 @@ async function initialize() {
     const [z,x,y] = key.split('/').map(Number);
     const data = await decodeLifecycleTile(await response.arrayBuffer());
     if(scheme==='axlebranch') return {data:await labelProtocols.axleTile(data)};
-    if (!names) return {data};
+    if (!names) {
+      const found = tileTextBlocks(data);
+      if (found.size) await rareHanFonts.ensure(found);
+      return {data};
+    }
     const found = new Set(), localized = localizeTile(data,lang,{z,x,y},found);
     if (found.size) await rareHanFonts.ensure(found);
     return {data: localized};
