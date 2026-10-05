@@ -1,13 +1,15 @@
 // Maintenance only. Build the worldwide historic-area tiles (heritage-data.mjs)
 // from Overpass, region by region. Run: node scripts/build-heritage.mjs
 import {mkdir, readFile, rm, writeFile} from 'node:fs/promises';
-import {gzipSync} from 'node:zlib';
-import {heritageQuery, heritageFeatures, heritageTiles, HERITAGE_MIN_ZOOM, HERITAGE_MAX_ZOOM} from './heritage-data.mjs';
+import {heritageQuery, heritageFeatures, heritageTiles, heritageBundles, HERITAGE_MIN_ZOOM, HERITAGE_MAX_ZOOM, HERITAGE_BUNDLE_ZOOM} from './heritage-data.mjs';
+import {BUNDLE_FORMAT} from '../styles/tile-bundles.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const output = process.env.HERITAGE_OUTPUT || 'heritage-data';
 const cache = '.snapshot-cache';
-const VERSION = 1;
+// Version 2: tiles published in bundles (tile-bundles.mjs) instead of one
+// file per tile.
+const VERSION = 2;
 const regions = [];
 for (let south = -90; south < 90; south += 45) for (let west = -180; west < 180; west += 45) regions.push([south, west, south + 45, west + 45]);
 await mkdir(cache, {recursive:true});
@@ -63,16 +65,19 @@ for (const box of regions) await collect(box);
 if (!features.size) throw new Error('Refusing to publish an empty worldwide historic area snapshot');
 
 const tiles = heritageTiles([...features.values()]);
+const bundles = heritageBundles(tiles);
 await rm(output, {recursive:true, force:true});
-for (const [key, data] of tiles) {
-  const [z, x] = key.split('/');
-  await mkdir(`${output}/${z}/${x}`, {recursive:true});
-  await writeFile(`${output}/${key}.pbf.gz`, gzipSync(data, {level:9}));
+let bytes = 0;
+for (const [path, data] of bundles) {
+  await mkdir(`${output}/${path.slice(0, path.lastIndexOf('/'))}`, {recursive:true});
+  await writeFile(`${output}/${path}.bundle.gz`, data);
+  bytes += data.length;
 }
 const counts = {};
 for (const feature of features.values()) counts[feature.properties.kind] = (counts[feature.properties.kind] || 0) + 1;
-await writeFile(`${output}/index.json`, JSON.stringify({tiles:[...tiles.keys()].sort()}));
+await writeFile(`${output}/index.json`, JSON.stringify({format:BUNDLE_FORMAT, zoom:HERITAGE_BUNDLE_ZOOM, minzoom:HERITAGE_MIN_ZOOM, maxzoom:HERITAGE_MAX_ZOOM,
+  bundles:[...bundles.keys()].map(path => path.slice(path.indexOf('/') + 1))}));
 await writeFile(`${output}/manifest.json`, JSON.stringify({version:VERSION, built:new Date().toISOString(), source:'OpenStreetMap via Overpass', license:'ODbL-1.0',
-  complete:true, minzoom:HERITAGE_MIN_ZOOM, maxzoom:HERITAGE_MAX_ZOOM, areas:features.size, counts, tiles:tiles.size, coverage, downloadedBytes:downloaded,
+  complete:true, format:BUNDLE_FORMAT, minzoom:HERITAGE_MIN_ZOOM, maxzoom:HERITAGE_MAX_ZOOM, bundleZoom:HERITAGE_BUNDLE_ZOOM, areas:features.size, counts, tiles:tiles.size, bundles:bundles.size, bytes, coverage, downloadedBytes:downloaded,
   selection:'Areas tagged historic=archaeological_site, historic=battlefield or historic=district, protect_class=22, or heritage=1.'}, null, 2) + '\n');
-console.log('Worldwide historic areas:', features.size, counts, tiles.size, 'tiles');
+console.log('Worldwide historic areas:', features.size, counts, tiles.size, 'tiles in', bundles.size, 'bundles,', bytes, 'bytes');

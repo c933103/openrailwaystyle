@@ -4,13 +4,18 @@
 // districts, cultural protected areas (protect_class=22) and World Heritage
 // areas come from this snapshot. Visitors read static tiles, never Overpass.
 import geojsonvt from 'geojson-vt';
+import {gzipSync} from 'node:zlib';
 import vtpbf from 'vt-pbf';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {closedRings} from './polar-features.mjs';
 import {LANGUAGES, labelExpression} from '../styles/map-model.mjs';
+import {encodeBundle, bundleKey} from '../styles/tile-bundles.mjs';
 
 export const HERITAGE_MIN_ZOOM = 10;
 export const HERITAGE_MAX_ZOOM = 12;
+// Tiles are published in bundles of one zoom-8 tile each (tile-bundles.mjs):
+// about 3,100 files for the world rather than about 140,000 single tiles.
+export const HERITAGE_BUNDLE_ZOOM = 8;
 export const HERITAGE_LAYER = 'heritage';
 const HISTORIC = ['archaeological_site','battlefield','district'];
 
@@ -97,4 +102,20 @@ export function heritageTiles(features) {
     if (tile?.features.length) tiles.set(`${z}/${x}/${y}`, Buffer.from(vtpbf.fromGeojsonVt({[HERITAGE_LAYER]:tile}, {version:2})));
   }
   return tiles;
+}
+
+// Bundles of the tiles above: bundle path (zoom/x/y) to gzip-compressed bytes.
+export function heritageBundles(tiles, zoom = HERITAGE_BUNDLE_ZOOM) {
+  const groups = new Map();
+  for (const [key, data] of tiles) {
+    const [z, x, y] = key.split('/').map(Number), bundle = bundleKey(z, x, y, zoom);
+    if (!bundle) throw new Error(`Tile ${key} is above the bundle zoom ${zoom}`);
+    if (!groups.has(bundle)) groups.set(bundle, []);
+    groups.get(bundle).push([key, data]);
+  }
+  const bundles = new Map();
+  for (const [bundle, entries] of [...groups].sort(([a], [b]) => a.localeCompare(b))) {
+    bundles.set(`${zoom}/${bundle}`, gzipSync(encodeBundle(entries.sort(([a], [b]) => a.localeCompare(b))), {level:9}));
+  }
+  return bundles;
 }

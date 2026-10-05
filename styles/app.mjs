@@ -1,18 +1,19 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261004-pbfutf8b';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261004-pbfutf8b';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261004-pbfutf8b';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261004-pbfutf8b';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261005-bundles1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261005-bundles1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261005-bundles1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261005-bundles1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261004-pbfutf8b';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261004-pbfutf8b';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261004-pbfutf8b';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261004-pbfutf8b';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261004-pbfutf8b';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261004-pbfutf8b';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261004-pbfutf8b';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261004-pbfutf8b';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261004-pbfutf8b';
-import { installWatchGesture } from './watch-map.mjs?v=20261004-pbfutf8b';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261005-bundles1';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261005-bundles1';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261005-bundles1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261005-bundles1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261005-bundles1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261005-bundles1';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261005-bundles1';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261005-bundles1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,installFrequencyExpiry} from './service-frequency.mjs?v=20261005-bundles1';
+import { installWatchGesture } from './watch-map.mjs?v=20261005-bundles1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261005-bundles1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -47,7 +48,7 @@ let legendHelpOpen = false;
 let platformLengths,frequencyExpiry;
 let powerFacilities;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261004-pbfutf8b';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261005-bundles1';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -1100,7 +1101,7 @@ async function initialize() {
   dem = new mlcontour.DemSource({url:DEM_URL,encoding:'terrarium',maxzoom:15,worker:true,cacheSize:200,timeoutMs:20000,id:'atlas'});
   dem.setupMaplibre(maplibregl);
   // Level crossings and branch lines are served as stored (no label names).
-  for (const [scheme,folder,names = true] of [['railtiles','lifecycle'],['streettiles','street-running'],['crossingtiles','level-crossings',false],['branchtiles','branch-lines',false],['axlebranch','branch-lines',false],['servicetiles','service-routes',false],['signaltiles','traction/signals',false],['heritagetiles','heritage']]) {
+  for (const [scheme,folder,names = true] of [['railtiles','lifecycle'],['streettiles','street-running'],['crossingtiles','level-crossings',false],['branchtiles','branch-lines',false],['axlebranch','branch-lines',false],['servicetiles','service-routes',false],['signaltiles','traction/signals',false]]) {
   const lifecycleRoot = new URL(`./data/${folder}/`, import.meta.url);
   let tileIndex;
   maplibregl.addProtocol(scheme, async (params, controller) => {
@@ -1120,6 +1121,16 @@ async function initialize() {
     return {data: names ? localizeTile(data,lang,{z,x,y}) : data};
   });
   }
+  // Historic areas come in bundles of tiles (tile-bundles.mjs); a snapshot in
+  // the earlier one-file-per-tile layout, or none yet, still reads.
+  const heritage = createBundleReader({root:new URL('./data/heritage/', import.meta.url)});
+  maplibregl.addProtocol('heritagetiles', async (params, controller) => {
+    const [key,query] = params.url.slice('heritagetiles://'.length).split('?');
+    if (!/^\d+\/\d+\/\d+$/.test(key)) throw new Error('Invalid historic area tile');
+    const [z,x,y] = key.split('/').map(Number);
+    const data = await heritage.tile(z,x,y,controller.signal);
+    return {data: data ? localizeTile(data,new URLSearchParams(query).get('lang') || 'local',{z,x,y}) : new ArrayBuffer(0)};
+  });
   const styleURL = new URL(`world.style.json?v=${encodeURIComponent(assetVersion)}`, import.meta.url);
   const response = await fetch(styleURL);
   if (!response.ok) throw new Error('The map style could not load. Reload to try again.');
