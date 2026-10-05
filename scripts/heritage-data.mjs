@@ -5,6 +5,7 @@
 // areas come from this snapshot. Visitors read static tiles, never Overpass.
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
+import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {closedRings} from './polar-features.mjs';
 import {LANGUAGES, labelExpression} from '../styles/map-model.mjs';
 

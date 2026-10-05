@@ -3,6 +3,7 @@ import {createTrackCounter} from './track-work.mjs';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import encode from 'vt-pbf';
+import './pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {chooseName, mergeStationTranslation, stationLanguages, stationPending, ORM, ownerColor} from './map-model.mjs';
 import {hanRegion, chineseArea} from './han-region.mjs';
 import {axleLoad} from './axle-load.mjs';
