@@ -127,7 +127,9 @@ export function heritageBundles(tiles, zoom = HERITAGE_BUNDLE_ZOOM) {
 // cut-off body), `Incomplete heritage response:` (an Overpass remark) and
 // HTTP 5xx or 429. A query that timed out or ran out of memory is split at
 // once; a server that keeps failing is given smaller queries, which it may
-// still manage, rather than failing the whole monthly run. Anything else (a
+// still manage, rather than failing the whole monthly run. A rate limit that
+// outlasts the retries fails: smaller queries would only add requests to a
+// limit that applies to the whole endpoint. Anything else (a
 // rejected query, the download budget, a local error) fails the run.
 export const HERITAGE_RETRY_DELAYS = [30000, 60000, 120000];
 export function heritageFailure(message, attempt, depth, maxDepth = 6) {
@@ -142,5 +144,5 @@ export function heritageFailure(message, attempt, depth, maxDepth = 6) {
   if ((request || status >= 500) && tooHeavy) return depth < maxDepth ? 'split' : 'fail';
   if (!request && !(status >= 500 || status === 429)) return 'fail';
   if (attempt < HERITAGE_RETRY_DELAYS.length) return 'retry';
-  return depth < maxDepth ? 'split' : 'fail';
+  return depth < maxDepth && status !== 429 ? 'split' : 'fail';
 }

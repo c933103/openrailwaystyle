@@ -122,6 +122,7 @@ test('a failing Overpass server is retried, then given smaller regions, rather t
   assert.equal(heritageFailure(busy, HERITAGE_RETRY_DELAYS.length, 0), 'split');
   assert.equal(heritageFailure(busy, HERITAGE_RETRY_DELAYS.length, 6), 'fail', 'not split without end');
   assert.equal(heritageFailure('HTTP 429: Too Many Requests', 0, 0), 'retry');
+  assert.equal(heritageFailure('HTTP 429: Too Many Requests', HERITAGE_RETRY_DELAYS.length, 0), 'fail', 'a lasting rate limit is not split into more requests');
   assert.equal(heritageFailure('Network: fetch failed', HERITAGE_RETRY_DELAYS.length, 2), 'split', 'no response at all');
   assert.equal(heritageFailure('Invalid response: Unexpected end of JSON input', 0, 0), 'retry', 'a cut-off body');
   assert.equal(heritageFailure('Incomplete heritage response: runtime error: Query timed out in "query" at line 1 after 301 seconds.', 0, 0), 'split');
