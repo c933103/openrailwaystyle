@@ -344,13 +344,16 @@ test('a measurement for a platform no longer in view is cancelled and frees the 
  }finally{p.destroy();}
 });
 test('a platform whose tiles keep failing does not hold back the others',async()=>{
- const geometry=stubGeometry({fail:new Set(['way-42'])});
- const p=createPlatformLengths(platformMap(()=>[platformArea('way-42'),platformArea('way-43')]),{delay:0,retryDelay:50,geometry,fetcher:async()=>({ok:true,json:async()=>({properties:{ref:'1'}})})});
+ const geometry=stubGeometry({fail:new Set(['way-42'])}),retryDelay=400;
+ const until=async(done,ms)=>{const stop=Date.now()+ms;while(!done()&&Date.now()<stop)await new Promise(r=>setTimeout(r,5));};
+ const p=createPlatformLengths(platformMap(()=>[platformArea('way-42'),platformArea('way-43')]),{delay:0,retryDelay,geometry,fetcher:async()=>({ok:true,json:async()=>({properties:{ref:'1'}})})});
  try{
-  p.update();await new Promise(r=>setTimeout(r,20));
-  assert.deepEqual(geometry.calls,['way-42','way-43'],'the next platform is measured after one fails');
-  await new Promise(r=>setTimeout(r,80));
+  const started=Date.now();p.update();await until(()=>geometry.calls.includes('way-43'),retryDelay/2);
+  assert.deepEqual(geometry.calls.slice(0,2),['way-42','way-43'],'the next platform is measured after one fails');
+  if(Date.now()-started<retryDelay)assert.equal(geometry.calls.filter(id=>id==='way-42').length,1,'the failed one waits');
+  await until(()=>geometry.calls.filter(id=>id==='way-42').length>1,retryDelay*5);
   assert.equal(geometry.calls.filter(id=>id==='way-42').length,2,'and is tried again after the delay');
+  assert.ok(Date.now()-started>=retryDelay-5,'not before the delay');
  }finally{p.destroy();}
 });
 test('a tile is rejected by its vertex count before any geometry is built',async()=>{
