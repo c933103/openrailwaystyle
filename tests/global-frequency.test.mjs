@@ -37,20 +37,7 @@ test('snapshot asset and release lookup follow the publishing repository',()=>{
 });
 
 
-test('pathological per-feed tile fan-out is rejected before indexing; ordinary and polar lines fit',async()=>{
-  const {assertFrequencyTilingBudget,FrequencyTilingBudgetError}=await import('../scripts/frequency-tiling-budget.mjs');
-  const feature={geometry:{type:'LineString',coordinates:[[-179,0],[179,0]]},properties:{ref:'Rail'}};
-  assert.throws(()=>assertFrequencyTilingBudget(Array.from({length:10000},()=>feature)),FrequencyTilingBudgetError);
-  const nearby={geometry:{type:'LineString',coordinates:[[24,60],[24.01,60.01]]},properties:{ref:'Metro'}};
-  assert.ok(assertFrequencyTilingBudget([nearby]).copies<500);
-  const polar={geometry:{type:'LineString',coordinates:[[10,89],[10.01,89.01]]}};
-  assert.ok(Number.isFinite(assertFrequencyTilingBudget([polar]).bytes));
-  assert.throws(()=>assertFrequencyTilingBudget([{...nearby,properties:{name:'x'.repeat(10000)}}],{limits:{features:2,vertices:10,copies:1000,bytes:10000}}),/byte budget/);
-  assert.throws(()=>assertFrequencyTilingBudget([nearby],{limits:{features:2,vertices:1,copies:1000,bytes:1e6}}),/vertex budget/);
-});
-
-
-test('an excessive feed is audited while verified peers publish, and no feed builds map tiles',async()=>{
+test('a large feed is kept for matching beside its peers, and no feed builds map tiles',async()=>{
   const {gzipSync}=await import('node:zlib');const root=await mkdtemp(join(tmpdir(),'atlas-assembly-budget-'));
   const make=id=>({schema:1,source:{id,sha256:id,service_date:'2026-10-05',checked:'2026-10-04',name:id,feed_info:{},valid_until:1900000000},agencies:[{agency_id:'a',agency_name:id,agency_timezone:'America/New_York'}],routes:[{route_id:'r',route_type:'1',route_short_name:'R'}],profiles:{h01:{start:'01:00:00',end:'02:00:00'}},segments:[{route_id:'r',agency_id:'a',geometry:[[-73.99,40.75],[-73.98,40.76]],profiles:{h01:{display_tph:2,forward_tph:2,backward_tph:2,quality:'scheduled'}}}]});
   try{
@@ -58,7 +45,7 @@ test('an excessive feed is audited while verified peers publish, and no feed bui
     for(const feed of [good,bad])await writeFile(join(root,`feeds/${feed.source.id}.json.gz`),gzipSync(JSON.stringify(feed)));
     const entries=['bad','good'].map(id=>({id,status:'compiled',output:`feeds/${id}.json.gz`,sha256:id,country:'US'}));
     await writeFile(join(root,'inventory-0.json'),JSON.stringify({schema:2,shard:0,shards:1,catalogue_sha256:'verified',catalogue_entries:2,service_date:'2026-10-05',entries}));
-    const manifest=await assemble(root);assert.equal(manifest.counts.failed,1);assert.equal(manifest.counts.compiled,1);assert.deepEqual(manifest.feeds.map(f=>f.id),['good']);assert.equal(manifest.tiles,0,'timetables build no map tiles');
-    const inventory=JSON.parse(await (await import('node:fs/promises')).readFile(join(root,'inventory.json'),'utf8'));assert.equal(inventory.entries[0].failure_stage,'assembly');assert.deepEqual(inventory.counts,manifest.counts,'the published inventory totals match its entries after assembly');assert.match(inventory.entries[0].error,/fan-out/);assert.deepEqual(await readdir(join(root,'feeds')),['good.json.gz']);
+    const manifest=await assemble(root);assert.equal(manifest.counts.failed,undefined);assert.equal(manifest.counts.compiled,2);assert.deepEqual(manifest.feeds.map(f=>f.id),['bad','good']);assert.equal(manifest.tiles,0,'timetables build no map tiles');
+    const inventory=JSON.parse(await (await import('node:fs/promises')).readFile(join(root,'inventory.json'),'utf8'));assert.equal(inventory.entries[0].status,'compiled');assert.equal(inventory.entries[0].failure_stage,undefined);assert.deepEqual(inventory.counts,manifest.counts,'the published inventory totals match its entries after assembly');assert.equal(inventory.entries[0].error,undefined);assert.deepEqual(await readdir(join(root,'feeds')),['bad.json.gz','good.json.gz'],'both feeds are kept');
   }finally{await rm(root,{recursive:true,force:true});}
 });

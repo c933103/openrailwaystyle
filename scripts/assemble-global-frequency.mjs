@@ -6,7 +6,6 @@ import {readFile,readdir,mkdir,writeFile,rm} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
 import {timetableFeatures} from './gtfs-service.mjs';
 import {readFrequencyFeed} from './read-frequency-feed.mjs';
-import {assertFrequencyTilingBudget,FrequencyTilingBudgetError} from './frequency-tiling-budget.mjs';
 // Outcome totals always come from the entries themselves: each shard's own
 // counts cover only that shard.
 export const countStatuses=entries=>{const counts={};for(const entry of entries)counts[entry.status]=(counts[entry.status]||0)+1;return counts;};
@@ -38,25 +37,14 @@ export async function assemble(directory){
     if(entry.status!=='compiled')continue;
     const feed=await readFrequencyFeed(join(directory,entry.output));
     if(feed.source.id!==entry.id||feed.source.sha256!==entry.sha256||feed.source.service_date!==inventory.service_date)throw new Error(`Unverified feed ${entry.id}`);
-    let data;
-    try {
-      // Reject pathological raw fan-out before allocating profile bundles,
-      // then budget the actual properties/geometry passed to both indexes.
-      assertFrequencyTilingBudget(feed.segments.filter(s=>s.geometry?.length>=2).map(s=>({geometry:{type:'LineString',coordinates:s.geometry}})));
-      data=timetableFeatures([feed]);
-      assertFrequencyTilingBudget(data.overview,{maxZoom:9});
-      assertFrequencyTilingBudget(data.local);
-    } catch(error) {
-      if(!(error instanceof FrequencyTilingBudgetError))throw error;
-      entry.status='failed';entry.failure_stage='assembly';entry.error=error.message;
-      console.warn(entry.id,error.message);continue;
-    }
+    // No tiles are built, so a feed's size no longer fails it here.
+    const data=timetableFeatures([feed]);
     summary.push(...data.summary);
     console.log(entry.id,feed.routes.length,'rail services');
   }
   if(!summary.some(f=>f.mappedRoutes>0))throw new Error('Worldwide scan produced no mapped rail services; inspect inventory failures');
   await pruneFrequencyOutputs(directory,inventory.entries);
-  // Recounted after assembly, which can turn a compiled feed into a failure.
+  // Totals recounted from the entries, as published.
   const counts=countStatuses(inventory.entries);inventory.counts=counts;
   const manifest={schema:3,service_date:inventory.service_date,catalogue_url:inventory.catalogue_url,catalogue_sha256:inventory.catalogue_sha256,catalogue_entries:inventory.catalogue_entries,
     countries_scanned:[...new Set(inventory.entries.map(e=>e.country))].sort(),counts,feeds:summary,tiles:0,
