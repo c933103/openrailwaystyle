@@ -1634,14 +1634,14 @@
       "type": "symbol",
       "source": "platformNumbers",
       "minzoom": 17,
-      "sha256": "d3755babf7d69f286e009a489dfca3b26de6c1283596dc44a107f23f98c013fa"
+      "sha256": "411a3100ae45b26cedf5934550b224595fc528d62697387304b3afbae1c1f506"
     },
     {
       "id": "platform-lengths",
       "type": "symbol",
       "source": "platformLengths",
       "minzoom": 17,
-      "sha256": "519225248aa3bdc055c874b2c31b70479300131840ad3b4df9489b2e1201415f"
+      "sha256": "1781f2bfda9a4f2e8f3bf68522a4f5c66a0adefde7acf874c44514497ac076de"
     },
     {
       "id": "infrastructure-signal-points",

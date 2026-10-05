@@ -89,8 +89,8 @@ export function stationLayers(curatedFilter) {
    {...platformBase,id:'platform-outlines',type:'line',filter:['match',['geometry-type'],['Polygon','LineString'],true,false],paint:{'line-color':'#879e96','line-width':1}},
    {...platformBase,id:'platform-points',type:'circle',filter:['==',['geometry-type'],'Point'],paint:{'circle-color':'#cad6d1','circle-radius':3,'circle-stroke-color':'#527987','circle-stroke-width':1}},
    {id:'platform-edges',type:'line',source:'platformEdges','source-layer':'standard_railway_platform_edges',minzoom:17,paint:{'line-color':'#527987','line-width':1.5}},
-   {id:'platform-numbers',type:'symbol',source:'platformNumbers',minzoom:17,layout:{'text-field':['get','ref'],'text-font':['Noto Sans Bold'],'text-size':12,'text-padding':10,'text-allow-overlap':false},paint:{'text-color':'#214b5b','text-halo-color':'#fffef8','text-halo-width':2}},
-   {id:'platform-lengths',type:'symbol',source:'platformLengths',minzoom:17,layout:{'text-field':platformLengthLabel(),'text-font':['Noto Sans Bold'],'text-size':11,'text-padding':10,'text-allow-overlap':false},paint:{'text-color':'#214b5b','text-halo-color':'#fffef8','text-halo-width':2}},
+   {id:'platform-numbers',type:'symbol',source:'platformNumbers',minzoom:17,layout:{'text-field':platformLengthLabel(),'text-font':['Noto Sans Bold'],'text-size':12,'text-padding':2,'text-anchor':['coalesce',['get','label_anchor'],'center'],'text-allow-overlap':['step',['zoom'],false,19,true],'text-ignore-placement':true},paint:{'text-color':'#214b5b','text-halo-color':'#fffef8','text-halo-width':2}},
+   {id:'platform-lengths',type:'symbol',source:'platformLengths',minzoom:17,layout:{'text-field':platformLengthLabel(),'text-font':['Noto Sans Bold'],'text-size':11,'text-padding':2,'text-anchor':['coalesce',['get','label_anchor'],'center'],'text-allow-overlap':['step',['zoom'],false,19,true],'text-ignore-placement':true},paint:{'text-color':'#214b5b','text-halo-color':'#fffef8','text-halo-width':2}},
   );
   for(const [source,sourceLayer,kind,colour,label,minzoom] of [
    ['railwaySignals','railway_signals','signal','#765484',['coalesce',['get','ref'],['get','caption'],''],16],

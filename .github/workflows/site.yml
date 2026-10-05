@@ -220,6 +220,8 @@ jobs:
         run: node scripts/check-platform-browser.mjs
       - name: Verify platform references, signals and entrances
         run: node scripts/check-infrastructure-browser.mjs
+      - name: Verify reported station platform areas and Chinese fonts
+        run: node scripts/check-platform-stations-browser.mjs
       - name: Verify concurrent train controls, signals and traction supplies
         run: node scripts/check-signal-power-browser.mjs
       - name: Verify served build information on desktop and touch
