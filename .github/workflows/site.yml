@@ -29,20 +29,14 @@ jobs:
           echo 'No complete worldwide railway facility snapshot has been published.'
           exit 1
   # Which browser checks this run needs (scripts/ci-plan.mjs): all when the
-  # site changes, only a check's own when only its files change, none for
-  # tests, docs and other pipelines, and none again on main for a tree that
-  # already passed in its pull request.
+  # site changes, only a check's own when only its files change, and none for
+  # tests, docs and other pipelines.
   plan:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    permissions:
-      contents: read
-      statuses: read
-      pull-requests: read
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
       browser: ${{ steps.plan.outputs.browser }}
-      tree: ${{ steps.plan.outputs.tree }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,17 +48,21 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           BEFORE: ${{ github.event.before }}
-          REF: ${{ github.ref }}
-          REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
-          GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/ci-plan.mjs
   # Builds and unit-tests the site and hands it to the browser jobs and the
-  # deploy job.
+  # deploy job. On main it also decides whether this exact code and data
+  # already passed the browser checks in its pull request.
   validate:
     needs: facilities
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      statuses: read
+      pull-requests: read
+    outputs:
+      key: ${{ steps.key.outputs.key }}
+      reused: ${{ steps.reuse.outputs.reused }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -216,6 +214,22 @@ jobs:
             assert.equal(manifest.complete,true,`Incomplete ${kind} facility snapshot`);
           }
           JS
+      # The code tree and a digest of the assembled data: a pull request
+      # records it when its checks pass, and main skips the browser checks
+      # only for the same key (snapshots move on their own).
+      - name: Identify code and data
+        id: key
+        run: node scripts/ci-plan.mjs key
+      - name: Look for a passed result for this code and data
+        id: reuse
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          KEY: ${{ steps.key.outputs.key }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ci-plan.mjs reuse
       # Already-compressed tiles: zipping them again only costs time.
       - name: Save reviewable site
         uses: actions/upload-artifact@v4
@@ -229,7 +243,7 @@ jobs:
   browser:
     name: browser (${{ matrix.group }})
     needs: [plan, validate]
-    if: needs.plan.outputs.browser == 'true'
+    if: needs.plan.outputs.browser == 'true' && needs.validate.outputs.reused != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -287,21 +301,22 @@ jobs:
           compression-level: 0
   # One status for all browser jobs, whichever ran.
   browser-checks:
-    needs: [plan, browser]
+    needs: [plan, validate, browser]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - env:
           PLAN: ${{ needs.plan.result }}
           NEEDED: ${{ needs.plan.outputs.browser }}
+          REUSED: ${{ needs.validate.outputs.reused }}
           BROWSER: ${{ needs.browser.result }}
         run: |
-          echo "plan: $PLAN, browser checks needed: $NEEDED, browser jobs: $BROWSER"
+          echo "plan: $PLAN, browser checks needed: $NEEDED, earlier result reused: $REUSED, browser jobs: $BROWSER"
           [ "$PLAN" = success ] || exit 1
-          [ "$BROWSER" = success ] || { [ "$BROWSER" = skipped ] && [ "$NEEDED" != true ]; }
-  # A pull request records the tree that passed, so its merge into main need
-  # not run the browser checks again (scripts/ci-plan.mjs). Pull requests
-  # from forks cannot write statuses; their merges simply run the checks.
+          [ "$BROWSER" = success ] || { [ "$BROWSER" = skipped ] && { [ "$NEEDED" != true ] || [ "$REUSED" = true ]; }; }
+  # A pull request records the code and data that passed, so its merge into
+  # main need not run the browser checks again (scripts/ci-plan.mjs). Pull
+  # requests from forks cannot write statuses; their merges run the checks.
   record:
     needs: [plan, validate, browser-checks]
     if: always() && github.event_name == 'pull_request' && needs.plan.result == 'success' && needs.validate.result == 'success' && needs.browser-checks.result == 'success'
@@ -313,11 +328,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           URL: ${{ github.api_url }}/repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}
-          TREE: ${{ needs.plan.outputs.tree }}
+          KEY: ${{ needs.validate.outputs.key }}
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           curl -fsS -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H 'Accept: application/vnd.github+json' "$URL" \
-            -d "{\"state\":\"success\",\"context\":\"site/browser-checks\",\"description\":\"tree $TREE\",\"target_url\":\"$RUN\"}"
+            -d "{\"state\":\"success\",\"context\":\"site/browser-checks\",\"description\":\"$KEY\",\"target_url\":\"$RUN\"}"
   deploy:
     if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.validate.result == 'success' && needs.browser-checks.result == 'success'
     needs: [validate, browser-checks]

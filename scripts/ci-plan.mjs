@@ -6,14 +6,19 @@
 // - Otherwise a check runs only when its own files change: the check, the
 //   helpers and fixtures it imports or reads. Tests, docs and the other data
 //   pipelines run no browser checks; the unit tests always run.
-// - A push to main whose tree is exactly one that already passed in its pull
-//   request (recorded as the site/browser-checks status on the PR's head)
-//   runs no browser checks again. The deployed site is still checked live.
 // - A manual run, or a push with nothing to compare against, runs all.
+// - A push to main whose code tree and assembled data are exactly those that
+//   already passed in its pull request runs no browser checks again (see
+//   resultKey; the validate job decides, once the data is assembled). The
+//   deployed site is still checked live.
 //
-// Writes matrix, browser and tree to $GITHUB_OUTPUT.
+//   node scripts/ci-plan.mjs           matrix and browser to $GITHUB_OUTPUT
+//   node scripts/ci-plan.mjs key       KEY of this tree and styles/data
+//   node scripts/ci-plan.mjs reuse     reused=true when KEY passed in the PR
 import {execFileSync} from 'node:child_process';
 import {appendFileSync, readFileSync, existsSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {readdir, readFile} from 'node:fs/promises';
 import {dirname, join, normalize} from 'node:path';
 
 // Longest first within a group; the station and map checks take the longest
@@ -82,8 +87,22 @@ export function plan(changed, read) {
 
 export const matrix = groups => ({include: groups.map(({group, checks, prepare = ''}) => ({group, checks: checks.join(' '), prepare}))});
 
-// The pull request merged by this push whose head passed with the same tree.
-export async function validatedPull({repo, sha, tree, token, fetcher = fetch}) {
+// What a passed result covers: the code tree and every file of the assembled
+// data (snapshot branches and releases move on their own, so the same code
+// can deploy different data). The rest of styles/ is built from the tree;
+// its code bundle embeds the commit, so it is not hashed.
+export async function dataDigest(directory) {
+  const files = [];
+  const walk = async dir => { for (const entry of await readdir(dir, {withFileTypes: true})) { const path = join(dir, entry.name); if (entry.isDirectory()) await walk(path); else if (entry.isFile()) files.push(path); } };
+  await walk(directory);
+  const digest = createHash('sha256');
+  for (const file of files.sort()) digest.update(`${file.slice(directory.length)}\0${createHash('sha256').update(await readFile(file)).digest('hex')}\n`);
+  return digest.digest('hex');
+}
+export const resultKey = (tree, data) => `tree ${tree} data ${data.slice(0, 32)}`;
+
+// The pull request merged by this push whose head passed with the same key.
+export async function validatedPull({repo, sha, key, token, fetcher = fetch}) {
   const get = async path => {
     const response = await fetcher(`https://api.github.com/repos/${repo}/${path}`, {headers: {authorization: `Bearer ${token}`, accept: 'application/vnd.github+json'}});
     if (!response.ok) throw new Error(`GitHub API ${path} returned ${response.status}`);
@@ -94,7 +113,7 @@ export async function validatedPull({repo, sha, tree, token, fetcher = fetch}) {
     const statuses = await get(`commits/${pull.head.sha}/statuses?per_page=100`);
     // The newest status for the context decides.
     const latest = statuses.find(status => status.context === VALIDATED_CONTEXT);
-    if (latest?.state === 'success' && latest.description === `tree ${tree}`) return pull.number;
+    if (latest?.state === 'success' && latest.description === key) return pull.number;
   }
   return null;
 }
@@ -116,17 +135,25 @@ function changedFiles(event, before) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const {EVENT, BEFORE, REF, REPO, SHA, GITHUB_TOKEN, GITHUB_OUTPUT} = process.env;
-  const read = file => existsSync(file) ? readFileSync(file, 'utf8') : null;
-  const tree = git('rev-parse', 'HEAD^{tree}');
-  let result = plan(changedFiles(EVENT, BEFORE), read);
-  if (EVENT === 'push' && REF === 'refs/heads/main' && result.groups.length) {
-    try {
-      const pull = await validatedPull({repo: REPO, sha: SHA, tree, token: GITHUB_TOKEN});
-      if (pull) result = {groups: [], reason: `this exact tree passed every needed check in pull request #${pull}`};
-    } catch (error) { console.log(`Could not look up an earlier result: ${error.message}`); }
+  const {EVENT, BEFORE, REF, REPO, SHA, KEY, GITHUB_TOKEN, GITHUB_OUTPUT} = process.env;
+  const output = text => { if (GITHUB_OUTPUT) appendFileSync(GITHUB_OUTPUT, text); };
+  const command = process.argv[2];
+  if (command === 'key') {
+    const key = resultKey(git('rev-parse', 'HEAD^{tree}'), await dataDigest('styles/data'));
+    console.log(`Result key: ${key}`);output(`key=${key}\n`);
+  } else if (command === 'reuse') {
+    let pull = null;
+    if (EVENT === 'push' && REF === 'refs/heads/main') {
+      try { pull = await validatedPull({repo: REPO, sha: SHA, key: KEY, token: GITHUB_TOKEN}); }
+      catch (error) { console.log(`Could not look up an earlier result: ${error.message}`); }
+    }
+    console.log(pull ? `This code and data passed every needed browser check in pull request #${pull}` : 'No earlier result for this code and data');
+    output(`reused=${pull !== null}\n`);
+  } else {
+    const read = file => existsSync(file) ? readFileSync(file, 'utf8') : null;
+    const result = plan(changedFiles(EVENT, BEFORE), read);
+    console.log(`Browser checks: ${result.reason}`);
+    for (const {group, checks} of result.groups) console.log(`  ${group}: ${checks.join(', ')}`);
+    output(`matrix=${JSON.stringify(matrix(result.groups))}\nbrowser=${result.groups.length > 0}\n`);
   }
-  console.log(`Browser checks: ${result.reason}`);
-  for (const {group, checks} of result.groups) console.log(`  ${group}: ${checks.join(', ')}`);
-  if (GITHUB_OUTPUT) appendFileSync(GITHUB_OUTPUT, `matrix=${JSON.stringify(matrix(result.groups))}\nbrowser=${result.groups.length > 0}\ntree=${tree}\n`);
 }
