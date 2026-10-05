@@ -2,9 +2,14 @@
 
 [Documentation index](README.md)
 
-Service view offers **Route width → By frequency**, then **Peak → Morning / Evening**
-or **Off-peak**, **Overnight** and **Hour** (00–23). Equal width remains the default in standard and watch layouts; selecting an hour changes widths, offsets and click selection together. One shared scale applies across
-regions and periods. Settings persist in shared links. Unknown is not zero.
+Service view offers **Route width → By frequency**, then the periods some applied
+source covers, as listed in `profiles` in `frequency-manifest.json`. With only
+published headways applied, that is **Peak → Morning / Evening** and **Off-peak**;
+**Overnight** and **Hour** (00–23) appear once a source covers them, and a shared
+link to an uncovered period falls back to off-peak. Equal width remains the default
+in standard and watch layouts; selecting an hour changes widths, offsets and click
+selection together. One shared scale applies across regions and periods. Settings
+persist in shared links. Unknown is not zero.
 
 ## Worldwide discovery and updates
 
