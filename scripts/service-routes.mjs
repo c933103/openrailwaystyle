@@ -8,7 +8,7 @@ import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {simplify} from './branch-lines.mjs';
-import {STAGES, legacyEuropeReady, migrateDownloadStages, partSelection} from './download-stages.mjs';
+import {STAGES, fallbackStage, legacyEuropeReady, migrateDownloadStages, partSelection} from './download-stages.mjs';
 import {frequencyBundle} from '../styles/service-frequency.mjs';
 
 export const MIN_ZOOM = 7, LOCAL_MIN_ZOOM = 10, MAX_ZOOM = 12, LAYER = 'service_routes';
@@ -157,23 +157,32 @@ function settle(table, stage, commit) {
 }
 export const commitStage = (table, stage) => settle(table, stage, true);
 export const discardStage = (table, stage) => settle(table, stage, false);
-// Retain an interrupted old-Europe pass as committed fallback data. Dropping
-// its obsolete queue must not make the already displayed services disappear.
+// Merge committed and interrupted parts of changed stages into the retired
+// Europe fallback. It stays drawable until the replacement passes succeed.
 export function migrateServiceDownloads(state, table) {
-  if (!migrateDownloadStages(state) || !state.legacyEurope) return state;
+  const retired = migrateDownloadStages(state);
+  if (!retired || !state.legacyEurope) return state;
+  state.legacyEurope.serviceStages = [...new Set([...(state.legacyEurope.serviceStages || []), ...retired.map(fallbackStage)])];
   for (const route of table.routes.values()) {
-    if (route.next.europe) {
-      const next = route.next.europe, old = route.stages.europe;
-      if (!old || next.relation < old.relation) route.stages.europe = next;
-      delete route.next.europe;
+    for (const stage of retired) {
+      const fallback = fallbackStage(stage);
+      for (const next of [route.stages[stage], route.next[stage]]) if (next) {
+        const old = route.stages[fallback];
+        if (!old || next.relation < old.relation) route.stages[fallback] = next;
+      }
+      if (stage !== fallback) delete route.stages[stage];
+      delete route.next[stage];
     }
   }
   for (const way of table.ways.values()) {
-    if (way.next.europe) {
-      way.routes.europe = [...new Set([...(way.routes.europe || []), ...way.next.europe])].sort();
-      way.lines ||= way.nextLines?.europe;
-      delete way.next.europe;
-      if (way.nextLines) delete way.nextLines.europe;
+    for (const stage of retired) {
+      const fallback = fallbackStage(stage);
+      const routes = [...(way.routes[stage] || []), ...(way.next[stage] || [])];
+      if (routes.length) way.routes[fallback] = [...new Set([...(way.routes[fallback] || []), ...routes])].sort();
+      way.lines ||= way.nextLines?.[stage];
+      if (stage !== fallback) delete way.routes[stage];
+      delete way.next[stage];
+      if (way.nextLines) delete way.nextLines[stage];
     }
   }
   return state;
@@ -181,20 +190,25 @@ export function migrateServiceDownloads(state, table) {
 
 export function retireServiceEurope(state, table) {
   if (!state.legacyEurope || !legacyEuropeReady(state)) return;
-  const count = map => {
+  const count = (map, fallback) => {
     let total = 0, stale = 0;
-    for (const item of map.values()) if ('europe' in partOf(item)) {
+    for (const item of map.values()) if (fallback in partOf(item)) {
       total++;
       if (!STAGES.some(stage => stage.name in partOf(item))) stale++;
     }
     return {total, stale};
   };
-  const change = {routes: count(table.routes), ways: count(table.ways)};
-  if (suspiciousChange(change)) return;
+  const fallbacks = state.legacyEurope.serviceStages || ['europe'];
+  for (const fallback of fallbacks) {
+    const change = {routes: count(table.routes, fallback), ways: count(table.ways, fallback)};
+    if (suspiciousChange(change)) return;
+  }
   // An empty committed pass removes only the retired parent's memberships;
   // each new group and every other stage keeps its own geometry and routes.
-  discardStage(table, 'europe');
-  commitStage(table, 'europe');
+  for (const fallback of fallbacks) {
+    discardStage(table, fallback);
+    commitStage(table, fallback);
+  }
   delete state.legacyEurope;
 }
 

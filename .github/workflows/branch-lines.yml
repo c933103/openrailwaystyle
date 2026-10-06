@@ -10,7 +10,7 @@ on:
     - cron: '41 */6 * * *'
   push:
     branches: [main]
-    paths: ['scripts/download-stages.mjs', 'scripts/european-kazakhstan.mjs', 'scripts/build-branch-lines.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs', '.github/workflows/branch-lines.yml']
+    paths: ['scripts/download-stages.mjs', 'scripts/build-branch-lines.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs', '.github/workflows/branch-lines.yml']
 permissions:
   contents: write
   actions: write

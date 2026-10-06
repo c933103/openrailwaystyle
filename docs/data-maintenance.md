@@ -77,27 +77,23 @@ Each website build copies the bundles, `index.json` and `manifest.json` into `st
 
 OpenRailwayMap's zoom 0–6 tiles hold main lines only (`usage=main`), so branch lines (`usage=branch`, for example most JR local lines) appeared only from zoom 7. The workflow [branch-lines.yml](../.github/workflows/branch-lines.yml) keeps a worldwide table of operating branch lines (`railway=rail` or `narrow_gauge`, `usage=branch`, not service track), and of metro lines (`railway=subway`, not service track), which the provider's tiles hold only from zoom 10, simplified to about 50 m, and publishes it with tiles to `branch-data` (branch lines at z4–6, metro lines at z7–9), one commit replaced each time. `scripts/build-branch-lines.mjs` converts the tags to the fields of OpenRailwayMap's railway tiles (speed, current, gauge, loading gauge and train protection systems), so each view colours them as it colours the detailed tracks. The first three distinct protection systems occupy adjacent colour bands; the full recorded list remains available for inspection.
 
-- Regions are fetched in stages, in this order: Japan; the Koreas, Taiwan, Hong Kong, Macau and Guangdong; the rest of China; Russia; Europe A–G (below); India; the rest of Asia; the US and Canada; the rest of the Americas; the rest of the world. The shared definitions are in `scripts/download-stages.mjs`. Europe uses a separate country-area request for each country, rather than a continent-sized bounding box. Countries and the European Kazakhstan subset fetched in Europe A are left out of the later Asia downloads.
+- Regions are fetched in stages, in this order: Japan; the Koreas, Taiwan, Hong Kong, Macau and Guangdong; the rest of China; Russia; Europe A–G (below); India; the rest of Asia; the US and Canada; the rest of the Americas; the rest of the world. The shared definitions are in `scripts/download-stages.mjs`. Europe uses a separate country-area request for each country, rather than a continent-sized bounding box. Turkey, Cyprus and the Caucasus fetched in Europe A are left out of the later Asia downloads. All of Kazakhstan, including its European portion, is downloaded in Asia.
 - One stage per run, every six hours (minute 41), each run capped at 220 MB of downloads, with a 15-second pause between requests, and no run starts once 900 MB were downloaded in the last 24 hours (manual and push-triggered runs count too): under the public Overpass server's guidance of about 1 GB and 10,000 requests a day. A stage too large for one run continues in the next; a query that times out is split into quarters.
 - A snapshot from before concurrent train-control fields were added (`version` below 3 in `state.json`) has every stage fetched again in order, keeping its existing lines and maintenance history until each stage is replaced.
 - Once every stage is in, a run refreshes the stage checked longest ago when it is two weeks old, removing deleted and retagged lines; a refresh that would remove more than 20% of a stage's lines keeps them instead (an incomplete response is the likelier cause) and is tried again at the stage's next refresh.
 
 | Europe stage | Coverage |
 | --- | --- |
-| A | Turkey, Cyprus, Georgia, Armenia, Azerbaijan and European Kazakhstan |
-| B | Spain, Portugal, Andorra, UK and Ireland |
+| A | Turkey, Cyprus (including Northern Cyprus and Akrotiri/Dhekelia), Georgia, Armenia and Azerbaijan |
+| B | Spain, Portugal, Andorra, UK and Ireland; also Gibraltar, Guernsey, Jersey and Isle of Man |
 | C | Iceland, Denmark, Norway and Sweden; also Faroe Islands and Svalbard/Jan Mayen |
 | D | Finland (including Åland), Estonia, Latvia, Lithuania, Belarus, Ukraine and Moldova |
-| E | Italy, Slovenia, Croatia, Bosnia and Herzegovina, Montenegro, Serbia, Kosovo, North Macedonia, Greece, Bulgaria and Romania |
-| F | Metropolitan France, Belgium, Netherlands and Luxembourg |
-| G | Germany, Poland, Czechia, Slovakia, Austria, Switzerland, Liechtenstein, Hungary, Albania, Malta, Monaco, San Marino, Vatican City, Gibraltar, Guernsey, Jersey and Isle of Man |
+| E | Italy (with San Marino, Vatican City and Malta), Slovenia, Croatia, Bosnia and Herzegovina, Montenegro, Serbia, Kosovo, North Macedonia, Greece, Bulgaria and Romania |
+| F | Metropolitan France (with Monaco), Belgium, Netherlands and Luxembourg |
+| G | Germany, Poland, Czechia, Slovakia, Austria, Switzerland, Liechtenstein, Hungary and Albania |
 
 The Russian North Caucasus is already included in the preceding Russia stage.
-European Kazakhstan is the country's area west of a generalised Ural River
-centreline from Natural Earth's public-domain 1:10m rivers dataset (source and
-precision in `scripts/european-kazakhstan.mjs`). The identical polygon is
-subtracted from Asia's requests, retaining full way and route geometry across
-the partition. Spain's Canary Islands and Portugal's Azores and Madeira stay
+Spain's Canary Islands and Portugal's Azores and Madeira stay
 with their countries; overseas France and Greenland stay outside these Europe
 groups.
 
@@ -110,9 +106,7 @@ to their new group as they are fetched. Urban services retain both committed
 and partially fetched old-Europe memberships until the smaller stages have
 committed. The world stage adopts the African data before the old parent is
 retired; retirement also applies the 20% deletion guard.
-Other stages' completion and progress, the existing geometry, and the rolling
-daily download budget are preserved. A partial Asia pass restarts because its
-country exclusions have changed.
+The revised grouping restarts only A, B, E, F, G, Asia and world, whose request definitions changed. Their committed and partial data stays in fallback entries separated by original stage, so Kazakhstan can move from A to the later Asia stage and small countries can move from G to their neighbouring group. The 20% deletion guard applies to each original stage separately, with service routes and ways checked independently. Retirement also waits for a fresh Asia pass, confirming Kazakhstan coverage. Unchanged stages, geometry and the rolling daily download budget are preserved; obsolete part indices cannot resume after the definitions change.
 
 Each website build copies the tiles, `index.json`, `manifest.json` (stages, counts, last run) and the ODbL table `branch-lines.ndjson.gz` into `styles/data/branch-lines/`.
 
