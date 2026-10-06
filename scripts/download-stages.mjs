@@ -70,7 +70,7 @@ export function migrateDownloadStages(state) {
   state.stages ||= {};
   const europe = state.stages.europe;
   if (europe) {
-    state.legacyEurope = {completed: europe.completed || europe.previousCompleted || null};
+    state.legacyEurope = {completed: europe.completed || europe.previousCompleted || null, migrated: new Date().toISOString()};
     delete state.stages.europe;
     // Asia's part filters now omit Europe A. A previously partial Asia pass
     // must restart, rather than completing with changed part definitions.
@@ -84,10 +84,17 @@ export function migrateDownloadStages(state) {
 
 export const europeComplete = state => EUROPE_STAGE_NAMES.every(name => state.stages[name]?.completed);
 
+// The old boxes also reached northern Africa. Let the world stage adopt that
+// coverage before removing unmatched old-Europe rows. A pre-migration world
+// completion (or a pass that started before migration) cannot confirm it.
+export const legacyEuropeReady = state => europeComplete(state)
+  && Date.parse(state.stages.world?.started) >= Date.parse(state.legacyEurope?.migrated)
+  && Date.parse(state.stages.world?.completed) >= Date.parse(state.legacyEurope?.migrated);
+
 // A way first downloaded by the former Europe stage, or by a later world
 // stage, can now belong to its earlier, smaller Europe group.
 export function branchStageOwner(previous, stage) {
-  if (!previous || (previous === 'europe' && EUROPE_STAGE_NAMES.includes(stage))) return stage;
+  if (!previous || previous === 'europe') return stage;
   const before = STAGES.findIndex(item => item.name === previous), next = STAGES.findIndex(item => item.name === stage);
   return before >= 0 && next < before ? stage : previous;
 }

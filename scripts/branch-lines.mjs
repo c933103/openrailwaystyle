@@ -9,7 +9,7 @@ import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {parseMaxspeed} from './lifecycle.mjs';
-import {branchStageOwner, europeComplete, migrateDownloadStages, partSelection} from './download-stages.mjs';
+import {branchStageOwner, legacyEuropeReady, migrateDownloadStages, partSelection} from './download-stages.mjs';
 export {STAGES} from './download-stages.mjs';
 
 export const MIN_ZOOM = 4, BRANCH_MAX_ZOOM = 6, METRO_MIN_ZOOM = 7, MAX_ZOOM = 9, LAYER = 'branch_lines';
@@ -39,7 +39,7 @@ export function migrateBranchDownloads(state, table) {
 }
 
 export function retireBranchEurope(state, table) {
-  if (!state.legacyEurope || !europeComplete(state)) return;
+  if (!state.legacyEurope || !legacyEuropeReady(state)) return;
   const stale = [...table.values()].filter(feature => feature.stage === 'europe');
   const total = state.legacyEurope.lines;
   if (total > 100 && stale.length > total * 0.2) return;

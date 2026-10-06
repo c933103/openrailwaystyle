@@ -8,7 +8,7 @@ import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {simplify} from './branch-lines.mjs';
-import {EUROPE_STAGE_NAMES, europeComplete, migrateDownloadStages, partSelection} from './download-stages.mjs';
+import {STAGES, legacyEuropeReady, migrateDownloadStages, partSelection} from './download-stages.mjs';
 import {frequencyBundle} from '../styles/service-frequency.mjs';
 
 export const MIN_ZOOM = 7, LOCAL_MIN_ZOOM = 10, MAX_ZOOM = 12, LAYER = 'service_routes';
@@ -180,12 +180,12 @@ export function migrateServiceDownloads(state, table) {
 }
 
 export function retireServiceEurope(state, table) {
-  if (!state.legacyEurope || !europeComplete(state)) return;
+  if (!state.legacyEurope || !legacyEuropeReady(state)) return;
   const count = map => {
     let total = 0, stale = 0;
     for (const item of map.values()) if ('europe' in partOf(item)) {
       total++;
-      if (!EUROPE_STAGE_NAMES.some(stage => stage in partOf(item))) stale++;
+      if (!STAGES.some(stage => stage.name in partOf(item))) stale++;
     }
     return {total, stale};
   };

@@ -103,10 +103,13 @@ groups.
 
 The download-layout migration is independent of the feature-schema version.
 An interrupted old Europe queue is replaced by A–G, while its previously drawn
-data remains available until the replacement groups complete. Branch ways move
+data remains available until the replacement groups complete and a fresh world
+pass has checked the northern African territory the old bounding boxes also
+included. Branch ways move
 to their new group as they are fetched. Urban services retain both committed
 and partially fetched old-Europe memberships until the smaller stages have
-committed. Retirement of the old parent also applies the 20% deletion guard.
+committed. The world stage adopts the African data before the old parent is
+retired; retirement also applies the 20% deletion guard.
 Other stages' completion and progress, the existing geometry, and the rolling
 daily download budget are preserved. A partial Asia pass restarts because its
 country exclusions have changed.

@@ -62,6 +62,7 @@ function oldState(version) {
   }, runs: [{at: completed, bytes: 220_000_000}]};
 }
 const finishEurope = state => { for (const name of EUROPE_STAGE_NAMES) state.stages[name].completed = completed; };
+const finishWorld = state => { state.stages.world = {started: state.legacyEurope.migrated, completed: state.legacyEurope.migrated}; };
 
 test('branch layout migration preserves non-European progress, schema version, geometry and daily budgets across restarts', () => {
   const state = oldState(BRANCH_DATA_VERSION), before = structuredClone(state);
@@ -82,6 +83,7 @@ test('branch layout migration preserves non-European progress, schema version, g
   assert.deepEqual(state, progress, 'the new smaller queue resumes without resetting');
   assert.equal(branchStageOwner('europe', 'europe-b'), 'europe-b');
   assert.equal(branchStageOwner('asia', 'europe-a'), 'europe-a', 'Turkey and the Caucasus move ahead of Asia');
+  assert.equal(branchStageOwner('europe', 'world'), 'world', 'northern African lines move to their world stage');
   assert.equal(branchStageOwner('europe-b', 'europe-c'), 'europe-b', 'a border way keeps its earlier group');
 });
 
@@ -91,6 +93,9 @@ test('old branch coverage remains until the replacements finish, and an incomple
   retireBranchEurope(state, table);
   assert.equal(table.size, 200, 'partial migration preserves all old lines');
   finishEurope(state);
+  retireBranchEurope(state, table);
+  assert.equal(table.size, 200, 'old coverage stays until the rest of the world is checked too');
+  finishWorld(state);
   for (let id = 0; id < 150; id++) table.get(id).stage = 'europe-b';
   retireBranchEurope(state, table);
   assert.equal(table.size, 200, '25% missing remains protected');
@@ -125,6 +130,7 @@ test('service migration retains old committed and partial memberships until succ
   addResult(table, {routes: [route('r2')], ways: [{id: 1, routes: ['r2'], lines}]}, 'europe-f');
   commitStage(table, 'europe-f');
   finishEurope(state);
+  finishWorld(state);
   retireServiceEurope(state, table);
   assert.equal(table.routes.size, 2);
   assert.equal(table.ways.size, 2);
@@ -137,9 +143,35 @@ test('service retirement retains legacy coverage when the new groups missed too 
   addResult(table, {routes: Array.from({length: 25}, (_, id) => ({key: `r${id}`, relation: id, label: 'Old route'})), ways: []}, 'europe');
   migrateServiceDownloads(state, table);
   finishEurope(state);
+  finishWorld(state);
   retireServiceEurope(state, table);
   assert.equal(table.routes.size, 25);
   assert.ok(state.legacyEurope);
+});
+
+test('legacy retirement waits for a world pass started after migration and preserves its adopted African data', () => {
+  const state = oldState(BRANCH_DATA_VERSION), branch = new Map([[1, {id: 1, stage: 'europe'}]]);
+  migrateBranchDownloads(state, branch);
+  finishEurope(state);
+  state.stages.world = {started: completed, completed: state.legacyEurope.migrated};
+  retireBranchEurope(state, branch);
+  assert.equal(branch.size, 1, 'a world pass started before migration is insufficient');
+  branch.get(1).stage = branchStageOwner('europe', 'world');
+  finishWorld(state);
+  retireBranchEurope(state, branch);
+  assert.equal(branch.get(1).stage, 'world');
+
+  const services = {routes: new Map(), ways: new Map()}, serviceState = oldState(1);
+  const result = {routes: [{key: 'r1', relation: 1, label: 'African metro'}], ways: [{id: 1, routes: ['r1'], lines: [[[3, 36.7], [3.01, 36.71]]]}]};
+  addResult(services, result, 'europe');
+  migrateServiceDownloads(serviceState, services);
+  finishEurope(serviceState);
+  addResult(services, result, 'world');
+  commitStage(services, 'world');
+  finishWorld(serviceState);
+  retireServiceEurope(serviceState, services);
+  assert.deepEqual(Object.keys(services.routes.get('r1').stages), ['world']);
+  assert.deepEqual(services.ways.get(1).routes, {world: ['r1']});
 });
 
 test('both maintenance workflows trigger when the shared stage definitions change', async () => {
