@@ -11,7 +11,7 @@ on:
     - cron: '11 3-23/6 * * *'
   push:
     branches: [main]
-    paths: ['scripts/download-stages.mjs', 'scripts/european-kazakhstan.mjs', 'scripts/build-service-routes.mjs', 'scripts/service-routes.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs', '.github/workflows/service-routes.yml']
+    paths: ['scripts/download-stages.mjs', 'scripts/build-service-routes.mjs', 'scripts/service-routes.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs', '.github/workflows/service-routes.yml']
 permissions:
   contents: write
   actions: write

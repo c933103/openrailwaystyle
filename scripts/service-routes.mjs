@@ -157,23 +157,29 @@ function settle(table, stage, commit) {
 }
 export const commitStage = (table, stage) => settle(table, stage, true);
 export const discardStage = (table, stage) => settle(table, stage, false);
-// Retain an interrupted old-Europe pass as committed fallback data. Dropping
-// its obsolete queue must not make the already displayed services disappear.
+// Merge committed and interrupted parts of changed stages into the retired
+// Europe fallback. It stays drawable until the replacement passes succeed.
 export function migrateServiceDownloads(state, table) {
-  if (!migrateDownloadStages(state) || !state.legacyEurope) return state;
+  const retired = migrateDownloadStages(state);
+  if (!retired || !state.legacyEurope) return state;
   for (const route of table.routes.values()) {
-    if (route.next.europe) {
-      const next = route.next.europe, old = route.stages.europe;
-      if (!old || next.relation < old.relation) route.stages.europe = next;
-      delete route.next.europe;
+    for (const stage of retired) {
+      for (const next of [route.stages[stage], route.next[stage]]) if (next) {
+        const old = route.stages.europe;
+        if (!old || next.relation < old.relation) route.stages.europe = next;
+      }
+      if (stage !== 'europe') delete route.stages[stage];
+      delete route.next[stage];
     }
   }
   for (const way of table.ways.values()) {
-    if (way.next.europe) {
-      way.routes.europe = [...new Set([...(way.routes.europe || []), ...way.next.europe])].sort();
-      way.lines ||= way.nextLines?.europe;
-      delete way.next.europe;
-      if (way.nextLines) delete way.nextLines.europe;
+    for (const stage of retired) {
+      const routes = [...(way.routes[stage] || []), ...(way.next[stage] || [])];
+      if (routes.length) way.routes.europe = [...new Set([...(way.routes.europe || []), ...routes])].sort();
+      way.lines ||= way.nextLines?.[stage];
+      if (stage !== 'europe') delete way.routes[stage];
+      delete way.next[stage];
+      if (way.nextLines) delete way.nextLines[stage];
     }
   }
   return state;

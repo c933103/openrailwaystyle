@@ -32,7 +32,9 @@ export function migrateBranchState(state) {
 // Change the download layout separately from the feature schema so completed
 // Japan/Asia/etc. do not restart just because Europe was split.
 export function migrateBranchDownloads(state, table) {
-  if (migrateDownloadStages(state) && state.legacyEurope) {
+  const retired = migrateDownloadStages(state);
+  if (retired && state.legacyEurope) {
+    for (const feature of table.values()) if (retired.includes(feature.stage)) feature.stage = 'europe';
     state.legacyEurope.lines = [...table.values()].filter(feature => feature.stage === 'europe').length;
   }
   return state;

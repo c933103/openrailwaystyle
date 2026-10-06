@@ -8,13 +8,13 @@ import {addResult, commitStage, migrateServiceDownloads, retireServiceEurope, pa
 test('the seven European groups cover the requested countries in order, including every former Yugoslav successor', () => {
   const codes = stage => stage.parts.map(part => part.area.split('=')[1]);
   assert.deepEqual(EUROPE_STAGES.map(codes), [
-    ['TR', 'CY', 'GE', 'AM', 'AZ', 'KZ'],
-    ['ES', 'PT', 'AD', 'GB', 'IE'],
+    ['TR', 'CY', 'Q23681', 'Q37362', 'GE', 'AM', 'AZ'],
+    ['ES', 'PT', 'AD', 'GB', 'IE', 'GI', 'GG', 'JE', 'IM'],
     ['IS', 'DK', 'NO', 'SE', 'FO', 'SJ'],
     ['FI', 'AX', 'EE', 'LV', 'LT', 'BY', 'UA', 'MD'],
-    ['IT', 'SI', 'HR', 'BA', 'ME', 'RS', 'XK', 'MK', 'GR', 'BG', 'RO'],
-    ['FR', 'BE', 'NL', 'LU'],
-    ['DE', 'PL', 'CZ', 'SK', 'AT', 'CH', 'LI', 'HU', 'AL', 'MT', 'MC', 'SM', 'VA', 'GI', 'GG', 'JE', 'IM'],
+    ['IT', 'SM', 'VA', 'MT', 'SI', 'HR', 'BA', 'ME', 'RS', 'XK', 'MK', 'GR', 'BG', 'RO'],
+    ['FR', 'MC', 'BE', 'NL', 'LU'],
+    ['DE', 'PL', 'CZ', 'SK', 'AT', 'CH', 'LI', 'HU', 'AL'],
   ]);
   const all = EUROPE_STAGES.flatMap(codes);
   assert.equal(new Set(all).size, all.length, 'no country appears in two European groups');
@@ -24,32 +24,28 @@ test('the seven European groups cover the requested countries in order, includin
   assert.ok(portugal.box[1] <= -31.3, 'Azores');
 });
 
-test('both builders retain the Ural polygon and country filter when splitting European Kazakhstan', () => {
-  const part = EUROPE_STAGES[0].parts.at(-1);
-  // Point-in-polygon checks at Atyrau: a western bank and an eastern bank.
-  const inside = ([lat, lon]) => {
-    let hit = false;
-    for (let i = 0, j = part.poly.length - 1; i < part.poly.length; j = i++) {
-      const [ay, ax] = part.poly[i], [by, bx] = part.poly[j];
-      if ((ay > lat) !== (by > lat) && lon < (bx - ax) * (lat - ay) / (by - ay) + ax) hit = !hit;
-    }
-    return hit;
-  };
-  assert.equal(inside([47.1, 51.85]), true);
-  assert.equal(inside([47.1, 51.95]), false, 'Asian Kazakhstan stays outside the Europe request');
-  assert.equal(inside([44.5, 50.5]), false, 'Mangystau on the Caspian eastern shore remains in Asia');
-  for (const query of [branchQuery, serviceQuery]) for (const box of quarters(part.box)) {
-    const text = query(part, box);
-    assert.match(text, /area\["ISO3166-1"="KZ"\]->\.a0/);
-    assert.match(text, /\(area\.a0\)\(poly:"/);
-    assert.ok(text.includes(`)(${box.join(',')})`), 'subdivision bounds still apply');
+test('Kazakhstan is wholly in Asia and Cyprus territories keep their filters under subdivision', () => {
+  assert.ok(EUROPE_STAGES.every(stage => stage.parts.every(part => part.area !== 'ISO3166-1=KZ')));
+  const asia = STAGES.find(stage => stage.name === 'asia');
+  const kazakhstan = asia.parts.filter(part => part.area === 'ISO3166-1=KZ');
+  assert.equal(kazakhstan.length, 1, 'one country request covers all of Kazakhstan');
+  for (const point of [[47.1, 51.85], [47.1, 51.95], [44.5, 50.5], [53, 87], [55.45, 68.97]]) {
+    const [s, w, n, e] = kazakhstan[0].box;
+    assert.ok(point[0] >= s && point[0] <= n && point[1] >= w && point[1] <= e);
   }
-  for (const part of STAGES.find(stage => stage.name === 'asia').parts) for (const query of [branchQuery, serviceQuery]) {
+  for (const stage of [asia, STAGES.find(stage => stage.name === 'world')]) for (const part of stage.parts) for (const query of [branchQuery, serviceQuery]) {
     const text = query(part, part.box);
-    for (const code of ['TR', 'CY', 'GE', 'AM', 'AZ', 'KZ']) assert.ok(text.includes(`"${code}"`), `${code} excluded after Europe A`);
-    assert.ok(text.includes(' - ('), 'the European subset is subtracted');
-    assert.match(text, /\(area\.a\d+\)\(poly:"/);
-    assert.equal(part.exclude.includes('ISO3166-1=KZ'), false, 'do not exclude the whole country from Asia');
+    assert.equal(text.includes('(poly:'), false, 'no Ural partition');
+    if (part.area === 'ISO3166-1=KZ') assert.equal(text.includes(' - ('), false, 'the Kazakhstan request has no European exclusion');
+    if (stage.name === 'asia' && part.exclude) assert.ok(part.exclude.includes('ISO3166-1=KZ'), 'other Asia requests do not duplicate Kazakhstan');
+    if (part.exclude) for (const spec of ['wikidata=Q23681', 'wikidata=Q37362']) assert.ok(part.exclude.includes(spec), 'Cyprus territories stay with Europe A');
+  }
+  for (const part of EUROPE_STAGES[0].parts.filter(part => part.area.startsWith('wikidata='))) {
+    for (const query of [branchQuery, serviceQuery]) for (const box of quarters(part.box)) {
+      const text = query(part, box);
+      assert.ok(text.includes(`area["wikidata"="${part.area.split('=')[1]}"]->.a0`));
+      assert.ok(text.includes(`(area.a0)(${box.join(',')})`), 'subdivision bounds still apply');
+    }
   }
 });
 
@@ -62,7 +58,7 @@ function oldState(version) {
   }, runs: [{at: completed, bytes: 220_000_000}]};
 }
 const finishEurope = state => { for (const name of EUROPE_STAGE_NAMES) state.stages[name].completed = completed; };
-const finishWorld = state => { state.stages.world = {started: state.legacyEurope.migrated, completed: state.legacyEurope.migrated}; };
+const finishWorld = state => { for (const name of ['asia', 'world']) state.stages[name] = {started: state.legacyEurope.migrated, completed: state.legacyEurope.migrated}; };
 
 test('branch layout migration preserves non-European progress, schema version, geometry and daily budgets across restarts', () => {
   const state = oldState(BRANCH_DATA_VERSION), before = structuredClone(state);
@@ -177,6 +173,69 @@ test('legacy retirement waits for a world pass started after migration and prese
 test('both maintenance workflows trigger when the shared stage definitions change', async () => {
   for (const pipeline of ['branch-lines', 'service-routes']) {
     const workflow = await readFile(new URL(`../.github/workflows/${pipeline}.yml`, import.meta.url), 'utf8');
-    for (const file of ['scripts/download-stages.mjs', 'scripts/european-kazakhstan.mjs']) assert.ok(workflow.includes(`'${file}'`));
+    assert.ok(workflow.includes("'scripts/download-stages.mjs'"));
+    assert.equal(workflow.includes('scripts/european-kazakhstan.mjs'), false);
   }
+});
+
+function layoutTwoState() {
+  return {version: BRANCH_DATA_VERSION, downloadStages: 2, stages: Object.fromEntries(STAGES.map(stage => [stage.name, {
+    completed, pending: [{part: 5, box: [45, 45, 56, 60]}], seen: [1], started: completed,
+  }])), runs: [{at: completed, bytes: 123456}]};
+}
+
+test('layout two branch data is adopted by Asia and neighbouring groups without stale part indexes or a worldwide reset', () => {
+  const state = layoutTwoState(), before = structuredClone(state);
+  const table = new Map([[1, {id: 1, stage: 'europe-a'}], [2, {id: 2, stage: 'europe-g'}], [3, {id: 3, stage: 'europe-c'}]]);
+  migrateBranchDownloads(state, table);
+  assert.equal(state.downloadStages, 3);
+  assert.equal(table.get(1).stage, 'europe');
+  assert.equal(table.get(2).stage, 'europe');
+  assert.equal(table.get(3).stage, 'europe-c');
+  for (const name of ['europe-a', 'europe-b', 'europe-e', 'europe-f', 'europe-g', 'asia', 'world']) {
+    assert.equal(state.stages[name].pending, null, 'obsolete part indices cannot resume');
+    assert.equal(state.stages[name].completed, null);
+    assert.equal(state.stages[name].previousCompleted, completed);
+    assert.deepEqual(state.stages[name].seen, []);
+  }
+  for (const name of ['japan', 'europe-c', 'europe-d', 'india', 'north-america']) assert.deepEqual(state.stages[name], before.stages[name]);
+  assert.deepEqual(state.runs, before.runs);
+  assert.equal(state.version, before.version);
+  table.get(1).stage = branchStageOwner(table.get(1).stage, 'asia');
+  table.get(2).stage = branchStageOwner(table.get(2).stage, 'europe-f');
+  assert.equal(table.get(1).stage, 'asia', 'Kazakhstan can move to a later stage');
+  assert.equal(table.get(2).stage, 'europe-f', 'Monaco can move to France');
+  const progress = structuredClone({state, table});
+  migrateBranchDownloads(state, table);
+  assert.deepEqual({state, table}, progress);
+});
+
+test('layout two service migration retains committed and partial data and waits for Kazakhstan coverage', () => {
+  const state = layoutTwoState(), table = {routes: new Map(), ways: new Map()};
+  const lines = [[[51.8, 47.1], [51.81, 47.11]]];
+  const result = (id, label) => ({routes: [{key: `r${id}`, relation: id, label}], ways: [{id: 1, routes: [`r${id}`], lines}]});
+  addResult(table, result(1, 'Kazakhstan'), 'europe-a');
+  commitStage(table, 'europe-a');
+  addResult(table, result(2, 'Vatican'), 'europe-g');
+  addResult(table, result(3, 'Norway'), 'europe-c');
+  migrateServiceDownloads(state, table);
+  assert.deepEqual(table.ways.get(1).routes.europe, ['r1', 'r2']);
+  assert.deepEqual(table.ways.get(1).next['europe-c'], ['r3'], 'unchanged partial passes resume');
+  assert.equal(routeView(table.routes.get('r2')).label, 'Vatican');
+  assert.deepEqual(table.ways.get(1).lines, lines);
+  const progress = structuredClone({state, table});
+  migrateServiceDownloads(state, table);
+  assert.deepEqual({state, table}, progress);
+  finishEurope(state);
+  state.stages.world = {started: state.legacyEurope.migrated, completed: state.legacyEurope.migrated};
+  retireServiceEurope(state, table);
+  assert.ok(state.legacyEurope, 'fresh Asia is required even after Europe and world finish');
+  addResult(table, result(1, 'Kazakhstan'), 'asia');
+  commitStage(table, 'asia');
+  addResult(table, result(2, 'Vatican'), 'europe-e');
+  commitStage(table, 'europe-e');
+  finishWorld(state);
+  retireServiceEurope(state, table);
+  assert.equal(state.legacyEurope, undefined);
+  assert.deepEqual(table.ways.get(1).routes, {asia: ['r1'], 'europe-e': ['r2']});
 });

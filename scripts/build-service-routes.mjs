@@ -141,11 +141,11 @@ if (!current.pending.length) {
   // the stage is tried again at its next refresh (the run's downloads are
   // still recorded).
   const change = stageChange(table, stage.name), {stale, total} = change;
-  const suspicious = Boolean(current.completed) && suspiciousChange(change);
+  const suspicious = Boolean(current.completed || current.previousCompleted) && suspiciousChange(change);
   if (suspicious) { console.warn(`Refresh of ${stage.name} would remove ${stale} of ${total} items; keeping the previous data`); discardStage(table, stage.name); }
   else commitStage(table, stage.name);
   const routes = [...table.routes.values()].filter(r => routeStages(r).includes(stage.name)).length;
-  Object.assign(current, {completed: now, pending: null, seen: [], routes, kept: suspicious ? stale : 0});
+  Object.assign(current, {completed: now, previousCompleted: null, pending: null, seen: [], routes, kept: suspicious ? stale : 0});
   console.log(`Stage ${stage.name} complete: ${routes} routes (${suspicious ? 0 : stale} items removed)`);
 } else console.log(`Stage ${stage.name} continues next run (${current.pending.length} region(s) left): ${stopped}`);
 // With nothing fetched and no region split, an unavailable server leaves the
