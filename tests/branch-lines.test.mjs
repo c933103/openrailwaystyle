@@ -28,7 +28,7 @@ test('branch schema migration requeues all regions without losing completion saf
 });
 
 test('branch-line stages: the requested order, Japan first and the rest of the world last', () => {
-  assert.deepEqual(STAGES.map(s => s.name), ['japan', 'east-asia', 'china', 'russia', 'europe', 'india', 'asia', 'north-america', 'americas', 'world']);
+  assert.deepEqual(STAGES.map(s => s.name), ['japan', 'east-asia', 'china', 'russia', 'europe-a', 'europe-b', 'europe-c', 'europe-d', 'europe-e', 'europe-f', 'europe-g', 'india', 'asia', 'north-america', 'americas', 'world']);
   for (const stage of STAGES) for (const {box: [s, w, n, e]} of stage.parts) assert.ok(s < n && w < e && s >= -90 && n <= 90 && w >= -180 && e <= 180, `${stage.name} box`);
   assert.deepEqual(quarters([0, 90, 45, 135]), [[0, 90, 22.5, 112.5], [0, 112.5, 22.5, 135], [22.5, 90, 45, 112.5], [22.5, 112.5, 45, 135]]);
 });
