@@ -8,23 +8,19 @@ import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {simplify} from './branch-lines.mjs';
+import {STAGES, legacyEuropeReady, migrateDownloadStages, partSelection} from './download-stages.mjs';
 import {frequencyBundle} from '../styles/service-frequency.mjs';
 
 export const MIN_ZOOM = 7, LOCAL_MIN_ZOOM = 10, MAX_ZOOM = 12, LAYER = 'service_routes';
 // Light rail, trams and monorails from zoom 10, as in the other views.
 export const LOCAL_KINDS = ['light_rail', 'tram', 'monorail', 'funicular'];
 
-const areaFilter = spec => { const [key, value] = spec.split('='); return `area["${key}"="${value}"]`; };
 const SELECTS = ['rel[type=route][route~"^(subway|light_rail|tram|monorail)$"]', 'rel[type=route][route=train][service~"^(commuter|urban)$"]'];
 const select = filters => SELECTS.map(s => `${s}${filters};`).join('');
 // Routes with a member in the box (leaving out countries fetched in earlier
 // stages), their tags and members, then the geometry of their track ways.
 export function partQuery(part, box) {
-  const bbox = `(${box.join(',')})`, specs = [part.area, ...(part.exclude || [])].filter(Boolean);
-  const areas = specs.map((spec, i) => `${areaFilter(spec)}->.a${i};`).join('');
-  const main = select(`${part.area ? '(area.a0)' : ''}${bbox}`);
-  const excluded = (part.exclude || []).map((_, i) => select(`(area.a${i + (part.area ? 1 : 0)})${bbox}`)).join('');
-  const set = excluded ? `((${main}); - (${excluded});)` : `(${main})`;
+  const {areas, set} = partSelection(part, box, select);
   return `[out:json][timeout:180][maxsize:536870912];${areas}${set}->.r;.r out body;way(r.r)[railway~"^(rail|light_rail|subway|tram|monorail|narrow_gauge|funicular)$"];out skel geom qt;`;
 }
 
@@ -161,6 +157,47 @@ function settle(table, stage, commit) {
 }
 export const commitStage = (table, stage) => settle(table, stage, true);
 export const discardStage = (table, stage) => settle(table, stage, false);
+// Retain an interrupted old-Europe pass as committed fallback data. Dropping
+// its obsolete queue must not make the already displayed services disappear.
+export function migrateServiceDownloads(state, table) {
+  if (!migrateDownloadStages(state) || !state.legacyEurope) return state;
+  for (const route of table.routes.values()) {
+    if (route.next.europe) {
+      const next = route.next.europe, old = route.stages.europe;
+      if (!old || next.relation < old.relation) route.stages.europe = next;
+      delete route.next.europe;
+    }
+  }
+  for (const way of table.ways.values()) {
+    if (way.next.europe) {
+      way.routes.europe = [...new Set([...(way.routes.europe || []), ...way.next.europe])].sort();
+      way.lines ||= way.nextLines?.europe;
+      delete way.next.europe;
+      if (way.nextLines) delete way.nextLines.europe;
+    }
+  }
+  return state;
+}
+
+export function retireServiceEurope(state, table) {
+  if (!state.legacyEurope || !legacyEuropeReady(state)) return;
+  const count = map => {
+    let total = 0, stale = 0;
+    for (const item of map.values()) if ('europe' in partOf(item)) {
+      total++;
+      if (!STAGES.some(stage => stage.name in partOf(item))) stale++;
+    }
+    return {total, stale};
+  };
+  const change = {routes: count(table.routes), ways: count(table.ways)};
+  if (suspiciousChange(change)) return;
+  // An empty committed pass removes only the retired parent's memberships;
+  // each new group and every other stage keeps its own geometry and routes.
+  discardStage(table, 'europe');
+  commitStage(table, 'europe');
+  delete state.legacyEurope;
+}
+
 // What the tiles draw: committed and in-progress parts together.
 const wayRoutes = way => [...new Set([...Object.values(way.routes), ...Object.values(way.next)].flat())].sort();
 // A route as drawn: its committed part with the lowest relation, or before

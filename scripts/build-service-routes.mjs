@@ -12,7 +12,7 @@
 import {mkdir, readFile, writeFile, rm, appendFile} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {STAGES, quarters} from './branch-lines.mjs';
-import {MIN_ZOOM, MAX_ZOOM, addResult, buildTiles, commitStage, discardStage, partQuery, readTable, routeStages, stageChange, suspiciousChange, toTable, writeTable} from './service-routes.mjs';
+import {MIN_ZOOM, MAX_ZOOM, migrateServiceDownloads, retireServiceEurope, addResult, buildTiles, commitStage, discardStage, partQuery, readTable, routeStages, stageChange, suspiciousChange, toTable, writeTable} from './service-routes.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const previous = process.env.PREVIOUS_DATA ? new URL(`file://${process.env.PREVIOUS_DATA.replace(/\/?$/, '/')}`) : null;
@@ -48,6 +48,7 @@ if (state.version !== VERSION) {
   for (const s of Object.values(state.stages)) Object.assign(s, {completed: null, pending: null, seen: []});
   state.version = VERSION;
 }
+migrateServiceDownloads(state, table);
 state.runs = (state.runs || []).filter(run => Date.now() - Date.parse(run.at) < 86400_000);
 const lastDay = state.runs.reduce((sum, run) => sum + run.bytes, 0);
 const BUDGET_BYTES = Math.min(RUN_BUDGET, DAY_BUDGET - lastDay);
@@ -157,6 +158,7 @@ if (!fetchedBoxes && !splitBoxes && stopped) {
 
 // Stamped when the downloads end, so the bytes stay in the 24-hour window
 // for a full day after they were last downloaded.
+retireServiceEurope(state, table);
 state.runs.push({at: new Date().toISOString().replace(/\.\d+Z$/, 'Z'), bytes: downloaded});
 await rm(out, {recursive: true, force: true});
 await mkdir(out, {recursive: true});

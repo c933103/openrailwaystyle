@@ -9,6 +9,8 @@ import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {parseMaxspeed} from './lifecycle.mjs';
+import {branchStageOwner, legacyEuropeReady, migrateDownloadStages, partSelection} from './download-stages.mjs';
+export {STAGES} from './download-stages.mjs';
 
 export const MIN_ZOOM = 4, BRANCH_MAX_ZOOM = 6, METRO_MIN_ZOOM = 7, MAX_ZOOM = 9, LAYER = 'branch_lines';
 export const BRANCH_DATA_VERSION = 3;
@@ -27,44 +29,34 @@ export function migrateBranchState(state) {
   return state;
 }
 
-// Regions fetched one stage at a time, in this order. A part is a bounding
-// box [south, west, north, east], optionally limited to OSM country areas
-// (area) and leaving out countries fetched in earlier stages (exclude).
-const JP = 'ISO3166-1=JP', KR = 'ISO3166-1=KR', KP = 'ISO3166-1=KP', TW = 'ISO3166-1=TW', HK = 'ISO3166-1=HK', MO = 'ISO3166-1=MO';
-const CN = 'ISO3166-1=CN', GD = 'ISO3166-2=CN-GD', RU = 'ISO3166-1=RU', IN = 'ISO3166-1=IN', US = 'ISO3166-1=US', CA = 'ISO3166-1=CA';
-export const STAGES = [
-  {name: 'japan', label: 'Japan', parts: [{area: JP, box: [20, 122, 46, 154]}]},
-  {name: 'east-asia', label: 'Koreas, Taiwan, Hong Kong, Macau and Guangdong', parts: [
-    {area: KR, box: [33, 124, 39, 132]}, {area: KP, box: [37.5, 124, 43.1, 131]}, {area: TW, box: [21.5, 118, 26.5, 123]},
-    {area: HK, box: [22.1, 113.8, 22.6, 114.5]}, {area: MO, box: [22.05, 113.5, 22.25, 113.65]}, {area: GD, box: [20, 109.5, 25.6, 117.4]}]},
-  {name: 'china', label: 'Rest of China', parts: [{area: CN, box: [18, 73, 54, 135], exclude: [GD, HK, MO]}]},
-  {name: 'russia', label: 'Russia', parts: [{area: RU, box: [41, 19, 82, 180]}, {area: RU, box: [60, -180, 72, -168]}]},
-  {name: 'europe', label: 'Rest of Europe', parts: [{box: [34, -25, 72, 26.5], exclude: [RU]}, {box: [40.5, 26.5, 72, 45], exclude: [RU]}]},
-  {name: 'india', label: 'India', parts: [{area: IN, box: [6, 68, 36, 98]}]},
-  {name: 'asia', label: 'Rest of Asia', parts: [
-    {box: [-11, 60, 55, 180], exclude: [JP, KR, KP, TW, HK, MO, CN, RU, IN]},
-    {box: [12, 26.5, 40.5, 60], exclude: ['ISO3166-1=EG']}, {box: [40.5, 45, 55, 60], exclude: [RU]}]},
-  {name: 'north-america', label: 'US and Canada', parts: [{area: US, box: [18, -180, 72, -66]}, {area: CA, box: [41, -141, 84, -52]}]},
-  {name: 'americas', label: 'Rest of the Americas', parts: [{box: [-56, -120, 33, -30], exclude: [US]}]},
-  {name: 'world', label: 'Rest of the world', parts: [
-    {box: [-35, -20, 37.5, 52]}, {box: [-50, 110, -11, 180]}, {box: [-50, -180, 0, -150]}]},
-];
+// Change the download layout separately from the feature schema so completed
+// Japan/Asia/etc. do not restart just because Europe was split.
+export function migrateBranchDownloads(state, table) {
+  if (migrateDownloadStages(state) && state.legacyEurope) {
+    state.legacyEurope.lines = [...table.values()].filter(feature => feature.stage === 'europe').length;
+  }
+  return state;
+}
+
+export function retireBranchEurope(state, table) {
+  if (!state.legacyEurope || !legacyEuropeReady(state)) return;
+  const stale = [...table.values()].filter(feature => feature.stage === 'europe');
+  const total = state.legacyEurope.lines;
+  if (total > 100 && stale.length > total * 0.2) return;
+  for (const feature of stale) table.delete(feature.id);
+  delete state.legacyEurope;
+}
+export {branchStageOwner};
 
 export const quarters = ([s, w, n, e]) => {
   const lat = (s + n) / 2, lon = (w + e) / 2;
   return [[s, w, lat, lon], [s, lon, lat, e], [lat, w, n, lon], [lat, lon, n, e]];
 };
 
-const areaFilter = spec => { const [key, value] = spec.split('='); return `area["${key}"="${value}"]`; };
 const SELECTS = ['way[railway~"^(rail|narrow_gauge)$"][usage=branch][!service]', 'way[railway=subway][!service]'];
 const select = filters => SELECTS.map(s => `${s}${filters};`).join('');
 export function partQuery(part, box) {
-  const bbox = `(${box.join(',')})`, specs = [part.area, ...(part.exclude || [])].filter(Boolean);
-  const areas = specs.map((spec, i) => `${areaFilter(spec)}->.a${i};`).join('');
-  const main = select(`${part.area ? '(area.a0)' : ''}${bbox}`);
-  const excluded = (part.exclude || []).map((_, i) => select(`(area.a${i + (part.area ? 1 : 0)})${bbox}`)).join('');
-  // Ways in countries fetched in earlier stages are left out of the download.
-  const set = excluded ? `((${main}); - (${excluded});)` : `(${main})`;
+  const {areas, set} = partSelection(part, box, select);
   return `[out:json][timeout:180][maxsize:536870912];${areas}${set};out tags geom qt;`;
 }
 

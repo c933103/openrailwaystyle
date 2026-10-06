@@ -10,7 +10,7 @@
 // REFRESH_DAYS, which also removes deleted and retagged lines.
 import {mkdir, readFile, writeFile, rm, appendFile} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
-import {STAGES, MIN_ZOOM, MAX_ZOOM, migrateBranchState, buildTiles, partQuery, quarters, readTable, toFeatures, writeTable} from './branch-lines.mjs';
+import {STAGES, MIN_ZOOM, MAX_ZOOM, migrateBranchState, migrateBranchDownloads, retireBranchEurope, branchStageOwner, buildTiles, partQuery, quarters, readTable, toFeatures, writeTable} from './branch-lines.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const previous = process.env.PREVIOUS_DATA ? new URL(`file://${process.env.PREVIOUS_DATA.replace(/\/?$/, '/')}`) : null;
@@ -43,6 +43,7 @@ if (previous) {
 // contain the primary code, so re-fetch every region through the existing
 // staged refresh while keeping its previous geometries until it succeeds.
 migrateBranchState(state);
+migrateBranchDownloads(state, table);
 state.runs = (state.runs || []).filter(run => Date.now() - Date.parse(run.at) < 86400_000);
 const lastDay = state.runs.reduce((sum, run) => sum + run.bytes, 0);
 const BUDGET_BYTES = Math.min(RUN_BUDGET, DAY_BUDGET - lastDay);
@@ -126,7 +127,7 @@ while (current.pending.length) {
   fetchedBoxes++;
   for (const feature of features) {
     // A line keeps the stage that first fetched it (stages overlap at edges).
-    const owner = table.get(feature.id)?.stage || stage.name;
+    const owner = branchStageOwner(table.get(feature.id)?.stage, stage.name);
     table.set(feature.id, {...feature, stage: owner});
     if (owner === stage.name) seen.add(feature.id);
   }
@@ -156,6 +157,7 @@ if (!fetchedBoxes && !splitBoxes && stopped) {
 
 // Stamped when the downloads end, so the bytes stay in the 24-hour window
 // for a full day after they were last downloaded.
+retireBranchEurope(state, table);
 state.runs.push({at: new Date().toISOString().replace(/\.\d+Z$/, 'Z'), bytes: downloaded});
 await rm(out, {recursive: true, force: true});
 await mkdir(out, {recursive: true});
