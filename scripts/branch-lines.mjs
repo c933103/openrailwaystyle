@@ -9,7 +9,7 @@ import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
 import {parseMaxspeed} from './lifecycle.mjs';
-import {branchStageOwner, legacyEuropeReady, migrateDownloadStages, partSelection} from './download-stages.mjs';
+import {branchStageOwner, fallbackStage, isFallbackStage, legacyEuropeReady, migrateDownloadStages, partSelection} from './download-stages.mjs';
 export {STAGES} from './download-stages.mjs';
 
 export const MIN_ZOOM = 4, BRANCH_MAX_ZOOM = 6, METRO_MIN_ZOOM = 7, MAX_ZOOM = 9, LAYER = 'branch_lines';
@@ -34,17 +34,23 @@ export function migrateBranchState(state) {
 export function migrateBranchDownloads(state, table) {
   const retired = migrateDownloadStages(state);
   if (retired && state.legacyEurope) {
-    for (const feature of table.values()) if (retired.includes(feature.stage)) feature.stage = 'europe';
-    state.legacyEurope.lines = [...table.values()].filter(feature => feature.stage === 'europe').length;
+    for (const feature of table.values()) if (retired.includes(feature.stage)) feature.stage = fallbackStage(feature.stage);
+    const baselines = {};
+    for (const feature of table.values()) if (isFallbackStage(feature.stage)) baselines[feature.stage] = (baselines[feature.stage] || 0) + 1;
+    state.legacyEurope.branchStages = baselines;
+    state.legacyEurope.lines = Object.values(baselines).reduce((sum, count) => sum + count, 0);
   }
   return state;
 }
 
 export function retireBranchEurope(state, table) {
   if (!state.legacyEurope || !legacyEuropeReady(state)) return;
-  const stale = [...table.values()].filter(feature => feature.stage === 'europe');
+  const stale = [...table.values()].filter(feature => isFallbackStage(feature.stage));
   const total = state.legacyEurope.lines;
   if (total > 100 && stale.length > total * 0.2) return;
+  for (const [stage, before] of Object.entries(state.legacyEurope.branchStages || {})) {
+    if (before > 100 && stale.filter(feature => feature.stage === stage).length > before * 0.2) return;
+  }
   for (const feature of stale) table.delete(feature.id);
   delete state.legacyEurope;
 }

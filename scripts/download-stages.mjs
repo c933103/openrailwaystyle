@@ -23,6 +23,8 @@ export const EUROPE_STAGES = [
 ];
 export const EUROPE_STAGE_NAMES = EUROPE_STAGES.map(stage => stage.name);
 export const CHANGED_DOWNLOAD_STAGES = ['europe-a', 'europe-b', 'europe-e', 'europe-f', 'europe-g', 'asia', 'world'];
+export const fallbackStage = stage => stage === 'europe' ? stage : `europe:${stage}`;
+export const isFallbackStage = stage => stage === 'europe' || stage?.startsWith('europe:');
 
 export const STAGES = [
   {name: 'japan', label: 'Japan', parts: [{area: JP, box: [20, 122, 46, 154]}]},
@@ -99,7 +101,7 @@ export const legacyEuropeReady = state => europeComplete(state)
 // A way first downloaded by the former Europe stage, or by a later world
 // stage, can now belong to its earlier, smaller Europe group.
 export function branchStageOwner(previous, stage) {
-  if (!previous || previous === 'europe') return stage;
+  if (!previous || isFallbackStage(previous)) return stage;
   const before = STAGES.findIndex(item => item.name === previous), next = STAGES.findIndex(item => item.name === stage);
   return before >= 0 && next < before ? stage : previous;
 }

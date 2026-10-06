@@ -189,8 +189,8 @@ test('layout two branch data is adopted by Asia and neighbouring groups without 
   const table = new Map([[1, {id: 1, stage: 'europe-a'}], [2, {id: 2, stage: 'europe-g'}], [3, {id: 3, stage: 'europe-c'}]]);
   migrateBranchDownloads(state, table);
   assert.equal(state.downloadStages, 3);
-  assert.equal(table.get(1).stage, 'europe');
-  assert.equal(table.get(2).stage, 'europe');
+  assert.equal(table.get(1).stage, 'europe:europe-a');
+  assert.equal(table.get(2).stage, 'europe:europe-g');
   assert.equal(table.get(3).stage, 'europe-c');
   for (const name of ['europe-a', 'europe-b', 'europe-e', 'europe-f', 'europe-g', 'asia', 'world']) {
     assert.equal(state.stages[name].pending, null, 'obsolete part indices cannot resume');
@@ -219,7 +219,8 @@ test('layout two service migration retains committed and partial data and waits 
   addResult(table, result(2, 'Vatican'), 'europe-g');
   addResult(table, result(3, 'Norway'), 'europe-c');
   migrateServiceDownloads(state, table);
-  assert.deepEqual(table.ways.get(1).routes.europe, ['r1', 'r2']);
+  assert.deepEqual(table.ways.get(1).routes['europe:europe-a'], ['r1']);
+  assert.deepEqual(table.ways.get(1).routes['europe:europe-g'], ['r2']);
   assert.deepEqual(table.ways.get(1).next['europe-c'], ['r3'], 'unchanged partial passes resume');
   assert.equal(routeView(table.routes.get('r2')).label, 'Vatican');
   assert.deepEqual(table.ways.get(1).lines, lines);
@@ -238,4 +239,67 @@ test('layout two service migration retains committed and partial data and waits 
   retireServiceEurope(state, table);
   assert.equal(state.legacyEurope, undefined);
   assert.deepEqual(table.ways.get(1).routes, {asia: ['r1'], 'europe-e': ['r2']});
+});
+
+test('branch fallback deletion guards each original stage even when a missing stage is small overall', () => {
+  const state = layoutTwoState(), table = new Map(Array.from({length: 1200}, (_, id) => [id, {id, stage: id < 1000 ? 'europe-a' : 'europe-f'}]));
+  migrateBranchDownloads(state, table);
+  finishEurope(state);
+  finishWorld(state);
+  for (let id = 0; id < 1000; id++) table.get(id).stage = 'europe-a';
+  retireBranchEurope(state, table);
+  assert.equal(table.size, 1200, 'all missing France rows survive despite being under 20% of the combined fallback');
+  assert.ok(state.legacyEurope);
+  for (let id = 1000; id < 1180; id++) table.get(id).stage = 'europe-f';
+  retireBranchEurope(state, table);
+  assert.equal(table.size, 1180, 'a small stale share of each origin can retire');
+  assert.equal(state.legacyEurope, undefined);
+});
+
+test('service fallback deletion guards each original stage even when its routes are small overall', () => {
+  const state = layoutTwoState(), table = {routes: new Map(), ways: new Map()};
+  const routes = Array.from({length: 125}, (_, id) => ({key: `r${id}`, relation: id, label: `Route ${id}`}));
+  addResult(table, {routes: routes.slice(0, 100), ways: []}, 'europe-a');
+  commitStage(table, 'europe-a');
+  addResult(table, {routes: routes.slice(100), ways: []}, 'europe-f');
+  commitStage(table, 'europe-f');
+  migrateServiceDownloads(state, table);
+  finishEurope(state);
+  finishWorld(state);
+  addResult(table, {routes: routes.slice(0, 100), ways: []}, 'europe-a');
+  commitStage(table, 'europe-a');
+  retireServiceEurope(state, table);
+  assert.equal(table.routes.size, 125, 'missing France routes survive at exactly 20% of combined routes');
+  assert.ok(state.legacyEurope);
+  addResult(table, {routes: routes.slice(100, 123), ways: []}, 'europe-f');
+  commitStage(table, 'europe-f');
+  retireServiceEurope(state, table);
+  assert.equal(table.routes.size, 123);
+  assert.equal(state.legacyEurope, undefined);
+});
+
+test('service fallback keeps a small stage whose ways are missing even when its routes are found', () => {
+  const state = layoutTwoState(), table = {routes: new Map(), ways: new Map()};
+  const route = id => ({key: `r${id}`, relation: id, label: `Route ${id}`});
+  const ways = (start, count, key) => Array.from({length: count}, (_, i) => ({id: start + i, routes: [key], lines: [[[0, 0], [1, 1]]]}));
+  const large = {routes: [route(1)], ways: ways(0, 1000, 'r1')};
+  addResult(table, large, 'europe-a');
+  commitStage(table, 'europe-a');
+  addResult(table, {routes: [route(2)], ways: ways(1000, 200, 'r2')}, 'europe-f');
+  commitStage(table, 'europe-f');
+  migrateServiceDownloads(state, table);
+  finishEurope(state);
+  finishWorld(state);
+  addResult(table, large, 'europe-a');
+  commitStage(table, 'europe-a');
+  addResult(table, {routes: [route(2)], ways: []}, 'europe-f');
+  commitStage(table, 'europe-f');
+  retireServiceEurope(state, table);
+  assert.equal(table.ways.size, 1200, 'missing France ways remain despite both routes being found');
+  assert.ok(state.legacyEurope);
+  addResult(table, {routes: [route(2)], ways: ways(1000, 180, 'r2')}, 'europe-f');
+  commitStage(table, 'europe-f');
+  retireServiceEurope(state, table);
+  assert.equal(table.ways.size, 1180);
+  assert.equal(state.legacyEurope, undefined);
 });

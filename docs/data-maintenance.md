@@ -106,7 +106,7 @@ to their new group as they are fetched. Urban services retain both committed
 and partially fetched old-Europe memberships until the smaller stages have
 committed. The world stage adopts the African data before the old parent is
 retired; retirement also applies the 20% deletion guard.
-The revised grouping restarts only A, B, E, F, G, Asia and world, whose request definitions changed. Their committed and partial data joins the same fallback, so Kazakhstan can move from A to the later Asia stage and small countries can move from G to their neighbouring group. Retirement also waits for a fresh Asia pass, confirming Kazakhstan coverage. Unchanged stages, geometry and the rolling daily download budget are preserved; obsolete part indices cannot resume after the definitions change.
+The revised grouping restarts only A, B, E, F, G, Asia and world, whose request definitions changed. Their committed and partial data stays in fallback entries separated by original stage, so Kazakhstan can move from A to the later Asia stage and small countries can move from G to their neighbouring group. The 20% deletion guard applies to each original stage separately, with service routes and ways checked independently. Retirement also waits for a fresh Asia pass, confirming Kazakhstan coverage. Unchanged stages, geometry and the rolling daily download budget are preserved; obsolete part indices cannot resume after the definitions change.
 
 Each website build copies the tiles, `index.json`, `manifest.json` (stages, counts, last run) and the ODbL table `branch-lines.ndjson.gz` into `styles/data/branch-lines/`.
 
