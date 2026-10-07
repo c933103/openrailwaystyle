@@ -1,4 +1,5 @@
-import {launchBrowser, localOrmTarget} from './browser.mjs';
+import {launchBrowser} from './browser.mjs';
+import {localOrmTarget} from './browser.mjs';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {chooseName} from '../styles/map-model.mjs';
