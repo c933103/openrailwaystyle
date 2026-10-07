@@ -25,7 +25,7 @@ test('service routes: both directions are one route; urban kinds only in the que
   assert.match(q, /route~"\^\(subway\|light_rail\|tram\|monorail\)\$"/);
   assert.match(q, /route=train\]\[service~"\^\(commuter\|urban\)\$"\]/);
   assert.doesNotMatch(q, /long_distance|high_speed/);
-  assert.match(q, /\.r out body;way\(r\.r\)\[railway~/);
+  assert.match(q, /\.r out meta;way\(r\.r\)\[railway~/);
 });
 
 const sample = {elements: [

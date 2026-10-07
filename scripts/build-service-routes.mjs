@@ -151,9 +151,10 @@ if (!current.pending.length) {
   // refresh. Keep a bounded, persisted repair record; retry on the existing
   // stage refresh cadence, without increasing the public-server budgets.
   const health = stageGeometryHealth(table, stage.name);
-  if (observed.counts.unknown || suspicious) health.status = 'incomplete';
-  current.geometry = {...health, observed, observedUnknown: observed.counts.unknown, checked: now,
-    lastFailure: suspicious ? 'membership-refresh-rejected' : observed.counts.unknown ? 'unverified-source' : health.status === 'incomplete' ? 'unresolved-source-geometry' : null, attempts: (current.geometry?.attempts || 0) + 1,
+  if (observed.status !== 'complete' || suspicious) health.status = 'incomplete';
+  const relationProblem = [observed, health].some(item => item.relationCounts.partial + item.relationCounts.conflict + item.relationCounts.unknown);
+  current.geometry = {...health, observed, observedUnknown: observed.counts.unknown, observedUnknownRelations: observed.relationCounts.unknown, checked: now,
+    lastFailure: suspicious ? 'membership-refresh-rejected' : observed.counts.unknown || observed.relationCounts.unknown ? 'unverified-source' : relationProblem ? 'unresolved-source-relations' : health.status === 'incomplete' ? 'unresolved-source-geometry' : null, attempts: (current.geometry?.attempts || 0) + 1,
     retry: health.status === 'complete' ? null : 'next-stage-refresh'};
   const routes = [...table.routes.values()].filter(r => routeStages(r).includes(stage.name)).length;
   Object.assign(current, {completed: now, previousCompleted: null, pending: null, seen: [], routes, kept: suspicious ? stale : 0});

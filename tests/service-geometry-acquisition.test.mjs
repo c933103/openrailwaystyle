@@ -8,7 +8,7 @@ import {gzipSync, gunzipSync} from 'node:zlib';
 import {addResult, commitStage, readTable, toTable, writeTable, geometrySummary} from '../scripts/service-routes.mjs';
 const points = [[139.70,35.68],[139.71,35.69],[139.72,35.68],[139.73,35.69],[139.74,35.68]];
 const response = (day, coordinates = points) => ({osm3s: {timestamp_osm_base: `2026-10-${day}T00:00:00Z`}, elements: [
-  {type:'relation',id:1,tags:{route:'subway',ref:'1',name:'One',network:'N'},members:[{type:'way',ref:10,role:''}]},
+  {type:'relation',id:1,version:1,timestamp:'2026-10-01T00:00:00Z',tags:{route:'subway',ref:'1',name:'One',network:'N'},members:[{type:'way',ref:10,role:''}]},
   {type:'way',id:10,version:1,timestamp:'2026-10-01T00:00:00Z',nodes:[1,2,3,4,5],geometry:coordinates.map(p => p && {lon:p[0],lat:p[1]})},
 ]});
 const state = () => ({version:1,downloadStages:3,stages:{japan:{completed:null,pending:null,seen:[]}},runs:[]});
@@ -93,4 +93,34 @@ test('geometry acquisition: rejected conflicting refresh retains accepted data a
   assert.equal(acquired.stages.japan.geometry.observed.counts.conflict,1);
   assert.deepEqual(acquired.stages.japan.geometry.observed.affectedWays,[10]);
   assert.equal(acquired.stages.japan.geometry.retry,'next-stage-refresh');
+}));
+
+test('relation acquisition: relation-only contradiction marks stage incomplete with no way conflicts', async () => fixture(async run => {
+  const body = response('07'); body.elements.push({...body.elements[0], tags: {...body.elements[0].tags, name: 'Contradictory name'}});
+  const result = await run([{body}]), health = (await result.read('state.json')).stages.japan.geometry;
+  assert.equal(health.status, 'incomplete'); assert.equal(health.counts.conflict, 0); assert.equal(health.relationCounts.conflict, 1);
+  assert.deepEqual(health.affectedRelations, [1]); assert.equal(health.retry, 'next-stage-refresh');
+  assert.deepEqual((await result.read('manifest.json')).geometry.relations.relationsWithConflicts, [1]);
+}));
+
+test('relation acquisition: full declarations with no returned ways remain unresolved and cannot report complete coverage', async () => fixture(async run => {
+  const body = response('07'); body.elements = body.elements.filter(element => element.type === 'relation');
+  const result = await run([{body}]), health = (await result.read('state.json')).stages.japan.geometry;
+  assert.equal(health.status, 'incomplete'); assert.equal(health.relationCounts.partial, 1);
+  assert.deepEqual(health.affectedRelations, [1]);
+  const manifest = await result.read('manifest.json'); assert.equal(manifest.ways, 0);
+  assert.deepEqual(manifest.geometry.relations.relationsWithUnresolvedMembers, [1]);
+}));
+
+test('relation acquisition: conflicting unverified refresh cannot report successful repair from retained accepted evidence', async () => fixture(async run => {
+  const table = {routes: new Map(), ways: new Map()}; addResult(table, toTable(response('06')), 'japan'); commitStage(table, 'japan');
+  const body = response('07'); delete body.elements[0].version;
+  body.elements.push({...body.elements[0], tags: {...body.elements[0].tags, name: 'Conflicting unknown'}});
+  const result = await run([{body}], state(), table), health = (await result.read('state.json')).stages.japan.geometry;
+  assert.equal(health.observed.relationCounts.conflict, 1); assert.equal(health.relationCounts.complete, 1);
+  assert.equal(health.status, 'incomplete'); assert.equal(health.retry, 'next-stage-refresh');
+  assert.equal(health.lastFailure, 'unresolved-source-relations');
+  const saved = readTable(gunzipSync(await readFile(join(result.root, 'service-data/service-routes.ndjson.gz'))).toString());
+  assert.equal(saved.routes.get('r1').evidence.view.label, 'One');
+  assert.ok((await result.read('manifest.json')).geometry.relations.details[0].reasons.includes('ignored_unverified_relation'));
 }));
