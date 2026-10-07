@@ -14,7 +14,7 @@ const indexes=Object.fromEntries(['speed_railway_line_low','standard_railway_lin
   geojsonvt({type:'FeatureCollection',features:[line]},{maxZoom:16,indexMaxZoom:7,extent:4096,buffer:64})]));
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const context=await browser.newContext({viewport:{width:1280,height:800},serviceWorkers:'block'});
-const errors=[],requests={metadata:0,tiles:0,missingReferer:[],missingUserAgent:[]};
+const errors=[],requests={metadata:0,tiles:0,trackDependencies:[],missingReferer:[],missingUserAgent:[]};
 await mkdir('browser-review',{recursive:true});
 try {
   // This also fixtures fonts, imagery and the basemap, avoiding unrelated
@@ -33,6 +33,17 @@ try {
     if(!headers['user-agent'])requests.missingUserAgent.push(url.pathname);
     const path=url.pathname;
     if(path.startsWith('/api/'))return route.fulfill({status:404,body:''});
+    // atlastracks:// dependencies are direct provider-shaped z14 paths rather
+    // than TileJSON-advertised fixture URLs. Fulfill them locally too, so the
+    // real MapLibre viewport can measure request amplification without public
+    // provider traffic.
+    const countMatch=/^\/(railway_line_high|standard_railway_grouped_station_areas|standard_railway_text_stations)\/14\/(\d+)\/(\d+)$/.exec(path);
+    if(countMatch){
+      requests.trackDependencies.push(path);
+      const [,endpoint,x,y]=countMatch,tile=indexes[endpoint]?.getTile(14,Number(x),Number(y));
+      return route.fulfill({contentType:'application/x-protobuf',
+        body:tile?Buffer.from(vtpbf.fromGeojsonVt({[endpoint]:tile},{version:2})):Buffer.alloc(0)});
+    }
     const tileMatch=/^\/__orm-fixture\/([a-z_]+)\/(\d+)\/(\d+)\/(\d+)\.pbf$/.exec(path);
     if(tileMatch){
       requests.tiles++;
@@ -63,7 +74,37 @@ try {
   assert.match(await page.locator('.maplibregl-ctrl-attrib').innerText(),/OpenRailwayMap/);
   assert.deepEqual(errors,[]);
   await page.screenshot({path:'browser-review/orm-fixture-wuhan-z7.png'});
-  console.log('PASS: Wuhan rail overlays at z6 and z7 from synthetic tiles, no public OpenRailwayMap downloads',JSON.stringify(requests));
+
+  // Measure a real 1280x800 Infrastructure-view interaction at z14. The
+  // request list records only atlastracks:// dependency URLs after get() has
+  // applied its exact-URL in-flight sharing/cache, i.e. actual fixture-network
+  // requests rather than the counter's logical candidates.
+  requests.trackDependencies.length=0;
+  await page.goto(base+'?mode=infrastructure&language=en&relief=0&inactive=0&transport=0&destinations=0&constraints=0#14/30.55/114.4',{waitUntil:'domcontentloaded'});
+  await page.waitForSelector('body[data-map-ready="true"]',{timeout:90000});
+  await page.evaluate(async()=>{window.fixtureMap=(await import(document.querySelector('script[type="module"]').src)).map;});
+  await page.waitForFunction(()=>window.fixtureMap.loaded(),null,{timeout:60000});
+  const dependencySnapshot=()=>{
+    const urls=[...requests.trackDependencies],byDataset={};
+    for(const path of urls){const dataset=path.split('/')[1];byDataset[dataset]=(byDataset[dataset]||0)+1;}
+    return {requests:urls.length,unique:new Set(urls).size,byDataset};
+  };
+  const initial=dependencySnapshot();
+  assert.ok(initial.requests>0,'z14 Infrastructure interaction must exercise track-count dependencies');
+  assert.equal(initial.requests,initial.unique,'shared/cache-completed track dependencies should not hit the fixture network twice');
+  await page.evaluate(()=>new Promise(resolve=>{
+    window.fixtureMap.once('idle',resolve);
+    window.fixtureMap.panBy([512,0],{duration:0});
+  }));
+  const afterPan=dependencySnapshot(),panAdded=afterPan.requests-initial.requests;
+  assert.equal(afterPan.requests,afterPan.unique,'one-tile pan must retain exact-URL request deduplication');
+  assert.ok(panAdded>=0,'pan dependency delta must be non-negative');
+  await page.screenshot({path:'browser-review/orm-fixture-wuhan-z14-track-count.png'});
+  assert.deepEqual(requests.missingReferer,[], 'z14 dependency requests must keep genuine site-origin Referer');
+  assert.deepEqual(requests.missingUserAgent,[], 'z14 dependency requests must keep genuine User-Agent');
+  assert.deepEqual(errors,[]);
+  console.log('PASS: Wuhan rail overlays at z6/z7; z14 track-count interaction used local fixtures only',
+    JSON.stringify({initial,afterPan,panAdded,metadata:requests.metadata,tiles:requests.tiles}));
 }finally{
   await context.close();
   await browser.close();
