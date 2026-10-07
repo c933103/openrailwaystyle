@@ -31,6 +31,23 @@ test('known hidden-source metadata causes zero network requests',async()=>{
   console.log('RAIL_METADATA_NETWORK_REQUESTS',fetched,'for',Object.keys(RAIL_TILE_RANGES).length,'endpoints');
  }finally{protocols.dispose();}
 });
+test('malformed HTTP-success provider tile is retried before it can enter the shared cache',async()=>{
+ const handlers={};let fetched=0;
+ const tile=encode.fromGeojsonVt({railway_line_high:{features:[{type:2,geometry:[[[1,1],[100,100]]],tags:{id:'way-1',feature:'rail',state:'present'}}]}});
+ const valid=tile.buffer.slice(tile.byteOffset,tile.byteOffset+tile.byteLength);
+ const invalid=new TextEncoder().encode('temporarily unavailable').buffer;
+ const protocols=installLabelProtocols({addProtocol:(name,fn)=>handlers[name]=fn},{},async()=>({
+   ok:true,status:200,arrayBuffer:async()=>++fetched===1?invalid:valid
+ }),{tileRetries:[0]});
+ try{
+  const url='atlasrail://'+origin+'/railway_line_high/7/104/52';
+  const result=await handlers.atlasrail({type:'arrayBuffer',url},new AbortController());
+  assert.ok(result.data.byteLength);assert.equal(fetched,2,'malformed body consumes one retry');
+  await handlers.atlasrail({type:'arrayBuffer',url},new AbortController());
+  assert.equal(fetched,2,'only the validated replacement is cached');
+ }finally{protocols.dispose();}
+});
+
 test('zoom-seven railway geometry is not delayed by optional rare-Han fonts',async()=>{
  const handlers={};let fonts=0;
  const tile=encode.fromGeojsonVt({railway_line_high:{features:[{type:2,geometry:[[[1,1],[100,100]]],tags:{id:'way-1',name:'𠮷',feature:'rail',state:'present'}}]}});
