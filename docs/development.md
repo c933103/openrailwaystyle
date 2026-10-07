@@ -159,6 +159,11 @@ placement priority, proximity/deduplication and settings. The separate
 `node scripts/check-search-api.mjs` probes the public station-search API and CORS;
 CI treats its external-service failure as non-blocking.
 
+The deterministic [Paris Service geometry acceptance](service-paris-acceptance.md)
+checks pinned real paths at Saint-Lazare and Montparnasse against synthetic
+timetable/stop chords across all width profiles. It is part of the frequency
+browser group and records its original-feed and regional-coverage limits.
+
 For documentation-only changes, check relative links, heading anchors, command
 accuracy and `git diff --check`; no new application tests are needed.
 

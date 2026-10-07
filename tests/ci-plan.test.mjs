@@ -37,6 +37,11 @@ test('a check, its helpers and its fixtures run only the checks that use them', 
   for (const check of frequency.checks)
     assert.deepEqual(plan([`scripts/${check}`], read).groups, [{...frequency, checks: [check]}], 'frequency fixture preparation is retained for each selected check');
   assert.deepEqual(groupsFor(['scripts/service-geometry-browser-fixture.mjs']), ['frequency:1']);
+  assert.deepEqual(groupsFor(['scripts/paris-service-geometry-fixture.mjs']), ['frequency:1']);
+  for (const path of ['scripts/assemble-global-frequency.mjs', 'scripts/read-frequency-feed.mjs'])
+    assert.deepEqual(groupsFor([path]), ['frequency:1'], `Paris production CLI dependency ${path} selects its browser gate`);
+  for (const name of ['paris-osm-01.ndjson', 'paris-osm-02.ndjson', 'paris-metadata.json', 'paris-adversary.json'])
+    assert.deepEqual(groupsFor([`tests/fixtures/service-geometry/${name}`]), ['frequency:1'], `Paris fixture ${name} selects its deterministic browser gate`);
 });
 
 test('local references cover imports, dynamic imports and files read through new URL, without query strings', () => {
