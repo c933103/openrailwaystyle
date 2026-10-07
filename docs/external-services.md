@@ -27,7 +27,7 @@ separate terms for that host have **not been verified**.
 | --- | --- | --- |
 | MapLibre railway layers: infrastructure, speed, control, gauge, loading gauge, owner, electrification, stations, signals, entrances, platforms, crossings | `https://openrailwaymap.app/<dataset>` TileJSON and tile URLs; see `scripts/style/sources/railway.mjs` | Public *interactive* browser use is governed by public-app conditions. CI requests to live map tiles are prohibited; isolated with synthetic responses. |
 | Language-dependent station tiles and label adapters | `atlasstation://`, `atlasrail://`, `atlastext://` and other protocols wrap `openrailwaymap.app` TileJSON/tile requests (`styles/app.mjs`, `styles/tile-labels.mjs` and generated browser bundle) | A custom URL scheme does not change the classification of its underlying HTTP requests. Browser CI blocks requests to the public hostname at the network boundary. |
-| Track-count expansion when users view z14+ (default option enabled) | For **each** z14 count tile, `styles/tile-labels.mjs` `countZoom14()` can request nine adjacent tiles from each of three ORM datasets: track geometry, station areas and station points (up to **27 candidate tile fetches**, with request sharing/cache eliminating some duplicates) | **Potential request-volume/bulk concern**, not proof of a violation: user-initiated rendering differs from unattended CI, and the operator has published no numerical threshold. Investigate actual deduplicated request counts under interaction; consider self-hosting/precomputing track counts or reducing amplification if necessary. Do not disable an existing map feature without a tested replacement. |
+| Track-count expansion when users view z14+ (default option enabled) | The z14 counter uses 3x3 halos of track geometry, station areas and station points; exact URLs share in-flight/cache entries. | **Measured with local fixtures only:** one cold rail-bearing tile = 27 distinct requests; cold 2x2 viewport = 48 instead of 108 logical candidates; one-tile east pan adds 12. Requests are now phased by dataset, and a completely empty railway halo skips both station datasets (cold empty 2x2 = 16). No numerical operator threshold is published, so this is a volume measurement, not a compliance verdict. |
 | Major-stations placement/baseline audit | `scripts/check-major-stations-browser.mjs` used Playwright `route.fetch()` to fetch live `standard_railway_text_stations_low/med` responses for baseline comparison | **Confirmed risk**: direct automated tile downloads, even if deduplicated for comparison. Now explicitly requires `ATLAS_TEST_ORM_URL`; its `route.fetch` points to loopback data only. |
 | Generic browser response cache | `scripts/browser.mjs` cached all external GET responses (200/204/206), including public railway tiles, seven days; miss used `route.continue()` | **Confirmed risk**: repeated CI runs could fetch provider map tiles automatically; cache hits do not fix initial collection. Cache now excludes public ORM URLs; cache generation bumped to invalidate mixed entries. |
 | Browser smoke and geographic tests | `check-map-browser.mjs`, `check-context-browser.mjs`, `check-planning-browser.mjs` requested many global regions; deployment also ran these after publishing | **Confirmed risk**: automated map-tile requests. Not part of public CI or post-deploy steps anymore. Early guard requires local provider if manually invoked. |
@@ -39,6 +39,26 @@ separate terms for that host have **not been verified**.
 The service operator policy does not enumerate a quantitative API rate limit.
 No particular number of calls, retry cadence or TileJSON polling allowance
 has therefore been certified as compliant.
+
+### Track-count request amplification measurement
+
+Measured on 2026-10-07 with deterministic in-process vector-tile fixtures; **no
+public OpenRailwayMap tile traffic was sent**. Atlas computes at z14 and
+overzooms those count tiles above z14, so this covers z14+ interaction.
+
+- Cold rail-bearing single count tile: **27 distinct requests** (three 3x3
+  dataset halos), peak **9 concurrent** after dataset phasing.
+- Cold rail-bearing 2x2 viewport: **48 distinct requests**, not 108 logical
+  candidates, because overlapping halos collapse to one 4x4 union per dataset.
+- Pan that 2x2 viewport east by one count tile: **12 new requests**.
+- Cold empty 2x2 viewport after the empty-rail short circuit: **16 distinct
+  requests** (track geometry only); the same east pan adds **4**.
+
+The remaining 27-request rail-bearing single-tile cost is retained because the
+current counter uses all three neighbour halos for cross-tile line joining and
+station-boundary behavior. Reducing those inputs further without a replacement
+data model would change established counts. A larger reduction should use
+precomputed/self-hosted count data rather than silently truncating neighbours.
 
 ## CI safeguards and geographic testing
 

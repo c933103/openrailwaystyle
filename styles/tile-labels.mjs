@@ -63,6 +63,12 @@ export function readTile(data, onlyLayers) {
   }
   return tile;
 }
+// Skip station dependencies only when the whole railway halo is provably empty.
+export function tileHasFeatures(data) {
+  if (!data?.byteLength) return false;
+  try { return Object.values(new VectorTile(new Pbf(new Uint8Array(data))).layers).some(layer=>layer.length); }
+  catch { return true; }
+}
 const features = tile => Object.values(tile.layers).flatMap(layer=>Array.from({length:layer.length},(_,i)=>layer.feature(i)));
 export const tileCoordinates = url => {
   const match = /\/(\d+)\/(\d+)\/(\d+)(?:\.[a-z.]+)?(?:[?#].*)?$/i.exec(url || '');
@@ -221,8 +227,16 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
         }
         return Promise.all(list);
       };
-      const [tiles, areas, stations] = await Promise.all(['railway_line_high', 'standard_railway_grouped_station_areas', 'standard_railway_text_stations'].map(around));
+      // Stage the three datasets instead of issuing all 27 candidates at once.
+      const tiles = await around('railway_line_high');
+      signal.throwIfAborted();
       if (!tiles.some(t => t && !t.dx && !t.dy)) throw new Error('Railway tile unavailable');
+      // With no railway features anywhere in the 3x3 halo, neither station
+      // areas nor station points can produce a track count.
+      if (!tiles.some(t => t && tileHasFeatures(t.data))) return {tiles,areas:[],stations:[],y};
+      const areas = await around('standard_railway_grouped_station_areas');
+      signal.throwIfAborted();
+      const stations = await around('standard_railway_text_stations');
       return {tiles,areas,stations,y};
   },()=>new Worker(new URL(`track-worker.js${new URL(import.meta.url).search}`, import.meta.url)));
   maplibregl.addProtocol('atlastracks', async (params, controller) => {
