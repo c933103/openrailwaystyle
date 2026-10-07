@@ -82,11 +82,9 @@ test('malformed HTTP-200 OpenRailwayMap vector tiles are neither replayed nor pe
   assert.equal(validProviderVectorTile('https://tiles.example/7/104/52', 200, bad), true,
     'only the known provider vector-tile contract is parsed');
 
-  let body = tile, calls = 0;
-  const network = {get calls() { return calls; }, respond: () => {
-    calls++;
-    return {status: 200, headers: {'content-type': 'application/x-protobuf'}, body};
-  }};
+  let body = tile;
+  const network = {calls: 0, respond: () =>
+    ({status: 200, headers: {'content-type': 'application/x-protobuf'}, body})};
   await cacheOtherOrigins(context, directory, {now: () => 1000, maxAge: 5000});
   const call = async target => {
     const {route, result} = fakeRoute(target, {network});
@@ -101,15 +99,15 @@ test('malformed HTTP-200 OpenRailwayMap vector tiles are neither replayed nor pe
     size: bad.length, saved: 1000,
   }));
   const repaired = await call(url);
-  assert.equal(calls, 1, 'a poisoned cached provider tile is discarded and refetched');
+  assert.equal(network.calls, 1, 'a poisoned cached provider tile is discarded and refetched');
   assert.deepEqual(Buffer.from(repaired.fulfilled.body), tile);
   await call(url);
-  assert.equal(calls, 1, 'the valid replacement is cached');
+  assert.equal(network.calls, 1, 'the valid replacement is cached');
 
   const badUrl = 'https://openrailwaymap.app/railway_line_high/7/104/53';
   body = bad;
   await call(badUrl); await call(badUrl);
-  assert.equal(calls, 3, 'a malformed live HTTP-200 provider response is never persisted');
+  assert.equal(network.calls, 3, 'a malformed live HTTP-200 provider response is never persisted');
   assert.equal((await readdir(directory)).includes(`${cacheKey(badUrl)}.json`), false);
 });
 
