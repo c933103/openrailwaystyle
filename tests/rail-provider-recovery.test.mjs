@@ -31,6 +31,8 @@ test('HTTP status takes priority over AJAXError text; cancellation is not an out
  for(const status of [403,404])assert.equal(isRetryableRailError(new Error('AJAXError: '+status)),false);
  for(const status of [408,429,503,520])assert.equal(isRetryableRailError({status,message:'provider response'}),true);
  assert.equal(isRetryableRailError(new Error('net::ERR_ABORTED')),false);
+ const malformed=new Error('Provider returned an invalid vector tile');malformed.name='ProviderDataError';
+ assert.equal(isRetryableRailError(malformed),true);
  assert.equal(isRetryableRailError(new Error('expression invalid')),false);
 });
 test('hidden/offline maps do no retries and disposal removes timers',()=>{
