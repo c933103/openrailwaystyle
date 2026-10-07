@@ -7,7 +7,7 @@
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import '../styles/pbf-utf8.mjs'; // names beyond U+1FFFF intact
-import {simplify} from './branch-lines.mjs';
+import {observeGeometry, legacyGeometry, reconcileGeometry, geometryLines, geometryStatus} from './service-geometry.mjs';
 import {STAGES, fallbackStage, legacyEuropeReady, migrateDownloadStages, partSelection} from './download-stages.mjs';
 import {frequencyBundle} from '../styles/service-frequency.mjs';
 
@@ -21,7 +21,7 @@ const select = filters => SELECTS.map(s => `${s}${filters};`).join('');
 // stages), their tags and members, then the geometry of their track ways.
 export function partQuery(part, box) {
   const {areas, set} = partSelection(part, box, select);
-  return `[out:json][timeout:180][maxsize:536870912];${areas}${set}->.r;.r out body;way(r.r)[railway~"^(rail|light_rail|subway|tram|monorail|narrow_gauge|funicular)$"];out skel geom qt;`;
+  return `[out:json][timeout:180][maxsize:536870912];${areas}${set}->.r;.r out body;way(r.r)[railway~"^(rail|light_rail|subway|tram|monorail|narrow_gauge|funicular)$"];out meta geom qt;`;
 }
 
 const colour = value => {
@@ -62,7 +62,7 @@ export function routeOf(rel) {
 
 // From an Overpass response: the routes (by key) and the track ways with the
 // routes running on them.
-export function toTable(json) {
+export function toTable(json, source = {}) {
   if (json.remark || !Array.isArray(json.elements)) throw new Error(json.remark ? `Overpass: ${json.remark}` : 'Incomplete Overpass response');
   const rels = [], geometry = new Map(), trackWays = new Set();
   for (const el of json.elements) {
@@ -76,15 +76,7 @@ export function toTable(json) {
     // establishes membership even when its coordinates are unavailable; a
     // different response can supply geometry for that same track later.
     trackWays.add(el.id);
-    if (!Array.isArray(el.geometry)) continue;
-    const parts = [[]];
-    for (const p of el.geometry) {
-      if (p && Number.isFinite(p.lon) && Number.isFinite(p.lat)) parts.at(-1).push([p.lon, p.lat]);
-      else if (parts.at(-1).length) parts.push([]);
-    }
-    // Finer than the branch lines (about 5 m): the routes are drawn close up.
-    const lines = parts.filter(part => part.length > 1).map(part => simplify(part, 0.00005).map(round));
-    if (lines.length) geometry.set(el.id, lines);
+    geometry.set(el.id, reconcileGeometry(geometry.get(el.id), observeGeometry(el, json, source)));
   }
   // Each relation is kept on its own, by its id: a response holds only the
   // relations selected in its box, so which relations make up a route is
@@ -100,10 +92,9 @@ export function toTable(json) {
   }
   // Do not infer track eligibility for unreturned relation members: the
   // query intentionally omits non-track ways, besides platform/stop roles.
-  const ways = [...wayRoutes].filter(([id]) => trackWays.has(id)).map(([id, keys]) => ({id, routes: [...keys].sort(), lines: geometry.get(id) || []}));
+  const ways = [...wayRoutes].filter(([id]) => trackWays.has(id)).map(([id, keys]) => ({id, routes: [...keys].sort(), lines: geometryLines(geometry.get(id)), geometry: geometry.get(id)}));
   return {routes: [...routes.values()], ways};
 }
-const round = ([x, y]) => [Math.round(x * 1e6) / 1e6, Math.round(y * 1e6) / 1e6];
 
 // The table keeps, for each way and route (one relation), what each stage
 // found: a way's routes by stage and a route (what its relation says) by
@@ -124,12 +115,14 @@ export function addResult(table, result, stage) {
   for (const way of result.ways) {
     const previous = table.ways.get(way.id), next = {...(previous?.next || {})};
     next[stage] = [...new Set([...(next[stage] || []), ...way.routes])].sort();
-    // Its geometry too waits for the pass (the committed lines stay drawn).
-    const nextLines = {...(previous?.nextLines || {})};
-    // Missing coordinates are a gap, not a replacement for observed track
-    // geometry. Nonempty geometry updates still replace earlier copies.
-    if (way.lines?.length) nextLines[stage] = way.lines;
-    table.ways.set(way.id, {id: way.id, lines: previous?.lines, routes: previous?.routes || {}, next, nextLines});
+    // Accepted evidence is immutable during a pending pass. Each pending
+    // frontier accumulates compatible source slots independently of arrival.
+    const nextGeometry = {...(previous?.nextGeometry || {})};
+    nextGeometry[stage] = reconcileGeometry(nextGeometry[stage], way.geometry || legacyGeometry(way.lines));
+    const nextLines = {...(previous?.nextLines || {}), [stage]: geometryLines(nextGeometry[stage])};
+    table.ways.set(way.id, {...previous, id: way.id, lines: previous?.lines,
+      geometry: previous?.geometry || (previous?.lines ? legacyGeometry(previous.lines) : undefined),
+      routes: previous?.routes || {}, next, nextLines, nextGeometry});
   }
 }
 const partOf = item => item.stages || item.routes;
@@ -161,7 +154,18 @@ function settle(table, stage, commit) {
   for (const [map, key] of [[table.routes, 'key'], [table.ways, 'id']]) for (const item of [...map.values()]) {
     const part = partOf(item);
     if (commit) { if (stage in item.next) part[stage] = item.next[stage]; else delete part[stage]; }
-    if (item.nextLines?.[stage]) { if (commit && item.nextLines[stage].length) item.lines = item.nextLines[stage]; delete item.nextLines[stage]; }
+    if (map === table.ways) {
+      if (item.retiredGeometry) delete item.retiredGeometry[stage];
+      const candidate = item.nextGeometry?.[stage] || (item.nextLines?.[stage] ? legacyGeometry(item.nextLines[stage]) : null);
+      if (commit && candidate) {
+        item.geometry = reconcileGeometry(item.geometry || (item.lines ? legacyGeometry(item.lines) : null), candidate);
+        if (!item.geometry.snapshot && item.geometry.conflict && item.lines?.length) item.legacyFallback ||= item.lines;
+        if (item.geometry.snapshot) delete item.legacyFallback;
+        item.lines = geometryLines({...item.geometry, fallbackLines: item.legacyFallback});
+      }
+      if (item.nextGeometry) delete item.nextGeometry[stage];
+      if (item.nextLines) delete item.nextLines[stage];
+    }
     delete item.next[stage];
     if (!Object.keys(part).length && !Object.keys(item.next).length) map.delete(item[key]);
   }
@@ -186,15 +190,26 @@ export function migrateServiceDownloads(state, table) {
     }
   }
   for (const way of table.ways.values()) {
+    const accepted = way.geometry || (way.lines ? legacyGeometry(way.lines) : null);
+    let adopted = null;
     for (const stage of retired) {
       const fallback = fallbackStage(stage);
       const routes = [...(way.routes[stage] || []), ...(way.next[stage] || [])];
       if (routes.length) way.routes[fallback] = [...new Set([...(way.routes[fallback] || []), ...routes])].sort();
-      way.lines ||= way.nextLines?.[stage];
+      const pending = way.nextGeometry?.[stage] || (way.nextLines?.[stage] ? legacyGeometry(way.nextLines[stage]) : null);
+      if (pending) {
+        way.retiredGeometry ||= {};
+        way.retiredGeometry[fallback] = reconcileGeometry(way.retiredGeometry[fallback], pending);
+        adopted = reconcileGeometry(adopted, pending);
+      }
       if (stage !== fallback) delete way.routes[stage];
       delete way.next[stage];
       if (way.nextLines) delete way.nextLines[stage];
+      if (way.nextGeometry) delete way.nextGeometry[stage];
     }
+    // Keep the accepted boundary; retain interrupted provenance separately.
+    way.geometry = accepted || adopted;
+    if (way.geometry) way.lines = geometryLines(way.geometry);
   }
   return state;
 }
@@ -242,26 +257,52 @@ export function readTable(text) {
   const routes = new Map(), ways = new Map();
   for (const line of text.split('\n')) if (line) {
     const {type, ...item} = JSON.parse(line);
-    if (type === 'route') routes.set(item.key, item); else ways.set(item.id, item);
+    if (type === 'route') routes.set(item.key, item);
+    else {
+      if (!item.geometry && item.lines) item.geometry = legacyGeometry(item.lines);
+      item.nextGeometry ||= {};
+      for (const [stage, lines] of Object.entries(item.nextLines || {})) item.nextGeometry[stage] ||= legacyGeometry(lines);
+      ways.set(item.id, item);
+    }
   }
   return {routes, ways};
 }
 
-const drawnLines = way => way.lines?.length ? way.lines : Object.values(way.nextLines || {}).find(lines => lines?.length) || [];
-// Known drawable coverage of the retained table, not source freshness or
-// proof that every member/real-world service was acquired. Kept in both
-// publication manifests; regional viewer coverage reporting is separate.
+export function drawnGeometry(way) {
+  const accepted = way.geometry ? {...way.geometry, ...(way.legacyFallback ? {fallbackLines: way.legacyFallback} : {})} : (way.lines ? legacyGeometry(way.lines) : null);
+  // A certified zero-line frontier is still authoritative. Legacy empty
+  // arrays were only absence of evidence and may use a pending fallback.
+  if (accepted?.snapshot || geometryLines(accepted).length || accepted?.conflict) return accepted;
+  const pending = {...Object.fromEntries(Object.entries(way.nextLines || {}).map(([stage, lines]) => [stage, legacyGeometry(lines)])), ...(way.nextGeometry || {}), ...(way.retiredGeometry || {})};
+  return Object.values(pending).reduce(reconcileGeometry, accepted);
+}
+const drawnLines = way => geometryLines(drawnGeometry(way));
+// Schema 2 includes raw internal gaps, source conflicts and unverified
+// legacy fallback. Details are bounded here; raw slots stay in the table.
 export function geometrySummary({routes, ways}) {
-  const drawable = new Set(), missing = new Set(), waysWithoutGeometry = [];
-  for (const way of ways.values()) {
-    const hasGeometry = drawnLines(way).length > 0;
-    if (!hasGeometry) waysWithoutGeometry.push(way.id);
-    for (const key of wayRoutes(way)) if (routes.has(key)) (hasGeometry ? drawable : missing).add(key);
+  const drawable = new Set(), missing = new Set(), waysWithoutGeometry = [], partialWays = [], conflictWays = [], unknownWays = [], pendingWays = [], details = [];
+  for (const way of [...ways.values()].sort((a, b) => a.id - b.id)) {
+    const evidence = drawnGeometry(way), status = geometryStatus(evidence);
+    if (!status.drawable) waysWithoutGeometry.push(way.id);
+    if (status.status === 'partial') partialWays.push(way.id);
+    if (status.status === 'conflict') conflictWays.push(way.id);
+    if (status.status === 'unknown') unknownWays.push(way.id);
+    const pending = [...Object.values(way.nextGeometry || {}), ...Object.values(way.retiredGeometry || {})].reduce(reconcileGeometry, null);
+    if (pending && JSON.stringify(pending) !== JSON.stringify(evidence)) pendingWays.push(way.id);
+    for (const key of wayRoutes(way)) if (routes.has(key)) {
+      if (status.drawable) drawable.add(key);
+      if (!status.drawable || status.missing.length || ['partial', 'conflict'].includes(status.status)) missing.add(key);
+    }
+    if ((status.status !== 'complete' || status.ignoredUnverified?.length || pendingWays.at(-1) === way.id) && details.length < 100) details.push({way: way.id,
+      relations: wayRoutes(way).filter(key => routes.has(key)).map(key => routeView(routes.get(key)).relation).sort((a, b) => a - b),
+      ...status, missing: status.missing.slice(0, 20), missingCount: status.missing.length,
+      sources: evidence?.sources || [], ...(pending ? {pending: {...geometryStatus(pending), missing: geometryStatus(pending).missing.slice(0, 20)}} : {})});
   }
   const relationIds = keys => [...keys].map(key => routeView(routes.get(key)).relation).sort((a, b) => a - b);
-  return {waysWithoutGeometry: waysWithoutGeometry.sort((a, b) => a - b),
+  return {schema: 2, waysWithoutGeometry, waysWithPartialGeometry: partialWays, waysWithConflicts: conflictWays,
+    waysWithUnknownProvenance: unknownWays, waysWithPendingEvidence: pendingWays,
     routeRelationsWithoutGeometry: relationIds([...routes.keys()].filter(key => !drawable.has(key))),
-    routeRelationsWithPartialGeometry: relationIds([...missing].filter(key => drawable.has(key)))};
+    routeRelationsWithPartialGeometry: relationIds([...missing].filter(key => drawable.has(key))), details};
 }
 // Relations of one service (the same kind, network, reference and colour…)
 // become one route where they share a track or lie within about 10 km of
