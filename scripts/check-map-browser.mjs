@@ -380,7 +380,7 @@ try{
     let report=await nearby();
     if (!report.nearbyPresentRail) {
       try {
-        await page.waitForFunction(async ({layer})=>{
+        await waitUntil(page,async ({layer})=>{
           const {map}=await import(document.querySelector('script[type="module"]').src);
           const centre=map.project([114.305,30.593]),radius=95;
           return map.queryRenderedFeatures([[centre.x-radius,centre.y-radius],[centre.x+radius,centre.y+radius]],{layers:[layer]})
