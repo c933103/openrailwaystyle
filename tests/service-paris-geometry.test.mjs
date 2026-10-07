@@ -176,6 +176,12 @@ test('native z7–12 production tiles retain exact decoded real OSM geometry, id
 
 test('Paris negative geometry assertions fail after forbidden chords enter the same production MVT layer', () => {
   const corrupted = injectParisAdversaryTiles(baseline.tiles);
+  // Playwright fulfills binary bodies via body.toString('base64'). A plain
+  // Uint8Array would become comma-separated decimal text and corrupt the MVT.
+  for (const [key, bytes] of corrupted) {
+    assert.ok(Buffer.isBuffer(bytes), `browser mutation tile ${key} must be a Buffer`);
+    assert.ok(Buffer.from(bytes.toString('base64'), 'base64').equals(bytes), `browser binary transport preserves ${key}`);
+  }
   assert.throws(() => assertNoForbiddenGeometry(corrupted), /forbidden geometry/);
   for (let zoom = 7; zoom <= 12; zoom++) {
     const decoded = decodeParisTiles(corrupted, zoom);

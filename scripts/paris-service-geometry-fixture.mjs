@@ -179,9 +179,9 @@ export function injectParisAdversaryTiles(tiles, forbiddenTiles = adversaryTiles
   for (const [key, forbidden] of forbiddenTiles) {
     const layers = [tiles.get(key), forbidden].filter(Boolean).map(bytes => new VectorTile(new Pbf(bytes)).layers[LAYER]);
     const features = layers.flatMap(layer => Array.from({length: layer.length}, (_, i) => layer.feature(i)));
-    result.set(key, vtpbf.fromVectorTileJs({layers: {[LAYER]: {
+    result.set(key, Buffer.from(vtpbf.fromVectorTileJs({layers: {[LAYER]: {
       name: LAYER, version: 2, extent: 4096, length: features.length, feature: i => features[i],
-    }}}));
+    }}})));
   }
   return result;
 }

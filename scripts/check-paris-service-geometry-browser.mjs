@@ -27,14 +27,15 @@ export async function checkParisServiceGeometryBrowser({root = process.env.ATLAS
     assert.equal(digest(body), hash, `Pinned production MapLibre asset: ${name}`);
     return [`https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/${name}`, {body, contentType: name.endsWith('.js') ? 'text/javascript' : 'text/css'}];
   }))) : await rendererFixture();
-  const tiles = new Map(variants.flatMap(variant => [...variant.tiles].map(([key, bytes]) => [`${variant.id}/${key}`, bytes])));
+  const tiles = new Map(variants.flatMap(variant => [...variant.tiles].map(([key, bytes]) => [`${variant.id}/${key}`, Buffer.from(bytes)])));
   const injected = injectParisAdversaryTiles(variants.find(variant => variant.id === 'present').tiles, built.forbiddenTiles);
-  for (const [key, bytes] of injected) tiles.set(`injected/${key}`, bytes);
+  for (const [key, bytes] of injected) tiles.set(`injected/${key}`, Buffer.from(bytes));
   const browser = await launchBrowser(process.env.ATLAS_CHROMIUM_EXECUTABLE ? {executablePath: process.env.ATLAS_CHROMIUM_EXECUTABLE} : {}).catch(async error => {await built.dispose(); throw error;});
   const results = [], errors = [], sensitivity = [], baselines = new Map();
+  let page;
   await mkdir('browser-review', {recursive: true});
   try {
-    const page = await browser.newPage({viewport: {width: 1400, height: 690}, deviceScaleFactor: 1});
+    page = await browser.newPage({viewport: {width: 1400, height: 690}, deviceScaleFactor: 1});
     page.on('pageerror', error => errors.push(error.message));
     // Every request is deterministic. A new unhandled URL is an error, never a
     // dependency on a live railway provider or background acquisition endpoint.
@@ -161,8 +162,8 @@ export async function checkParisServiceGeometryBrowser({root = process.env.ATLAS
       }
       await page.screenshot({path: `browser-review/paris-service-z${zoom}-forbidden-injection.png`, fullPage: true});
     }
-    errors.push(...await page.evaluate(() => window.parisAudit.errors));
   } finally {
+    if (page && !page.isClosed()) errors.push(...await page.evaluate(() => window.parisAudit?.errors || []).catch(error => [`Could not read browser diagnostics: ${error.message}`]));
     await writeFile('browser-review/paris-service-geometry-results.json', JSON.stringify({schema: 1, browser: browser.version(), renderer: 'MapLibre 5.24.0',
       scope: 'Pinned legacy Paris OSM-positive paths; synthetic timetable/stop-chord negatives. Original Normandy feed unavailable; no original-feed reproduction or issue closure claimed. Paris frequency profiles exercise unknown fallback.',
       metadata, productionStyleSha256: digest(source), fixtureVariants: variants.map(({id, manifest, assemblyManifest, staleOutputsRemoved}) => ({id, manifest, assemblyManifest, staleOutputsRemoved})),
