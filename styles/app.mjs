@@ -1396,6 +1396,9 @@ async function initialize() {
   });
   const action = pendingDraw; pendingDraw = undefined; action?.();
   railRecovery = createRailProviderRecovery(map, {provider: ORM});
+  // Keep the pre-existing finite retry for non-rail metadata providers; only
+  // OpenRailwayMap shares the new outage probe and prolonged backoff.
+  const otherMetadataRetries = new Map();
   document.addEventListener('visibilitychange', () => railRecovery.wake());
   window.addEventListener('online', () => railRecovery.wake());
   map.on('remove', () => railRecovery.dispose());
@@ -1406,13 +1409,25 @@ async function initialize() {
     // carry no stack, and plain logs of them show only "Error".
     console.error('Map resource error:', e.sourceId || 'map', e.error?.message || String(e.error), e.error);
     errors.add(e.sourceId || 'resource');
-    railRecovery.noteError(e);
+    const railError = railRecovery.noteError(e);
     status.classList.add('error'); status.textContent = mapErrorMessage();
-    // The shared provider probe handles failed tiles and metadata alike,
-    // continuing after long outages without refreshing healthy sources.
+    // The shared provider probe handles failed railway metadata and tiles.
+    // Preserve the existing three source-metadata retries for unrelated map
+    // providers. A deliberate provider 403 is not retried as an outage.
+    const source=e.sourceId && !e.tile && map.getSource(e.sourceId);
+    const attempt=otherMetadataRetries.get(e.sourceId)||0;
+    if (!railError && source?.url && !source.url.includes(new URL(ORM).host) &&
+      typeof source.setUrl==='function' && !source.loaded?.() && attempt<3) {
+      otherMetadataRetries.set(e.sourceId,attempt+1);
+      setTimeout(()=>{
+        const current=map.getSource(e.sourceId);
+        if(current?.url&&!current.loaded?.())current.setUrl(current.url);
+      },[5000,15000,45000][attempt]);
+    }
   });
   map.on('sourcedata', e => { if (e.isSourceLoaded && e.sourceId) {
     errors.delete(e.sourceId);
+    otherMetadataRetries.delete(e.sourceId);
     railRecovery.noteSourceData(e);
   } });
   // Apply settings as soon as the style is in place, not at MapLibre's
