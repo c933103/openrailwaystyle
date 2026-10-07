@@ -39,7 +39,7 @@ export function createRequestPool({fetcher = fetch, concurrency = 6, perOrigin =
       stats.peak = Math.max(stats.peak, running);
       void send(entry);
     }
-    if (next < Infinity) wakeTimer = setTimeout(drain, Math.max(1, next - now()));
+    if (next < Infinity) wakeTimer = setTimeout(drain, Math.max(1, Math.min(2 ** 31 - 1, next - now())));
   }
   async function send(entry) {
     const controller = new AbortController(); entry.controller = controller;
@@ -60,7 +60,7 @@ export function createRequestPool({fetcher = fetch, concurrency = 6, perOrigin =
           const raw = response.headers?.get?.('retry-after');
           if (raw) {
             const seconds = /^\d+(\.\d+)?$/.test(raw.trim()) ? Number(raw) * 1000 : Date.parse(raw) - now();
-            if (Number.isFinite(seconds)) error.retryAfter = Math.max(0, Math.min(60000, seconds));
+            if (Number.isFinite(seconds)) error.retryAfter = Math.max(0, seconds);
           }
           await response.body?.cancel?.().catch(() => {});
           throw error;
@@ -75,10 +75,16 @@ export function createRequestPool({fetcher = fetch, concurrency = 6, perOrigin =
       if (!entry.readers.size || disposed) return;
       const retryable = error.status ? error.status === 408 || error.status === 429 || error.status >= 500
         : error.name !== 'AbortError' && error.name !== 'SyntaxError';
+      // A server cooldown applies to other queued requests too, including
+      // when this request has exhausted its retry allowance. Never truncate
+      // Retry-After and send work before the server's stated deadline.
+      if (error.status === 429 || error.status === 503 || (retryable && error.retryAfter > 0)) {
+        const cooldown = Math.max(retries[entry.attempt] ?? 1000, error.retryAfter || 0);
+        blocked.set(entry.origin, Math.max(blocked.get(entry.origin) || 0, now() + cooldown));
+      }
       if (retryable && entry.attempt < retries.length) {
         const delay = Math.max(retries[entry.attempt++], error.retryAfter || 0);
         stats.retried++; entry.ready = now() + delay;
-        if (error.status === 429 || error.status === 503) blocked.set(entry.origin, Math.max(blocked.get(entry.origin) || 0, entry.ready));
       } else finish(entry, error);
     } finally {
       clearTimeout(timer); removeAbort();
