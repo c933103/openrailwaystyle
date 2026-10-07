@@ -75,6 +75,7 @@ test('non-provider and permanent errors do not trigger network probes',()=>{
     assert.equal(recovery.noteError({sourceId:'railway',error:new Error(text)}),false,text);
   assert.equal(timers.size(),0);
   assert.equal(isRetryableRailError(new Error('Map names returned 520')),true);
+  assert.equal(isRetryableRailError(new Error('net::ERR_ABORTED')),false,'normal map panning does not start provider health checks');
   recovery.dispose();
 });
 
