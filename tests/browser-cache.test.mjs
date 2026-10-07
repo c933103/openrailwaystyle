@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp, readdir, readFile} from 'node:fs/promises';
+import {mkdtemp, readdir, readFile, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {cacheOtherOrigins, cacheKey, pruneTileCache} from '../scripts/browser.mjs';
+import encode from 'vt-pbf';
+import {cacheOtherOrigins, cacheKey, pruneTileCache, validProviderVectorTile} from '../scripts/browser.mjs';
 
 // A Playwright context reduced to what the cache uses: one route whose
 // handler is called with fake routes.
@@ -67,6 +68,49 @@ test('other origins are served from the cache until it expires; the site and non
   const pruned = await pruneTileCache(directory, {now: () => clock, maxAge: 5000});
   assert.deepEqual(pruned, {kept: 1, dropped: 3}, 'only the entry refreshed within the age limit is kept');
   assert.deepEqual((await readdir(directory)).filter(name => !name.startsWith('.')).sort(), [`${cacheKey('https://tiles.example/1/2/3')}.body`, `${cacheKey('https://tiles.example/1/2/3')}.json`]);
+});
+
+test('malformed HTTP-200 OpenRailwayMap vector tiles are neither replayed nor persisted', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'tile-cache-')), context = fakeContext();
+  const url = 'https://openrailwaymap.app/railway_line_high/7/104/52';
+  const tile = Buffer.from(encode.fromGeojsonVt({railway_line_high: {features: [{
+    type: 2, geometry: [[[1, 1], [100, 100]]], tags: {feature: 'rail', state: 'present'},
+  }]}}));
+  const bad = Buffer.from('temporarily unavailable');
+  assert.equal(validProviderVectorTile(url, 200, bad), false);
+  assert.equal(validProviderVectorTile(url, 200, tile), true);
+  assert.equal(validProviderVectorTile('https://tiles.example/7/104/52', 200, bad), true,
+    'only the known provider vector-tile contract is parsed');
+
+  let body = tile, calls = 0;
+  const network = {get calls() { return calls; }, respond: () => {
+    calls++;
+    return {status: 200, headers: {'content-type': 'application/x-protobuf'}, body};
+  }};
+  await cacheOtherOrigins(context, directory, {now: () => 1000, maxAge: 5000});
+  const call = async target => {
+    const {route, result} = fakeRoute(target, {network});
+    await context.handler(route);
+    return result;
+  };
+
+  const key = cacheKey(url), file = join(directory, key);
+  await writeFile(`${file}.body`, bad);
+  await writeFile(`${file}.json`, JSON.stringify({
+    url, range: '', status: 200, headers: {'content-type': 'application/x-protobuf'},
+    size: bad.length, saved: 1000,
+  }));
+  const repaired = await call(url);
+  assert.equal(calls, 1, 'a poisoned cached provider tile is discarded and refetched');
+  assert.deepEqual(Buffer.from(repaired.fulfilled.body), tile);
+  await call(url);
+  assert.equal(calls, 1, 'the valid replacement is cached');
+
+  const badUrl = 'https://openrailwaymap.app/railway_line_high/7/104/53';
+  body = bad;
+  await call(badUrl); await call(badUrl);
+  assert.equal(calls, 3, 'a malformed live HTTP-200 provider response is never persisted');
+  assert.equal((await readdir(directory)).includes(`${cacheKey(badUrl)}.json`), false);
 });
 
 test('a request whose page closes mid-flight fails quietly instead of crashing the check', async () => {
