@@ -5,6 +5,7 @@ on:
     paths:
       - scripts/apply-rail-performance.mjs
       - scripts/finish-rail-performance.mjs
+      - scripts/check-rail-overview-browser.mjs
       - .github/workflows/prepare-rail-performance.yml
 permissions:
   contents: write
@@ -37,6 +38,17 @@ jobs:
           git diff --check
       - name: Install renderer test browser
         run: npx playwright install --with-deps chromium
+      - name: Retain the exact pinned renderer for reproducing failures
+        run: |
+          node --input-type=module <<'JS'
+          import {readFile,writeFile} from 'node:fs/promises';
+          const app=await readFile('styles/app.mjs','utf8');
+          const url=/loadScript\('(https:\/\/[^']+maplibre-gl\.js)'/.exec(app)?.[1];
+          if(!url)throw new Error('Missing pinned renderer');
+          const response=await fetch(url);
+          if(!response.ok)throw new Error(`Renderer HTTP ${response.status}`);
+          await writeFile('/tmp/rail-performance-maplibre.js',await response.text());
+          JS
       - name: Verify negative zoom geometry in the pinned renderer
         run: |
           set -o pipefail
@@ -74,10 +86,14 @@ jobs:
             print('\n'+name)
             selected=set(range(max(0,len(lines)-12),len(lines)))
             for i,line in enumerate(lines):
-              if line.startswith('not ok'):
+              if line.startswith(('not ok','RAIL_OVERVIEW_FAILURE')):
                 selected.update(range(max(0,i-1),min(len(lines),i+40)))
             for i in sorted(selected): print(lines[i])
           PY
+      - name: Save the tested source tree without credentials or font assets
+        if: always()
+        run: |
+          tar --exclude='styles/fonts' --exclude='*.woff' --exclude='*.woff2' --exclude='*.ttf' --exclude='*.otf' --exclude='node_modules/.cache' -czf /tmp/rail-performance-worktree.tar.gz styles tests scripts docs package.json package-lock.json node_modules
       - name: Save focused renderer and test evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -87,4 +103,6 @@ jobs:
             browser-review
             /tmp/rail-performance-tests.txt
             /tmp/rail-performance-browser.txt
+            /tmp/rail-performance-maplibre.js
+            /tmp/rail-performance-worktree.tar.gz
           if-no-files-found: ignore
