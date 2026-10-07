@@ -69,6 +69,11 @@ export function createRequestPool({fetcher = fetch, concurrency = 6, perOrigin =
       })();
       const value = await Promise.race([request, aborted]);
       if (!entry.readers.size || controller.signal.aborted || disposed) return;
+      if (entry.validate && !entry.validate(value, entry.url)) {
+        const error = new Error('Provider returned an invalid vector tile');
+        error.name = 'ProviderDataError'; error.url = entry.url;
+        throw error;
+      }
       cache.set(entry.key, value);
       finish(entry, null, value);
     } catch (error) {
@@ -93,17 +98,22 @@ export function createRequestPool({fetcher = fetch, concurrency = 6, perOrigin =
       drain();
     }
   }
-  function get(url, signal, {json = false, priority = 0} = {}) {
+  function get(url, signal, {json = false, priority = 0, validate} = {}) {
     if (disposed || signal?.aborted) return Promise.reject(signal?.reason || abortError());
     url = String(url);
     const key = keyFor(url, json);
     if (cache.has(key)) { stats.cacheHits++; return Promise.resolve(cache.get(key)); }
     let entry = entries.get(key);
     if (!entry) {
-      entry = {key, url, json, origin: new URL(url).origin, priority, order: sequence++, created: now(), ready: 0,
+      entry = {key, url, json, validate, origin: new URL(url).origin, priority, order: sequence++, created: now(), ready: 0,
         attempt: 0, running: false, readers: new Set(), controller: null};
       entries.set(key, entry);
-    } else { stats.coalesced++; entry.priority = Math.min(priority, entry.priority); }
+    } else {
+      stats.coalesced++; entry.priority = Math.min(priority, entry.priority);
+      // A stricter reader must not join a request that would cache unchecked
+      // bytes. Provider URLs use one validation contract for every reader.
+      if (validate && !entry.validate) entry.validate = validate;
+    }
     const result = new Promise((resolve, reject) => {
       const reader = {resolve, reject, signal};
       reader.abort = () => {
