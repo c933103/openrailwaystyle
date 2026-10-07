@@ -350,7 +350,7 @@ try{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     const point=map.project([114.305,30.593]);
     return map.queryRenderedFeatures([[point.x-95,point.y-95],[point.x+95,point.y+95]],{layers:['speed-tracks']})
-      .filter(f=>f.source==='railway'&&f.geometry.type==='LineString').length;
+      .filter(f=>f.source==='railway'&&['LineString','MultiLineString'].includes(f.geometry.type)).length;
   });
   assert.ok(wuhanTracks>0,`Wuhan must show operating rail geometry at zoom 7, not just loaded sources/stations (found ${wuhanTracks} tracks)`);
   console.log('PASS: Wuhan zoom-7 high-detail rail geometry',wuhanTracks,'rendered line features');
