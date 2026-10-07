@@ -33,7 +33,10 @@ test('a check, its helpers and its fixtures run only the checks that use them', 
   assert.deepEqual(groupsFor(['tests/fixtures/stations-before-density.json']), ['stations:1']);
   const helper = plan(['scripts/click-visible-control.mjs'], read).groups.flatMap(g => g.checks);
   assert.ok(helper.length && helper.every(check => read(`scripts/${check}`).includes('click-visible-control.mjs')), helper.join(', '));
-  assert.deepEqual(plan(['scripts/check-world-frequency-browser.mjs'], read).groups, [GROUPS.find(g => g.group === 'frequency')], 'the fixture data is prepared before its check');
+  const frequency = GROUPS.find(g => g.group === 'frequency');
+  for (const check of frequency.checks)
+    assert.deepEqual(plan([`scripts/${check}`], read).groups, [{...frequency, checks: [check]}], 'frequency fixture preparation is retained for each selected check');
+  assert.deepEqual(groupsFor(['scripts/service-geometry-browser-fixture.mjs']), ['frequency:1']);
 });
 
 test('local references cover imports, dynamic imports and files read through new URL, without query strings', () => {

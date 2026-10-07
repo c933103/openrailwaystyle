@@ -248,10 +248,21 @@ export function routeView(route) {
 }
 export const routeStages = route => [...new Set([...Object.keys(route.stages), ...Object.keys(route.next)])];
 
+// Pure legacy evidence already has its coordinates in the compatibility
+// lines fields. Persist an explicit unknown marker, not a second copy of
+// every path and a derived fingerprint; restore that reducer input on read.
+const storedGeometry = (evidence, lines) => evidence && !evidence.snapshot && !evidence.raw && !evidence.conflict &&
+  evidence.reasons?.length === 1 && evidence.reasons[0] === 'legacy' && !evidence.sources?.length &&
+  JSON.stringify(evidence.lines) === JSON.stringify(lines)
+  ? {schema: 1, snapshot: null, legacy: true} : evidence;
+const storedWay = way => ({...way,
+  ...(way.geometry ? {geometry: storedGeometry(way.geometry, way.lines)} : {}),
+  ...(way.nextGeometry ? {nextGeometry: Object.fromEntries(Object.entries(way.nextGeometry).map(([stage, evidence]) =>
+    [stage, storedGeometry(evidence, way.nextLines?.[stage])]))} : {})});
 // The table (NDJSON): routes and ways, with the stages that found them.
 export const writeTable = ({routes, ways}) => [
   ...[...routes.values()].sort((a, b) => a.key.localeCompare(b.key)).map(r => JSON.stringify({type: 'route', ...r})),
-  ...[...ways.values()].sort((a, b) => a.id - b.id).map(w => JSON.stringify({type: 'way', ...w})),
+  ...[...ways.values()].sort((a, b) => a.id - b.id).map(w => JSON.stringify({type: 'way', ...storedWay(w)})),
 ].join('\n') + '\n';
 export function readTable(text) {
   const routes = new Map(), ways = new Map();
@@ -259,9 +270,10 @@ export function readTable(text) {
     const {type, ...item} = JSON.parse(line);
     if (type === 'route') routes.set(item.key, item);
     else {
-      if (!item.geometry && item.lines) item.geometry = legacyGeometry(item.lines);
+      if ((!item.geometry || item.geometry.legacy) && item.lines) item.geometry = legacyGeometry(item.lines);
       item.nextGeometry ||= {};
-      for (const [stage, lines] of Object.entries(item.nextLines || {})) item.nextGeometry[stage] ||= legacyGeometry(lines);
+      for (const [stage, lines] of Object.entries(item.nextLines || {}))
+        if (!item.nextGeometry[stage] || item.nextGeometry[stage].legacy) item.nextGeometry[stage] = legacyGeometry(lines);
       ways.set(item.id, item);
     }
   }
