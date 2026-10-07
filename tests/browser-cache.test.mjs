@@ -4,7 +4,8 @@ import {mkdtemp, readdir, readFile, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import encode from 'vt-pbf';
-import {cacheOtherOrigins, cacheKey, pruneTileCache, validProviderVectorTile} from '../scripts/browser.mjs';
+import {cacheOtherOrigins, cacheKey, pruneTileCache} from '../scripts/browser.mjs';
+import {validProviderVectorTile} from '../styles/vector-tile-validation.mjs';
 
 // A Playwright context reduced to what the cache uses: one route whose
 // handler is called with fake routes.
