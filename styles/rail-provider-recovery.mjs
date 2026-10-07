@@ -4,6 +4,7 @@ const RETRY_DELAYS = [5_000, 15_000, 45_000, 120_000, 300_000];
 export function isRetryableRailError(error) {
   const message = String(error?.message ?? error ?? '');
   if (error?.name === 'AbortError' || /aborterror|operation was aborted|err_aborted/i.test(message)) return false;
+  if (error?.name === 'ProviderDataError' || /provider returned an invalid vector tile/i.test(message)) return true;
   const status = Number(error?.status || /(?:returned|HTTP|AJAXError:)\s*(\d{3})\b/i.exec(message)?.[1]);
   if (status >= 400) return status === 408 || status === 429 || status >= 500;
   return error?.name === 'TimeoutError' || /failed to fetch|fetch failed|ajaxerror|networkerror|net::err_|timed? ?out|timeout/i.test(message);
