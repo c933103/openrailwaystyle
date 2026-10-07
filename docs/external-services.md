@@ -14,7 +14,7 @@ Source: [OpenRailwayMap-vector USAGE.md](https://github.com/hiddewie/OpenRailway
 | Third-party, public map application | Tile use allowed without registration for an application open to the public without registration, provided attribution is **clear** | Atlas exposes `OpenRailwayMap` and `© OpenStreetMap contributors` as source attributions (`scripts/style/sources/railway.mjs`). The UI collapses these under the ⓘ control: **whether this is sufficiently clear remains unverified**. Do not label it fully compliant on that basis alone. |
 | Automated map-tile retrieval | **Not permitted**, including automated or bulk tile downloads. Operator directs automated deployments to a **local OpenRailwayMap setup**. | Standard CI and deployed-site smoke tests use synthetic fixtures, never public tiles. Full geographic verification needs a local server. Caching a previous automated fetch does **not** authorize that fetch. |
 | API usage | Allowed from applications **and automated processes**, with limited request counts | Do not interpret this as permission for CI to download map-tile bodies. Classification of TileJSON metadata/health probes is not explicit; see unresolved questions. |
-| Request identification | Genuine `Referer` for browsers or `User-Agent` for automated clients; they must not be faked | Atlas does not set a fabricated provider Referer/User-Agent. Browser navigation normally supplies browser headers; use browser developer tools to verify them in a real session. A 403 for a scripted request missing Referer is **not** independent permission to run automated tile downloads after adding Referer. |
+| Request identification | Genuine `Referer` for browsers or `User-Agent` for automated clients; they must not be faked | Atlas does not set a fabricated provider Referer/User-Agent. `styles/index.html` declares `strict-origin-when-cross-origin`, so Chromium should send the site's true origin as Referer for HTTPS provider requests. The synthetic browser integration test intercepts **TileJSON and tile-body requests**, inspects the browser-supplied Referer and User-Agent, and fails if either is absent or Referer is not the site's origin—no public service request is sent by the test. This verifies the pinned test browser's headers, **not all possible production browsers or configurations**. A 403 for a scripted request missing Referer is **not** permission to run automated tile downloads after adding Referer. |
 | Enforcement | Service access may be blocked without notice | Treat HTTP 403 and outages as provider conditions, not evidence of missing railway geometry. |
 
 The policy's explicit scope is `openrailwaymap.app`. Do **not** assume it
@@ -26,7 +26,8 @@ separate terms for that host have **not been verified**.
 | Atlas request path | Endpoint / transport | Automation risk and disposition |
 | --- | --- | --- |
 | MapLibre railway layers: infrastructure, speed, control, gauge, loading gauge, owner, electrification, stations, signals, entrances, platforms, crossings | `https://openrailwaymap.app/<dataset>` TileJSON and tile URLs; see `scripts/style/sources/railway.mjs` | Public *interactive* browser use is governed by public-app conditions. CI requests to live map tiles are prohibited; isolated with synthetic responses. |
-| Language-dependent station tiles, label and track-count adapters | `atlasstation://`, `atlasrail://`, `atlastext://` and other protocols wrap `openrailwaymap.app` TileJSON/tile requests (`styles/app.mjs` + generated `styles/vendor/tile-labels.js`) | An internal custom URL scheme does not make its underlying HTTP requests non-automated. Browser CI blocks requests to the public hostname at the network boundary. |
+| Language-dependent station tiles and label adapters | `atlasstation://`, `atlasrail://`, `atlastext://` and other protocols wrap `openrailwaymap.app` TileJSON/tile requests (`styles/app.mjs`, `styles/tile-labels.mjs` and generated browser bundle) | A custom URL scheme does not change the classification of its underlying HTTP requests. Browser CI blocks requests to the public hostname at the network boundary. |
+| Track-count expansion when users view z14+ (default option enabled) | For **each** z14 count tile, `styles/tile-labels.mjs` `countZoom14()` can request nine adjacent tiles from each of three ORM datasets: track geometry, station areas and station points (up to **27 candidate tile fetches**, with request sharing/cache eliminating some duplicates) | **Potential request-volume/bulk concern**, not proof of a violation: user-initiated rendering differs from unattended CI, and the operator has published no numerical threshold. Investigate actual deduplicated request counts under interaction; consider self-hosting/precomputing track counts or reducing amplification if necessary. Do not disable an existing map feature without a tested replacement. |
 | Major-stations placement/baseline audit | `scripts/check-major-stations-browser.mjs` used Playwright `route.fetch()` to fetch live `standard_railway_text_stations_low/med` responses for baseline comparison | **Confirmed risk**: direct automated tile downloads, even if deduplicated for comparison. Now explicitly requires `ATLAS_TEST_ORM_URL`; its `route.fetch` points to loopback data only. |
 | Generic browser response cache | `scripts/browser.mjs` cached all external GET responses (200/204/206), including public railway tiles, seven days; miss used `route.continue()` | **Confirmed risk**: repeated CI runs could fetch provider map tiles automatically; cache hits do not fix initial collection. Cache now excludes public ORM URLs; cache generation bumped to invalidate mixed entries. |
 | Browser smoke and geographic tests | `check-map-browser.mjs`, `check-context-browser.mjs`, `check-planning-browser.mjs` requested many global regions; deployment also ran these after publishing | **Confirmed risk**: automated map-tile requests. Not part of public CI or post-deploy steps anymore. Early guard requires local provider if manually invoked. |
@@ -45,11 +46,13 @@ has therefore been certified as compliant.
    **every** Playwright context and disables service workers (which may bypass
    route interception). By default it aborts public ORM requests, rather
    than silently allowing cache misses to hit the network.
-2. Individual deterministic tests can intercept the same URL with
-   `page.route()` and fulfill it using in-process fixtures. The
-   `check-orm-fixture-browser.mjs` test exercises the real Atlas page and
-   MapLibre, including Wuhan at z6 and z7, with synthetic railway vector
-   tiles. Its railway geometry is **not evidence of real Wuhan OSM content**.
+2. Individual deterministic tests intercept the real provider URL pattern
+   with `page.route()`, fulfill it using in-process metadata and tile fixtures,
+   and inspect browser-generated Referer/User-Agent headers without allowing
+   a network download. The `check-orm-fixture-browser.mjs` test exercises
+   the real Atlas page and MapLibre, including Wuhan at z6 and z7, with
+   synthetic railway vector tiles. Its railway geometry is **not evidence of
+   real Wuhan OSM content**.
 3. The `BROWSER_TILE_CACHE` helper excludes `openrailwaymap.app` entirely.
    GitHub Actions' cache key changed from `browser-tiles-v1` to
    `browser-tiles-v2-no-public-orm` to avoid replaying previously fetched
