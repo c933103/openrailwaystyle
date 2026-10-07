@@ -63,11 +63,11 @@ export function readTile(data, onlyLayers) {
   }
   return tile;
 }
-// Skip station dependencies only when the whole railway halo is provably empty.
+// Skip station dependencies only for a definitely empty response body.
+// A non-empty payload is kept conservative even if it decodes to no features:
+// provider encoding quirks or malformed data must retain the old worker path.
 export function tileHasFeatures(data) {
-  if (!data?.byteLength) return false;
-  try { return Object.values(new VectorTile(new Pbf(new Uint8Array(data))).layers).some(layer=>layer.length); }
-  catch { return true; }
+  return Boolean(data?.byteLength);
 }
 const features = tile => Object.values(tile.layers).flatMap(layer=>Array.from({length:layer.length},(_,i)=>layer.feature(i)));
 export const tileCoordinates = url => {
