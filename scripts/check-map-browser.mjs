@@ -82,12 +82,12 @@ page.on('pageerror', e=>errors.push(e.message));
 const requestStart=new Map();
 const wuhanRailResponses=[];
 page.on('response',response=>{
-  if (!/openrailwaymap\\.app\\/(railway_line_high|speed_railway_line_low)\\/[678]\\//.test(response.url())) return;
+  if (!/openrailwaymap\.app\/(railway_line_high|speed_railway_line_low)\/[678]\//.test(response.url())) return;
   const headers=response.headers();
   wuhanRailResponses.push({url:response.url(),status:response.status(),ms:Date.now()-(requestStart.get(response.request())||Date.now()),bytes:headers['content-length']||null,cache:headers['x-cache-status']||null});
 });
 page.on('requestfailed',request=>{
-  if (/openrailwaymap\\.app\\/(railway_line_high|speed_railway_line_low)\\/[678]\\//.test(request.url()))
+  if (/openrailwaymap\.app\/(railway_line_high|speed_railway_line_low)\/[678]\//.test(request.url()))
     wuhanRailResponses.push({url:request.url(),failed:request.failure()?.errorText||'network error',ms:Date.now()-(requestStart.get(request)||Date.now())});
 });
 page.on('request',req=>{
