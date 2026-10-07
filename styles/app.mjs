@@ -899,7 +899,7 @@ const mapErrorMessage = () => railRecovery?.hasFailures()
   ? 'OpenRailwayMap railway tiles are unavailable. Retrying automatically; some lines may be missing.'
   : 'Some map data could not load. Check your connection or reload to retry.';
 function updateStatus() {
-  if (errors.size) {
+  if (errors.size || railRecovery?.hasFailures()) {
     status.classList.add('error'); status.textContent = mapErrorMessage(); return;
   }
   status.classList.remove('error');
