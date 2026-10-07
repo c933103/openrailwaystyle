@@ -4,10 +4,8 @@ import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import {launchBrowser} from './browser.mjs';
 
-// A deterministic renderer regression, not invented production railway data.
-// Use the real generated layer paint/filter and source ranges with a small
-// explicit test geometry. Test geometry availability separately from live
-// provider health; the normal map check still checks the real Wuhan network.
+// Synthetic geometry tests the real generated cartography without downloading
+// provider tiles. These features never enter the production map or snapshots.
 const style = JSON.parse(await readFile('styles/world.style.json'));
 const app = await readFile('styles/app.mjs', 'utf8');
 const library = /loadScript\('(https:\/\/[^']+maplibre-gl\.js)'/.exec(app)?.[1];
@@ -21,8 +19,10 @@ const index = geojsonvt({type: 'FeatureCollection', features: [{type: 'Feature',
   geometry: {type: 'LineString', coordinates: [[0, 0], [30, 25], [60, 30], [90, 20], [120, 0]]}}]}, {maxZoom: 6, extent: 4096, buffer: 64});
 const browser = await launchBrowser();
 const page = await browser.newPage({viewport: {width: 360, height: 320}});
-const errors = [], requests = [], samples = [];
+const errors = [], requests = [], samples = [], consoleErrors = [];
 page.on('pageerror', error => errors.push(error.message));
+page.on('console', message => {if (message.type() === 'error') consoleErrors.push(message.text());});
+page.on('requestfailed', request => consoleErrors.push(`Request failed: ${request.url()} ${request.failure()?.errorText}`));
 await page.route('https://rail-fixture.invalid/**', async route => {
   const [endpoint, z, x, y] = new URL(route.request().url()).pathname.slice(1).split('/');
   requests.push({endpoint, z: +z, x: +x, y: +y});
@@ -30,6 +30,7 @@ await page.route('https://rail-fixture.invalid/**', async route => {
   await route.fulfill({status: 200, headers: {'content-type': 'application/x-protobuf', 'access-control-allow-origin': '*'},
     body: tile ? vtpbf.fromGeojsonVt({[endpoint]: tile}) : Buffer.alloc(0)});
 });
+await mkdir('browser-review', {recursive: true});
 try {
   await page.setContent('<html><body style="margin:0"><div id="map" style="width:360px;height:320px"></div></body></html>');
   await page.addScriptTag({url: library});
@@ -63,8 +64,23 @@ try {
   assert.deepEqual(await page.evaluate(() => window.mapErrors), []);
   assert.ok(requests.length && requests.every(r => r.z >= 0), 'negative camera zoom must never request negative tile coordinates');
   assert.ok(requests.some(r => r.z === 0), 'world overview uses real zoom-0 tiles');
-  await mkdir('browser-review', {recursive: true});
   await writeFile('browser-review/rail-overview-negative-zoom.json', JSON.stringify({samples, requests}, null, 2));
   await page.screenshot({path: 'browser-review/rail-overview-negative-zoom.png'});
   console.log('PASS: global railway geometry across 54 mode/projection/zoom combinations', JSON.stringify(samples));
+} catch (error) {
+  const renderer = await page.evaluate(() => {
+    const map = window.testMap;
+    if (!map) return {created: false};
+    const style = map.getStyle();
+    return {zoom: map.getZoom(), projection: map.getProjection(), loaded: map.loaded(), styleLoaded: map.isStyleLoaded(),
+      dimensions: [map.getContainer().clientWidth, map.getContainer().clientHeight], mapErrors: window.mapErrors,
+      sources: Object.keys(style?.sources || {}).map(id => ({id, loaded: map.isSourceLoaded(id), tiles: map.getSource(id)?.tiles})),
+      layers: style?.layers.map(layer => ({id: layer.id, minzoom: layer.minzoom, visibility: layer.layout?.visibility})),
+      features: map.queryRenderedFeatures().map(feature => feature.layer.id)};
+  }).catch(failure => ({diagnosticError: failure.message}));
+  const diagnostic = {message: error.message, errors, consoleErrors, requests, samples, renderer};
+  console.error('RAIL_OVERVIEW_FAILURE', JSON.stringify(diagnostic));
+  await writeFile('browser-review/rail-overview-failure.json', JSON.stringify(diagnostic, null, 2));
+  await page.screenshot({path: 'browser-review/rail-overview-failure.png'}).catch(() => {});
+  throw error;
 } finally {await browser.close();}
