@@ -4,6 +4,7 @@ on:
     branches: [fix/rail-provider-outage-recovery]
     paths:
       - scripts/apply-rail-performance.mjs
+      - scripts/finish-rail-performance.mjs
       - .github/workflows/prepare-rail-performance.yml
 permissions:
   contents: write
@@ -25,7 +26,9 @@ jobs:
           node-version: '22'
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Integrate reviewed changes and rebuild artifacts
-        run: node scripts/apply-rail-performance.mjs
+        run: |
+          node scripts/apply-rail-performance.mjs
+          node scripts/finish-rail-performance.mjs
       - name: Unit and source contract regressions
         run: |
           set -o pipefail
@@ -51,18 +54,37 @@ jobs:
           } >> docs/investigations/rail-loading-20261007.md
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add styles tests scripts/check-map-browser.mjs scripts/ci-plan.mjs docs/investigations/rail-loading-20261007.md
-          git rm scripts/apply-rail-performance.mjs .github/workflows/prepare-rail-performance.yml
+          git add styles tests scripts/check-map-browser.mjs scripts/ci-plan.mjs docs/rendering.md docs/investigations/rail-loading-20261007.md
+          git rm scripts/apply-rail-performance.mjs scripts/finish-rail-performance.mjs .github/workflows/prepare-rail-performance.yml
           git commit -m 'Integrate bounded rail loading and verified world-scale visibility'
           git push origin HEAD:fix/rail-provider-outage-recovery
       - name: Run the existing full site validation on this branch
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run site.yml --ref fix/rail-provider-outage-recovery
-      - name: Save focused renderer evidence
+      - name: Summarize focused check output
+        if: always()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          for name in ['rail-performance-tests.txt','rail-performance-browser.txt']:
+            p=Path('/tmp')/name
+            if not p.exists(): continue
+            lines=p.read_text().splitlines()
+            print('\n'+name)
+            selected=set(range(max(0,len(lines)-12),len(lines)))
+            for i,line in enumerate(lines):
+              if line.startswith('not ok'):
+                selected.update(range(max(0,i-1),min(len(lines),i+40)))
+            for i in sorted(selected): print(lines[i])
+          PY
+      - name: Save focused renderer and test evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: rail-performance-focused-review
-          path: browser-review
+          path: |
+            browser-review
+            /tmp/rail-performance-tests.txt
+            /tmp/rail-performance-browser.txt
           if-no-files-found: ignore
