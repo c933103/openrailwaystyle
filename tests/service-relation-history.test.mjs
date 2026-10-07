@@ -173,3 +173,45 @@ test('relation history: production headway rebuild publishes the same membership
     assert.deepEqual(visible(table), expected);
   } finally {await rm(root, {recursive: true, force: true});}
 });
+
+test('relation history: retained dependencies missing after stage retirement are partial coverage, not unresolved eligibility', async () => {
+  const {refreshRelationDependencyHealth} = await import('../scripts/service-geometry-health.mjs');
+  let table = accepted([old]); addResult(table, fresh, 'B'); commitStage(table, 'B'); commitStage(table, 'B'); table = restore(table);
+  assert.deepEqual(geometrySummary(table).routeRelationsWithoutGeometry, [1]);
+  const relations = geometrySummary(table).relations;
+  assert.deepEqual(relations.relationsWithUnavailableMemberships, [1]);
+  assert.deepEqual(relations.relationsWithUnresolvedMembers, []);
+  assert.deepEqual(relations.details.find(detail => detail.relation === 1).unavailableMemberships, [102]);
+  assert.equal(relationStatus(drawnRelation(table.routes.get('r1'))).status, 'complete', 'declaration itself is complete');
+  const health = stageGeometryHealth(table, 'A'); assert.equal(health.status, 'incomplete'); assert.deepEqual(health.unavailableRelations, [1]);
+  const state = {stages: {A: {geometry: {status: 'complete', attempts: 4, retry: null, lastFailure: null}}, B: {geometry: {status: 'complete'}}}};
+  refreshRelationDependencyHealth(state, table, NEW); assert.equal(state.stages.A.geometry.status, 'incomplete');
+  assert.equal(state.stages.A.geometry.attempts, 4); assert.equal(state.stages.A.geometry.retry, 'next-stage-refresh');
+  const before = structuredClone(state); refreshRelationDependencyHealth(state, table, NEW); assert.deepEqual(state, before);
+  addResult(table, fresh, 'C'); commitStage(table, 'C'); refreshRelationDependencyHealth(state, table, NEW);
+  assert.equal(state.stages.A.geometry.status, 'complete'); assert.equal(state.stages.A.geometry.dependencyGap, undefined);
+  assert.equal(state.stages.A.geometry.attempts, 4); assert.deepEqual(visible(table), expected);
+});
+
+test('relation history: empty and inactive declarations do not require missing display memberships', () => {
+  for (const options of [{refs: []}, {tags: {name: '', ref: ''}}]) {
+    const table = accepted([result({base: NEW, version: 2, ...options})]);
+    assert.deepEqual(geometrySummary(table).relations.relationsWithUnavailableMemberships, []);
+    assert.equal(stageGeometryHealth(table, 'A').relationCounts.complete, 2);
+  }
+});
+
+test('relation history: recovering a dependency cannot erase other current repair reasons', async () => {
+  const {refreshRelationDependencyHealth} = await import('../scripts/service-geometry-health.mjs');
+  const table = accepted([old]); addResult(table, fresh, 'B'); commitStage(table, 'B'); commitStage(table, 'B');
+  const state = {stages: {A: {geometry: {status: 'complete', attempts: 4, retry: null, lastFailure: null, observed: {status: 'complete'}}}}};
+  refreshRelationDependencyHealth(state, table, NEW);
+  addResult(table, fresh, 'C'); commitStage(table, 'C');
+  const conflict = response({base: NEW, version: 2, name: 'Current Line 1', refs: [102], returned: [101, 102]});
+  conflict.elements.find(element => element.type === 'way' && element.id === 101).geometry.forEach(point => {point.lat += 0.01;});
+  addResult(table, toTable(conflict), 'D'); commitStage(table, 'D'); refreshRelationDependencyHealth(state, table, NEW);
+  const health = state.stages.A.geometry; assert.equal(health.dependencyGap, undefined);
+  assert.equal(health.status, 'incomplete'); assert.equal(health.retry, 'next-stage-refresh');
+  assert.equal(health.lastFailure, 'unresolved-source-geometry'); assert.equal(health.counts.conflict, 1);
+  assert.equal(health.attempts, 4); assert.deepEqual(health.observed, {status: 'complete'});
+});

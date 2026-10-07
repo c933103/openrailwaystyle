@@ -73,6 +73,18 @@ export function relationStatus(evidence) {
   statusCache.set(evidence, status); eligibilityCache.set(evidence, eligible);
   return status;
 }
+// Declaration completeness is distinct from whether retained table rows still
+// support its positively observed memberships after another stage retires.
+export function relationCoverage(evidence, key, ways, stage) {
+  const status = relationStatus(evidence);
+  const unavailableMemberships = !ways || !evidence || evidence.view.active === false ? [] : evidence.eligible.filter(id => {
+    const way = ways.get(id);
+    const parts = stage ? [way?.next?.[stage] || []] : [...Object.values(way?.routes || {}), ...Object.values(way?.next || {})];
+    return !parts.some(keys => keys.includes(key));
+  });
+  return {...status, unavailableMemberships, status: unavailableMemberships.length && status.status === 'complete' ? 'partial' : status.status,
+    reasons: [...status.reasons, ...(unavailableMemberships.length ? ['retained_membership_unavailable'] : [])]};
+}
 // Accepted watermarks survive removal of a stage while another holds the
 // relation. Pending work is visible only before any accepted declaration.
 const frontierCache = new WeakMap();
@@ -103,21 +115,22 @@ export function relationAllows(route, wayId, acceptedMembership = true) {
   const status = relationStatus(evidence);
   return evidence.view.active !== false && status.status !== 'conflict' && eligibilityCache.get(evidence).has(wayId);
 }
-export function relationSummary(routes) {
-  const conflicts = [], unknown = [], unresolved = [], pending = [], details = [];
+export function relationSummary(routes, ways) {
+  const conflicts = [], unknown = [], unresolved = [], unavailable = [], pending = [], details = [];
   for (const route of [...routes.values()].sort((a, b) => a.key.localeCompare(b.key))) {
-    const evidence = drawnRelation(route), status = relationStatus(evidence);
+    const evidence = drawnRelation(route), status = relationCoverage(evidence, route.key, ways);
     const candidate = Object.values(route.next || {}).map(part => part.membership).filter(Boolean).reduce(reconcileRelations, null);
     const relation = evidence?.view.relation ?? Object.values(route.stages)[0]?.relation ?? Object.values(route.next)[0]?.relation;
     if (status.status === 'conflict') conflicts.push(relation);
     if (status.status === 'unknown') unknown.push(relation);
     if (status.unresolved.length) unresolved.push(relation);
+    if (status.unavailableMemberships.length) unavailable.push(relation);
     if (candidate && JSON.stringify(candidate) !== JSON.stringify(evidence)) pending.push(relation);
     if ((status.status !== 'complete' || status.reasons.length || pending.at(-1) === relation) && details.length < 100) details.push({relation, ...status,
-      unresolved: status.unresolved.slice(0, 20), unresolvedCount: status.unresolved.length, sources: evidence?.sources || [],
+      unresolved: status.unresolved.slice(0, 20), unresolvedCount: status.unresolved.length, unavailableMemberships: status.unavailableMemberships.slice(0, 20), unavailableMembershipCount: status.unavailableMemberships.length, sources: evidence?.sources || [],
       ...(candidate ? {retainedAccepted: Boolean(route.evidence || Object.keys(route.stages).length), pending: {...relationStatus(candidate), unresolved: relationStatus(candidate).unresolved.slice(0, 20), unresolvedCount: relationStatus(candidate).unresolved.length}} : {})});
   }
   const sorted = values => values.sort((a, b) => a - b);
   return {schema: 1, relationsWithConflicts: sorted(conflicts), relationsWithUnknownProvenance: sorted(unknown),
-    relationsWithUnresolvedMembers: sorted(unresolved), relationsWithPendingEvidence: sorted(pending), details};
+    relationsWithUnresolvedMembers: sorted(unresolved), relationsWithUnavailableMemberships: sorted(unavailable), relationsWithPendingEvidence: sorted(pending), details};
 }

@@ -323,7 +323,7 @@ export function geometrySummary({routes, ways}) {
   return {schema: 2, waysWithoutGeometry, waysWithPartialGeometry: partialWays, waysWithConflicts: conflictWays,
     waysWithUnknownProvenance: unknownWays, waysWithPendingEvidence: pendingWays,
     routeRelationsWithoutGeometry: relationIds([...routes.keys()].filter(key => !drawable.has(key))),
-    routeRelationsWithPartialGeometry: relationIds([...missing].filter(key => drawable.has(key))), details, relations: relationSummary(routes)};
+    routeRelationsWithPartialGeometry: relationIds([...missing].filter(key => drawable.has(key))), details, relations: relationSummary(routes, ways)};
 }
 // Relations of one service (the same kind, network, reference and colour…)
 // become one route where they share a track or lie within about 10 km of

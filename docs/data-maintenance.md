@@ -168,7 +168,12 @@ leak into an accepted legacy route's memberships.
 
 Geometry diagnostic schema 2 adds a `relations` schema-1 object with sorted
 conflict, unknown-provenance, unresolved-member and pending-evidence relation
-IDs. Details are limited to 100 relations, 20 unresolved IDs per relation and
+IDs, plus positively observed memberships whose retained table associations
+are unavailable after stage retirement. This is distinct from unresolved
+eligibility; a verified empty declaration remains complete. Affected older
+stages have their persisted dependency-health status refreshed without
+changing their acquisition attempts or original observed outcome.
+Details are limited to 100 relations, 20 unresolved IDs per relation and
 eight source references; full member declarations stay in NDJSON. Pending
 details explicitly identify retained accepted evidence. These are unresolved
 eligibility references, not confirmed missing track. Stage health includes

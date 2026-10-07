@@ -14,7 +14,7 @@ import {gzipSync, gunzipSync} from 'node:zlib';
 import {STAGES, quarters} from './branch-lines.mjs';
 import {MIN_ZOOM, MAX_ZOOM, migrateServiceDownloads, retireServiceEurope, addResult, buildTiles, geometrySummary, commitStage, discardStage, partQuery, readTable, routeStages, stageChange, suspiciousChange, toTable, writeTable} from './service-routes.mjs';
 import {createHash} from 'node:crypto';
-import {stageGeometryHealth} from './service-geometry-health.mjs';
+import {stageGeometryHealth, refreshRelationDependencyHealth} from './service-geometry-health.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const previous = process.env.PREVIOUS_DATA ? new URL(`file://${process.env.PREVIOUS_DATA.replace(/\/?$/, '/')}`) : null;
@@ -152,8 +152,13 @@ if (!current.pending.length) {
   // stage refresh cadence, without increasing the public-server budgets.
   const health = stageGeometryHealth(table, stage.name);
   if (observed.status !== 'complete' || suspicious) health.status = 'incomplete';
+  const sourceIncomplete = suspicious || observed.status !== 'complete' || health.sourceStatus !== 'complete';
+  const sourceOutcome = {status: sourceIncomplete ? 'incomplete' : 'complete', retry: sourceIncomplete ? 'next-stage-refresh' : null,
+    lastFailure: suspicious ? 'membership-refresh-rejected' : observed.counts.unknown || observed.relationCounts.unknown ? 'unverified-source'
+      : [observed, health].some(item => item.relationCounts.partial + item.relationCounts.conflict + item.relationCounts.unknown) ? 'unresolved-source-relations'
+        : sourceIncomplete ? 'unresolved-source-geometry' : null};
   const relationProblem = [observed, health].some(item => item.relationCounts.partial + item.relationCounts.conflict + item.relationCounts.unknown);
-  current.geometry = {...health, observed, observedUnknown: observed.counts.unknown, observedUnknownRelations: observed.relationCounts.unknown, checked: now,
+  current.geometry = {...health, sourceOutcome, observed, observedUnknown: observed.counts.unknown, observedUnknownRelations: observed.relationCounts.unknown, checked: now,
     lastFailure: suspicious ? 'membership-refresh-rejected' : observed.counts.unknown || observed.relationCounts.unknown ? 'unverified-source' : relationProblem ? 'unresolved-source-relations' : health.status === 'incomplete' ? 'unresolved-source-geometry' : null, attempts: (current.geometry?.attempts || 0) + 1,
     retry: health.status === 'complete' ? null : 'next-stage-refresh'};
   const routes = [...table.routes.values()].filter(r => routeStages(r).includes(stage.name)).length;
@@ -171,6 +176,7 @@ if (!fetchedBoxes && !splitBoxes && stopped) {
 // Stamped when the downloads end, so the bytes stay in the 24-hour window
 // for a full day after they were last downloaded.
 retireServiceEurope(state, table);
+refreshRelationDependencyHealth(state, table, now);
 state.runs.push({at: new Date().toISOString().replace(/\.\d+Z$/, 'Z'), bytes: downloaded});
 await rm(out, {recursive: true, force: true});
 await mkdir(out, {recursive: true});

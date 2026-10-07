@@ -124,3 +124,37 @@ test('relation acquisition: conflicting unverified refresh cannot report success
   assert.equal(saved.routes.get('r1').evidence.view.label, 'One');
   assert.ok((await result.read('manifest.json')).geometry.relations.details[0].reasons.includes('ignored_unverified_relation'));
 }));
+
+test('relation acquisition: retiring current stage refreshes older-stage retained dependency health', async () => fixture(async run => {
+  const table = {routes: new Map(), ways: new Map()}, original = response('06'), changed = response('07');
+  changed.elements[0] = {...changed.elements[0], version: 2, timestamp: '2026-10-02T00:00:00Z', members: [{type: 'way', ref: 11, role: ''}]};
+  changed.elements[1] = {...changed.elements[1], id: 11};
+  addResult(table, toTable(original), 'east-asia'); commitStage(table, 'east-asia');
+  addResult(table, toTable(changed), 'japan'); commitStage(table, 'japan');
+  const prior = state(); prior.stages['east-asia'] = {completed: '2026-10-01T00:00:00Z', geometry: {status: 'complete', attempts: 3, retry: null, lastFailure: null}};
+  const result = await run([{body: {osm3s: {timestamp_osm_base: '2026-10-07T01:00:00Z'}, elements: []}}], prior, table);
+  const older = (await result.read('state.json')).stages['east-asia'].geometry;
+  assert.equal(older.status, 'incomplete'); assert.equal(older.attempts, 3);
+  assert.equal(older.lastFailure, 'retained-relation-membership-unavailable'); assert.deepEqual(older.unavailableRelations, [1]);
+  assert.deepEqual((await result.read('manifest.json')).geometry.relations.relationsWithUnavailableMemberships, [1]);
+}));
+
+test('relation acquisition: a complete refresh during a dependency gap can recover when another stage restores it', async () => fixture(async run => {
+  const {refreshRelationDependencyHealth} = await import('../scripts/service-geometry-health.mjs');
+  const table = {routes: new Map(), ways: new Map()}, original = response('06'), changed = response('07');
+  changed.elements[0] = {...changed.elements[0], version: 2, timestamp: '2026-10-02T00:00:00Z', members: [{type: 'way', ref: 11, role: ''}]};
+  changed.elements[1] = {...changed.elements[1], id: 11};
+  addResult(table, toTable(original), 'japan'); commitStage(table, 'japan');
+  addResult(table, toTable(changed), 'east-asia'); commitStage(table, 'east-asia'); commitStage(table, 'east-asia');
+  const prior = state(); prior.stages.japan.geometry = {status: 'complete', attempts: 3, retry: null, lastFailure: null};
+  refreshRelationDependencyHealth(prior, table, '2026-10-07T00:00:00Z');
+  assert.equal(prior.stages.japan.geometry.status, 'incomplete');
+  const result = await run([{body: original}], prior, table), savedState = await result.read('state.json');
+  const savedTable = readTable(gunzipSync(await readFile(join(result.root, 'service-data/service-routes.ndjson.gz'))).toString());
+  const health = savedState.stages.japan.geometry;
+  assert.equal(health.status, 'incomplete'); assert.equal(health.observed.status, 'complete'); assert.equal(health.sourceOutcome.status, 'complete');
+  addResult(savedTable, toTable(changed), 'russia'); commitStage(savedTable, 'russia');
+  refreshRelationDependencyHealth(savedState, savedTable, '2026-10-07T01:00:00Z');
+  assert.equal(savedState.stages.japan.geometry.status, 'complete'); assert.equal(savedState.stages.japan.geometry.retry, null);
+  assert.equal(savedState.stages.japan.geometry.lastFailure, null); assert.equal(savedState.stages.japan.geometry.attempts, 4);
+}));
