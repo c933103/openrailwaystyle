@@ -65,10 +65,10 @@ async function measureAmplification(views,{empty=false}={}){
 }
 test('z14 track-count request amplification is measured and deduplicated',async()=>{
  const one=await measureAmplification([[[8192,8192]]]);
- assert.deepEqual(one.totals,[27]);assert.equal(one.unique,27);assert.equal(one.peak,9);
+ assert.deepEqual(one.totals,[27]);assert.equal(one.unique,27);assert.equal(one.peak,18);
  const first=[[8192,8192],[8193,8192],[8192,8193],[8193,8193]],east=[[8193,8192],[8194,8192],[8193,8193],[8194,8193]];
  const dense=await measureAmplification([first,east]);
- assert.deepEqual(dense.totals,[48,60],'cold 2x2 deduplicates 108 candidates to 48; east pan adds 12');assert.equal(dense.peak,16);
+ assert.deepEqual(dense.totals,[48,60],'cold 2x2 deduplicates 108 candidates to 48; east pan adds 12');assert.equal(dense.peak,32);
  const blank=await measureAmplification([first,east],{empty:true});
  assert.deepEqual(blank.totals,[16,20],'blank 2x2 skips station halos; east pan adds four');assert.equal(blank.peak,16);
 });

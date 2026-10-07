@@ -227,7 +227,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
         }
         return Promise.all(list);
       };
-      // Stage the three datasets instead of issuing all 27 candidates at once.
+      // Stage track geometry before station dependencies instead of issuing all 27 candidates at once.
       const tiles = await around('railway_line_high');
       signal.throwIfAborted();
       if (!tiles.some(t => t && !t.dx && !t.dy)) throw new Error('Railway tile unavailable');
@@ -235,9 +235,10 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       // can we prove there is no track input; station geometry then cannot
       // produce a track count on its own.
       if (!tiles.some(t => t && tileHasFeatures(t.data))) return {tiles,areas:[],stations:[],y};
-      const areas = await around('standard_railway_grouped_station_areas');
-      signal.throwIfAborted();
-      const stations = await around('standard_railway_text_stations');
+      const [areas, stations] = await Promise.all([
+        around('standard_railway_grouped_station_areas'),
+        around('standard_railway_text_stations'),
+      ]);
       return {tiles,areas,stations,y};
   },()=>new Worker(new URL(`track-worker.js${new URL(import.meta.url).search}`, import.meta.url)));
   maplibregl.addProtocol('atlastracks', async (params, controller) => {
