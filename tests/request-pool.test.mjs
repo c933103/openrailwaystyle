@@ -93,6 +93,30 @@ for (const status of [403, 404]) test(`HTTP ${status} is not retried or cached a
   } finally {pool.dispose();}
 });
 
+test('invalid successful bytes are retried and only validated bytes enter the cache', async () => {
+  let count = 0;
+  const pool = createRequestPool({retries: [0], fetcher: async () => ok(++count === 1 ? 1 : 9)});
+  const validate = data => new Uint8Array(data)[0] === 9;
+  try {
+    assert.deepEqual(await pool.get('https://rail.example/tile', undefined, {validate}), bytes(9));
+    assert.deepEqual(await pool.get('https://rail.example/tile', undefined, {validate}), bytes(9));
+    assert.equal(count, 2);
+    assert.equal(pool.stats().retried, 1);
+    assert.equal(pool.stats().cacheHits, 1);
+  } finally {pool.dispose();}
+});
+
+test('repeated validation failure remains an error and is never cached', async () => {
+  let count = 0;
+  const pool = createRequestPool({retries: [0], fetcher: async () => {count++; return ok(1);}});
+  try {
+    const validate = () => false;
+    await assert.rejects(pool.get('https://rail.example/tile', undefined, {validate}), {name: 'ProviderDataError'});
+    await assert.rejects(pool.get('https://rail.example/tile', undefined, {validate}), {name: 'ProviderDataError'});
+    assert.equal(count, 4, 'each caller gets its own initial attempt and retry');
+  } finally {pool.dispose();}
+});
+
 test('a hung body times out; its late result cannot poison the successful retry', async () => {
   const oldBody = deferred(); let count = 0;
   const pool = createRequestPool({timeout: 15, retries: [0], fetcher: async () => ++count === 1
