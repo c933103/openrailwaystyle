@@ -23,6 +23,31 @@ Layer metadata declares groups, view restrictions, setting requirements, backgro
 
 The migration regression manifest in `tests/fixtures/style-composition-baseline.json` records ordered layer hashes, source hashes and root rendering settings. Changes to paint, filters, zoom limits, label placement, embedded station data or ordering require deliberate review and baseline updates; `atlas:*` metadata and the project description are excluded. Browser checks complement this definition-level comparison with actual rendering. The initial refactor preserves the reviewed Infrastructure integration's cartography.
 
+## Source availability and z7 handoff
+
+Main-line railway geometry comes from OpenRailwayMap's live vector service, not
+from the Atlas's regional branch-line snapshot. In all operating-rail views the
+simplified overview runs below zoom 7; at zoom 7 the renderer switches to the
+provider's `railway_line_high` tiles. The branch-line snapshot instead supplies
+branch lines at zooms 4–6 and subway lines at zooms 7–9. Its presence does not
+prove the live main-line source is available.
+
+An upstream HTTP 520 or network failure can therefore hide rails even while the
+basemap, regional station symbols and Atlas snapshot layers remain visible.
+A loaded source is not proof it contains track geometry. The browser map check
+inspects actual Wuhan `speed-tracks` rendered features at zoom 7, not just
+`isSourceLoaded`.
+
+When an OpenRailwayMap metadata or railway-tile request fails, the browser
+presents an explicit error and checks the provider's TileJSON through one
+shared, capped-backoff probe across failed sources (5, 15, 45, 120, then
+300 seconds). A valid response reloads only affected MapLibre sources; the
+failure is cleared once the refreshed source loads. Hidden/offline tabs pause
+retries and resume when active. These retries do **not** create missing rails,
+substitute other track geometries, bypass provider access restrictions, or
+make the site independent of the provider. A durable worldwide fallback
+requires a separately maintained operating-mainline dataset.
+
 ## Speed and units
 
 Maximum-speed colouring uses eight bands plus an explicit unknown category.
