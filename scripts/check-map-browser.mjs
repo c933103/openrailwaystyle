@@ -343,6 +343,17 @@ try{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-') && f.properties.atlas_language==='zh-Hans').length>5;
   },'Completed Chinese view must retain station labels');
+  // A loaded source and legible stations alone do not establish that the
+  // operating railway geometry rendered. Probe Wuhan on the actual map at
+  // z7, where the overview stops and the high-detail provider takes over.
+  const wuhanTracks=await page.evaluate(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    const point=map.project([114.305,30.593]);
+    return map.queryRenderedFeatures([[point.x-95,point.y-95],[point.x+95,point.y+95]],{layers:['speed-tracks']})
+      .filter(f=>f.source==='railway'&&f.geometry.type==='LineString').length;
+  });
+  assert.ok(wuhanTracks>0,`Wuhan must show operating rail geometry at zoom 7, not just loaded sources/stations (found ${wuhanTracks} tracks)`);
+  console.log('PASS: Wuhan zoom-7 high-detail rail geometry',wuhanTracks,'rendered line features');
   assert.equal(await page.locator('#map-status.error').count(),0,'Cancelled old requests must not leave a load-failure warning');
   const china=await page.screenshot({path:'browser-review/china-z7.jpg',type:'jpeg',quality:45});
   console.log('CHINA_IMAGE_START'+china.toString('base64')+'CHINA_IMAGE_END');
