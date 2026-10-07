@@ -12,7 +12,7 @@
 import {mkdir, readFile, writeFile, rm, appendFile} from 'node:fs/promises';
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {STAGES, quarters} from './branch-lines.mjs';
-import {MIN_ZOOM, MAX_ZOOM, migrateServiceDownloads, retireServiceEurope, addResult, buildTiles, commitStage, discardStage, partQuery, readTable, routeStages, stageChange, suspiciousChange, toTable, writeTable} from './service-routes.mjs';
+import {MIN_ZOOM, MAX_ZOOM, migrateServiceDownloads, retireServiceEurope, addResult, buildTiles, geometrySummary, commitStage, discardStage, partQuery, readTable, routeStages, stageChange, suspiciousChange, toTable, writeTable} from './service-routes.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const previous = process.env.PREVIOUS_DATA ? new URL(`file://${process.env.PREVIOUS_DATA.replace(/\/?$/, '/')}`) : null;
@@ -175,7 +175,7 @@ for (const [key, data] of buildTiles(table)) {
   index.push(key);
 }
 await writeFile(new URL('index.json', out), JSON.stringify({tiles: index.sort()}));
-const manifest = {generated: new Date().toISOString(), routes: table.routes.size, ways: table.ways.size, tiles: index.length, tileBytes, zooms: [MIN_ZOOM, MAX_ZOOM],
+const manifest = {geometry: geometrySummary(table), generated: new Date().toISOString(), routes: table.routes.size, ways: table.ways.size, tiles: index.length, tileBytes, zooms: [MIN_ZOOM, MAX_ZOOM],
   stages: STAGES.map(s => ({name: s.name, label: s.label, completed: info(s.name).completed, inProgress: Boolean(info(s.name).pending?.length),
     routes: [...table.routes.values()].filter(r => routeStages(r).includes(s.name)).length})),
   run: {stage: stage.name, requests, downloadedBytes: downloaded}, source: api,

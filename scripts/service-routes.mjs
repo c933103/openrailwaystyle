@@ -64,14 +64,19 @@ export function routeOf(rel) {
 // routes running on them.
 export function toTable(json) {
   if (json.remark || !Array.isArray(json.elements)) throw new Error(json.remark ? `Overpass: ${json.remark}` : 'Incomplete Overpass response');
-  const rels = [], geometry = new Map();
+  const rels = [], geometry = new Map(), trackWays = new Set();
   for (const el of json.elements) {
     if (el.type !== 'relation') continue;
     const route = routeOf(el);
     if (route) rels.push({route, ways: (el.members || []).filter(m => m.type === 'way' && !/platform|stop/.test(m.role || '')).map(m => m.ref)});
   }
   for (const el of json.elements) {
-    if (el.type !== 'way' || !Array.isArray(el.geometry)) continue;
+    if (el.type !== 'way') continue;
+    // The acquisition query returns railway-filtered ways. A returned way
+    // establishes membership even when its coordinates are unavailable; a
+    // different response can supply geometry for that same track later.
+    trackWays.add(el.id);
+    if (!Array.isArray(el.geometry)) continue;
     const parts = [[]];
     for (const p of el.geometry) {
       if (p && Number.isFinite(p.lon) && Number.isFinite(p.lat)) parts.at(-1).push([p.lon, p.lat]);
@@ -93,7 +98,9 @@ export function toTable(json) {
       wayRoutes.get(id).add(key);
     }
   }
-  const ways = [...wayRoutes].filter(([id]) => geometry.has(id)).map(([id, keys]) => ({id, routes: [...keys].sort(), lines: geometry.get(id)}));
+  // Do not infer track eligibility for unreturned relation members: the
+  // query intentionally omits non-track ways, besides platform/stop roles.
+  const ways = [...wayRoutes].filter(([id]) => trackWays.has(id)).map(([id, keys]) => ({id, routes: [...keys].sort(), lines: geometry.get(id) || []}));
   return {routes: [...routes.values()], ways};
 }
 const round = ([x, y]) => [Math.round(x * 1e6) / 1e6, Math.round(y * 1e6) / 1e6];
@@ -118,7 +125,11 @@ export function addResult(table, result, stage) {
     const previous = table.ways.get(way.id), next = {...(previous?.next || {})};
     next[stage] = [...new Set([...(next[stage] || []), ...way.routes])].sort();
     // Its geometry too waits for the pass (the committed lines stay drawn).
-    table.ways.set(way.id, {id: way.id, lines: previous?.lines, routes: previous?.routes || {}, next, nextLines: {...(previous?.nextLines || {}), [stage]: way.lines}});
+    const nextLines = {...(previous?.nextLines || {})};
+    // Missing coordinates are a gap, not a replacement for observed track
+    // geometry. Nonempty geometry updates still replace earlier copies.
+    if (way.lines?.length) nextLines[stage] = way.lines;
+    table.ways.set(way.id, {id: way.id, lines: previous?.lines, routes: previous?.routes || {}, next, nextLines});
   }
 }
 const partOf = item => item.stages || item.routes;
@@ -150,7 +161,7 @@ function settle(table, stage, commit) {
   for (const [map, key] of [[table.routes, 'key'], [table.ways, 'id']]) for (const item of [...map.values()]) {
     const part = partOf(item);
     if (commit) { if (stage in item.next) part[stage] = item.next[stage]; else delete part[stage]; }
-    if (item.nextLines?.[stage]) { if (commit) item.lines = item.nextLines[stage]; delete item.nextLines[stage]; }
+    if (item.nextLines?.[stage]) { if (commit && item.nextLines[stage].length) item.lines = item.nextLines[stage]; delete item.nextLines[stage]; }
     delete item.next[stage];
     if (!Object.keys(part).length && !Object.keys(item.next).length) map.delete(item[key]);
   }
@@ -236,7 +247,22 @@ export function readTable(text) {
   return {routes, ways};
 }
 
-const drawnLines = way => way.lines || Object.values(way.nextLines || {})[0] || [];
+const drawnLines = way => way.lines?.length ? way.lines : Object.values(way.nextLines || {}).find(lines => lines?.length) || [];
+// Known drawable coverage of the retained table, not source freshness or
+// proof that every member/real-world service was acquired. Kept in both
+// publication manifests; regional viewer coverage reporting is separate.
+export function geometrySummary({routes, ways}) {
+  const drawable = new Set(), missing = new Set(), waysWithoutGeometry = [];
+  for (const way of ways.values()) {
+    const hasGeometry = drawnLines(way).length > 0;
+    if (!hasGeometry) waysWithoutGeometry.push(way.id);
+    for (const key of wayRoutes(way)) if (routes.has(key)) (hasGeometry ? drawable : missing).add(key);
+  }
+  const relationIds = keys => [...keys].map(key => routeView(routes.get(key)).relation).sort((a, b) => a - b);
+  return {waysWithoutGeometry: waysWithoutGeometry.sort((a, b) => a - b),
+    routeRelationsWithoutGeometry: relationIds([...routes.keys()].filter(key => !drawable.has(key))),
+    routeRelationsWithPartialGeometry: relationIds([...missing].filter(key => drawable.has(key)))};
+}
 // Relations of one service (the same kind, network, reference and colour…)
 // become one route where they share a track or lie within about 10 km of
 // each other (the directions and variants of a line); apart, they are the
