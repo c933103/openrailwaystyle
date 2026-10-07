@@ -80,6 +80,16 @@ async function moveTo(zoom,lng,lat){
 const errors=[],requests=[],pendingRequests=new Set();
 page.on('pageerror', e=>errors.push(e.message));
 const requestStart=new Map();
+const wuhanRailResponses=[];
+page.on('response',response=>{
+  if (!/openrailwaymap\\.app\\/(railway_line_high|speed_railway_line_low)\\/[678]\\//.test(response.url())) return;
+  const headers=response.headers();
+  wuhanRailResponses.push({url:response.url(),status:response.status(),ms:Date.now()-(requestStart.get(response.request())||Date.now()),bytes:headers['content-length']||null,cache:headers['x-cache-status']||null});
+});
+page.on('requestfailed',request=>{
+  if (/openrailwaymap\\.app\\/(railway_line_high|speed_railway_line_low)\\/[678]\\//.test(request.url()))
+    wuhanRailResponses.push({url:request.url(),failed:request.failure()?.errorText||'network error',ms:Date.now()-(requestStart.get(request)||Date.now())});
+});
 page.on('request',req=>{
   requests.push(req.url());requestStart.set(req,Date.now());
   // Cancelling a count terminates its worker. Chromium can omit the finish
@@ -330,23 +340,9 @@ try{
     return (map.getSource('stations') && map.isSourceLoaded('stations')) && map.queryRenderedFeatures().some(f=>f.source==='stations' && f.properties.atlas_language==='zh-Hant' && /\p{Script=Hangul}/u.test(f.properties.name||'') && /\p{Script=Han}/u.test(f.properties.atlas_name||''));
   },undefined,{timeout:120000});
   console.log('PASS: Chinese language selects recorded ideographic names for Korean stations');
-  console.log('Checking China regional map');
+  console.log('Checking exact Wuhan railway coverage at zooms 6, 7 and 8');
   await page.selectOption('#language','zh-Hans');
-  await moveTo(7,116.4,30.5);
-  await waitUntil(page,async()=>{
-    const {map}=await import(document.querySelector('script[type="module"]').src);
-    return Math.abs(map.getCenter().lng-116.4)<0.01 && Math.abs(map.getZoom()-7)<0.01 && !map.isMoving() && ['stationMed','openmaptiles','railway','relief'].every(id=>map.getSource(id) && map.isSourceLoaded(id)) && map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-') && f.geometry.type==='Point' && f.geometry.coordinates[0]>110 && f.geometry.coordinates[0]<125).length>5;
-  },undefined,{timeout:120000});
-  await page.locator('#collapse').click();
-  await finishFrame();
-  await expectMap(async()=>{
-    const {map}=await import(document.querySelector('script[type="module"]').src);
-    return map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-') && f.properties.atlas_language==='zh-Hans').length>5;
-  },'Completed Chinese view must retain station labels');
-  assert.equal(await page.locator('#map-status.error').count(),0,'Cancelled old requests must not leave a load-failure warning');
-  const china=await page.screenshot({path:'browser-review/china-z7.jpg',type:'jpeg',quality:45});
-  console.log('CHINA_IMAGE_START'+china.toString('base64')+'CHINA_IMAGE_END');
-  // The regional China screenshot includes Wuhan near its western edge, but
+  // The broad regional China screenshot includes Wuhan near its western edge, but
   // station-label presence and source-loaded flags alone cannot prove that
   // the z6 overview -> z7 detailed railway hand-off actually draws tracks.
   // Inspect the city centre at three integer zooms, on the first visit to
@@ -391,11 +387,27 @@ try{
     }
     console.log('WUHAN_RAIL_ZOOM',JSON.stringify(report));
     if(zoom===7) {
+      console.log('WUHAN_RAIL_PROVIDER',JSON.stringify(wuhanRailResponses.filter(r=>/\/(6|7|8)\/((104|105|52)\/)?/.test(r.url)).slice(-35)));
       console.log('WUHAN_RAIL_REQUESTS',JSON.stringify(requests.filter(url=>url.includes('/railway_line_high/7/')).slice(-25)));
       await page.screenshot({path:'browser-review/wuhan-z7.jpg',type:'jpeg',quality:55});
     }
     assert.ok(report.nearbyPresentRail>0,`Wuhan must render mapped main lines at z${zoom}, not merely report a loaded source: ${JSON.stringify(report)}`);
   }
+  console.log('Checking China regional map');
+  await moveTo(7,116.4,30.5);
+  await waitUntil(page,async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    return Math.abs(map.getCenter().lng-116.4)<0.01 && Math.abs(map.getZoom()-7)<0.01 && !map.isMoving() && ['stationMed','openmaptiles','railway','relief'].every(id=>map.getSource(id) && map.isSourceLoaded(id)) && map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-') && f.geometry.type==='Point' && f.geometry.coordinates[0]>110 && f.geometry.coordinates[0]<125).length>5;
+  },undefined,{timeout:120000});
+  await page.locator('#collapse').click();
+  await finishFrame();
+  await expectMap(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    return map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-') && f.properties.atlas_language==='zh-Hans').length>5;
+  },'Completed Chinese view must retain station labels');
+  assert.equal(await page.locator('#map-status.error').count(),0,'Cancelled old requests must not leave a load-failure warning');
+  const china=await page.screenshot({path:'browser-review/china-z7.jpg',type:'jpeg',quality:45});
+  console.log('CHINA_IMAGE_START'+china.toString('base64')+'CHINA_IMAGE_END');
   // The panel stays collapsed from the China view until the units check.
   console.log('Checking mouse panning over a dense city, compass and units');
   await moveTo(12,139.765,35.68);
