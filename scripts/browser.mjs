@@ -5,11 +5,11 @@
 // closing it only disconnects. A check with options a shared browser cannot
 // take (a proxy, another executable) starts its own.
 //
-// With BROWSER_TILE_CACHE, GET responses from other origins (map tiles,
-// glyphs, provider APIs) are kept in that directory and served from it for
-// TILE_CACHE_DAYS (7): checks wait for the network far less. The site under test is never cached, and the
-// deploy job checks the published site without a cache. Routes a check sets
-// itself take precedence; this one only sees what they pass on.
+// BROWSER_TILE_CACHE may cache other external providers, but NEVER the public
+// openrailwaymap.app service. Browser automation must not download its map tiles.
+// Every browser context blocks that service unless the test explicitly supplies
+// synthetic fixtures or a self-hosted, loopback-only OpenRailwayMap instance.
+// Tests' fixture routes take precedence over these defaults.
 import {chromium} from 'playwright';
 import {createHash} from 'node:crypto';
 import {mkdir, readFile, rename, writeFile} from 'node:fs/promises';
@@ -32,16 +32,64 @@ export async function launchBrowser(options = {}) {
     ? await chromium.connect(shared)
     : await chromium.launch({headless: true, ...options, args: [...new Set([...BROWSER_ARGS, ...(options.args || [])])]});
   const cache = process.env.BROWSER_TILE_CACHE;
-  if (cache) {
-    const newContext = browser.newContext.bind(browser);
-    // browser.newPage() creates its context through this method as well.
-    browser.newContext = async (...args) => {
-      const context = await newContext(...args);
-      await cacheOtherOrigins(context, cache);
-      return context;
-    };
-  }
+  const newContext = browser.newContext.bind(browser);
+  // Browser.newPage() creates its context through this method too. Service
+  // workers can bypass Playwright routing, so disable them for browser tests.
+  browser.newContext = async (options = {}) => {
+    const context = await newContext({...options, serviceWorkers: 'block'});
+    await isolatePublicOrm(context);
+    if (cache) await cacheOtherOrigins(context, cache);
+    return context;
+  };
   return browser;
+}
+
+
+// Only this host (and its subdomains) is covered by the published USAGE.md.
+// api.openrailwaymap.org is a separate dependency with unverified terms.
+export function isPublicOrm(url) {
+  try {
+    const u = new URL(url.href ?? url);
+    return ['http:', 'https:'].includes(u.protocol) &&
+      (u.hostname === 'openrailwaymap.app' || u.hostname.endsWith('.openrailwaymap.app'));
+  } catch { return false; }
+}
+
+// Local, explicitly configured test data only. Reject a remote "mirror":
+// forwarding to it could just move the prohibited automated downloads.
+export function localOrmTarget(original, mirror = process.env.ATLAS_TEST_ORM_URL) {
+  if (!mirror) return null;
+  const base = new URL(mirror.endsWith('/') ? mirror : mirror + '/');
+  if (base.protocol !== 'http:' || !['127.0.0.1', 'localhost', '[::1]'].includes(base.hostname) ||
+      base.username || base.password || base.search || base.hash)
+    throw new Error('ATLAS_TEST_ORM_URL must be a local HTTP OpenRailwayMap instance on loopback, not a public proxy');
+  if (!isPublicOrm(original)) throw new Error('Only openrailwaymap.app URLs may be mirrored');
+  const source = new URL(original);
+  return new URL(source.pathname.replace(/^\//, '') + source.search, base).href;
+}
+
+// Installed BEFORE optional generic caching. A later explicit test fixture
+// route can fulfill requests without contacting the public provider.
+export async function isolatePublicOrm(context, {mirror = process.env.ATLAS_TEST_ORM_URL, warn = console.warn} = {}) {
+  // Validate the configured local destination even before requests arrive.
+  if (mirror) localOrmTarget('https://openrailwaymap.app/', mirror);
+  await context.route(isPublicOrm, async route => {
+    const original = route.request().url();
+    const local = localOrmTarget(original, mirror);
+    if (!local) {
+      warn('Blocked automated OpenRailwayMap request (no fixture/local instance): ' + original);
+      return route.abort('blockedbyclient');
+    }
+    try {
+      const response = await route.fetch({url: local, maxRedirects: 0});
+      if (response.status() >= 300 && response.status() < 400)
+        throw new Error('Local OpenRailwayMap test server redirected; refusing to follow it');
+      return await route.fulfill({response});
+    } catch (error) {
+      warn('Local OpenRailwayMap fixture failed: ' + error.message);
+      return route.abort('failed').catch(() => {});
+    }
+  });
 }
 
 const local = url => {
@@ -56,7 +104,7 @@ export async function cacheOtherOrigins(context, directory, {now = Date.now, max
   // A check may close its page or context while a request is still on its
   // way; the route then fails quietly instead of crashing the check, and an
   // answer that cannot be kept is simply not kept.
-  await context.route(url => !local(url.href ?? url), route => serve(route, directory, {now, maxAge}).catch(() => route.abort().catch(() => {})));
+  await context.route(url => !local(url.href ?? url) && !isPublicOrm(url), route => serve(route, directory, {now, maxAge}).catch(() => route.abort().catch(() => {})));
 }
 async function serve(route, directory, {now, maxAge}) {
   const request = route.request();
