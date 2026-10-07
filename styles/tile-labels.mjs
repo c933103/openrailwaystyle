@@ -11,6 +11,7 @@ import {axleLoad} from './axle-load.mjs';
 import {isLocalFamily} from './cjk-font.mjs';
 import {rareHanBlocks} from './rare-han.mjs';
 import {decodeLoadingGauges, wayId} from './loading-gauge-list.mjs';
+import {validProviderVectorTile} from './vector-tile-validation.mjs';
 export {hanRegion, chineseArea};
 export const buildInfo=typeof __ATLAS_BUILD_INFO__ === 'undefined' ? {version:'development',commit:''} : __ATLAS_BUILD_INFO__;
 
@@ -146,7 +147,8 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   function get(url, signal, json = false, priority = 0) {
     if (signal?.aborted) return Promise.reject(signal.reason);
     const metadata = json && railTileMetadata(url, ORM);
-    return metadata ? Promise.resolve(metadata) : pool.get(url, signal, {json, priority});
+    const validate = !json ? (data => validProviderVectorTile(url, 200, data, ORM)) : undefined;
+    return metadata ? Promise.resolve(metadata) : pool.get(url, signal, {json, priority, validate});
   }
   maplibregl.addProtocol('atlasglyph',async(params,controller)=>({data:(await get(glyphRequestURL(params.url),controller.signal,false,1)).slice(0)}));
   // Track counts: a vector source of their own (atlastracks://14/x/y; see
