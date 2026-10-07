@@ -27,8 +27,10 @@ await page.route('https://rail-fixture.invalid/**', async route => {
   const [endpoint, z, x, y] = new URL(route.request().url()).pathname.slice(1).split('/');
   requests.push({endpoint, z: +z, x: +x, y: +y});
   const tile = index.getTile(+z, +x, +y);
+  // Playwright expects Buffer, not Uint8Array: the latter's toString('base64')
+  // produces comma-separated decimals and corrupts the intercepted response.
   await route.fulfill({status: 200, headers: {'content-type': 'application/x-protobuf', 'access-control-allow-origin': '*'},
-    body: tile ? vtpbf.fromGeojsonVt({[endpoint]: tile}) : Buffer.alloc(0)});
+    body: tile ? Buffer.from(vtpbf.fromGeojsonVt({[endpoint]: tile})) : Buffer.alloc(0)});
 });
 await mkdir('browser-review', {recursive: true});
 try {
@@ -43,6 +45,7 @@ try {
     }
     window.testMap = new maplibregl.Map({container: 'map', minZoom: -2, maxZoom: 6, zoom: -0.1,
       center: [60, 20], attributionControl: false, fadeDuration: 0,
+      canvasContextAttributes: {preserveDrawingBuffer: true},
       style: {version: 8, projection: {type: 'globe'}, sources,
         layers: [{id: 'background', type: 'background', paint: {'background-color': '#f2f1e9'}}, ...layers]}});
     window.mapErrors = [];
@@ -57,7 +60,26 @@ try {
       }, mode);
       await page.waitForFunction(({zoom, mode}) => Math.abs(testMap.getZoom() - zoom) < 0.001
         && testMap.queryRenderedFeatures().some(f => f.layer.id.startsWith(`${mode}-overview`)), {zoom, mode}, {timeout: 20000});
-      samples.push({projection, zoom, mode, features: await page.evaluate(() => testMap.queryRenderedFeatures().length)});
+      // Check pixels as well as feature-query results. A zero-width or fully
+      // transparent line must not satisfy a visibility regression.
+      const painted = await page.evaluate(async () => {
+        await new Promise(resolve => {testMap.once('render', resolve);testMap.triggerRepaint();});
+        const canvas = testMap.getCanvas(), gl = canvas.getContext('webgl2');
+        gl.finish();
+        const point = testMap.project([60, 30]);
+        const scale = canvas.width / testMap.getContainer().clientWidth;
+        const x = Math.round(point.x * scale) - 4;
+        const y = canvas.height - Math.round(point.y * scale) - 4;
+        const pixels = new Uint8Array(9 * 9 * 4);
+        gl.readPixels(x, y, 9, 9, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        let painted = 0;
+        for (let i = 0; i < pixels.length; i += 4) {
+          if (pixels[i + 3] && Math.max(Math.abs(pixels[i] - 242), Math.abs(pixels[i + 1] - 241), Math.abs(pixels[i + 2] - 233)) > 20) painted++;
+        }
+        return painted;
+      });
+      assert.ok(painted > 0, `${projection} ${mode} z${zoom}: the railway stroke must paint visible pixels`);
+      samples.push({projection, zoom, mode, painted, features: await page.evaluate(() => testMap.queryRenderedFeatures().length)});
     }
   }
   assert.equal(errors.length, 0, errors.join('\n'));
