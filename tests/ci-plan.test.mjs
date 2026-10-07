@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync, readFileSync, readdirSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {GROUPS, VALIDATED_CONTEXT, plan, matrix, validatedPull, localReferences, dataDigest, resultKey} from '../scripts/ci-plan.mjs';
+import {GROUPS, LOCAL_ORM_CHECKS, VALIDATED_CONTEXT, plan, matrix, validatedPull, localReferences, dataDigest, resultKey} from '../scripts/ci-plan.mjs';
 import {mkdtemp, mkdir, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -12,9 +12,12 @@ const read = file => existsSync(root + file) ? readFileSync(root + file, 'utf8')
 const groupsFor = changed => plan(changed, read).groups.map(({group, checks}) => `${group}:${checks.length}`);
 const everything = GROUPS.map(({group, checks}) => `${group}:${checks.length}`);
 
-test('every browser check belongs to exactly one parallel job', () => {
+test('every browser check is either in fixture-safe CI or explicitly local-only', () => {
   const checks = readdirSync(root + 'scripts').filter(name => /^check-.*-browser\.mjs$/.test(name)).sort();
-  assert.deepEqual(GROUPS.flatMap(g => g.checks).sort(), checks);
+  const ci=GROUPS.flatMap(g=>g.checks),local=LOCAL_ORM_CHECKS;
+  assert.deepEqual([...ci,...local].sort(),checks);
+  assert.equal(new Set([...ci,...local]).size,checks.length,'each browser test belongs to exactly one set');
+  assert.ok(GROUPS.some(g=>g.checks.includes('check-orm-fixture-browser.mjs')));
 });
 
 test('anything the site is built from runs every check', () => {
@@ -30,7 +33,8 @@ test('tests, docs, other pipelines and style sources (checked through the commit
 
 test('a check, its helpers and its fixtures run only the checks that use them', () => {
   assert.deepEqual(groupsFor(['scripts/check-polar-browser.mjs']), ['context:1']);
-  assert.deepEqual(groupsFor(['tests/fixtures/stations-before-density.json']), ['stations:1']);
+  assert.deepEqual(groupsFor(['tests/fixtures/stations-before-density.json']), [],'local-only station density check is not dispatched in public CI');
+  for(const check of LOCAL_ORM_CHECKS)assert.deepEqual(groupsFor([`scripts/${check}`]),[],check+' stays local-only');
   const helper = plan(['scripts/click-visible-control.mjs'], read).groups.flatMap(g => g.checks);
   assert.ok(helper.length && helper.every(check => read(`scripts/${check}`).includes('click-visible-control.mjs')), helper.join(', '));
   assert.deepEqual(plan(['scripts/check-world-frequency-browser.mjs'], read).groups, [GROUPS.find(g => g.group === 'frequency')], 'the fixture data is prepared before its check');
