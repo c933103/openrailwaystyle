@@ -362,7 +362,7 @@ try{
         && Math.abs(map.getCenter().lng-114.305)<0.01
         && Math.abs(map.getCenter().lat-30.593)<0.01
         && !map.isMoving()
-        && map.isSourceLoaded(source);
+        && map.getSource(source) && map.isSourceLoaded(source);
     },{zoom,source},{timeout:120000});
     const nearby=async()=>page.evaluate(async ({layer,source})=>{
       const {map}=await import(document.querySelector('script[type="module"]').src);
