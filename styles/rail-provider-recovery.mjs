@@ -1,93 +1,105 @@
-// Recover OpenRailwayMap vector sources after upstream outages. One shared
-// TileJSON probe prevents every thematic source from polling independently;
-// successful probes reload only sources that actually failed. There is no
-// substitute geometry: an unavailable provider remains visibly unavailable.
+// Recovery is demand-driven. A failed tile does not justify clearing every
+// healthy tile in its source, or sending a separate TileJSON health probe.
 const RETRY_DELAYS = [5_000, 15_000, 45_000, 120_000, 300_000];
-export const isRetryableRailError = error => {
+export function isRetryableRailError(error) {
   const message = String(error?.message ?? error ?? '');
-  if (/aborterror|operation was aborted|err_aborted/i.test(message)) return false;
-  return /failed to fetch|fetch failed|ajaxerror|networkerror|net::err_|timed? ?out|timeout|\b(?:408|429|5\d\d)\b/i.test(message);
-};
+  if (error?.name === 'AbortError' || /aborterror|operation was aborted|err_aborted/i.test(message)) return false;
+  const status = Number(error?.status || /(?:returned|HTTP|AJAXError:)\s*(\d{3})\b/i.exec(message)?.[1]);
+  if (status >= 400) return status === 408 || status === 429 || status >= 500;
+  return error?.name === 'TimeoutError' || /failed to fetch|fetch failed|ajaxerror|networkerror|net::err_|timed? ?out|timeout/i.test(message);
+}
+const coordinate = event => event?.tile?.tileID?.canonical || event?.coord?.canonical || null;
+const tileKey = c => c && `${c.z}/${c.x}/${c.y}`;
 
 export function createRailProviderRecovery(map, {
   provider = 'https://openrailwaymap.app',
-  fetcher = globalThis.fetch,
   active = () => globalThis.document?.visibilityState !== 'hidden' && globalThis.navigator?.onLine !== false,
   setTimer = (callback, delay) => setTimeout(callback, delay),
-  clearTimer = id => clearTimeout(id),
-  timeoutMs = 12_000,
-  onChange = () => {},
+  clearTimer = id => clearTimeout(id), onChange = () => {},
 } = {}) {
-  const failed = new Map();
-  const providerHost = new URL(provider).host;
-  let timer = null, inFlight = false, attempts = 0, disposed = false;
-  const getSource = id => {
-    const source = id && map.getSource(id);
-    // All transformed source URLs preserve the actual provider host.
-    return source?.url?.includes(providerHost) && typeof source.setUrl === 'function' ? source : null;
-  };
-  const delay = () => RETRY_DELAYS[Math.min(attempts, RETRY_DELAYS.length - 1)];
-  function stopTimer() {
-    if (timer !== null) clearTimer(timer);
-    timer = null;
+  const failed = new Map(), origin = new URL(provider).origin;
+  let timer = null, attempts = 0, disposed = false;
+  function sourceFor(id) {
+    const source = id && map.getSource(id), text = source?.url || '';
+    const at = text.indexOf('https://');
+    try { return at >= 0 && new URL(text.slice(at)).origin === origin ? source : null; }
+    catch { return null; }
   }
-  function schedule() {
-    if (!disposed && failed.size && !inFlight && timer === null && active()) timer = setTimer(run, delay());
+  function visible(id) {
+    if (!map.getStyle || !map.getZoom) return true;
+    const zoom = map.getZoom();
+    return map.getStyle()?.layers?.some(layer => layer.source === id && layer.layout?.visibility !== 'none'
+      && (!layer.minzoom || zoom >= layer.minzoom) && (!layer.maxzoom || zoom < layer.maxzoom));
   }
-  async function run() {
-    timer = null;
-    if (disposed || !failed.size || !active()) return;
-    inFlight = true;
-    attempts++;
-    try {
-      const response = await fetcher(`${provider.replace(/\/$/, '')}/railway_line_high`,
-        {cache: 'no-store', signal: AbortSignal.timeout(timeoutMs)});
-      if (!response.ok) throw new Error(`Railway provider returned ${response.status}`);
-      const metadata = await response.json();
-      if (!Array.isArray(metadata?.tiles) || !metadata.tiles.length) throw new Error('Invalid railway TileJSON');
-      for (const [id, state] of failed) {
-        const source = getSource(id);
-        if (!source) { failed.delete(id); continue; }
-        state.refreshing = true;
-        try {
-          // setUrl, including to the same URL, invalidates previously failed
-          // tiles and re-requests metadata. Panning or a manual reload is not
-          // required. Never manufacture an empty successful tile.
-          source.setUrl(source.url);
-        } catch {
-          state.refreshing = false;
-        }
+  function onScreen(c) {
+    if (!c || !map.getBounds) return true;
+    const bounds = map.getBounds();
+    if (!bounds?.getWest) return true;
+    const n = 2 ** c.z, latitude = y => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
+    if (latitude(c.y) < bounds.getSouth() || latitude(c.y + 1) > bounds.getNorth()) return false;
+    const west = bounds.getWest(); let east = bounds.getEast();
+    if (east < west) east += 360;
+    if (east - west >= 360) return true;
+    const left = c.x / n * 360 - 180, right = (c.x + 1) / n * 360 - 180;
+    return [-360, 0, 360].some(shift => right + shift >= west && left + shift <= east);
+  }
+  function prune() {
+    for (const [id, state] of failed) {
+      if (sourceFor(id) !== state.source) { failed.delete(id); continue; }
+      for (const [key, record] of state.tiles) {
+        if (record.tile?.aborted || ['unloaded', 'loaded'].includes(record.tile?.state) || !onScreen(record.coordinate)) state.tiles.delete(key);
       }
-    } catch {
-      // Keep the error visible; the next shared probe uses longer backoff.
-    } finally {
-      inFlight = false;
-      onChange();
-      schedule();
+      if (!state.metadata && !state.tiles.size) failed.delete(id);
     }
+    if (!failed.size) { attempts = 0; stopTimer(); }
+  }
+  function stopTimer() { if (timer !== null) clearTimer(timer); timer = null; }
+  function schedule() {
+    if (disposed) return;
+    prune();
+    if (timer === null && active() && [...failed.keys()].some(visible)) timer = setTimer(run, RETRY_DELAYS[Math.min(attempts, RETRY_DELAYS.length - 1)]);
+  }
+  function run() {
+    timer = null;
+    if (disposed || !active()) return;
+    prune(); attempts++;
+    for (const [id, state] of failed) {
+      if (!visible(id)) continue;
+      try {
+        if (state.metadata) { state.source.setUrl?.(state.source.url); continue; }
+        const tiles = [...state.tiles.values()].filter(record => !['loading', 'reloading'].includes(record.tile?.state)).map(record => record.coordinate);
+        if (tiles.length && typeof map.refreshTiles === 'function') map.refreshTiles(id, tiles);
+      } catch { /* A style replacement may remove a source while recovering. */ }
+    }
+    onChange(); schedule();
   }
   function noteError(event) {
-    if (disposed || !event?.sourceId || !isRetryableRailError(event.error) || !getSource(event.sourceId)) return false;
-    // An error during a refresh must invalidate that refresh's success claim.
-    failed.set(event.sourceId, {refreshing: false});
-    onChange();
-    schedule();
-    return true;
+    if (disposed || !event?.sourceId || !isRetryableRailError(event.error)) return false;
+    const source = sourceFor(event.sourceId);
+    if (!source) return false;
+    let state = failed.get(event.sourceId);
+    if (!state || state.source !== source) { state = {source, metadata: false, tiles: new Map()}; failed.set(event.sourceId, state); }
+    const c = coordinate(event);
+    if (c) state.tiles.set(tileKey(c), {coordinate: {z: c.z, x: c.x, y: c.y}, tile: event.tile});
+    else if (!event.tile) state.metadata = true;
+    else { failed.delete(event.sourceId); return false; }
+    schedule(); onChange(); return true;
   }
   function noteSourceData(event) {
+    if (disposed) return false;
     const state = failed.get(event?.sourceId);
-    if (!state?.refreshing || !event.isSourceLoaded) return false;
-    // A successful source load after its setUrl refresh is the recovery
-    // signal, not an unrelated tile finishing before the retry.
-    failed.delete(event.sourceId);
-    if (!failed.size) { stopTimer(); attempts = 0; }
-    onChange();
-    return true;
+    if (!state) return false;
+    let recovered = false;
+    // isSourceLoaded also becomes true after failed tiles settle. Only a
+    // successful metadata event or this particular loaded tile is evidence.
+    if (state.metadata && event.sourceDataType === 'metadata') { state.metadata = false; recovered = true; }
+    const key = tileKey(coordinate(event));
+    if (key && event.tile?.state === 'loaded') recovered = state.tiles.delete(key) || recovered;
+    prune(); onChange(); return recovered;
   }
-  // A hidden or offline tab does no polling. Its normal browser events wake
-  // the pending work on return rather than running background timers.
-  function wake() { schedule(); }
+  function wake() { stopTimer(); schedule(); }
   function dispose() { disposed = true; stopTimer(); failed.clear(); }
-  return {noteError, noteSourceData, wake, dispose, hasFailures: () => failed.size > 0,
+  return {noteError, noteSourceData, wake, dispose,
+    hasFailures: () => { if (disposed) return false; prune(); return [...failed.keys()].some(visible); },
     failedSourceIds: () => [...failed.keys()]};
 }
