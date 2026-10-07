@@ -14,8 +14,7 @@ import {chromium} from 'playwright';
 import {createHash} from 'node:crypto';
 import {mkdir, readFile, rename, rm, writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
-import {VectorTile} from '@mapbox/vector-tile';
-import Pbf from 'pbf';
+import {validProviderVectorTile} from '../styles/vector-tile-validation.mjs';
 
 export const BROWSER_ARGS = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'];
 export const TILE_CACHE_DAYS = 7;
@@ -30,20 +29,7 @@ const DROPPED_HEADERS = new Set(['content-encoding', 'content-length', 'transfer
 
 // A provider can occasionally answer a tile URL with HTTP 200 but a text
 // error body. Replaying that as a vector tile poisons every browser check for
-// TILE_CACHE_DAYS. Validate only OpenRailwayMap z/x/y responses; other cached
-// HTTP resources keep their existing semantics.
-const providerVectorTile = url => {
-  try {
-    const parsed = new URL(url);
-    return parsed.origin === 'https://openrailwaymap.app' && /^\/[^/]+\/\d+\/\d+\/\d+$/.test(parsed.pathname);
-  } catch { return false; }
-};
-export function validProviderVectorTile(url, status, body) {
-  if (status !== 200 || !providerVectorTile(url) || !body?.length) return true;
-  try { new VectorTile(new Pbf(new Uint8Array(body))); return true; }
-  catch { return false; }
-}
-
+// TILE_CACHE_DAYS. The shared validator enforces the provider's MVT contract.
 export async function launchBrowser(options = {}) {
   const shared = process.env.BROWSER_WS_ENDPOINT;
   const browser = shared && !options.proxy && !options.executablePath
