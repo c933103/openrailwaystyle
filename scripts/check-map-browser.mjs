@@ -340,6 +340,10 @@ try{
     return (map.getSource('stations') && map.isSourceLoaded('stations')) && map.queryRenderedFeatures().some(f=>f.source==='stations' && f.properties.atlas_language==='zh-Hant' && /\p{Script=Hangul}/u.test(f.properties.name||'') && /\p{Script=Han}/u.test(f.properties.atlas_name||''));
   },undefined,{timeout:120000});
   console.log('PASS: Chinese language selects recorded ideographic names for Korean stations');
+  // The CI tile cache retains 204 (empty) responses for seven days.
+  // Probe Wuhan's provider tiles from the network, not another run's cached
+  // success/emptiness; keep the existing cache for unrelated regions.
+  await page.route(url=>/openrailwaymap\.app\/(?:railway_line_high|speed_railway_line_low)\/(?:6\/(?:51|52|53)\/(?:25|26|27)|7\/(?:103|104|105)\/(?:51|52|53)|8\/(?:208|209|210)\/(?:104|105|106))(?:\?|$)/.test(url.href),route=>route.continue());
   console.log('Checking exact Wuhan railway coverage at zooms 6, 7 and 8');
   await page.selectOption('#language','zh-Hans');
   // The broad regional China screenshot includes Wuhan near its western edge, but
