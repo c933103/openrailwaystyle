@@ -159,6 +159,16 @@ placement priority, proximity/deduplication and settings. The separate
 `node scripts/check-search-api.mjs` probes the public station-search API and CORS;
 CI treats its external-service failure as non-blocking.
 
+The station-density check shares successful provider tile responses between its
+before/after maps so both compare byte-identical inputs. Its in-memory replay
+cache coalesces concurrent requests but discards HTTP failures and fetch/body
+rejections, allowing the application's existing retries to reach the provider.
+Like the optional disk tile cache, it retains only HTTP 200, 204 and 206 answers.
+Neither cache substitutes empty tiles for failures. A persistent provider outage
+can still fail the live browser check; the baseline and density assertions remain
+required. `tests/browser-response-cache.test.mjs` tests recovery and replay without
+depending on provider availability.
+
 For documentation-only changes, check relative links, heading anchors, command
 accuracy and `git diff --check`; no new application tests are needed.
 

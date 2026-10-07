@@ -1,4 +1,5 @@
 import {launchBrowser} from './browser.mjs';
+import {createResponseCache} from './browser-response-cache.mjs';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {chooseName} from '../styles/map-model.mjs';
@@ -20,11 +21,10 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  context.on('requestfailed',r=>pendingRequests.delete(r));
  // Both maps receive identical provider bytes, including the underzoomed
  // zoom-7 children used at zoom 6. Fetch only tiles the test views request.
- const stationResponses=new Map();
+ const stationResponse=createResponseCache();
  await context.route(/\/standard_railway_text_stations_(?:low|med)(?:\/|$)/,async route=>{
   const url=route.request().url();
-  if(!stationResponses.has(url))stationResponses.set(url,route.fetch().then(async r=>({status:r.status(),headers:r.headers(),body:await r.body()})));
-  try {await route.fulfill(await stationResponses.get(url));}
+  try {await route.fulfill(await stationResponse(route));}
   catch(error){console.error('Station tile unavailable:',url,error.message);await route.abort().catch(()=>{});}
  });
  // Match the other WebGL checks' capture budget. The touch viewport renders
