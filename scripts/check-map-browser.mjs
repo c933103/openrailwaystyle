@@ -346,6 +346,56 @@ try{
   assert.equal(await page.locator('#map-status.error').count(),0,'Cancelled old requests must not leave a load-failure warning');
   const china=await page.screenshot({path:'browser-review/china-z7.jpg',type:'jpeg',quality:45});
   console.log('CHINA_IMAGE_START'+china.toString('base64')+'CHINA_IMAGE_END');
+  // The regional China screenshot includes Wuhan near its western edge, but
+  // station-label presence and source-loaded flags alone cannot prove that
+  // the z6 overview -> z7 detailed railway hand-off actually draws tracks.
+  // Inspect the city centre at three integer zooms, on the first visit to
+  // each zoom. A reported blank z7 should be distinguishable from a blank
+  // provider tile, a failed request, or a style filter hiding nonempty data.
+  for (const zoom of [6, 7, 8]) {
+    const layer=zoom<7?'speed-overview':'speed-tracks';
+    const source=zoom<7?'speed':'railway';
+    await moveTo(zoom,114.305,30.593);
+    await waitUntil(page,async ({zoom,source})=>{
+      const {map}=await import(document.querySelector('script[type="module"]').src);
+      return Math.abs(map.getZoom()-zoom)<0.01
+        && Math.abs(map.getCenter().lng-114.305)<0.01
+        && Math.abs(map.getCenter().lat-30.593)<0.01
+        && !map.isMoving()
+        && map.isSourceLoaded(source);
+    },{zoom,source},{timeout:120000});
+    const nearby=async()=>page.evaluate(async ({layer,source})=>{
+      const {map}=await import(document.querySelector('script[type="module"]').src);
+      const centre=map.project([114.305,30.593]),radius=95;
+      const rect=[[centre.x-radius,centre.y-radius],[centre.x+radius,centre.y+radius]];
+      const lines=map.queryRenderedFeatures(rect,{layers:[layer]});
+      const sourceFeatures=map.querySourceFeatures(source,{sourceLayer:source==='speed'?'speed_railway_line_low':'railway_line_high'});
+      return {
+        zoom:map.getZoom(),source,layer,sourceLoaded:map.isSourceLoaded(source),
+        nearbyRenderedLines:lines.length,nearbyPresentRail:lines.filter(f=>f.properties.feature==='rail' && (!f.properties.state||f.properties.state==='present')).length,
+        sourceFeatures:sourceFeatures.length,
+        sourceTypes:[...new Set(sourceFeatures.map(f=>f.properties.feature))].slice(0,15)
+      };
+    },{layer,source});
+    let report=await nearby();
+    if (!report.nearbyPresentRail) {
+      try {
+        await page.waitForFunction(async ({layer})=>{
+          const {map}=await import(document.querySelector('script[type="module"]').src);
+          const centre=map.project([114.305,30.593]),radius=95;
+          return map.queryRenderedFeatures([[centre.x-radius,centre.y-radius],[centre.x+radius,centre.y+radius]],{layers:[layer]})
+            .some(f=>f.properties.feature==='rail' && (!f.properties.state||f.properties.state==='present'));
+        },{layer},{timeout:30000});
+      } catch {}
+      report=await nearby();
+    }
+    console.log('WUHAN_RAIL_ZOOM',JSON.stringify(report));
+    if(zoom===7) {
+      console.log('WUHAN_RAIL_REQUESTS',JSON.stringify(requests.filter(url=>url.includes('/railway_line_high/7/')).slice(-25)));
+      await page.screenshot({path:'browser-review/wuhan-z7.jpg',type:'jpeg',quality:55});
+    }
+    assert.ok(report.nearbyPresentRail>0,`Wuhan must render mapped main lines at z${zoom}, not merely report a loaded source: ${JSON.stringify(report)}`);
+  }
   // The panel stays collapsed from the China view until the units check.
   console.log('Checking mouse panning over a dense city, compass and units');
   await moveTo(12,139.765,35.68);
