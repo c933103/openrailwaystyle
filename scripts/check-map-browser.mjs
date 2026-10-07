@@ -346,16 +346,31 @@ try{
   // A loaded source and legible stations alone do not establish that the
   // operating railway geometry rendered. Probe Wuhan on the actual map at
   // z7, where the overview stops and the high-detail provider takes over.
-  const wuhanTracks=await page.evaluate(async()=>{
+  const wuhan=await page.evaluate(async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     const point=map.project([114.305,30.593]);
-    const sources=['railway','ownerRail','axleRail'];
-    const layers=map.getStyle().layers.filter(l=>sources.includes(l.source)&&l.id.endsWith('-tracks')&&l.layout?.visibility!=='none').map(l=>l.id);
-    return map.queryRenderedFeatures([[point.x-95,point.y-95],[point.x+95,point.y+95]],{layers})
-      .filter(f=>sources.includes(f.source)&&['LineString','MultiLineString'].includes(f.geometry.type)).length;
+    const layer=map.getLayer('infrastructure-tracks');
+    const tracks=layer && map.queryRenderedFeatures([[point.x-95,point.y-95],[point.x+95,point.y+95]],
+      {layers:['infrastructure-tracks']}).filter(f=>f.source==='railway' && ['LineString','MultiLineString'].includes(f.geometry.type));
+    return {zoom:map.getZoom(), infrastructureLayer:layer?.id, source:layer?.source, sourceLayer:layer?.['source-layer'],
+      infrastructureVisibility:map.getLayoutProperty('infrastructure-tracks','visibility'),
+      speedVisibility:map.getLayoutProperty('speed-tracks','visibility'),
+      providerSourceLoaded:map.isSourceLoaded('railway'),
+      providerSourceFeatures:map.querySourceFeatures('railway',{sourceLayer:'railway_line_high'}).length,
+      rendered:tracks?.length||0};
   });
-  assert.ok(wuhanTracks>0,`Wuhan must show operating rail geometry at zoom 7, not just loaded sources/stations (found ${wuhanTracks} tracks)`);
-  console.log('PASS: Wuhan zoom-7 high-detail rail geometry',wuhanTracks,'rendered line features');
+  // Only the active Infrastructure layer can satisfy this check. A Speed,
+  // Owner or Axle layer accidentally left visible must never mask a bug.
+  assert.ok(Math.abs(wuhan.zoom-7)<0.01 && wuhan.source==='railway' &&
+    wuhan.sourceLayer==='railway_line_high' && wuhan.infrastructureVisibility!=='none' &&
+    wuhan.speedVisibility==='none', 'Wuhan test must use visible Infrastructure tracks: '+JSON.stringify(wuhan));
+  // Missing provider source features and source features that fail to render
+  // are different diagnostics. Neither is proof that isSourceLoaded suffices.
+  assert.ok(wuhan.rendered>0,
+    (wuhan.providerSourceFeatures===0 ? 'WUHAN_PROVIDER_DATA_ABSENT: no provider railway geometry was decoded' :
+      'WUHAN_TRACKS_NOT_RENDERED: provider railway geometry exists in visible tiles but Wuhan has no painted tracks')+
+    ' at zoom 7; '+JSON.stringify(wuhan));
+  console.log('PASS: Wuhan zoom-7 Infrastructure railway geometry',wuhan.rendered,'rendered line features');
   assert.equal(await page.locator('#map-status.error').count(),0,'Cancelled old requests must not leave a load-failure warning');
   const china=await page.screenshot({path:'browser-review/china-z7.jpg',type:'jpeg',quality:45});
   console.log('CHINA_IMAGE_START'+china.toString('base64')+'CHINA_IMAGE_END');
