@@ -27,7 +27,7 @@ import {dirname, join, normalize} from 'node:path';
 // data with fixtures, so it runs alone after `prepare`.
 export const GROUPS = [
   {group: 'stations', checks: ['check-major-stations-browser.mjs']},
-  {group: 'map', checks: ['check-map-browser.mjs']},
+  {group: 'map', checks: ['check-rail-overview-browser.mjs', 'check-map-browser.mjs']},
   {group: 'context', checks: ['check-context-browser.mjs', 'check-planning-browser.mjs', 'check-bathymetry-browser.mjs', 'check-globe-browser.mjs', 'check-polar-browser.mjs']},
   {group: 'controls', checks: ['check-map-controls-browser.mjs', 'check-build-browser.mjs', 'check-watch-browser.mjs', 'check-service-frequency-browser.mjs']},
   {group: 'infrastructure', checks: ['check-signal-power-browser.mjs', 'check-platform-browser.mjs', 'check-infrastructure-browser.mjs']},

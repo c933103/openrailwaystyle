@@ -32,13 +32,22 @@ test('unfinished counts remain shared when the completed-result cache is full',a
  const signal=new AbortController().signal,a=count(0,0,signal),b=count(1,1,signal);await tick();const again=count(0,0,signal);
  assert.equal(loads,2);w.respond(w.messages[0]);await a;await tick();w.respond();await b;assert.deepEqual(await again,await a);
 });
-test('last cancelled tile aborts its 27 downloads while another shared consumer keeps them alive',async()=>{
- const protocols={},previous=globalThis.Worker;let calls=0,aborted=0;
+test('last cancelled count aborts its four active downloads and discards 23 queued tiles, but one reader keeps all work alive',async()=>{
+ const protocols={},previous=globalThis.Worker;let calls=0,aborted=0,adapters;
+ const a=new AbortController(),b=new AbortController();
  globalThis.Worker=class {constructor(){throw new Error('cancelled downloads must not create a worker');}};
  try{
-  installLabelProtocols({addProtocol:(n,f)=>protocols[n]=f},{},async(url,{signal})=>{calls++;return new Promise((resolve,reject)=>signal.addEventListener('abort',()=>{aborted++;reject(new DOMException('Aborted','AbortError'));},{once:true}));});
-  const a=new AbortController(),b=new AbortController(),url='atlastracks://14/8192/8192';
-  const first=protocols.atlastracks({url},{signal:a.signal}),second=protocols.atlastracks({url},{signal:b.signal});const outcomes=Promise.allSettled([first,second]);
-  await tick();assert.equal(calls,27);a.abort();await tick();assert.equal(aborted,0);b.abort();await outcomes;await tick();assert.equal(aborted,27);
- }finally{globalThis.Worker=previous;}
+  adapters=installLabelProtocols({addProtocol:(n,f)=>protocols[n]=f},{},async(url,{signal})=>{calls++;return new Promise((resolve,reject)=>signal.addEventListener('abort',()=>{aborted++;reject(new DOMException('Aborted','AbortError'));},{once:true}));});
+  const url='atlastracks://14/8192/8192';
+  const first=protocols.atlastracks({url},{signal:a.signal}),second=protocols.atlastracks({url},{signal:b.signal});
+  const outcomes=Promise.allSettled([first,second]);
+  await tick();assert.equal(calls,4,'the provider receives four requests, not a burst of 27');
+  assert.equal(adapters.requestStats().queued,23,'the other 23 inputs are retained, not dropped');
+  a.abort();await tick();assert.equal(aborted,0,'one remaining consumer keeps the work alive');
+  assert.equal(adapters.requestStats().queued,23);
+  b.abort();const settled=await outcomes;await tick();
+  assert.ok(settled.every(outcome=>outcome.status==='rejected'&&outcome.reason.name==='AbortError'));
+  assert.equal(aborted,4);assert.equal(calls,4,'cancelled queued inputs never reach the provider');
+  assert.equal(adapters.requestStats().queued,0);assert.equal(adapters.requestStats().active,0);
+ }finally{a.abort();b.abort();adapters?.dispose();globalThis.Worker=previous;}
 });

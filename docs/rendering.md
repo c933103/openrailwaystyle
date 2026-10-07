@@ -38,15 +38,29 @@ A loaded source is not proof it contains track geometry. The browser map check
 inspects actual Wuhan `speed-tracks` rendered features at zoom 7, not just
 `isSourceLoaded`.
 
-When an OpenRailwayMap metadata or railway-tile request fails, the browser
-presents an explicit error and checks the provider's TileJSON through one
-shared, capped-backoff probe across failed sources (5, 15, 45, 120, then
-300 seconds). A valid response reloads only affected MapLibre sources; the
-failure is cleared once the refreshed source loads. Hidden/offline tabs pause
-retries and resume when active. These retries do **not** create missing rails,
-substitute other track geometries, bypass provider access restrictions, or
-make the site independent of the provider. A durable worldwide fallback
-requires a separately maintained operating-mainline dataset.
+Known OpenRailwayMap XYZ source metadata is resolved locally, so hidden views
+no longer need their own external TileJSON request. Actual tile errors are not
+converted to empty success. The shared request pool limits transfers to six
+concurrent requests overall and four per origin, shares same-URL work, cancels
+obsolete queued tiles and gives visible geometry priority over derived counts.
+Timeouts apply to the transport, starting only when it gets a network slot;
+late readers cannot keep a stalled transport running indefinitely. Underzoom
+station children load concurrently through the same bounds. See
+[loading investigation](investigations/rail-loading-20261007.md).
+
+Failed visible tiles are retried at their own coordinates with capped backoff
+(5, 15, 45, 120, then 300 seconds), without discarding healthy tiles or polling
+a separate metadata endpoint. A settled source is not proof of success:
+recovery requires the particular tile to load. Hidden/offline tabs pause,
+and obsolete source/view failures are discarded. Genuine metadata failures
+still reload their source metadata. Access errors such as HTTP 403/404 are
+not treated as transient outages.
+
+Major railway strokes remain a full CSS pixel at the world scale, including
+negative camera zoom. The renderer already clamps negative camera zoom to
+zoom-0 tiles; the regression checks actual geometry at -0.1, 0 and 0.1 in
+both projections and every rail view. These changes neither remove More
+detail nor supply an independent worldwide fallback during a provider outage.
 
 ## Speed and units
 

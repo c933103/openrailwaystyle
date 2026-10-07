@@ -1,22 +1,22 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261007-rail-recovery';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261007-rail-recovery';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261007-rail-recovery';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261007-rail-recovery';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261007-rail-recovery';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261007-rail-recovery';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261007-rail-performance';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261007-rail-performance';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261007-rail-performance';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261007-rail-performance';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261007-rail-performance';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261007-rail-performance';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261007-rail-recovery';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261007-rail-recovery';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261007-rail-recovery';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261007-rail-recovery';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261007-rail-recovery';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261007-rail-recovery';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261007-rail-recovery';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261007-rail-recovery';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261007-rail-recovery';
-import { installWatchGesture } from './watch-map.mjs?v=20261007-rail-recovery';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261007-rail-recovery';
-import { createBundleReader } from './tile-bundles.mjs?v=20261007-rail-recovery';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261007-rail-performance';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261007-rail-performance';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261007-rail-performance';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261007-rail-performance';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261007-rail-performance';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261007-rail-performance';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261007-rail-performance';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261007-rail-performance';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261007-rail-performance';
+import { installWatchGesture } from './watch-map.mjs?v=20261007-rail-performance';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261007-rail-performance';
+import { createBundleReader } from './tile-bundles.mjs?v=20261007-rail-performance';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -52,7 +52,7 @@ let platformLengths,frequencyExpiry;
 let powerFacilities;
 let railRecovery;
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261007-rail-recovery';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261007-rail-performance';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -953,6 +953,11 @@ function localizeStyle(style) {
     if(/^https?:\/\//.test(source.url||''))source.url=`atlastext://${source.url}`;
     if(Array.isArray(source.tiles))source.tiles=source.tiles.map(t=>/^https?:\/\//.test(t)?`atlastext://${t}`:t);
   }
+  // Known rail metadata is local; only visible tiles enter the shared queue.
+  // Include unlabelled overview/platform sources, not only text sources.
+  for (const source of Object.values(style.sources)) {
+    if (source.type === 'vector' && source.url?.startsWith(ORM+'/')) source.url='atlasrail://'+source.url;
+  }
   unitStyle(style);
   styleLanguage = settings.language;
 }
@@ -1401,7 +1406,8 @@ async function initialize() {
   const otherMetadataRetries = new Map();
   document.addEventListener('visibilitychange', () => railRecovery.wake());
   window.addEventListener('online', () => railRecovery.wake());
-  map.on('remove', () => railRecovery.dispose());
+  map.on('moveend', () => railRecovery.wake());
+  map.on('remove', () => {railRecovery.dispose();labelProtocols.dispose?.();});
   map.on('error', e => {
     // Panning and replacing language sources intentionally cancel old tiles.
     if (e.error?.name === 'AbortError' || /^AbortError$|operation was aborted/i.test(e.error?.message || '')) return;
@@ -1425,11 +1431,10 @@ async function initialize() {
       },[5000,15000,45000][attempt]);
     }
   });
-  map.on('sourcedata', e => { if (e.isSourceLoaded && e.sourceId) {
-    errors.delete(e.sourceId);
-    otherMetadataRetries.delete(e.sourceId);
+  map.on('sourcedata', e => {
     railRecovery.noteSourceData(e);
-  } });
+    if (e.isSourceLoaded && e.sourceId) {errors.delete(e.sourceId);otherMetadataRetries.delete(e.sourceId);}
+  });
   // Apply settings as soon as the style is in place, not at MapLibre's
   // 'load', which waits for every initial tile: zoomed out that is dozens of
   // large overview tiles, and a source whose metadata request fails never
