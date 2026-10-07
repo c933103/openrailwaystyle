@@ -3,8 +3,11 @@
 // successful probes reload only sources that actually failed. There is no
 // substitute geometry: an unavailable provider remains visibly unavailable.
 const RETRY_DELAYS = [5_000, 15_000, 45_000, 120_000, 300_000];
-export const isRetryableRailError = error => /failed to fetch|fetch failed|ajaxerror|networkerror|net::err_|timed? ?out|timeout|\b(?:408|429|5\d\d)\b/i.test(
-  String(error?.message ?? error ?? ''));
+export const isRetryableRailError = error => {
+  const message = String(error?.message ?? error ?? '');
+  if (/aborterror|operation was aborted|err_aborted/i.test(message)) return false;
+  return /failed to fetch|fetch failed|ajaxerror|networkerror|net::err_|timed? ?out|timeout|\b(?:408|429|5\d\d)\b/i.test(message);
+};
 
 export function createRailProviderRecovery(map, {
   provider = 'https://openrailwaymap.app',
