@@ -1,0 +1,68 @@
+name: Prepare railway performance changes
+on:
+  push:
+    branches: [fix/rail-provider-outage-recovery]
+    paths:
+      - scripts/apply-rail-performance.mjs
+      - .github/workflows/prepare-rail-performance.yml
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: prepare-rail-performance
+  cancel-in-progress: true
+jobs:
+  prepare:
+    if: github.repository == 'c933103/openrailwaystyle' && github.ref == 'refs/heads/fix/rail-provider-outage-recovery'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/rail-provider-outage-recovery
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Integrate reviewed changes and rebuild artifacts
+        run: node scripts/apply-rail-performance.mjs
+      - name: Unit and source contract regressions
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee /tmp/rail-performance-tests.txt
+          node --check styles/app.mjs
+          git diff --check
+      - name: Install renderer test browser
+        run: npx playwright install --with-deps chromium
+      - name: Verify negative zoom geometry in the pinned renderer
+        run: |
+          set -o pipefail
+          node scripts/check-rail-overview-browser.mjs 2>&1 | tee /tmp/rail-performance-browser.txt
+      - name: Commit verified branch changes and remove one-shot tooling
+        run: |
+          {
+            echo
+            echo '## Validation from the branch preparation run'
+            echo
+            echo '```text'
+            grep -E '^# (tests|pass|fail|cancelled|skipped)|RAIL_METADATA_NETWORK_REQUESTS|REQUEST_POOL_BURST' /tmp/rail-performance-tests.txt
+            grep '^PASS:' /tmp/rail-performance-browser.txt
+            echo '```'
+          } >> docs/investigations/rail-loading-20261007.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add styles tests scripts/check-map-browser.mjs scripts/ci-plan.mjs docs/investigations/rail-loading-20261007.md
+          git rm scripts/apply-rail-performance.mjs .github/workflows/prepare-rail-performance.yml
+          git commit -m 'Integrate bounded rail loading and verified world-scale visibility'
+          git push origin HEAD:fix/rail-provider-outage-recovery
+      - name: Run the existing full site validation on this branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site.yml --ref fix/rail-provider-outage-recovery
+      - name: Save focused renderer evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rail-performance-focused-review
+          path: browser-review
+          if-no-files-found: ignore
