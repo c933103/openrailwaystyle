@@ -1,0 +1,142 @@
+name: Fixture-only Paris and Normandy audit
+
+# This branch-only audit intentionally cannot satisfy full site/provider CI.
+# It never opens a PR, deploys, acquires railway data, or calls live map providers.
+on:
+  push:
+    branches: [audit/paris-normandy-fixtures]
+
+permissions:
+  contents: read
+
+jobs:
+  saved-fixture-browser-audit:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/audit/paris-normandy-fixtures'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      SOURCE_COMMIT: 1ff83dc18df4db01df1d136092d4d2f73c1c195f
+      SOURCE_TREE: 2ebdc817323322fa431d92a5c27642e7e76fe2bf
+      # Official MCR v1.56.1-noble index and linux/amd64 manifest, verified
+      # against the raw registry bytes before this workflow was published.
+      PLAYWRIGHT_INDEX: sha256:f1e7e01021efd65dd1a2c56064be399f3e4de00fd021ac561325f2bfbb2b837a
+      PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright@sha256:42f02d323c310069b4d54c94bd91a608966a486c3492c48ae0b1cea747ec5ca2
+    steps:
+      - name: Check out immutable PR147 source, without saved credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: 1ff83dc18df4db01df1d136092d4d2f73c1c195f
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Assert exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+          test "$(git rev-parse 'HEAD^{tree}')" = "$SOURCE_TREE"
+          git diff --exit-code
+          mkdir -p browser-review/provenance
+          printf 'Source commit: %s\nSource tree: %s\nWorkflow commit: %s\n' "$SOURCE_COMMIT" "$SOURCE_TREE" "$GITHUB_SHA" > browser-review/provenance/source.txt
+          printf '%s\n' 'Scope: saved synthetic Paris and authentic historical Normandy fixtures only.' 'Full site/browser-checks and provider/geographic acceptance remain blocked/pending; this job does not replace them.' > browser-review/provenance/scope.txt
+          cp tests/fixtures/service-geometry/{paris-README.md,paris-metadata.json,normandy-README.md,normandy-metadata.json,normandy-probes.json} browser-review/provenance/
+          sha256sum tests/fixtures/service-geometry/{paris-*,normandy-*} package-lock.json scripts/{check-paris-service-geometry-browser,check-normandy-service-geometry-browser,paris-service-geometry-fixture,normandy-service-geometry-fixture,service-geometry-test-framing,browser}.mjs styles/world.style.json > browser-review/provenance/source-sha256.txt
+
+      - name: Stage Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.23.3'
+
+      - name: Stage lockfile packages without install scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund
+          node -e "require('node:assert/strict').equal(require('playwright/package.json').version, '1.56.1')"
+          git diff --exit-code
+          node --version > browser-review/provenance/node-version.txt
+          sha256sum "$(command -v node)" > browser-review/provenance/node-sha256.txt
+          npm ls --all --json > browser-review/provenance/installed-packages.json
+
+      - name: Stage and verify official renderer and browser assets
+        id: staged
+        shell: bash
+        run: |
+          set -euo pipefail
+          assets="$RUNNER_TEMP/maplibre-5.24.0"
+          mkdir -p "$assets"
+          for name in maplibre-gl.js maplibre-gl.css; do
+            curl --fail --silent --show-error --proto '=https' --proto-redir '=https' --max-time 120 "https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/$name" -o "$assets/$name"
+          done
+          (cd "$assets" && printf '%s\n' \
+            '45a9b07a9189ce56054c620a947ccf41e291e58c95e9b61533b740aaa65ee5cb  maplibre-gl.js' \
+            'ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732  maplibre-gl.css' | sha256sum --check)
+          sha256sum "$assets"/* > browser-review/provenance/maplibre-sha256.txt
+          curl --fail --silent --show-error --proto '=https' --max-time 120 -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json' "https://mcr.microsoft.com/v2/playwright/manifests/$PLAYWRIGHT_INDEX" -o browser-review/provenance/mcr-index.json
+          printf '%s\n' 'f1e7e01021efd65dd1a2c56064be399f3e4de00fd021ac561325f2bfbb2b837a  browser-review/provenance/mcr-index.json' | sha256sum --check
+          curl --fail --silent --show-error --proto '=https' --max-time 120 -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' 'https://mcr.microsoft.com/v2/playwright/manifests/sha256:42f02d323c310069b4d54c94bd91a608966a486c3492c48ae0b1cea747ec5ca2' -o browser-review/provenance/mcr-amd64.json
+          printf '%s\n' '42f02d323c310069b4d54c94bd91a608966a486c3492c48ae0b1cea747ec5ca2  browser-review/provenance/mcr-amd64.json' | sha256sum --check
+          docker pull --platform linux/amd64 "$PLAYWRIGHT_IMAGE"
+          docker image inspect "$PLAYWRIGHT_IMAGE" > browser-review/provenance/docker-image.json
+          printf '%s\n' "$PLAYWRIGHT_IMAGE" > browser-review/provenance/playwright-image.txt
+          echo "NODE_HOME=$(dirname "$(dirname "$(readlink -f "$(command -v node)")")")" >> "$GITHUB_ENV"
+          echo "MAPLIBRE_HOME=$assets" >> "$GITHUB_ENV"
+
+      - name: Run only the two saved fixture gates with container egress disabled
+        if: steps.staged.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # No host network change, shared browser, provider cache, server or token.
+          # Source and staged packages/assets are read-only; only reports are writable.
+          docker run --rm --pull never --platform linux/amd64 --network none \
+            --cap-drop ALL --security-opt no-new-privileges --shm-size 1g \
+            --user "$(id -u):$(id -g)" \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/work,readonly" \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/browser-review,target=/work/browser-review" \
+            --mount "type=bind,source=$NODE_HOME,target=/opt/node22,readonly" \
+            --mount "type=bind,source=$MAPLIBRE_HOME,target=/maplibre,readonly" \
+            --workdir /work --env HOME=/tmp --env CI=true \
+            --env PATH=/opt/node22/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+            --env PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+            --env ATLAS_MAPLIBRE_ASSETS=/maplibre \
+            --env ATLAS_TEST_URL=http://127.0.0.1:4173 \
+            "$PLAYWRIGHT_IMAGE" bash -euc '
+              unset BROWSER_TILE_CACHE BROWSER_WS_ENDPOINT ATLAS_TEST_ORM_URL ATLAS_CHROMIUM_EXECUTABLE NODE_OPTIONS
+              node --input-type=module <<'"'"'NODE'"'"'
+          import assert from "node:assert/strict";
+          import {readFileSync, readdirSync, writeFileSync} from "node:fs";
+          import {createHash} from "node:crypto";
+          import {createRequire} from "node:module";
+          import {chromium} from "playwright";
+          const require = createRequire(import.meta.url);
+          assert.equal(process.version, "v22.23.3");
+          assert.equal(require("playwright/package.json").version, "1.56.1");
+          assert.deepEqual(readdirSync("/sys/class/net"), ["lo"]);
+          const executable = chromium.executablePath();
+          const sha256 = createHash("sha256").update(readFileSync(executable)).digest("hex");
+          writeFileSync("browser-review/provenance/runtime.json", JSON.stringify({node: process.version, playwright: "1.56.1", executable, chromiumSha256: sha256, network: "none", interfaces: ["lo"], sourceMount: "read-only", browserCache: false, sharedBrowser: false}, null, 2) + "\n");
+          NODE
+              set +e
+              node scripts/check-paris-service-geometry-browser.mjs
+              paris_status=$?
+              node scripts/check-normandy-service-geometry-browser.mjs
+              normandy_status=$?
+              printf "{\"parisExitCode\":%s,\"normandyExitCode\":%s}\n" "$paris_status" "$normandy_status" > browser-review/provenance/exit-codes.json
+              test "$paris_status" -eq 0 && test "$normandy_status" -eq 0
+            '
+
+      - name: Preserve only saved-fixture JSON, screenshots and provenance
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pr147-paris-normandy-fixture-audit-${{ github.run_id }}
+          path: |
+            browser-review/paris-service-geometry-results.json
+            browser-review/normandy-service-geometry-results.json
+            browser-review/paris-service-z*.png
+            browser-review/normandy-service-z*.png
+            browser-review/provenance/
+          if-no-files-found: error
+          retention-days: 14
