@@ -92,8 +92,16 @@ export async function checkServiceGeometryBrowser({root = process.env.ATLAS_TEST
           const paint = serviceFrequencyPaint(audit.settings(mode), audit.clock(mode));
           // Switch to genuinely unenriched tiles so both paint and picking
           // run their production missing-property fallback in frequency mode.
-          if (mode === 'unknown') for (const {fixture, map} of audit.maps)
-            map.getSource('serviceRoutes').setTiles([`${audit.root}/audit-service-geometry/${fixture.id}-unknown/{z}/{x}/{y}`]);
+          if (mode === 'unknown') for (const {fixture, map} of audit.maps) {
+            // Recreate the source rather than setTiles: an idle event can
+            // precede setTiles' asynchronous reload and leave cached enriched
+            // features available to queryRenderedFeatures for this frame.
+            map.removeLayer('service-routes');
+            map.removeSource('serviceRoutes');
+            map.addSource('serviceRoutes', {type: 'vector',
+              tiles: [`${audit.root}/audit-service-geometry/${fixture.id}-unknown/{z}/{x}/{y}`], minzoom: 7, maxzoom: 12});
+            map.addLayer(structuredClone(audit.layer));
+          }
           const effective = paint;
           for (const {map} of audit.maps) for (const [property, value] of [
             ['line-width', effective.width], ['line-offset', effective.offset], ['line-opacity', effective.opacity],
@@ -118,8 +126,9 @@ export async function checkServiceGeometryBrowser({root = process.env.ATLAS_TEST
               const hits = map.queryRenderedFeatures([[point.x - 2, point.y - 18], [point.x + 2, point.y + 18]], {layers: ['service-routes']});
               const refs = [...new Set(hits.map(feature => feature.properties.ref))].sort();
               const expected = Boolean(fixture.expected[segment]);
-              checks.push({segment, expected, redPixels: red, bluePixels: blue, renderedRefs: refs,
-                pass: expected ? red > 0 && blue > 0 && refs.join(',') === '1,2' : red === 0 && blue === 0 && refs.length === 0});
+              const unknownPropertiesAbsent = mode !== 'unknown' || hits.every(feature => !Object.keys(feature.properties).some(key => key.startsWith('frequency_')));
+              checks.push({segment, expected, redPixels: red, bluePixels: blue, renderedRefs: refs, unknownPropertiesAbsent,
+                pass: unknownPropertiesAbsent && (expected ? red > 0 && blue > 0 && refs.join(',') === '1,2' : red === 0 && blue === 0 && refs.length === 0)});
               if (!expected || segment !== 0) continue;
               for (const ref of ['1', '2']) {
                 const feature = hits.find(feature => feature.properties.ref === ref);
