@@ -231,8 +231,9 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       const tiles = await around('railway_line_high');
       signal.throwIfAborted();
       if (!tiles.some(t => t && !t.dx && !t.dy)) throw new Error('Railway tile unavailable');
-      // With no railway features anywhere in the 3x3 halo, neither station
-      // areas nor station points can produce a track count.
+      // Only when all returned railway bodies in the 3x3 halo are zero-length
+      // can we prove there is no track input; station geometry then cannot
+      // produce a track count on its own.
       if (!tiles.some(t => t && tileHasFeatures(t.data))) return {tiles,areas:[],stations:[],y};
       const areas = await around('standard_railway_grouped_station_areas');
       signal.throwIfAborted();
