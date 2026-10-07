@@ -19,6 +19,7 @@ import * as frequencyModule from '../styles/service-frequency.mjs';
 import * as powerFacilities from '../styles/power-facilities.mjs';
 import * as controlFunctions from '../styles/map-controls.mjs';
 import * as watchModule from '../styles/watch-map.mjs';
+import * as railRecoveryModule from '../styles/rail-provider-recovery.mjs';
 import * as tileBundleModule from '../styles/tile-bundles.mjs';
 import * as layerSemantics from '../styles/layer-semantics.mjs';
 
@@ -173,7 +174,8 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   }, {context});
   const bundles = new vm.SyntheticModule(Object.keys(tileBundleModule),function(){for(const [key,value] of Object.entries(tileBundleModule))this.setExport(key,value);},{context});
   const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
-  await app.link(specifier => specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  const recovery = new vm.SyntheticModule(Object.keys(railRecoveryModule),function(){for(const [key,value] of Object.entries(railRecoveryModule))this.setExport(key,value);},{context});
+  await app.link(specifier => specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
   return {dom,window,maps,errors,loadLibraries,loadLabels,fonts};
