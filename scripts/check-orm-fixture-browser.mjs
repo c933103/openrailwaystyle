@@ -89,16 +89,17 @@ try {
     for(const path of urls){const dataset=path.split('/')[1];byDataset[dataset]=(byDataset[dataset]||0)+1;}
     return {requests:urls.length,unique:new Set(urls).size,byDataset};
   };
+  await page.waitForFunction(()=>window.fixtureMap.queryRenderedFeatures({layers:['infrastructure-track-count']}).length>0,null,{timeout:60000});
   const initial=dependencySnapshot();
-  assert.ok(initial.requests>0,'z14 Infrastructure interaction must exercise track-count dependencies');
   assert.equal(initial.requests,initial.unique,'shared/cache-completed track dependencies should not hit the fixture network twice');
+  assert.ok(initial.requests<=65,`z14 fixture request amplification regressed: ${JSON.stringify(initial)}`);
   await page.evaluate(()=>new Promise(resolve=>{
     window.fixtureMap.once('idle',resolve);
     window.fixtureMap.panBy([512,0],{duration:0});
   }));
   const afterPan=dependencySnapshot(),panAdded=afterPan.requests-initial.requests;
   assert.equal(afterPan.requests,afterPan.unique,'one-tile pan must retain exact-URL request deduplication');
-  assert.ok(panAdded>=0,'pan dependency delta must be non-negative');
+  assert.ok(panAdded<=13,`z14 one-tile pan amplification regressed: ${JSON.stringify({initial,afterPan,panAdded})}`);
   await page.screenshot({path:'browser-review/orm-fixture-wuhan-z14-track-count.png'});
   assert.deepEqual(requests.missingReferer,[], 'z14 dependency requests must keep genuine site-origin Referer');
   assert.deepEqual(requests.missingUserAgent,[], 'z14 dependency requests must keep genuine User-Agent');

@@ -57,6 +57,12 @@ overzooms those count tiles above z14, so this covers z14+ interaction.
   distinct requests** (track geometry only); the same east pan adds **4**.
   Non-empty payloads retain the full dependency path even if malformed or
   otherwise undecodable, so this shortcut cannot silently broaden itself.
+- A real MapLibre 1280×800 Infrastructure-view fixture at z14 requested **65
+  distinct track-count dependencies** after in-flight/cache sharing: 25 track
+  geometry, 20 station-area and 20 station-point tiles. Panning east by 512 px
+  added **13** requests (5 + 4 + 4), for 78 total. The browser fixture requires
+  a rendered track-count badge and enforces 65/13 as regression ceilings, so a
+  future reduction is allowed but an unnoticed increase is not.
 
 The remaining 27-request rail-bearing single-tile cost is retained because the
 current counter uses all three neighbour halos for cross-tile line joining and
