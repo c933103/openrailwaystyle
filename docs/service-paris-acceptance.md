@@ -25,13 +25,17 @@ This does not establish all expected Paris service coverage or redefine service 
 
 [`paris-adversary.json`](../tests/fixtures/service-geometry/paris-adversary.json) is visibly labelled synthetic. It contains two-point off-track timetable geometry and stop-coordinate-only candidates, in the compiled feed input shape consumed by the production assembly/rebuild path. Near and overview negative probes avoid legitimate decoded OSM paths and account for zoom-dependent rendering widths.
 
-The original offending Normandy feed/archive has **not** been recovered. The reported 203 two-point segments and maximum 380 km span have not been independently revalidated. Passing this adversary does **not** mean the original Normandy reproduction is solved. #107 remains open, including original-feed/all-path verification and stale-client/frequency-processing availability concerns. Classification/identity [#109](https://github.com/c933103/openrailwaystyle/issues/109) and regional gaps [#112](https://github.com/c933103/openrailwaystyle/issues/112) also remain separate.
+The separate authentic gate now uses the recovered **October 5 pre-fix compiled Normandy snapshot**, pinned byte-for-byte from the assembled workflow artifact. It covers the historical reported input without changing this synthetic adversary or conflating the two evidence types. See [historical Normandy provenance](../tests/fixtures/service-geometry/normandy-README.md).
+
+The archived compiled fixture has 203 two-coordinate edges, including six ending near Saint-Lazare and four near Montparnasse. The longest is 383.788276 km. Historical compiler `ShapePaths.segments()` emits each shape edge as a pair, so these counts do **not** establish that every raw GTFS shape had only two coordinates. No raw GTFS ZIP was acquired or inspected for this acceptance.
+
+#107 remains open for wider all-path verification, including stale-client/frequency-processing availability concerns. Classification/identity [#109](https://github.com/c933103/openrailwaystyle/issues/109) and regional gaps [#112](https://github.com/c933103/openrailwaystyle/issues/112) remain separate.
 
 ## What runs
 
 `tests/service-paris-geometry.test.mjs` and `scripts/paris-service-geometry-fixture.mjs` run unchanged production worldwide assembly and service rebuild commands in temporary isolated workspaces, with timetable absent, present, and expired. The checks decode production MVTs, retain positive memberships and coordinates, reject forbidden geometry and extra shared-track slots, verify no standalone timetable tiles are published, and ensure stale numeric publication directories and orphan feed outputs are removed.
 
-The browser checker uses real MapLibre 5.24.0, the generated production `service-routes` layer, rebuilt fixture MVT bytes, and production frequency paint expressions. A deterministic white background and intercepted fixture requests remove unrelated live-provider outages from this geometry gate. This is a dedicated renderer acceptance harness, not a test of the full app's UI controls or regional acquisition.
+The browser checkers use real MapLibre 5.24.0, the generated production `service-routes` layer, rebuilt fixture MVT bytes, and production frequency paint expressions. A deterministic white background and intercepted fixture requests remove unrelated live-provider outages from this geometry gate. This is a dedicated renderer acceptance harness, not a test of the full app's UI controls or regional acquisition.
 
 The browser matrix is:
 
@@ -40,25 +44,26 @@ The browser matrix is:
 - Timetable absent, present, expired
 - Equal, all 28 frequency profiles, then return to Equal
 
-That is **540 positive/negative/state/profile cases**. Each checks the nominated real path and painted pixels, forbidden probes, actual decoded rendered geometry, identities, shared-track slots, expected widths/offsets, and opacity. Equal geometry, widths and offsets must stay unchanged through timetable states and Equal → frequency → Equal transitions.
+That is **540 positive/negative/state/profile cases per gate**. The authentic Normandy gate repeats the matrix with unchanged archived feed bytes and fixed fresh/expired test clocks, with actual historical terminal-linked chord probes and archived PBF sensitivity. The synthetic gate remains independent. The two gates total **1,080 cases and 24 rejected mutation views**; every active historical chord probe must detect the injected archived geometry. Each checks the nominated real path and painted pixels, forbidden probes, actual decoded rendered geometry, identities, shared-track slots, expected widths/offsets, and opacity. Equal geometry, widths and offsets must stay unchanged through timetable states and Equal → frequency → Equal transitions. The z16 camera centers on the positive and active negative probes together; a pure projection regression and runtime validation require every probe to lie inside the actual pane. Off-screen checks cannot silently pass.
 
 Paris has no matched real headway catalogue entries in this build. Its 28 profiles explicitly exercise **unknown-frequency fallback**, including opacity 0.45, rather than known Paris timetable rates. Existing Hong Kong and synthetic geometry tests retain known-frequency coverage.
 
-A sensitivity check deliberately inserts forbidden chord MVT features into the **same** service source and layer. At every terminal/zoom, Equal and AM must reject that mutation while retaining the genuine positive path: **12 rejected mutations**. This proves that a blank map or an ID-prefix-only check cannot satisfy the gate.
+The synthetic sensitivity check deliberately inserts forbidden chord MVT features into the **same** service source and layer. At every terminal/zoom, Equal and AM must reject that mutation while retaining the genuine positive path: **12 rejected mutations**. The authentic gate repeats the sensitivity check with the recovered terminal publication geometry, preserving the distinction from synthetic fault injection. This proves that a blank map or an ID-prefix-only check cannot satisfy the gate.
 
 ## Run and review
 
 From the repository root, with Node 22 and installed dependencies:
 
 ```sh
-node --test tests/service-paris-geometry.test.mjs tests/ci-plan.test.mjs
+node --test tests/service-paris-geometry.test.mjs tests/service-normandy-geometry.test.mjs tests/service-geometry-test-framing.test.mjs tests/ci-plan.test.mjs
 npx playwright install --with-deps chromium
 node scripts/check-paris-service-geometry-browser.mjs
+node scripts/check-normandy-service-geometry-browser.mjs
 ```
 
 The dedicated browser page and service module are intercepted by the checker, so it needs no live basemap or separately running preview server. The MapLibre distribution is checksum-pinned by the existing renderer fixture helper; the first run needs that renderer available locally or from its official CDN distribution. Optional local overrides are `ATLAS_CHROMIUM_EXECUTABLE` and `ATLAS_MAPLIBRE_ASSETS`; overridden renderer bytes must still match the pinned checksums.
 
-The frequency CI group runs the new checker and uploads its results with the existing `browser-review` artifacts. `paris-service-geometry-results.json` contains all assertions, source/build checksums, browser version, production manifests, and mutation evidence. Representative PNGs show both terminals in Equal, frequency, expired, return-to-Equal and forbidden-injection states. The forbidden-injection screenshots intentionally show rejected geometry and are not successful production output.
+The frequency CI group runs both checkers and uploads its results with the existing `browser-review` artifacts. `paris-service-geometry-results.json` and `normandy-service-geometry-results.json` contain all assertions, source/build checksums, original archive metadata, browser version, production manifests, and mutation evidence. Representative PNGs show both terminals in Equal, frequency, expired, return-to-Equal and forbidden-injection states. The forbidden-injection screenshots intentionally show rejected geometry and are not successful production output.
 
 Fixture regeneration requires the exact pinned input, not a live refresh:
 

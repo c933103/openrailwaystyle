@@ -8,12 +8,20 @@ import {fileURLToPath} from 'node:url';
 import {launchBrowser} from './browser.mjs';
 import {rendererFixture} from './browser-renderer-fixture.mjs';
 import {buildParisAcceptanceVariants, injectParisAdversaryTiles} from './paris-service-geometry-fixture.mjs';
+import {geometryTestCenter, validateGeometryTestFrames} from './service-geometry-test-framing.mjs';
 import {FREQUENCY_PROFILES} from '../styles/service-frequency.mjs';
 
 const digest = value => createHash('sha256').update(value).digest('hex');
-export async function checkParisServiceGeometryBrowser({root = process.env.ATLAS_TEST_URL || 'http://127.0.0.1:4173'} = {}) {
-  const built = await buildParisAcceptanceVariants();
+export async function checkParisServiceGeometryBrowser({root = process.env.ATLAS_TEST_URL || 'http://127.0.0.1:4173',
+  browserLauncher = launchBrowser, fixtureBuilder = buildParisAcceptanceVariants, reportPrefix = 'paris-service',
+  title = 'Paris: retained OSM services, rejected timetable chords',
+  caption = 'Pinned legacy OSM service-data subset, not a fresh source-certified acquisition. Timetable adversary is synthetic, not the original Normandy feed.',
+  attribution = 'OSM-derived paths © OpenStreetMap contributors (ODbL 1.0). Synthetic timetable controls carry no authentic timetable claim.',
+  scope = 'Pinned legacy Paris OSM-positive paths; synthetic timetable/stop-chord negatives. This synthetic gate does not claim an original-feed reproduction or issue closure. Paris frequency profiles exercise unknown fallback.',
+} = {}) {
+  const built = await fixtureBuilder();
   const {metadata, probes, variants} = built;
+  try {validateGeometryTestFrames(probes);} catch (error) {await built.dispose(); throw error;}
   const source = await readFile('styles/world.style.json', 'utf8');
   const layer = JSON.parse(source).layers.find(candidate => candidate.id === 'service-routes');
   assert.ok(layer, 'the production service line layer exists');
@@ -30,7 +38,7 @@ export async function checkParisServiceGeometryBrowser({root = process.env.ATLAS
   const tiles = new Map(variants.flatMap(variant => [...variant.tiles].map(([key, bytes]) => [`${variant.id}/${key}`, Buffer.from(bytes)])));
   const injected = injectParisAdversaryTiles(variants.find(variant => variant.id === 'present').tiles, built.forbiddenTiles);
   for (const [key, bytes] of injected) tiles.set(`injected/${key}`, Buffer.from(bytes));
-  const browser = await launchBrowser(process.env.ATLAS_CHROMIUM_EXECUTABLE ? {executablePath: process.env.ATLAS_CHROMIUM_EXECUTABLE} : {}).catch(async error => {await built.dispose(); throw error;});
+  const browser = await browserLauncher(process.env.ATLAS_CHROMIUM_EXECUTABLE ? {executablePath: process.env.ATLAS_CHROMIUM_EXECUTABLE} : {}).catch(async error => {await built.dispose(); throw error;});
   const results = [], errors = [], sensitivity = [], baselines = new Map();
   let page;
   await mkdir('browser-review', {recursive: true});
@@ -49,16 +57,16 @@ export async function checkParisServiceGeometryBrowser({root = process.env.ATLAS
         <meta charset="utf-8"><title>Paris Service geometry acceptance</title>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css">
         <style>body{margin:0;background:#edf2f5;color:#1e3545;font:14px system-ui}header,footer{padding:14px 20px}h1{font-size:21px;margin:0 0 7px}#maps{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 16px}.panel{border:1px solid #bac9d1;background:white}h2{font-size:15px;padding:10px;margin:0}.map{height:470px}footer{font-size:12px;line-height:1.5}</style>
-        <header><h1>Paris: retained OSM services, rejected timetable chords</h1><div id="profile"></div></header><main id="maps"></main>
-        <footer>Pinned legacy OSM service-data subset, not a fresh source-certified acquisition. Timetable adversary is synthetic, not the original Normandy feed.<br>Real production tiles, line layer and width profiles; blank background intentionally removes live-provider dependencies. Paris frequency profiles use the unknown-data fallback.</footer>
+        <header><h1>${title}</h1><div id="profile"></div></header><main id="maps"></main>
+        <footer>${caption}<br>Real production tiles, line layer and width profiles; blank background intentionally removes live-provider dependencies. Paris frequency profiles use the unknown-data fallback.<br>${attribution}</footer>
         <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>`});
       errors.push(`Unexpected network request: ${url.href}`);
       return route.abort();
     });
     await page.goto(`${root}/paris-service-check.html`);
-    await page.evaluate(async ({probes, layer, root}) => {
+    await page.evaluate(async ({probes, layer, root, clocks}) => {
       const frequency = await import('./service-frequency.mjs');
-      const audit = window.parisAudit = {probes, layer, root, frequency, maps: [], errors: []};
+      const audit = window.parisAudit = {probes, layer, root, clocks, frequency, maps: [], errors: []};
       audit.settings = mode => mode.startsWith('equal') ? {serviceWidth: 'equal'}
         : /^h\d\d$/.test(mode) ? {serviceWidth: 'frequency', frequencyPeriod: 'hour', frequencyHour: Number(mode.slice(1))}
           : {serviceWidth: 'frequency', frequencyPeriod: ['am', 'pm'].includes(mode) ? 'peak' : mode, peakPhase: mode};
@@ -76,7 +84,8 @@ export async function checkParisServiceGeometryBrowser({root = process.env.ATLAS
         await Promise.all(audit.maps.map(({map}) => audit.idle(map)));
       };
       audit.observe = async (mode, variant) => {
-        const paint = frequency.serviceFrequencyPaint(audit.settings(mode), Date.parse(variant === 'expired' ? '2027-01-07T12:00:00Z' : '2026-10-07T12:00:00Z'));
+        const clock = audit.clocks[variant === 'injected' ? 'present' : variant] || (variant === 'expired' ? '2027-01-07T12:00:00Z' : '2026-10-07T12:00:00Z');
+        const paint = frequency.serviceFrequencyPaint(audit.settings(mode), Date.parse(clock));
         for (const {map} of audit.maps) for (const [key, value] of [['line-width', paint.width], ['line-offset', paint.offset], ['line-opacity', paint.opacity]]) map.setPaintProperty('service-routes', key, value);
         await Promise.all(audit.maps.map(({map}) => audit.idle(map)));
         return audit.maps.map(({probe, map}) => {
@@ -110,11 +119,11 @@ export async function checkParisServiceGeometryBrowser({root = process.env.ATLAS
           const fallbackPaint = features.every(f => Math.abs(f.layer.paint['line-width'] - expectedWidth) < 1e-5
             && Math.abs(f.layer.paint['line-offset'] - (f.properties.i - (f.properties.n - 1) / 2) * expectedWidth) < 1e-5
             && Math.abs(f.layer.paint['line-opacity'] - expectedOpacity) < 1e-5);
-          return {terminal: probe.id, zoom: map.getZoom(), variant, mode, featureCount: features.length, positive, negative, unknownFallback, fallbackPaint, expectedWidth, expectedOpacity, geometry, widths,
+          return {terminal: probe.id, zoom: map.getZoom(), variant, mode, clock, featureCount: features.length, positive, negative, unknownFallback, fallbackPaint, expectedWidth, expectedOpacity, geometry, widths,
             pass: positive.pass && negative.length > 0 && negative.every(value => value.pass) && unknownFallback && fallbackPaint};
         });
       };
-    }, {probes, layer, root});
+    }, {probes: probes.map(probe => ({...probe, viewCenters: Object.fromEntries([9, 12, 16].map(zoom => [zoom, geometryTestCenter(probe, zoom)]))})), layer, root, clocks: Object.fromEntries(variants.map(variant => [variant.id, variant.clock]))});
     for (const zoom of [9, 12, 16]) {
       await page.evaluate(async zoom => {
         const audit = window.parisAudit;
@@ -123,7 +132,7 @@ export async function checkParisServiceGeometryBrowser({root = process.env.ATLAS
         for (const probe of audit.probes) {
           const section = document.createElement('section'); section.className = 'panel';
           section.innerHTML = `<h2>${probe.label}</h2><div class="map" id="${probe.id}"></div>`; document.querySelector('#maps').append(section);
-          const map = new maplibregl.Map({container: probe.id, center: probe.center, zoom, interactive: false, attributionControl: false, fadeDuration: 0,
+          const map = new maplibregl.Map({container: probe.id, center: probe.viewCenters[zoom], zoom, interactive: false, attributionControl: false, fadeDuration: 0,
             canvasContextAttributes: {preserveDrawingBuffer: true}, style: {version: 8, transition: {duration: 0, delay: 0}, sources: {}, layers: [{id: 'background', type: 'background', paint: {'background-color': '#ffffff'}}]}});
           map.on('error', event => audit.errors.push(`${probe.id}: ${event.error?.message || event.error}`)); audit.maps.push({probe, map});
         }
@@ -145,7 +154,7 @@ export async function checkParisServiceGeometryBrowser({root = process.env.ATLAS
             row.pass &&= row.geometryUnchanged && row.widthsAndOffsetsUnchanged;
             delete row.geometry; delete row.widths; row.hashes = hashes; results.push(row);
           }
-          if ((variant === 'present' && ['equal', 'am', 'h12', 'equal-return'].includes(mode)) || (variant !== 'present' && mode === 'equal')) await page.screenshot({path: `browser-review/paris-service-z${zoom}-${variant}-${mode}.png`, fullPage: true});
+          if ((variant === 'present' && ['equal', 'am', 'h12', 'equal-return'].includes(mode)) || (variant !== 'present' && mode === 'equal')) await page.screenshot({path: `browser-review/${reportPrefix}-z${zoom}-${variant}-${mode}.png`, fullPage: true});
         }
       }
       // A mutation probe goes through the exact same source, production layer,
@@ -158,15 +167,15 @@ export async function checkParisServiceGeometryBrowser({root = process.env.ATLAS
           return window.parisAudit.observe(mode, 'injected');
         }, mode);
         for (const row of rows) sensitivity.push({terminal: row.terminal, zoom, mode, positive: row.positive, negative: row.negative,
-          rejected: !row.pass && row.positive.pass && row.negative.some(probe => probe.inside && probe.hits.length > 0)});
+          rejected: !row.pass && row.positive.pass && row.negative.length > 0 && row.negative.every(probe => probe.inside && probe.hits.length > 0)});
       }
-      await page.screenshot({path: `browser-review/paris-service-z${zoom}-forbidden-injection.png`, fullPage: true});
+      await page.screenshot({path: `browser-review/${reportPrefix}-z${zoom}-forbidden-injection.png`, fullPage: true});
     }
   } finally {
     if (page && !page.isClosed()) errors.push(...await page.evaluate(() => window.parisAudit?.errors || []).catch(error => [`Could not read browser diagnostics: ${error.message}`]));
-    await writeFile('browser-review/paris-service-geometry-results.json', JSON.stringify({schema: 1, browser: browser.version(), renderer: 'MapLibre 5.24.0',
-      scope: 'Pinned legacy Paris OSM-positive paths; synthetic timetable/stop-chord negatives. Original Normandy feed unavailable; no original-feed reproduction or issue closure claimed. Paris frequency profiles exercise unknown fallback.',
-      metadata, productionStyleSha256: digest(source), fixtureVariants: variants.map(({id, manifest, assemblyManifest, staleOutputsRemoved}) => ({id, manifest, assemblyManifest, staleOutputsRemoved})),
+    await writeFile(`browser-review/${reportPrefix}-geometry-results.json`, JSON.stringify({schema: 1, browser: browser.version(), renderer: 'MapLibre 5.24.0',
+      scope,
+      metadata, productionStyleSha256: digest(source), fixtureVariants: variants.map(({id, manifest, assemblyManifest, staleOutputsRemoved, inputSha256, clock}) => ({id, manifest, assemblyManifest, staleOutputsRemoved, inputSha256, clock})),
       expected: probes.length * 3 * variants.length * modes.length, total: results.length, passed: results.filter(row => row.pass).length, errors, sensitivity, results}, null, 2) + '\n');
     await browser.close(); await built.dispose();
   }
@@ -175,7 +184,7 @@ export async function checkParisServiceGeometryBrowser({root = process.env.ATLAS
   assert.equal(results.filter(row => !row.pass).length, 0, `Paris acceptance failed: ${JSON.stringify(results.filter(row => !row.pass).slice(0, 3))}`);
   assert.equal(sensitivity.length, probes.length * 3 * 2);
   assert.ok(sensitivity.every(row => row.rejected), `Forbidden chord mutation must be rejected: ${JSON.stringify(sensitivity.filter(row => !row.rejected))}`);
-  console.log(`Paris Service geometry: ${results.length} cases passed; ${sensitivity.length} forbidden-chord mutations rejected; JSON and screenshots saved.`);
+  console.log(`${reportPrefix} geometry: ${results.length} cases passed; ${sensitivity.length} forbidden-chord mutations rejected; JSON and screenshots saved.`);
   return {cases: results.length, sensitivity: sensitivity.length};
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await checkParisServiceGeometryBrowser();

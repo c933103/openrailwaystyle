@@ -52,8 +52,10 @@ injection proves that spatial assertions catch forbidden geometry even with a
 plausible `relation-…` identity. Baseline and currently executing build hashes
 are reported separately.
 
-Authentic Normandy SNCF bytes for the original report were unavailable. This
-acceptance fixture does **not** reproduce that feed or close issue #107.
+This synthetic fixture does **not** reproduce the original feed or close issue
+#107. The separate [historical Normandy fixture](normandy-README.md) now pins the
+recovered pre-fix compiled snapshot; do not conflate its evidence with this
+synthetic control. Raw GTFS shape structure remains uninspected.
 
 Real data © OpenStreetMap contributors,
 [ODbL 1.0](https://www.openstreetmap.org/copyright).

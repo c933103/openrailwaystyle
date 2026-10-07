@@ -26,6 +26,7 @@ const assemblyScript = new URL('./assemble-global-frequency.mjs', import.meta.ur
 const rebuildScript = new URL('./rebuild-service-frequency.mjs', import.meta.url);
 const metadataFile = new URL('../tests/fixtures/service-geometry/paris-metadata.json', import.meta.url);
 const adversaryFile = new URL('../tests/fixtures/service-geometry/paris-adversary.json', import.meta.url);
+const clockPreload = new URL('./service-geometry-test-clock.mjs', import.meta.url);
 export const PARIS_BBOX = [2.15, 48.76, 2.45, 48.95];
 export const PARIS_SOURCE = {
   repository: 'https://github.com/c933103/openrailwaystyle', branch: 'service-data',
@@ -197,12 +198,15 @@ async function filesUnder(directory) {
 }
 // Both commands execute unchanged production files from the current checkout,
 // with all inputs/outputs isolated. No --fixtures shortcut or handmade output.
-export async function buildParisAcceptanceVariants() {
+export async function buildParisAcceptanceVariants({compiledInput, variantClocks = {}, scenario = {}} = {}) {
   const fixture = await loadParisFixture(), workspace = await mkdtemp(join(tmpdir(), 'atlas-paris-acceptance-'));
   const cleanup = () => rm(workspace, {recursive: true, force: true});
   try {
     const variants = [];
     for (const id of ['absent', 'present', 'expired']) {
+      const clock = variantClocks[id];
+      const clockArgs = clock ? ['--import', fileURLToPath(clockPreload)] : [];
+      const commandOptions = {env: {...process.env, ...(clock && {ATLAS_GEOMETRY_TEST_TIME: clock})}};
       const directory = join(workspace, id), service = join(directory, 'styles/data/service-routes');
       const frequency = join(directory, 'styles/data/service-frequency');
       await cp(join(root, 'scripts'), join(directory, 'scripts'), {recursive: true});
@@ -218,38 +222,44 @@ export async function buildParisAcceptanceVariants() {
       await writeFile(staleService, gzipSync('stale')); await writeFile(staleIndexed, gzipSync('stale'));
       await writeFile(join(service, 'index.json'), JSON.stringify({tiles: ['6/0/0', '12/0/0']}));
       let assemblyManifest = null, assemblyTiles = [], assemblyFiles = [], assemblyLog = '';
-      const registry = {schema: 2, feeds: [], gaps: [{region: 'Paris acceptance', status: 'Synthetic audit', reason: 'No real timetable claim'}]};
+      const registry = {schema: 2, feeds: [], gaps: scenario.gaps || [{region: 'Paris acceptance', status: 'Synthetic audit', reason: 'No real timetable claim'}]};
+      let inputSha256 = null;
       if (id !== 'absent') {
-        const {feed, stopOnlyCandidates} = await parisAdversaryFeed({expired: id === 'expired'});
+        const {feed, stopOnlyCandidates = []} = compiledInput || await parisAdversaryFeed({expired: id === 'expired'});
+        const output = compiledInput?.output || 'feeds/paris-synthetic.json.gz';
+        const inputBytes = compiledInput?.bytes || gzipSync(JSON.stringify(feed));
+        inputSha256 = sha256(inputBytes);
         await mkdir(join(frequency, 'feeds'), {recursive: true});
-        await writeFile(join(frequency, 'feeds/paris-synthetic.json.gz'), gzipSync(JSON.stringify(feed)));
+        await writeFile(join(frequency, output), inputBytes);
         await writeFile(join(frequency, 'feeds/stale.json.gz'), gzipSync('stale'));
         await mkdir(join(frequency, 'tiles/12/0'), {recursive: true});
         await writeFile(join(frequency, 'tiles/12/0/0.pbf.gz'), gzipSync('stale standalone timetable line'));
         await writeFile(join(frequency, 'stop-only-candidates.json'), JSON.stringify(stopOnlyCandidates));
-        const inventory = {schema: 2, shard: 0, shards: 1, catalogue_sha256: sha256('synthetic-paris-acceptance'), catalogue_entries: 1,
-          service_date: feed.source.service_date, catalogue_url: 'https://example.invalid/synthetic-paris-acceptance',
-          entries: [{id: feed.source.id, status: 'compiled', output: 'feeds/paris-synthetic.json.gz', sha256: feed.source.sha256, country: 'FR'}]};
+        const inventory = {schema: 2, shard: 0, shards: 1, catalogue_sha256: scenario.catalogueSha256 || sha256('synthetic-paris-acceptance'), catalogue_entries: 1,
+          service_date: feed.source.service_date, catalogue_url: scenario.catalogueURL || 'https://example.invalid/synthetic-paris-acceptance',
+          entries: [{id: feed.source.id, status: 'compiled', output, sha256: feed.source.sha256, country: 'FR'}]};
         await writeFile(join(frequency, 'inventory-0.json'), JSON.stringify(inventory));
-        assemblyLog = (await run(process.execPath, [join(directory, 'scripts', basename(fileURLToPath(assemblyScript))), frequency], {cwd: directory})).stdout;
+        assemblyLog = (await run(process.execPath, [...clockArgs, join(directory, 'scripts', basename(fileURLToPath(assemblyScript))), frequency], {...commandOptions, cwd: directory})).stdout;
         assemblyManifest = JSON.parse(await readFile(join(frequency, 'manifest.json'), 'utf8'));
         assemblyTiles = JSON.parse(await readFile(join(frequency, 'tiles/index.json'), 'utf8')).tiles;
         assemblyFiles = (await filesUnder(join(frequency, 'tiles'))).map(path => path.slice(frequency.length + 1));
-        registry.feeds.push({id: feed.source.id, output: '../data/service-frequency/feeds/paris-synthetic.json.gz'});
+        registry.feeds.push({id: feed.source.id, output: `../data/service-frequency/${output}`});
+        assert.equal(sha256(await readFile(join(frequency, output))), inputSha256, 'production assembly retains exact compiled input bytes');
         assert.equal(await exists(join(frequency, 'feeds/stale.json.gz')), false, 'assembly prunes orphan feeds');
       }
       await writeFile(join(directory, 'styles/data-src/service-frequency-sources.json'), JSON.stringify(registry));
-      const rebuildLog = (await run(process.execPath, [join(directory, 'scripts', basename(fileURLToPath(rebuildScript))), service, join(directory, 'credits.html')], {cwd: directory})).stdout;
+      const rebuildLog = (await run(process.execPath, [...clockArgs, join(directory, 'scripts', basename(fileURLToPath(rebuildScript))), service, join(directory, 'credits.html')], {...commandOptions, cwd: directory})).stdout;
+      if (compiledInput && id !== 'absent') assert.equal(sha256(await readFile(join(frequency, compiledInput.output))), inputSha256, 'production rebuild retains exact historical input bytes');
       const index = JSON.parse(await readFile(join(service, 'index.json'), 'utf8'));
       const tiles = new Map(await Promise.all(index.tiles.map(async key => [key, gunzipSync(await readFile(join(service, key + '.pbf.gz')))])));
       const manifest = JSON.parse(await readFile(join(service, 'frequency-manifest.json'), 'utf8'));
       const outputFiles = (await filesUnder(service)).filter(path => path.endsWith('.pbf.gz')).map(path => path.slice(service.length + 1).replace(/\.pbf\.gz$/, '')).sort();
-      variants.push({id, tiles, manifest, assemblyManifest, assemblyTiles, assemblyFiles, outputFiles,
+      variants.push({id, tiles, manifest, assemblyManifest, assemblyTiles, assemblyFiles, outputFiles, inputSha256, clock: clock || null,
         staleOutputsRemoved: !await exists(staleService) && !await exists(staleIndexed), assemblyLog, rebuildLog});
     }
-    const {feed, stopOnlyCandidates} = await parisAdversaryFeed();
-    const runtimeBuild = {commit: process.env.GITHUB_SHA || null, adversarySha256: sha256(await readFile(adversaryFile)), files: Object.fromEntries(await Promise.all(Object.keys(fixture.metadata.build.files).map(async path => [path, sha256(await readFile(join(root, path)))])))};
-    const forbiddenFeatures = parisAdversaryFeatures(feed);
+    const {feed, stopOnlyCandidates = []} = compiledInput || await parisAdversaryFeed();
+    const runtimeBuild = {commit: process.env.GITHUB_SHA || null, ...(compiledInput ? {compiledInputSha256: sha256(compiledInput.bytes)} : {adversarySha256: sha256(await readFile(adversaryFile))}), files: Object.fromEntries(await Promise.all(Object.keys(fixture.metadata.build.files).map(async path => [path, sha256(await readFile(join(root, path)))])))};
+    const forbiddenFeatures = compiledInput ? [] : parisAdversaryFeatures(feed);
     return {metadata: {...fixture.metadata, runtimeBuild}, probes: PARIS_PROBES, variants, forbiddenFeatures,
       forbiddenTiles: adversaryTiles(forbiddenFeatures), stopOnlyCandidates, cleanup, dispose: cleanup, workspace};
   } catch (error) { await cleanup(); throw error; }
