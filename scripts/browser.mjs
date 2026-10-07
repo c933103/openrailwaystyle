@@ -14,6 +14,7 @@ import {chromium} from 'playwright';
 import {createHash} from 'node:crypto';
 import {mkdir, readFile, rename, writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
+import {fetchLoopbackNoRedirect, isPublicOrm, localOrmAuditTarget, localOrmTarget} from './browser-policy.mjs';
 
 export const BROWSER_ARGS = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'];
 export const TILE_CACHE_DAYS = 7;
@@ -45,28 +46,7 @@ export async function launchBrowser(options = {}) {
 }
 
 
-// Only this host (and its subdomains) is covered by the published USAGE.md.
-// api.openrailwaymap.org is a separate dependency with unverified terms.
-export function isPublicOrm(url) {
-  try {
-    const u = new URL(url.href ?? url);
-    return ['http:', 'https:'].includes(u.protocol) &&
-      (u.hostname === 'openrailwaymap.app' || u.hostname.endsWith('.openrailwaymap.app'));
-  } catch { return false; }
-}
-
-// Local, explicitly configured test data only. Reject a remote "mirror":
-// forwarding to it could just move the prohibited automated downloads.
-export function localOrmTarget(original, mirror = process.env.ATLAS_TEST_ORM_URL) {
-  if (!mirror) return null;
-  const base = new URL(mirror.endsWith('/') ? mirror : mirror + '/');
-  if (base.protocol !== 'http:' || !['127.0.0.1', 'localhost', '[::1]'].includes(base.hostname) ||
-      base.username || base.password || base.search || base.hash)
-    throw new Error('ATLAS_TEST_ORM_URL must be a local HTTP OpenRailwayMap instance on loopback, not a public proxy');
-  if (!isPublicOrm(original)) throw new Error('Only openrailwaymap.app URLs may be mirrored');
-  const source = new URL(original);
-  return new URL(source.pathname.replace(/^\//, '') + source.search, base).href;
-}
+export {fetchLoopbackNoRedirect, isPublicOrm, localOrmAuditTarget, localOrmTarget} from './browser-policy.mjs';
 
 // Installed BEFORE optional generic caching. A later explicit test fixture
 // route can fulfill requests without contacting the public provider.
@@ -81,9 +61,7 @@ export async function isolatePublicOrm(context, {mirror = process.env.ATLAS_TEST
       return route.abort('blockedbyclient');
     }
     try {
-      const response = await route.fetch({url: local, maxRedirects: 0});
-      if (response.status() >= 300 && response.status() < 400)
-        throw new Error('Local OpenRailwayMap test server redirected; refusing to follow it');
+      const response = await fetchLoopbackNoRedirect(route, local);
       return await route.fulfill({response});
     } catch (error) {
       warn('Local OpenRailwayMap fixture failed: ' + error.message);

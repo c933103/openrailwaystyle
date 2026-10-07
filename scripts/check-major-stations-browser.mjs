@@ -1,5 +1,4 @@
-import {launchBrowser} from './browser.mjs';
-import {localOrmTarget} from './browser.mjs';
+import {fetchLoopbackNoRedirect, launchBrowser, localOrmAuditTarget} from './browser.mjs';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {chooseName} from '../styles/map-model.mjs';
@@ -25,9 +24,14 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  const stationResponses=new Map();
  await context.route(/\/standard_railway_text_stations_(?:low|med)(?:\/|$)/,async route=>{
   const url=route.request().url();
-  if(!stationResponses.has(url))stationResponses.set(url,route.fetch({url: localOrmTarget(url), maxRedirects: 0}).then(async r=>({status:r.status(),headers:r.headers(),body:await r.body()})));
-  try {await route.fulfill(await stationResponses.get(url));}
-  catch(error){console.error('Station tile unavailable:',url,error.message);await route.abort().catch(()=>{});}
+  try {
+   // Public provider URLs are rewritten to the configured local instance,
+   // while TileJSON-advertised loopback URLs remain direct local requests.
+   const target=localOrmAuditTarget(url);
+   if(!stationResponses.has(target))stationResponses.set(target,fetchLoopbackNoRedirect(route,target)
+    .then(async r=>({status:r.status(),headers:r.headers(),body:await r.body()})));
+   await route.fulfill(await stationResponses.get(target));
+  } catch(error){console.error('Station tile unavailable:',url,error.message);await route.abort().catch(()=>{});}
  });
  // Match the other WebGL checks' capture budget. The touch viewport renders
  // at DPR 2.625 and can still be finishing real tiles after label placement.

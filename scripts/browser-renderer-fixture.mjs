@@ -31,16 +31,22 @@ export async function rendererFixture() {
 }
 
 // Real MapLibre rendering with empty external providers for layout/gesture tests.
-export async function installEmptyMapProviders(context, base) {
-  const style=JSON.parse(await readFile('styles/world.style.json','utf8'));
-  style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
-  const renderer=await rendererFixture();
+export async function installEmptyMapProviders(context, base, {firstParty = 'fixture', rendererAssets} = {}) {
+  if (!['fixture', 'network'].includes(firstParty)) throw new Error(`Unknown first-party fixture mode: ${firstParty}`);
+  const style = firstParty === 'fixture' ? JSON.parse(await readFile('styles/world.style.json','utf8')) : null;
+  if (style) style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
+  const renderer = rendererAssets ?? await rendererFixture();
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg==','base64');
-  await context.addInitScript(()=>{window.pmtiles={Protocol:class{tiles=new Map();tile=async params=>({data:params.type==='json'?{tilejson:'3.0.0',minzoom:0,maxzoom:14,tiles:['pmtiles://fixture/{z}/{x}/{y}']}:new ArrayBuffer(0)});},FetchSource:class{getKey(){return 'fixture';}},PMTiles:class{}};});
+  if (firstParty === 'fixture') {
+    await context.addInitScript(()=>{window.pmtiles={Protocol:class{tiles=new Map();tile=async params=>({data:params.type==='json'?{tilejson:'3.0.0',minzoom:0,maxzoom:14,tiles:['pmtiles://fixture/{z}/{x}/{y}']}:new ArrayBuffer(0)});},FetchSource:class{getKey(){return 'fixture';}},PMTiles:class{}};});
+  }
   await context.route('**/*',async route=>{
     const url=new URL(route.request().url()),path=url.pathname,asset=renderer.get(url.href);
     if(asset)return route.fulfill(asset);
     if(url.href.startsWith(base)){
+      // A deployment smoke test must exercise the published style, PMTiles
+      // client and first-party /data/ responses instead of checkout copies.
+      if(firstParty === 'network') return route.continue();
       if(path.endsWith('/major-stations.geojson'))return route.fulfill({json:{type:'FeatureCollection',features:[]}});
       if(path.endsWith('/world.style.json'))return route.fulfill({json:style});
       if(path.includes('/data/polar/'))return route.fulfill({status:404,body:''});

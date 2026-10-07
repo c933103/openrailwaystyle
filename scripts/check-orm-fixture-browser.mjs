@@ -19,7 +19,7 @@ await mkdir('browser-review',{recursive:true});
 try {
   // This also fixtures fonts, imagery and the basemap, avoiding unrelated
   // external services during the browser integration check.
-  await installEmptyMapProviders(context,base);
+  await installEmptyMapProviders(context,base,{firstParty:process.env.MAP_BASE_URL?'network':'fixture'});
   const page=await context.newPage();
   page.on('pageerror',error=>errors.push(error.message));
   // Page fixtures take precedence over the common context-level network guard.
