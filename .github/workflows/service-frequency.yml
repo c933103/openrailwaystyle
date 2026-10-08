@@ -44,10 +44,11 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: worldwide-frequency-${{ github.head_ref || github.ref }}
-  # Preserve costly catalogue scans; a later revision queues behind the
-  # running build and can reuse its successfully verified feed cache.
-  cancel-in-progress: false
+  # PRs only reconcile catalogue metadata and run offline fixtures. They can
+  # supersede stale PR checks without queuing behind production ingestion.
+  # Full worldwide main-branch compiles still queue and preserve their cache.
+  group: worldwide-frequency-${{ github.head_ref || github.ref }}-${{ github.event_name == 'pull_request' && 'catalogue-check' || 'worldwide-build' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   catalogue:
     runs-on: ubuntu-latest
