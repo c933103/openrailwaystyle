@@ -1,8 +1,8 @@
 import {launchBrowser} from './browser.mjs';
+import {ormVectorFixture} from './orm-vector-fixture.mjs';
 import {readFile,mkdir} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import geojsonvt from 'geojson-vt';
-import vtpbf from 'vt-pbf';
 import {waitUntil} from './wait-until.mjs';
 
 // Synthetic geometry, with fields checked against OpenRailwayMap-vector
@@ -45,6 +45,8 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  await page.route('**/data/**/index.json',route=>route.fulfill({json:{tiles:[]}}));
  await page.route('https://openrailwaymap.app/**',async route=>{
   const path=new URL(route.request().url()).pathname;
+  const direct=ormVectorFixture(path,indexes);
+  if(direct)return route.fulfill(direct);
   if(path.startsWith('/api/feature/')){
    requests.push(path);const id=path.split('/').at(-1);
    if(path.includes('standard_railway_platform_edges/')&&id==='349685435')await route.fulfill({json:edge.response});
@@ -52,10 +54,10 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
    else await route.fulfill({status:404,body:''});
   }else await route.fulfill({json:{tilejson:'3.0.0',tiles:[`${base}review-tiles${path}/{z}/{x}/{y}.pbf`],minzoom:0,maxzoom:22}});
  });
- await page.route('**/review-tiles/**',async route=>{
-  const match=/review-tiles\/([^/]+)\/(\d+)\/(\d+)\/(\d+)\.pbf/.exec(route.request().url());assert.ok(match);
-  const [,layer,z,x,y]=match,tile=indexes[layer]?.getTile(+z,+x,+y);
-  await route.fulfill({body:tile?Buffer.from(vtpbf.fromGeojsonVt({[layer]:tile},{version:2})):Buffer.alloc(0),contentType:'application/x-protobuf'});
+ await page.route('**/review-tiles/**',route=>{
+  const response=ormVectorFixture(new URL(route.request().url()).pathname.split('/review-tiles')[1],indexes);
+  assert.ok(response,'Recognized local fixture tile URL');
+  return route.fulfill(response);
  });
  await page.route('https://tiles.maps.eox.at/**',route=>route.fulfill({body:png,contentType:'image/png'}));
  await page.route(/api\.openstreetmap\.org\/api\/0\.6\/(way|relation)|overpass-api\.de/,route=>{errors.push(`Unexpected OSM request ${route.request().url()}`);return route.abort();});

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {ByteCache} from '../styles/byte-cache.mjs';
 import {PolarLayer} from '../styles/polar-layer.mjs';
 import {installLabelProtocols} from '../styles/tile-labels.mjs';
+import encode from 'vt-pbf';
 test('raw response cache limits bytes as well as count and respects recent use',()=>{
  const c=new ByteCache({maxBytes:12,maxEntries:3});
  c.set('a',new ArrayBuffer(4));c.set('b',new ArrayBuffer(4));c.set('c',new ArrayBuffer(4));c.get('a');c.set('d',new ArrayBuffer(4));
@@ -15,11 +16,16 @@ test('track-count worker transfers private copies while keeping downloaded buffe
  const protocols={},originals=[],sent=[],previous=globalThis.Worker;
  globalThis.Worker=class {postMessage(message,transfer){sent.push({message,transfer});const own=structuredClone(message,{transfer});queueMicrotask(()=>this.onmessage({data:{id:own.id,result:{extent:4096,points:[]}}}));}};
  try {
-  installLabelProtocols({addProtocol:(id,f)=>protocols[id]=f},{},async()=>({ok:true,arrayBuffer:async()=>{const b=new ArrayBuffer(16);originals.push(b);return b;}}));
+  installLabelProtocols({addProtocol:(id,f)=>protocols[id]=f},{},async url=>({ok:true,status:200,arrayBuffer:async()=>{
+    const endpoint=new URL(url).pathname.split('/')[1];
+    const tile=encode.fromGeojsonVt({[endpoint]:{features:[{type:2,geometry:[[[1,1],[2,2]]],tags:{id:'way-1'}}]}});
+    const b=tile.buffer.slice(tile.byteOffset,tile.byteOffset+tile.byteLength);originals.push(b);return b;
+  }}));
   await protocols.atlastracks({url:'atlastracks://14/8192/8192'},{signal:new AbortController().signal});
   // The nine railway tiles around the tile, and its nine station-area and nine station tiles.
   assert.equal(sent[0].transfer.length,27);assert.equal(new Set(sent[0].transfer).size,27);
-  assert.ok(sent[0].transfer.every(b=>b.byteLength===0),'worker received ownership');assert.ok(originals.every(b=>b.byteLength===16),'cache retains reusable originals');
+  assert.ok(sent[0].transfer.every(b=>b.byteLength===0),'worker received ownership');
+  assert.ok(originals.length===27&&originals.every(b=>b.byteLength>0),'cache retains reusable validated originals');
  }finally{globalThis.Worker=previous;}
 });
 test('polar meshes evict old views within byte/count budgets and release programs on removal',()=>{

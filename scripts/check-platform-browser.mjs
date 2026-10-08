@@ -1,8 +1,8 @@
 import {launchBrowser} from './browser.mjs';
+import {ormVectorFixture} from './orm-vector-fixture.mjs';
 import {readFile,mkdir} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import geojsonvt from 'geojson-vt';
-import vtpbf from 'vt-pbf';
 const fixture=JSON.parse(await readFile(new URL('../tests/fixtures/platform-edge.json',import.meta.url)));
 const edges=geojsonvt({type:'FeatureCollection',features:[fixture.feature]},{maxZoom:22,indexMaxZoom:17,extent:4096});
 // An empty, valid basemap keeps this focused check independent of planet
@@ -34,15 +34,17 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  await page.route('**/data/**/index.json',route=>route.fulfill({json:{tiles:[]}}));
  await page.route('https://openrailwaymap.app/**',async route=>{
   const path=new URL(route.request().url()).pathname;
+  const direct=ormVectorFixture(path,{'standard_railway_platform_edges':edges});
+  if(direct)return route.fulfill(direct);
   if(path.startsWith('/api/feature/')){
    if(path.includes('standard_railway_platform_edges/')&&path.split('/').at(-1)==='349685435'){requests++;await route.fulfill({json:fixture.response});}
    else await route.fulfill({status:404,body:''});
   }else await route.fulfill({json:{tilejson:'3.0.0',tiles:[`${base}review-platform-tiles${path}/{z}/{x}/{y}.pbf`],minzoom:0,maxzoom:22}});
  });
- await page.route('**/review-platform-tiles/**',async route=>{
-  const match=/review-platform-tiles\/([^/]+)\/(\d+)\/(\d+)\/(\d+)\.pbf/.exec(route.request().url());assert.ok(match);
-  const [,layer,z,x,y]=match,tile=layer==='standard_railway_platform_edges'?edges.getTile(+z,+x,+y):null;
-  await route.fulfill({body:tile?Buffer.from(vtpbf.fromGeojsonVt({[layer]:tile},{version:2})):Buffer.alloc(0),contentType:'application/x-protobuf'});
+ await page.route('**/review-platform-tiles/**',route=>{
+  const response=ormVectorFixture(new URL(route.request().url()).pathname.split('/review-platform-tiles')[1],{'standard_railway_platform_edges':edges});
+  assert.ok(response,'Recognized local fixture tile URL');
+  return route.fulfill(response);
  });
  await page.goto(base+'?mode=infrastructure&relief=0&stations=0&names=0&trackCounts=0&transport=0&destinations=0&constraints=0#18/35.6815/139.7664',{waitUntil:'domcontentloaded'});
  await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:90000});
