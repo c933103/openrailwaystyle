@@ -295,16 +295,16 @@ test('clicked station, service, entrance, power and context details share the se
 });
 
 test('English and local infoboxes scope script languages to CJK runs and preserve English text',async()=>{
- for(const language of ['en','local']){
+ for(const language of ['en','local','zh-Hant']){
   const {dom,window,maps,errors}=await start({search:`?language=${language}`});
   try{
    const doc=window.document,map=maps[0],panel=doc.getElementById('detail-content');map.handlers['style.load']();
-   const station={source:'stations',layer:{id:'station-detail-large-names'},properties:{name:'Central 東京 カナ ｶﾞ ﾊﾟ カ゛ ハ゜ 한글 ㄅㄆ',state:'disused',station_size:'large',operator:'Regional Rail'},geometry:{type:'Point',coordinates:[0,0]}};
+   const station={source:'stations',layer:{id:'station-detail-large-names'},properties:{name:'Central 東京 東京メトロ 大韓민국 北ㄅ カナ ｶﾞ ﾊﾟ カ゛ ハ゜ 한글 ㄅㄆ',state:'disused',station_size:'large',operator:'Regional Rail'},geometry:{type:'Point',coordinates:[0,0]}};
    map.rendered=[station];map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
    await new Promise(r=>setTimeout(r,0));
    const heading=panel.querySelector('h2');assert.equal(heading.textContent,station.properties.name,'wrapping never changes the recorded text');
    assert.equal(heading.firstChild.data,'Central ');assert.equal(heading.firstChild.parentElement.closest('[lang]')?.lang,'en','the Latin part of a mixed name keeps English');
-   assert.deepEqual([...heading.querySelectorAll('[lang]')].map(span=>[span.textContent,span.lang]),[['東京','zh-CN'],['カナ','ja'],['ｶﾞ','ja'],['ﾊﾟ','ja'],['カ゛','ja'],['ハ゜','ja'],['한글','ko'],['ㄅㄆ','zh-TW']]);
+   assert.deepEqual([...heading.querySelectorAll('[lang]')].map(span=>[span.textContent,span.lang]),[['東京',language==='zh-Hant'?'zh-TW':'zh-CN'],['東京メトロ','ja'],['大韓민국','ko'],['北ㄅ','zh-TW'],['カナ','ja'],['ｶﾞ','ja'],['ﾊﾟ','ja'],['カ゛','ja'],['ハ゜','ja'],['한글','ko'],['ㄅㄆ','zh-TW']],'adjacent mixed CJK scripts form one name with a single language');
    for(const node of [panel,heading,...panel.querySelectorAll('.eyebrow,dt,p.small,a')])assert.equal(node.closest('[lang]')?.lang,'en',`${language}: the CJK fallback must not relabel the English interface`);
    assert.equal(panel.style.fontFamily,'');assert.equal(heading.style.fontFamily,'');
    station.properties.name='Central';map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
