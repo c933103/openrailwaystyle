@@ -28,7 +28,7 @@ const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, platformGeometryOptions } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -117,7 +117,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   window.matchMedia = () => ({matches:compact});
   const context = dom.getInternalVMContext();
   const dependency = new vm.SyntheticModule(Object.keys(model), function() {
-    for (const [key,value] of Object.entries(model)) this.setExport(key,value);
+    for (const [key,value] of Object.entries(model)) this.setExport(key,key==='createPlatformTileGeometry'&&platformGeometryOptions?options=>{platformGeometryOptions(options);return value(options);}:value);
   }, {context});
   const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','tileTextBlocks','locate','buildInfo','timedSource','readTile'],function(){this.setExport('buildInfo',labelBuild);this.setExport('readTile',labelModule.readTile);this.setExport('tileTextBlocks',labelModule.tileTextBlocks);this.setExport('installLabelProtocols',()=>stationTile?{stationTile}:{});this.setExport('timedSource',(inner,ms)=>({inner,ms,getKey:()=>inner.url}));this.setExport('localizeTile',x=>x);this.setExport('locate',(lon,lat)=>{assert.ok(Number.isFinite(lon)&&Number.isFinite(lat),'label region lookup takes longitude and latitude separately');return {atlas_han:'none',atlas_zh:''};});},{context});
   // The label code is imported on demand, after the controls are wired.
@@ -998,4 +998,21 @@ test('source replacement retires old recovery and disposal cancels every schedul
     f.map.handlers.moveend();assert.equal(f.clock.timers.size, 0);
     assert.deepEqual(f.clock.retries, []);
   } finally {f.close();}
+});
+
+
+test('platform measurement fetches HTTP templates rather than MapLibre protocol URLs', async () => {
+  let options;
+  const {dom,maps}=await start({platformGeometryOptions:value=>{options=value;}});
+  try {
+    const map=maps[0];map.sources ||= {};
+    assert.ok(options);
+    for(const raw of ['https://openrailwaymap.app/standard_railway_platforms/{z}/{x}/{y}',
+      'http://127.0.0.1:4173/review-station-tiles/standard_railway_platforms/{z}/{x}/{y}.pbf']) {
+      map.sources.platforms={tiles:[`atlasrail://${raw}`]};
+      assert.equal(options.tileURL(),raw,'measurement uses native fetch, not the renderer protocol dispatcher');
+      map.sources.platforms={tiles:[raw]};assert.equal(options.tileURL(),raw,'unwrapped fallback stays valid');
+    }
+    map.sources.platforms={};assert.equal(options.tileURL(),undefined,'metadata not ready stays pending');
+  } finally {maps[0].handlers.remove();dom.window.close();}
 });
