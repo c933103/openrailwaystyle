@@ -61,8 +61,11 @@ export async function isolatePublicOrm(context, {mirror = process.env.ATLAS_TEST
       return route.abort('blockedbyclient');
     }
     try {
-      const response = await fetchLoopbackNoRedirect(route, local);
-      return await route.fulfill({response});
+      const response = await fetchLoopbackNoRedirect(route, local, mirror);
+      const options = typeof response.routeFulfillOptions === 'function'
+        ? response.routeFulfillOptions()
+        : {response};
+      return await route.fulfill(options);
     } catch (error) {
       warn('Local OpenRailwayMap fixture failed: ' + error.message);
       return route.abort('failed').catch(() => {});
