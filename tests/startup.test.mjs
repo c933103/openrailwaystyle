@@ -28,7 +28,7 @@ const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -174,7 +174,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   }, {context});
   const bundles = new vm.SyntheticModule(Object.keys(tileBundleModule),function(){for(const [key,value] of Object.entries(tileBundleModule))this.setExport(key,value);},{context});
   const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
-  const recovery = new vm.SyntheticModule(Object.keys(railRecoveryModule),function(){for(const [key,value] of Object.entries(railRecoveryModule))this.setExport(key,value);},{context});
+  const recovery = new vm.SyntheticModule(Object.keys(railRecoveryModule),function(){for(const [key,value] of Object.entries(railRecoveryModule))this.setExport(key,key==='createRailProviderRecovery'&&recoveryClock?(map,options)=>value(map,{...options,...recoveryClock}):value);},{context});
   await app.link(specifier => specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
@@ -899,4 +899,103 @@ test('entering watch mode deactivates hidden drawing and measurement input',asyn
       watch.checked=false;watch.dispatchEvent(new window.Event('change'));assert.equal(tool.getAttribute('aria-pressed'),'false','returning to normal does not restore hidden editing');
     }
   } finally {dom.window.close();}
+});
+
+function recoveryClock() {
+  const timers = new Map(), retries = [];
+  let next = 0;
+  return {timers, retries, active:() => true,
+    setTimer:(fn, delay) => {timers.set(++next, {fn, delay});return next;},
+    clearTimer:id => timers.delete(id)};
+}
+const failedRailTile = (x = 1) => ({state:'errored', tileID:{canonical:{z:7, x, y:2}}});
+async function recoveryApp({early = false} = {}) {
+  const clock = recoveryClock(), app = await start({recoveryClock:clock, search:'?mode=speed'});
+  const map = app.maps[0];
+  if (!early) map.handlers['style.load']();
+  map.zoom = 7;
+  map.sources ||= {};
+  map.sources.railway = {url:'atlasrail://https://openrailwaymap.app/railway_line_high', setUrl:() => clock.retries.push('metadata')};
+  map.refreshTiles = (...args) => clock.retries.push(args);
+  const status = app.window.document.getElementById('map-status');
+  return {...app, map, clock, status,
+    fail:tile => map.handlers.error({sourceId:'railway', tile, error:new Error('Map names returned 520')}),
+    data:event => map.handlers.sourcedata({sourceId:'railway', ...event}),
+    close:() => {map.handlers.remove();app.dom.window.close();}};
+}
+
+test('rail tile recovery updates visible app status without idle, after bookkeeping, including early style events', async () => {
+  for (const early of [false, true]) {
+    const f = await recoveryApp({early});
+    try {
+      if (early) f.map.queryRenderedFeatures = () => {throw new Error('style is not ready');};
+      const tile = failedRailTile();f.fail(tile);
+      assert.equal(f.status.classList.contains('error'), true);
+      tile.state = 'loaded';f.data({tile, isSourceLoaded:true});
+      assert.equal(f.status.classList.contains('error'), false, 'recovered tile clears status without an idle event');
+      assert.match(f.status.textContent, /Explore the rail network/);
+      f.data({tile, isSourceLoaded:true});
+      assert.equal(f.status.classList.contains('error'), false, 'duplicate success is harmless');
+      assert.equal(f.clock.timers.size, 0);assert.deepEqual(f.clock.retries, []);
+    } finally {f.close();}
+  }
+});
+
+test('partial rail recovery and loaded-but-errored sources retain the outage state without extra retries', async () => {
+  const f = await recoveryApp();
+  try {
+    const a = failedRailTile(), b = failedRailTile(2);f.fail(a);f.fail(b);
+    f.data({isSourceLoaded:true});f.data({tile:a, isSourceLoaded:true});
+    assert.equal(f.status.classList.contains('error'), true);
+    a.state = 'loaded';f.data({tile:a, isSourceLoaded:true});
+    assert.match(f.status.textContent, /Retrying automatically/);
+    assert.equal(f.clock.timers.size, 1);
+    b.state = 'loaded';f.data({tile:b, isSourceLoaded:true});
+    assert.equal(f.status.classList.contains('error'), false);
+    assert.equal(f.clock.timers.size, 0);assert.deepEqual(f.clock.retries, []);
+  } finally {f.close();}
+});
+
+test('rail recovery preserves unrelated app errors until actual unrelated success', async () => {
+  const f = await recoveryApp();
+  try {
+    const tile = failedRailTile();f.fail(tile);
+    f.map.handlers.error({sourceId:'openmaptiles', tile:{}, error:new Error('unrelated error')});
+    tile.state = 'loaded';f.data({tile, isSourceLoaded:true});
+    assert.equal(f.status.classList.contains('error'), true);
+    assert.match(f.status.textContent, /Some map data could not load/);
+    f.map.handlers.sourcedata({sourceId:'openmaptiles', isSourceLoaded:true});
+    assert.equal(f.status.classList.contains('error'), true, 'loaded flag alone is not recovery');
+    f.map.handlers.sourcedata({sourceId:'openmaptiles', tile:{state:'loaded'}, isSourceLoaded:true});
+    assert.equal(f.status.classList.contains('error'), false);
+    assert.deepEqual(f.clock.retries, []);
+  } finally {f.close();}
+});
+
+test('metadata recovery clears app bookkeeping without idle and cancellation is not an outage', async () => {
+  const f = await recoveryApp();
+  try {
+    f.fail(undefined);f.data({isSourceLoaded:true});
+    assert.equal(f.status.classList.contains('error'), true);
+    f.data({sourceDataType:'metadata', isSourceLoaded:true});
+    assert.equal(f.status.classList.contains('error'), false);
+    f.map.handlers.error({sourceId:'railway', error:{name:'AbortError', message:'AbortError'}});
+    assert.equal(f.status.classList.contains('error'), false);
+    assert.equal(f.clock.timers.size, 0);assert.deepEqual(f.clock.retries, []);
+  } finally {f.close();}
+});
+
+test('source replacement retires old recovery and disposal cancels every scheduled retry', async () => {
+  const f = await recoveryApp();
+  try {
+    f.fail(failedRailTile());
+    f.map.sources.railway = {url:'atlasrail://https://openrailwaymap.app/railway_line_high'};
+    f.data({sourceDataType:'metadata', isSourceLoaded:true});
+    assert.equal(f.status.classList.contains('error'), false);
+    assert.equal(f.clock.timers.size, 0);
+    f.fail(failedRailTile(3));assert.equal(f.clock.timers.size, 1);
+    f.map.handlers.remove();assert.equal(f.clock.timers.size, 0);
+    f.map.handlers.moveend();assert.equal(f.clock.timers.size, 0);
+    assert.deepEqual(f.clock.retries, []);
+  } finally {f.close();}
 });

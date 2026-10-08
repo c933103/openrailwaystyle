@@ -3,6 +3,7 @@ import {readFile, mkdir, writeFile} from 'node:fs/promises';
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import {launchBrowser} from './browser.mjs';
+import {rendererFixture} from './browser-renderer-fixture.mjs';
 
 // Synthetic geometry tests the real generated cartography without downloading
 // provider tiles. These features never enter the production map or snapshots.
@@ -32,6 +33,8 @@ const wuhanIndex = geojsonvt({type: 'FeatureCollection', features: [{type: 'Feat
   {maxZoom: 9, extent: 4096, buffer: 64});
 const browser = await launchBrowser();
 const page = await browser.newPage({viewport: {width: 360, height: 320}});
+const renderer=await rendererFixture();
+await page.route(library,route=>route.fulfill(renderer.get(library)));
 const errors = [], requests = [], samples = [], consoleErrors = [];
 page.on('pageerror', error => errors.push(error.message));
 page.on('console', message => {if (message.type() === 'error') consoleErrors.push(message.text());});
