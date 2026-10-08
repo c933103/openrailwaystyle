@@ -467,9 +467,18 @@ def main():
                 entry = {**entry, 'status': 'failed', 'reason': f'{type(error).__name__}: {error}',
                          'reason_code': code, 'failure_stage': stage}
         outcomes.append(entry)
-        save()  # durable after every feed, even if a job times out later.
-        print(entry['id'], entry['status'], entry.get('rail_routes', ''), entry.get('mapped_segments', ''), entry.get('reason', ''), flush=True)
-    print(json.dumps({'catalogue_entries': len(entries), 'shard_outcomes': len(outcomes), 'counts': dict(Counter(x['status'] for x in outcomes))}), flush=True)
+        # Inventory-only is read-only: write once rather than serializing the
+        # growing worldwide inventory N times (quadratic work at global scale).
+        # Compiling shards still checkpoint after each feed for resumability.
+        if not args.inventory_only:
+            save()
+            print(entry['id'], entry['status'], entry.get('rail_routes', ''),
+                  entry.get('mapped_segments', ''), entry.get('reason', ''), flush=True)
+    if args.inventory_only:
+        save()
+    print(json.dumps({'catalogue_entries': len(entries), 'shard_outcomes': len(outcomes),
+                      'counts': dict(Counter(x['status'] for x in outcomes)),
+                      'reason_codes': dict(Counter(x.get('reason_code') or 'none' for x in outcomes))}), flush=True)
 
 
 if __name__ == '__main__':
