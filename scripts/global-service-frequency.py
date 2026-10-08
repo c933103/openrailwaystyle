@@ -316,7 +316,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
                     'unmapped_segments': len(previous.get('unmapped_segments', [])), 'source': previous['source']}
         del previous  # stale national output must not coexist with recompilation.
     publisher = row.get('publisher') if isinstance(row.get('publisher'), dict) else {}
-    rights = entry['terms']
+    rights = entry.get('terms') or registry.usage_rights(row)
     spdx = row.get('spdx_license_identifier') or (rights['spdx_identifiers'][0] if len(rights['spdx_identifiers']) == 1 else '')
     terms_url = row.get('license_url') or (rights['terms_urls'][0] if rights['terms_urls'] else '')
     if not terms_url and spdx and spdx.startswith(('CC-', 'MIT', 'ODbL-', 'OGL-')):
