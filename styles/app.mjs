@@ -110,7 +110,7 @@ function cjkMeasure(){
   })().catch(()=>null);
   return probeMeasure;
 }
-function refreshCjkFont(){updateDetailFont();if(ready)reloadLanguage();else if(map)cjkFontRefresh=true;}
+function refreshCjkFont(){updateDetailGlyphs();if(ready)reloadLanguage();else if(map)cjkFontRefresh=true;}
 function ensureCjkChoice(script){
   if(cjkChoices.has(script))return;
   cjkChoices.set(script,null);
@@ -157,20 +157,13 @@ const CANVAS_LANG = {'zh-Hans':'zh-CN', 'zh-Hant':'zh-TW', ja:'ja', ko:'ko'};
 const DETAIL_GLYPH_RUNS = /\p{Script=Han}[\p{Script=Han}\p{Mark}]*|[\p{Script=Hiragana}\p{Script=Katakana}][\p{Script=Hiragana}\p{Script=Katakana}\p{Mark}ーｰ]*|\p{Script=Hangul}[\p{Script=Hangul}\p{Mark}]*|\p{Script=Bopomofo}[\p{Script=Bopomofo}\p{Mark}]*/gu;
 const detailGlyphLanguage = text => /^\p{Script=Han}/u.test(text) ? CANVAS_LANG[cjkScript(settings.language)] : /^\p{Script=Hangul}/u.test(text) ? 'ko' : /^\p{Script=Bopomofo}/u.test(text) ? 'zh-TW' : 'ja';
 const detailFontObserver = new MutationObserver(updateDetailGlyphs);
-// Feature details use the same chosen family and language as map labels.
-// The language also selects the right system glyphs when named fonts are
-// unavailable (notably on Android). Keep this independent of map readiness.
-function updateDetailFont() {
-  const panel = $('detail-content');
-  // Packaged fonts contain CJK glyphs only. Put the page's UI stack after
-  // all explicit Han families so Latin stays sans-serif without taking
-  // CJK glyphs away from the selected font.
-  const family = cjkFont(settings.language).replace(/,\s*sans-serif\s*$/, '');
-  panel.style.fontFamily = `${family},system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif`;
-  updateDetailGlyphs();
-}
+// CJK text in feature details shares the map's chosen family and language,
+// including system glyph fallback when named fonts are unavailable. Both
+// stay on the CJK runs so installed fonts cannot also replace Latin UI text.
 function updateDetailGlyphs() {
   const panel = $('detail-content');
+  const family = cjkFont(settings.language).replace(/,\s*sans-serif\s*$/, '');
+  const fontFamily = `${family},system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif`;
   // Only CJK runs need a regional language for glyph fallback. Fixed English
   // UI and Latin text keep their inherited language for assistive technology.
   // Disconnect while wrapping our own text to avoid observing ourselves.
@@ -178,7 +171,9 @@ function updateDetailGlyphs() {
   try {
     for (const span of panel.querySelectorAll('[data-cjk-glyphs]')) {
       const runs = [...span.textContent.matchAll(DETAIL_GLYPH_RUNS)];
-      if (runs.length === 1 && runs[0][0] === span.textContent) span.lang = detailGlyphLanguage(span.textContent);
+      if (runs.length === 1 && runs[0][0] === span.textContent) {
+        span.lang = detailGlyphLanguage(span.textContent); span.style.fontFamily = fontFamily;
+      }
       else span.replaceWith(...span.childNodes);
     }
     const walker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT), nodes = [];
@@ -194,7 +189,7 @@ function updateDetailGlyphs() {
       for (const run of runs) {
         fragment.append(node.data.slice(offset, run.index));
         const span = document.createElement('span');
-        span.dataset.cjkGlyphs = ''; span.lang = detailGlyphLanguage(run[0]); span.textContent = run[0];
+        span.dataset.cjkGlyphs = ''; span.lang = detailGlyphLanguage(run[0]); span.style.fontFamily = fontFamily; span.textContent = run[0];
         fragment.append(span); offset = run.index + run[0].length;
       }
       fragment.append(node.data.slice(offset)); node.replaceWith(fragment);
@@ -213,7 +208,7 @@ function loadDetailFonts() {
   const blocks = rareHanBlocks(text);
   if (blocks.size) void rareHanFonts.ensure(blocks);
 }
-updateDetailFont();
+updateDetailGlyphs();
 // MapLibre may draw glyphs on an OffscreenCanvas, whose context is another class.
 for (const context of [window.CanvasRenderingContext2D?.prototype, window.OffscreenCanvasRenderingContext2D?.prototype]) {
   const font = context && Object.getOwnPropertyDescriptor(context, 'font');
@@ -1654,7 +1649,7 @@ function reloadLanguage() {
   select.addEventListener('change',()=>{
     settings.language=select.value;
     ensureCjkChoice(cjkScript(settings.language));
-    updateDetailFont();
+    updateDetailGlyphs();
     if(ready) reloadLanguage();
     saveSettings();
   });

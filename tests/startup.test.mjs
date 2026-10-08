@@ -269,17 +269,25 @@ test('clicked station, service, entrance, power and context details share the se
    await new Promise(r=>setTimeout(r,0));
    assert.equal(doc.getElementById('details').hidden,false);
    assert.equal(panel.querySelector('h2').textContent,name);
-   assert.equal(panel.querySelector('h2 [lang]').lang,'zh-TW');assert.match(panel.style.fontFamily,/^"?Noto Sans CJK TC"?,/);
+   assert.equal(panel.querySelector('h2 [lang]').lang,'zh-TW');assert.match(panel.querySelector('h2 [lang]').style.fontFamily,/^"?Noto Sans CJK TC"?,/);
+   assert.equal(panel.style.fontFamily,'','the shared panel does not override the interface font');
    for(const node of panel.querySelectorAll('.eyebrow,dt,p.small,a'))assert.equal(node.closest('[lang]')?.lang,'en','fixed English infobox text keeps its language');
-   assert.match(panel.style.fontFamily,/Atlas Rare Han/);
+   assert.match(panel.querySelector('h2 [lang]').style.fontFamily,/Atlas Rare Han/);
   }
   const language=doc.getElementById('language');
   for(const [code,family] of [['ja','Yu Gothic'],['ko','Malgun Gothic']]){
    language.value=code;language.dispatchEvent(new window.Event('change'));
    await new Promise(r=>setTimeout(r,0));
    assert.equal(panel.querySelector('h2 [lang]').lang,code,'Han runs follow the selected glyph language after the infobox redraw');
-   assert.equal(panel.style.fontFamily.split(',')[0].replaceAll('"',''),family);
+   assert.equal(panel.querySelector('h2 [lang]').style.fontFamily.split(',')[0].replaceAll('"',''),family);
   }
+  language.value='zh-Hant';language.dispatchEvent(new window.Event('change'));
+  doc.querySelector('[data-mode="speed"]').click();
+  map.rendered=[{source:'stations',layer:{id:'station-detail-large-names'},properties:{name:'Central',state:'disused',operator:'Regional Rail 東京'},geometry:point}];
+  map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});await new Promise(r=>setTimeout(r,0));
+  assert.equal(panel.querySelector('h2').textContent,'Central');assert.equal(panel.querySelector('h2').style.fontFamily,'');
+  const han=panel.querySelector('dd [lang]');assert.equal(han.textContent,'東京');assert.match(han.style.fontFamily,/^"?Noto Sans CJK TC"?,/);
+  assert.deepEqual([...panel.querySelectorAll('[style]')].filter(node=>node.style.fontFamily),[han],'even a complete installed CJK font is applied only to the Han text, never Latin names or English UI');
   assert.equal(doc.documentElement.lang,'en','the surrounding English interface keeps its language');
   assert.equal(panel.closest('[lang]')?.lang,'en','the infobox container retains the interface language');
   assert.equal(fonts.length,1,'complete regional fonts need only the small probe');assert.deepEqual(errors,[]);
@@ -298,6 +306,7 @@ test('English and local infoboxes scope script languages to CJK runs and preserv
    assert.equal(heading.firstChild.data,'Central ');assert.equal(heading.firstChild.parentElement.closest('[lang]')?.lang,'en','the Latin part of a mixed name keeps English');
    assert.deepEqual([...heading.querySelectorAll('[lang]')].map(span=>[span.textContent,span.lang]),[['東京','zh-CN'],['カナ','ja'],['한글','ko'],['ㄅㄆ','zh-TW']]);
    for(const node of [panel,heading,...panel.querySelectorAll('.eyebrow,dt,p.small,a')])assert.equal(node.closest('[lang]')?.lang,'en',`${language}: the CJK fallback must not relabel the English interface`);
+   assert.equal(panel.style.fontFamily,'');assert.equal(heading.style.fontFamily,'');
    station.properties.name='Central';map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
    await new Promise(r=>setTimeout(r,0));
    assert.equal(panel.querySelector('h2').closest('[lang]')?.lang,'en','a Latin-only feature name keeps its inherited language');
@@ -320,10 +329,10 @@ test('infobox Han text requests the packaged font after probing without requirin
   assert.equal(panel.querySelector('h2').closest('[lang]')?.lang,'en');
   assert.equal(panel.querySelector('dd [lang]').lang,'zh-TW','the Han operator value carries its own regional language');
   const packaged=fonts.find(f=>f.family==='Atlas CJK TC');assert.ok(packaged,'Han in a body value needs the font even though the heading is Latin');
-  assert.match(panel.style.fontFamily,/^"?Microsoft JhengHei"?,/);
+  assert.match(panel.querySelector('dd [lang]').style.fontFamily,/^"?Microsoft JhengHei"?,/);
   packaged.finish();await new Promise(r=>setTimeout(r,0));
-  assert.match(panel.style.fontFamily,/^"?Atlas CJK TC"?,/);assert.match(panel.style.fontFamily,/Atlas Rare Han/);
-  assert.match(panel.style.fontFamily,/(?:system-ui|sans-serif)/,'CJK-only font subsets must retain a sans-serif Latin fallback');
+  assert.match(panel.querySelector('dd [lang]').style.fontFamily,/^"?Atlas CJK TC"?,/);assert.match(panel.querySelector('dd [lang]').style.fontFamily,/Atlas Rare Han/);
+  assert.equal(panel.style.fontFamily,'','English text keeps its interface font while the CJK-only package is loaded');
   assert.equal(fonts.length,2,'the infobox and redraw share one package load');assert.deepEqual(errors,[]);
  }finally{dom.window.close();}
 });
@@ -339,16 +348,17 @@ test('an open infobox follows language and font changes while map style loading 
   // Keep the style callback pending as it is when map resources load slowly.
   map.setStyle=(style,options)=>{map.options.style=style;map.styleOptions=options;};
   language.value='zh-Hans';language.dispatchEvent(new window.Event('change'));
-  assert.equal(panel.querySelector('h2 [lang]').lang,'zh-CN');assert.doesNotMatch(panel.style.fontFamily,/JhengHei|CJK TC/);
+  assert.equal(panel.querySelector('h2 [lang]').lang,'zh-CN');assert.doesNotMatch(panel.querySelector('h2 [lang]').style.fontFamily,/JhengHei|CJK TC/);
   await new Promise(r=>setTimeout(r,0));
-  assert.match(panel.style.fontFamily,/^"?Microsoft YaHei"?,/);
+  assert.match(panel.querySelector('h2 [lang]').style.fontFamily,/^"?Microsoft YaHei"?,/);
   const simplified=fonts.find(f=>f.family==='Atlas CJK SC');assert.ok(simplified);
   traditional.finish();await new Promise(r=>setTimeout(r,0));
-  assert.doesNotMatch(panel.style.fontFamily,/CJK TC/,'a stale Traditional download cannot replace the selected Simplified font');
+  assert.doesNotMatch(panel.querySelector('h2 [lang]').style.fontFamily,/CJK TC/,'a stale Traditional download cannot replace the selected Simplified font');
   simplified.finish();await new Promise(r=>setTimeout(r,0));
-  assert.match(panel.style.fontFamily,/^"?Atlas CJK SC"?,/,'the loaded font reaches the open infobox before the map style finishes');
+  assert.match(panel.querySelector('h2 [lang]').style.fontFamily,/^"?Atlas CJK SC"?,/,'the loaded font reaches the open infobox before the map style finishes');
   language.value='zh-Hant';language.dispatchEvent(new window.Event('change'));
-  assert.equal(panel.querySelector('h2 [lang]').lang,'zh-TW');assert.match(panel.style.fontFamily,/^"?Atlas CJK TC"?,/,'switching back immediately reuses the finished font');
+  assert.equal(panel.querySelector('h2 [lang]').lang,'zh-TW');assert.match(panel.querySelector('h2 [lang]').style.fontFamily,/^"?Atlas CJK TC"?,/,'switching back immediately reuses the finished font');
+  assert.equal(panel.style.fontFamily,'');
   assert.equal(panel.closest('[lang]')?.lang,'en');
   assert.equal(fonts.length,3);assert.deepEqual(errors,[]);
  }finally{dom.window.close();}
