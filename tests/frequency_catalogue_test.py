@@ -89,10 +89,21 @@ class FrequencyCatalogue(unittest.TestCase):
                 'spdx':'','terms_url':'https://example.test/terms',
                 'restrictions':{'create_derived_product':'no'}}]}
         ]
-        assert catalogue.usage_rights(rows[0])['prohibitions']
+        self.assertEqual(catalogue.usage_rights(rows[0])['prohibitions'],[],
+                         'ND does not automatically forbid factual timetable analysis')
         self.assertEqual(catalogue.usage_rights(rows[1])['prohibitions'],[],
                          'no raw redistribution need not prohibit an attributed summary')
-        self.assertTrue(catalogue.usage_rights(rows[2])['prohibitions'])
+        self.assertEqual(catalogue.usage_rights(rows[2])['prohibitions'],[],
+                         'a generic ban on republishing derived datasets is not a ban on use')
+        reviewed={'rights_evidence':[{'origin':'source-specific-reviewed-rule',
+                 'terms_url':'https://example.test/explicit-operator-rule',
+                 'restrictions':{'prohibit_frequency_use':True}}]}
+        self.assertEqual(len(catalogue.usage_rights(reviewed)['prohibitions']),1)
+        unreviewed={'rights_evidence':[{'origin':'mobility-database',
+                 'terms_url':'https://example.test/terms',
+                 'restrictions':{'prohibit_frequency_use':True}}]}
+        self.assertEqual(catalogue.usage_rights(unreviewed)['prohibitions'],[],
+                         'unverified catalogue flags cannot exclude feeds')
         self.assertEqual(catalogue.usage_rights({'license_url':'https://example.test/terms'})['state'],'linked')
         self.assertEqual(catalogue.usage_rights({})['state'],'not_provided')
 
