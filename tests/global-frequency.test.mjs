@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {mergeInventories,pruneFrequencyOutputs,assemble} from '../scripts/assemble-global-frequency.mjs';
+import {mergeInventories,countOutcomeReasons,pruneFrequencyOutputs,assemble} from '../scripts/assemble-global-frequency.mjs';
 import {mkdtemp,mkdir,writeFile,readdir,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -18,6 +18,19 @@ test('global assembly rejects missing shards, duplicate feeds and catalogue drif
   assert.throws(()=>mergeInventories([a]),/Incomplete/);
   assert.throws(()=>mergeInventories([a,{...b,entries:[{id:'a'}]}]),/Duplicate feed/);
   assert.throws(()=>mergeInventories([a,{...b,catalogue_sha256:'changed'}]),/Inconsistent/);
+});
+test('reconciled registry fixtures have offline test coverage',()=>{
+  const run=spawnSync('python3',['-m','unittest','discover','-s','tests','-p','frequency_catalogue_test.py'],{encoding:'utf8'});
+  assert.equal(run.status,0,run.stdout+run.stderr);
+});
+test('failure classes remain distinct from provider-source prohibitions',()=>{
+  const reasons=countOutcomeReasons([
+    {id:'a',status:'excluded',reason_code:'source_terms_prohibit_derived_use'},
+    {id:'b',status:'excluded',reason_code:'provider_policy'},
+    {id:'c',status:'failed',reason_code:'source_http_404'},
+    {id:'d',status:'failed',reason_code:'table_row_limit'},
+    {id:'e',status:'compiled'}]);
+  assert.deepEqual(reasons,{source_terms_prohibit_derived_use:1,provider_policy:1,source_http_404:1,table_row_limit:1});
 });
 test('published feed directories retain only current verified inventory outputs',async()=>{
   const root=await mkdtemp(join(tmpdir(),'atlas-feed-prune-'));
@@ -46,6 +59,9 @@ test('a large feed is kept for matching beside its peers, and no feed builds map
     const entries=['bad','good'].map(id=>({id,status:'compiled',output:`feeds/${id}.json.gz`,sha256:id,country:'US'}));
     await writeFile(join(root,'inventory-0.json'),JSON.stringify({schema:2,shard:0,shards:1,catalogue_sha256:'verified',catalogue_entries:2,service_date:'2026-10-05',entries}));
     const manifest=await assemble(root);assert.equal(manifest.counts.failed,undefined);assert.equal(manifest.counts.compiled,2);assert.deepEqual(manifest.feeds.map(f=>f.id),['bad','good']);assert.equal(manifest.tiles,0,'timetables build no map tiles');
+    assert.deepEqual(manifest.countries_compiled,['US']);
+    assert.deepEqual(manifest.countries_with_mapped_feed,['US']);
+    assert.deepEqual(manifest.reason_codes,{});
     const inventory=JSON.parse(await (await import('node:fs/promises')).readFile(join(root,'inventory.json'),'utf8'));assert.equal(inventory.entries[0].status,'compiled');assert.equal(inventory.entries[0].failure_stage,undefined);assert.deepEqual(inventory.counts,manifest.counts,'the published inventory totals match its entries after assembly');assert.equal(inventory.entries[0].error,undefined);assert.deepEqual(await readdir(join(root,'feeds')),['bad.json.gz','good.json.gz'],'both feeds are kept');
   }finally{await rm(root,{recursive:true,force:true});}
 });
