@@ -100,7 +100,11 @@ export async function localOrmFulfillOptions(response, target, mirror = process.
   let output = body;
   if (/json/i.test(contentType) || !TILE_BODY_PATH.test(new URL(target).pathname)) {
     let parsed;
-    try { parsed = JSON.parse(body.toString('utf8')); } catch {}
+    // Fetch/Response JSON decoding strips a UTF-8 BOM before JSON.parse. Match
+    // that behavior here so BOM-prefixed TileJSON cannot bypass URL checks and
+    // then parse successfully inside Chromium.
+    const text = body.toString('utf8').replace(/^\uFEFF/, '');
+    try { parsed = JSON.parse(text); } catch {}
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && ('tiles' in parsed || 'grids' in parsed)) {
       output = Buffer.from(JSON.stringify(sanitizeLocalOrmTileJson(parsed, target, mirror)));
       if (!Object.keys(headers).some(name => name.toLowerCase() === 'content-type')) headers['content-type'] = 'application/json';

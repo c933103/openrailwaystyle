@@ -75,3 +75,16 @@ test('local TileJSON exposes only loopback tile templates to Chromium',async()=>
   assert.equal(options.headers['x-test'],'kept');
   await assert.rejects(fetchLoopbackNoRedirect({fetch:async()=>fakeResponse(JSON.stringify({tiles:['https://tiles.example/{z}/{x}/{y}.pbf']}))},target,mirror),/non-loopback tile URL/i);
 });
+
+test('UTF-8 BOM cannot make remote TileJSON templates bypass the local-only check',async()=>{
+  const mirror='http://127.0.0.1:4174/root/';
+  const target=mirror+'railway_line_high';
+  const body=Buffer.concat([
+    Buffer.from([0xef,0xbb,0xbf]),
+    Buffer.from(JSON.stringify({tilejson:'3.0.0',tiles:['https://tiles.example/{z}/{x}/{y}.pbf']})),
+  ]);
+  // Fetch/Response JSON parsing accepts this BOM. The policy-side parser must
+  // therefore normalize it before applying the same destination checks.
+  assert.deepEqual(await new Response(body).json(),{tilejson:'3.0.0',tiles:['https://tiles.example/{z}/{x}/{y}.pbf']});
+  await assert.rejects(fetchLoopbackNoRedirect({fetch:async()=>fakeResponse(body,{headers:{}})},target,mirror),/non-loopback tile URL/i);
+});
