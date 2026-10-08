@@ -53,9 +53,18 @@ export {fetchLoopbackNoRedirect, isLoopbackHttp, isPublicOrm, localOrmAuditTarge
 export async function isolatePublicOrm(context, {mirror = process.env.ATLAS_TEST_ORM_URL, warn = console.warn} = {}) {
   // Validate the configured local destination even before requests arrive.
   if (mirror) localOrmTarget('https://openrailwaymap.app/', mirror);
-  await context.route(isPublicOrm, async route => {
-    const original = route.request().url();
-    const local = localOrmTarget(original, mirror);
+  // A local TileJSON response may advertise any supported loopback host/port.
+  // Once a mirror is configured, route every non-navigation loopback request
+  // through the same no-redirect boundary as rewritten public ORM requests.
+  // Initial page/subframe navigations remain first-party, while explicit test
+  // fixture routes registered later still take precedence over this guard.
+  const guarded = url => isPublicOrm(url) || Boolean(mirror && isLoopbackHttp(url));
+  await context.route(guarded, async route => {
+    const request = route.request(), original = request.url();
+    if (isLoopbackHttp(original) && request.isNavigationRequest?.()) return route.fallback();
+    const local = isPublicOrm(original)
+      ? localOrmTarget(original, mirror)
+      : localOrmAuditTarget(original, mirror);
     if (!local) {
       warn('Blocked automated OpenRailwayMap request (no fixture/local instance): ' + original);
       return route.abort('blockedbyclient');
