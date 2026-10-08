@@ -154,7 +154,7 @@ ensureCjkChoice(cjkScript(settings.language));
 // applies: often Japanese shapes for Chinese names (e.g. 门). Give the canvas
 // the label language whenever MapLibre sets up one of these fonts.
 const CANVAS_LANG = {'zh-Hans':'zh-CN', 'zh-Hant':'zh-TW', ja:'ja', ko:'ko'};
-const DETAIL_GLYPH_RUNS = /\p{Script=Han}[\p{Script=Han}\p{Mark}]*|[\p{Script=Hiragana}\p{Script=Katakana}][\p{Script=Hiragana}\p{Script=Katakana}\p{Mark}ーｰ]*|\p{Script=Hangul}[\p{Script=Hangul}\p{Mark}]*|\p{Script=Bopomofo}[\p{Script=Bopomofo}\p{Mark}]*/gu;
+const DETAIL_GLYPH_RUNS = /\p{Script=Han}[\p{Script=Han}\p{Mark}]*|[\p{Script=Hiragana}\p{Script=Katakana}][\p{Script=Hiragana}\p{Script=Katakana}\p{Mark}ーｰﾞﾟ゛゜]*|\p{Script=Hangul}[\p{Script=Hangul}\p{Mark}]*|\p{Script=Bopomofo}[\p{Script=Bopomofo}\p{Mark}]*/gu;
 const detailGlyphLanguage = text => /^\p{Script=Han}/u.test(text) ? CANVAS_LANG[cjkScript(settings.language)] : /^\p{Script=Hangul}/u.test(text) ? 'ko' : /^\p{Script=Bopomofo}/u.test(text) ? 'zh-TW' : 'ja';
 const detailFontObserver = new MutationObserver(updateDetailGlyphs);
 // CJK text in feature details shares the map's chosen family and language,
