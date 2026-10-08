@@ -132,15 +132,17 @@ export function heritageBundles(tiles, zoom = HERITAGE_BUNDLE_ZOOM) {
 // limit that applies to the whole endpoint. Anything else (a
 // rejected query, the download budget, a local error) fails the run.
 export const HERITAGE_RETRY_DELAYS = [30000, 60000, 120000];
-export function heritageFailure(message, attempt, depth, maxDepth = 6) {
+export function heritageFailure(failure, attempt, depth, maxDepth = 6) {
+  const message = typeof failure === 'string' ? failure : failure.message;
+  const detail = typeof failure === 'string' ? failure : failure.responseBody ?? message;
   const status = Number(/^HTTP (\d+):/.exec(message)?.[1]);
   const request = /^(Network|Invalid response|Incomplete heritage response):/.test(message);
   // An executed query that ran out of time or memory, reported in a remark or
   // an HTTP 5xx body ("runtime error: Query timed out ...", "... out of
   // memory"), or one the client stopped waiting for. Retrying it would run
   // the same heavy query again; an admission error ("Gateway timeout") or a
-  // server fault ("runtime error: open64") is retried.
-  const tooHeavy = /runtime error[^]*?(timed? ?out|out of memory)/i.test(message) || /^Network: .*timeout/i.test(message);
+  // server fault ("runtime error: open64", including dispatcher timeout) is retried.
+  const tooHeavy = /runtime error:\s*Query\b[^]*?(timed? ?out|out of memory)/i.test(detail) || /^Network: .*timeout/i.test(message);
   if ((request || status >= 500) && tooHeavy) return depth < maxDepth ? 'split' : 'fail';
   if (!request && !(status >= 500 || status === 429)) return 'fail';
   if (attempt < HERITAGE_RETRY_DELAYS.length) return 'retry';
