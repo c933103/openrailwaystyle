@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createTrackCounter} from '../styles/track-work.mjs';
 import {installLabelProtocols} from '../styles/tile-labels.mjs';
+import encode from 'vt-pbf';
 const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
 const input=y=>({tiles:[{dx:0,dy:0,data:new ArrayBuffer(16)}],areas:[],stations:[],y});
 function workers(){
@@ -32,7 +33,7 @@ test('unfinished counts remain shared when the completed-result cache is full',a
  const signal=new AbortController().signal,a=count(0,0,signal),b=count(1,1,signal);await tick();const again=count(0,0,signal);
  assert.equal(loads,2);w.respond(w.messages[0]);await a;await tick();w.respond();await b;assert.deepEqual(await again,await a);
 });
-test('last cancelled count aborts its four active downloads and discards 23 queued tiles, but one reader keeps all work alive',async()=>{
+test('last cancelled count aborts its four active downloads and discards five queued tiles, but one reader keeps all work alive',async()=>{
  const protocols={},previous=globalThis.Worker;let calls=0,aborted=0,adapters;
  const a=new AbortController(),b=new AbortController();
  globalThis.Worker=class {constructor(){throw new Error('cancelled downloads must not create a worker');}};
@@ -41,13 +42,42 @@ test('last cancelled count aborts its four active downloads and discards 23 queu
   const url='atlastracks://14/8192/8192';
   const first=protocols.atlastracks({url},{signal:a.signal}),second=protocols.atlastracks({url},{signal:b.signal});
   const outcomes=Promise.allSettled([first,second]);
-  await tick();assert.equal(calls,4,'the provider receives four requests, not a burst of 27');
-  assert.equal(adapters.requestStats().queued,23,'the other 23 inputs are retained, not dropped');
+  await tick();assert.equal(calls,4,'the provider receives four requests, not a burst of nine');
+  assert.equal(adapters.requestStats().queued,5,'the other five railway inputs are retained, not dropped');
   a.abort();await tick();assert.equal(aborted,0,'one remaining consumer keeps the work alive');
-  assert.equal(adapters.requestStats().queued,23);
+  assert.equal(adapters.requestStats().queued,5);
   b.abort();const settled=await outcomes;await tick();
   assert.ok(settled.every(outcome=>outcome.status==='rejected'&&outcome.reason.name==='AbortError'));
   assert.equal(aborted,4);assert.equal(calls,4,'cancelled queued inputs never reach the provider');
   assert.equal(adapters.requestStats().queued,0);assert.equal(adapters.requestStats().active,0);
  }finally{a.abort();b.abort();adapters?.dispose();globalThis.Worker=previous;}
+});
+
+
+const fixtureRailTile=(()=>{
+ const b=encode.fromGeojsonVt({railway_line_high:{features:[{type:2,geometry:[[[0,2048],[4096,2048]]],tags:{id:'fixture'}}]}},{version:2,extent:4096});
+ return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);
+})();
+async function measureAmplification(views,{empty=false}={}){
+ const protocols={},requests=[];let active=0,peak=0;const previous=globalThis.Worker;
+ globalThis.Worker=class{terminate(){} postMessage(message){queueMicrotask(()=>this.onmessage?.({data:{id:message.id,result:{extent:4096,points:[]}}}));}};
+ try{
+  const data=empty?new ArrayBuffer(0):fixtureRailTile;
+  installLabelProtocols({addProtocol:(n,f)=>protocols[n]=f},{},async(url,{signal}={})=>{
+   signal?.throwIfAborted?.();requests.push(url);active++;peak=Math.max(peak,active);await tick();active--;
+   return {ok:true,status:200,arrayBuffer:async()=>url.includes('/railway_line_high/')?data.slice(0):new ArrayBuffer(0)};
+  },{tileRetries:[]});
+  const req=([x,y])=>protocols.atlastracks({url:`atlastracks://14/${x}/${y}`},{signal:new AbortController().signal});
+  const totals=[];for(const view of views){await Promise.all(view.map(req));totals.push(requests.length);}
+  return {totals,peak,unique:new Set(requests).size};
+ }finally{globalThis.Worker=previous;}
+}
+test('z14 track-count request amplification is measured and deduplicated',async()=>{
+ const one=await measureAmplification([[[8192,8192]]]);
+ assert.deepEqual(one.totals,[27]);assert.equal(one.unique,27);assert.equal(one.peak,4);
+ const first=[[8192,8192],[8193,8192],[8192,8193],[8193,8193]],east=[[8193,8192],[8194,8192],[8193,8193],[8194,8193]];
+ const dense=await measureAmplification([first,east]);
+ assert.deepEqual(dense.totals,[48,60],'cold 2x2 deduplicates 108 candidates to 48; east pan adds 12');assert.equal(dense.peak,4);
+ const blank=await measureAmplification([first,east],{empty:true});
+ assert.deepEqual(blank.totals,[16,20],'blank 2x2 skips station halos; east pan adds four');assert.equal(blank.peak,4);
 });

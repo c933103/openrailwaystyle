@@ -1,11 +1,14 @@
 import {launchBrowser} from './browser.mjs';
+// This audit needs real geographic railway geometry. It must only read
+// self-hosted OpenRailwayMap tiles; the shared browser helper enforces this.
+if (!process.env.ATLAS_TEST_ORM_URL) throw new Error('Full geographic browser audit requires ATLAS_TEST_ORM_URL pointing to a local OpenRailwayMap instance (not the public tile server)');
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {waitUntil,setDefaultTimeout} from './wait-until.mjs';
 // A hang guard only: every wait below has its own timeout. The whole check
 // already takes about nine minutes on CI's software renderer.
-// Twenty minutes: with an empty provider tile cache (scripts/browser.mjs)
-// every request goes to the network, and runs took up to fifteen.
+// The full local-data audit can still take up to fifteen minutes on
+// software rendering. It is excluded from public CI.
 const deadline=setTimeout(()=>{console.error('Browser validation exceeded twenty minutes');process.exit(1);},1200000);deadline.unref();
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1365,height:900},deviceScaleFactor:1});

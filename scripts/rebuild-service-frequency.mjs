@@ -4,7 +4,7 @@
 // until a feed's routes are matched to OSM routes.
 import {readFile,mkdir,writeFile,readdir,rm} from 'node:fs/promises';
 import {gunzipSync,gzipSync} from 'node:zlib';
-import {buildTiles,readTable} from './service-routes.mjs';
+import {buildTiles,geometrySummary,readTable} from './service-routes.mjs';
 import {loadTimetableServices} from './gtfs-service.mjs';
 import {writeFrequencyCredits} from './frequency-credits.mjs';
 import {FREQUENCY_PROFILES} from '../styles/service-frequency.mjs';
@@ -39,7 +39,7 @@ await writeFile(`${directory}/index.json`,JSON.stringify({tiles:keys.sort()}));
 const gaps=global?[{region:'Worldwide',status:'Catalogue-wide scan, not applied',reason:`${global.catalogue_entries} entries across ${global.countries_scanned.length} jurisdictions. Outcomes: ${JSON.stringify(global.counts)}. Timetable routes are not yet matched to OSM routes, so none is drawn or applied. Details: data/service-frequency/inventory.json.`}]:registry.gaps;
 // The periods some applied source covers; the viewer offers only these.
 const profiles=FREQUENCY_PROFILES.filter(p=>catalog.routes.some(r=>r.match&&r.profiles?.[p]));
-await writeFile(`${directory}/frequency-manifest.json`,JSON.stringify({schema:3,profiles,worldwide:global?{catalogue_entries:global.catalogue_entries,countries_scanned:global.countries_scanned,counts:global.counts,catalogue_sha256:global.catalogue_sha256}:null,headways:{source:catalog.source,auditedWholeRouteProfiles:catalog.routes.filter(r=>r.match).length},feeds:timetable.summary,gaps,tiles:keys.length,tileBytes:bytes,scope:global?.scope||'Worldwide snapshot not assembled; other routes unknown. No new extraction.'},null,2)+'\n');
+await writeFile(`${directory}/frequency-manifest.json`,JSON.stringify({schema:3,geometry:geometrySummary(table),profiles,worldwide:global?{catalogue_entries:global.catalogue_entries,countries_scanned:global.countries_scanned,counts:global.counts,catalogue_sha256:global.catalogue_sha256}:null,headways:{source:catalog.source,auditedWholeRouteProfiles:catalog.routes.filter(r=>r.match).length},feeds:timetable.summary,gaps,tiles:keys.length,tileBytes:bytes,scope:global?.scope||'Worldwide snapshot not assembled; other routes unknown. No new extraction.'},null,2)+'\n');
 console.log(`Rebuilt ${keys.length} service tiles from cached OSM routes (${bytes} bytes) with published headways; timetables add no lines; no extraction.`);
 
 await writeFrequencyCredits(timetable.summary,gaps,catalog,process.argv[3],{global:!!global,fixtures:fixture});
