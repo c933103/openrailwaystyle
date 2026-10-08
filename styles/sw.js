@@ -10,9 +10,9 @@
 // libraries from the CDN are kept too: their addresses carry the version, so
 // a saved copy never goes stale and is used first. Map tiles and data files
 // are not handled here.
-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}21`, KEEP_VERSIONS = 2;
+const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}22`, KEEP_VERSIONS = 2;
 const FONT_CACHE='atlas-label-fonts-v1';
-// Shell 21 counts only dispatched railway recovery rounds while migrate() keeps the previous app's
+// Shell 22 reconciles railway recovery after visibility changes while migrate() keeps the previous app's
 // versioned modules. Stored user settings are not touched.
 // Keep in step with loadScript in app.mjs and the stylesheet in index.html.
 const LIBRARIES = ['https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js', 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css', 'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js'];

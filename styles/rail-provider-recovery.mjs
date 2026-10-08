@@ -120,5 +120,6 @@ export function createRailProviderRecovery(map, {
   function dispose() { disposed = true; stopTimer(); failed.clear(); }
   return {noteError, noteSourceData, wake, dispose,
     hasFailures: () => { if (disposed) return false; prune(); return [...failed.keys()].some(visible); },
-    failedSourceIds: () => [...failed.keys()]};
+    failedSourceIds: () => [...failed.keys()],
+    hasSourceFailure: (id, source) => failed.get(id)?.source === source};
 }

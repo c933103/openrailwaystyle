@@ -1,22 +1,22 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261008-dispatched-recovery';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261008-dispatched-recovery';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261008-dispatched-recovery';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261008-dispatched-recovery';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261008-dispatched-recovery';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261008-dispatched-recovery';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261008-settings-recovery';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261008-settings-recovery';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261008-settings-recovery';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261008-settings-recovery';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261008-settings-recovery';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261008-settings-recovery';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261008-dispatched-recovery';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261008-dispatched-recovery';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261008-dispatched-recovery';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261008-dispatched-recovery';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261008-dispatched-recovery';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261008-dispatched-recovery';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261008-dispatched-recovery';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261008-dispatched-recovery';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261008-dispatched-recovery';
-import { installWatchGesture } from './watch-map.mjs?v=20261008-dispatched-recovery';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261008-dispatched-recovery';
-import { createBundleReader } from './tile-bundles.mjs?v=20261008-dispatched-recovery';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261008-settings-recovery';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261008-settings-recovery';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261008-settings-recovery';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261008-settings-recovery';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261008-settings-recovery';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261008-settings-recovery';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261008-settings-recovery';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261008-settings-recovery';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261008-settings-recovery';
+import { installWatchGesture } from './watch-map.mjs?v=20261008-settings-recovery';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261008-settings-recovery';
+import { createBundleReader } from './tile-bundles.mjs?v=20261008-settings-recovery';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -50,9 +50,9 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths,frequencyExpiry;
 let powerFacilities;
-let railRecovery;
+let railRecovery, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261008-dispatched-recovery';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261008-settings-recovery';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -171,7 +171,7 @@ function whenReady(action) {
   if (ready) action();
   else pendingView = action;
 }
-const errors = new Set();
+const errors = new Map();
 const textNode = (tag, value, className) => {
   const el = document.createElement(tag); el.textContent = value;
   if (className) el.className = className;
@@ -464,6 +464,7 @@ function applySettings() {
   renderLegend();
   if (ready) { scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.(); }
   frequencyExpiry?.update();
+  if (ready) wakeRailRecovery();
 }
 let attribution, attributionStateCleanup, controlLayout, servedBuild;
 function codeAttribution() {
@@ -899,7 +900,11 @@ const mapErrorMessage = () => railRecovery?.hasFailures()
   ? 'OpenRailwayMap railway tiles are unavailable. Retrying automatically; some lines may be missing.'
   : 'Some map data could not load. Check your connection or reload to retry.';
 function updateStatus() {
-  if (errors.size || railRecovery?.hasFailures()) {
+  const railFailed = railRecovery?.hasFailures(); // prune before reconciling ownership
+  for (const [id, error] of errors) {
+    if (error.recoveryOwned && !railRecovery?.hasSourceFailure(id, error.source)) errors.delete(id);
+  }
+  if (errors.size || railFailed) {
     status.classList.add('error'); status.textContent = mapErrorMessage(); return;
   }
   status.classList.remove('error');
@@ -1403,23 +1408,34 @@ async function initialize() {
     else if (drawing.multiPoint && !drawing.paused) { event.preventDefault(); drawing.finish(); }
   });
   const action = pendingDraw; pendingDraw = undefined; action?.();
-  railRecovery = createRailProviderRecovery(map, {provider: ORM});
+  let recoveryRemoved = false, recoveryStatusPending = false;
+  railRecovery = createRailProviderRecovery(map, {provider: ORM, onChange: () => {
+    // Timer-driven retirement also changes status. Defer/coalesce notifications
+    // so source handlers finish their error bookkeeping before reconciliation.
+    if (recoveryRemoved || recoveryStatusPending) return;
+    recoveryStatusPending = true;
+    queueMicrotask(() => { recoveryStatusPending = false; if (!recoveryRemoved) updateStatus(); });
+  }});
+  wakeRailRecovery = () => { if (!recoveryRemoved) { railRecovery.wake(); updateStatus(); } };
   // Keep the pre-existing finite retry for non-rail metadata providers; only
   // OpenRailwayMap uses demand-driven failed-tile retries with prolonged backoff.
   const otherMetadataRetries = new Map();
-  document.addEventListener('visibilitychange', () => railRecovery.wake());
-  window.addEventListener('online', () => railRecovery.wake());
-  map.on('moveend', () => railRecovery.wake());
-  map.on('remove', () => {railRecovery.dispose();labelProtocols.dispose?.();});
+  document.addEventListener('visibilitychange', wakeRailRecovery);
+  window.addEventListener('online', wakeRailRecovery);
+  map.on('moveend', wakeRailRecovery);
+  map.on('remove', () => {recoveryRemoved=true;document.removeEventListener('visibilitychange',wakeRailRecovery);window.removeEventListener('online',wakeRailRecovery);railRecovery.dispose();labelProtocols.dispose?.();});
   map.on('error', e => {
     // Panning and replacing language sources intentionally cancel old tiles.
     if (e.error?.name === 'AbortError' || /^AbortError$|operation was aborted/i.test(e.error?.message || '')) return;
     // Log text as well as the object: errors passed back from map workers
     // carry no stack, and plain logs of them show only "Error".
     console.error('Map resource error:', e.sourceId || 'map', e.error?.message || String(e.error), e.error);
-    errors.add(e.sourceId || 'resource');
     const railError = railRecovery.noteError(e);
-    status.classList.add('error'); status.textContent = mapErrorMessage();
+    const id = e.sourceId || 'resource', instance = e.sourceId && map.getSource(e.sourceId), previous = errors.get(id);
+    // A retryable error cannot take ownership of a nonretryable error on the
+    // same source instance; pruning must not erase that independent failure.
+    errors.set(id, {source:instance, recoveryOwned:railError && (!previous || previous.source !== instance || previous.recoveryOwned)});
+    updateStatus();
     // Demand-driven recovery handles failed railway metadata and tiles.
     // Preserve the existing three source-metadata retries for unrelated map
     // providers. A deliberate provider 403 is not retried as an outage.

@@ -17,7 +17,7 @@ export async function checkRailRecoveryWithoutIdle({page,base,outage}) {
     await page.evaluate(async base => {
       const {map}=await import(document.querySelector('script[type="module"]').src);
       window.fixtureMap=map;window.recoveryEvents=[];
-      for(const type of ['error','sourcedata','idle'])map.on(type,event=>{
+      for(const type of ['error','sourcedata','idle','moveend'])map.on(type,event=>{
         if(type==='sourcedata'&&event.sourceId!=='railway'&&event.sourceId!=='pendingRecovery')return;
         window.recoveryEvents.push({type,sourceId:event.sourceId,tileState:event.tile?.state,
           sourceDataType:event.sourceDataType,isSourceLoaded:event.isSourceLoaded,
@@ -33,6 +33,15 @@ export async function checkRailRecoveryWithoutIdle({page,base,outage}) {
     await page.waitForFunction(()=>document.getElementById('map-status').classList.contains('error')&&
       document.getElementById('map-status').textContent.includes('Retrying automatically')&&
       new Set(recoveryEvents.filter(e=>e.type==='error'&&e.sourceId==='railway').map(e=>JSON.stringify(e.coordinate))).size>=2,null,{timeout:30000});
+    const settings=await page.evaluate(()=>{
+      const at=performance.now(),center=fixtureMap.getCenter().toArray();
+      document.querySelector('[data-background="satellite"]').click();
+      const hidden=fixtureMap.getLayoutProperty('speed-tracks','visibility');
+      document.querySelector('[data-background="map"]').click();
+      return {at,center,hidden,shown:fixtureMap.getLayoutProperty('speed-tracks','visibility'),status:document.getElementById('map-status').textContent};
+    });
+    assert.equal(settings.hidden,'none');assert.equal(settings.shown,'visible');
+    assert.match(settings.status,/Retrying automatically/);
     const before=await page.evaluate(()=>({status:document.getElementById('map-status').textContent,
       pending:!fixtureMap.isSourceLoaded('pendingRecovery'),at:performance.now()}));
     assert.equal(before.pending,true);
@@ -58,10 +67,11 @@ export async function checkRailRecoveryWithoutIdle({page,base,outage}) {
     assert.ok(after.rails>0,'real renderer shows the recovered rail geometry');
     assert.ok(after.events.some(e=>e.type==='sourcedata'&&e.sourceId==='railway'&&e.tileState==='loaded'));
     assert.equal(after.events.filter(e=>e.type==='idle'&&e.at>=before.at).length,0,'no idle event can conceal stale recovery status');
+    assert.equal(after.events.filter(e=>e.type==='moveend'&&e.at>=settings.at).length,0,'settings resume recovery without a pan');
     await page.screenshot({path:'browser-review/rail-outage-after.png'});
     // Unknown endpoints must retain their normal TileJSON fallback.
     await page.evaluate(()=>fixtureMap.addSource('unknownRailFixture',{type:'vector',url:'atlasrail://https://openrailwaymap.app/fixture_unknown'}));
     await page.waitForFunction(()=>fixtureMap.getSource('unknownRailFixture')?.tiles?.length>0,null,{timeout:10000});
-    return {before,partial,after,failedPaths:[outage.path,outage.otherPath],unknownMetadataFallback:true};
+    return {settings,before,partial,after,failedPaths:[outage.path,outage.otherPath],unknownMetadataFallback:true};
   } finally {outage.enabled=false;releasePending();}
 }

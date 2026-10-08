@@ -69,7 +69,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     }
     getStyle() { return this.options.style; }
     getSource(id) { return (this.sources ||= {})[id] ||= {setData:data=>{(this.sourceData ||= {})[id]=data;},setUrl:url=>{this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
-    setLayoutProperty(id, property, value) { if (property === 'visibility') this.visibility[id] = value; else (this.layout ||= {})[id] = value; }
+    setLayoutProperty(id, property, value) { if (property === 'visibility') { this.visibility[id] = value; const layer=this.options.style.layers.find(l=>l.id===id); if(layer)(layer.layout ||= {}).visibility=value; } else (this.layout ||= {})[id] = value; }
     setPaintProperty(id, property, value) { (this.paint ||= {})[id] = value; ((this.paintProperties ||= {})[id] ||= {})[property] = value; }
     setPixelRatio(ratio) { this.pixelRatio = ratio; }
     zoom = 20;
@@ -1015,4 +1015,67 @@ test('platform measurement fetches HTTP templates rather than MapLibre protocol 
     }
     map.sources.platforms={};assert.equal(options.tileURL(),undefined,'metadata not ready stays pending');
   } finally {maps[0].handlers.remove();dom.window.close();}
+});
+
+test('settings hide and show failed layers without pan or idle resumes exactly one recovery timer',async()=>{
+ const f=await recoveryApp();
+ try{
+  f.fail(failedRailTile());assert.equal(f.clock.timers.size,1);
+  const doc=f.window.document;
+  for(let i=0;i<2;i++){
+   doc.querySelector('[data-background="satellite"]').click();assert.equal(f.clock.timers.size,0);
+   assert.equal(f.status.classList.contains('error'),true,'hidden failures remain retained');
+   doc.querySelector('[data-background="map"]').click();assert.equal(f.clock.timers.size,1);
+   const id=[...f.clock.timers.keys()][0];doc.querySelector('[data-mode="infrastructure"]').click();assert.deepEqual([...f.clock.timers.keys()],[id],'settings do not postpone an existing timer');
+  }
+  f.map.sources.railwaySignals={url:'atlastext://https://openrailwaymap.app/railway_signals'};f.map.zoom=18;
+  f.map.handlers.error({sourceId:'railwaySignals',tile:failedRailTile(),error:{status:520}});
+  const railway=f.map.sources.railway;f.map.sources.railway={url:railway.url};
+  doc.querySelector('[data-mode="speed"]').click();assert.equal(f.clock.timers.size,0);
+  doc.querySelector('[data-mode="infrastructure"]').click();assert.equal(f.clock.timers.size,1);
+  f.map.handlers.remove();doc.querySelector('[data-mode="speed"]').click();doc.querySelector('[data-mode="infrastructure"]').click();assert.equal(f.clock.timers.size,0);
+ }finally{f.close();}
+});
+
+test('off-screen retirement reconciles owned errors without source success and retains other failures',async()=>{
+ const f=await recoveryApp();
+ try{
+  const a=failedRailTile(1),b=failedRailTile(2);f.fail(a);f.fail(b);
+  f.map.getBounds=()=>({getWest:()=>-174,getEast:()=>-172,getSouth:()=>80,getNorth:()=>85});
+  f.map.handlers.moveend();assert.match(f.status.textContent,/Retrying automatically/,'one remaining tile retains the warning');
+  f.map.getBounds=()=>({getWest:()=>0,getEast:()=>10,getSouth:()=>-10,getNorth:()=>10});
+  f.map.handlers.moveend();assert.equal(f.status.classList.contains('error'),false);assert.equal(f.clock.timers.size,0);
+  f.map.getBounds=()=>undefined;f.fail(failedRailTile());
+  f.map.handlers.error({sourceId:'openmaptiles',error:new Error('unrelated')});
+  f.map.getBounds=()=>({getWest:()=>0,getEast:()=>10,getSouth:()=>-10,getNorth:()=>10});f.map.handlers.moveend();
+  assert.match(f.status.textContent,/Some map data could not load/);assert.equal(f.status.classList.contains('error'),true);assert.equal(f.clock.timers.size,0);
+ }finally{f.close();}
+});
+
+test('retirement cannot clear nonretryable or newer same-ID errors',async()=>{
+ for(const replace of [false,true]){
+  const f=await recoveryApp();try{
+   f.fail(failedRailTile());if(replace)f.map.sources.railway={url:f.map.sources.railway.url};
+   f.map.handlers.error({sourceId:'railway',tile:failedRailTile(3),error:{status:403,message:'HTTP 403'}});
+   f.fail(failedRailTile(4));
+   f.map.getBounds=()=>({getWest:()=>0,getEast:()=>10,getSouth:()=>-10,getNorth:()=>10});f.map.handlers.moveend();
+   assert.equal(f.status.classList.contains('error'),true);assert.match(f.status.textContent,/Some map data could not load/);assert.equal(f.clock.timers.size,0);
+  }finally{f.close();}
+ }
+});
+
+test('timer retirement reconciles status after its transaction and queued notifications are inert after disposal',async()=>{
+ const f=await recoveryApp();
+ try{
+  f.fail(failedRailTile());
+  f.map.getBounds=()=>({getWest:()=>0,getEast:()=>10,getSouth:()=>-10,getNorth:()=>10});
+  const [id,timer]=f.clock.timers.entries().next().value;f.clock.timers.delete(id);timer.fn();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(f.status.classList.contains('error'),false);assert.equal(f.clock.timers.size,0);assert.deepEqual(f.clock.retries,[]);
+  f.map.getBounds=()=>undefined;f.fail(failedRailTile());
+  const before=f.status.textContent;f.map.handlers.remove();
+  f.map.queryRenderedFeatures=()=>{throw new Error('disposed map must not be queried');};
+  f.window.dispatchEvent(new f.window.Event('online'));f.window.document.dispatchEvent(new f.window.Event('visibilitychange'));f.map.handlers.moveend();
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(f.status.textContent,before);assert.equal(f.clock.timers.size,0);
+ }finally{f.close();}
 });
