@@ -154,7 +154,9 @@ ensureCjkChoice(cjkScript(settings.language));
 // applies: often Japanese shapes for Chinese names (e.g. 门). Give the canvas
 // the label language whenever MapLibre sets up one of these fonts.
 const CANVAS_LANG = {'zh-Hans':'zh-CN', 'zh-Hant':'zh-TW', ja:'ja', ko:'ko'};
-const DETAIL_GLYPH_RUNS = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}][\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}\p{Mark}ーｰﾞﾟ゛゜]*/gu;
+// Internal punctuation belongs to the name when followed by another CJK
+// character; it must not split 東京・テレポート into different languages.
+const DETAIL_GLYPH_RUNS = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}](?:[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}\p{Mark}ーｰﾞﾟ゛゜]|[\p{Punctuation}\u3000]+(?=[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}]))*/gu;
 const detailGlyphLanguage = text => /[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(text) ? 'ja' : /\p{Script=Hangul}/u.test(text) ? 'ko' : /\p{Script=Bopomofo}/u.test(text) ? 'zh-TW' : CANVAS_LANG[cjkScript(settings.language)];
 const detailFontObserver = new MutationObserver(updateDetailGlyphs);
 // CJK text in feature details shares the map's chosen family. Kana or Hangul
