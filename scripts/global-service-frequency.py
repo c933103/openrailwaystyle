@@ -496,6 +496,8 @@ def compile_entry_isolated(entry, cache, output, date, graph, max_bytes, profile
             raise ValueError('Feed audit metadata exceeds byte budget')
         result=json.loads(response.read_text())
         if process.returncode or 'error' in result:
+            if 'source_attempts' in result:
+                raise SourceRetrievalError(result['source_attempts'])
             raise RuntimeError(result.get('error') or f'Feed compiler exited {process.returncode}')
         return result['entry']
 
@@ -511,6 +513,9 @@ def compile_one(request, response):
         payload['graph']=Path(payload['graph'])
     try:
         atomic_json(Path(response),{'entry':compile_entry(**payload)})
+    except SourceRetrievalError as error:
+        atomic_json(Path(response),{'error':str(error)[:2000], 'source_attempts':error.attempts})
+        return 1
     except Exception as error:
         atomic_json(Path(response),{'error':f'{type(error).__name__}: {str(error)[:2000]}'})
         return 1
@@ -518,7 +523,16 @@ def compile_one(request, response):
 
 
 def classify_failure(error):
-    """Annotate the actual processing failure without pretending it is a licence denial."""
+    """Annotate the unresolved failure; it remains eligible for future attempts."""
+    if isinstance(error, SourceRetrievalError):
+        codes = {x['code'] for x in error.attempts}
+        if codes == {'http_404'}:
+            return 'source_http_404', 'retrieval'
+        if codes <= {'http_403', 'http_401'}:
+            return 'source_access_denied', 'retrieval'
+        if codes == {'missing_source_url'}:
+            return 'missing_source_url', 'discovery'
+        return 'source_retrieval_error', 'retrieval'
     reason = f'{type(error).__name__}: {error}'
     message = reason.lower()
     if 'http error 404' in message or 'http 404' in message:
@@ -582,8 +596,11 @@ def main():
                 entry = compile_entry_isolated(entry, args.cache, args.output, args.date, args.rail_graph, args.max_feed_bytes, rules.get('profiles', PROFILES), args.max_compile_seconds, args.max_compile_memory_bytes)
             except Exception as error:
                 code, stage = classify_failure(error)
-                entry = {**entry, 'status': 'failed', 'reason': f'{type(error).__name__}: {error}',
-                         'reason_code': code, 'failure_stage': stage}
+                entry = {**entry, 'status': 'retry_pending', 'reason': f'{type(error).__name__}: {error}',
+                         'reason_code': code, 'failure_stage': stage, 'retry_eligible': True,
+                         'next_action': ('repair_or_find_feed_url' if code in ('source_http_404', 'missing_source_url')
+                                         else 'retry_source_or_repair_compiler'),
+                         'source_attempts': error.attempts if isinstance(error, SourceRetrievalError) else []}
         outcomes.append(entry)
         # Inventory-only is read-only: write once rather than serializing the
         # growing worldwide inventory N times (quadratic work at global scale).
