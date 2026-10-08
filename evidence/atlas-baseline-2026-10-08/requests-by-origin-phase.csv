@@ -1,0 +1,81 @@
+path,pair,case,phase,origin,delivery,requests,known_cdp_encoded_response_bytes,known_decoded_http_body_bytes,encoded_bytes_unavailable_requests,decoded_bytes_unavailable_requests,served_from_cache_events,disk_cache_responses,service_worker_responses,observed_failed_requests,observed_blocked_requests,upstream_delivery_bytes
+/,1,cold-browser,startup,http://127.0.0.1:4176,loopback HTTP,38,2754487,2748260,3,3,0,0,0,0,0,0
+/,1,cold-browser,startup,https://cdn.jsdelivr.net,intercepted local fixture,3,1146622,1146426,0,0,0,0,0,0,0,0
+/,1,cold-browser,startup,data: (in-document),in-document data URL,6,676,1952,0,0,5,0,0,0,0,0
+/,1,cold-browser,startup,blob: (in-document),in-document blob URL,1,0,0,1,1,0,0,0,0,0,0
+/,1,cold-browser,startup,https://tuiles.enliberte.fr,intercepted local fixture,1,474,217,0,0,0,0,0,0,0,0
+/,1,cold-browser,startup,https://openrailwaymap.app,intercepted local fixture,109,20870,3732,0,0,0,0,0,0,0,0
+/,1,cold-browser,first-pan,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/,1,cold-browser,first-pan,https://openrailwaymap.app,intercepted local fixture,22,3666,245,0,0,0,0,0,0,0,0
+/,1,cold-browser,reset,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/,1,cold-browser,cached-pan,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/,1,warm-browser,startup,http://127.0.0.1:4176,loopback HTTP,38,2754487,2748260,3,3,0,0,0,0,0,0
+/,1,warm-browser,startup,https://cdn.jsdelivr.net,intercepted local fixture,3,1146622,1146426,0,0,0,0,0,0,0,0
+/,1,warm-browser,startup,data: (in-document),in-document data URL,6,676,1952,0,0,5,0,0,0,0,0
+/,1,warm-browser,startup,blob: (in-document),in-document blob URL,1,0,0,1,1,0,0,0,0,0,0
+/,1,warm-browser,startup,https://tuiles.enliberte.fr,intercepted local fixture,1,474,217,0,0,0,0,0,0,0,0
+/,1,warm-browser,startup,https://openrailwaymap.app,intercepted local fixture,109,20870,3732,0,0,0,0,0,0,0,0
+/,1,warm-browser,first-pan,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/,1,warm-browser,first-pan,https://openrailwaymap.app,intercepted local fixture,22,3666,245,0,0,0,0,0,0,0,0
+/,1,warm-browser,reset,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/,1,warm-browser,cached-pan,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/,2,cold-browser,startup,http://127.0.0.1:4176,loopback HTTP,38,2754487,2748260,3,3,0,0,0,0,0,0
+/,2,cold-browser,startup,https://cdn.jsdelivr.net,intercepted local fixture,3,1146622,1146426,0,0,0,0,0,0,0,0
+/,2,cold-browser,startup,data: (in-document),in-document data URL,6,676,1952,0,0,5,0,0,0,0,0
+/,2,cold-browser,startup,blob: (in-document),in-document blob URL,1,0,0,1,1,0,0,0,0,0,0
+/,2,cold-browser,startup,https://tuiles.enliberte.fr,intercepted local fixture,1,474,217,0,0,0,0,0,0,0,0
+/,2,cold-browser,startup,https://openrailwaymap.app,intercepted local fixture,109,20870,3732,0,0,0,0,0,0,0,0
+/,2,cold-browser,first-pan,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/,2,cold-browser,first-pan,https://openrailwaymap.app,intercepted local fixture,22,3666,245,0,0,0,0,0,0,0,0
+/,2,cold-browser,reset,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/,2,cold-browser,cached-pan,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/,2,warm-browser,startup,http://127.0.0.1:4176,loopback HTTP,38,2754487,2748260,3,3,0,0,0,0,0,0
+/,2,warm-browser,startup,https://cdn.jsdelivr.net,intercepted local fixture,3,1146622,1146426,0,0,0,0,0,0,0,0
+/,2,warm-browser,startup,data: (in-document),in-document data URL,6,676,1952,0,0,5,0,0,0,0,0
+/,2,warm-browser,startup,blob: (in-document),in-document blob URL,1,0,0,1,1,0,0,0,0,0,0
+/,2,warm-browser,startup,https://tuiles.enliberte.fr,intercepted local fixture,1,474,217,0,0,0,0,0,0,0,0
+/,2,warm-browser,startup,https://openrailwaymap.app,intercepted local fixture,109,20870,3732,0,0,0,0,0,0,0,0
+/,2,warm-browser,first-pan,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/,2,warm-browser,first-pan,https://openrailwaymap.app,intercepted local fixture,22,3666,245,0,0,0,0,0,0,0,0
+/,2,warm-browser,reset,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/,2,warm-browser,cached-pan,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/openrailwaystyle/,1,cold-browser,startup,http://127.0.0.1:4176,loopback HTTP,38,2754487,2748260,3,3,0,0,0,0,0,0
+/openrailwaystyle/,1,cold-browser,startup,https://cdn.jsdelivr.net,intercepted local fixture,3,1146622,1146426,0,0,0,0,0,0,0,0
+/openrailwaystyle/,1,cold-browser,startup,data: (in-document),in-document data URL,6,676,1952,0,0,5,0,0,0,0,0
+/openrailwaystyle/,1,cold-browser,startup,blob: (in-document),in-document blob URL,1,0,0,1,1,0,0,0,0,0,0
+/openrailwaystyle/,1,cold-browser,startup,https://tuiles.enliberte.fr,intercepted local fixture,1,474,217,0,0,0,0,0,0,0,0
+/openrailwaystyle/,1,cold-browser,startup,https://openrailwaymap.app,intercepted local fixture,109,20870,3732,0,0,0,0,0,0,0,0
+/openrailwaystyle/,1,cold-browser,first-pan,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/openrailwaystyle/,1,cold-browser,first-pan,https://openrailwaymap.app,intercepted local fixture,22,3666,245,0,0,0,0,0,0,0,0
+/openrailwaystyle/,1,cold-browser,reset,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/openrailwaystyle/,1,cold-browser,cached-pan,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/openrailwaystyle/,1,warm-browser,startup,http://127.0.0.1:4176,loopback HTTP,38,2754487,2748260,3,3,0,0,0,0,0,0
+/openrailwaystyle/,1,warm-browser,startup,https://cdn.jsdelivr.net,intercepted local fixture,3,1146622,1146426,0,0,0,0,0,0,0,0
+/openrailwaystyle/,1,warm-browser,startup,data: (in-document),in-document data URL,6,676,1952,0,0,5,0,0,0,0,0
+/openrailwaystyle/,1,warm-browser,startup,blob: (in-document),in-document blob URL,1,0,0,1,1,0,0,0,0,0,0
+/openrailwaystyle/,1,warm-browser,startup,https://tuiles.enliberte.fr,intercepted local fixture,1,474,217,0,0,0,0,0,0,0,0
+/openrailwaystyle/,1,warm-browser,startup,https://openrailwaymap.app,intercepted local fixture,109,20870,3732,0,0,0,0,0,0,0,0
+/openrailwaystyle/,1,warm-browser,first-pan,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/openrailwaystyle/,1,warm-browser,first-pan,https://openrailwaymap.app,intercepted local fixture,22,3666,245,0,0,0,0,0,0,0,0
+/openrailwaystyle/,1,warm-browser,reset,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/openrailwaystyle/,1,warm-browser,cached-pan,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/openrailwaystyle/,2,cold-browser,startup,http://127.0.0.1:4176,loopback HTTP,38,2754487,2748260,3,3,0,0,0,0,0,0
+/openrailwaystyle/,2,cold-browser,startup,https://cdn.jsdelivr.net,intercepted local fixture,3,1146622,1146426,0,0,0,0,0,0,0,0
+/openrailwaystyle/,2,cold-browser,startup,data: (in-document),in-document data URL,6,676,1952,0,0,5,0,0,0,0,0
+/openrailwaystyle/,2,cold-browser,startup,blob: (in-document),in-document blob URL,1,0,0,1,1,0,0,0,0,0,0
+/openrailwaystyle/,2,cold-browser,startup,https://tuiles.enliberte.fr,intercepted local fixture,1,474,217,0,0,0,0,0,0,0,0
+/openrailwaystyle/,2,cold-browser,startup,https://openrailwaymap.app,intercepted local fixture,109,20870,3732,0,0,0,0,0,0,0,0
+/openrailwaystyle/,2,cold-browser,first-pan,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/openrailwaystyle/,2,cold-browser,first-pan,https://openrailwaymap.app,intercepted local fixture,22,3666,245,0,0,0,0,0,0,0,0
+/openrailwaystyle/,2,cold-browser,reset,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/openrailwaystyle/,2,cold-browser,cached-pan,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/openrailwaystyle/,2,warm-browser,startup,http://127.0.0.1:4176,loopback HTTP,38,2754487,2748260,3,3,0,0,0,0,0,0
+/openrailwaystyle/,2,warm-browser,startup,https://cdn.jsdelivr.net,intercepted local fixture,3,1146622,1146426,0,0,0,0,0,0,0,0
+/openrailwaystyle/,2,warm-browser,startup,data: (in-document),in-document data URL,6,676,1952,0,0,5,0,0,0,0,0
+/openrailwaystyle/,2,warm-browser,startup,blob: (in-document),in-document blob URL,1,0,0,1,1,0,0,0,0,0,0
+/openrailwaystyle/,2,warm-browser,startup,https://tuiles.enliberte.fr,intercepted local fixture,1,474,217,0,0,0,0,0,0,0,0
+/openrailwaystyle/,2,warm-browser,startup,https://openrailwaymap.app,intercepted local fixture,109,20870,3732,0,0,0,0,0,0,0,0
+/openrailwaystyle/,2,warm-browser,first-pan,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/openrailwaystyle/,2,warm-browser,first-pan,https://openrailwaymap.app,intercepted local fixture,22,3666,245,0,0,0,0,0,0,0,0
+/openrailwaystyle/,2,warm-browser,reset,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0
+/openrailwaystyle/,2,warm-browser,cached-pan,http://127.0.0.1:4176,loopback HTTP,1,1212,1036,0,0,0,0,0,0,0,0

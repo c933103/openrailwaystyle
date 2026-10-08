@@ -1,0 +1,108 @@
+{
+  "title": "Railway Atlas synthetic client baseline",
+  "accepted_commit": "bd97655f618f45e22793b37a3c025351289d1b0c",
+  "measured_checkout_commit": "3799bd26e08dbd39b00ae22c1e41e80cde2b05ce",
+  "identical_source_tree": "8e3bb2cd2212993dc4fe3ad84e12fe7328295eb8",
+  "run_count": 8,
+  "samples_per_path_and_browser_state": 2,
+  "paths": [
+    "/",
+    "/openrailwaystyle/"
+  ],
+  "environment": {
+    "captured_utc": "2026-10-08T08:09:16.834054+00:00",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "node": "v24.19.0",
+    "chromium": "Chromium 151.0.7922.173 built on Debian GNU/Linux 13 (trixie)",
+    "playwright": "1.56.1",
+    "cpu_affinity": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "cgroup": {
+      "cpu.max": "400000 100000",
+      "memory.max": "17179869184",
+      "cpuset.cpus.effective": "0-4"
+    },
+    "viewport": {
+      "width": 1280,
+      "height": 800,
+      "deviceScaleFactor": 1
+    },
+    "gpu": "SwiftShader software rendering; flags inherited from scripts/browser.mjs",
+    "run_count": 8,
+    "pairs": 4,
+    "repeat_count_per_path_and_navigation": 2,
+    "time_bound_seconds": 300,
+    "service_workers": "blocked",
+    "network_isolation": "Existing public ORM guard + fixture routes; no fallback Node fetch; browser DNS disallowed except loopback; background networking disabled"
+  },
+  "fixture_coverage": "One Wuhan railway line; representative synthetic signals/crossings/street-running indexes and gzip MVTs; empty branch index and frequency manifest. Real pinned MapLibre and PMTiles clients. 217-byte PMTiles v3 archive: one empty 14-byte z0 water MVT, no higher zoom tiles. Limited synthetic coverage, not world data density.",
+  "fixture_identities": {
+    "scripts/diagnose-representative-server.tmp.mjs": {
+      "bytes": 3370,
+      "sha256": "0fc2a5988666f106b93042bbab998137414d3a78296ce0f0baafd28b5b1017e2"
+    },
+    "scripts/synthetic-archive.tmp.mjs": {
+      "bytes": 1835,
+      "sha256": "e1b91efb9fd596d0bfbfa9ff9fcc7babb45dbcd62ab632626f8be0f70a8529c3"
+    },
+    "styles/app.mjs": {
+      "bytes": 136666,
+      "sha256": "5d138c3e250b851a141b8006a774d9eb74bd9532a88dd92e4c02f03b6a5805e7"
+    },
+    "styles/world.style.json": {
+      "bytes": 1850201,
+      "sha256": "65964b419f99d8dbecf2dc2160a0a39e5a784a94665c4adf220ede6627b267f6"
+    },
+    "package-lock.json": {
+      "bytes": 49954,
+      "sha256": "75d173e70273f5254f71ef586b6b1dc529509963adf0cd43c0fb942b2f451619"
+    },
+    "https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js": {
+      "bytes": 1056837,
+      "sha256": "45a9b07a9189ce56054c620a947ccf41e291e58c95e9b61533b740aaa65ee5cb"
+    },
+    "https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css": {
+      "bytes": 70024,
+      "sha256": "ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732"
+    },
+    "https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js": {
+      "bytes": 19565,
+      "sha256": "afc49d216fd24c0a3c0ff3cd2e0c62d6cdaf062854c3dced778dcab168824f79"
+    },
+    "syntheticArchive": {
+      "bytes": 217,
+      "sha256": "f2ea9f6c384dda9175eba70f2da580d5a17b44ec5dbf3668b21c2af4b2e45e6a"
+    }
+  },
+  "qualifications": [
+    "Synthetic local data only; no production timing, live upstream cost or optimization claim.",
+    "Cold: fresh browser/context; OS cache was not flushed. Warm: repeat navigation in same browser/context.",
+    "Playwright routing disabled HTTP cache in both cases; warm HTTP-cache performance unavailable.",
+    "Three first-party worker responses per startup have unmeasured encoded/body byte sizes; one blob worker also lacks byte measurements. Startup totals are known-byte lower bounds.",
+    "Encoded response counters are CDP counters including protocol overhead, not wire-transfer measurement; decoded HTTP body bytes can still contain application gzip.",
+    "Process RSS is summed across processes, potentially double-counting shared pages; not unique or peak memory.",
+    "All external/provider requests fulfilled locally; zero upstream delivery. Zero observed blocked/failure events does not provide unobserved worker final status.",
+    "TaskDuration is task duration, not separately measured thread CPU. Aggregate process CPU is available.",
+    "Two repeats per case are a bounded descriptive baseline; software rendering and host contention limit interpretation."
+  ],
+  "files": {
+    "Railway-Atlas-synthetic-client-baseline-report.txt": {
+      "size_bytes": 11605,
+      "sha256": "719fd39c10ab4f4c6e92644294115e3e57b04c6a6e41ed24a69555e405179a36"
+    },
+    "measurements.json": {
+      "size_bytes": 1489691,
+      "sha256": "dd42a3d887310e79af4d581dcc7c7d60f6918c6e82d2de32c10b39c431bbaaca"
+    },
+    "requests-by-origin-phase.csv": {
+      "size_bytes": 8918,
+      "sha256": "634cf59d132a823f1b458f9169619453eda0ea4cf8535718a47b2f4900c29b1a"
+    }
+  },
+  "preservation": "Requested files copied byte-for-byte after SHA-256 validation. No measurement rerun, source change, credentials, signed transfer URLs, private task notes, or unrelated files included."
+}

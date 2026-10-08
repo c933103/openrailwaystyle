@@ -1,0 +1,80 @@
+Railway Atlas — bounded synthetic client baseline
+
+Completed: 8 instrumented samples, 2 independent fresh/repeat-navigation pairs per path; 0 page/console errors. Existing completed samples were validated and finalized, without additional browser runs. This is a local synthetic baseline, not production timing, upstream cost, or evidence of an optimization win.
+
+Accepted commit: bd97655f618f45e22793b37a3c025351289d1b0c. Measured checkout: 3799bd26e08dbd39b00ae22c1e41e80cde2b05ce. Identical tree: 8e3bb2cd2212993dc4fe3ad84e12fe7328295eb8. Tracked worktree clean; no source edit, patch, remote write, production artifact acquisition, CI or live deployment inspection for this measurement.
+
+Individual elapsed times (milliseconds; C=cold browser, W=warm browser session):
+path                    pair case   nav-ready  nav-idle  first-pan-idle  cached-pan-idle
+/                          1 C        1751.0    3260.8           410.3            258.7
+/                          1 W         706.7    1781.4           438.5            261.4
+/                          2 C        1261.0    2477.4           378.1            293.4
+/                          2 W         882.7    2296.9           417.1            287.4
+/openrailwaystyle/         1 C        1503.1    3016.2           386.6            245.1
+/openrailwaystyle/         1 W         821.5    2043.8           466.7            272.7
+/openrailwaystyle/         2 C        1417.8    2845.8           401.6            310.0
+/openrailwaystyle/         2 W         800.6    2041.1           385.8            373.3
+
+CPU, task duration and memory (startup / first pan; memory sampled at phase end):
+path                    pair case  task-seconds  process-CPU-s  heap-used-MiB  summed-RSS-MiB
+/                          1 C    2.549/0.133   10.61/1.66      34.08/34.75    798.32/802.63
+/                          1 W    1.300/0.136   6.28/1.74      48.15/58.85    874.43/876.66
+/                          2 C    2.105/0.127   8.29/1.46      32.35/31.67    783.19/795.17
+/                          2 W    1.659/0.132   7.60/1.65      49.68/60.92    870.21/871.98
+/openrailwaystyle/         1 C    2.481/0.139   10.16/1.55      35.47/33.50    800.15/805.59
+/openrailwaystyle/         1 W    1.353/0.165   7.05/1.93      53.25/42.32    880.21/889.91
+/openrailwaystyle/         2 C    2.405/0.103   9.45/1.65      33.67/33.89    792.00/797.51
+/openrailwaystyle/         2 W    1.448/0.144   7.30/1.47      48.01/57.43    876.31/879.49
+
+Responsiveness (startup / first pan; individual rAF p95 gaps in ms and long-task counts):
+path                    pair case  rAF-p95-gap-ms  long-task-count
+/                          1 C     466.6/100.0      6/0
+/                          1 W     133.3/100.0      5/0
+/                          2 C    1100.0/ 83.4      7/0
+/                          2 W     216.7/ 83.4      6/0
+/openrailwaystyle/         1 C     749.9/150.0      7/0
+/openrailwaystyle/         1 W     216.6/100.0      4/0
+/openrailwaystyle/         2 C     416.6/100.0      7/0
+/openrailwaystyle/         2 W     150.0/133.3      5/0
+
+Cached-pan process CPU: 1.03–1.52s; task duration: 0.057–0.108s; 0 long tasks. Full numeric startup/pan/reset/cached-pan CPU, heap, RSS and responsiveness records are in phase-metrics.csv and measurements.json.
+
+Request/resource ledger below was IDENTICAL in all 8 samples (bytes, not dependency counts). Known encoded bytes are CDP response counters; known decoded bytes are HTTP-body bytes. A ? count means that many requests have unavailable sizes; zero known bytes for blob does not mean empty.
+phase       origin                      requests  encoded-known  decoded-known  size-unknown cache-events
+startup     loopback first party              38        2754487        2748260             3            0
+startup     cdn.jsdelivr.net                   3        1146622        1146426             0            0
+startup     data:                              6            676           1952             0            5
+startup     blob:                              1              0              0             1            0
+startup     tuiles.enliberte.fr                1            474            217             0            0
+startup     openrailwaymap.app               109          20870           3732             0            0
+first-pan   loopback first party               1           1212           1036             0            0
+first-pan   openrailwaymap.app                22           3666            245             0            0
+reset       loopback first party               1           1212           1036             0            0
+cached-pan  loopback first party               1           1212           1036             0            0
+
+Startup: 151 HTTP request starts plus 6 data URLs and 1 blob URL. Known HTTP totals: 3,922,453 encoded response bytes / 3,898,635 decoded body bytes; three HTTP worker bodies unavailable. First pan: 23 requests, 4,878 encoded / 1,281 decoded bytes. Reset and cached pan each issue one favicon request: 1,212 encoded / 1,036 decoded bytes. The cached pan still has a first-party request. Each startup has five data-URL cache signals; zero observed HTTP disk-cache/service-worker hits. Zero observed loading failures/blocked events, with worker final statuses unavailable. Every external origin was intercepted locally; upstream delivery bytes were zero by construction, not a measured live-provider cost.
+
+State and measurement definitions:
+cold_browser: New Chromium process, new nonpersistent context and page for each pair; empty app state. OS/file cache not flushed. Startup begins at navigation, excludes browser launch/asset preparation.
+warm_browser: Second navigation in same browser/context/page after initial navigation and pan sequence. Retains browser session/OS state, creates new document/app instance. Playwright routing disables HTTP cache in BOTH cases; this is not a warm HTTP-cache benchmark.
+cached_pan: Reset to starting center after first pan, wait for idle, repeat same forward pan in same document; tests retained app/MapLibre tile caches.
+ready: MutationObserver timestamp for body data-map-ready=true using performance.now() since navigation time origin.
+idle: Actual MapLibre idle event. PanBy([512,0],duration=0), starting z14 centered [114.4,30.55]. Each pan bounded to 20 seconds.
+main_task_duration_s: CDP Performance TaskDuration delta. Default time domain was used; threadTicks was not selected. Treat as task duration, NOT an independently measured main-thread CPU time. Legacy samples.json uses a misleading CPUSeconds suffix for Task/Script/Layout duration fields; canonical measurements and CSV correct the label.
+observed_process_cpu_s: Sum of SystemInfo.getProcessInfo cpuTime deltas across 7 browser-related processes/all their threads. No new/lost PIDs in recorded phases. Includes GPU/software rendering. Collection interval brackets phase and includes CDP/monitoring overhead; not utilization derived from ready time.
+heap: JSHeapUsedSize/TotalSize for the inspected page/main isolate after each phase; excludes worker heaps; no forced GC.
+rss: Sum of /proc/PID/status VmRSS sampled for 7 browser processes after phase. Shared pages may be counted repeatedly; not unique memory, not peak memory.
+responsiveness: requestAnimationFrame callback gaps wholly within phase; nearest-rank p95; not compositor FPS or input latency. Pan has 4-7 intervals and cached pan 2-5. Long tasks use main-frame PerformanceObserver longtask entries whose start is within phase.
+bytes: Network.loadingFinished encodedDataLength is the CDP encoded response counter including protocol overhead; not an exact wire capture. Intercepted values are synthetic counters, not upstream traffic. Network.getResponseBody byte length is decoded HTTP body size; application gzip MVTs without Content-Encoding remain compressed.
+phase_attribution: Requests assigned to phase when requestWillBeSent arrives; setup gaps/metric reads can be attributed to adjacent phase. Only page-target CDP Network events observed.
+unavailable: Three first-party worker scripts and one blob worker per startup had request-start events but no page-target response/loadingFinished events. Their encoded/body sizes and final status/cache/failure are unavailable. All startup byte sums are known-byte lower bounds. Wire bytes, worker-target full ledger, per-thread true CPU, user/system CPU split, peak/unique process memory, compositor frames, user input latency and warm HTTP-cache measurements are unavailable.
+blocked: No loadingFailed/blocked events in observed page-target records. External/provider requests fulfilled locally; no upstream delivery. Browser DNS restricted to loopback; service workers disabled. Worker-target final statuses unavailable. This is not a packet-capture count.
+cache: Five servedFromCache events each startup are data: SVGs; HTTP disk cache and service worker flags are zero observed. Do not count data: hits as HTTP cache savings.
+
+Environment: Node v24.19.0; Chromium 151.0.7922.173 built on Debian GNU/Linux 13 (trixie); Playwright 1.56.1. Headless SwiftShader software rendering; viewport 1280x800, DPR 1. cpu.max=400000 100000 (4 CPU-equivalents), affinity CPUs 0–4; memory.max=17179869184 (16 GiB). 300-second harness bound. Eight samples completed, two per path/state. No statistics beyond individual small samples and within-phase descriptive percentiles; host contention and software rendering limit representativeness.
+
+Synthetic coverage and identities: one Wuhan railway line; synthetic provider metadata, empty station/most external tiles and fonts/imagery. First-party signals z12/3349/1682 (117-byte gzip MVT), crossings z9/418/210 (94 bytes), street-running z12/3349/1682 (97 bytes), plus valid indexes; empty branch index/frequency manifest. Valid 217-byte PMTiles v3 archive with one empty 14-byte z0 water-layer MVT and no higher-zoom tiles. Real PMTiles 4.2.1 and MapLibre 5.24.0 clients, checksum-verified local bytes. Archive SHA-256: f2ea9f6c384dda9175eba70f2da580d5a17b44ec5dbf3668b21c2af4b2e45e6a. PMTiles JS SHA-256: afc49d216fd24c0a3c0ff3cd2e0c62d6cdaf062854c3dced778dcab168824f79. Full app, vendor, worker, fixture-factory and lockfile hashes in identities.json / measurements.json. These fixtures do not approximate world data density.
+
+Reproduce from repository root with already available local dependencies/assets: start node scripts/diagnose-representative-server.tmp.mjs (127.0.0.1:4176), then timeout 300s node scripts/profile-client.tmp.mjs. Do not install/fetch assets; harness throws on Node fetch and restricts browser DNS to loopback. The recorded run used the repository guard and synthetic route overrides; all measurement browsers are closed, and no measurement Node server remains running at finalization. The recorded harness is preserved unmodified; run python3 browser-review/client-baseline/finalize.py to regenerate this canonical report/ledger from raw samples after a run. The legacy raw Task/Script/Layout CPUSeconds labels and data/blob delivery classification are corrected only in canonical outputs, not by altering original evidence.
+
+Files: report.txt; measurements.json (canonical observations + definitions); sample-metrics.csv; phase-metrics.csv; requests-by-origin-phase.csv; samples.json (original raw capture); eight *-trace.json files (rAF timestamps, long tasks, ResourceTiming); environment.json; identities.json; run.log. SHA256SUMS pins final deliverables. Measurement limits are explicit above; no additional workload is needed for this bounded baseline.
