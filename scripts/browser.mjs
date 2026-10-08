@@ -14,7 +14,7 @@ import {chromium} from 'playwright';
 import {createHash} from 'node:crypto';
 import {mkdir, readFile, rename, writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
-import {fetchLoopbackNoRedirect, isPublicOrm, localOrmAuditTarget, localOrmTarget} from './browser-policy.mjs';
+import {fetchLoopbackNoRedirect, isLoopbackHttp, isPublicOrm, localOrmAuditTarget, localOrmTarget} from './browser-policy.mjs';
 
 export const BROWSER_ARGS = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'];
 export const TILE_CACHE_DAYS = 7;
@@ -46,7 +46,7 @@ export async function launchBrowser(options = {}) {
 }
 
 
-export {fetchLoopbackNoRedirect, isPublicOrm, localOrmAuditTarget, localOrmTarget} from './browser-policy.mjs';
+export {fetchLoopbackNoRedirect, isLoopbackHttp, isPublicOrm, localOrmAuditTarget, localOrmTarget} from './browser-policy.mjs';
 
 // Installed BEFORE optional generic caching. A later explicit test fixture
 // route can fulfill requests without contacting the public provider.
@@ -81,8 +81,9 @@ export async function cacheOtherOrigins(context, directory, {now = Date.now, max
   await mkdir(directory, {recursive: true});
   // A check may close its page or context while a request is still on its
   // way; the route then fails quietly instead of crashing the check, and an
-  // answer that cannot be kept is simply not kept.
-  await context.route(url => !local(url.href ?? url) && !isPublicOrm(url), route => serve(route, directory, {now, maxAge}).catch(() => route.abort().catch(() => {})));
+  // answer that cannot be kept is simply not kept. Every supported loopback
+  // address stays live, including IPv6, so local audits never replay stale data.
+  await context.route(url => !local(url.href ?? url) && !isLoopbackHttp(url) && !isPublicOrm(url), route => serve(route, directory, {now, maxAge}).catch(() => route.abort().catch(() => {})));
 }
 async function serve(route, directory, {now, maxAge}) {
   const request = route.request();
