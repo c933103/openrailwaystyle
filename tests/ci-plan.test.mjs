@@ -40,6 +40,11 @@ test('a check, its helpers and its fixtures run only the checks that use them', 
   assert.deepEqual(plan(['scripts/check-world-frequency-browser.mjs'], read).groups, [GROUPS.find(g => g.group === 'frequency')], 'the fixture data is prepared before its check');
 });
 
+test('deployed fixture follows its delegated checker and archive dependency in safe CI',()=>{
+  for(const file of ['scripts/check-orm-fixture-browser.mjs','scripts/rail-recovery-browser-fixture.mjs','scripts/pmtiles-browser-fixture.mjs'])
+    assert.ok(plan([file],read).groups.find(g=>g.group==='rail-fixture')?.checks.includes('check-deployed-fixture-browser.mjs'),file);
+});
+
 test('local references cover imports, dynamic imports and files read through new URL, without query strings', () => {
   assert.deepEqual(localReferences(`import a from './a.mjs';import('../styles/b.mjs?v=1');readFile(new URL('../tests/fixtures/c.json',import.meta.url));fetch(\`\${x}/d\`)`, 'scripts/check-x-browser.mjs').sort(),
     ['scripts/a.mjs', 'styles/b.mjs', 'tests/fixtures/c.json']);

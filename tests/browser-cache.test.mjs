@@ -127,7 +127,11 @@ test('every browser check launches through the shared helper', async () => {
   assert.ok(scripts.length >= 16);
   for (const name of scripts) {
     const source = await readFile(new URL(`../scripts/${name}`, import.meta.url), 'utf8');
-    assert.match(source, /import \{launchBrowser\} from '\.\/browser\.mjs';/, name);
+    if(name==='check-deployed-fixture-browser.mjs'){
+      // This orchestration check delegates both URL cases to the guarded checker.
+      assert.match(source,/new URL\('\.\/check-orm-fixture-browser\.mjs',import.meta.url\)/);
+      assert.match(source,/spawn\(process.execPath,\[check\]/);
+    }else assert.match(source, /import \{launchBrowser\} from '\.\/browser\.mjs';/, name);
     assert.doesNotMatch(source, /chromium\.launch\(/, name);
   }
 });

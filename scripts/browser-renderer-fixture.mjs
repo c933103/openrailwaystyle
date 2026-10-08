@@ -1,3 +1,4 @@
+import {pmtilesFixtureResponse} from './pmtiles-browser-fixture.mjs';
 import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
@@ -54,6 +55,7 @@ export async function installEmptyMapProviders(context, base, {firstParty = 'fix
       if(path.includes('/data/'))return route.fulfill({json:{tiles:[],features:[],countries:{}}});
       return route.continue();
     }
+    if(path.endsWith('.pmtiles'))return route.fulfill(pmtilesFixtureResponse(route.request().headers().range));
     if(/\.(png|jpg|jpeg)$/.test(path))return route.fulfill({contentType:'image/png',body:png});
     if(/\/\d+\/\d+\/\d+(?:\.pbf)?$|\/fonts\//.test(path))return route.fulfill({contentType:'application/x-protobuf',body:Buffer.alloc(0)});
     return route.fulfill({json:{tilejson:'3.0.0',minzoom:0,maxzoom:16,tiles:['https://fixture.invalid/{z}/{x}/{y}']}});
