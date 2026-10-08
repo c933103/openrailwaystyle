@@ -77,6 +77,23 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual(item['status'],'failed')
         self.assertEqual(item['reason_code'],'missing_source_url')
 
+    def test_processing_failures_keep_distinct_codes_and_stages(self):
+        observed = [
+            (RuntimeError('HTTPError: HTTP Error 404: Not Found'), 'source_http_404', 'retrieval'),
+            (RuntimeError('HTTPError: HTTP Error 403: Forbidden'), 'source_access_denied', 'retrieval'),
+            (RuntimeError('ValueError: GTFS table stop_times.txt exceeds row budget'), 'table_row_limit', 'parsing'),
+            (RuntimeError('ValueError: GTFS table stop_times.txt exceeds expanded byte budget'), 'byte_limit', 'parsing'),
+            (RuntimeError('MemoryError: '), 'memory_limit', 'resources'),
+            (RuntimeError('ValueError: Selected date is beyond the declared service calendar horizon'),
+             'calendar_horizon', 'calendar'),
+            (RuntimeError("ValueError: Selected date is outside the feed's validity (beyond the service calendar horizon)"),
+             'calendar_horizon', 'calendar'),
+            (ValueError('Malformed route reference'), 'compile_error', 'compilation'),
+        ]
+        for exception, code, stage in observed:
+            with self.subTest(code=code, exception=str(exception)):
+                self.assertEqual(pipeline.classify_failure(exception), (code, stage))
+
     def archive(self,rail=True):
         data=io.BytesIO()
         with zipfile.ZipFile(data,'w',compression=zipfile.ZIP_DEFLATED) as z:
