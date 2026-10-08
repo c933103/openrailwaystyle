@@ -325,3 +325,26 @@ test('unverified refresh cannot borrow obsolete memberships from another stage o
     assert.equal(routeView(table.routes.get('r1')).active===false,inactive);
   }
 });
+test('rejected refresh cannot manufacture another stage ownership and empty-stage removal still removes it',()=>{
+  let table=accepted([old]);addResult(table,fresh,'B');commitStage(table,'B');
+  const json=response({base:'2026-10-08T00:00:00Z',version:3,refs:[102],returned:[101,102]});
+  json.elements[0].members.push({type:'way',ref:999});
+  addResult(table,toTable(json),'A');commitStage(table,'A');table=restore(table);
+  assert.equal(table.ways.get(102).routes.A,undefined,'A must not borrow B-only accepted membership');
+  assert.deepEqual(table.ways.get(102).routes.B,['r1']);
+  commitStage(table,'B');table=restore(table);
+  assert.equal(table.ways.has(102),false,'absent candidate is ordinary successful stage removal');
+  assert.ok(visible(table).every(f=>f.id==='relation-2'));
+  assert.deepEqual(geometrySummary(table).routeRelationsWithoutGeometry,[1],'retained frontier reports its real dependency gap');
+});
+for(const certified of [true,false])test(`rejected relation leaves independent geometry reconciliation intact (certified=${certified})`,()=>{
+  const table=accepted([old]),before=visible(table);
+  const json=response({base:NEW,version:2});json.elements[0].members.push({type:'way',ref:999});
+  const changedWay=json.elements.find(e=>e.type==='way');changedWay.geometry=changedWay.geometry.map(p=>({...p,lat:p.lat+.01}));
+  if(!certified)delete changedWay.timestamp;
+  addResult(table,toTable(json),'A');commitStage(table,'A');
+  assert.equal(routeView(table.routes.get('r1')).label,'Line 1');assert.deepEqual(table.ways.get(101).routes.A,['r1','r2']);
+  const after=visible(restore(table));
+  if(certified){assert.notDeepEqual(after,before);assert.equal(table.ways.get(101).geometry.snapshot,NEW);}
+  else {assert.deepEqual(after,before);assert.equal(table.ways.get(101).geometry.snapshot,OLD);}
+});

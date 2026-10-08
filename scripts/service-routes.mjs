@@ -162,7 +162,7 @@ function settle(table, stage, commit) {
       // Retain only this stage's previous, still-eligible associations; never
       // borrow old memberships from another stage or revive a superseded way.
       const retained = (part[stage] || []).filter(key => rejected.get(key)?.has(item.id));
-      const next = (item.next[stage] || []).filter(key => !rejected.has(key) || rejected.get(key).has(item.id));
+      const next = (item.next[stage] || []).filter(key => !rejected.has(key));
       const memberships = [...new Set([...next, ...retained])].sort();
       if (memberships.length) part[stage] = memberships; else delete part[stage];
     } else if (commit) { if (stage in item.next) part[stage] = item.next[stage]; else delete part[stage]; }
