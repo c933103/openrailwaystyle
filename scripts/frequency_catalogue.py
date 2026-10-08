@@ -57,11 +57,16 @@ def is_no(value):
 
 
 def usage_rights(row):
-    """Reject only documented restrictions on the intended derived-use output.
+    """Retain rights metadata; do not confuse data use with GTFS redistribution.
 
-    An unknown SPDX identifier or a URL-only terms link is *not* a denial.
-    Source-specific reviewed prohibitions can be encoded in rules, bound to
-    expected_source, with their evidence link retained.
+    Atlas calculates factual timetable statistics for end users and does not
+    republish per-feed GTFS copies. SPDX names, NoDerivatives labels, missing
+    metadata, and generic restrictions on creating *redistributed datasets*
+    are not automated reasons to discard a source.
+
+    Only a reviewed, source-bound rule that explicitly forbids THIS application's
+    timetable-frequency use can be an exclusion. The required review is encoded
+    as an exact-original-URL match by discover(), never as a catalogue guess.
     """
     evidences = list(row.get("rights_evidence") or [])
     if not evidences:
@@ -70,14 +75,13 @@ def usage_rights(row):
             evidences.append(old)
     denials = []
     for item in evidences:
-        spdx = (item.get("spdx") or "").upper()
         restrictions = item.get("restrictions") or {}
-        if re.match(r"^CC-BY-(?:NC-)?ND-", spdx):
+        if (item.get("origin") == "source-specific-reviewed-rule"
+                and restrictions.get("prohibit_frequency_use") is True
+                and item.get("terms_url")):
             denials.append({"origin": item.get("origin"), "reference": item.get("reference"),
-                            "basis": "NoDerivatives licence (" + spdx + ")"})
-        if is_no(restrictions.get("create_derived_product")) or restrictions.get("prohibit_frequency_use") is True:
-            denials.append({"origin": item.get("origin"), "reference": item.get("reference"),
-                            "basis": "explicit restriction on derived frequency use"})
+                            "terms_url": item["terms_url"],
+                            "basis": "source terms explicitly forbid end-user timetable-frequency use"})
     known = sorted({x.get("spdx") for x in evidences if x.get("spdx")})
     urls = sorted({x.get("terms_url") for x in evidences if x.get("terms_url")})
     return {"state": "prohibited" if denials else ("linked" if urls else "identified" if known else "not_provided"),
