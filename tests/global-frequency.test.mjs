@@ -28,9 +28,10 @@ test('failure classes remain distinct from provider-source prohibitions',()=>{
     {id:'a',status:'excluded',reason_code:'source_terms_prohibit_derived_use'},
     {id:'b',status:'excluded',reason_code:'provider_policy'},
     {id:'c',status:'failed',reason_code:'source_http_404'},
-    {id:'d',status:'failed',reason_code:'table_row_limit'},
-    {id:'e',status:'compiled'}]);
-  assert.deepEqual(reasons,{source_terms_prohibit_derived_use:1,provider_policy:1,source_http_404:1,table_row_limit:1});
+    {id:'d',status:'retry_pending',reason_code:'table_row_limit'},
+    {id:'e',status:'retry_pending',reason_code:'source_http_404'},
+    {id:'f',status:'compiled'}]);
+  assert.deepEqual(reasons,{source_terms_prohibit_derived_use:1,provider_policy:1,source_http_404:2,table_row_limit:1});
 });
 test('published feed directories retain only current verified inventory outputs',async()=>{
   const root=await mkdtemp(join(tmpdir(),'atlas-feed-prune-'));
