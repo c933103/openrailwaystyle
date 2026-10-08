@@ -126,9 +126,13 @@ def get(url, headers=None):
         except HTTPError as error:
             if error.code not in RETRYABLE_HTTP or attempt == 2:
                 raise
+            retry_after = error.headers.get('Retry-After') if error.headers else None
+            if retry_after and retry_after.isdigit() and int(retry_after) > 8:
+                # Respect a publisher's longer retry window: the next
+                # scheduled workflow can retry instead of hammering it now.
+                raise
             try:
-                retry_after = error.headers.get('Retry-After') if error.headers else None
-                delay = min(8.0, max(float(retry_after), 0.0)) if retry_after and retry_after.isdigit() else float(2 ** attempt)
+                delay = max(float(retry_after), 0.0) if retry_after and retry_after.isdigit() else float(2 ** attempt)
             finally:
                 error.close()
             time.sleep(delay)
