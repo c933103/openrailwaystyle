@@ -174,6 +174,60 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual((cache/'de_rail.zip').read_bytes(),old)
         self.assertEqual(result['source']['download_url'],original)
 
+    def test_bounded_retries_respect_publisher_backoff_and_do_not_repeat_404(self):
+        from urllib.error import HTTPError
+        attempts=[]
+        def transient(request, timeout=45):
+            attempts.append(request.full_url)
+            if len(attempts)<3:
+                code=429 if len(attempts)==1 else 503
+                raise HTTPError(request.full_url,code,'Temporary',{'Retry-After':'0'},io.BytesIO())
+            return io.BytesIO(b'ok')
+        with patch.object(pipeline,'urlopen',side_effect=transient), patch.object(pipeline.time,'sleep') as sleep:
+            with pipeline.get('https://example.net/rail.zip') as response:
+                self.assertEqual(response.read(),b'ok')
+        self.assertEqual(len(attempts),3)
+        self.assertEqual(sleep.call_count,2)
+
+        def permanent(request, timeout=45):
+            attempts.append(request.full_url)
+            raise HTTPError(request.full_url,404,'Not Found',{},io.BytesIO())
+        attempts.clear()
+        with patch.object(pipeline,'urlopen',side_effect=permanent), patch.object(pipeline.time,'sleep') as sleep:
+            with self.assertRaises(HTTPError):
+                pipeline.get('https://example.net/missing.zip')
+        self.assertEqual(len(attempts),1,'retry the alternate feed, not the dead 404 itself')
+        sleep.assert_not_called()
+
+        def delayed(request, timeout=45):
+            raise HTTPError(request.full_url,429,'Rate Limited',{'Retry-After':'120'},io.BytesIO())
+        with patch.object(pipeline,'urlopen',side_effect=delayed), patch.object(pipeline.time,'sleep') as sleep:
+            with self.assertRaises(HTTPError):
+                pipeline.get('https://example.net/rate-limited.zip')
+        sleep.assert_not_called()
+
+    def test_compile_failure_remains_retry_pending_in_durable_inventory(self):
+        catalogue=self.root/'input.json';catalogue.write_text(json.dumps([
+            {'filename':'jp_rail.gtfs.zip','country_code':'JP',
+             'source':'https://operator.example/rail.zip'}]))
+        cache,output=self.root/'main-cache',self.root/'main-out'
+        errors=[{'url':'https://api.transitous.org/gtfs/jp_rail.gtfs.zip',
+                 'code':'http_404','message':'Not found'},
+                {'url':'https://operator.example/rail.zip','code':'http_404',
+                 'message':'Not found'}]
+        from unittest.mock import patch as mock_patch
+        with mock_patch('sys.argv',['global-service-frequency.py','--catalogue',str(catalogue),
+                                    '--cache',str(cache),'--output',str(output),'--date','2026-10-05']), \
+             mock_patch.object(pipeline,'compile_entry_isolated',side_effect=pipeline.SourceRetrievalError(errors)):
+            pipeline.main()
+        inventory=json.loads((output/'inventory-0.json').read_text())
+        self.assertEqual(inventory['counts'],{'retry_pending':1})
+        record=inventory['entries'][0]
+        self.assertTrue(record['retry_eligible'])
+        self.assertEqual(record['reason_code'],'source_http_404')
+        self.assertEqual(len(record['source_attempts']),2)
+        self.assertEqual(record['next_action'],'repair_or_find_feed_url')
+
     def archive(self,rail=True):
         data=io.BytesIO()
         with zipfile.ZipFile(data,'w',compression=zipfile.ZIP_DEFLATED) as z:
