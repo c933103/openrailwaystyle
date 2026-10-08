@@ -59,6 +59,7 @@ test('local TileJSON exposes only loopback tile templates to Chromium',async()=>
     'https://openrailwaymap.app/railway_line_high/{z}/{x}/{y}',
     './tiles/{z}/{x}/{y}.pbf?ratio={ratio}',
     'http://[::1]:4175/local/{z}/{x}/{y}.pbf',
+    'https://openrailwaymap.app/https://tiles.example/{z}/{x}/{y}.pbf',
   ]}),{headers:{'content-type':'application/json','content-length':'999','content-encoding':'gzip','x-test':'kept'}});
   const safe=await fetchLoopbackNoRedirect({fetch:async()=>response},target,mirror);
   const options=safe.routeFulfillOptions();
@@ -69,6 +70,7 @@ test('local TileJSON exposes only loopback tile templates to Chromium',async()=>
     'http://127.0.0.1:4174/root/railway_line_high/{z}/{x}/{y}',
     'http://127.0.0.1:4174/root/tiles/{z}/{x}/{y}.pbf?ratio={ratio}',
     'http://[::1]:4175/local/{z}/{x}/{y}.pbf',
+    'http://127.0.0.1:4174/root/https://tiles.example/{z}/{x}/{y}.pbf',
   ]);
   assert.equal(options.headers['content-length'],undefined);
   assert.equal(options.headers['content-encoding'],undefined);

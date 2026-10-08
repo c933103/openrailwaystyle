@@ -72,7 +72,13 @@ export function localOrmTileTemplate(template, metadataTarget, mirror = process.
   if (isPublicOrm(resolved)) {
     const base = localOrmBase(mirror);
     if (!base) throw new Error('ATLAS_TEST_ORM_URL is required to rewrite public OpenRailwayMap tile templates');
-    return restore(new URL(resolved.pathname.replace(/^\//, '') + resolved.search + resolved.hash, base).href);
+    // Force the provider path to remain relative to the configured mirror. A
+    // path such as /https://tiles.example/... must never be reinterpreted as
+    // a new absolute URL by the URL constructor.
+    const rewritten = new URL('./' + resolved.pathname.replace(/^\/+/, '') + resolved.search + resolved.hash, base);
+    if (!isLoopbackHttp(rewritten))
+      throw new Error('Local OpenRailwayMap TileJSON rewrite escaped the loopback mirror');
+    return restore(rewritten.href);
   }
   throw new Error('Local OpenRailwayMap TileJSON advertised a non-loopback tile URL');
 }
