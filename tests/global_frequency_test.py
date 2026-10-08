@@ -39,7 +39,8 @@ class GlobalFrequency(unittest.TestCase):
             ('url-only', {'license_url':'https://example.org/terms'}, 'pending', 'linked'),
             ('unknown-spdx', {'spdx_license_identifier':'LicenseRef-New-Operator'}, 'pending', 'identified'),
             ('permitted', {'spdx_license_identifier':'CC-BY-4.0'}, 'pending', 'identified'),
-            ('no-derivatives', {'spdx_license_identifier':'CC-BY-ND-4.0'}, 'excluded', 'prohibited'),
+            ('no-derivatives', {'spdx_license_identifier':'CC-BY-ND-4.0'}, 'pending', 'identified'),
+            ('derivative-dataset-forbidden', {'create_derived_product':False}, 'pending', 'not_provided'),
             ('noncommercial-unresolved', {'spdx_license_identifier':'CC-BY-NC-4.0'}, 'pending', 'identified')
         ]
         rows=[{**root, **fields, 'filename': name+'.gtfs.zip'} for name,fields,_,_ in cases]
@@ -49,7 +50,8 @@ class GlobalFrequency(unittest.TestCase):
                 self.assertEqual(output[name]['status'],status)
                 self.assertEqual(output[name]['terms']['state'],rights_state)
         self.assertEqual(output['url-only']['terms']['terms_urls'],['https://example.org/terms'])
-        self.assertEqual(output['no-derivatives']['reason_code'],'source_terms_prohibit_derived_use')
+        self.assertEqual(output['no-derivatives']['reason_code'],'')
+        self.assertFalse(output['no-derivatives']['terms']['prohibitions'])
         # An explicit, source-bound reviewed term can prohibit; another URL cannot
         # accidentally inherit it through a shared filename.
         rule={'sources':{'permitted.gtfs.zip':{
@@ -58,7 +60,7 @@ class GlobalFrequency(unittest.TestCase):
             'prohibit_frequency_use':True}}}
         result=pipeline.discover([rows[3]],rule)[0]
         self.assertEqual(result['status'],'excluded')
-        self.assertIn('explicit restriction',result['reason'])
+        self.assertIn('end-user timetable-frequency use',result['reason'])
         other=pipeline.discover([{**rows[3],'source':'https://another.example/feed.zip'}],rule)[0]
         self.assertEqual(other['status'],'pending')
         # Catalogue conflicts are visible, not interpreted as a permission
@@ -74,7 +76,8 @@ class GlobalFrequency(unittest.TestCase):
         feed={'filename':'mdb_123.gtfs.zip','delivery':'direct','country_code':'CA',
               'human_name':'Missing download','source':'','rights_evidence':[]}
         item=pipeline.discover([feed],{})[0]
-        self.assertEqual(item['status'],'failed')
+        self.assertEqual(item['status'],'retry_pending')
+        self.assertTrue(item['retry_eligible'])
         self.assertEqual(item['reason_code'],'missing_source_url')
 
     def test_processing_failures_keep_distinct_codes_and_stages(self):
@@ -93,6 +96,83 @@ class GlobalFrequency(unittest.TestCase):
         for exception, code, stage in observed:
             with self.subTest(code=code, exception=str(exception)):
                 self.assertEqual(pipeline.classify_failure(exception), (code, stage))
+
+    def test_processed_404_recovers_from_original_without_excluding_rail(self):
+        original, held = self.server(self.archive())
+        row={'filename':'jp_rail.gtfs.zip','source':original,'country_code':'JP',
+             'spdx_license_identifier':'CC-BY-ND-4.0',
+             'lineage':[{'catalogue':'transitous-feeds','source':original}]}
+        entry=pipeline.discover([row],{})[0]
+        self.assertEqual(entry['status'],'pending')
+        processed=entry['processed_url']
+        real_get=pipeline.get
+        def broken_processed(url, headers=None):
+            if url == processed:
+                from urllib.error import HTTPError
+                raise HTTPError(url, 404, 'Not Found', {}, io.BytesIO())
+            return real_get(url,headers)
+        cache,output=self.root/'fallback-cache',self.root/'fallback-output'
+        cache.mkdir()
+        with patch.object(pipeline,'get',side_effect=broken_processed):
+            result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(result['status'],'compiled')
+        self.assertEqual(result['source']['download_url'],original)
+        self.assertEqual(result['source']['recovered_source_errors'][0]['code'],'http_404')
+        self.assertTrue(held['requests'], 'the actual original GTFS was downloaded')
+        # The successful source is revalidated, not the previously broken proxy.
+        with patch.object(pipeline,'get',side_effect=broken_processed):
+            same=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(same['status'],'compiled')
+        self.assertEqual(same['source']['retrieved'],result['source']['retrieved'])
+
+    def test_all_source_404s_are_recoverable_with_inspectable_attempts(self):
+        from urllib.error import HTTPError
+        row={'filename':'jp_rail.gtfs.zip','source':'https://operator.example/rail.zip','country_code':'JP'}
+        entry=pipeline.discover([row],{})[0]
+        cache,output=self.root/'missing-cache',self.root/'missing-output'
+        cache.mkdir()
+        def only_404(url, headers=None):
+            raise HTTPError(url,404,'Not Found',{},io.BytesIO())
+        with patch.object(pipeline,'get',side_effect=only_404):
+            with self.assertRaises(pipeline.SourceRetrievalError) as context:
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(len(context.exception.attempts),2)
+        self.assertEqual({x['code'] for x in context.exception.attempts},{'http_404'})
+        self.assertEqual(pipeline.classify_failure(context.exception),('source_http_404','retrieval'))
+        self.assertFalse((cache/'jp_rail.zip').exists())
+
+    def test_bad_conditional_refresh_keeps_last_good_zip_until_alternative_succeeds(self):
+        original, _ = self.server(self.archive())
+        row={'filename':'de_rail.gtfs.zip','source':original,'country_code':'DE'}
+        entry=pipeline.discover([row],{})[0]
+        # First successful version fetched through the processed endpoint.
+        entry['processed_url']=original
+        cache,output=self.root/'bad-cache',self.root/'bad-output'
+        cache.mkdir()
+        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        old=(cache/'de_rail.zip').read_bytes()
+        # Conditional 200 responds with broken, non-ZIP bytes. Fall back
+        # on the original URL rather than overwriting the good cached ZIP.
+        entry['processed_url']='https://broken.example/process.zip'
+        meta=json.loads((cache/'de_rail.meta.json').read_text())
+        meta['download_url']=entry['processed_url']
+        (cache/'de_rail.meta.json').write_text(json.dumps(meta))
+        real_get=pipeline.get
+        def broken(url, headers=None):
+            if url==entry['processed_url']:
+                from email.message import Message
+                class Response(io.BytesIO):
+                    status=200
+                    headers={'Content-Length':'10','ETag':'"new"'}
+                    def __enter__(self): return self
+                    def __exit__(self,*_): self.close()
+                return Response(b'not-a-zip')
+            return real_get(url,headers)
+        with patch.object(pipeline,'get',side_effect=broken):
+            result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(result['status'],'compiled')
+        self.assertEqual((cache/'de_rail.zip').read_bytes(),old)
+        self.assertEqual(result['source']['download_url'],original)
 
     def archive(self,rail=True):
         data=io.BytesIO()
