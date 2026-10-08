@@ -70,13 +70,23 @@ export function createRailProviderRecovery(map, {
   function run() {
     timer = null;
     if (disposed || !active()) return;
-    prune(); attempts++;
+    prune();
+    let dispatched = false;
+    const dispatch = callback => {
+      // Count this round once, only when work is invoked. Advance before the
+      // call so synchronous source events also see the new backoff step.
+      if (!dispatched) { attempts++; dispatched = true; }
+      callback();
+    };
     for (const [id, state] of failed) {
       if (!visible(id)) continue;
       try {
-        if (state.metadata) { state.source.setUrl?.(state.source.url); continue; }
+        if (state.metadata) {
+          if (typeof state.source.setUrl === 'function') dispatch(() => state.source.setUrl(state.source.url));
+          continue;
+        }
         const tiles = [...state.tiles.values()].filter(record => !['loading', 'reloading'].includes(record.tile?.state)).map(record => record.coordinate);
-        if (tiles.length && typeof map.refreshTiles === 'function') map.refreshTiles(id, tiles);
+        if (tiles.length && typeof map.refreshTiles === 'function') dispatch(() => map.refreshTiles(id, tiles));
       } catch { /* A style replacement may remove a source while recovering. */ }
     }
     onChange(); schedule();

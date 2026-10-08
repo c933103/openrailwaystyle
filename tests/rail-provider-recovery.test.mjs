@@ -114,3 +114,61 @@ test('unavailable or nonfinite bounds cannot establish off-screen longitude',()=
  }
  const f=boundedFailure(NaN,NaN,70,80);assert.equal(f.recovery.hasFailures(),false,'known latitude still establishes exclusion');f.recovery.dispose();
 });
+
+test('empty runs with missing retry methods do not consume shared backoff',()=>{
+ for(const metadata of [false,true]){
+  const f=fixture();f.map.refreshTiles=undefined;f.source.setUrl=undefined;
+  f.recovery.noteError({sourceId:'railway',...(metadata?{}:{tile:tile()}),error:{status:520}});
+  for(let i=0;i<6;i++){f.next();assert.equal([...f.timers.values()][0].delay,5000);assert.equal(f.timers.size,1);}
+  assert.deepEqual(f.reloads,[]);f.recovery.dispose();
+ }
+});
+test('mixed eligible and in-flight sources advance once per dispatching run',()=>{
+ const f=fixture(),a=tile(1),b=tile(2);a.state='loading';
+ f.recovery.noteError({sourceId:'a',tile:a,error:{status:520}});
+ for(let i=0;i<6;i++){f.next();assert.equal([...f.timers.values()][0].delay,5000);}
+ f.recovery.noteError({sourceId:'b',tile:b,error:{status:520}});
+ f.recovery.noteError({sourceId:'metadata',error:{status:520}});
+ f.next();assert.deepEqual(f.reloads,[{id:'b',tiles:[{z:7,x:2,y:2}]},'metadata']);assert.equal([...f.timers.values()][0].delay,15000);
+ f.recovery.noteSourceData({sourceId:'metadata',sourceDataType:'metadata'});b.state='reloading';
+ f.next();assert.equal(f.reloads.length,2);assert.equal([...f.timers.values()][0].delay,15000);
+ a.state='errored';b.state='errored';f.next();assert.equal(f.reloads.length,4);assert.equal([...f.timers.values()][0].delay,45000);
+ for(const [sourceId,t] of [['a',a],['b',b]]){t.state='loaded';f.recovery.noteSourceData({sourceId,tile:t});}
+ assert.equal(f.timers.size,0);f.recovery.dispose();
+});
+
+test('two slow request attempts do not advance recovery backoff while the tile reloads',async t=>{
+ const {createRequestPool}=await import('../styles/request-pool.mjs');
+ t.mock.timers.enable({apis:['setTimeout']});
+ let now=0,fetches=0;const dispatches=[],delays=[],tileState=tile();
+ const pool=createRequestPool({now:()=>now,timeout:12000,retries:[1000],fetcher:async()=>{
+  if(++fetches<=2)return new Promise(()=>{});
+  return {ok:true,status:200,arrayBuffer:async()=>new ArrayBuffer(0)};
+ }});
+ const source={url:'https://openrailwaymap.app/railway_line_high'};
+ let recovery;
+ const map={getSource:()=>source,refreshTiles:()=>{
+  dispatches.push(now);tileState.state='reloading';
+  pool.get('https://openrailwaymap.app/railway_line_high/7/1/2').then(()=>{
+   tileState.state='loaded';recovery.noteSourceData({sourceId:'railway',tile:tileState});
+  },error=>{tileState.state='errored';recovery.noteError({sourceId:'railway',tile:tileState,error});});
+ }};
+ recovery=createRailProviderRecovery(map,{active:()=>true,setTimer:(fn,delay)=>{delays.push(delay);return setTimeout(fn,delay);}});
+ const advance=async ms=>{now+=ms;t.mock.timers.tick(ms);await new Promise(resolve=>setImmediate(resolve));};
+ try{
+  recovery.noteError({sourceId:'railway',tile:tileState,error:{status:520}});
+  await advance(5000);assert.deepEqual(dispatches,[5000]);
+  await advance(12000);await advance(1000);assert.equal(fetches,2);
+  await advance(2000);assert.equal(tileState.state,'reloading');assert.deepEqual(dispatches,[5000]);assert.deepEqual(delays,[5000,15000,15000]);
+  await advance(10000);assert.equal(tileState.state,'errored');
+  await advance(5000);assert.deepEqual(dispatches,[5000,35000]);assert.equal(fetches,3);
+  assert.equal(tileState.state,'loaded');assert.equal(recovery.hasFailures(),false);
+  await advance(300000);assert.deepEqual(dispatches,[5000,35000]);
+ }finally{recovery.dispose();pool.dispose();}
+});
+test('a synchronous error during a real dispatch sees the incremented backoff',()=>{
+ const f=fixture(),t=tile();let invoked=0;
+ f.map.refreshTiles=()=>{invoked++;f.recovery.noteError({sourceId:'railway',tile:t,error:{status:520}});};
+ f.recovery.noteError({sourceId:'railway',tile:t,error:{status:520}});f.next();
+ assert.equal(invoked,1);assert.equal(f.timers.size,1);assert.equal([...f.timers.values()][0].delay,15000);f.recovery.dispose();
+});
