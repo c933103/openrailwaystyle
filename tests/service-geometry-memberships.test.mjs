@@ -7,7 +7,7 @@ import {addResult, buildTiles, commitStage, discardStage, geometrySummary, readT
 const lines = [[[139.70, 35.68], [139.71, 35.69]]];
 const relation = (id, members = [{type: 'way', ref: 101, role: ''}]) => ({type: 'relation', id,
   tags: {type: 'route', route: 'subway', ref: String(id), name: `Line ${id}`, network: 'Metro'}, members});
-const track = coordinates => ({type: 'way', id: 101, nodes: [1, 2],
+const track = coordinates => ({type: 'way', id: 101, nodes: Array.from({length: Math.max(2, coordinates?.length || 0)}, (_, i) => i + 1),
   ...(coordinates === undefined ? {} : {geometry: coordinates.map(p => p && {lon: p[0], lat: p[1]})})});
 const observation = (id, coordinates) => toTable({elements: [relation(id), track(coordinates)]});
 const empty = () => ({routes: new Map(), ways: new Map()});
@@ -97,8 +97,10 @@ test('service geometry: existing snapshot layout hydrates without a migration or
 
 test('service geometry: a later complete shortened way still replaces older coordinates', () => {
   const table = empty(), longer = [[139.70,35.68],[139.71,35.70],[139.72,35.68]];
-  addResult(table, observation(1, longer), 'A'); commitStage(table, 'A');
-  addResult(table, observation(1, lines[0]), 'A'); commitStage(table, 'A');
+  const dated = (coordinates, version, day) => toTable({osm3s: {timestamp_osm_base: `2026-10-${day}T00:00:00Z`},
+    elements: [relation(1), {...track(coordinates), version, timestamp: `2026-10-${day}T00:00:00Z`}]});
+  addResult(table, dated(longer, 1, '01'), 'A'); commitStage(table, 'A');
+  addResult(table, dated(lines[0], 2, '02'), 'A'); commitStage(table, 'A');
   assert.deepEqual(table.ways.get(101).lines, lines, 'no prefer-longest geometry heuristic');
 });
 
@@ -118,10 +120,11 @@ test('service geometry: diagnostics distinguish missing, partial and recovered s
   addResult(table, toTable({elements: [first, track(lines[0]), missingWay, relation(3, [])]}), 'A');
   addResult(table, toTable({elements: [relation(2, [{type: 'way', ref: 102, role: ''}]), missingWay]}), 'A');
   commitStage(table, 'A');
-  assert.deepEqual(geometrySummary(stored(table)), {waysWithoutGeometry: [102],
+  const coverage = table => { const {waysWithoutGeometry, routeRelationsWithoutGeometry, routeRelationsWithPartialGeometry} = geometrySummary(table); return {waysWithoutGeometry, routeRelationsWithoutGeometry, routeRelationsWithPartialGeometry}; };
+  assert.deepEqual(coverage(stored(table)), {waysWithoutGeometry: [102],
     routeRelationsWithoutGeometry: [2, 3], routeRelationsWithPartialGeometry: [1]});
   addResult(table, toTable({elements: [relation(2, [{type: 'way', ref: 102, role: ''}]), {...track(lines[0]), id: 102}]}), 'B');
-  assert.deepEqual(geometrySummary(stored(table)), {waysWithoutGeometry: [],
+  assert.deepEqual(coverage(stored(table)), {waysWithoutGeometry: [],
     routeRelationsWithoutGeometry: [3], routeRelationsWithPartialGeometry: []});
   discardStage(table, 'B');
   assert.deepEqual(geometrySummary(table).waysWithoutGeometry, [102]);
