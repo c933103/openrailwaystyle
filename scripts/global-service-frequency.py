@@ -399,6 +399,31 @@ def compile_one(request, response):
     return 0
 
 
+def classify_failure(error):
+    """Annotate the actual processing failure without pretending it is a licence denial."""
+    reason = f'{type(error).__name__}: {error}'
+    message = reason.lower()
+    if 'http error 404' in message or 'http 404' in message:
+        return 'source_http_404', 'retrieval'
+    if any(s in message for s in ('http error 403', 'http error 401', 'unauthorized', 'forbidden')):
+        return 'source_access_denied', 'retrieval'
+    if any(s in message for s in ('http error', 'urlerror', 'timed out', 'connection', 'invalid http range', 'truncated range', 'feed changed during')):
+        return 'source_retrieval_error', 'retrieval'
+    if 'calendar horizon' in message or 'feed\\'s validity' in message or 'service calendar' in message:
+        return 'calendar_horizon', 'calendar'
+    if 'memoryerror' in message or 'memory budget' in message:
+        return 'memory_limit', 'resources'
+    if 'time budget' in message or 'timeoutexpired' in message:
+        return 'time_limit', 'resources'
+    if 'row budget' in message:
+        return 'table_row_limit', 'parsing'
+    if 'byte budget' in message or 'exceeds download byte' in message:
+        return 'byte_limit', 'parsing'
+    if any(s in message for s in ('zip', 'missing routes.txt', 'missing table')):
+        return 'invalid_archive_or_gtfs', 'parsing'
+    return 'compile_error', 'compilation'
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--catalogue', help='Local catalogue for offline reproduction; default downloads worldwide registry')
@@ -428,7 +453,9 @@ def main():
         atomic_json(previous_path, {'schema': 2, 'catalogue_url': CATALOGUE, 'catalogue_sha256': catalogue_hash,
             'catalogue_entries': len(entries), 'service_date': args.date, 'shard': args.shard, 'shards': args.shards,
             'scope': 'Every GTFS feed in the worldwide catalogue; no city allow-list',
-            'counts': dict(Counter(x['status'] for x in outcomes)), 'entries': outcomes})
+            'counts': dict(Counter(x['status'] for x in outcomes)),
+            'reason_codes': dict(Counter(x.get('reason_code') or 'none' for x in outcomes)),
+            'entries': outcomes})
     for entry in entries:
         if int(hashlib.sha256(entry['id'].encode()).hexdigest(), 16) % args.shards != args.shard:
             continue
@@ -436,7 +463,9 @@ def main():
             try:
                 entry = compile_entry_isolated(entry, args.cache, args.output, args.date, args.rail_graph, args.max_feed_bytes, rules.get('profiles', PROFILES), args.max_compile_seconds, args.max_compile_memory_bytes)
             except Exception as error:
-                entry = {**entry, 'status': 'failed', 'reason': f'{type(error).__name__}: {error}'}
+                code, stage = classify_failure(error)
+                entry = {**entry, 'status': 'failed', 'reason': f'{type(error).__name__}: {error}',
+                         'reason_code': code, 'failure_stage': stage}
         outcomes.append(entry)
         save()  # durable after every feed, even if a job times out later.
         print(entry['id'], entry['status'], entry.get('rail_routes', ''), entry.get('mapped_segments', ''), entry.get('reason', ''), flush=True)
