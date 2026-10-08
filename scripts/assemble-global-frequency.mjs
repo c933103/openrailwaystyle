@@ -12,7 +12,7 @@ export const countStatuses=entries=>{const counts={};for(const entry of entries)
 export const countOutcomeReasons=entries=>{
   const counts={};
   for(const entry of entries){
-    if(!['excluded','failed'].includes(entry.status))continue;
+    if(!['excluded','failed','retry_pending'].includes(entry.status))continue;
     const reason=entry.reason_code||'unclassified';
     counts[reason]=(counts[reason]||0)+1;
   }
