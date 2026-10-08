@@ -12,8 +12,9 @@
 // Tests' fixture routes take precedence over these defaults.
 import {chromium} from 'playwright';
 import {createHash} from 'node:crypto';
-import {mkdir, readFile, rename, writeFile} from 'node:fs/promises';
+import {mkdir, readFile, rename, rm, writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
+import {validProviderVectorTile} from '../styles/vector-tile-validation.mjs';
 import {fetchLoopbackNoRedirect, isLoopbackHttp, isPublicOrm, localOrmAuditTarget, localOrmTarget} from './browser-policy.mjs';
 
 export const BROWSER_ARGS = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'];
@@ -27,6 +28,9 @@ const CACHED_STATUS = new Set([200, 204, 206]);
 // decoded body Playwright hands over.
 const DROPPED_HEADERS = new Set(['content-encoding', 'content-length', 'transfer-encoding', 'connection', 'set-cookie']);
 
+// A provider can occasionally answer a tile URL with HTTP 200 but a text
+// error body. Replaying that as a vector tile poisons every browser check for
+// TILE_CACHE_DAYS. The shared validator enforces the provider's MVT contract.
 export async function launchBrowser(options = {}) {
   const shared = process.env.BROWSER_WS_ENDPOINT;
   const browser = shared && !options.proxy && !options.executablePath
@@ -99,14 +103,18 @@ export async function cacheOtherOrigins(context, directory, {now = Date.now, max
 }
 async function serve(route, directory, {now, maxAge}) {
   const request = route.request();
-  if (request.method() !== 'GET') return route.fallback();
+  if (isPublicOrm(request.url()) || request.method() !== 'GET') return route.fallback();
   const range = (await request.allHeaders()).range || '';
   const key = cacheKey(request.url(), range), file = join(directory, key);
   try {
     const entry = JSON.parse(await readFile(`${file}.json`, 'utf8'));
     if (now() - entry.saved < maxAge) {
       const body = entry.size ? await readFile(`${file}.body`) : Buffer.alloc(0);
-      return await route.fulfill({status: entry.status, headers: entry.headers, body});
+      if (validProviderVectorTile(request.url(), entry.status, body))
+        return await route.fulfill({status: entry.status, headers: entry.headers, body});
+      // Discard an already-poisoned cache entry and ask the network again.
+      await rm(`${file}.json`, {force: true}); await rm(`${file}.body`, {force: true});
+      await writeFile(join(directory, '.changed'), '');
     }
   } catch {}
   // A miss goes out from the browser itself, as it would without the cache:
@@ -116,6 +124,7 @@ async function serve(route, directory, {now, maxAge}) {
   const response = await request.response();
   if (!response || !CACHED_STATUS.has(response.status())) return;
   const body = await response.body(), headers = {};
+  if (!validProviderVectorTile(request.url(), response.status(), body)) return;
   for (const [name, value] of Object.entries(await response.allHeaders())) if (!DROPPED_HEADERS.has(name.toLowerCase())) headers[name] = value;
   // Written under a temporary name and renamed, so a concurrent check never
   // reads half an entry.

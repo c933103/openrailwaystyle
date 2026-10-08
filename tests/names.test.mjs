@@ -310,25 +310,29 @@ test('simultaneous requests for one tile share a single download; it stops only 
   assert.equal(fetches.length,3,'a cancelled download is started afresh');
   fetches[2].finish();
 });
-test('each request waiting on a shared download has its own time limit; a stuck download is not joined',async()=>{
-  const protocols={},fetches=[],wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-  installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},(url,{signal})=>new Promise((resolve,reject)=>{
+test('a shared stalled transport has one deadline and every reader can start afresh after it expires',async t=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  const protocols={},fetches=[],flush=()=>new Promise(resolve=>setImmediate(resolve));
+  const adapters=installLabelProtocols({addProtocol:(id,fn)=>{protocols[id]=fn;}},{},(url,{signal})=>new Promise((resolve,reject)=>{
     fetches.push({signal,finish:()=>resolve({ok:true,arrayBuffer:async()=>Uint8Array.from(tile({name:'Track',tracks:2})).buffer})});
     signal.addEventListener('abort',()=>reject(signal.reason),{once:true});
   }),{timeout:300,tileRetries:[]});
+  t.after(()=>adapters.dispose());
   const request={url:'atlasrail://https://example.org/railway/14/10/10'};
   const first=assert.rejects(protocols.atlasrail(request,new AbortController()),{name:'TimeoutError'});
-  await wait(100);
-  const second=protocols.atlasrail(request,new AbortController());
-  await wait(250);
-  await first;
-  assert.equal(fetches.length,1,'the second request joined the first download');
-  assert.equal(fetches[0].signal.aborted,false,'the second request still has time left');
+  await flush();t.mock.timers.tick(100);await flush();
+  // Attach the rejection handler at creation: all readers share the transport
+  // deadline, rather than keeping a stalled download alive for late arrivals.
+  const second=assert.rejects(protocols.atlasrail(request,new AbortController()),{name:'TimeoutError'});
+  await flush();assert.equal(fetches.length,1,'concurrent readers still share one transport');
+  t.mock.timers.tick(200);await flush();await Promise.all([first,second]);
+  assert.equal(fetches[0].signal.aborted,true,'the stalled transport releases its network slot');
   const third=protocols.atlasrail(request,new AbortController());
-  await wait(0);
-  assert.equal(fetches.length,2,'a download older than the limit is treated as stuck');
+  await flush();assert.equal(fetches.length,2,'a new reader cannot join the expired transport');
   fetches[0].finish();fetches[1].finish();
-  for(const result of [await second,await third]) assert.equal(readTile(result.data).layers.stations.feature(0).properties.tracks,2);
+  assert.equal(readTile((await third).data).layers.stations.feature(0).properties.tracks,2);
+  assert.equal(readTile((await protocols.atlasrail(request,new AbortController())).data).layers.stations.feature(0).properties.tracks,2);
+  assert.equal(fetches.length,2,'the recovered bytes are cached, not the expired response');
 });
 test('a station tile that times out or fails is tried once more; a 4xx answer or a cancelled tile is not',async t=>{
   const protocols={},fetches=[],wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));

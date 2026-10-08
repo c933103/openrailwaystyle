@@ -912,7 +912,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "be44461cbc3800bae61b5a4dd98207e79f450d9646d7691838fbaa934df43434"
+      "sha256": "d09e12d44433ca13aac143d7bdc725a90bf63b82ec532fcb5c7ec0121bb8c06e"
     },
     {
       "id": "road-major",
@@ -977,7 +977,7 @@
       "sourceLayer": "standard_railway_line_low",
       "minzoom": 0,
       "maxzoom": 7,
-      "sha256": "f9da641a0496f8e0fdf5e0b0f5d2dc9f6b9661e9e5f8d1e7afe94d025f54184d"
+      "sha256": "124bddccabea17b60867fbf2a06b6f3a52fcc3d4b91a22a0c26ffea2cc3789b4"
     },
     {
       "id": "structure-bridge-edge",
@@ -1045,7 +1045,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "c2ea8757fbc4973f3c8eaa51670e07f92cdfb85d8a99c9f80e0a828fe5200b03"
+      "sha256": "fb757aa8e7433e219007a7d124b22f0a76dc671d2a1502370cc85db38c8d12ce"
     },
     {
       "id": "speed-overview",
@@ -1054,7 +1054,7 @@
       "sourceLayer": "speed_railway_line_low",
       "minzoom": 0,
       "maxzoom": 7,
-      "sha256": "ecc6dc4b674fa48fd06e4551adb08b474afb22bcf114551bf79dffee91ec85bc"
+      "sha256": "0e8d3c7bff34b4c7b70dbcecb1bf36b43a1e85f35e8588c79343d80da9a3032e"
     },
     {
       "id": "speed-tracks",
@@ -1080,7 +1080,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "7cd24af8558c9d0be3b683c2c4d0b5bae107d53413789d2aaba0829bb7d7b960"
+      "sha256": "d3dcc0615805fc627d3841e66c945c46d10dfa09aad67e5a499d32af404b998c"
     },
     {
       "id": "electrification-overview",
@@ -1089,7 +1089,7 @@
       "sourceLayer": "electrification_railway_line_low",
       "minzoom": 0,
       "maxzoom": 7,
-      "sha256": "b70d63190a8cea33102113d9fe1ab68ea62116faf6c61d12d25e98fbedda1914"
+      "sha256": "48bfb9e5765be98a69cbb6a5323e75071865923698bf8b24c161184049586f93"
     },
     {
       "id": "electrification-tracks",
@@ -1115,7 +1115,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "d57f1c1fd43a6b52a89023989d51e2389752cd644db5ee56359635186db9c8f1"
+      "sha256": "7cd4e4d3c4494ed169699f835be3af7985d1c731d314e7bcfff8c0518ce1dd1a"
     },
     {
       "id": "control-branch-overview-system-2",
@@ -1124,7 +1124,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "8cdba79faf7bdeeea8507f85cad5d19648ec33f3c720e7bff01f844609b1e17d"
+      "sha256": "6488ee683b80dc62ccdb6957d0f731ff643d1de805e9673be36d66877af74ce3"
     },
     {
       "id": "control-branch-overview-system-3",
@@ -1133,7 +1133,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "cb2253af08eabe02b8b56ea1528aea3aed99adbf2b074bf3d1c76d4b1d43ec37"
+      "sha256": "dc9ce0034ed4fa0d668c7f0d6d705a9e4e32b2d0ac2015a46f0904c83e6dfb6b"
     },
     {
       "id": "control-overview",
@@ -1142,7 +1142,7 @@
       "sourceLayer": "signals_railway_line_low",
       "minzoom": 0,
       "maxzoom": 7,
-      "sha256": "df934c3c572092d900ed02fd94f6afbdd0695a1bd892d19bca4da30ab63037a6"
+      "sha256": "3e18fb1e8c19c87578b4e32baca09b37e6f073c2d6bb2c1ad7dd425b01ad49a2"
     },
     {
       "id": "control-overview-system-2",
@@ -1151,7 +1151,7 @@
       "sourceLayer": "signals_railway_line_low",
       "minzoom": 0,
       "maxzoom": 7,
-      "sha256": "a73528f529ad482a08489e710e528c3e2c9fe63664805e8da90a166bb427924b"
+      "sha256": "297c74b3fb8203c59ee67e7889cc29d2a1daefc217fe414be60bfecf369e8c39"
     },
     {
       "id": "control-overview-system-3",
@@ -1160,7 +1160,7 @@
       "sourceLayer": "signals_railway_line_low",
       "minzoom": 0,
       "maxzoom": 7,
-      "sha256": "9795740ddeb8a741dd263022772def38c03e9bd4835f93db565d3fbfce699245"
+      "sha256": "1ca69a62529e5a0c0ce4adf1ebf57ded0ee07b8de7a8d1e40d697020318a313e"
     },
     {
       "id": "control-tracks",
@@ -1238,7 +1238,7 @@
       "sourceLayer": "track_railway_line_low",
       "minzoom": 0,
       "maxzoom": 7,
-      "sha256": "79cd220e30c8a16137fd7f3c5209cda21ffede3b2dee0320c2a7114e57366b42"
+      "sha256": "658c27f9aaa5d84f826bae19c4b7e9a99b52397c14fcbe8657e4edb342f4cdd5"
     },
     {
       "id": "gauge-tracks",
@@ -1264,7 +1264,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "3e33a1d9551bdbd8af1b83e768ea8e48ff68c612358a91a8c54c719f06697e78"
+      "sha256": "ef30f7b3dd8de1d7b1826017519d598972745c34912be3f8891c47601865f292"
     },
     {
       "id": "loading-overview",
@@ -1273,7 +1273,7 @@
       "sourceLayer": "standard_railway_line_low",
       "minzoom": 0,
       "maxzoom": 7,
-      "sha256": "b8bc4e6999fbb4fc3c01d2c4438c6fd1dfb8225f15ad39fe22ba419021487a62"
+      "sha256": "a47998a6c9c870e224d65c35939320e5ebdeb6fe3a657a2154abc2c8610ebb17"
     },
     {
       "id": "loading-tracks",
@@ -1299,7 +1299,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "190a18e66826f5202a611a8800408759426b63e4311d65b2e799e8de5c1a4b0e"
+      "sha256": "26d1da448edc5237e72ac5f3a7cfc6a447fc6f36d82524ade08c585dd5fffd07"
     },
     {
       "id": "axle-overview",
@@ -1308,7 +1308,7 @@
       "sourceLayer": "standard_railway_line_low",
       "minzoom": 0,
       "maxzoom": 7,
-      "sha256": "2ace70e99cfaaa7945261179b74baf4c75aea9ae5fc0d7fb5026883d074bd00c"
+      "sha256": "fedf497c4daa940bd13c86df91bbee1114fde6628ea54432e49a6a358c9a49c8"
     },
     {
       "id": "axle-tracks",
@@ -1334,7 +1334,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "7da2e8e8b9856bc317b30a3d87e684ca32af7f3c21008751054d5c98fd01c814"
+      "sha256": "1b41182cb1ef6a62458f994778015b0df850294385cc2151e53c6311931a0998"
     },
     {
       "id": "owner-overview",
@@ -1343,7 +1343,7 @@
       "sourceLayer": "operator_railway_line_low",
       "minzoom": 0,
       "maxzoom": 7,
-      "sha256": "cb77de0a8db8949b7e124c0523ba71c3e3c75644344635fdb8c613b1861a293b"
+      "sha256": "3a1aa6adf1b4089bf0dade2ad33b5c8adce7bc3d0a554ca0f1c5135755ebc2b3"
     },
     {
       "id": "owner-tracks",
@@ -1369,7 +1369,7 @@
       "sourceLayer": "branch_lines",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "adf865b423224659e4e290bf2038fbfaab25b7d8df8ef5093e903f0fe35b5f4b"
+      "sha256": "1eba9e8ff54ab43c62fa1af193b1287204eeda1c3512ca940277e287fb61643c"
     },
     {
       "id": "service-overview",
@@ -1378,7 +1378,7 @@
       "sourceLayer": "standard_railway_line_low",
       "minzoom": 0,
       "maxzoom": 7,
-      "sha256": "9d48fea3c481faf389477717be6eb050ff75a78b3b997315c9e1998cb126b37d"
+      "sha256": "030accabff3c795454878bd1284c9a2b63922bf771e17a55036447687c4d7d15"
     },
     {
       "id": "service-tracks",

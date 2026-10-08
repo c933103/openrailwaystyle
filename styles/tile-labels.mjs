@@ -1,4 +1,5 @@
-import {ByteCache} from './byte-cache.mjs';
+import {createRequestPool} from './request-pool.mjs';
+import {railTileMetadata, zoomOverrides, railTileNeedsGlyphs} from './rail-source-catalog.mjs';
 import {createTrackCounter} from './track-work.mjs';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
@@ -10,6 +11,7 @@ import {axleLoad} from './axle-load.mjs';
 import {isLocalFamily} from './cjk-font.mjs';
 import {rareHanBlocks} from './rare-han.mjs';
 import {decodeLoadingGauges, wayId} from './loading-gauge-list.mjs';
+import {validProviderVectorTile} from './vector-tile-validation.mjs';
 export {hanRegion, chineseArea};
 export const buildInfo=typeof __ATLAS_BUILD_INFO__ === 'undefined' ? {version:'development',commit:''} : __ATLAS_BUILD_INFO__;
 
@@ -146,67 +148,15 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   // Rare-Han glyph slices for a tile's labels load before the tile is drawn.
   const withGlyphs = async (data, found) => { if (found.size && rareGlyphs) await rareGlyphs(found); return data; };
   // A tile drawn as stored: the rare Han of its text values.
-  const storedGlyphs = data => withGlyphs(data, tileTextBlocks(data));
-  // Only current-view requests are made. Keep a bounded cache of successful
-  // responses so language changes can reuse downloaded station tiles.
-  const cache = new ByteCache();
-  // Downloads still under way, shared by everyone asking for the same URL
-  // (neighbouring track-count tiles ask for the same railway tiles at once).
-  // Each request has its own 12-second limit; a download is cancelled only
-  // when every request waiting on it has been cancelled or run out of time.
-  // One running longer than that limit counts as stuck: a new request starts
-  // a fresh download rather than join it.
-  const loading = new Map();
-  // A download that runs out of time or fails (the server slow or down for
-  // a moment, a 5xx answer) is started afresh once more, so one slow answer
-  // does not leave its tile without stations or railways until the map
-  // moves. Not a cancelled tile, and not a 4xx answer.
-  async function get(url, request, json = false) {
-    for (let attempt = 0; ; attempt++) {
-      try { return await download(url, request, json); }
-      catch (error) {
-        if (request.aborted || attempt >= tileRetries.length || / returned 4\d\d$/.test(error?.message ?? '')) throw error;
-        // A tile cancelled during the wait ends as cancelled, not failed.
-        await new Promise((resolve, reject) => {
-          const cancel = () => { clearTimeout(timer); reject(request.reason ?? new DOMException('Aborted', 'AbortError')); };
-          const timer = setTimeout(() => { request.removeEventListener('abort', cancel); resolve(); }, tileRetries[attempt]);
-          request.addEventListener('abort', cancel, {once: true});
-        });
-      }
-    }
+  const storedGlyphs = (data, url) => url && !railTileNeedsGlyphs(url) ? data : withGlyphs(data, tileTextBlocks(data));
+  const pool = createRequestPool({fetcher, timeout, retries: tileRetries});
+  function get(url, signal, json = false, priority = 0) {
+    if (signal?.aborted) return Promise.reject(signal.reason);
+    const metadata = json && railTileMetadata(url, ORM);
+    const validate = !json ? (data => validProviderVectorTile(url, 200, data, ORM)) : undefined;
+    return metadata ? Promise.resolve(metadata) : pool.get(url, signal, {json, priority, validate});
   }
-  function download(url, request, json = false) {
-    if (cache.has(url)) {
-      return Promise.resolve(cache.get(url));
-    }
-    let entry = loading.get(url);
-    if (!entry || Date.now() - entry.started >= timeout) {
-      const controller = new AbortController();
-      entry = {controller, waiting: 0, started: Date.now(), promise: (async () => {
-        const response = await fetcher(url,{signal:controller.signal});
-        if (!response.ok) throw new Error(`Map names returned ${response.status}`);
-        const data = json ? await response.json() : await response.arrayBuffer();
-        cache.set(url,data);
-        return data;
-      })()};
-      loading.set(url, entry);
-      const current = entry;
-      entry.promise.then(() => {}, () => {}).then(() => { if (loading.get(url) === current) loading.delete(url); });
-    }
-    const current = entry, signal = AbortSignal.any([request, AbortSignal.timeout(timeout)]);
-    current.waiting++;
-    return new Promise((resolve, reject) => {
-      const cancel = () => {
-        if (--current.waiting === 0) { if (loading.get(url) === current) loading.delete(url); current.controller.abort(signal.reason); }
-        reject(signal.reason ?? new DOMException('Aborted', 'AbortError'));
-      };
-      if (signal.aborted) { cancel(); return; }
-      signal.addEventListener('abort', cancel, {once: true});
-      current.promise.then(data => { signal.removeEventListener('abort', cancel); resolve(data); },
-        error => { signal.removeEventListener('abort', cancel); reject(error); });
-    });
-  }
-  maplibregl.addProtocol('atlasglyph',async(params,controller)=>({data:await get(glyphRequestURL(params.url),controller.signal)}));
+  maplibregl.addProtocol('atlasglyph',async(params,controller)=>({data:(await get(glyphRequestURL(params.url),controller.signal,false,1)).slice(0)}));
   // Track counts: a vector source of their own (atlastracks://14/x/y; see
   // track-tiles.mjs), counted in a worker off the page's main thread
   // (track-worker.mjs) from the provider's zoom-14 railway tiles (the ones
@@ -223,7 +173,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
         const list = [];
         for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
           const n = 2 ** 14, tx = (x + dx + n) % n, ty = y + dy;
-          if (ty >= 0 && ty < n) list.push(optional(get(orm(`${source}/14/${tx}/${ty}`), signal)).then(data => data && {dx, dy, data}));
+          if (ty >= 0 && ty < n) list.push(optional(get(orm(`${source}/14/${tx}/${ty}`), signal, false, 2)).then(data => data && {dx, dy, data}));
         }
         return Promise.all(list);
       };
@@ -268,7 +218,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
     // MapLibre transfers this buffer to its worker, detaching it. Keep the
     // cache's original for language changes, return visits and track counts.
     const data = (await get(url, controller.signal)).slice(0);
-    return {data: await storedGlyphs(data)};
+    return {data: await storedGlyphs(data,url)};
   });
   // Overview tiles (zoom 0–6) carry way IDs but no loading gauge: add it
   // from the published way ID list (data/loading-gauge.json, about 250 kB
@@ -288,17 +238,15 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       const data = await get(url,controller.signal,true);
       return {data:{...data,tiles:data.tiles.map(t=>`atlaslg://${t}`)}};
     }
-    const [response, list] = await Promise.all([fetcher(url,{signal:controller.signal}), loadingGaugeList()]);
-    if (!response.ok && response.status !== 204) throw new Error(`Railway tile returned ${response.status}`);
-    const data = await response.arrayBuffer();
-    if (!data.byteLength || !list.size) return {data: await storedGlyphs(data)};
+    const [data, list] = await Promise.all([get(url,controller.signal).then(data=>data.slice(0)), loadingGaugeList()]);
+    if (!data.byteLength || !list.size) return {data: await storedGlyphs(data,url)};
     const tile = readTile(data);
     for (const f of features(tile)) {
       const value = list.get(wayId(f.properties.id));
       if (value) f.properties.loading_gauge = value;
     }
     const result = encode(tile);
-    return {data: await storedGlyphs(result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength))};
+    return {data: await storedGlyphs(result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength),url)};
   });
   // The snapshot is fetched only when an Axle load tile is requested.
   let axleList;
@@ -329,7 +277,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       const data=await get(url,controller.signal,true);
       return {data:{...data,tiles:data.tiles.map(t=>`atlasaxle://${t}`)}};
     }
-    return {data:await storedGlyphs(await axleTile(await get(url,controller.signal)))};
+    return {data:await storedGlyphs(await axleTile((await get(url,controller.signal)).slice(0)),url)};
   });
   // Owner view: the railway tiles with each line's owner colour added
   // (owner_color, from the name; ownerColor).
@@ -347,7 +295,7 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       if (color) f.properties.owner_color = color;
     }
     const result = encode(tile);
-    return {data: await storedGlyphs(result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength))};
+    return {data: await storedGlyphs(result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength),url)};
   });
   maplibregl.addProtocol('atlasbase',async (params,controller)=>{
     const [,lang,url] = /^atlasbase:\/\/([^/]+)\/(.+)$/.exec(params.url) || [];
@@ -379,11 +327,14 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
   async function childTiles(requestURL, target, signal) {
     const match = /\/(\d+)\/(\d+)\/(\d+)(\.[a-z.]+)?$/i.exec(requestURL.pathname);
     const [z, x, y] = match.slice(1, 4).map(Number), n = 2 ** (target - z);
-    const layers = {}, seen = new Set();
+    const layers = {}, seen = new Set(), children = [];
     for (let dx = 0; dx < n; dx++) for (let dy = 0; dy < n; dy++) {
       const child = new URL(requestURL);
       child.pathname = requestURL.pathname.slice(0, match.index) + `/${target}/${x*n+dx}/${y*n+dy}${match[4] || ''}`;
-      const tile = readTile(await get(child.href, signal));
+      children.push(get(child.href,signal).then(data=>({dx,dy,data})));
+    }
+    for (const {dx,dy,data} of await Promise.all(children)) {
+      const tile = readTile(data);
       for (const [name, layer] of Object.entries(tile.layers)) {
         const out = layers[name] ||= {features: []};
         for (let i = 0; i < layer.length; i++) {
@@ -451,13 +402,11 @@ export function installLabelProtocols(maplibregl, pmtilesProtocol, fetcher = fet
       // provider's zoom range. underzoom=N builds tiles below zoom N from
       // their zoom-N children, for providers that return nothing there.
       const [address, fragment = ''] = url.split('#');
-      const data = await get(address,signal,true), options = new URLSearchParams(fragment);
-      const zoom = key => { const value = Number(options.get(key)); return Number.isInteger(value) && value >= 0 ? {[key]:value} : {}; };
-      const underzoom = zoom('underzoom').underzoom;
-      return {data:{...data,...zoom('minzoom'),...zoom('maxzoom'),tiles:data.tiles.map(t=>`atlasstation://${lang}/${t}${underzoom ? `#underzoom=${underzoom}` : ''}`)}};
+      const data = await get(address,signal,true), {underzoom, ...ranges} = zoomOverrides(fragment);
+      return {data:{...data,...ranges,tiles:data.tiles.map(t=>`atlasstation://${lang}/${t}${underzoom ? `#underzoom=${underzoom}` : ''}`)}};
     }
     const found = new Set();
     return {data:await withGlyphs(await stationTile(url,lang,controller.signal,found),found)};
   });
-  return {axleTile, stationTile};
+  return {axleTile, stationTile, requestStats:pool.stats, dispose:pool.dispose};
 }

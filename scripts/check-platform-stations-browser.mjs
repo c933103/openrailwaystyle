@@ -1,8 +1,8 @@
 import {launchBrowser} from './browser.mjs';
+import {ormVectorFixture} from './orm-vector-fixture.mjs';
 import {readFile,mkdir} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import geojsonvt from 'geojson-vt';
-import vtpbf from 'vt-pbf';
 import {waitUntil} from './wait-until.mjs';
 import {platformExtent} from '../styles/platform-length.mjs';
 
@@ -37,14 +37,15 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  await page.route('**/data/**/index.json',route=>route.fulfill({json:{tiles:[]}}));
  await page.route('https://openrailwaymap.app/**',async route=>{
   const path=new URL(route.request().url()).pathname;
+  const direct=ormVectorFixture(path,{'standard_railway_platforms':index}, ({layer,z,x,y})=>{if(layer==='standard_railway_platforms'&&z===15)requests.push(`${x}/${y}`);});
+  if(direct)return route.fulfill(direct);
   if(path.startsWith('/api/feature/')){const f=byId.get(path.split('/').at(-1));assert.ok(f);await route.fulfill({json:{properties:{ref:f.properties.ref.split(';'),name:f.properties.name}}});}
   else await route.fulfill({json:{tilejson:'3.0.0',tiles:[`${base}review-station-tiles${path}/{z}/{x}/{y}.pbf`],minzoom:0,maxzoom:22}});
  });
- await page.route('**/review-station-tiles/**',async route=>{
-  const [,layer,z,x,y]=/review-station-tiles\/([^/]+)\/(\d+)\/(\d+)\/(\d+)\.pbf/.exec(route.request().url());
-  if(layer==='standard_railway_platforms'&&z==='15')requests.push(`${x}/${y}`);
-  const tile=layer==='standard_railway_platforms'?index.getTile(+z,+x,+y):null;
-  await route.fulfill({body:tile?Buffer.from(vtpbf.fromGeojsonVt({[layer]:tile},{version:2})):Buffer.alloc(0),contentType:'application/x-protobuf'});
+ await page.route('**/review-station-tiles/**',route=>{
+  const response=ormVectorFixture(new URL(route.request().url()).pathname.split('/review-station-tiles')[1],{'standard_railway_platforms':index}, ({layer,z,x,y})=>{if(layer==='standard_railway_platforms'&&z===15)requests.push(`${x}/${y}`);});
+  assert.ok(response,'Recognized local fixture tile URL');
+  return route.fulfill(response);
  });
  // Nothing per platform may go to OSM; lengths come from the provider's tiles.
  await page.route(/api\.openstreetmap\.org|overpass-api\.de/,route=>{errors.push(`Unexpected OSM request ${route.request().url()}`);return route.abort();});
@@ -56,11 +57,17 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  await drawHan();
  await page.waitForFunction(()=>document.fonts.check('24px "Atlas CJK TC"')&&window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Atlas CJK TC'),undefined,{timeout:30000});
  const checkGlyphs=async code=>{
-  const result=await page.evaluate(async code=>{
-   const map=window.reviewMap,stack=map.getStyle().layers.find(l=>l.id.startsWith('station-')&&l.type==='symbol').layout['text-font'].join(','),ids=[...'汉岛华顿联车漢島華頓聯車'].map(c=>c.codePointAt(0));
-   const glyphs=(await map.style.glyphManager.getGlyphs({[stack]:ids}))[stack],entry=map.style.glyphManager.entries[stack];
+  const result=await waitUntil(page,async code=>{
+   // Loading the packaged font replaces the style. Inspect one ready style
+   // and retry if it changes while its glyphs are being generated.
+   const map=window.reviewMap,layer=map.getStyle()?.layers?.find(l=>l.id.startsWith('station-')&&l.type==='symbol');
+   if(!map.isStyleLoaded()||!layer)return false;
+   const stack=layer.layout['text-font'].join(','),manager=map.style.glyphManager,ids=[...'汉岛华顿联车漢島華頓聯車'].map(c=>c.codePointAt(0));
+   if(!stack.includes(`Atlas CJK ${code}`))return false;
+   const glyphs=(await manager.getGlyphs({[stack]:ids}))[stack],entry=manager.entries[stack];
+   if(map.style.glyphManager!==manager)return false;
    return {stack,font:entry.tinySDF?.ctx.font,visible:ids.every(id=>glyphs[id]?.bitmap.data.some(v=>v>0)),distinct:new Set(ids.map(id=>glyphs[id]?.bitmap.data.join(','))).size};
-  },code);
+  },code,{timeout:30000});
   assert.ok(result.stack.includes(`Atlas CJK ${code}`));assert.ok(result.font.includes(`Atlas CJK ${code}`),'actual TinySDF canvas must use the packaged font');assert.equal(result.visible,true);assert.equal(result.distinct,12,'missing-character boxes must not replace Simplified fallback glyphs');
  };
  await checkGlyphs('TC');
