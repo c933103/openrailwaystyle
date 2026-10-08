@@ -26,13 +26,22 @@ function fakeResponse(value,{status=200,headers={'content-type':'application/jso
 test('deployment fixture mode leaves deployed first-party style and data untouched', async()=>{
   const base='https://example.invalid/openrailwaystyle/';
   const context=fakeFixtureContext();
-  await installEmptyMapProviders(context,base,{firstParty:'network',rendererAssets:new Map()});
+  const pmtilesURL='https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js';
+  const pmtilesAsset={contentType:'text/javascript',body:Buffer.from('/* verified production client */')};
+  await installEmptyMapProviders(context,base,{firstParty:'network',rendererAssets:new Map([[pmtilesURL,pmtilesAsset]])});
+  const client=fakeRoute(pmtilesURL);await context.state.handler(client.route);
+  assert.equal(client.result.fulfilled,pmtilesAsset,'PMTiles JavaScript must bypass generic TileJSON fulfillment');
+  assert.equal(client.result.continued,undefined,'client fixture must not open a browser network escape');
   assert.equal(context.state.initScripts,0,'deployment must not replace the deployed PMTiles client/data path');
-  for(const path of ['world.style.json','data/manifest.json','major-stations.geojson']){
+  for(const path of ['app.mjs','world.style.json','data/manifest.json','data/example.pmtiles','major-stations.geojson']){
     const {route,result}=fakeRoute(base+path);await context.state.handler(route);
     assert.equal(result.continued,true,path+' must come from the deployed site');
     assert.equal(result.fulfilled,undefined,path+' must not be fulfilled from checkout fixtures');
   }
+  const provider=fakeRoute('https://openrailwaymap.app/railway_line_high');
+  await context.state.handler(provider.route);
+  assert.equal(provider.result.continued,undefined,'public provider must stay offline');
+  assert.equal(provider.result.fulfilled.json.tilejson,'3.0.0');
 });
 
 test('station audit accepts natural loopback tile URLs and still rewrites public provider URLs',()=>{

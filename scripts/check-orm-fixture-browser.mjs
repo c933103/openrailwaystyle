@@ -21,6 +21,16 @@ try {
   // external services during the browser integration check.
   await installEmptyMapProviders(context,base,{firstParty:process.env.MAP_BASE_URL?'network':'fixture'});
   const page=await context.newPage();
+  const outstanding=new Set(),firstPartyFailures=[];
+  page.on('request',request=>outstanding.add(request));
+  page.on('requestfinished',request=>outstanding.delete(request));
+  page.on('requestfailed',request=>{
+    outstanding.delete(request);
+    if(request.url().startsWith(base))firstPartyFailures.push({url:request.url(),failure:request.failure()});
+  });
+  page.on('response',response=>{
+    if(response.url().startsWith(base)&&response.status()>=400)firstPartyFailures.push({url:response.url(),status:response.status()});
+  });
   page.on('pageerror',error=>errors.push(error.message));
   // Page fixtures take precedence over the common context-level network guard.
   // Every would-be provider request is intercepted, including tile bodies.
@@ -96,10 +106,28 @@ try {
   assert.ok(initial.requests>0,'z14 Infrastructure interaction must exercise track-count dependencies');
   assert.equal(initial.requests,initial.unique,'shared/cache-completed track dependencies should not hit the fixture network twice');
   assert.ok(initial.requests<=65,`z14 fixture request amplification regressed: ${JSON.stringify(initial)}`);
-  await page.evaluate(()=>new Promise(resolve=>{
-    window.fixtureMap.once('idle',resolve);
-    window.fixtureMap.panBy([512,0],{duration:0});
-  }));
+  try {
+    await page.evaluate(()=>new Promise((resolve,reject)=>{
+      const map=window.fixtureMap,mapErrors=[];
+      const onError=event=>mapErrors.push({sourceId:event.sourceId,message:event.error?.message});
+      const cleanup=()=>{clearTimeout(timer);map.off('idle',onIdle);map.off('error',onError);};
+      const onIdle=()=>{cleanup();resolve();};
+      // loaded() can be true with errored tiles; keep the genuine idle gate,
+      // but make missing/broken deployed data fail with evidence, not hang.
+      const timer=setTimeout(()=>{
+        const state={loaded:map.loaded(),tilesLoaded:map.areTilesLoaded(),moving:map.isMoving(),
+          sources:Object.fromEntries(Object.keys(map.getStyle().sources).map(id=>[id,map.isSourceLoaded(id)])),mapErrors};
+        cleanup();reject(new Error('Map did not become idle within 60000ms after pan: '+JSON.stringify(state)));
+      },60000);
+      map.on('error',onError);
+      map.once('idle',onIdle);
+      map.panBy([512,0],{duration:0});
+    }));
+  } catch(error) {
+    throw new Error(error.message+'; browser diagnostics: '+JSON.stringify({
+      outstanding:[...outstanding].map(request=>request.url()),firstPartyFailures,pageErrors:errors,
+    }),{cause:error});
+  }
   const afterPan=dependencySnapshot(),panAdded=afterPan.requests-initial.requests;
   assert.equal(afterPan.requests,afterPan.unique,'one-tile pan must retain exact-URL request deduplication');
   assert.ok(panAdded<=13,`z14 one-tile pan amplification regressed: ${JSON.stringify({initial,afterPan,panAdded})}`);
