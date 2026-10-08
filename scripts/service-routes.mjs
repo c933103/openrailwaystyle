@@ -300,7 +300,9 @@ export function geometrySummary({routes, ways}) {
     if (status.status === 'conflict') conflictWays.push(way.id);
     if (status.status === 'unknown') unknownWays.push(way.id);
     const pending = [...Object.values(way.nextGeometry || {}), ...Object.values(way.retiredGeometry || {})].reduce(reconcileGeometry, null);
-    if (pending && JSON.stringify(pending) !== JSON.stringify(evidence)) pendingWays.push(way.id);
+    // Pending is a transaction state, even when drawing uses that same
+    // fallback or its geometry is identical to the accepted frontier.
+    if (pending) pendingWays.push(way.id);
     for (const key of wayRoutes(way)) if (routes.has(key)) {
       if (status.drawable) drawable.add(key);
       if (!status.drawable || status.missing.length || ['partial', 'conflict'].includes(status.status)) missing.add(key);

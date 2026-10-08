@@ -27,3 +27,37 @@ test('a fragmented way is diagnosed as partial geometry even when both services 
 test('round trips preserve raw topology, source time and way revision evidence',()=>{const json=writeTable(tableOf([full]));assert.ok(json.includes(oldBase),'OSM source snapshot must survive');assert.ok(json.includes('2026-10-01T00:00:00Z'),'way timestamp must survive');assert.ok(json.includes('[1,2,3,4,5]'),'raw node sequence must survive before simplification');});
 test('positive control: valid shared services remain drawn and fragment gaps are not bridged',()=>{assert.ok(expectedFull.length>0);assert.deepEqual([...new Set(expectedFragment.map(f=>`${f.id},n=${f.n}`))].sort(),['relation-1,n=2','relation-2,n=2']);assert.notDeepEqual(expectedFull,expectedFragment);});
 test('positive control: discarding a pending newer stage leaves accepted committed geometry intact',()=>{const t=tableOf([full]);addResult(t,short,'B');discardStage(t,'B');assert.deepEqual(visible(restore(t)),expectedFull);});
+
+for(const action of ['commit','discard'])test(`pending-only complete geometry stays diagnosed through resume until ${action}`,()=>{
+  let table=empty();addResult(table,full,'A');
+  const bytes=writeTable(table),tiles=[...buildTiles(table)],decoded=visible(table);
+  assert.deepEqual(decoded,expectedFull,'pending fallback remains drawable');
+  for(const current of [table,restore(table)]){
+    const summary=geometrySummary(current);
+    assert.deepEqual(summary.waysWithPendingEvidence,[101]);
+    assert.equal(summary.details[0].way,101);
+    assert.equal(summary.details[0].pending.status,'complete');
+    assert.equal(summary.details[0].pending.snapshot,current.ways.get(101).nextGeometry.A.snapshot);
+    assert.deepEqual([...buildTiles(current)],tiles,'diagnostics and NDJSON resume leave encoded tiles unchanged');
+    assert.deepEqual(visible(current),decoded);
+    assert.equal(writeTable(current),bytes,'diagnostics do not promote or mutate source evidence');
+  }
+  table=restore(table);
+  if(action==='commit'){
+    commitStage(table,'A');assert.deepEqual(visible(table),decoded);
+    assert.deepEqual([...buildTiles(table)],tiles);
+    assert.equal(table.ways.get(101).geometry.snapshot,oldBase);
+  }else{discardStage(table,'A');assert.equal(table.ways.size,0);assert.deepEqual(visible(table),[]);}
+  assert.deepEqual(geometrySummary(restore(table)).waysWithPendingEvidence,[]);
+});
+for(const action of ['commit','discard'])test(`identical accepted and pending geometry remains pending until ${action}`,()=>{
+  let table=tableOf([full]);const tiles=[...buildTiles(table)],accepted=structuredClone(table.ways.get(101).geometry);
+  addResult(table,full,'B');table=restore(table);
+  assert.deepEqual(table.ways.get(101).nextGeometry.B,accepted,'the pending geometry can be byte-identical to accepted evidence');
+  assert.deepEqual(geometrySummary(table).waysWithPendingEvidence,[101]);
+  assert.equal(geometrySummary(table).details[0].pending.status,'complete');
+  assert.deepEqual([...buildTiles(table)],tiles);assert.deepEqual(visible(table),expectedFull);
+  (action==='commit'?commitStage:discardStage)(table,'B');
+  assert.deepEqual(geometrySummary(restore(table)).waysWithPendingEvidence,[]);
+  assert.deepEqual(table.ways.get(101).geometry,accepted);assert.deepEqual([...buildTiles(table)],tiles);
+});
