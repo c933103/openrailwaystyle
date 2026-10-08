@@ -174,6 +174,60 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual((cache/'de_rail.zip').read_bytes(),old)
         self.assertEqual(result['source']['download_url'],original)
 
+    def test_recent_cached_rail_is_retained_during_outage_without_false_refresh(self):
+        from urllib.error import HTTPError
+        original,_=self.server(self.archive())
+        entry=pipeline.discover([{'filename':'jp_cache.gtfs.zip','source':original,
+                                  'country_code':'JP'}],{})[0]
+        entry['processed_url']=original
+        cache,output=self.root/'offline-cache',self.root/'offline-output'
+        cache.mkdir()
+        good=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(good['status'],'compiled')
+        old_retrieved=good['source']['retrieved']
+        old_checked=good['source']['checked']
+
+        def offline(url,headers=None):
+            raise HTTPError(url,503,'Service unavailable',{'Retry-After':'120'},io.BytesIO())
+        with patch.object(pipeline,'get',side_effect=offline):
+            stale=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(stale['status'],'compiled', 'local data may continue within prior validity')
+        self.assertTrue(stale['source']['offline_cached'])
+        self.assertEqual(stale['source']['retrieved'],old_retrieved)
+        self.assertEqual(stale['source']['checked'],old_checked,
+                         'an inaccessible publisher has not confirmed freshness')
+        self.assertTrue(stale['source']['recovered_source_errors'])
+
+        restored=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(restored['status'],'compiled')
+        self.assertFalse(restored['source']['offline_cached'],
+                         '304 confirms the cached revision is accessible again')
+        self.assertEqual(restored['source']['recovered_source_errors'],[])
+
+    def test_expired_or_mismatched_source_cache_does_not_mask_outage(self):
+        from urllib.error import HTTPError
+        original,_=self.server(self.archive())
+        entry=pipeline.discover([{'filename':'jp_old.gtfs.zip','source':original,'country_code':'JP'}],{})[0]
+        entry['processed_url']=original
+        cache,output=self.root/'expired-cache',self.root/'expired-output'
+        cache.mkdir()
+        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        meta_file=cache/'jp_old.meta.json'
+        meta=json.loads(meta_file.read_text())
+        def unavailable(url,headers=None):
+            raise HTTPError(url,404,'Gone',{},io.BytesIO())
+        meta['checked']='2020-01-01'
+        meta_file.write_text(json.dumps(meta))
+        with patch.object(pipeline,'get',side_effect=unavailable):
+            with self.assertRaises(pipeline.SourceRetrievalError):
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        meta['checked']=old_date=__import__('datetime').date.today().isoformat()
+        meta['download_url']='https://different.example/previous-source.zip'
+        meta_file.write_text(json.dumps(meta))
+        with patch.object(pipeline,'get',side_effect=unavailable):
+            with self.assertRaises(pipeline.SourceRetrievalError):
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+
     def test_bounded_retries_respect_publisher_backoff_and_do_not_repeat_404(self):
         from urllib.error import HTTPError
         attempts=[]
