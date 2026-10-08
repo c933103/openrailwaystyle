@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - scripts/global-service-frequency.py
+      - scripts/frequency_catalogue.py
       - scripts/gtfs-frequency.py
       - scripts/gtfs-shapes.py
       - scripts/gtfs-rail-paths.py
@@ -24,7 +25,11 @@ on:
     - cron: '41 2 * * 1'
   pull_request:
     paths:
+      - tests/global_frequency_test.py
+      - tests/frequency_catalogue_test.py
+      - docs/service-frequency.md
       - scripts/global-service-frequency.py
+      - scripts/frequency_catalogue.py
       - scripts/gtfs-frequency.py
       - scripts/gtfs-shapes.py
       - scripts/gtfs-rail-paths.py
@@ -45,7 +50,6 @@ concurrency:
   cancel-in-progress: false
 jobs:
   catalogue:
-    if: github.event_name != 'pull_request' || github.event.pull_request.base.ref == github.event.repository.default_branch
     runs-on: ubuntu-latest
     outputs:
       service_date: ${{ steps.date.outputs.value }}
@@ -62,17 +66,44 @@ jobs:
           dt.date.fromisoformat(reference)
           print('value='+reference)
           PY
-      - name: Pin one worldwide catalogue for every worker
+      - name: Run offline source-eligibility and catalogue regression fixtures
+        run: |
+          python3 -m unittest discover -s tests -p 'frequency_catalogue_test.py'
+          python3 -m unittest discover -s tests -p 'global_frequency_test.py'
+      - name: Pin actual Transitous feed registry and authoritative Mobility Database export
         run: |
           mkdir -p catalogue
-          curl --fail --retry 3 --location https://raw.githubusercontent.com/public-transport/transitous/main/website/data/license.json --output catalogue/license.json
-          python3 scripts/global-service-frequency.py --catalogue catalogue/license.json --cache /tmp/frequency-cache --output catalogue --date '${{ steps.date.outputs.value }}' --inventory-only
+          git clone --quiet --depth=1 --filter=blob:none --sparse https://github.com/public-transport/transitous.git catalogue/transitous
+          git -C catalogue/transitous sparse-checkout set feeds website/data
+          transitous_ref="$(git -C catalogue/transitous rev-parse HEAD)"
+          curl --fail --retry 3 --retry-all-errors --location --max-time 300 \
+            https://files.mobilitydatabase.org/feeds_v2.csv --output catalogue/mobility.csv
+          python3 scripts/frequency_catalogue.py \
+            --licences catalogue/transitous/website/data/license.json \
+            --feeds-directory catalogue/transitous/feeds \
+            --transitous-ref "$transitous_ref" \
+            --mobility-csv catalogue/mobility.csv \
+            --output catalogue/catalogue.json --report catalogue/catalogue-report.json
+      - name: Inventory eligibility without downloading public GTFS archives
+        run: |
+          python3 scripts/global-service-frequency.py --catalogue catalogue/catalogue.json --cache /tmp/frequency-cache --output catalogue --date '${{ steps.date.outputs.value }}' --inventory-only
+          python3 - <<'PY'
+          import collections,json
+          inventory=json.load(open('catalogue/inventory-0.json'))
+          print(json.dumps({'entries':inventory['catalogue_entries'],
+            'statuses':inventory['counts'],
+            'reasons':dict(collections.Counter((e['reason_code'] or 'none') for e in inventory['entries']))}))
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: worldwide-frequency-catalogue
-          path: catalogue/
+          path: |
+            catalogue/catalogue.json
+            catalogue/catalogue-report.json
+            catalogue/inventory-0.json
           retention-days: 14
   compile:
+    if: github.event_name != 'pull_request'
     needs: catalogue
     strategy:
       fail-fast: false
@@ -104,7 +135,7 @@ jobs:
         run: |
           graph=()
           if [ -f railway-graph/branch-lines.ndjson.gz ]; then graph=(--rail-graph railway-graph/branch-lines.ndjson.gz); fi
-          python3 scripts/global-service-frequency.py --catalogue catalogue/license.json --cache frequency-cache --output frequency-output --date '${{ needs.catalogue.outputs.service_date }}' --shards 8 --shard '${{ matrix.shard }}' "${graph[@]}"
+          python3 scripts/global-service-frequency.py --catalogue catalogue/catalogue.json --cache frequency-cache --output frequency-output --date '${{ needs.catalogue.outputs.service_date }}' --shards 8 --shard '${{ matrix.shard }}' "${graph[@]}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -112,6 +143,7 @@ jobs:
           path: frequency-output/
           retention-days: 14
   assemble:
+    if: github.event_name != 'pull_request'
     needs: [catalogue, compile]
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -151,14 +183,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          tar -czf frequency-snapshot.tar.gz -C frequency-output manifest.json inventory.json feeds tiles
+          # Per-feed derived archives are intermediate matching caches, not
+          # redistributable website assets. Publish only aggregate outputs.
+          tar -czf frequency-snapshot.tar.gz -C frequency-output manifest.json inventory.json tiles
           # One data release, with the current snapshot. No force pushes or
           # changes to other workers' snapshot branches or application PRs.
           status=0
           gh api "repos/$GH_REPO/releases/tags/service-frequency-data" > /tmp/frequency-release.json 2>/tmp/frequency-release-error || status=$?
           if [ "$status" != 0 ]; then
             if ! grep -q '404' /tmp/frequency-release-error; then cat /tmp/frequency-release-error; exit "$status"; fi
-            gh release create service-frequency-data --title 'Worldwide service-frequency data' --notes 'Catalogue-wide GTFS frequency profiles and path geometry. Inventory records missing licences, failed downloads and unmatched paths.'
+            gh release create service-frequency-data --title 'Worldwide service-frequency data' --notes 'Aggregate worldwide timetable coverage metadata and inventory; per-feed derived archives are not redistributed.'
           fi
           gh release upload service-frequency-data frequency-snapshot.tar.gz frequency-output/manifest.json frequency-output/inventory.json --clobber
           gh workflow run site.yml --ref main
