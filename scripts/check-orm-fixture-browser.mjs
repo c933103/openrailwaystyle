@@ -89,8 +89,11 @@ try {
     for(const path of urls){const dataset=path.split('/')[1];byDataset[dataset]=(byDataset[dataset]||0)+1;}
     return {requests:urls.length,unique:new Set(urls).size,byDataset};
   };
-  await page.waitForFunction(()=>window.fixtureMap.queryRenderedFeatures({layers:['infrastructure-track-count']}).length>0,null,{timeout:60000});
+  // The request set is the regression subject. MapLibre may legitimately
+  // collision-hide every track-count symbol, so do not gate the measurement on
+  // queryRenderedFeatures(); loaded() above waits for the requested source work.
   const initial=dependencySnapshot();
+  assert.ok(initial.requests>0,'z14 Infrastructure interaction must exercise track-count dependencies');
   assert.equal(initial.requests,initial.unique,'shared/cache-completed track dependencies should not hit the fixture network twice');
   assert.ok(initial.requests<=65,`z14 fixture request amplification regressed: ${JSON.stringify(initial)}`);
   await page.evaluate(()=>new Promise(resolve=>{
