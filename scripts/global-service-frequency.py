@@ -409,7 +409,7 @@ def classify_failure(error):
         return 'source_access_denied', 'retrieval'
     if any(s in message for s in ('http error', 'urlerror', 'timed out', 'connection', 'invalid http range', 'truncated range', 'feed changed during')):
         return 'source_retrieval_error', 'retrieval'
-    if 'calendar horizon' in message or 'feed\\'s validity' in message or 'service calendar' in message:
+    if 'calendar horizon' in message or "feed's validity" in message or 'service calendar' in message:
         return 'calendar_horizon', 'calendar'
     if 'memoryerror' in message or 'memory budget' in message:
         return 'memory_limit', 'resources'
