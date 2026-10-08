@@ -23,16 +23,17 @@ The [normalizer](../scripts/frequency_catalogue.py) emits the complete catalogue
 lineage entries and a reconciliation report. Each source retains links to its
 originating registry and original feed URL, names, available publisher credits,
 licence identifiers, terms URLs and structured usage restrictions. A missing
-catalogue licence field, or an unidentified/URL-only licence, does **not**
-establish that derivative frequency summaries are forbidden. The compiler
-accepts such publicly listed sources by default. An actual restriction on
-producing derivatives (including CC BY-ND) excludes the source with a
-documented reason. Source-specific reviewed rules are bound to an exact
-original URL. When one catalogue conflicts with another, both claims remain
-in the metadata; they are not silently replaced by a licence whitelist.
-**Catalogue links and a publicly accessible ZIP are evidence of publication,
-not independently verified grants for all conceivable reuse.** The displayed
-map needs only attributed aggregate frequency, not a redistributed GTFS ZIP.
+catalogue licence field, an unidentified/URL-only licence, or even a generic
+"NoDerivatives" label **does not bar normal end-user consumption of timetable
+information and factual frequency calculations**. SPDX/terms metadata is
+retained for provenance and credits, **never used as a licence whitelist or
+proxy for permission to run a timetable analysis**. Only a separately verified,
+source-bound term explicitly forbidding this application's actual use can
+restrict an individual source, and must link to the operative terms. Source
+rules must bind to the exact publisher URL, not an inferred company, country
+or SPDX family. Conflicting upstream claims remain inspectable.
+This policy does not purport to grant permission to redistribute GTFS archives:
+Atlas publishes attributed aggregate results, not those archives.
 
 The [worldwide workflow](../.github/workflows/service-frequency.yml) builds
 one reproducible catalogue, runs offline regressions and validates inventory
@@ -44,12 +45,22 @@ per-feed derived archives; this release is not a substitute for future
 internal route matching, which is tracked in #111. Site maps draw only OSM
 routes, and never draw raw GTFS shape copies.
 
-All entries have inspectable status and a reason code. In addition to
-`excluded` (actual source terms or project provider-jurisdiction restrictions)
-and `no_rail`, `failed` can mean HTTP 404, access denied, other retrieval
-errors, calendar horizon, row/byte budget, memory/time limit, GTFS parsing or
-general compilation failure. Neither a policy exclusion nor a processing
-failure proves a timetable is absent or that the feed contains no rail.
+All entries have inspectable status and a reason code. `excluded` applies
+only to an independently verified ban on this particular application use, or
+a documented separate project provider-jurisdiction restriction; it must
+**never** mean that a licence identifier is missing or forbids publishing
+derived *datasets*. `no_rail` requires a successfully inspected GTFS routes
+table. `retry_pending` means the original source is currently inaccessible or
+the parser/compiler needs repair (404, access denial, timed-out request,
+invalid URLs, row/byte budget, memory or calendar-horizon failure, etc.).
+This is a queue of unresolved work, **not a decision to discard that
+operator**. HTTP 408/429/5xx and transient network failures receive bounded
+retries; after failure of a Transitous processed URL, the compiler tries
+published original source links from reconciled catalogue lineage. Successful
+fallback records the original download URL and prior endpoint errors.
+Retried sources retain their unsuccessful attempts and a recommended next
+action; subsequent scheduled runs try them again. No fabricated rail
+frequencies are shown during outages.
 Countries scanned, countries with **compiled** sources, and countries with
 **mapped** compiled feeds are separate metrics; even mapped compiled
 timetables are **not yet necessarily applied to OSM Service routes**.
@@ -71,8 +82,8 @@ The [October 8, 2026 pre-fix run](https://github.com/c933103/openrailwaystyle/ac
 reported 2,039 catalogue entries: 1,220 excluded, 635 `no_rail`,
 106 compiled and 78 failed, with 66 catalogue countries and 86 feeds with
 mapped segments. These remain **baseline** observations, not an after-change
-coverage claim. The 1,220 prior exclusions were caused by mixed policy
-reasons; they have **not** all been proven to be usable rail feeds.
+coverage claim. All 1,220 old exclusions were caused by the *same incorrect
+licence-whitelist review reason*, but not all are proven usable rail feeds.
 A rerun must reconcile every old and newly discovered source and publish
 updated outcomes before #110 can close.
 
@@ -80,6 +91,12 @@ The public site currently uses only headways already matched to OSM routes;
 absence of linked timetable data is **unknown**, not zero. The published
 snapshot does not itself add timetable lines or map tiles. Details of the
 service identity and time windows follow below.
+
+The [reconciled catalogue check on 8 October 2026](https://github.com/c933103/openrailwaystyle/actions/runs/37789156615)
+found 5,487 distinct sources before the latest policy and source-recovery
+corrections. The initial version still excluded one source solely for a generic
+licence-derived restriction; that exclusion is being removed. These sources
+are not yet proof of compiled or mapped rail services.
 
 ## Geometry and service identity
 
