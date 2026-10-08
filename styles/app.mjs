@@ -154,6 +154,9 @@ ensureCjkChoice(cjkScript(settings.language));
 // applies: often Japanese shapes for Chinese names (e.g. 门). Give the canvas
 // the label language whenever MapLibre sets up one of these fonts.
 const CANVAS_LANG = {'zh-Hans':'zh-CN', 'zh-Hant':'zh-TW', ja:'ja', ko:'ko'};
+const DETAIL_GLYPH_RUNS = /\p{Script=Han}[\p{Script=Han}\p{Mark}]*|[\p{Script=Hiragana}\p{Script=Katakana}][\p{Script=Hiragana}\p{Script=Katakana}\p{Mark}ーｰ]*|\p{Script=Hangul}[\p{Script=Hangul}\p{Mark}]*|\p{Script=Bopomofo}[\p{Script=Bopomofo}\p{Mark}]*/gu;
+const detailGlyphLanguage = text => /^\p{Script=Han}/u.test(text) ? CANVAS_LANG[cjkScript(settings.language)] : /^\p{Script=Hangul}/u.test(text) ? 'ko' : /^\p{Script=Bopomofo}/u.test(text) ? 'zh-TW' : 'ja';
+const detailFontObserver = new MutationObserver(updateDetailGlyphs);
 // Feature details use the same chosen family and language as map labels.
 // The language also selects the right system glyphs when named fonts are
 // unavailable (notably on Android). Keep this independent of map readiness.
@@ -164,7 +167,43 @@ function updateDetailFont() {
   // CJK glyphs away from the selected font.
   const family = cjkFont(settings.language).replace(/,\s*sans-serif\s*$/, '');
   panel.style.fontFamily = `${family},system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif`;
-  panel.lang = CANVAS_LANG[cjkScript(settings.language)];
+  updateDetailGlyphs();
+}
+function updateDetailGlyphs() {
+  const panel = $('detail-content');
+  // Only CJK runs need a regional language for glyph fallback. Fixed English
+  // UI and Latin text keep their inherited language for assistive technology.
+  // Disconnect while wrapping our own text to avoid observing ourselves.
+  detailFontObserver.disconnect();
+  try {
+    for (const span of panel.querySelectorAll('[data-cjk-glyphs]')) {
+      const runs = [...span.textContent.matchAll(DETAIL_GLYPH_RUNS)];
+      if (runs.length === 1 && runs[0][0] === span.textContent) span.lang = detailGlyphLanguage(span.textContent);
+      else span.replaceWith(...span.childNodes);
+    }
+    const walker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT), nodes = [];
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (node.parentElement?.namespaceURI === 'http://www.w3.org/1999/xhtml' && !node.parentElement.closest('[data-cjk-glyphs]')) nodes.push(node);
+    }
+    for (const node of nodes) {
+      const runs = [...node.data.matchAll(DETAIL_GLYPH_RUNS)];
+      if (!runs.length) continue;
+      const fragment = document.createDocumentFragment();
+      let offset = 0;
+      for (const run of runs) {
+        fragment.append(node.data.slice(offset, run.index));
+        const span = document.createElement('span');
+        span.dataset.cjkGlyphs = ''; span.lang = detailGlyphLanguage(run[0]); span.textContent = run[0];
+        fragment.append(span); offset = run.index + run[0].length;
+      }
+      fragment.append(node.data.slice(offset)); node.replaceWith(fragment);
+    }
+  } finally {
+    // All renderers share this container, including asynchronous departures
+    // and nearby names. Existing text-node edits need the same treatment.
+    detailFontObserver.observe(panel, {childList:true, subtree:true, characterData:true});
+  }
   loadDetailFonts();
 }
 function loadDetailFonts() {
@@ -174,9 +213,6 @@ function loadDetailFonts() {
   const blocks = rareHanBlocks(text);
   if (blocks.size) void rareHanFonts.ensure(blocks);
 }
-// Every feature renderer shares this container. Observe its text as well as
-// inserted nodes so later departures and nearby names get their glyphs too.
-new MutationObserver(loadDetailFonts).observe($('detail-content'), {childList:true, subtree:true, characterData:true});
 updateDetailFont();
 // MapLibre may draw glyphs on an OffscreenCanvas, whose context is another class.
 for (const context of [window.CanvasRenderingContext2D?.prototype, window.OffscreenCanvasRenderingContext2D?.prototype]) {

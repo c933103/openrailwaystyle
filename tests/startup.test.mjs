@@ -266,21 +266,44 @@ test('clicked station, service, entrance, power and context details share the se
   for(const [mode,feature,name] of cases){
    doc.querySelector(`[data-mode="${mode}"]`).click();map.rendered=[feature];
    map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+   await new Promise(r=>setTimeout(r,0));
    assert.equal(doc.getElementById('details').hidden,false);
    assert.equal(panel.querySelector('h2').textContent,name);
-   assert.equal(panel.lang,'zh-TW');assert.match(panel.style.fontFamily,/^"?Noto Sans CJK TC"?,/);
+   assert.equal(panel.querySelector('h2 [lang]').lang,'zh-TW');assert.match(panel.style.fontFamily,/^"?Noto Sans CJK TC"?,/);
+   for(const node of panel.querySelectorAll('.eyebrow,dt,p.small,a'))assert.equal(node.closest('[lang]')?.lang,'en','fixed English infobox text keeps its language');
    assert.match(panel.style.fontFamily,/Atlas Rare Han/);
   }
   const language=doc.getElementById('language');
   for(const [code,family] of [['ja','Yu Gothic'],['ko','Malgun Gothic']]){
    language.value=code;language.dispatchEvent(new window.Event('change'));
-   assert.equal(panel.lang,code,'system fallback gets the selected glyph language immediately');
    await new Promise(r=>setTimeout(r,0));
+   assert.equal(panel.querySelector('h2 [lang]').lang,code,'Han runs follow the selected glyph language after the infobox redraw');
    assert.equal(panel.style.fontFamily.split(',')[0].replaceAll('"',''),family);
   }
   assert.equal(doc.documentElement.lang,'en','the surrounding English interface keeps its language');
+  assert.equal(panel.closest('[lang]')?.lang,'en','the infobox container retains the interface language');
   assert.equal(fonts.length,1,'complete regional fonts need only the small probe');assert.deepEqual(errors,[]);
  }finally{dom.window.close();}
+});
+
+test('English and local infoboxes scope script languages to CJK runs and preserve English text',async()=>{
+ for(const language of ['en','local']){
+  const {dom,window,maps,errors}=await start({search:`?language=${language}`});
+  try{
+   const doc=window.document,map=maps[0],panel=doc.getElementById('detail-content');map.handlers['style.load']();
+   const station={source:'stations',layer:{id:'station-detail-large-names'},properties:{name:'Central 東京 カナ 한글 ㄅㄆ',state:'disused',station_size:'large',operator:'Regional Rail'},geometry:{type:'Point',coordinates:[0,0]}};
+   map.rendered=[station];map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+   await new Promise(r=>setTimeout(r,0));
+   const heading=panel.querySelector('h2');assert.equal(heading.textContent,station.properties.name,'wrapping never changes the recorded text');
+   assert.equal(heading.firstChild.data,'Central ');assert.equal(heading.firstChild.parentElement.closest('[lang]')?.lang,'en','the Latin part of a mixed name keeps English');
+   assert.deepEqual([...heading.querySelectorAll('[lang]')].map(span=>[span.textContent,span.lang]),[['東京','zh-CN'],['カナ','ja'],['한글','ko'],['ㄅㄆ','zh-TW']]);
+   for(const node of [panel,heading,...panel.querySelectorAll('.eyebrow,dt,p.small,a')])assert.equal(node.closest('[lang]')?.lang,'en',`${language}: the CJK fallback must not relabel the English interface`);
+   station.properties.name='Central';map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+   await new Promise(r=>setTimeout(r,0));
+   assert.equal(panel.querySelector('h2').closest('[lang]')?.lang,'en','a Latin-only feature name keeps its inherited language');
+   assert.equal(panel.querySelectorAll('[lang]').length,0,'English-only content needs no script wrappers');assert.deepEqual(errors,[]);
+  }finally{dom.window.close();}
+ }
 });
 
 test('infobox Han text requests the packaged font after probing without requiring map glyph drawing',async()=>{
@@ -294,6 +317,8 @@ test('infobox Han text requests the packaged font after probing without requirin
   await new Promise(r=>setTimeout(r,0));assert.equal(fonts.length,1,'the probe is still pending');
   fonts[0].finish();await new Promise(r=>setTimeout(r,0));
   assert.equal(panel.querySelector('h2').textContent,'Central');assert.match(panel.textContent,/東海旅客鉄道/);
+  assert.equal(panel.querySelector('h2').closest('[lang]')?.lang,'en');
+  assert.equal(panel.querySelector('dd [lang]').lang,'zh-TW','the Han operator value carries its own regional language');
   const packaged=fonts.find(f=>f.family==='Atlas CJK TC');assert.ok(packaged,'Han in a body value needs the font even though the heading is Latin');
   assert.match(panel.style.fontFamily,/^"?Microsoft JhengHei"?,/);
   packaged.finish();await new Promise(r=>setTimeout(r,0));
@@ -314,7 +339,7 @@ test('an open infobox follows language and font changes while map style loading 
   // Keep the style callback pending as it is when map resources load slowly.
   map.setStyle=(style,options)=>{map.options.style=style;map.styleOptions=options;};
   language.value='zh-Hans';language.dispatchEvent(new window.Event('change'));
-  assert.equal(panel.lang,'zh-CN');assert.doesNotMatch(panel.style.fontFamily,/JhengHei|CJK TC/);
+  assert.equal(panel.querySelector('h2 [lang]').lang,'zh-CN');assert.doesNotMatch(panel.style.fontFamily,/JhengHei|CJK TC/);
   await new Promise(r=>setTimeout(r,0));
   assert.match(panel.style.fontFamily,/^"?Microsoft YaHei"?,/);
   const simplified=fonts.find(f=>f.family==='Atlas CJK SC');assert.ok(simplified);
@@ -323,7 +348,8 @@ test('an open infobox follows language and font changes while map style loading 
   simplified.finish();await new Promise(r=>setTimeout(r,0));
   assert.match(panel.style.fontFamily,/^"?Atlas CJK SC"?,/,'the loaded font reaches the open infobox before the map style finishes');
   language.value='zh-Hant';language.dispatchEvent(new window.Event('change'));
-  assert.equal(panel.lang,'zh-TW');assert.match(panel.style.fontFamily,/^"?Atlas CJK TC"?,/,'switching back immediately reuses the finished font');
+  assert.equal(panel.querySelector('h2 [lang]').lang,'zh-TW');assert.match(panel.style.fontFamily,/^"?Atlas CJK TC"?,/,'switching back immediately reuses the finished font');
+  assert.equal(panel.closest('[lang]')?.lang,'en');
   assert.equal(fonts.length,3);assert.deepEqual(errors,[]);
  }finally{dom.window.close();}
 });
@@ -346,7 +372,13 @@ test('rare Han in infobox body values and later departure text loads only the di
   completeBoard({stops:[{id:'fixture:central'}],rows:[{line:'R',headsign:'Destination \u{2A800}',departure:0,tz:'UTC',mode:'RAIL'}]});
   await waitForSlice('2a8');
   const headsign=panel.querySelector('.departure-headsign');assert.equal(headsign.textContent,'Destination \u{2A800}');
-  headsign.firstChild.data='Destination \u{2A900}';await waitForSlice('2a9');
+  assert.equal(headsign.firstChild.data,'Destination ');assert.equal(headsign.closest('[lang]')?.lang,'en');
+  const han=headsign.querySelector('[lang]');assert.equal(han.lang,'zh-TW');
+  han.firstChild.data='\u{2A900}';await waitForSlice('2a9');assert.equal(headsign.textContent,'Destination \u{2A900}');
+  han.firstChild.data='Extra \u{2A900}';await new Promise(r=>setTimeout(r,0));
+  assert.equal(headsign.textContent,'Destination Extra \u{2A900}');assert.equal(headsign.querySelector('[lang]').textContent,'\u{2A900}','changing a CJK run to mixed text leaves its new English part outside the language span');
+  headsign.querySelector('[lang]').firstChild.data='Central';await new Promise(r=>setTimeout(r,0));
+  assert.equal(headsign.textContent,'Destination Extra Central');assert.equal(headsign.querySelector('[lang]'),null,'a run changed entirely to Latin no longer carries a CJK language');
   assert.equal(slice('2aa'),undefined,'unrendered feature properties do not download extra font slices');
   assert.equal(fonts.filter(f=>f.family==='Atlas Rare Han').length,3,'the original body is not downloaded again as asynchronous content arrives');
   assert.equal(requests.filter(url=>url.includes('rare-han-v1/index.json')).length,1);assert.deepEqual(errors,[]);
