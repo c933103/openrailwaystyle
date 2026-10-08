@@ -22,7 +22,8 @@ import struct
 import subprocess
 import sys
 import tempfile
-from urllib.error import HTTPError
+import time
+from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 import zipfile
@@ -30,7 +31,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 CATALOGUE = 'https://raw.githubusercontent.com/public-transport/transitous/main/website/data/license.json'
 PROCESSED = 'https://api.transitous.org/gtfs/'
-# Usage eligibility is decided from recorded source terms, not an SPDX whitelist.
+# SPDX licence labels are provenance, not a gate for normal end-user timetable analysis.
 EXCLUDED = {'CN', 'RU', 'IR', 'KP'}
 PROFILES = json.loads((ROOT/'styles/data-src/frequency-source-rules.json').read_text())['profiles']
 spec = importlib.util.spec_from_file_location('gtfs_frequency', ROOT/'scripts/gtfs-frequency.py')
@@ -99,11 +100,13 @@ def discover(rows, rules):
             status, reason_code = 'excluded', 'source_terms_prohibit_derived_use'
             reason = '; '.join(item['basis'] for item in rights['prohibitions'])
         elif row.get('delivery') == 'direct' and not row.get('source'):
-            status, reason, reason_code = 'failed', 'No published GTFS download URL', 'missing_source_url'
+            status, reason, reason_code = 'retry_pending', 'Original GTFS URL unresolved', 'missing_source_url'
         else:
             status, reason, reason_code = 'pending', '', ''
         out.append({'id': ident, 'status': status, 'reason': reason,
-                    'reason_code': reason_code, 'terms': rights,
+                    'reason_code': reason_code, 'retry_eligible': status == 'retry_pending',
+                    'failure_stage': 'discovery' if reason_code == 'missing_source_url' else '',
+                    'terms': rights,
                     'country': row.get('country_code', ''),
                     'name': row.get('human_name', ident), 'catalogue': row,
                     'processed_url': (row.get('source', '') if row.get('delivery') == 'direct'
@@ -111,9 +114,100 @@ def discover(rows, rules):
     return sorted(out, key=lambda x: x['id'])
 
 
+RETRYABLE_HTTP = {408, 425, 429, 500, 502, 503, 504}
+
+
 def get(url, headers=None):
+    """Bounded retry for transport outages; never loop on permanent HTTP 404."""
     request = Request(url, headers={'User-Agent': 'RailwayAtlas-frequency/1.0 (+https://github.com/c933103/openrailwaystyle)', **(headers or {})})
-    return urlopen(request, timeout=45)
+    for attempt in range(3):
+        try:
+            return urlopen(request, timeout=45)
+        except HTTPError as error:
+            if error.code not in RETRYABLE_HTTP or attempt == 2:
+                raise
+            try:
+                retry_after = error.headers.get('Retry-After') if error.headers else None
+                delay = min(8.0, max(float(retry_after), 0.0)) if retry_after and retry_after.isdigit() else float(2 ** attempt)
+            finally:
+                error.close()
+            time.sleep(delay)
+        except (URLError, TimeoutError, ConnectionError):
+            if attempt == 2:
+                raise
+            time.sleep(float(2 ** attempt))
+
+
+def source_candidates(entry):
+    """Distinct public source endpoints, processed first, originals as fallback."""
+    row = entry.get('catalogue') or {}
+    values = [entry.get('processed_url'), row.get('source')]
+    values.extend(x.get('source') for x in row.get('lineage', []) if isinstance(x, dict))
+    urls, seen = [], set()
+    for url in values:
+        if not isinstance(url, str) or url in seen:
+            continue
+        try:
+            parsed = urlparse(url)
+        except ValueError:
+            continue
+        if parsed.scheme not in ('http', 'https') or not parsed.hostname:
+            continue
+        seen.add(url)
+        urls.append(url)
+    return urls[:8]
+
+
+class SourceRetrievalError(RuntimeError):
+    """Unresolved transport/feed failure after attempting available source links."""
+    def __init__(self, attempts):
+        self.attempts = attempts
+        summary = '; '.join(x['code'] + ' @ ' + x['url'] for x in attempts)
+        super().__init__('Source endpoints unavailable or unusable: ' + summary[:1900])
+
+
+def source_attempt(url, error):
+    """Structured evidence of a particular endpoint failing, not feed exclusion."""
+    code = 'other_source_error'
+    if isinstance(error, HTTPError):
+        code = 'http_' + str(error.code)
+        error.close()
+    elif isinstance(error, (URLError, TimeoutError, ConnectionError)):
+        code = 'connection_error'
+    elif isinstance(error, zipfile.BadZipFile):
+        code = 'invalid_zip'
+    elif isinstance(error, ValueError):
+        code = 'invalid_feed_or_budget'
+    return {'url': url, 'code': code, 'message': str(error)[:350]}
+
+
+def fetch_alternative(entry, path, max_bytes, skip=()):
+    """Fallback to another real published schedule, without inventing data.
+
+    Cache writes only after a valid ZIP has been downloaded. Each upstream
+    failure stays attached to the resulting source entry for investigation.
+    """
+    attempts = []
+    for url in source_candidates(entry):
+        if url in skip:
+            continue
+        try:
+            remote = RemoteZip(url, max_bytes)
+            with zipfile.ZipFile(io.BytesIO(remote.download())) as archive:
+                if 'routes.txt' not in archive.namelist():
+                    raise ValueError('Missing routes.txt')
+                archive.getinfo('routes.txt')
+            data = remote.full
+            temporary = path.with_suffix('.download.tmp')
+            temporary.write_bytes(data)
+            temporary.replace(path)
+            return {
+                'etag': remote.etag, 'last_modified': remote.last_modified,
+                'download_url': url, 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()
+            }, attempts
+        except (HTTPError, URLError, TimeoutError, ConnectionError, OSError, ValueError, zipfile.BadZipFile) as error:
+            attempts.append(source_attempt(url, error))
+    raise SourceRetrievalError(attempts or [{'url': '', 'code': 'missing_source_url', 'message': 'No suitable published GTFS source URL'}])
 
 
 class RemoteZip:
@@ -260,38 +354,48 @@ def file_hash(path):
 
 
 def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_seconds=600):
-    import csv
     ident, row = entry['id'], entry['catalogue']
     path, meta_path = cache/(ident+'.zip'), cache/(ident+'.meta.json')
-    # Download with conditional revalidation. A cached successful ZIP is still
-    # used only after a successful response/304, never after a failed refresh.
+    # 304 from the same successful source may reuse cache. A 404 or transient
+    # outage MUST fall through to other known originals, not reject the feed.
     meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
     headers = {'If-None-Match': meta['etag']} if meta.get('etag') else {'If-Modified-Since':meta['last_modified']} if meta.get('last_modified') else {}
-    fresh = False
-    if path.exists() and headers:
+    fresh, attempted, attempts = False, set(), []
+    cached_url = meta.get('download_url') or entry.get('processed_url')
+    if path.exists() and headers and cached_url in source_candidates(entry):
         try:
-            with get(entry['processed_url'], headers) as response:
+            with get(cached_url, headers) as response:
                 data = RemoteZip.read_bounded(type('Budget', (), {'max_bytes': max_bytes})(), response)
-                path.write_bytes(data)
-                del data
-                meta = {'etag': response.headers.get('ETag'), 'last_modified':response.headers.get('Last-Modified'), 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
+                # Never replace a previously usable ZIP with an error page or
+                # malformed archive returned as HTTP 200.
+                with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                    if 'routes.txt' not in archive.namelist():
+                        raise ValueError('Missing routes.txt')
+                temporary = path.with_suffix('.download.tmp')
+                temporary.write_bytes(data)
+                temporary.replace(path)
+                meta = {'etag': response.headers.get('ETag'), 'last_modified':response.headers.get('Last-Modified'),
+                        'download_url': cached_url, 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
                 fresh = True
         except HTTPError as error:
-            try:
-                if error.code != 304:
-                    raise
-                fresh = True  # content remains the exact successful revision.
-            finally:
+            if error.code == 304:
                 error.close()
+                meta['download_url'] = cached_url
+                fresh = True
+            else:
+                attempted.add(cached_url)
+                attempts.append(source_attempt(cached_url, error))
+        except (URLError, TimeoutError, ConnectionError, OSError, ValueError, zipfile.BadZipFile) as error:
+            attempted.add(cached_url)
+            attempts.append(source_attempt(cached_url, error))
     if not fresh:
-        remote = RemoteZip(entry['processed_url'], max_bytes)
-        rail = [r for r in csv.DictReader(io.StringIO(remote.table('routes.txt').decode('utf-8-sig'))) if compiler.rail_type(r['route_type'])]
-        if not rail:
-            (output/'feeds'/(ident+'.json.gz')).unlink(missing_ok=True)
-            return {**entry, 'status': 'no_rail', 'rail_routes': 0}
-        path.write_bytes(remote.download())
-        meta = {'etag': remote.etag, 'last_modified':remote.last_modified, 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
-        del remote
+        try:
+            meta, more_attempts = fetch_alternative(entry, path, max_bytes, skip=attempted)
+            attempts.extend(more_attempts)
+        except SourceRetrievalError as error:
+            raise SourceRetrievalError(attempts + error.attempts) from error
+    if attempts:
+        meta['recovered_source_errors'] = attempts
     # Reinspect changed conditional 200 responses and cached 304 revisions.
     with zipfile.ZipFile(path) as archive:
         has_rail=any(compiler.rail_type(r['route_type']) for r in compiler.read(archive,'routes.txt'))
@@ -325,6 +429,8 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
                'processed_url': entry['processed_url'], 'catalogue_url': row.get('catalogue_url') or CATALOGUE,
                'license': spdx, 'terms_url': terms_url, 'rights': rights,
                'catalogue_lineage': row.get('lineage', []),
+               'download_url': meta.get('download_url') or entry.get('processed_url'),
+               'recovered_source_errors': meta.get('recovered_source_errors', []),
                'attribution': row.get('attribution_text') or publisher.get('name') or entry['name'],
                'catalogue_attribution': row, 'retrieved': meta['retrieved'], 'checked': meta['checked'],
                'rail_graph_sha256': file_hash(str(graph)) if graph else None,
