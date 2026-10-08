@@ -79,3 +79,38 @@ test('repeated movement preserves the shared deadline through capped backoff and
  layers.add('b');recovery.wake();sources.set('b',{url:sources.get('b').url});recovery.wake();assert.equal(timers.size,0,'replaced sources are retired');
  recovery.noteError({sourceId:'b',tile:tile(3),error:{status:520}});recovery.dispose();advance(600000);assert.equal(calls.length,count);assert.equal(peak,1);
 });
+
+function boundedFailure(west,east,south=-60,north=30,c={z:2,x:2,y:2}){
+ const f=fixture();f.map.getBounds=()=>({getWest:()=>west,getEast:()=>east,getSouth:()=>south,getNorth:()=>north});
+ const t={state:'errored',tileID:{canonical:c}};
+ f.recovery.noteError({sourceId:'railway',tile:t,error:{status:520}});return {...f,t};
+}
+test('visible failures survive arbitrary positive and negative world copies without replacing their retry',()=>{
+ for(const world of [-100,-3,-2,-1,0,1,2,3,100]){
+  const f=boundedFailure(world*360-20,world*360+20);
+  assert.equal(f.recovery.hasFailures(),true,`world ${world}`);
+  const timer=[...f.timers.keys()][0];f.recovery.wake();assert.deepEqual([...f.timers.keys()],[timer]);
+  f.next();assert.deepEqual(f.reloads,[{id:'railway',tiles:[{z:2,x:2,y:2}]}]);
+  f.recovery.dispose();
+ }
+});
+test('world-copy overlap preserves off-screen longitude, latitude and source retirement',()=>{
+ for(const world of [-3,0,3])for(const [west,east,south,north] of [[100,120,-60,30],[-20,20,70,80],[-20,20,-85,-70]]){
+  const f=boundedFailure(west+world*360,east+world*360,south,north);
+  assert.equal(f.recovery.hasFailures(),false);assert.equal(f.timers.size,0);f.recovery.dispose();
+ }
+ const f=boundedFailure(700,740);f.map.getSource=()=>undefined;f.recovery.wake();assert.equal(f.timers.size,0);assert.equal(f.recovery.hasFailures(),false);f.recovery.dispose();
+});
+test('antimeridian, touching edges and world-wide viewports retain overlapping canonical tiles',()=>{
+ for(const [west,east,x] of [[170,-170,3],[170,-170,0],[890,910,3],[-910,-890,0],[90,90,2],[700,1060,0],[-1000,-280,3]]){
+  const f=boundedFailure(west,east,-60,30,{z:2,x,y:2});assert.equal(f.recovery.hasFailures(),true,`${west}..${east}, tile ${x}`);f.recovery.dispose();
+ }
+ const f=boundedFailure(700,1100,70,80);assert.equal(f.recovery.hasFailures(),false,'a world-wide viewport still prunes latitude');f.recovery.dispose();
+});
+test('unavailable or nonfinite bounds cannot establish off-screen longitude',()=>{
+ for(const bounds of [undefined,{}, {getWest:()=>720}, {getWest:()=>NaN,getEast:()=>740}, {getWest:()=>700,getEast:()=>Infinity}]){
+  const f=fixture();f.map.getBounds=()=>bounds;f.recovery.noteError({sourceId:'railway',tile:tile(),error:{status:520}});
+  assert.equal(f.recovery.hasFailures(),true);f.recovery.dispose();
+ }
+ const f=boundedFailure(NaN,NaN,70,80);assert.equal(f.recovery.hasFailures(),false,'known latitude still establishes exclusion');f.recovery.dispose();
+});

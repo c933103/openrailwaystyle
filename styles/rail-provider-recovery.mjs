@@ -37,12 +37,18 @@ export function createRailProviderRecovery(map, {
     const bounds = map.getBounds();
     if (!bounds?.getWest) return true;
     const n = 2 ** c.z, latitude = y => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
-    if (latitude(c.y) < bounds.getSouth() || latitude(c.y + 1) > bounds.getNorth()) return false;
-    const west = bounds.getWest(); let east = bounds.getEast();
-    if (east < west) east += 360;
-    if (east - west >= 360) return true;
+    if (latitude(c.y) < bounds.getSouth?.() || latitude(c.y + 1) > bounds.getNorth?.()) return false;
+    const west = bounds.getWest(), east = bounds.getEast?.();
+    // Unknown longitude cannot establish exclusion; known latitude still can.
+    if (!Number.isFinite(west) || !Number.isFinite(east)) return true;
+    let width = east - west;
+    if (!Number.isFinite(width)) return true;
+    if (width >= 360) return true;
+    if (width < 0) width = (width % 360 + 360) % 360; // antimeridian bounds
+    const start = (west % 360 + 360) % 360;
     const left = c.x / n * 360 - 180, right = (c.x + 1) / n * 360 - 180;
-    return [-360, 0, 360].some(shift => right + shift >= west && left + shift <= east);
+    // An integer world offset must place the tile across this interval.
+    return Math.ceil((start - right) / 360) <= Math.floor((start + width - left) / 360);
   }
   function prune() {
     for (const [id, state] of failed) {
