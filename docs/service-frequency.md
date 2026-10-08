@@ -59,8 +59,14 @@ retries; after failure of a Transitous processed URL, the compiler tries
 published original source links from reconciled catalogue lineage. Successful
 fallback records the original download URL and prior endpoint errors.
 Retried sources retain their unsuccessful attempts and a recommended next
-action; subsequent scheduled runs try them again. No fabricated rail
-frequencies are shown during outages.
+action; subsequent scheduled runs try them again. If every remote source is
+unavailable but a locally cached ZIP was **successfully retrieved/checked
+within the past 30 days** from a still-listed source, the compiler may
+recalculate profiles offline for the requested service date. It verifies the
+ZIP and service calendar, records `offline_cached` and the failed endpoints,
+and **does not move the last successful source-check time forward**. Expired,
+corrupt, mismatched-source or out-of-calendar caches are not treated as
+current service. No fabricated rail frequencies are shown during outages.
 Countries scanned, countries with **compiled** sources, and countries with
 **mapped** compiled feeds are separate metrics; even mapped compiled
 timetables are **not yet necessarily applied to OSM Service routes**.
