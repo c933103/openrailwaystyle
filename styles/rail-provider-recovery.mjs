@@ -58,7 +58,8 @@ export function createRailProviderRecovery(map, {
   function schedule() {
     if (disposed) return;
     prune();
-    if (timer === null && active() && [...failed.keys()].some(visible)) timer = setTimer(run, RETRY_DELAYS[Math.min(attempts, RETRY_DELAYS.length - 1)]);
+    if (!active() || ![...failed.keys()].some(visible)) { stopTimer(); return; }
+    if (timer === null) timer = setTimer(run, RETRY_DELAYS[Math.min(attempts, RETRY_DELAYS.length - 1)]);
   }
   function run() {
     timer = null;
@@ -98,7 +99,8 @@ export function createRailProviderRecovery(map, {
     if (key && event.tile?.state === 'loaded') recovered = state.tiles.delete(key) || recovered;
     prune(); onChange(); return recovered;
   }
-  function wake() { stopTimer(); schedule(); }
+  // Movement rechecks demand without postponing an already scheduled retry.
+  function wake() { schedule(); }
   function dispose() { disposed = true; stopTimer(); failed.clear(); }
   return {noteError, noteSourceData, wake, dispose,
     hasFailures: () => { if (disposed) return false; prune(); return [...failed.keys()].some(visible); },
