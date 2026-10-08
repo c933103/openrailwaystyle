@@ -145,6 +145,11 @@ export function stageChange(table, stage) {
 export const suspiciousChange = ({routes, ways}) =>
   (routes.total >= 20 && routes.stale > routes.total * 0.2) || (ways.total > 100 && ways.stale > ways.total * 0.2);
 function settle(table, stage, commit) {
+  const rejected = new Map();
+  if (commit) for (const route of table.routes.values()) {
+    const accepted = acceptedRelation(route), candidate = route.next[stage]?.membership;
+    if (accepted?.snapshot && candidate && !candidate.snapshot) rejected.set(route.key, new Set(accepted.eligible));
+  }
   for (const [map, key] of [[table.routes, 'key'], [table.ways, 'id']]) for (const item of [...map.values()]) {
     const part = partOf(item);
     if (map === table.routes && commit) {
@@ -152,7 +157,15 @@ function settle(table, stage, commit) {
       item.evidence = reconcileRelations(accepted, item.next[stage]?.membership);
       if (!item.evidence) delete item.evidence;
     }
-    if (commit) { if (stage in item.next) part[stage] = item.next[stage]; else delete part[stage]; }
+    if (commit && map === table.ways && rejected.size) {
+      // Reject the membership delta along with its unverified declaration.
+      // Retain only this stage's previous, still-eligible associations; never
+      // borrow old memberships from another stage or revive a superseded way.
+      const retained = (part[stage] || []).filter(key => rejected.get(key)?.has(item.id));
+      const next = (item.next[stage] || []).filter(key => !rejected.has(key) || rejected.get(key).has(item.id));
+      const memberships = [...new Set([...next, ...retained])].sort();
+      if (memberships.length) part[stage] = memberships; else delete part[stage];
+    } else if (commit) { if (stage in item.next) part[stage] = item.next[stage]; else delete part[stage]; }
     if (map === table.ways) {
       if (item.retiredGeometry) delete item.retiredGeometry[stage];
       const candidate = item.nextGeometry?.[stage] || (item.nextLines?.[stage] ? legacyGeometry(item.nextLines[stage]) : null);

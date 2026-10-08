@@ -7,7 +7,7 @@ import {spawnSync} from 'node:child_process';
 import {gzipSync, gunzipSync} from 'node:zlib';
 import Pbf from 'pbf';
 import {VectorTile} from '@mapbox/vector-tile';
-import {addResult, buildTiles, commitStage, discardStage, geometrySummary, migrateServiceDownloads, retireServiceEurope, readTable, routeView, stageChange, toTable, writeTable, LAYER} from '../scripts/service-routes.mjs';
+import {addResult, buildTiles, commitStage, discardStage, geometrySummary, migrateServiceDownloads, retireServiceEurope, readTable, routeView, stageChange, suspiciousChange, toTable, writeTable, LAYER} from '../scripts/service-routes.mjs';
 import {drawnRelation, observeRelation, reconcileRelations, relationStatus} from '../scripts/service-relations.mjs';
 import {stageGeometryHealth} from '../scripts/service-geometry-health.mjs';
 import {EUROPE_STAGE_NAMES} from '../scripts/download-stages.mjs';
@@ -294,4 +294,34 @@ test('inactive declaration: shared active service retains exact decoded properti
   const actualFrequency=buildTiles(inactive,{headways});assert.deepEqual([...actualFrequency],[...buildTiles(expected,{headways})]);
   const tile=new VectorTile(new Pbf(actualFrequency.values().next().value)).layers[LAYER];
   assert.equal(tile.feature(0).properties.frequency_width_am,3.5,'unmatched active service keeps the unknown-frequency width');
+});
+
+for(const [label,members,unverifiedTime] of [
+  ['missing',undefined,false],['malformed',[{type:'way',ref:102,role:''},{type:'way',ref:999}],false],
+  ['unverified timestamp',[{type:'way',ref:102,role:''}],true],
+])for(const shared of [false,true])test(`unverified refresh retains omitted committed membership (${label}, shared=${shared})`,()=>{
+  let table=accepted([shared?old:single()]);const before=visible(table),bytes=[...buildTiles(table)];
+  const json=response({base:NEW,version:2,refs:[102],returned:shared?[101,102]:[102]});
+  json.elements[0].members=members;if(unverifiedTime)delete json.elements[0].timestamp;
+  if(!shared)json.elements=json.elements.filter(e=>e.type!=='relation'||e.id===1);
+  addResult(table,toTable(json),'A');table=restore(table);
+  assert.equal(suspiciousChange(stageChange(table,'A')),false,'small loss bypasses whole-stage safety threshold');
+  assert.deepEqual(visible(table),before,'pending refresh does not alter accepted view');
+  commitStage(table,'A');table=restore(table);
+  assert.deepEqual(visible(table),before,'rejected declaration must retain actual rendered membership');
+  assert.deepEqual([...buildTiles(table)],bytes);assert.ok(table.ways.get(101).routes.A.includes('r1'));
+  assert.ok(!table.ways.get(102)?.routes.A?.includes('r1'),'unverified positive candidate cannot add a new accepted member');
+  assert.equal(routeView(table.routes.get('r1')).label,'Line 1');
+  assert.ok(geometrySummary(table).relations.details.find(d=>d.relation===1).reasons.includes('ignored_unverified_relation'));
+  addResult(table,toTable(json),'A');discardStage(table,'A');assert.deepEqual([...buildTiles(restore(table))],bytes);
+});
+test('unverified refresh cannot borrow obsolete memberships from another stage or reactivate an inactive frontier',()=>{
+  for(const inactive of [false,true]){
+    const latest=result({base:NEW,version:2,refs:[102],returned:[101,102],...(inactive?{tags:{name:'',ref:''}}:{})});
+    let table=accepted([old]);addResult(table,latest,'B');commitStage(table,'B');
+    const before=visible(table);const json=response({base:'2026-10-08T00:00:00Z',version:3,returned:[101,102]});delete json.elements[0].members;
+    addResult(table,toTable(json),'A');commitStage(table,'A');table=restore(table);
+    assert.deepEqual(visible(table),before);assert.ok(!table.ways.get(101)?.routes.A?.includes('r1'));
+    assert.equal(routeView(table.routes.get('r1')).active===false,inactive);
+  }
 });
