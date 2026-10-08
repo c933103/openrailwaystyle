@@ -13,60 +13,73 @@ persist in shared links. Unknown is not zero.
 
 ## Worldwide discovery and updates
 
-The production source is a catalogue-wide pipeline, not a city allow-list.
-[`global-service-frequency.py`](../scripts/global-service-frequency.py) discovers
-**every GTFS schedule entry** in the [Transitous worldwide catalogue](https://github.com/public-transport/transitous/blob/main/website/data/license.json).
-A local inventory on 3 October 2026 found 2,039 entries; the registry changes over
-time. Eligibility is determined by redistribution permission and provider policy,
-then actual rail route types, rather than a choice of cities or continents.
+The source registry is assembled from **three independently credited inputs**:
 
-[Transitous publishes processed GTFS files](https://transitous.org/sources/) with
-syntax/semantic repairs and agency overlap removal. Those processed files are the
-pipeline input. The catalogue, original/processed URLs, licence, publisher credits,
-GTFS attributions, ZIP hash, reference date, agency timezones and match outcomes are
-retained. URL-only/unknown permissions are reported for review, not inferred from
-public accessibility. The two previously reviewed MTA/MassDOT permissions are bound
-to their exact source URLs in [licence rules](../styles/data-src/frequency-source-rules.json);
-these rules do not select which cities to process. Provider jurisdictions/domains
-CN, RU, IR and KP are excluded; existing geographic map data stays available.
+- Transitous's [licence inventory](https://github.com/public-transport/transitous/blob/main/website/data/license.json), which is **not** the full Transitous source catalogue.
+- All Transitous [`feeds/*.json` regional source definitions](https://github.com/public-transport/transitous/tree/main/feeds), pinned to one Git commit. These recover entries missing from the licence inventory, including `jp_japan-rail`.
+- The [Mobility Database feed CSV](https://files.mobilitydatabase.org/feeds_v2.csv), pinned as the input to each catalogue generation. Transitous `mdb-id` references reconcile with Mobility Database IDs; an exactly matching original feed URL also reconciles entries. The pipeline does **not** merge feeds just because their operators, names, or geographic areas look similar.
 
-[The worldwide workflow](../.github/workflows/service-frequency.yml) pins one
-catalogue and processes every entry in eight deterministic batches. Byte-range
-ZIP inspection reads route metadata before downloading bus-only feeds. Servers
-without ranges use a bounded download. Downloads, compilation time and per-feed
-failures have explicit budgets/outcomes. Conditional revalidation and content/input
-hashes support repeated runs; a failed refresh never advances retrieval timestamps.
-Unicode feed names have stable filesystem IDs and remain in the inventory.
+The [normalizer](../scripts/frequency_catalogue.py) emits the complete catalogue,
+lineage entries and a reconciliation report. Each source retains links to its
+originating registry and original feed URL, names, available publisher credits,
+licence identifiers, terms URLs and structured usage restrictions. A missing
+catalogue licence field, or an unidentified/URL-only licence, does **not**
+establish that derivative frequency summaries are forbidden. The compiler
+accepts such publicly listed sources by default. An actual restriction on
+producing derivatives (including CC BY-ND) excludes the source with a
+documented reason. Source-specific reviewed rules are bound to an exact
+original URL. When one catalogue conflicts with another, both claims remain
+in the metadata; they are not silently replaced by a licence whitelist.
+**Catalogue links and a publicly accessible ZIP are evidence of publication,
+not independently verified grants for all conceivable reuse.** The displayed
+map needs only attributed aggregate frequency, not a redistributed GTFS ZIP.
 
-Every entry ends as excluded, no rail, compiled or failed. The assembler refuses
-missing batches, duplicate feed IDs or inconsistent catalogue/reference dates.
-It removes cached outputs absent from the current compiled inventory before
-publishing, including retired/failed/excluded feeds and interrupted writes.
-It summarises each compiled feed one at a time and builds no map tiles: the
-Service view draws OpenStreetMap routes only (`scripts/service-routes.mjs`).
-Compiled timetables are kept for matching to those routes (#111); until then
-none is applied, and the viewer never downloads feeds or queries an extraction API. Scheduled main-branch runs
-publish the complete snapshot in the `service-frequency-data` data release and
-trigger site assembly. PR runs create reviewable artifacts without publishing.
-The site uses the published worldwide snapshot; absent data remains unknown.
-The four earlier city datasets are now **test fixtures only**.
+The [worldwide workflow](../.github/workflows/service-frequency.yml) builds
+one reproducible catalogue, runs offline regressions and validates inventory
+eligibility. Main-branch runs compile every entry in eight deterministic
+shards; PR runs limit network processing to the catalogue and do not
+automatically request every public feed. Processing keeps raw GTFS ZIPs in
+runner caches. Assembled snapshots publish manifest and inventory rather than
+per-feed derived archives; this release is not a substitute for future
+internal route matching, which is tracked in #111. Site maps draw only OSM
+routes, and never draw raw GTFS shape copies.
 
-Assembly applies no size limit to a feed, since it builds no tiles; a large valid
-feed stays compiled.
+All entries have inspectable status and a reason code. In addition to
+`excluded` (actual source terms or project provider-jurisdiction restrictions)
+and `no_rail`, `failed` can mean HTTP 404, access denied, other retrieval
+errors, calendar horizon, row/byte budget, memory/time limit, GTFS parsing or
+general compilation failure. Neither a policy exclusion nor a processing
+failure proves a timetable is absent or that the feed contains no rail.
+Countries scanned, countries with **compiled** sources, and countries with
+**mapped** compiled feeds are separate metrics; even mapped compiled
+timetables are **not yet necessarily applied to OSM Service routes**.
 
-National outputs can exceed JavaScript's single-string limit. The assembler
-streams and decodes their top-level array records and keeps only each feed's
-summary. Python writes gzip JSON incrementally
-and releases stale cached outputs before recompilation.
+The source inventory remains incomplete where source registries omit
+providers, URLs require inaccessible credentials, original publishers do not
+identify their actual terms, or public feeds have stale dates, 404s, invalid
+GTFS, or valid large input beyond current parsing/memory limits. The
+[gtfs-data.jp](https://gtfs-data.jp/) repository publishes source-specific
+licences; the CSV crosswalk and Transitous metadata do **not** yet implement a
+complete authoritative gtfs-data.jp API enrichment, and this remains open
+under #110. Likewise, a successful eligibility inventory is not evidence
+of improved compilations or country coverage: these need a verified full
+run. Current tests cover positive and negative rights cases, URL-only terms,
+missing metadata, overlapping source identities, new Japanese source
+discovery, provenance, and distinct pipeline failure classifications.
 
-Coverage is not complete worldwide: a catalogue can omit operators, a feed can be
-expired/unlicensed/unavailable, and a geometry match can fail. The site's
-`data/service-frequency/inventory.json` records every outcome;
-`data/service-frequency/manifest.json` records the actual mapped sources and counts.
-Until timetables are matched, frequency widths come only from published operator
-headways, and `frequency-credits.html` lists only the sources actually applied.
-Compiled per-feed data is not published with the site. An inventory entry or an
-unmatched frequency is not mapped coverage.
+The [October 8, 2026 pre-fix run](https://github.com/c933103/openrailwaystyle/actions/runs/37732419672)
+reported 2,039 catalogue entries: 1,220 excluded, 635 `no_rail`,
+106 compiled and 78 failed, with 66 catalogue countries and 86 feeds with
+mapped segments. These remain **baseline** observations, not an after-change
+coverage claim. The 1,220 prior exclusions were caused by mixed policy
+reasons; they have **not** all been proven to be usable rail feeds.
+A rerun must reconcile every old and newly discovered source and publish
+updated outcomes before #110 can close.
+
+The public site currently uses only headways already matched to OSM routes;
+absence of linked timetable data is **unknown**, not zero. The published
+snapshot does not itself add timetable lines or map tiles. Details of the
+service identity and time windows follow below.
 
 ## Geometry and service identity
 
@@ -152,12 +165,22 @@ No OSM relation count is interpreted as a train count.
 
 ## Reproduce
 
-Use the whole catalogue, with an optional local copy for reproducible discovery:
+Pin Transitous source definitions and the Mobility Database CSV, then
+reconcile metadata before compiling. The published workflow automates
+this sequence. For an existing locally assembled catalogue:
 
 ```sh
-python3 scripts/global-service-frequency.py --cache /path/to/gtfs-cache \
-  --output /path/to/frequency-output --date 2026-10-05 \
-  --rail-graph /path/to/published/branch-lines.ndjson.gz
+python3 scripts/frequency_catalogue.py \
+  --licences /path/to/transitous/website/data/license.json \
+  --feeds-directory /path/to/transitous/feeds \
+  --transitous-ref PINNED_GIT_SHA \
+  --mobility-csv /path/to/feeds_v2.csv \
+  --output /path/to/catalogue.json \
+  --report /path/to/catalogue-report.json
+
+python3 scripts/global-service-frequency.py --catalogue /path/to/catalogue.json \
+  --cache /path/to/gtfs-cache --output /path/to/frequency-output \
+  --date 2026-10-12 --rail-graph /path/to/published/branch-lines.ndjson.gz
 node scripts/assemble-global-frequency.mjs /path/to/frequency-output
 ```
 
