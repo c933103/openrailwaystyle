@@ -34,3 +34,21 @@ test('service metadata: legacy persistence labels unknown provenance without dup
   assert.equal(geometryStatus(drawnGeometry(restored.ways.get(1))).status,'unknown');
   assert.equal(writeTable(restored),stored);
 });
+
+test('service metadata: actual un-clipped relation metadata preserves ordered full members and eligibility separation', async () => {
+  const {toTable} = await import('../scripts/service-routes.mjs');
+  const {relationStatus} = await import('../scripts/service-relations.mjs');
+  const text = await readFile(new URL('./fixtures/service-geometry/overpass-meta-relation-10003040.json', import.meta.url), 'utf8');
+  const json = JSON.parse(text), relation = json.elements[0], table = toTable(json), evidence = table.routes[0].membership;
+  assert.equal(relation.id, 10003040); assert.equal(evidence.snapshot, '2026-10-07T04:09:50Z');
+  assert.equal(evidence.version, 25); assert.equal(evidence.timestamp, '2026-06-12T01:19:51Z');
+  assert.equal(evidence.complete, true); assert.equal(evidence.members.length, 115);
+  assert.deepEqual(evidence.members, relation.members.map(({type, ref, role}) => ({type, ref, role})));
+  assert.deepEqual(evidence.eligible, []); assert.deepEqual(table.ways, []);
+  assert.equal(relationStatus(evidence).status, 'partial');
+  assert.ok(relationStatus(evidence).unresolved.length > 0);
+  assert.doesNotMatch(text, /"(?:user|uid|changeset)"\s*:/);
+  const query = partQuery({area:'ISO3166-1=JP'}, [20,122,46,154]);
+  assert.match(query, /\.r out meta;way\(r\.r\)/);
+  assert.doesNotMatch(query, /\.r out (?:geom|body)|out meta geom\(/, 'relation declarations are not geometry-clipped to the selector box');
+});

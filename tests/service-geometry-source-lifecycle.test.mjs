@@ -542,7 +542,7 @@ test('source lifecycle: diagnostics bound point-level payload while retaining co
   for (const detail of summary.details) {
     assert.equal(detail.missingCount, 60);
     assert.equal(detail.missing.length, 20);
-    assert.deepEqual(detail.relations, [1, 2]);
+    assert.deepEqual(detail.relations, detail.way === 101 ? [1, 2] : [], 'cloned coordinates do not establish extra relation memberships');
   }
   assert.equal(geometryStatus(evidence(restore(table))).missing.length, 60, 'storage preserves the uncapped raw evidence');
 });

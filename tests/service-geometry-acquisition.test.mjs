@@ -5,10 +5,10 @@ import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {gzipSync, gunzipSync} from 'node:zlib';
-import {addResult, commitStage, readTable, toTable, writeTable, geometrySummary} from '../scripts/service-routes.mjs';
+import {addResult, buildTiles, commitStage, readTable, toTable, writeTable, geometrySummary} from '../scripts/service-routes.mjs';
 const points = [[139.70,35.68],[139.71,35.69],[139.72,35.68],[139.73,35.69],[139.74,35.68]];
 const response = (day, coordinates = points) => ({osm3s: {timestamp_osm_base: `2026-10-${day}T00:00:00Z`}, elements: [
-  {type:'relation',id:1,tags:{route:'subway',ref:'1',name:'One',network:'N'},members:[{type:'way',ref:10,role:''}]},
+  {type:'relation',id:1,version:1,timestamp:'2026-10-01T00:00:00Z',tags:{route:'subway',ref:'1',name:'One',network:'N'},members:[{type:'way',ref:10,role:''}]},
   {type:'way',id:10,version:1,timestamp:'2026-10-01T00:00:00Z',nodes:[1,2,3,4,5],geometry:coordinates.map(p => p && {lon:p[0],lat:p[1]})},
 ]});
 const state = () => ({version:1,downloadStages:3,stages:{japan:{completed:null,pending:null,seen:[]}},runs:[]});
@@ -93,4 +93,100 @@ test('geometry acquisition: rejected conflicting refresh retains accepted data a
   assert.equal(acquired.stages.japan.geometry.observed.counts.conflict,1);
   assert.deepEqual(acquired.stages.japan.geometry.observed.affectedWays,[10]);
   assert.equal(acquired.stages.japan.geometry.retry,'next-stage-refresh');
+}));
+
+test('relation acquisition: relation-only contradiction marks stage incomplete with no way conflicts', async () => fixture(async run => {
+  const body = response('07'); body.elements.push({...body.elements[0], tags: {...body.elements[0].tags, name: 'Contradictory name'}});
+  const result = await run([{body}]), health = (await result.read('state.json')).stages.japan.geometry;
+  assert.equal(health.status, 'incomplete'); assert.equal(health.counts.conflict, 0); assert.equal(health.relationCounts.conflict, 1);
+  assert.deepEqual(health.affectedRelations, [1]); assert.equal(health.retry, 'next-stage-refresh');
+  assert.deepEqual((await result.read('manifest.json')).geometry.relations.relationsWithConflicts, [1]);
+}));
+
+test('relation acquisition: full declarations with no returned ways remain unresolved and cannot report complete coverage', async () => fixture(async run => {
+  const body = response('07'); body.elements = body.elements.filter(element => element.type === 'relation');
+  const result = await run([{body}]), health = (await result.read('state.json')).stages.japan.geometry;
+  assert.equal(health.status, 'incomplete'); assert.equal(health.relationCounts.partial, 1);
+  assert.deepEqual(health.affectedRelations, [1]);
+  const manifest = await result.read('manifest.json'); assert.equal(manifest.ways, 0);
+  assert.deepEqual(manifest.geometry.relations.relationsWithUnresolvedMembers, [1]);
+}));
+
+test('relation acquisition: conflicting unverified refresh cannot report successful repair from retained accepted evidence', async () => fixture(async run => {
+  const table = {routes: new Map(), ways: new Map()}; addResult(table, toTable(response('06')), 'japan'); commitStage(table, 'japan');
+  const body = response('07'); delete body.elements[0].version;
+  body.elements.push({...body.elements[0], tags: {...body.elements[0].tags, name: 'Conflicting unknown'}});
+  const result = await run([{body}], state(), table), health = (await result.read('state.json')).stages.japan.geometry;
+  assert.equal(health.observed.relationCounts.conflict, 1); assert.equal(health.relationCounts.complete, 1);
+  assert.equal(health.status, 'incomplete'); assert.equal(health.retry, 'next-stage-refresh');
+  assert.equal(health.lastFailure, 'unresolved-source-relations');
+  const saved = readTable(gunzipSync(await readFile(join(result.root, 'service-data/service-routes.ndjson.gz'))).toString());
+  assert.equal(saved.routes.get('r1').evidence.view.label, 'One');
+  assert.ok((await result.read('manifest.json')).geometry.relations.details[0].reasons.includes('ignored_unverified_relation'));
+}));
+
+test('relation acquisition: retiring current stage refreshes older-stage retained dependency health', async () => fixture(async run => {
+  const table = {routes: new Map(), ways: new Map()}, original = response('06'), changed = response('07');
+  changed.elements[0] = {...changed.elements[0], version: 2, timestamp: '2026-10-02T00:00:00Z', members: [{type: 'way', ref: 11, role: ''}]};
+  changed.elements[1] = {...changed.elements[1], id: 11};
+  addResult(table, toTable(original), 'east-asia'); commitStage(table, 'east-asia');
+  addResult(table, toTable(changed), 'japan'); commitStage(table, 'japan');
+  const prior = state(); prior.stages['east-asia'] = {completed: '2026-10-01T00:00:00Z', geometry: {status: 'complete', attempts: 3, retry: null, lastFailure: null}};
+  const result = await run([{body: {osm3s: {timestamp_osm_base: '2026-10-07T01:00:00Z'}, elements: []}}], prior, table);
+  const older = (await result.read('state.json')).stages['east-asia'].geometry;
+  assert.equal(older.status, 'incomplete'); assert.equal(older.attempts, 3);
+  assert.equal(older.lastFailure, 'retained-relation-membership-unavailable'); assert.deepEqual(older.unavailableRelations, [1]);
+  assert.deepEqual((await result.read('manifest.json')).geometry.relations.relationsWithUnavailableMemberships, [1]);
+}));
+
+test('relation acquisition: a complete refresh during a dependency gap can recover when another stage restores it', async () => fixture(async run => {
+  const {refreshRelationDependencyHealth} = await import('../scripts/service-geometry-health.mjs');
+  const table = {routes: new Map(), ways: new Map()}, original = response('06'), changed = response('07');
+  changed.elements[0] = {...changed.elements[0], version: 2, timestamp: '2026-10-02T00:00:00Z', members: [{type: 'way', ref: 11, role: ''}]};
+  changed.elements[1] = {...changed.elements[1], id: 11};
+  addResult(table, toTable(original), 'japan'); commitStage(table, 'japan');
+  addResult(table, toTable(changed), 'east-asia'); commitStage(table, 'east-asia'); commitStage(table, 'east-asia');
+  const prior = state(); prior.stages.japan.geometry = {status: 'complete', attempts: 3, retry: null, lastFailure: null};
+  refreshRelationDependencyHealth(prior, table, '2026-10-07T00:00:00Z');
+  assert.equal(prior.stages.japan.geometry.status, 'incomplete');
+  const result = await run([{body: original}], prior, table), savedState = await result.read('state.json');
+  const savedTable = readTable(gunzipSync(await readFile(join(result.root, 'service-data/service-routes.ndjson.gz'))).toString());
+  const health = savedState.stages.japan.geometry;
+  assert.equal(health.status, 'incomplete'); assert.equal(health.observed.status, 'complete'); assert.equal(health.sourceOutcome.status, 'complete');
+  addResult(savedTable, toTable(changed), 'russia'); commitStage(savedTable, 'russia');
+  refreshRelationDependencyHealth(savedState, savedTable, '2026-10-07T01:00:00Z');
+  assert.equal(savedState.stages.japan.geometry.status, 'complete'); assert.equal(savedState.stages.japan.geometry.retry, null);
+  assert.equal(savedState.stages.japan.geometry.lastFailure, null); assert.equal(savedState.stages.japan.geometry.attempts, 4);
+}));
+
+test('inactive acquisition: published active totals differ from retained source declarations and frequency rebuild agrees',async()=>fixture(async run=>{
+  const body=response('07'),first=body.elements[0];
+  body.elements.unshift({...first,id:2,tags:{...first.tags,name:'Two',ref:'2'}});
+  first.tags={...first.tags,name:'',ref:''};
+  const result=await run([{body}]),manifest=await result.read('manifest.json'),savedState=await result.read('state.json');
+  assert.equal(manifest.routes,1);assert.equal(manifest.retainedRelations,2);
+  assert.equal(manifest.stages.find(s=>s.name==='japan').routes,1);assert.equal(manifest.stages.find(s=>s.name==='japan').retainedRelations,2);
+  assert.equal(savedState.stages.japan.routes,1);assert.equal(savedState.stages.japan.retainedRelations,2);
+  assert.equal(savedState.stages.japan.geometry.relationCounts.complete,2);
+  assert.deepEqual(manifest.geometry.routeRelationsWithoutGeometry,[]);
+  assert.match(result.stdout,/1 active routes .*2 retained declarations/);
+  const directory=join(result.root,'service-data'),raw=await readFile(join(directory,'service-routes.ndjson.gz'));
+  const table=readTable(gunzipSync(raw).toString());assert.equal(table.routes.size,2);assert.equal(table.ways.size,1);
+  const rebuild=spawnSync(process.execPath,['scripts/rebuild-service-frequency.mjs',directory,join(result.root,'credits.html'),'--fixtures'],{encoding:'utf8'});
+  assert.equal(rebuild.status,0,rebuild.stderr);
+  assert.deepEqual(JSON.parse(await readFile(join(directory,'frequency-manifest.json'),'utf8')).geometry,manifest.geometry);
+  assert.deepEqual(await readFile(join(directory,'service-routes.ndjson.gz')),raw);
+}));
+
+test('unverified relation acquisition retains committed tiles below the stage loss threshold',async()=>fixture(async run=>{
+  const table={routes:new Map(),ways:new Map()};addResult(table,toTable(response('06')),'japan');commitStage(table,'japan');
+  const expected=buildTiles(table),body=response('07');delete body.elements[0].members;
+  const result=await run([{body}],state(),table),manifest=await result.read('manifest.json'),savedState=await result.read('state.json');
+  assert.equal(manifest.routes,1);assert.equal(manifest.ways,1);assert.deepEqual(manifest.geometry.routeRelationsWithoutGeometry,[]);
+  const saved=readTable(gunzipSync(await readFile(join(result.root,'service-data/service-routes.ndjson.gz'))).toString());
+  assert.deepEqual(saved.ways.get(10).routes.japan,['r1']);
+  assert.equal(savedState.stages.japan.geometry.observed.relationCounts.unknown,1);
+  assert.equal(savedState.stages.japan.geometry.lastFailure,'unverified-source');
+  const actual=new Map();for(const key of (await result.read('index.json')).tiles)actual.set(key,gunzipSync(await readFile(join(result.root,`service-data/${key}.pbf.gz`))));
+  assert.deepEqual([...actual].sort(),[...expected].map(([key,bytes])=>[key,Buffer.from(bytes)]).sort(),'actual published tiles preserve the retained accepted service');
 }));

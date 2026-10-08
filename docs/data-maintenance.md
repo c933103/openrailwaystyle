@@ -122,7 +122,7 @@ The Service view draws metro, light rail, tram, monorail and commuter rail servi
 - Both `manifest.json` and `frequency-manifest.json` use geometry diagnostic schema 2. `routeRelationsWithPartialGeometry` now includes internal raw-position gaps and drawable conflicts as well as missing whole ways. `waysWithoutGeometry`, `waysWithPartialGeometry`, `waysWithConflicts`, `waysWithUnknownProvenance`, and `waysWithPendingEvidence` distinguish the retained source states. At most 100 detail records include relation IDs, reasons, source/revision time, and bounded missing-position/source samples; full ordered-slot evidence remains in the downloadable NDJSON. These are source-coverage diagnostics, not proof of real-world or regional coverage.
 - Each finished acquisition pass stores bounded `state.stages[name].geometry` health, attempt count, affected way samples and retry policy; the publication manifest includes it. Partial, contradictory or unverified evidence marks the stage geometry incomplete even though acquisition finished. Dedicated repair scheduling is deferred: recovery uses the next existing stage refresh, normally after 14 days, under unchanged 50 MB/run, 100 MB/day and time budgets. No bare-way repair query can introduce new service eligibility. Operator-triggered refreshes remain subject to the same limits. This patch does not initiate a worldwide reacquisition.
 
-A narrow exact-way query to the configured endpoint succeeded on 2026-10-07 after two earlier server-busy responses. The [sanitized actual response fixture](../tests/fixtures/service-geometry/README.md) preserves 31 ordered node IDs and coordinates, OSM dataset time and way metadata, and is tested through the resolver. This validates that complete response layout; synthetic tests cover gaps and contradictory responses. The dedicated `check-service-geometry-browser.mjs`, called by the frequency browser job, exercises synthetic newest/shortened/gapped/unavailable/conflicting/pending source outcomes with real generated tiles and the production layer at z12/z16, equal width, all 28 frequency profiles and expired/missing headway fallbacks. These synthetic checks do not validate live regional coverage. Classifier/coherent relation membership reconciliation, regional user-visible gap reporting and the original Paris/Normandy all-width regression remain open in #107/#112.
+A narrow exact-way query to the configured endpoint succeeded on 2026-10-07 after two earlier server-busy responses. The [sanitized actual response fixture](../tests/fixtures/service-geometry/README.md) preserves 31 ordered node IDs and coordinates, OSM dataset time and way metadata, and is tested through the resolver. This validates that complete response layout; synthetic tests cover gaps and contradictory responses. The dedicated `check-service-geometry-browser.mjs`, called by the frequency browser job, exercises synthetic newest/shortened/gapped/unavailable/conflicting/pending source outcomes with real generated tiles and the production layer at z12/z16, equal width, all 28 frequency profiles and expired/missing headway fallbacks. These synthetic checks do not validate live regional coverage. Classifier changes, regional user-visible gap reporting and the original Paris/Normandy all-width regression remain open in #107/#112.
 
 Storage was measured against [published service-data commit `ba3ffbb`](https://github.com/c933103/openrailwaystyle/tree/ba3ffbbfa24cb72d01a07022b526cced30b39cd7): 5,842 routes, 128,679 ways, and 496,758 simplified positions. Explicit unknown-provenance migration changes gzip9 size from 5,109,056 to 5,165,137 bytes (+1.10%); all geometry/memberships remain identical and a 500-way Japan subset produces 210 byte-identical tiles. This measures legacy migration only. The live 31-node fixture's single row grows from compact legacy 326 raw / 212 gzip9 bytes to raw-backed 2,025 / 881. A representative multi-region raw-source growth estimate remains open; the simplified archive cannot reconstruct original nodes, and single-row compression cannot establish a worldwide multiplier.
 - The table records which stage found each route and each way's routes by stage; a stage's refresh replaces only its own part, so routes another stage found on a shared way stay.
@@ -130,6 +130,62 @@ Storage was measured against [published service-data commit `ba3ffbb`](https://g
 - Regions are fetched in the branch lines' stages and with the same mechanics (splitting, refresh every two weeks, the 20% guard), every six hours at minute 11, each run capped at 50 MB and no run once 100 MB were downloaded in 24 hours, so with the branch lines (up to 900 MB) the public server's guidance of about 1 GB a day holds.
 
 Each website build copies the tiles, `index.json`, `manifest.json` and the ODbL table `service-routes.ndjson.gz` into `styles/data/service-routes/`; until the first run publishes, the Service view shows the tracks only.
+
+### Source-aware relation membership
+
+Relation output is now `.r out meta`, separately from railway-filtered way
+`out meta geom qt` output. Selector bounding boxes do not clip the declared
+relation members. Each observation preserves dataset time, relation revision
+and timestamp, relevant identity tags, the full ordered type/ref/role list and
+up to eight source references; contributor identity and changeset fields are
+omitted. A [sanitized actual relation response](../tests/fixtures/service-geometry/README.md#relation-member-metadata)
+validates the 115-member metadata layout. Synthetic regressions cover reroutes
+and contradictory evidence; this is not a claimed live reroute incident.
+
+A declared member is not proof of railway eligibility. Only ways positively
+returned by the existing railway-filtered acquisition establish eligibility.
+Absent members remain unresolved even if another service provides their
+geometry. Stop/platform roles remain excluded, and missing/malformed or
+explicitly partial member lists cannot certify a removal. Complete empty lists
+can. No acquisition selector, timetable matching or service classifier changes.
+
+The newest verified source snapshot controls one coherent relation declaration
+and its tags. Compatible repeats at that snapshot can combine observed track
+eligibility. Older declarations cannot union their removed members back in;
+shorter reroutes, role edits and removed labels take effect together. Conflicting
+same-snapshot declarations and revision/member/tag contradictions are
+quarantined. Persistent accepted watermarks prevent a later stage retirement
+from reviving an older route. Other relations sharing the same track stay
+independent. Unknown legacy memberships remain explicitly unverified until a
+verified declaration replaces them; contradictory new unverified observations
+are reported rather than interpreted as source chronology.
+
+Accepted declarations and tags stay fixed during pending work. A new relation
+without accepted evidence may draw its pending frontier. Commit, discard,
+NDJSON resume and retired-Europe migration keep these boundaries. Way geometry
+continues to use its separate source resolver. Pending new-way evidence cannot
+leak into an accepted legacy route's memberships.
+
+Geometry diagnostic schema 2 adds a `relations` schema-1 object with sorted
+conflict, unknown-provenance, unresolved-member and pending-evidence relation
+IDs, plus positively observed memberships whose retained table associations
+are unavailable after stage retirement. This is distinct from unresolved
+eligibility; a verified empty declaration remains complete. Affected older
+stages have their persisted dependency-health status refreshed without
+changing their acquisition attempts or original observed outcome.
+Details are limited to 100 relations, 20 unresolved IDs per relation and
+eight source references; full member declarations stay in NDJSON. Pending
+details explicitly identify retained accepted evidence. These are unresolved
+eligibility references, not confirmed missing track. Stage health includes
+separate relation counts and repair reasons, so complete coordinates alone do
+not certify complete service coverage. Acquisition and headway rebuild emit
+the same summary. Existing refresh/day/run budgets and repair cadence stay
+unchanged. Stored historical stage rows are retained as evidence, but publication
+filters them through the accepted relation frontier.
+
+The original Paris/Normandy all-width acceptance remains open under #107,
+general classification/identity under #109, and user-visible regional gaps
+under #112. No merge, deployment or fresh worldwide extraction is implied.
 
 ## Published data and caches
 
