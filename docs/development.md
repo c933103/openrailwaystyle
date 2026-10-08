@@ -130,15 +130,14 @@ node --check styles/app.mjs
 The reproducibility check expects an up-to-date committed style; while developing
 a style change, inspect and include the generated diff before expecting it to pass.
 
-For rendering changes, load the published data and leave the preview server
-running in another terminal, then run the relevant browser checks:
+For rendering changes, run fixture-safe browser checks against the
+locally served site. CI uses the same synthetic OpenRailwayMap railway-tile
+fixtures and the real MapLibre renderer; it does not automatically download
+map tiles from the public `openrailwaymap.app` provider:
 
 ```sh
 npx playwright install --with-deps chromium
-node scripts/check-planning-browser.mjs
-node scripts/check-context-browser.mjs
-node scripts/check-map-browser.mjs
-node scripts/check-major-stations-browser.mjs
+node scripts/check-orm-fixture-browser.mjs
 node scripts/check-platform-browser.mjs
 node scripts/check-platform-stations-browser.mjs
 node scripts/check-infrastructure-browser.mjs
@@ -146,13 +145,23 @@ node scripts/check-signal-power-browser.mjs
 node scripts/check-globe-browser.mjs
 ```
 
-The deployment gate checks real Chromium/WebGL rendering, including zoom-7 panning
-in the Japan–Korea view, visibility of 남부내륙선, line names and controls, and the
-absence of viewer Overpass requests. The context checks cover Hong Kong facilities,
-Heathrow at regional scale, language switching, inspection and toggles; planning
-checks cover roads, buildings, boundaries and rail-road interfaces. Curated station checks cover globe labels, language switching and OSM inspection on desktop and touch viewports. Platform checks cover full mapped boarding-edge lengths, asynchronous inspection, the main Units control and immediate kg/lb legend conversion. Screenshots
-are saved in `browser-review/` and uploaded by CI. These checks do not establish
-that every real-world railway is correctly mapped in OSM.
+The fixture test verifies actual railway-line rendering near Wuhan at zoom
+levels 6 and 7 with **synthetic**, provider-shaped vector tiles. Platform,
+signal and power tests also use generated geometry. Post-deployment Chromium
+checks use the same synthetic railway fixture against the published page. They
+test rendering integration, **not real-world railway geometry or live tile
+availability**, which must be assessed separately.
+
+The broader geographic regression tests previously run in CI (Japan–Korea
+lines, worldwide layer and station density, real context features and
+infrastructure) are still available, but now require independently hosted
+OpenRailwayMap-compatible data. Set
+`ATLAS_TEST_ORM_URL=http://127.0.0.1:4174/` (your own server) before
+invoking `check-map-browser.mjs`, `check-major-stations-browser.mjs`,
+`check-context-browser.mjs` or `check-planning-browser.mjs`. They are
+**not** a substitute for the fixture-safe public CI checks. Screenshots are
+written to `browser-review/`. For the published provider conditions and
+remaining uncertainties see [external services](external-services.md).
 
 `tests/context.test.mjs` covers category distinctions, area coverage, rail
 placement priority, proximity/deduplication and settings. The separate

@@ -254,11 +254,10 @@ jobs:
           name: railway-world-site
           path: styles
           compression-level: 0
-  # The browser checks, in parallel jobs of a few checks each, one at a time
-  # in a shared browser within a job (scripts/run-browser-checks.mjs), with
-  # provider tiles cached per job for a week (scripts/browser.mjs). Two at
-  # once on one runner slowed the timing-sensitive platform checks until
-  # they failed, and gained nothing once the jobs run in parallel.
+  # Browser checks use synthetic OpenRailwayMap fixtures only; geographic
+  # audits requiring its real tiles run only against self-hosted local data.
+  # Other providers may be cached for a week, but public openrailwaymap.app
+  # never participates in the cache (scripts/browser.mjs).
   browser:
     name: browser (${{ matrix.group }})
     needs: [plan, validate]
@@ -289,8 +288,8 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .browser-tiles
-          key: browser-tiles-v1-${{ matrix.group }}-${{ github.run_id }}
-          restore-keys: browser-tiles-v1-${{ matrix.group }}-
+          key: browser-tiles-v2-no-public-orm-${{ matrix.group }}-${{ github.run_id }}
+          restore-keys: browser-tiles-v2-no-public-orm-${{ matrix.group }}-
       - name: Start test server
         run: |
           rm -f .browser-tiles/.changed
@@ -310,7 +309,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .browser-tiles
-          key: browser-tiles-v1-${{ matrix.group }}-${{ github.run_id }}
+          key: browser-tiles-v2-no-public-orm-${{ matrix.group }}-${{ github.run_id }}
       - name: Save browser review
         if: always()
         uses: actions/upload-artifact@v4
@@ -407,18 +406,12 @@ jobs:
           node-version: '22'
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
-      - name: Verify the published map in Chromium
+      # Exercise the deployed app's renderer against synthetic railway tiles;
+      # do not make automated calls to the public OpenRailwayMap tile provider.
+      - name: Verify published map with local railway fixture
         env:
           MAP_BASE_URL: ${{ steps.deployment.outputs.page_url }}
-        run: node scripts/check-map-browser.mjs
-      - name: Verify published planning context
-        env:
-          MAP_BASE_URL: ${{ steps.deployment.outputs.page_url }}
-        run: node scripts/check-planning-browser.mjs
-      - name: Verify published transport and destinations
-        env:
-          MAP_BASE_URL: ${{ steps.deployment.outputs.page_url }}
-        run: node scripts/check-context-browser.mjs
+        run: node scripts/check-orm-fixture-browser.mjs
       - name: Save published map screenshots
         if: always()
         uses: actions/upload-artifact@v4
