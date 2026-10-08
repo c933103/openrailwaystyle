@@ -9,6 +9,15 @@ import {readFrequencyFeed} from './read-frequency-feed.mjs';
 // Outcome totals always come from the entries themselves: each shard's own
 // counts cover only that shard.
 export const countStatuses=entries=>{const counts={};for(const entry of entries)counts[entry.status]=(counts[entry.status]||0)+1;return counts;};
+export const countOutcomeReasons=entries=>{
+  const counts={};
+  for(const entry of entries){
+    if(!['excluded','failed'].includes(entry.status))continue;
+    const reason=entry.reason_code||'unclassified';
+    counts[reason]=(counts[reason]||0)+1;
+  }
+  return counts;
+};
 export function mergeInventories(inventories){
   if(!inventories.length)throw new Error('No worldwide inventory');
   const first=inventories[0],ids=new Set(),shards=new Set(),entries=[];
@@ -45,14 +54,27 @@ export async function assemble(directory){
   if(!summary.some(f=>f.mappedRoutes>0))throw new Error('Worldwide scan produced no mapped rail services; inspect inventory failures');
   await pruneFrequencyOutputs(directory,inventory.entries);
   // Totals recounted from the entries, as published.
-  const counts=countStatuses(inventory.entries);inventory.counts=counts;
+  const counts=countStatuses(inventory.entries);
+  const reasonCounts=countOutcomeReasons(inventory.entries);
+  const countrySet=filter=>[...new Set(inventory.entries.filter(filter).map(e=>e.country).filter(Boolean))].sort();
+  const compiledById=new Map(inventory.entries.filter(e=>e.status==='compiled').map(e=>[e.id,e]));
+  const countriesMapped=[...new Set(summary.filter(f=>f.mappedRoutes>0).map(f=>compiledById.get(f.id)?.country).filter(Boolean))].sort();
+  inventory.counts=counts;
+  inventory.reason_codes=reasonCounts;
   const manifest={schema:3,service_date:inventory.service_date,catalogue_url:inventory.catalogue_url,catalogue_sha256:inventory.catalogue_sha256,catalogue_entries:inventory.catalogue_entries,
-    countries_scanned:[...new Set(inventory.entries.map(e=>e.country))].sort(),counts,feeds:summary,tiles:0,
+    countries_scanned:countrySet(()=>true),
+    countries_compiled:countrySet(e=>e.status==='compiled'),
+    countries_with_mapped_feed:countriesMapped,
+    reason_codes:reasonCounts,
+    counts,feeds:summary,tiles:0,
     scope:'Whole worldwide catalogue scanned. Compiled timetables are kept for matching to OSM routes and draw no lines; failed, excluded, unshaped and expired sources are explicitly reported. Coverage is not complete worldwide.'};
   await writeFile(join(tileRoot,'index.json'),JSON.stringify({tiles:[]}));
   await writeFile(join(directory,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
   await writeFile(join(directory,'inventory.json'),JSON.stringify(inventory,null,2)+'\n');
-  console.log(JSON.stringify({catalogue:manifest.catalogue_entries,counts,countries:manifest.countries_scanned.length,mappedFeeds:summary.filter(f=>f.mappedRoutes>0).length}));
+  console.log(JSON.stringify({catalogue:manifest.catalogue_entries,counts,
+    countriesScanned:manifest.countries_scanned.length,countriesCompiled:manifest.countries_compiled.length,
+    countriesWithMappedFeed:manifest.countries_with_mapped_feed.length,
+    mappedFeeds:summary.filter(f=>f.mappedRoutes>0).length,reasonCodes:reasonCounts}));
   return manifest;
 }
 if(process.argv[1]&&resolve(process.argv[1])===resolve(new URL(import.meta.url).pathname))await assemble(process.argv[2]||'frequency-output');
