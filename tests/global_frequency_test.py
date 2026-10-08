@@ -25,10 +25,57 @@ class GlobalFrequency(unittest.TestCase):
         rows.append({'filename':'unknown.gtfs.zip','source':'https://example.org/u.zip','country_code':'US'})
         result=pipeline.discover(rows,{})
         self.assertEqual(len(result),len(rows))
-        self.assertEqual({r['country'] for r in result if r['status']=='pending'},set(countries)-pipeline.EXCLUDED)
+        self.assertEqual({r['country'] for r in result if r['status']=='pending'},(set(countries)-pipeline.EXCLUDED)|{'US'})
         self.assertEqual(len({r['id'] for r in result}),len(rows))
         self.assertTrue(all('/' not in r['id'] for r in result))
-        self.assertTrue(next(r for r in result if r['country']=='US')['reason'].startswith('redistribution'))
+        us = next(r for r in result if r['country']=='US')
+        self.assertEqual(us['status'], 'pending', 'absence of licence metadata is not a prohibition')
+        self.assertEqual(us['terms']['state'], 'not_provided')
+
+    def test_source_terms_eligibility_missing_url_only_permitted_denied_and_conflict(self):
+        root={'country_code':'BE','source':'https://example.org/feed.zip'}
+        cases=[
+            ('missing', {}, 'pending', 'not_provided'),
+            ('url-only', {'license_url':'https://example.org/terms'}, 'pending', 'linked'),
+            ('unknown-spdx', {'spdx_license_identifier':'LicenseRef-New-Operator'}, 'pending', 'identified'),
+            ('permitted', {'spdx_license_identifier':'CC-BY-4.0'}, 'pending', 'identified'),
+            ('no-derivatives', {'spdx_license_identifier':'CC-BY-ND-4.0'}, 'excluded', 'prohibited'),
+            ('noncommercial-unresolved', {'spdx_license_identifier':'CC-BY-NC-4.0'}, 'pending', 'identified')
+        ]
+        rows=[{**root, **fields, 'filename': name+'.gtfs.zip'} for name,fields,_,_ in cases]
+        output={x['id']:x for x in pipeline.discover(rows,{})}
+        for name,_,status,rights_state in cases:
+            with self.subTest(case=name):
+                self.assertEqual(output[name]['status'],status)
+                self.assertEqual(output[name]['terms']['state'],rights_state)
+        self.assertEqual(output['url-only']['terms']['terms_urls'],['https://example.org/terms'])
+        self.assertEqual(output['no-derivatives']['reason_code'],'source_terms_prohibit_derived_use')
+        # An explicit, source-bound reviewed term can prohibit; another URL cannot
+        # accidentally inherit it through a shared filename.
+        rule={'sources':{'permitted.gtfs.zip':{
+            'expected_source':'https://example.org/feed.zip',
+            'license_url':'https://example.org/reviewed-terms',
+            'prohibit_frequency_use':True}}}
+        result=pipeline.discover([rows[3]],rule)[0]
+        self.assertEqual(result['status'],'excluded')
+        self.assertIn('explicit restriction',result['reason'])
+        other=pipeline.discover([{**rows[3],'source':'https://another.example/feed.zip'}],rule)[0]
+        self.assertEqual(other['status'],'pending')
+        # Catalogue conflicts are visible, not interpreted as a permission
+        # ban when neither one actually prohibits the derived-frequency use.
+        conflicting={**root,'filename':'conflict.gtfs.zip','rights_evidence':[
+            {'origin':'a','spdx':'CC-BY-4.0'},
+            {'origin':'b','spdx':'CC0-1.0'}]}
+        outcome=pipeline.discover([conflicting],{})[0]
+        self.assertEqual(outcome['status'],'pending')
+        self.assertTrue(outcome['terms']['conflicting_spdx'])
+
+    def test_missing_direct_url_is_processing_failure_not_licence_exclusion(self):
+        feed={'filename':'mdb_123.gtfs.zip','delivery':'direct','country_code':'CA',
+              'human_name':'Missing download','source':'','rights_evidence':[]}
+        item=pipeline.discover([feed],{})[0]
+        self.assertEqual(item['status'],'failed')
+        self.assertEqual(item['reason_code'],'missing_source_url')
 
     def archive(self,rail=True):
         data=io.BytesIO()
