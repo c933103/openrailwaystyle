@@ -32,6 +32,7 @@ try {
     if(request.url().startsWith(base))firstPartyFailures.push({url:request.url(),failure:request.failure()});
   });
   page.on('response',response=>{
+    if(new URL(response.url()).pathname.endsWith('.pmtiles'))ledger.push({event:'archive-response',url:response.url(),status:response.status(),range:response.request().headers().range,headers:response.headers(),at:Date.now()});
     if(response.url().startsWith(base)&&response.status()>=400)firstPartyFailures.push({url:response.url(),status:response.status()});
   });
   page.on('pageerror',error=>errors.push(error.message));
@@ -61,6 +62,7 @@ try {
       if(outage.enabled&&endpoint==='railway_line_high'&&z==='7'){
         if(tile?.features.length)outage.path ||= path;
         else outage.otherPath ||= path;
+        if([outage.path,outage.otherPath].includes(path))await outage.waitForRetry?.(path);
         if([outage.path,outage.otherPath].includes(path)&&!outage.allowSuccess&&!outage.recoveredPaths.has(path)){
           ledger.push({url:request.url(),path,status:520,at:Date.now()});
           return route.fulfill({status:520,body:'synthetic temporary rail outage'});
@@ -81,6 +83,16 @@ try {
   await page.goto(base+'?mode=speed&language=en&relief=0&inactive=0&transport=0&destinations=0&constraints=0#6/30.55/114.4',{waitUntil:'domcontentloaded'});
   await page.waitForSelector('body[data-map-ready="true"]',{timeout:90000});
   await page.evaluate(async()=>{window.fixtureMap=(await import(document.querySelector('script[type="module"]').src)).map;});
+  // Negative control: the former generic TileJSON fallback must fail in the
+  // real client. This archive is not attached to the map or its error state.
+  if(process.env.MAP_BASE_URL)await page.route('https://fixture.invalid/invalid.pmtiles',route=>route.fulfill({json:{tilejson:'3.0.0',minzoom:0,maxzoom:16,tiles:['https://fixture.invalid/{z}/{x}/{y}']}}));
+  const archiveContract=process.env.MAP_BASE_URL?await page.evaluate(async()=>{
+    const archive=new pmtiles.PMTiles('https://tuiles.enliberte.fr/planet.pmtiles');
+    const header=await archive.getHeader(),metadata=await archive.getMetadata(),tile=await archive.getZxy(0,0,0),missing=await archive.getZxy(7,104,52);
+    let rejected;try{await new pmtiles.PMTiles('https://fixture.invalid/invalid.pmtiles').getHeader();}catch(error){rejected=error.message;}
+    return {rejected,version:header.specVersion,entries:header.numTileEntries,metadata,bytes:tile.data.byteLength,missing:missing===undefined};
+  }):null;
+  if(archiveContract)assert.deepEqual(archiveContract,{rejected:'Wrong magic number for PMTiles archive',version:3,entries:1,metadata:{vector_layers:[]},bytes:0,missing:true});
   const visible=id=>page.waitForFunction(id=>window.fixtureMap.queryRenderedFeatures({layers:[id]})
     .some(f=>f.properties.id==='fixture-wuhan-mainline'),id,{timeout:60000});
   await visible('speed-overview');
@@ -149,11 +161,11 @@ try {
   assert.deepEqual(requests.missingUserAgent,[], 'z14 dependency requests must keep genuine User-Agent');
   assert.deepEqual(errors,[]);
   assert.equal(requests.metadata,0,'All catalogue sources still bypass metadata through z14 and pan');
-  const recovery=await checkRailRecoveryWithoutIdle({page,base,outage});
+  const recovery=await checkRailRecoveryWithoutIdle({page,base,outage,setupDelay:Number(process.env.FIXTURE_SETUP_DELAY)||0,captureDelay:Number(process.env.FIXTURE_CAPTURE_DELAY)||0});
   assert.equal(requests.metadata,1,'Only the explicit unknown endpoint fetched metadata');
   assert.deepEqual(errors,[]);
   assert.deepEqual(requests.missingReferer,[]);assert.deepEqual(requests.missingUserAgent,[]);
-  await writeFile('browser-review/orm-fixture-evidence.json',JSON.stringify({base,initial,afterPan,panAdded,recovery,requests,ledger},null,2)+'\n');
+  await writeFile('browser-review/orm-fixture-evidence.json',JSON.stringify({base,archiveContract,initial,afterPan,panAdded,recovery,requests,ledger},null,2)+'\n');
   console.log('PASS: Wuhan rail overlays at z6/z7; z14 track-count interaction used local fixtures only',
     JSON.stringify({initial,afterPan,panAdded,metadata:requests.metadata,tiles:requests.tiles}));
 }finally{
