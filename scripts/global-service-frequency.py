@@ -185,6 +185,26 @@ def source_attempt(url, error):
     return {'url': url, 'code': code, 'message': str(error)[:350]}
 
 
+def valid_cached_archive(path, meta, max_age_days=30):
+    """Use last successfully fetched source while temporarily offline.
+
+    Do not allow a failed refresh to extend source verification. Service dates
+    are still checked by the ordinary compiler, not presumed from ZIP age.
+    """
+    checked = meta.get('checked') or meta.get('retrieved')
+    if not checked or not path.is_file():
+        return False
+    try:
+        last_success = dt.date.fromisoformat(checked)
+        delta = (dt.datetime.now(dt.timezone.utc).date() - last_success).days
+        if delta < 0 or delta > max_age_days:
+            return False
+        with zipfile.ZipFile(path) as archive:
+            return 'routes.txt' in archive.namelist()
+    except (ValueError, OSError, zipfile.BadZipFile):
+        return False
+
+
 def fetch_alternative(entry, path, max_bytes, skip=()):
     """Fallback to another real published schedule, without inventing data.
 
@@ -406,7 +426,15 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
             meta, more_attempts = fetch_alternative(entry, path, max_bytes, skip=attempted)
             attempts.extend(more_attempts)
         except SourceRetrievalError as error:
-            raise SourceRetrievalError(attempts + error.attempts) from error
+            attempts.extend(error.attempts)
+            if valid_cached_archive(path, meta):
+                # Continue compiling using the last successfully retrieved
+                # ZIP. Never advance its 'checked' or 'retrieved' timestamps.
+                meta['offline_cached'] = True
+                meta['recovered_source_errors'] = attempts
+                fresh = True
+            else:
+                raise SourceRetrievalError(attempts) from error
     if attempts:
         meta['recovered_source_errors'] = attempts
     if meta.get('no_rail'):
@@ -415,7 +443,8 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
     # Reinspect changed conditional 200 responses and cached 304 revisions.
     with zipfile.ZipFile(path) as archive:
         has_rail=any(compiler.rail_type(r['route_type']) for r in compiler.read(archive,'routes.txt'))
-    meta['checked'] = dt.datetime.now(dt.timezone.utc).date().isoformat()
+    if not meta.get('offline_cached'):
+        meta['checked'] = dt.datetime.now(dt.timezone.utc).date().isoformat()
     atomic_json(meta_path, meta)
     if not has_rail:
         (output/'feeds'/(ident+'.json.gz')).unlink(missing_ok=True)
@@ -430,6 +459,8 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
             previous = json.load(file)
         if previous['source']['sha256'] == digest and previous['source']['service_date'] == date and previous['source'].get('input_signature') == signature:
             previous['source']['checked'] = meta['checked']
+            previous['source']['offline_cached'] = bool(meta.get('offline_cached'))
+            previous['source']['recovered_source_errors'] = meta.get('recovered_source_errors', [])
             write_feed(destination, previous)
             return {**entry, 'status': 'compiled', 'output': 'feeds/'+destination.name, 'sha256': digest,
                     'rail_routes': len(previous['routes']), 'mapped_segments': len(previous['segments']),
@@ -447,6 +478,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
                'catalogue_lineage': row.get('lineage', []),
                'download_url': meta.get('download_url') or entry.get('processed_url'),
                'recovered_source_errors': meta.get('recovered_source_errors', []),
+               'offline_cached': bool(meta.get('offline_cached')),
                'attribution': row.get('attribution_text') or publisher.get('name') or entry['name'],
                'catalogue_attribution': row, 'retrieved': meta['retrieved'], 'checked': meta['checked'],
                'rail_graph_sha256': file_hash(str(graph)) if graph else None,
