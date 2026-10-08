@@ -125,7 +125,9 @@ export function relationSummary(routes, ways) {
     if (status.status === 'unknown') unknown.push(relation);
     if (status.unresolved.length) unresolved.push(relation);
     if (status.unavailableMemberships.length) unavailable.push(relation);
-    if (candidate && JSON.stringify(candidate) !== JSON.stringify(evidence)) pending.push(relation);
+    // Membership evidence remains uncommitted even when it is the drawn
+    // fallback, a tombstone, or byte-identical to the accepted frontier.
+    if (candidate) pending.push(relation);
     if ((status.status !== 'complete' || status.reasons.length || pending.at(-1) === relation) && details.length < 100) details.push({relation, ...status,
       unresolved: status.unresolved.slice(0, 20), unresolvedCount: status.unresolved.length, unavailableMemberships: status.unavailableMemberships.slice(0, 20), unavailableMembershipCount: status.unavailableMemberships.length, sources: evidence?.sources || [],
       ...(candidate ? {retainedAccepted: Boolean(route.evidence || Object.keys(route.stages).length), pending: {...relationStatus(candidate), unresolved: relationStatus(candidate).unresolved.slice(0, 20), unresolvedCount: relationStatus(candidate).unresolved.length}} : {})});

@@ -160,17 +160,21 @@ test('relation history: reconciliation is commutative, associative, idempotent a
   const detail = geometrySummary(accepted([toTable(json)])).relations.details.find(detail => detail.relation === 1);
   assert.equal(detail.unresolved.length, 20); assert.equal(detail.unresolvedCount, 60);
 });
-test('relation history: production headway rebuild publishes the same memberships and diagnostics', async () => {
-  const table = accepted([old, fresh]), root = await mkdtemp(join(tmpdir(), 'atlas-relation-history-'));
+for(const scenario of ['reroute','inactive','pending'])test(`relation history: production headway rebuild publishes the same memberships and diagnostics (${scenario})`, async () => {
+  const table = scenario==='reroute'?accepted([old,fresh]):scenario==='inactive'?accepted([old,result({base:NEW,version:2,tags:{name:'',ref:''}})]):empty();
+  if(scenario==='pending')addResult(table,old,'A');
+  const expectedTiles=visible(table),root = await mkdtemp(join(tmpdir(), 'atlas-relation-history-'));
   try {
     await writeFile(join(root, 'service-routes.ndjson.gz'), gzipSync(writeTable(table)));
     const run = spawnSync(process.execPath, ['scripts/rebuild-service-frequency.mjs', root, join(root, 'credits.html'), '--fixtures'], {encoding: 'utf8'});
     assert.equal(run.status, 0, run.stderr);
     const index = JSON.parse(await readFile(join(root, 'index.json'), 'utf8')), actual = new Map();
     for (const key of index.tiles) actual.set(key, gunzipSync(await readFile(join(root, `${key}.pbf.gz`))));
-    assert.deepEqual(visibleTiles(actual), expected);
+    assert.deepEqual(visibleTiles(actual), expectedTiles);
     assert.deepEqual(JSON.parse(await readFile(join(root, 'frequency-manifest.json'), 'utf8')).geometry, geometrySummary(table));
-    assert.deepEqual(visible(table), expected);
+    assert.deepEqual(visible(table), expectedTiles);
+    if(scenario==='pending')assert.deepEqual(geometrySummary(table).relations.relationsWithPendingEvidence,[1,2]);
+    if(scenario==='inactive'){assert.deepEqual(geometrySummary(table).routeRelationsWithoutGeometry,[]);assert.ok(expectedTiles.every(f=>f.id==='relation-2'&&f.n===1));}
   } finally {await rm(root, {recursive: true, force: true});}
 });
 
@@ -198,6 +202,7 @@ test('relation history: empty and inactive declarations do not require missing d
     const table = accepted([result({base: NEW, version: 2, ...options})]);
     assert.deepEqual(geometrySummary(table).relations.relationsWithUnavailableMemberships, []);
     assert.equal(stageGeometryHealth(table, 'A').relationCounts.complete, 2);
+    assert.deepEqual(geometrySummary(table).routeRelationsWithoutGeometry,options.refs ? [1] : [],'active empty routes remain gaps; inactive tombstones do not');
   }
 });
 
@@ -214,4 +219,79 @@ test('relation history: recovering a dependency cannot erase other current repai
   assert.equal(health.status, 'incomplete'); assert.equal(health.retry, 'next-stage-refresh');
   assert.equal(health.lastFailure, 'unresolved-source-geometry'); assert.equal(health.counts.conflict, 1);
   assert.equal(health.attempts, 4); assert.deepEqual(health.observed, {status: 'complete'});
+});
+
+const single = options => {const json=response(options);json.elements=json.elements.filter(e=>e.type!=='relation'||e.id===1);return toTable(json);};
+for(const settle of [commitStage,discardStage])test(`pending relation: initial complete evidence survives resume until ${settle.name}`,()=>{
+  const table=empty();addResult(table,single(),'A');const bytes=writeTable(table),tiles=[...buildTiles(table)];
+  for(const current of [table,restore(table)]){
+    const summary=geometrySummary(current).relations;
+    assert.deepEqual(summary.relationsWithPendingEvidence,[1]);assert.equal(summary.details[0].pending.status,'complete');
+    assert.equal(summary.details[0].retainedAccepted,false);assert.equal(writeTable(current),bytes);assert.deepEqual([...buildTiles(current)],tiles);
+  }
+  settle(table,'A');assert.deepEqual(geometrySummary(restore(table)).relations.relationsWithPendingEvidence,[]);
+  if(settle===commitStage)assert.deepEqual([...buildTiles(table)],tiles);else assert.equal(table.routes.size,0);
+});
+for(const settle of [commitStage,discardStage])test(`pending relation: identical accepted replay stays pending until ${settle.name}`,()=>{
+  let table=accepted([single()]);const view=routeView(table.routes.get('r1')),tiles=[...buildTiles(table)];
+  addResult(table,single(),'B');table=restore(table);
+  assert.deepEqual(table.routes.get('r1').next.B.membership,drawnRelation(table.routes.get('r1')),'equality precondition');
+  const summary=geometrySummary(table).relations;assert.deepEqual(summary.relationsWithPendingEvidence,[1]);assert.equal(summary.details[0].retainedAccepted,true);
+  assert.deepEqual(routeView(table.routes.get('r1')),view);assert.deepEqual([...buildTiles(table)],tiles);
+  settle(table,'B');assert.deepEqual(geometrySummary(restore(table)).relations.relationsWithPendingEvidence,[]);assert.deepEqual([...buildTiles(table)],tiles);
+});
+test('pending relation: two stages and duplicate replay count one ID until both settle',()=>{
+  for(const stages of [['A','B'],['B','A']]){
+    let table=empty();for(const stage of stages){addResult(table,single(),stage);addResult(table,single(),stage);table=restore(table);}
+    assert.deepEqual(geometrySummary(table).relations.relationsWithPendingEvidence,[1]);
+    commitStage(table,stages[0]);assert.deepEqual(geometrySummary(restore(table)).relations.relationsWithPendingEvidence,[1]);
+    discardStage(table,stages[1]);assert.deepEqual(geometrySummary(restore(table)).relations.relationsWithPendingEvidence,[]);
+  }
+});
+for(const [label,options,status] of [['partial',{refs:[101,102]},'partial'],['inactive',{tags:{name:'',ref:''}},'complete']])test(`pending relation: ${label} evidence retains its pending status`,()=>{
+  const table=empty();addResult(table,single(options),'A');const summary=geometrySummary(restore(table)).relations;
+  assert.deepEqual(summary.relationsWithPendingEvidence,[1]);assert.equal(summary.details[0].pending.status,status);assert.equal(summary.details[0].retainedAccepted,false);
+});
+test('pending relation: empty next and legacy parts without membership add no pending provenance',()=>{
+  const table=accepted([single()]);assert.deepEqual(geometrySummary(table).relations.relationsWithPendingEvidence,[]);
+  table.routes.get('r1').next.B={...routeView(table.routes.get('r1'))};
+  assert.deepEqual(geometrySummary(table).relations.relationsWithPendingEvidence,[]);
+});
+for(const inactiveFirst of [false,true])test(`inactive declaration: accepted view controls activation before settlement (${inactiveFirst})`,()=>{
+  const older=result(inactiveFirst?{tags:{name:'',ref:''}}:{}),newer=result({base:NEW,version:2,...(!inactiveFirst?{tags:{name:'',ref:''}}:{})});
+  for(const settle of [commitStage,discardStage]){
+    const table=accepted([older]),before=visible(table);addResult(table,newer,'B');
+    assert.equal(routeView(table.routes.get('r1')).active===false,inactiveFirst);assert.deepEqual(visible(restore(table)),before);
+    settle(table,'B');assert.equal(routeView(restore(table).routes.get('r1')).active===false,settle===commitStage?!inactiveFirst:inactiveFirst);
+    assert.deepEqual(geometrySummary(table).routeRelationsWithoutGeometry,[]);
+    assert.equal(table.routes.size,2);assert.equal(stageGeometryHealth(table,'A').relationCounts.complete,2);
+  }
+});
+test('inactive declaration: older replay and removal of newer owning stage cannot revive tombstone',()=>{
+  let table=accepted([old]);addResult(table,result({base:NEW,version:2,tags:{name:'',ref:''}}),'B');commitStage(table,'B');
+  for(const action of [()=>addResult(table,old,'A'),()=>commitStage(table,'A'),()=>commitStage(table,'B')]){
+    action();table=restore(table);assert.equal(routeView(table.routes.get('r1')).active,false);
+    assert.deepEqual(geometrySummary(table).routeRelationsWithoutGeometry,[]);
+    assert.ok(visible(table).every(f=>f.id==='relation-2'&&f.name==='Line 2'&&f.n===1));
+    assert.equal(table.routes.size,2);
+  }
+});
+
+test('pending relation: sorted IDs and bounded details retain partial samples without inventing acceptance',()=>{
+  const table=empty();
+  for(let id=102;id>0;id--)addResult(table,toTable({osm3s:{timestamp_osm_base:OLD},elements:[relation(id,Array.from({length:60},(_,i)=>i+1000))]}),'A');
+  const summary=geometrySummary(restore(table)).relations;
+  assert.deepEqual(summary.relationsWithPendingEvidence,Array.from({length:102},(_,i)=>i+1));assert.equal(summary.details.length,100);
+  for(const detail of summary.details){assert.equal(detail.pending.status,'partial');assert.equal(detail.pending.unresolved.length,20);assert.equal(detail.pending.unresolvedCount,60);assert.equal(detail.retainedAccepted,false);}
+});
+test('inactive declaration: shared active service retains exact decoded properties, picking identity and bundle slot',async()=>{
+  const inactive=accepted([old,result({base:NEW,version:2,tags:{name:'',ref:''}})]);
+  const onlySecond=response({base:NEW});onlySecond.elements=onlySecond.elements.filter(e=>e.type!=='relation'||e.id===2);
+  const expected=accepted([toTable(onlySecond)]);
+  assert.deepEqual(visible(inactive),visible(expected));assert.deepEqual([...buildTiles(inactive)],[...buildTiles(expected)]);
+  assert.equal(inactive.routes.size,2);assert.equal(expected.routes.size,1);
+  const headways=JSON.parse(await readFile('styles/service-headways.json','utf8'));
+  const actualFrequency=buildTiles(inactive,{headways});assert.deepEqual([...actualFrequency],[...buildTiles(expected,{headways})]);
+  const tile=new VectorTile(new Pbf(actualFrequency.values().next().value)).layers[LAYER];
+  assert.equal(tile.feature(0).properties.frequency_width_am,3.5,'unmatched active service keeps the unknown-frequency width');
 });

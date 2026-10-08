@@ -158,3 +158,22 @@ test('relation acquisition: a complete refresh during a dependency gap can recov
   assert.equal(savedState.stages.japan.geometry.status, 'complete'); assert.equal(savedState.stages.japan.geometry.retry, null);
   assert.equal(savedState.stages.japan.geometry.lastFailure, null); assert.equal(savedState.stages.japan.geometry.attempts, 4);
 }));
+
+test('inactive acquisition: published active totals differ from retained source declarations and frequency rebuild agrees',async()=>fixture(async run=>{
+  const body=response('07'),first=body.elements[0];
+  body.elements.unshift({...first,id:2,tags:{...first.tags,name:'Two',ref:'2'}});
+  first.tags={...first.tags,name:'',ref:''};
+  const result=await run([{body}]),manifest=await result.read('manifest.json'),savedState=await result.read('state.json');
+  assert.equal(manifest.routes,1);assert.equal(manifest.retainedRelations,2);
+  assert.equal(manifest.stages.find(s=>s.name==='japan').routes,1);assert.equal(manifest.stages.find(s=>s.name==='japan').retainedRelations,2);
+  assert.equal(savedState.stages.japan.routes,1);assert.equal(savedState.stages.japan.retainedRelations,2);
+  assert.equal(savedState.stages.japan.geometry.relationCounts.complete,2);
+  assert.deepEqual(manifest.geometry.routeRelationsWithoutGeometry,[]);
+  assert.match(result.stdout,/1 active routes .*2 retained declarations/);
+  const directory=join(result.root,'service-data'),raw=await readFile(join(directory,'service-routes.ndjson.gz'));
+  const table=readTable(gunzipSync(raw).toString());assert.equal(table.routes.size,2);assert.equal(table.ways.size,1);
+  const rebuild=spawnSync(process.execPath,['scripts/rebuild-service-frequency.mjs',directory,join(result.root,'credits.html'),'--fixtures'],{encoding:'utf8'});
+  assert.equal(rebuild.status,0,rebuild.stderr);
+  assert.deepEqual(JSON.parse(await readFile(join(directory,'frequency-manifest.json'),'utf8')).geometry,manifest.geometry);
+  assert.deepEqual(await readFile(join(directory,'service-routes.ndjson.gz')),raw);
+}));
