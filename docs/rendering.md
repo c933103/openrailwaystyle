@@ -23,6 +23,45 @@ Layer metadata declares groups, view restrictions, setting requirements, backgro
 
 The migration regression manifest in `tests/fixtures/style-composition-baseline.json` records ordered layer hashes, source hashes and root rendering settings. Changes to paint, filters, zoom limits, label placement, embedded station data or ordering require deliberate review and baseline updates; `atlas:*` metadata and the project description are excluded. Browser checks complement this definition-level comparison with actual rendering. The initial refactor preserves the reviewed Infrastructure integration's cartography.
 
+## Source availability and z7 handoff
+
+Main-line railway geometry comes from OpenRailwayMap's live vector service, not
+from the Atlas's regional branch-line snapshot. In all operating-rail views the
+simplified overview runs below zoom 7; at zoom 7 the renderer switches to the
+provider's `railway_line_high` tiles. The branch-line snapshot instead supplies
+branch lines at zooms 4–6 and subway lines at zooms 7–9. Its presence does not
+prove the live main-line source is available.
+
+An upstream HTTP 520 or network failure can therefore hide rails even while the
+basemap, regional station symbols and Atlas snapshot layers remain visible.
+A loaded source is not proof it contains track geometry. The browser map check
+inspects actual Wuhan `speed-tracks` rendered features at zoom 7, not just
+`isSourceLoaded`.
+
+Known OpenRailwayMap XYZ source metadata is resolved locally, so hidden views
+no longer need their own external TileJSON request. Actual tile errors are not
+converted to empty success. The shared request pool limits transfers to six
+concurrent requests overall and four per origin, shares same-URL work, cancels
+obsolete queued tiles and gives visible geometry priority over derived counts.
+Timeouts apply to the transport, starting only when it gets a network slot;
+late readers cannot keep a stalled transport running indefinitely. Underzoom
+station children load concurrently through the same bounds. See
+[loading investigation](investigations/rail-loading-20261007.md).
+
+Failed visible tiles are retried at their own coordinates with capped backoff
+(5, 15, 45, 120, then 300 seconds), without discarding healthy tiles or polling
+a separate metadata endpoint. A settled source is not proof of success:
+recovery requires the particular tile to load. Hidden/offline tabs pause,
+and obsolete source/view failures are discarded. Genuine metadata failures
+still reload their source metadata. Access errors such as HTTP 403/404 are
+not treated as transient outages.
+
+Major railway strokes remain a full CSS pixel at the world scale, including
+negative camera zoom. The renderer already clamps negative camera zoom to
+zoom-0 tiles; the regression checks actual geometry at -0.1, 0 and 0.1 in
+both projections and every rail view. These changes neither remove More
+detail nor supply an independent worldwide fallback during a provider outage.
+
 ## Speed and units
 
 Maximum-speed colouring uses eight bands plus an explicit unknown category.

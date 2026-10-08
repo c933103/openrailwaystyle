@@ -14,7 +14,8 @@ export function createRailwayLayers() {
     hasService, INFRASTRUCTURE[5][0],
     ['==', ['get', 'usage'], 'branch'], INFRASTRUCTURE[2][0], INFRASTRUCTURE[1][0]];
   const electricPaint = electrificationPaint();
-  const width = ['interpolate', ['linear'], ['zoom'], 0, 0.6, 4, 1.15, 7, 1.8, 11, 2.6, 16, 4.5, 20, 7];
+  // World-scale railways need a full CSS pixel, including negative camera zoom.
+  const width = ['interpolate', ['linear'], ['zoom'], 0, 1, 4, 1.15, 7, 1.8, 11, 2.6, 16, 4.5, 20, 7];
   const line = (id, source, sourceLayer, minzoom, maxzoom, paint, extra = {}) => ({
     id, type: 'line', source, 'source-layer': sourceLayer, minzoom, ...(maxzoom === undefined ? {} : {maxzoom}),
     filter: ['all', present, notFerry, ...(source === 'railway' || source === 'ownerRail' || source === 'axleRail' ? [byKindZoom] : [])], layout: { 'line-cap': 'round', 'line-join': 'round' },
