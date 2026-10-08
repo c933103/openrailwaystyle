@@ -30,17 +30,15 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 CATALOGUE = 'https://raw.githubusercontent.com/public-transport/transitous/main/website/data/license.json'
 PROCESSED = 'https://api.transitous.org/gtfs/'
-# These data licences permit redistribution of derived data. Other entries
-# remain in the inventory, with a reason; the licence is never inferred from
-# the fact that a download is public. URL-only licences need an explicit rule.
-LICENSES = {'CC0-1.0', 'CC-BY-1.0', 'CC-BY-2.5', 'CC-BY-3.0', 'CC-BY-4.0',
-            'CC-BY-SA-4.0', 'ODbL-1.0', 'ODC-By-1.0', 'OGL-UK-3.0',
-            'etalab-2.0', 'NLOD-1.0', 'MIT', 'LicenseRef-MTA-Data', 'LicenseRef-MassDOT-Developers'}
+# Usage eligibility is decided from recorded source terms, not an SPDX whitelist.
 EXCLUDED = {'CN', 'RU', 'IR', 'KP'}
 PROFILES = json.loads((ROOT/'styles/data-src/frequency-source-rules.json').read_text())['profiles']
 spec = importlib.util.spec_from_file_location('gtfs_frequency', ROOT/'scripts/gtfs-frequency.py')
 compiler = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(compiler)
+catalogue_spec = importlib.util.spec_from_file_location('frequency_catalogue', ROOT/'scripts/frequency_catalogue.py')
+registry = importlib.util.module_from_spec(catalogue_spec)
+catalogue_spec.loader.exec_module(registry)
 
 
 def atomic_json(path, value):
@@ -66,7 +64,8 @@ def source_id(row):
 def blocked(row):
     if row.get('country_code') in EXCLUDED:
         return 'excluded provider jurisdiction'
-    for value in [row.get('source', ''), row.get('publisher', {}).get('url', '')]:
+    publisher = row.get('publisher') or {}
+    for value in [row.get('source') or '', publisher.get('url', '') if isinstance(publisher, dict) else '']:
         host = (urlparse(value).hostname or '').lower()
         if any(host.endswith('.'+code.lower()) for code in EXCLUDED):
             return 'excluded provider domain'
@@ -74,13 +73,17 @@ def blocked(row):
 
 
 def discover(rows, rules):
-    """Stable IDs and all outcomes; rules add licences, never select cities."""
+    """Inventory each normalized feed; unknown catalogue rights are not denials."""
     out, seen = [], set()
     for original in rows:
         row = dict(original)
         rule = rules.get('sources', {}).get(row.get('filename'), {})
         if rule and rule.get('expected_source') == row.get('source'):
-            row.update({key: value for key,value in rule.items() if key!='expected_source'})
+            row.update({key: value for key, value in rule.items() if key != 'expected_source'})
+            evidence = registry.licence_evidence(rule, 'source-specific-reviewed-rule',
+                                                  'styles/data-src/frequency-source-rules.json')
+            if evidence:
+                row['rights_evidence'] = list(row.get('rights_evidence') or []) + [evidence]
         try:
             ident = source_id(row)
         except ValueError:
@@ -88,13 +91,23 @@ def discover(rows, rules):
         if ident in seen:
             raise ValueError('Duplicate catalogue ID '+ident)
         seen.add(ident)
-        reason = blocked(row)
-        if not reason and row.get('spdx_license_identifier') not in LICENSES:
-            reason = 'redistribution licence needs review'
-        out.append({'id': ident, 'status': 'excluded' if reason else 'pending',
-                    'reason': reason or '', 'country': row.get('country_code', ''),
+        rights = registry.usage_rights(row)
+        policy_reason = blocked(row)
+        if policy_reason:
+            status, reason, reason_code = 'excluded', policy_reason, 'provider_policy'
+        elif rights['prohibitions']:
+            status, reason_code = 'excluded', 'source_terms_prohibit_derived_use'
+            reason = '; '.join(item['basis'] for item in rights['prohibitions'])
+        elif row.get('delivery') == 'direct' and not row.get('source'):
+            status, reason, reason_code = 'failed', 'No published GTFS download URL', 'missing_source_url'
+        else:
+            status, reason, reason_code = 'pending', '', ''
+        out.append({'id': ident, 'status': status, 'reason': reason,
+                    'reason_code': reason_code, 'terms': rights,
+                    'country': row.get('country_code', ''),
                     'name': row.get('human_name', ident), 'catalogue': row,
-                    'processed_url': PROCESSED+quote(row['filename'])})
+                    'processed_url': (row.get('source', '') if row.get('delivery') == 'direct'
+                                      else PROCESSED+quote(row['filename']))})
     return sorted(out, key=lambda x: x['id'])
 
 
@@ -290,7 +303,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     signature=hashlib.sha256(json.dumps({'catalogue':row,'profiles':profiles,
         'graph':file_hash(str(graph)) if graph else None,
-        'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['global-service-frequency.py','gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()
+        'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['global-service-frequency.py','frequency_catalogue.py','gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()
     destination = output/'feeds'/(ident+'.json.gz')
     if destination.exists():
         with gzip.open(destination, 'rt') as file:
@@ -302,11 +315,17 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
                     'rail_routes': len(previous['routes']), 'mapped_segments': len(previous['segments']),
                     'unmapped_segments': len(previous.get('unmapped_segments', [])), 'source': previous['source']}
         del previous  # stale national output must not coexist with recompilation.
-    config = {'source': {'id': ident, 'name': entry['name'], 'url': row['source'],
-               'processed_url': entry['processed_url'], 'catalogue_url': CATALOGUE,
-               'license': row['spdx_license_identifier'],
-               'terms_url': row.get('license_url') or f"https://spdx.org/licenses/{row['spdx_license_identifier']}.html",
-               'attribution': row.get('attribution_text') or row.get('publisher', {}).get('name') or entry['name'],
+    publisher = row.get('publisher') if isinstance(row.get('publisher'), dict) else {}
+    rights = entry['terms']
+    spdx = row.get('spdx_license_identifier') or (rights['spdx_identifiers'][0] if len(rights['spdx_identifiers']) == 1 else '')
+    terms_url = row.get('license_url') or (rights['terms_urls'][0] if rights['terms_urls'] else '')
+    if not terms_url and spdx and spdx.startswith(('CC-', 'MIT', 'ODbL-', 'OGL-')):
+        terms_url = 'https://spdx.org/licenses/'+quote(spdx)+'.html'
+    config = {'source': {'id': ident, 'name': entry['name'], 'url': row.get('source') or entry['processed_url'],
+               'processed_url': entry['processed_url'], 'catalogue_url': row.get('catalogue_url') or CATALOGUE,
+               'license': spdx, 'terms_url': terms_url, 'rights': rights,
+               'catalogue_lineage': row.get('lineage', []),
+               'attribution': row.get('attribution_text') or publisher.get('name') or entry['name'],
                'catalogue_attribution': row, 'retrieved': meta['retrieved'], 'checked': meta['checked'],
                'rail_graph_sha256': file_hash(str(graph)) if graph else None,
                'country': entry['country'], 'region': row.get('country_name', entry['country']),
