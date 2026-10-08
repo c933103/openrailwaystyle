@@ -193,10 +193,19 @@ def fetch_alternative(entry, path, max_bytes, skip=()):
             continue
         try:
             remote = RemoteZip(url, max_bytes)
+            # Keep the cheap preflight: bus-only GTFS must not download its
+            # entire stop_times/shapes archive or consume a compile slot.
+            import csv
+            routes = csv.DictReader(io.StringIO(remote.table('routes.txt').decode('utf-8-sig')))
+            if not any(compiler.rail_type(row['route_type']) for row in routes):
+                return {
+                    'no_rail': True, 'download_url': url,
+                    'etag': remote.etag, 'last_modified': remote.last_modified,
+                    'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()
+                }, attempts
             with zipfile.ZipFile(io.BytesIO(remote.download())) as archive:
                 if 'routes.txt' not in archive.namelist():
                     raise ValueError('Missing routes.txt')
-                archive.getinfo('routes.txt')
             data = remote.full
             temporary = path.with_suffix('.download.tmp')
             temporary.write_bytes(data)
@@ -396,6 +405,9 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
             raise SourceRetrievalError(attempts + error.attempts) from error
     if attempts:
         meta['recovered_source_errors'] = attempts
+    if meta.get('no_rail'):
+        (output/'feeds'/(ident+'.json.gz')).unlink(missing_ok=True)
+        return {**entry, 'status': 'no_rail', 'rail_routes': 0}
     # Reinspect changed conditional 200 responses and cached 304 revisions.
     with zipfile.ZipFile(path) as archive:
         has_rail=any(compiler.rail_type(r['route_type']) for r in compiler.read(archive,'routes.txt'))
