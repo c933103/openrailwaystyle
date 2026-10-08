@@ -185,14 +185,15 @@ def source_attempt(url, error):
     return {'url': url, 'code': code, 'message': str(error)[:350]}
 
 
-def valid_cached_archive(path, meta, max_age_days=30):
+def valid_cached_archive(path, meta, candidates, max_age_days=30):
     """Use last successfully fetched source while temporarily offline.
 
     Do not allow a failed refresh to extend source verification. Service dates
     are still checked by the ordinary compiler, not presumed from ZIP age.
     """
     checked = meta.get('checked') or meta.get('retrieved')
-    if not checked or not path.is_file():
+    if (not checked or not path.is_file()
+            or meta.get('download_url') not in candidates):
         return False
     try:
         last_success = dt.date.fromisoformat(checked)
@@ -414,6 +415,8 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
             if error.code == 304:
                 error.close()
                 meta['download_url'] = cached_url
+                meta.pop('offline_cached', None)
+                meta.pop('recovered_source_errors', None)
                 fresh = True
             else:
                 attempted.add(cached_url)
@@ -427,7 +430,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
             attempts.extend(more_attempts)
         except SourceRetrievalError as error:
             attempts.extend(error.attempts)
-            if valid_cached_archive(path, meta):
+            if valid_cached_archive(path, meta, source_candidates(entry)):
                 # Continue compiling using the last successfully retrieved
                 # ZIP. Never advance its 'checked' or 'retrieved' timestamps.
                 meta['offline_cached'] = True
