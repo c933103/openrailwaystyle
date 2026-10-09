@@ -8,6 +8,7 @@ download. Raw ZIPs are a cache, not site assets. No Overpass requests are made.
 """
 import argparse
 from collections import Counter
+import csv
 import datetime as dt
 from email.utils import parsedate_to_datetime
 import gzip
@@ -31,6 +32,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qsl, quote, unquote, urlencode, urljoin, urlparse, urlunparse
 from urllib.request import Request
 import zipfile
+import zlib
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOGUE = 'https://raw.githubusercontent.com/public-transport/transitous/main/website/data/license.json'
@@ -513,6 +515,48 @@ def source_attempt(url, error):
             'code': code, 'message': message}
 
 
+def routes_have_rail(data):
+    """Validate every route before choosing a source or retiring rail coverage.
+
+    A rail row is not permission to short-circuit validation of later rows.
+    Malformed metadata stays a retriable source failure, including on refresh.
+    """
+    try:
+        routes = csv.DictReader(io.StringIO(data.decode('utf-8-sig')), strict=True)
+        if not {'route_id', 'route_type'}.issubset(routes.fieldnames or []):
+            raise ValueError('Missing routes.txt route_id or route_type column')
+        has_rail = False
+        for number, row in enumerate(routes, 1):
+            if number > compiler.MAX_TABLE_ROWS:
+                raise ValueError('Routes metadata exceeds row budget')
+            if not (row.get('route_id') or '').strip():
+                raise ValueError('Missing routes.txt route_id value')
+            rail = compiler.rail_type(row.get('route_type') or '')
+            has_rail = has_rail or rail
+        return has_rail
+    except csv.Error:
+        raise ValueError('Invalid routes.txt CSV metadata') from None
+
+
+def archive_metadata(archive, name):
+    """Normalize only ZIP-member decoding failures into source failures."""
+    try:
+        info = archive.getinfo(name)
+    except KeyError:
+        raise ValueError('Missing '+name) from None
+    if info.file_size > 128_000_000:
+        raise ValueError('Metadata table exceeds budget')
+    try:
+        return archive.read(info)
+    except (RuntimeError, NotImplementedError, zlib.error):
+        raise ValueError('Unreadable ZIP metadata') from None
+
+
+def archive_has_rail(archive):
+    """Use the same bounded metadata validation for full and cached ZIPs."""
+    return routes_have_rail(archive_metadata(archive, 'routes.txt'))
+
+
 def valid_cached_archive(path, meta, candidates, max_age_days=30):
     """Use last successfully fetched source while temporarily offline.
 
@@ -529,7 +573,7 @@ def valid_cached_archive(path, meta, candidates, max_age_days=30):
         if delta < 0 or delta > max_age_days:
             return False
         with zipfile.ZipFile(path) as archive:
-            return 'routes.txt' in archive.namelist()
+            return archive_has_rail(archive)
     except (ValueError, OSError, zipfile.BadZipFile):
         return False
 
@@ -548,11 +592,7 @@ def fetch_alternative(entry, path, max_bytes, skip=()):
             remote = RemoteZip(url, max_bytes, policy=lambda target: source_policy(entry, target))
             # Keep the cheap preflight: bus-only GTFS must not download its
             # entire stop_times/shapes archive or consume a compile slot.
-            import csv
-            routes = csv.DictReader(io.StringIO(remote.table('routes.txt').decode('utf-8-sig')))
-            if 'route_type' not in (routes.fieldnames or []):
-                raise ValueError('Missing routes.txt route_type column')
-            if not any(compiler.rail_type(row.get('route_type') or '') for row in routes):
+            if not routes_have_rail(remote.table('routes.txt')):
                 return {
                     'no_rail': True, 'download_url': redacted_source_url(url),
                     'download_url_sha256': source_url_fingerprint(url),
@@ -560,8 +600,8 @@ def fetch_alternative(entry, path, max_bytes, skip=()):
                     'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()
                 }, attempts
             with zipfile.ZipFile(io.BytesIO(remote.download())) as archive:
-                if 'routes.txt' not in archive.namelist():
-                    raise ValueError('Missing routes.txt')
+                if not archive_has_rail(archive):
+                    raise ValueError('Rail metadata changed during full download')
             data = remote.full
             temporary = path.with_suffix('.download.tmp')
             temporary.write_bytes(data)
@@ -659,13 +699,7 @@ class RemoteZip:
     def table(self, name):
         if self.full is not None:
             with zipfile.ZipFile(io.BytesIO(self.full)) as archive:
-                try:
-                    info = archive.getinfo(name)
-                except KeyError:
-                    raise ValueError('Missing '+name) from None
-                if info.file_size > 128_000_000:
-                    raise ValueError('Metadata table exceeds budget')
-                return archive.read(name)
+                return archive_metadata(archive, name)
         if self.directory is None:
             self.download()
             return self.table(name)
@@ -683,9 +717,11 @@ class RemoteZip:
             raise ValueError('Encrypted feed')
         data = self.range(start+30+name_len+extra_len, start+30+name_len+extra_len+length-1)
         if method == 8:
-            import zlib
             inflater = zlib.decompressobj(-15)
-            data = inflater.decompress(data, expanded+1)
+            try:
+                data = inflater.decompress(data, expanded+1)
+            except zlib.error:
+                raise ValueError('Unreadable ZIP metadata') from None
             if inflater.unconsumed_tail or not inflater.eof:
                 raise ValueError('Metadata expansion exceeds declared budget')
         elif method != 0:
@@ -751,8 +787,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
                 # Never replace a previously usable ZIP with an error page or
                 # malformed archive returned as HTTP 200.
                 with zipfile.ZipFile(io.BytesIO(data)) as archive:
-                    if 'routes.txt' not in archive.namelist():
-                        raise ValueError('Missing routes.txt')
+                    archive_has_rail(archive)
                 temporary = path.with_suffix('.download.tmp')
                 temporary.write_bytes(data)
                 temporary.replace(path)
@@ -764,11 +799,20 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
         except HTTPError as error:
             if error.code == 304:
                 error.close()
-                meta['download_url'] = redacted_source_url(cached_url)
-                meta['download_url_sha256'] = source_url_fingerprint(cached_url)
-                meta.pop('offline_cached', None)
-                meta.pop('recovered_source_errors', None)
-                fresh = True
+                try:
+                    # A validator confirms origin identity, not that an older
+                    # local cache passed today's complete metadata checks.
+                    if not meta.get('no_rail'):
+                        with zipfile.ZipFile(path) as archive:
+                            archive_has_rail(archive)
+                    meta['download_url'] = redacted_source_url(cached_url)
+                    meta['download_url_sha256'] = source_url_fingerprint(cached_url)
+                    meta.pop('offline_cached', None)
+                    meta.pop('recovered_source_errors', None)
+                    fresh = True
+                except (OSError, ValueError, zipfile.BadZipFile) as invalid:
+                    attempted.add(cached_url)
+                    attempts.append(source_attempt(cached_url, invalid))
             else:
                 attempted.add(cached_url)
                 attempts.append(source_attempt(cached_url, error))
@@ -806,7 +850,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
         return {**entry, 'status': 'no_rail', 'rail_routes': 0}
     # Reinspect changed conditional 200 responses and cached 304 revisions.
     with zipfile.ZipFile(path) as archive:
-        has_rail=any(compiler.rail_type(r['route_type']) for r in compiler.read(archive,'routes.txt'))
+        has_rail=archive_has_rail(archive)
     if not meta.get('offline_cached'):
         meta['checked'] = dt.datetime.now(dt.timezone.utc).date().isoformat()
     atomic_json(meta_path, meta)

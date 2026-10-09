@@ -4,6 +4,7 @@ import importlib.util
 import io
 import json
 import socket
+import struct
 import sys
 from pathlib import Path
 import tempfile
@@ -286,7 +287,10 @@ class GlobalFrequency(unittest.TestCase):
         valid=self.archive()
         for ranges in [False,True]:
             for name,table in [('missing-table',None),('missing-column',b'route_id,route_short_name\nr,R\n'),
-                               ('missing-value',b'route_id,route_type\nr\n')]:
+                               ('missing-value',b'route_id,route_type\nr\n'),
+                               ('later-missing-value',b'route_id,route_type\nr,2\ns\n'),
+                               ('later-invalid-value',b'route_id,route_type\nr,2\ns,invalid\n'),
+                               ('later-missing-id',b'route_id,route_type\nr,2\n,3\n')]:
                 with self.subTest(ranges=ranges,malformation=name):
                     data=io.BytesIO()
                     with zipfile.ZipFile(io.BytesIO(valid)) as old,zipfile.ZipFile(data,'w') as archive:
@@ -309,6 +313,143 @@ class GlobalFrequency(unittest.TestCase):
                         pipeline.fetch_alternative(direct,cache/'broken.zip',1_000_000)
                     self.assertEqual(error.exception.attempts[0]['code'],'invalid_feed_or_budget')
                     self.assertFalse((cache/'broken.zip').exists(),'unusable metadata is not a successful no-rail cache')
+
+    def routes_archive(self, table):
+        data=io.BytesIO()
+        with zipfile.ZipFile(io.BytesIO(self.archive())) as old,zipfile.ZipFile(data,'w') as archive:
+            for item in old.infolist():
+                archive.writestr(item,table if item.filename=='routes.txt' else old.read(item.filename))
+        return data.getvalue()
+
+    def test_conditional_malformed_routes_keep_good_cache_and_try_fallback(self):
+        malformed=self.routes_archive(b'route_id,route_type\nr,2\ns,invalid\n')
+        for fallback_available in [True,False]:
+            with self.subTest(fallback_available=fallback_available):
+                processed,held=self.server(self.archive())
+                original,_=self.server(self.archive())
+                entry=pipeline.discover([{'filename':'refresh.gtfs.zip','source':original if fallback_available else processed,
+                                         'country_code':'CA'}],{})[0]
+                entry['processed_url']=processed
+                cache=self.root/f'refresh-{fallback_available}';cache.mkdir()
+                output=self.root/f'refresh-output-{fallback_available}'
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                archive=cache/'refresh.zip';old=archive.read_bytes()
+                meta_path=cache/'refresh.meta.json';meta=json.loads(meta_path.read_text())
+                yesterday=(pipeline.dt.datetime.now(pipeline.dt.timezone.utc).date()-pipeline.dt.timedelta(days=1)).isoformat()
+                meta['retrieved']=meta['checked']=yesterday;meta_path.write_text(json.dumps(meta))
+                destination=output/'feeds/refresh.json.gz'
+                with gzip.open(destination,'rt') as file:previous=json.load(file)
+                previous['source']['retrieved']=previous['source']['checked']=yesterday
+                pipeline.write_feed(destination,previous)
+                held['data']=malformed;held['etag']='"two"'
+                result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                self.assertEqual(result['status'],'compiled')
+                self.assertEqual(archive.read_bytes(),old,'invalid refresh never replaces the last good archive')
+                self.assertEqual(result['source']['recovered_source_errors'][0]['code'],'invalid_feed_or_budget')
+                if fallback_available:
+                    self.assertEqual(result['source']['download_url_sha256'],pipeline.source_url_fingerprint(original))
+                    self.assertFalse(result['source']['offline_cached'])
+                else:
+                    self.assertTrue(result['source']['offline_cached'])
+                    self.assertEqual(result['source']['retrieved'],yesterday)
+                    self.assertEqual(result['source']['checked'],yesterday)
+                    # Once that last valid cache expires the source is still a
+                    # retriable failure, never a successful no-rail outcome.
+                    meta=json.loads(meta_path.read_text());meta['checked']='2020-01-01'
+                    meta_path.write_text(json.dumps(meta))
+                    with self.assertRaises(pipeline.SourceRetrievalError) as error:
+                        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                    self.assertIn('invalid_feed_or_budget',{x['code'] for x in error.exception.attempts})
+                    self.assertEqual(archive.read_bytes(),old)
+
+    def test_bad_cached_metadata_on_304_uses_alternative_or_remains_failure(self):
+        malformed=self.routes_archive(b'route_id,route_type\nr,2\ns,invalid\n')
+        for fallback_available in [True,False]:
+            with self.subTest(fallback_available=fallback_available):
+                processed,held=self.server(self.archive())
+                original,_=self.server(self.archive())
+                entry=pipeline.discover([{'filename':'cached.gtfs.zip','source':original if fallback_available else processed,
+                                         'country_code':'CA'}],{})[0]
+                entry['processed_url']=processed
+                cache=self.root/f'cached-{fallback_available}';cache.mkdir()
+                output=self.root/f'cached-output-{fallback_available}'
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                path=cache/'cached.zip';path.write_bytes(malformed)
+                meta=json.loads((cache/'cached.meta.json').read_text())
+                self.assertFalse(pipeline.valid_cached_archive(path,meta,pipeline.source_candidates(entry)))
+                if fallback_available:
+                    result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                    self.assertEqual(result['status'],'compiled')
+                    self.assertEqual(result['source']['download_url_sha256'],pipeline.source_url_fingerprint(original))
+                    self.assertEqual(result['source']['recovered_source_errors'][0]['code'],'invalid_feed_or_budget')
+                else:
+                    with self.assertRaises(pipeline.SourceRetrievalError):
+                        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                    self.assertEqual(json.loads((cache/'cached.meta.json').read_text()),meta)
+                self.assertIn(('"one"',None),held['conditional_requests'])
+
+    def test_full_download_routes_are_revalidated_after_range_preflight(self):
+        valid=self.archive()
+        malformed=self.routes_archive(b'route_id,route_type\nr,2\ns,invalid\n')
+        entry=pipeline.discover([{'filename':'revision.gtfs.zip','source':'https://fixture.example/feed.zip',
+                                 'country_code':'CA','delivery':'direct'}],{})[0]
+        class ChangedRemote:
+            etag='"one"';last_modified=None;full=malformed
+            def __init__(self,*args,**kwargs):pass
+            def table(self,name):
+                with zipfile.ZipFile(io.BytesIO(valid)) as archive:return archive.read(name)
+            def download(self):return self.full
+        path=self.root/'changed.zip'
+        with patch.object(pipeline,'RemoteZip',ChangedRemote):
+            with self.assertRaises(pipeline.SourceRetrievalError):
+                pipeline.fetch_alternative(entry,path,1_000_000)
+        self.assertFalse(path.exists())
+
+    def undecodable_archive(self, kind):
+        data=bytearray(self.archive())
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            info=archive.getinfo('routes.txt');local=info.header_offset
+        central=0
+        while True:
+            central=data.index(b'PK\x01\x02',central)
+            name_len=struct.unpack_from('<H',data,central+28)[0]
+            if data[central+46:central+46+name_len]==b'routes.txt':break
+            central+=46+name_len
+        if kind=='encrypted':
+            for offset in [local+6,central+8]:
+                flags=struct.unpack_from('<H',data,offset)[0]
+                struct.pack_into('<H',data,offset,flags|1)
+        elif kind=='unsupported':
+            for offset in [local+8,central+10]:struct.pack_into('<H',data,offset,99)
+        else:
+            name_len,extra_len=struct.unpack_from('<HH',data,local+26)
+            data[local+30+name_len+extra_len]=7  # Invalid deflate block type.
+        return bytes(data)
+
+    def test_zip_metadata_decode_failures_reach_fallback_without_replacing_cache(self):
+        for kind in ['encrypted','unsupported','deflate']:
+            malformed=self.undecodable_archive(kind)
+            for mode in ['whole','ranged','conditional']:
+                with self.subTest(kind=kind,mode=mode):
+                    processed,held=self.server(self.archive() if mode=='conditional' else malformed,ranges=mode!='whole')
+                    original,_=self.server(self.archive())
+                    entry=pipeline.discover([{'filename':'decode.gtfs.zip','source':original,'country_code':'CA'}],{})[0]
+                    entry['processed_url']=processed
+                    cache=self.root/f'decode-{kind}-{mode}';cache.mkdir()
+                    output=self.root/f'decode-out-{kind}-{mode}'
+                    if mode=='conditional':
+                        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                        old=(cache/'decode.zip').read_bytes()
+                        held['data']=malformed;held['etag']='"two"'
+                    result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                    self.assertEqual(result['status'],'compiled')
+                    self.assertEqual(result['source']['download_url_sha256'],pipeline.source_url_fingerprint(original))
+                    self.assertEqual(result['source']['recovered_source_errors'][0]['code'],'invalid_feed_or_budget')
+                    if mode=='conditional':self.assertEqual((cache/'decode.zip').read_bytes(),old)
+                    direct=pipeline.discover([{'filename':'bad.gtfs.zip','source':processed,'country_code':'CA','delivery':'direct'}],{})[0]
+                    with self.assertRaises(pipeline.SourceRetrievalError):
+                        pipeline.fetch_alternative(direct,cache/'bad.zip',1_000_000)
+                    self.assertFalse((cache/'bad.zip').exists())
 
     def test_lineage_fallback_enforces_domains_and_exact_source_review_before_fetch(self):
         from urllib.error import HTTPError
