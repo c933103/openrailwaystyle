@@ -160,18 +160,43 @@ const detailRunPattern = separators => new RegExp(`${DETAIL_CJK_CHARACTER}(?:${D
 // by another CJK character. Latin letters and line breaks remain boundaries.
 const DETAIL_GLYPH_RUNS = detailRunPattern(String.raw`[\p{Punctuation}\p{Space_Separator}\p{Number}]`);
 const DETAIL_GLYPH_WORDS = detailRunPattern(String.raw`[\p{Punctuation}\p{Number}\u3000]`);
+const DETAIL_LANGUAGE_HINTS = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}]/gu;
+const DETAIL_CONNECTORS = /[\p{Punctuation}\p{Space_Separator}\p{Number}]+/gu;
 const detailGlyphHints = text => [
   /[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(text) && 'ja',
   /\p{Script=Hangul}/u.test(text) && 'ko',
   /\p{Script=Bopomofo}/u.test(text) && 'zh-TW',
 ].filter(Boolean);
 const detailGlyphLanguage = text => detailGlyphHints(text)[0] || CANVAS_LANG[cjkScript(settings.language)];
+function splitDetailGlyphLanguages(run) {
+  if (detailGlyphHints(run[0]).length < 2) return [run];
+  const parts = [];
+  let start = 0, previousEnd = 0, previousLanguage;
+  const append = end => {
+    const part = [run[0].slice(start, end)]; part.index = run.index + start; parts.push(part);
+  };
+  for (const hint of run[0].matchAll(DETAIL_LANGUAGE_HINTS)) {
+    const language = detailGlyphLanguage(hint[0]);
+    if (previousLanguage && language !== previousLanguage) {
+      const gap = run[0].slice(previousEnd, hint.index);
+      const connectors = [...gap.matchAll(DETAIL_CONNECTORS)];
+      // A slash/semicolon separates aliases. Otherwise the first connector
+      // keeps the next name's leading Han with its identified language.
+      const separator = connectors.find(part => /[\/／;；]/u.test(part[0])) || connectors[0];
+      const end = separator ? previousEnd + separator.index : hint.index;
+      append(end);
+      start = separator ? end + separator[0].length : hint.index;
+    }
+    previousEnd = hint.index + hint[0].length; previousLanguage = language;
+  }
+  append(run[0].length); return parts;
+}
 function detailGlyphRuns(text) {
   return [...text.matchAll(DETAIL_GLYPH_RUNS)].flatMap(run => {
     if (detailGlyphHints(run[0]).length < 2) return [run];
     // Several identifiable languages in one value are separate names; do
     // not merge them through ordinary spaces and choose one arbitrarily.
-    return [...run[0].matchAll(DETAIL_GLYPH_WORDS)].map(word => {word.index += run.index; return word;});
+    return [...run[0].matchAll(DETAIL_GLYPH_WORDS)].flatMap(word => {word.index += run.index; return splitDetailGlyphLanguages(word);});
   });
 }
 const detailFontObserver = new MutationObserver(updateDetailGlyphs);

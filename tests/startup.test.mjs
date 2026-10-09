@@ -318,6 +318,20 @@ test('English and local infoboxes scope script languages to CJK runs and preserv
     assert.deepEqual([...spacedHeading.querySelectorAll('[data-cjk-glyphs]')].map(span=>[span.textContent,span.lang]),[[name,scriptLanguage]],`${name}: internal spaces and numbers keep a name in one identified language`);
     assert.equal(spacedHeading.closest('[lang]')?.lang,'en','only the name span carries the script language');
    }
+   for(const [name,names] of [
+    ['東京・テレポート/서울교통공사',[['東京・テレポート','ja'],['서울교통공사','ko']]],
+    ['東京メトロ;大韓민국',[['東京メトロ','ja'],['大韓민국','ko']]],
+    ['東京メトロ・서울교통공사',[['東京メトロ','ja'],['서울교통공사','ko']]],
+    ['東京メトロ서울교통공사',[['東京メトロ','ja'],['서울교통공사','ko']]],
+    ['서울교통공사/東京・テレポート',[['서울교통공사','ko'],['東京・テレポート','ja']]],
+   ]){
+    station.properties.name=name;map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+    await new Promise(r=>setTimeout(r,0));
+    const mixedHeading=panel.querySelector('h2');
+    assert.equal(mixedHeading.textContent,name,'splitting languages preserves exact punctuation and text');
+    assert.deepEqual([...mixedHeading.querySelectorAll('[data-cjk-glyphs]')].map(span=>[span.textContent,span.lang]),names,`${name}: conflicting script hints keep separate name languages`);
+    assert.equal(mixedHeading.closest('[lang]')?.lang,'en','separators keep the surrounding interface language');
+   }
    station.properties.name='Central';map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
    await new Promise(r=>setTimeout(r,0));
    assert.equal(panel.querySelector('h2').closest('[lang]')?.lang,'en','a Latin-only feature name keeps its inherited language');
