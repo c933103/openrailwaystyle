@@ -48,16 +48,24 @@ Atlas publishes attributed aggregate results, not those archives.
 
 The [worldwide workflow](../.github/workflows/service-frequency.yml) builds
 one reproducible catalogue, runs offline regressions and validates inventory
-eligibility. Main-branch runs compile every entry in eight deterministic
-shards. Pull requests validate the immutable PR head using the existing
+eligibility. Scheduled refreshes run every Monday at **02:41 UTC**; an explicitly
+requested `workflow_dispatch` can refresh earlier, retaining its optional
+`service_date` input. These production events compile every entry in eight
+deterministic shards. Source fixes enter production data at the next scheduled
+or explicitly requested refresh, rather than triggering a full scan on merge.
+Pull requests and relevant main-branch pushes validate immutable PR-head or
+push-commit SHAs using the existing
 compiler, geometry, streaming-reader, inventory/assembly, profile and catalogue
 fixtures. The test process runs as the ordinary runner user in a temporary
 network namespace with only loopback enabled for local HTTP fixtures. It does
 not acquire a live catalogue, download public feeds, restore production caches
 or publish snapshots. Locked dependency installation precedes this process
-and disables package lifecycle scripts. PR-number concurrency supersedes stale
-fixture checks without cancelling a production refresh. Production push,
-scheduled and manual refreshes retain the eight-shard pipeline, budgets,
+and disables package lifecycle scripts. Separate PR-number and push-ref
+concurrency supersedes stale fixture checks without replacing or cancelling a
+queued/running production refresh. Existing path filters remain precise:
+docs/test-only changes can trigger PR fixtures but not the frequency push
+workflow; ordinary site/unit CI is unchanged. Scheduled and explicitly requested
+refreshes retain the eight-shard pipeline, budgets,
 inventory gates and caches. Processing keeps raw GTFS ZIPs in runner caches. Assembled snapshots publish manifest and inventory rather than
 per-feed derived archives; this release is not a substitute for future
 internal route matching, which is tracked in #111. Site maps draw only OSM
@@ -132,13 +140,20 @@ rail services, and this integration does not acquire a fresh catalogue.
 
 ## Resource limits and coverage expansion
 
-A main-branch merge affecting this pipeline starts production acquisition and
-normal site validation; successful aggregate publication then starts another
-site build. PR checks do neither. The October 9 pinned discovery result had
+Relevant main-branch merges run offline frequency validation alongside normal
+site validation, without starting production acquisition. Scheduled or explicitly
+requested refreshes acquire sources; successful aggregate publication starts
+another site build. PR checks never acquire or publish. The October 9 pinned discovery result had
 5,481 pending candidates, compared with 819 non-excluded entries in the older
 2,039-entry run. Those cohorts differ and are not a reconciled rail-coverage
 count. Processing demand can grow materially; fixture-only PR validation and
 retained assembly optimizations do not establish a production load reduction.
+The completed [October 9 refresh](https://github.com/c933103/openrailwaystyle/actions/runs/37929168720)
+used 652.7 compile runner-minutes across eight shards. Separating refresh events
+avoids incidental full scans after source merges; it does not make a scheduled
+scan cheaper. Existing caches and per-operation retries do not persist a
+cross-run retry deadline. Persistent source-failure backoff and origin-wide
+resource budgets remain separate work.
 
 Catalogue acquisition has a 30-minute job ceiling. The Transitous clone and
 sparse materialization each have a 600-second timeout with a 30-second kill
