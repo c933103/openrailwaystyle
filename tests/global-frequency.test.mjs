@@ -7,7 +7,7 @@ const aliasProof=(url,hash=sourceHash(url))=>({schema:1,state:'schedule',specs:[
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {mergeInventories,countOutcomeReasons,pruneFrequencyOutputs,assemble} from '../scripts/assemble-global-frequency.mjs';
-import {mkdtemp,mkdir,writeFile,readdir,rm} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,readdir,rm,readFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 test('worldwide discovery, selective downloads and shapeless data processing',()=>{
@@ -428,6 +428,49 @@ test('alias ownership binds visible resources and recoverable raw hashes',async(
       assert.throws(()=>merge(publicOwner,visible),/Invalid static source alias/);
     }
   }
+});
+
+test('versioned resource syntax has exact Python JavaScript fixture parity',async()=>{
+  const {referenceResourceKey,referenceDisplayUrl,resourceNormalization}=await import('../scripts/frequency-reference-metadata.mjs');
+  const vectors=JSON.parse(await readFile(new URL('./fixtures/service-frequency/resource-syntax-v2.json',import.meta.url),'utf8'));
+  assert.equal(resourceNormalization,vectors.normalization);
+  for(const {url,key} of vectors.canonical)assert.deepEqual(referenceResourceKey(url),key);
+  const urls=[...vectors.canonical.map(x=>x.url),...vectors.pairs.flatMap(x=>[x.a,x.b]),...vectors.invalid];
+  const python=spawnSync('python3',['-c',"import json,sys;sys.path.insert(0,'scripts');import frequency_references as r;print(json.dumps([r.resource_key(x) for x in json.load(sys.stdin)]))"],{input:JSON.stringify(urls),encoding:'utf8'});
+  assert.equal(python.status,0,python.stderr);assert.deepEqual(urls.map(referenceResourceKey),JSON.parse(python.stdout));
+  for(const {a,b,equal} of vectors.pairs){assert.equal(JSON.stringify(referenceResourceKey(a))===JSON.stringify(referenceResourceKey(b)),equal);assert.notEqual(sourceHash(a),sourceHash(b));}
+  for(const url of vectors.invalid)assert.equal(referenceResourceKey(url),null);
+  // The identity helper must not rewrite caller inputs or public display bytes.
+  const raw='https://public.test/a%2fb?region=synthetic-value',display=referenceDisplayUrl(raw);
+  referenceResourceKey(raw);assert.equal(raw,'https://public.test/a%2fb?region=synthetic-value');
+  assert.equal(referenceDisplayUrl(raw),display);assert.match(display,/a%2fb/);
+});
+
+test('resource syntax applies to published alias holds without replacing original identity',async()=>{
+  const {publishedMetadata}=await import('../scripts/assemble-global-frequency.mjs');
+  const {referenceResourceKey,referenceDisplayUrl}=await import('../scripts/frequency-reference-metadata.mjs');
+  const vectors=JSON.parse(await readFile(new URL('./fixtures/service-frequency/resource-syntax-v2.json',import.meta.url),'utf8'));
+  const base={schema:3,shards:1,shard:0,catalogue_entries:2,catalogue_sha256:'fixture'};
+  for(const {a,b,equal} of vectors.pairs){
+    const hash=sourceHash(a),owner={id:'owner',status:'no_rail',catalogue:{delivery:'direct',source:a,source_sha256:hash}};
+    const alias={id:'alias',status:'source_alias',catalogue:{source:a,source_sha256:hash,source_resolution:aliasProof(a,hash)}};
+    alias.catalogue.source_resolution.ordinary_static_declarations=[{type:'http',spec:'gtfs',url:b,url_sha256:sourceHash(b),access_state:'authorization_required',upstream_skip:true,definition:{url:'https://github.test/source.json',pointer:'/sources/1',sha256:'c'.repeat(64)}}];
+    const merge=entries=>mergeInventories([{...base,entries}]);
+    if(equal)assert.throws(()=>merge([owner,alias]),/Invalid static source alias/);
+    else assert.equal(merge([owner,alias]).entries.find(x=>x.id==='alias').status,'source_alias');
+    const uncertain=(a.includes('?')||b.includes('?'))&&JSON.stringify(referenceResourceKey(referenceDisplayUrl(a)))===JSON.stringify(referenceResourceKey(referenceDisplayUrl(b)));
+    const entries=publishedMetadata([owner,alias]);
+    if(equal||uncertain)assert.throws(()=>merge(entries),/Invalid static source alias/);
+    else assert.equal(merge(entries).entries.find(x=>x.id==='alias').status,'source_alias');
+  }
+  const url='https://public.test/a%2fb?region=synthetic-value',hash=sourceHash(url);
+  const owner=publishedMetadata({id:'owner',status:'no_rail',catalogue:{delivery:'direct',source:url,source_sha256:hash}});
+  const alias=publishedMetadata({id:'alias',status:'source_alias',catalogue:{source:url,source_sha256:hash,source_resolution:aliasProof(url,hash)}});
+  alias.catalogue.source=alias.catalogue.source.replace('%2f','%2F');
+  alias.catalogue.source_resolution.declarations[0].resolution.endpoints[0].url=alias.catalogue.source;
+  assert.equal(mergeInventories([{...base,entries:[owner,alias]}]).entries.find(x=>x.id==='alias').status,'source_alias');
+  alias.catalogue.source_sha256='d'.repeat(64);
+  assert.throws(()=>mergeInventories([{...base,entries:[owner,alias]}]),/Invalid static source alias/);
 });
 
 test('alias owner authentication accepts only supported scalar public values',async()=>{

@@ -682,7 +682,8 @@ A held destination is an explicit access-review outcome, not a licence exclusion
 or observed HTTP denial. Independently public alternatives remain available.
 
 Successful reference acquisition writes a bounded internal `request_provenance`
-cache receipt (schema 1): candidate fingerprint, terminal resource fingerprint,
+cache receipt (schema 2, `resource_normalization: http-resource-syntax-v2`):
+candidate fingerprint, terminal resource fingerprint,
 artifact kind/digest, and at most 64 deduplicated checked hop records. Each record
 contains only a sanitized display URL and exact/resource/visible-resource hashes.
 Reference cache metadata reads have a 1 MiB cap and strict JSON parsing; malformed
@@ -724,3 +725,42 @@ public string/null markers remain supported; booleans, arrays/objects, nonfinite
 and nonzero numbers do not establish a public owner. This check does not rewrite
 owner bytes or change legacy acquisition or reference-proof authentication rules.
 Parsed-value compatibility is not authentication of external metadata.
+
+#### Versioned reference resource identity
+
+Reference holds, cache receipts, terminal validators and alias visible-binding
+checks use the same `http-resource-syntax-v2` comparison contract in Python and
+JavaScript. The ordered steps follow [RFC3986 syntax normalization](https://www.rfc-editor.org/rfc/rfc3986#section-6.2.2)
+and [IPv6 address spelling](https://www.rfc-editor.org/rfc/rfc5952#section-4):
+
+1. Parse the existing supported grammar, retaining scheme/host case normalization,
+   effective-port, trailing-dot and fragment handling. Canonicalize a valid IPv6 literal
+   to compressed lowercase address spelling, without DNS resolution.
+2. Reconstruct the transport's path including nonempty final params. Its existing
+   empty final params delimiter handling stays unchanged.
+3. In one nonrecursive pass over path and query separately, decode only ASCII
+   unreserved percent-encoded octets and uppercase other valid `%HH` triplets.
+   Malformed escapes receive no current resource identity.
+4. Remove only complete `.`/`..` path segments after that pass. Preserve repeated
+   slashes, trailing-slash distinctions and non-dot segments such as `..;x`.
+
+Encoded reserved delimiters stay encoded. `%252f` and `%252F` remain distinct;
+query order, repeated parameter order, `+` versus `%20` and distinct values stay
+distinct. Dot removal never applies to queries. There is no DNS/CNAME or
+provider-specific equivalence. Original URL hashes, request/Host bytes and
+publication displays are unchanged; normalized compatibility alone cannot replace
+the original-hash checks required for alias ownership or establish authenticity.
+
+Schema-1 receipts retain their prior lexical identity rules. Strict old shape,
+candidate/display/hash and artifact validation must pass before compatibility;
+unknown versions/normalizers and malformed receipts remain invalid. Valid old
+receipts are destination-unverified when the row has held static identities.
+Without holds, a valid public historical archive can remain usable offline, but
+does not supply conditional freshness authority, advance `checked`/`retrieved` or
+mint a schema-2 receipt. Fresh checked acquisition establishes the current version.
+Hidden query values are never reconstructed. Unsuccessful held/invalid reuse
+leaves the archive and historical receipt intact.
+
+The old lexical key also remains explicitly in existing global reviewed-terms
+matching. This preserves legacy owner policy rather than silently broadening
+those matches as part of reference identity normalization.

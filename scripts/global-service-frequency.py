@@ -253,6 +253,8 @@ class SourcePolicyError(ValueError):
 def source_policy(entry, url):
     row = entry.get('catalogue') or {}
     if 'source_resolution' in row:
+        if registry.references.resource_key(url) is None:
+            raise UnsafeSourceURL('Invalid reference request resource identity')
         if (row.get('access_review') or not registry.references.metadata_shape_valid(row['source_resolution'])
                 or registry.references.source_withheld(row, url)):
             raise SourceAccessHold('Declared source access hold prevents this request')
@@ -292,7 +294,8 @@ def acquisition_url_key(url):
         parsed, host, port = parse_acquisition_url(url)
     except ValueError:
         return ('invalid', url)
-    return registry.references.resource_key(url) or ('invalid', url)
+    # Preserve existing global reviewed-terms matching for legacy owners.
+    return registry.references.legacy_resource_key(url) or ('invalid', url)
 
 
 def public_address(value):
@@ -638,8 +641,8 @@ MAX_CHECKED_ENDPOINTS = 64
 MAX_REFERENCE_CACHE_METADATA_BYTES = 1024 * 1024
 
 
-def request_resource_hash(url):
-    key = registry.references.resource_key(url)
+def request_resource_hash(url, *, legacy=False):
+    key = (registry.references.legacy_resource_key if legacy else registry.references.resource_key)(url)
     if key is None: raise UnsafeSourceURL('Invalid request resource identity')
     return registry.references.digest(key)
 
@@ -682,16 +685,22 @@ class CheckedRequests:
 
     def receipt(self, data, kind='archive'):
         if self.terminal is None: raise ValueError('Missing checked terminal resource')
-        return {'schema':1, 'candidate_sha256':self.candidate, 'terminal_resource_sha256':self.terminal,
+        return {'schema':2, 'resource_normalization':registry.references.RESOURCE_NORMALIZATION,
+            'candidate_sha256':self.candidate, 'terminal_resource_sha256':self.terminal,
             'artifact_kind':kind, 'artifact_sha256':hashlib.sha256(data).hexdigest(),
             'endpoints':list(self.endpoints.values())}
 
 
 def request_receipt_valid(value, candidate):
     fields = {'schema','candidate_sha256','terminal_resource_sha256','artifact_kind','artifact_sha256','endpoints'}
+    if not isinstance(value,dict) or type(value.get('schema')) is not int or value['schema'] not in (1,2): return False
+    legacy = value['schema'] == 1
+    if not legacy:
+        fields.add('resource_normalization')
+        if value.get('resource_normalization') != registry.references.RESOURCE_NORMALIZATION: return False
     endpoint_fields = {'url','url_sha256','resource_sha256','visible_resource_sha256'}
     is_hash = lambda value:isinstance(value,str) and re.fullmatch('[a-f0-9]{64}',value) is not None
-    if (not isinstance(value,dict) or set(value)!=fields or type(value['schema']) is not int or value['schema']!=1
+    if (set(value)!=fields
             or value['candidate_sha256']!=source_url_fingerprint(candidate)
             or value['artifact_kind'] not in ('archive','routes') or not is_hash(value['artifact_sha256'])
             or not is_hash(value['terminal_resource_sha256']) or not isinstance(value['endpoints'],list)
@@ -702,7 +711,7 @@ def request_receipt_valid(value, candidate):
                 or not 0 < len(item['url']) <= 4096 or item['url']!=redacted_source_url(item['url'])
                 or any(not is_hash(item[key]) for key in endpoint_fields-{'url'})): return False
         try:
-            if item['visible_resource_sha256']!=request_resource_hash(item['url']): return False
+            if item['visible_resource_sha256']!=request_resource_hash(item['url'],legacy=legacy): return False
         except ValueError: return False
         # A URL without hidden query values retains a recomputable resource key.
         if not urlparse(item['url']).query and item['resource_sha256']!=item['visible_resource_sha256']: return False
@@ -723,6 +732,9 @@ def reference_cache_state(entry, meta, path, candidate):
     with path.open('rb') as stream:
         while chunk:=stream.read(1048576):digest.update(chunk)
     if digest.hexdigest()!=receipt['artifact_sha256']: return 'invalid'
+    if receipt['schema'] == 1:
+        # Old hashes certify only the historical lexical identity contract.
+        return 'destination_unverified' if held else 'legacy_public_unverified'
     resources={registry.references.digest(key) for key in registry.references.withheld_static_resources(row)}
     uncertain={registry.references.digest(key) for key in registry.references.uncertain_static_resources(row)}
     for endpoint in receipt['endpoints']:

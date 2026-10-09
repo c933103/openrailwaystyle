@@ -29,6 +29,34 @@ export function referenceDisplayUrl(value){
   const names=[...new URLSearchParams(query)].map(([name])=>(/^[A-Za-z0-9_.-]{1,80}$/.test(name)?name:'parameter')+'=%5Bredacted%5D');
   return scheme+'://'+host.toLowerCase()+(port===undefined?'':':'+port)+(path||'/')+(names.length?'?'+names.join('&'):'');
 }
+export const resourceNormalization='http-resource-syntax-v2';
+const normalizeResourceComponent=value=>value.replace(/%([a-fA-F0-9]{2})/g,(_,hex)=>{
+  const character=String.fromCharCode(parseInt(hex,16));
+  return /^[A-Za-z0-9._~-]$/.test(character)?character:'%'+hex.toUpperCase();
+});
+function removeResourceDotSegments(path){
+  const output=[];
+  for(const segment of path.split('/')){
+    if(segment==='.')continue;
+    if(segment==='..'){if(output.length>1)output.pop();}
+    else output.push(segment);
+  }
+  if(path.endsWith('/.')||path.endsWith('/..'))output.push('');
+  return output.join('/')||'/';
+}
+export function referenceResourceKey(value){
+  if(!referenceUrlValid(value))return null;
+  const match=/^(https?):\/\/(\[[^\]]+\]|[^/:?#@]+)(?::([0-9]+))?([^#]*)(?:#.*)?$/i.exec(value);
+  if(!match)return null;
+  const [,rawScheme,rawHost,port,tail]=match,scheme=rawScheme.toLowerCase(),at=tail.indexOf('?');
+  const query=at<0?'':tail.slice(at+1),number=Number(port??(scheme==='https'?443:80));
+  if(number<1||number>65535)return null;
+  let host=rawHost.toLowerCase().replace(/\.$/,''),path=(at<0?tail:tail.slice(0,at))||'/';
+  // Parse only an already validated IPv6 literal; never rewrite request bytes.
+  if(host.startsWith('['))host=new URL('http://'+host+'/').hostname.slice(1,-1);
+  const semi=path.indexOf(';',path.lastIndexOf('/')+1);if(semi===path.length-1&&semi>=0)path=path.slice(0,-1);
+  return [scheme,host,number,removeResourceDotSegments(normalizeResourceComponent(path)),normalizeResourceComponent(query)];
+}
 export function referenceMetadataValid(value,shape='root'){
   let nodes=schema.node_limit,characters=schema.character_limit;
   const check=(value,spec,depth=0)=>{

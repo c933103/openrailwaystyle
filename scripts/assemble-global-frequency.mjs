@@ -8,7 +8,7 @@ import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
 import {timetableFeatures} from './gtfs-service.mjs';
 import {readFrequencyFeed} from './read-frequency-feed.mjs';
-import {projectReferenceRow,referenceUrlValid,referenceDisplayUrl} from './frequency-reference-metadata.mjs';
+import {projectReferenceRow,referenceUrlValid,referenceDisplayUrl,referenceResourceKey} from './frequency-reference-metadata.mjs';
 // Publication-only display URLs. Acquisition/cache identities and inputs stay
 // unchanged. The sibling <field>_sha256 is SHA-256 of the exact original UTF-8
 // URL, not the redacted display or a canonicalized endpoint. This is an audit
@@ -82,10 +82,9 @@ const sourceBindings=row=>{
       const query=[...new URLSearchParams(item.source.split('#',1)[0].split('?').slice(1).join('?'))];
       if(!query.length||query.some(([,value])=>value!=='[redacted]'))return null;
     }
-    const display=referenceDisplayUrl(item.source),match=/^(https?):\/\/(\[[^\]]+\]|[^/:]+)(?::([0-9]+))?(.*)$/.exec(display);
-    if(!match)return null;
-    const [,scheme,host,port,tail]=match;
-    result.add(JSON.stringify([stored,scheme,host.replace(/\.$/,''),Number(port??(scheme==='https'?443:80)),tail]));
+    const resource=referenceResourceKey(referenceDisplayUrl(item.source));
+    if(!resource)return null;
+    result.add(JSON.stringify([stored,...resource]));
   }
   return [...result].sort();
 };
@@ -93,17 +92,7 @@ const sourceFingerprints=row=>sourceBindings(row)?.map(value=>JSON.parse(value)[
 // A shape-valid schedule label is not the alias's own public acquisition proof.
 const roleSpecs={static_current:'gtfs',realtime_trip_updates:'gtfs-rt',realtime_vehicle_positions:'gtfs-rt',realtime_alerts:'gtfs-rt',gbfs_auto_discovery:'gbfs'};
 const publicAuth=value=>value==null||(typeof value==='string'||Number.isInteger(value))&&['','0','none'].includes(String(value).trim().toLowerCase());
-const rawResource=value=>{
-  if(!referenceUrlValid(value))return null;
-  const match=/^(https?):\/\/(\[[^\]]+\]|[^/:?#@]+)(?::([0-9]+))?([^#]*)(?:#.*)?$/i.exec(value);
-  if(!match)return null;
-  const [,scheme,host,port,tail]=match,at=tail.indexOf('?'),query=at<0?'':tail.slice(at+1);
-  let path=at<0?tail:tail.slice(0,at);
-  const number=Number(port??(scheme.toLowerCase()==='https'?443:80));if(number<1||number>65535)return null;
-  // Match Python urlparse/request construction for an empty final params part.
-  const semi=path.indexOf(';',path.lastIndexOf('/')+1);if(semi===path.length-1&&semi>=0)path=path.slice(0,-1);
-  return JSON.stringify([scheme.toLowerCase(),host.toLowerCase().replace(/\.$/,''),number,path||'/',query]);
-};
+const rawResource=value=>{const key=referenceResourceKey(value);return key===null?null:JSON.stringify(key);};
 const visibleResource=value=>referenceUrlValid(value)?rawResource(referenceDisplayUrl(value)):null;
 const redactedQuery=value=>referenceUrlValid(value)&&[...new URLSearchParams(value.split('#',1)[0].split('?').slice(1).join('?'))].some(([,v])=>v==='[redacted]');
 const itemHashes=(item,key)=>new Set([item?.[key+'_sha256'],typeof item?.[key]==='string'?urlFingerprint(item[key]):null].filter(value=>/^[a-f0-9]{64}$/.test(value||'')));

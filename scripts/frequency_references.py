@@ -458,8 +458,8 @@ def source_identities(item, key='source'):
     return result
 
 
-def resource_key(value):
-    """Acquisition's lexical resource identity, without policy or DNS inference."""
+def legacy_resource_key(value):
+    """Prior lexical identity for historical receipts and legacy terms matching."""
     if not isinstance(value, str) or any(ord(c) < 33 or ord(c) == 127 for c in value) or '\\' in value:
         return None
     try:
@@ -473,6 +473,46 @@ def resource_key(value):
         return parsed.scheme, host, port, parsed.path or '/', parsed.params, parsed.query
     except (ValueError, UnicodeError):
         return None
+
+
+RESOURCE_NORMALIZATION = 'http-resource-syntax-v2'
+_UNRESERVED = frozenset('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~')
+
+
+def normalize_resource_component(value):
+    """One pass only: decode unreserved octets, uppercase other %HH triplets."""
+    def replace(match):
+        character = chr(int(match[1], 16))
+        return character if character in _UNRESERVED else '%' + match[1].upper()
+    return re.sub(r'%([a-fA-F0-9]{2})', replace, value)
+
+
+def remove_resource_dot_segments(path):
+    """RFC3986 dot removal on an absolute request path, retaining empty segments."""
+    output = []
+    for segment in path.split('/'):
+        if segment == '.': continue
+        if segment == '..':
+            if len(output) > 1: output.pop()
+        else: output.append(segment)
+    if path.endswith(('/.', '/..')): output.append('')
+    return '/'.join(output) or '/'
+
+
+def resource_key(value):
+    """Versioned RFC-syntax comparison, never a rewritten acquisition URL."""
+    legacy = legacy_resource_key(value)
+    # A stray '%' must not combine with a decoded hex character into a new
+    # escape. Unsupported syntax gets no current-version resource identity.
+    if legacy is None or re.search(r'%(?![a-fA-F0-9]{2})', value): return None
+    scheme, host, port, path, params, query = legacy
+    if ':' in host:
+        try: host = ipaddress.IPv6Address(host).compressed
+        except ValueError: return None
+    # Match the transport before normalization: '..;x' is not a dot segment.
+    request_path = path + (';' + params if params else '')
+    return (scheme, host, port, remove_resource_dot_segments(normalize_resource_component(request_path)),
+            normalize_resource_component(query))
 
 
 def raw_source(item, key='source'):

@@ -1,0 +1,244 @@
+{
+  "normalization": "http-resource-syntax-v2",
+  "canonical": [
+    {
+      "url": "https://public.test/a/%2E%2e/%7Efeed;v=%61?q=%7e%2f",
+      "key": [
+        "https",
+        "public.test",
+        443,
+        "/~feed;v=a",
+        "q=~%2F"
+      ]
+    },
+    {
+      "url": "https://[2606:4700:0000:0000:0000:0000:0000:1111]:443/a/../",
+      "key": [
+        "https",
+        "2606:4700::1111",
+        443,
+        "/",
+        ""
+      ]
+    },
+    {
+      "url": "https://public.test/a//b/./",
+      "key": [
+        "https",
+        "public.test",
+        443,
+        "/a//b/",
+        ""
+      ]
+    }
+  ],
+  "pairs": [
+    {
+      "a": "https://public.test/a%2Fb",
+      "b": "https://public.test/a%2fb",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a;p=%3A",
+      "b": "https://public.test/a;p=%3a",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/feed?v=%2F",
+      "b": "https://public.test/feed?v=%2f",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/feed?%6A=v",
+      "b": "https://public.test/feed?%6a=v",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/%66eed.zip",
+      "b": "https://public.test/feed.zip",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a;p=%61",
+      "b": "https://public.test/a;p=a",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/feed?region=%61",
+      "b": "https://public.test/feed?region=a",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/%7euser/%41%5a%30%39%2d%2e%5f",
+      "b": "https://public.test/~user/AZ09-._",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a/./b",
+      "b": "https://public.test/a/b",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a/../b",
+      "b": "https://public.test/b",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a/%2E%2e/b",
+      "b": "https://public.test/b",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a/.%2e/b",
+      "b": "https://public.test/b",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a;param/../b",
+      "b": "https://public.test/b",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a/..;x/b",
+      "b": "https://public.test/b",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/a//b",
+      "b": "https://public.test/a/b",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/a//../b",
+      "b": "https://public.test/a/b",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a/.",
+      "b": "https://public.test/a/",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a/..",
+      "b": "https://public.test/",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/../a",
+      "b": "https://public.test/a",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a/../../b",
+      "b": "https://public.test/b",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a/",
+      "b": "https://public.test/a",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/a;",
+      "b": "https://public.test/a",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a;b;",
+      "b": "https://public.test/a;b",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/a%2Fb",
+      "b": "https://public.test/a/b",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/a%252f",
+      "b": "https://public.test/a%252F",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/a/%252e%252e/b",
+      "b": "https://public.test/b",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/a%3Fb",
+      "b": "https://public.test/a?b",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/feed?v=a%2Fb",
+      "b": "https://public.test/feed?v=a/b",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/feed?v=a%26b",
+      "b": "https://public.test/feed?v=a&b",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/feed?v=+",
+      "b": "https://public.test/feed?v=%20",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/feed?a=1&b=2",
+      "b": "https://public.test/feed?b=2&a=1",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/feed?a=1&a=2",
+      "b": "https://public.test/feed?a=2&a=1",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/feed?v=A",
+      "b": "https://public.test/feed?v=B",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/feed?v=%3A",
+      "b": "https://public.test/feed?v=%3B",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/feed?v=/a/../b",
+      "b": "https://public.test/feed?v=/b",
+      "equal": false
+    },
+    {
+      "a": "https://[2606:4700:0000:0000:0000:0000:0000:1111]/feed",
+      "b": "https://[2606:4700::1111]/feed",
+      "equal": true
+    },
+    {
+      "a": "https://[2606:4700::1111]/feed",
+      "b": "https://[2606:4700::1001]/feed",
+      "equal": false
+    },
+    {
+      "a": "HTTPS://PUBLIC.TEST.:443/a#one",
+      "b": "https://public.test/a#two",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a",
+      "b": "http://public.test/a",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/a",
+      "b": "https://other.test/a",
+      "equal": false
+    }
+  ],
+  "invalid": [
+    "https://public.test/a%zz",
+    "https://public.test/a%2",
+    "https://public.test/%A%31",
+    "https://public.test/feed?v=%",
+    "https://public.test/feed?%A%31=x"
+  ]
+}

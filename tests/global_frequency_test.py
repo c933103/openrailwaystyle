@@ -539,7 +539,7 @@ class GlobalFrequency(unittest.TestCase):
                 self.assertEqual(bh['requests'],[],'held hop must fail before its socket request')
 
     def test_reference_redirect_hold_preserves_a_genuinely_public_fallback(self):
-        a,ah=self.server(self.archive());b,bh=self.server(self.archive());c,ch=self.server(self.archive());ah['redirect']=b
+        a,ah=self.server(self.archive());b,bh=self.server(self.archive());c,ch=self.server(self.archive());ah['redirect']=b.replace('/feed.zip','/%66eed.zip')
         entry=self.reference_lifecycle_entry(a,b);row=entry['catalogue']
         row['lineage'].append({'catalogue':'mobility-database','id':'fallback','url':pipeline.registry.MOBILITY_CSV,
             'source':c,'status':'','authentication_type':'0'})
@@ -687,6 +687,115 @@ class GlobalFrequency(unittest.TestCase):
                 else:
                     with self.assertRaises(pipeline.SourceAccessHold):pipeline.get(a,policy=lambda target:pipeline.source_policy(entry,target))
                     self.assertEqual(bh['requests'],[])
+
+    def test_versioned_resource_syntax_vectors_and_legacy_terms_compatibility(self):
+        refs = pipeline.registry.references
+        vectors = json.loads((Path(__file__).parent/'fixtures/service-frequency/resource-syntax-v2.json').read_text())
+        self.assertEqual(refs.RESOURCE_NORMALIZATION, vectors['normalization'])
+        for case in vectors['canonical']:
+            self.assertEqual(list(refs.resource_key(case['url'])), case['key'])
+        for case in vectors['pairs']:
+            with self.subTest(case=case):
+                self.assertTrue(refs.reference_url_valid(case['a']) and refs.reference_url_valid(case['b']))
+                self.assertEqual(refs.resource_key(case['a']) == refs.resource_key(case['b']), case['equal'])
+                self.assertNotEqual(pipeline.source_url_fingerprint(case['a']), pipeline.source_url_fingerprint(case['b']))
+        for url in vectors['invalid']:
+            self.assertIsNone(refs.resource_key(url))
+            entry = self.reference_lifecycle_entry('https://public.test/feed')
+            with patch.object(pipeline,'resolve_public_addresses') as dns:
+                with self.assertRaises(pipeline.UnsafeSourceURL): pipeline.get(url,policy=lambda target:pipeline.source_policy(entry,target))
+                dns.assert_not_called()
+        # Existing global terms decisions keep their prior lexical contract.
+        held, other = 'https://public.test/%66eed', 'https://public.test/feed'
+        legacy = {'catalogue':{},'denied_source_urls':[held]}
+        self.assertNotEqual(pipeline.acquisition_url_key(held), pipeline.acquisition_url_key(other))
+        pipeline.source_policy(legacy,other)
+        with self.assertRaises(pipeline.SourcePolicyError): pipeline.source_policy(legacy,held)
+
+    def test_resource_syntax_holds_candidates_and_current_cache_identities(self):
+        vectors = json.loads((Path(__file__).parent/'fixtures/service-frequency/resource-syntax-v2.json').read_text())
+        path = self.root/'syntax-cache.zip'; data = self.archive(); path.write_bytes(data)
+        for case in vectors['pairs']:
+            with self.subTest(case=case):
+                entry = self.reference_lifecycle_entry(case['a'])
+                checked = pipeline.CheckedRequests(entry,case['a']);checked.begin();checked.policy(case['a']);checked.response(case['a'])
+                receipt = checked.receipt(data)
+                self.add_lifecycle_hold(entry['catalogue'],case['b'])
+                self.assertEqual(bool(pipeline.source_candidates(entry)),not case['equal'])
+                self.assertEqual(pipeline.reference_cache_state(entry,{'request_provenance':receipt},path,case['a']), 'held' if case['equal'] else 'verified')
+                if case['equal']:
+                    with patch.object(pipeline,'resolve_public_addresses') as dns:
+                        with self.assertRaises(pipeline.SourceAccessHold): pipeline.get(case['a'],policy=lambda url:pipeline.source_policy(entry,url))
+                        dns.assert_not_called()
+
+    def test_resource_syntax_holds_redirects_and_binds_equivalent_terminals(self):
+        for phase in ['initial','range','full','conditional']:
+            a,ah=self.server(self.archive());b,bh=self.server(self.archive())
+            target=b.replace('/feed.zip','/a%2fb');held=b.replace('/feed.zip','/a%2Fb')
+            entry=self.reference_lifecycle_entry(a,held)
+            if phase=='initial':
+                ah['redirect']=target
+                with self.assertRaises(pipeline.SourceRetrievalError):pipeline.fetch_alternative(entry,self.root/'blocked.zip',1000000)
+            elif phase in ('range','full'):
+                checked=pipeline.CheckedRequests(entry,a);remote=pipeline.RemoteZip(a,1000000,policy=checked.policy,checked_requests=checked)
+                ah['redirect']=target
+                with self.assertRaises(pipeline.SourceAccessHold):remote.range(0,1) if phase=='range' else remote.download()
+            else:
+                cache=self.root/'syntax-conditional';cache.mkdir();output=cache/'out'
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                ah['redirect']=target
+                with self.assertRaises(pipeline.SourceRetrievalError):pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+            self.assertEqual(bh['requests'],[])
+        a,ah=self.server(self.archive());b,bh=self.server(self.archive())
+        first=b.replace('/feed.zip','/region/../a%2Fb');second=b.replace('/feed.zip','/a%2fb')
+        ah['redirect']=first;entry=self.reference_lifecycle_entry(a);cache=self.root/'syntax-equivalent';cache.mkdir();output=cache/'out'
+        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        ah['redirect']=second
+        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        self.assertEqual(result['acquisition_metrics']['conditional_not_modified'],1)
+        receipt=json.loads((cache/'xx_rail.meta.json').read_text())['request_provenance']
+        self.assertEqual(receipt['schema'],2);self.assertEqual(receipt['resource_normalization'],'http-resource-syntax-v2')
+        self.assertEqual({e['url_sha256'] for e in receipt['endpoints']},{pipeline.source_url_fingerprint(x) for x in [a,first,second]})
+        self.assertIn(('"one"',None),bh['conditional_requests'])
+
+    def test_schema_one_receipts_are_strictly_validated_without_new_identity_authority(self):
+        import copy
+        from urllib.error import URLError
+        for mode in ['public_offline','held','extra_old','bad_old_hash','unknown_current','fresh']:
+            a,ah=self.server(self.archive());b,bh=self.server(self.archive())
+            terminal=b.replace('/feed.zip','/a%2fb')+'?selector=synthetic-value%3a'
+            ah['redirect']=terminal;entry=self.reference_lifecycle_entry(a)
+            cache=self.root/('syntax-schema1-'+mode);cache.mkdir();output=cache/'out'
+            pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+            meta_path=cache/'xx_rail.meta.json';meta=json.loads(meta_path.read_text());old=meta['request_provenance']
+            old['schema']=1;old.pop('resource_normalization');urls={pipeline.source_url_fingerprint(x):x for x in [a,terminal]}
+            old['terminal_resource_sha256']=pipeline.request_resource_hash(terminal,legacy=True)
+            for endpoint in old['endpoints']:
+                endpoint['resource_sha256']=pipeline.request_resource_hash(urls[endpoint['url_sha256']],legacy=True)
+                endpoint['visible_resource_sha256']=pipeline.request_resource_hash(endpoint['url'],legacy=True)
+            self.assertTrue(pipeline.request_receipt_valid(old,a))
+            if mode=='held':self.add_lifecycle_hold(entry['catalogue'],terminal.replace('%2f','%2F').replace('%3a','%3A'))
+            elif mode=='extra_old':old['unexpected']='synthetic'
+            elif mode=='bad_old_hash':old['endpoints'][0]['visible_resource_sha256']='0'*64
+            elif mode=='unknown_current':old['schema']=2;old['resource_normalization']='unknown'
+            meta_path.write_text(json.dumps(meta));before_meta=meta_path.read_bytes();before_archive=(cache/'xx_rail.zip').read_bytes();old_copy=copy.deepcopy(old)
+            if mode=='fresh':
+                result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                current=json.loads(meta_path.read_text())['request_provenance']
+                self.assertEqual(current['schema'],2);self.assertEqual(current['resource_normalization'],'http-resource-syntax-v2')
+                self.assertEqual(result['acquisition_metrics'].get('conditional_not_modified',0),0)
+            else:
+                with patch.object(pipeline,'get',side_effect=URLError('offline fixture')):
+                    if mode=='public_offline':
+                        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                        after=json.loads(meta_path.read_text());self.assertTrue(result['source']['offline_cached'])
+                        self.assertEqual(after['request_provenance'],old_copy)
+                        self.assertEqual(after['checked'],meta['checked']);self.assertEqual(after['retrieved'],meta['retrieved'])
+                    else:
+                        with self.assertRaises(pipeline.SourceRetrievalError) as failed:pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                        self.assertEqual(pipeline.classify_failure(failed.exception)[0],'unresolved_source_cache_identity')
+                        self.assertEqual(meta_path.read_bytes(),before_meta)
+                self.assertEqual((cache/'xx_rail.zip').read_bytes(),before_archive)
 
     def test_retry_after_receipts_survive_two_runs_without_early_requests(self):
         from email.utils import formatdate
