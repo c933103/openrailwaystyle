@@ -213,10 +213,15 @@ export function installPwaInstall({window = globalThis.window, document = window
   function render() {
     if (destroyed) return;
     const hidden = unavailable();
+    const nativeHidden = hidden || (!deferredPrompt && !prompting);
+    const nativeFocused = document.activeElement === nativeButton;
+    // Disabling or hiding the active action can synchronously move focus to
+    // the body. Transfer it first, without disturbing a user's later focus.
+    if (nativeFocused && (nativeHidden || prompting) && !hidden && isOpen()) closeButton.focus();
     opener.hidden = hidden;
     ios.hidden = !iosInstructions;
     generic.hidden = iosInstructions;
-    nativeButton.hidden = hidden || (!deferredPrompt && !prompting);
+    nativeButton.hidden = nativeHidden;
     nativeButton.disabled = prompting;
     nativeButton.textContent = prompting ? 'Waiting for browser…' : 'Install app';
     if (hidden) close();
@@ -282,7 +287,6 @@ export function installPwaInstall({window = globalThis.window, document = window
     } finally {
       prompting = false;
       render();
-      if (!destroyed && isOpen() && document.activeElement === nativeButton && nativeButton.hidden) closeButton.focus();
     }
   }
   listen(opener, 'click', open);

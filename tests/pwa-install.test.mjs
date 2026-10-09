@@ -122,6 +122,46 @@ test('prompt failure preserves instructions and does not repeatedly invoke the b
   } finally { s.cleanup(); }
 });
 
+test('a focused native action transfers focus before being disabled, then retains it after dismissal', async () => {
+  const s = start();
+  try {
+    let finish;
+    const offer = s.offer({pending: new Promise(resolve => { finish = resolve; })});
+    s.open();
+    const action = s.byId('pwa-install-native'), close = s.byId('pwa-install-close');
+    let stateOnBlur;
+    action.addEventListener('blur', () => { stateOnBlur = {hidden: action.hidden, disabled: action.disabled}; });
+    action.focus();
+    action.click();
+    assert.equal(offer.calls(), 1, 'focus management does not defer prompt() beyond the click');
+    assert.deepEqual(stateOnBlur, {hidden: false, disabled: false}, 'transfer focus before making the active action unusable');
+    assert.equal(action.disabled, true);
+    assert.equal(s.document.activeElement, close, 'pending installation leaves focus on an available control');
+    finish({outcome: 'dismissed'});
+    await tick();
+    assert.equal(action.hidden, true);
+    assert.equal(s.document.activeElement, close, 'hiding the consumed action retains dialog focus');
+  } finally { s.cleanup(); }
+});
+
+test('finishing a pending prompt after help closes preserves focus on the user’s next control', async () => {
+  const s = start();
+  try {
+    let finish;
+    s.offer({pending: new Promise(resolve => { finish = resolve; })});
+    s.open();
+    const action = s.byId('pwa-install-native'), next = s.byId('share');
+    action.focus();action.click();
+    s.byId('pwa-install-close').click();
+    next.focus();
+    finish({outcome: 'dismissed'});
+    await tick();
+    assert.equal(action.hidden, true);
+    assert.equal(s.byId('pwa-install').open, false);
+    assert.equal(s.document.activeElement, next, 'completion does not move focus back to closed instructions');
+  } finally { s.cleanup(); }
+});
+
 test('acceptance awaits installation confirmation, while appinstalled hides the current session action', async () => {
   const s = start();
   try {

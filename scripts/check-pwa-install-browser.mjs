@@ -20,6 +20,70 @@ const profiles=[
   {name:'standalone-ios',viewport:{width:393,height:852},userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148',platform:'iPhone',touch:5,standalone:true},
   {name:'legacy-dialog',viewport:{width:320,height:568},userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 15_3 like Mac OS X) AppleWebKit/605.1.15 Version/15.3 Mobile/15E148 Safari/604.1',platform:'iPhone',touch:5,legacyDialog:true},
 ];
+
+async function checkNativePromptFocus(page,opener,dialog){
+  const action=page.locator('#pwa-install-native'),close=page.locator('#pwa-install-close');
+  await page.evaluate(()=>{
+    // This flag is cleared as the click bubbles out. A deferred prompt()
+    // invocation would miss the initiating click even if it ran soon after.
+    document.getElementById('pwa-install-native').addEventListener('click',()=>{window.installClickActive=true;},{capture:true});
+    window.addEventListener('click',()=>{window.installClickActive=false;});
+  });
+  for(const scenario of [
+    {outcome:'dismissed'},
+    {outcome:'accepted'},
+    {outcome:'failed'},
+    {outcome:'failed',immediateFailure:true},
+    {outcome:'dismissed',focusElsewhere:true},
+    {outcome:'dismissed',closeBeforeChoice:true},
+  ]){
+    // Controlled capability events exercise the real DOM and focus rules;
+    // they do not perform an OS installation in browser automation.
+    await page.evaluate(({outcome,immediateFailure})=>{
+      window.installPromptCalls=0;window.installPromptInClick=false;
+      const event=new Event('beforeinstallprompt',{cancelable:true});
+      event.prompt=()=>{
+        window.installPromptCalls++;window.installPromptInClick=window.installClickActive;
+        if(immediateFailure)throw new Error('Installation prompt failed');
+        return Promise.resolve();
+      };
+      event.userChoice=new Promise((resolve,reject)=>{
+        window.finishInstallPrompt=()=>outcome==='failed'?reject(new Error('Installation choice failed')):resolve({outcome});
+      });
+      window.dispatchEvent(event);
+    },scenario);
+    await opener.click();
+    // Pointer clicks in WebKit may retain the previous focus. Keyboard
+    // activation ensures the action really owns focus before it is disabled.
+    await action.focus();
+    assert.equal(await action.evaluate(node=>node===document.activeElement),true);
+    await action.press('Enter');
+    assert.deepEqual(await page.evaluate(()=>({calls:window.installPromptCalls,inClick:window.installPromptInClick})),
+      {calls:1,inClick:true},'prompt() runs synchronously inside the initiating click');
+    if(!scenario.immediateFailure){
+      assert.equal(await action.isVisible(),true,'pending browser action stays visible');
+      assert.equal(await action.isDisabled(),true,'pending browser action cannot be reused');
+      assert.equal(await close.evaluate(node=>node===document.activeElement),true,'disabling the focused action transfers focus to Close');
+      if(scenario.focusElsewhere){
+        await page.locator('#pwa-install-description').evaluate(node=>{node.tabIndex=-1;node.focus();});
+      }else if(scenario.closeBeforeChoice){
+        await close.click();await dialog.waitFor({state:'hidden'});
+        assert.equal(await opener.evaluate(node=>node===document.activeElement),true);
+      }
+      await page.evaluate(()=>window.finishInstallPrompt());
+    }
+    const marker=scenario.outcome==='failed'?'could not open':scenario.outcome;
+    await page.waitForFunction(marker=>document.getElementById('pwa-install-status').textContent.includes(marker),marker);
+    assert.equal(await action.isVisible(),false,'a consumed action is hidden after the browser outcome');
+    assert.equal(await opener.isVisible(),true,'the browser outcome retains manual installation help');
+    const expectedFocus=scenario.closeBeforeChoice?'pwa-install-open':scenario.focusElsewhere?'pwa-install-description':'pwa-install-close';
+    assert.equal(await page.evaluate(()=>document.activeElement.id),expectedFocus,'completion preserves a usable focus target or the user’s later focus');
+    assert.equal(await dialog.isVisible(),!scenario.closeBeforeChoice,'completion does not reopen dismissed help');
+    if(!scenario.closeBeforeChoice){await close.click();await dialog.waitFor({state:'hidden'});}
+    if(scenario.focusElsewhere)await page.locator('#pwa-install-description').evaluate(node=>node.removeAttribute('tabindex'));
+  }
+}
+
 try {
   await mkdir('browser-review',{recursive:true});
   for(const profile of profiles){
@@ -125,19 +189,7 @@ try {
         assert.equal(await opener.evaluate(node=>node===document.activeElement),true);
       }
       if(!ios){
-        // A controlled capability event validates user-gesture wiring; this
-        // does not claim to perform an OS-level installation in automation.
-        await page.evaluate(()=>{
-          window.installPromptCalls=0;
-          const event=new Event('beforeinstallprompt',{cancelable:true});
-          event.prompt=async()=>{window.installPromptCalls++;return {outcome:'dismissed'};};
-          event.userChoice=Promise.resolve({outcome:'dismissed'});
-          window.dispatchEvent(event);
-        });
-        await opener.click();
-        await page.locator('#pwa-install-native').click();
-        await page.waitForFunction(()=>window.installPromptCalls===1);
-        assert.equal(await opener.isVisible(),true,'dismissing the browser prompt retains manual help');
+        await checkNativePromptFocus(page,opener,dialog);
       }
     }
     assert.deepEqual(errors,[],'installation guidance survives renderer failure without unhandled errors');
