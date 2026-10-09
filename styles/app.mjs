@@ -154,10 +154,26 @@ ensureCjkChoice(cjkScript(settings.language));
 // applies: often Japanese shapes for Chinese names (e.g. 门). Give the canvas
 // the label language whenever MapLibre sets up one of these fonts.
 const CANVAS_LANG = {'zh-Hans':'zh-CN', 'zh-Hant':'zh-TW', ja:'ja', ko:'ko'};
-// Internal punctuation belongs to the name when followed by another CJK
-// character; it must not split 東京・テレポート into different languages.
-const DETAIL_GLYPH_RUNS = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}](?:[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}\p{Mark}ーｰﾞﾟ゛゜]|[\p{Punctuation}\u3000]+(?=[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}]))*/gu;
-const detailGlyphLanguage = text => /[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(text) ? 'ja' : /\p{Script=Hangul}/u.test(text) ? 'ko' : /\p{Script=Bopomofo}/u.test(text) ? 'zh-TW' : CANVAS_LANG[cjkScript(settings.language)];
+const DETAIL_CJK_CHARACTER = String.raw`[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}]`;
+const detailRunPattern = separators => new RegExp(`${DETAIL_CJK_CHARACTER}(?:${DETAIL_CJK_CHARACTER}|[\\p{Mark}ーｰﾞﾟ゛゜]|${separators}+(?=${DETAIL_CJK_CHARACTER}))*`, 'gu');
+// Internal separators and line numbers belong to the CJK name when followed
+// by another CJK character. Latin letters and line breaks remain boundaries.
+const DETAIL_GLYPH_RUNS = detailRunPattern(String.raw`[\p{Punctuation}\p{Space_Separator}\p{Number}]`);
+const DETAIL_GLYPH_WORDS = detailRunPattern(String.raw`[\p{Punctuation}\p{Number}\u3000]`);
+const detailGlyphHints = text => [
+  /[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(text) && 'ja',
+  /\p{Script=Hangul}/u.test(text) && 'ko',
+  /\p{Script=Bopomofo}/u.test(text) && 'zh-TW',
+].filter(Boolean);
+const detailGlyphLanguage = text => detailGlyphHints(text)[0] || CANVAS_LANG[cjkScript(settings.language)];
+function detailGlyphRuns(text) {
+  return [...text.matchAll(DETAIL_GLYPH_RUNS)].flatMap(run => {
+    if (detailGlyphHints(run[0]).length < 2) return [run];
+    // Several identifiable languages in one value are separate names; do
+    // not merge them through ordinary spaces and choose one arbitrarily.
+    return [...run[0].matchAll(DETAIL_GLYPH_WORDS)].map(word => {word.index += run.index; return word;});
+  });
+}
 const detailFontObserver = new MutationObserver(updateDetailGlyphs);
 // CJK text in feature details shares the map's chosen family. Kana or Hangul
 // identifies a mixed name's language; Han-only names use the map's language
@@ -173,7 +189,7 @@ function updateDetailGlyphs() {
   detailFontObserver.disconnect();
   try {
     for (const span of panel.querySelectorAll('[data-cjk-glyphs]')) {
-      const runs = [...span.textContent.matchAll(DETAIL_GLYPH_RUNS)];
+      const runs = detailGlyphRuns(span.textContent);
       if (runs.length === 1 && runs[0][0] === span.textContent) {
         span.lang = detailGlyphLanguage(span.textContent); span.style.fontFamily = fontFamily;
       }
@@ -185,7 +201,7 @@ function updateDetailGlyphs() {
       if (node.parentElement?.namespaceURI === 'http://www.w3.org/1999/xhtml' && !node.parentElement.closest('[data-cjk-glyphs]')) nodes.push(node);
     }
     for (const node of nodes) {
-      const runs = [...node.data.matchAll(DETAIL_GLYPH_RUNS)];
+      const runs = detailGlyphRuns(node.data);
       if (!runs.length) continue;
       const fragment = document.createDocumentFragment();
       let offset = 0;

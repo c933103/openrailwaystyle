@@ -310,6 +310,14 @@ test('English and local infoboxes scope script languages to CJK runs and preserv
    assert.ok(latinSuffix,'a separator followed by Latin text stays outside the CJK span');assert.equal(latinSuffix.parentElement.closest('[lang]')?.lang,'en');
    for(const node of [panel,heading,...panel.querySelectorAll('.eyebrow,dt,p.small,a')])assert.equal(node.closest('[lang]')?.lang,'en',`${language}: the CJK fallback must not relabel the English interface`);
    assert.equal(panel.style.fontFamily,'');assert.equal(heading.style.fontFamily,'');
+   for(const [name,scriptLanguage] of [['東京 テレポート','ja'],['東京\u00a0テレポート','ja'],['경의 중앙線','ko'],['首都圈 전철','ko'],['首都圈\u00a0전철','ko'],['東京メトロ1号線','ja'],['東京メトロ 1号線','ja']]){
+    station.properties.name=name;map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+    await new Promise(r=>setTimeout(r,0));
+    const spacedHeading=panel.querySelector('h2');
+    assert.equal(spacedHeading.textContent,name,'wrapping preserves name whitespace and numbers');
+    assert.deepEqual([...spacedHeading.querySelectorAll('[data-cjk-glyphs]')].map(span=>[span.textContent,span.lang]),[[name,scriptLanguage]],`${name}: internal spaces and numbers keep a name in one identified language`);
+    assert.equal(spacedHeading.closest('[lang]')?.lang,'en','only the name span carries the script language');
+   }
    station.properties.name='Central';map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
    await new Promise(r=>setTimeout(r,0));
    assert.equal(panel.querySelector('h2').closest('[lang]')?.lang,'en','a Latin-only feature name keeps its inherited language');
