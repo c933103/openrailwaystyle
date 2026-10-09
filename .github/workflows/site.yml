@@ -302,13 +302,13 @@ jobs:
       - name: Prepare check data
         if: matrix.prepare != ''
         run: bash -c "$PREPARE"
-      - name: Run browser checks
-        run: node scripts/run-browser-checks.mjs --concurrency 1 --label "$GROUP" $CHECKS
       - name: Verify Safari installation help in WebKit
         if: matrix.group == 'controls' && contains(matrix.checks, 'check-pwa-install-browser.mjs')
         env:
           ATLAS_PWA_ENGINE: webkit
         run: node scripts/check-pwa-install-browser.mjs
+      - name: Run browser checks
+        run: node scripts/run-browser-checks.mjs --concurrency 1 --label "$GROUP" $CHECKS
       - name: Prune browser tile cache
         if: success() && hashFiles('.browser-tiles/.changed') != ''
         run: node scripts/browser.mjs prune .browser-tiles

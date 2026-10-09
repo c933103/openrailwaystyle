@@ -2,18 +2,24 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
+import {webcrypto} from 'node:crypto';
+import {BROWSER_LIBRARIES} from '../scripts/browser-libraries.mjs';
 
 const source = readFileSync(new URL('../styles/sw.js', import.meta.url), 'utf8');
 const scope = 'https://atlas.test/openrailwaystyle/';
 const generation = Number(source.match(/CACHE = `\$\{PREFIX\}(\d+)`/)[1]);
 const keyOf = input => input.url ?? String(input);
-const bytes = value => new TextEncoder().encode(value);
+const bytes = value => typeof value==='string'?new TextEncoder().encode(value):value;
+const legacyDistributions=new Map(BROWSER_LIBRARIES.map(library=>[
+  `https://cdn.jsdelivr.net/npm/${library.package}@${library.version}/${library.source}`,
+  {body:readFileSync(new URL(`../node_modules/${library.package}/${library.source}`,import.meta.url)),type:library.target.endsWith('.css')?'text/css':'application/javascript'},
+]));
 
 // Installing workers have a small network concurrency budget. A fetch resolves
 // at headers, but its slot is only released when the response body is consumed.
 // highWaterMark:0 makes this distinction explicit instead of eagerly buffering
 // every mock response (which would hide the installation deadlock).
-function startWorker({version = 'new', fail = '', stores = new Map(), code = source, rejectExternal = false} = {}) {
+function startWorker({version = 'new', fail = '', stores = new Map(), code = source, rejectExternal = false, noLegacyCrypto = false} = {}) {
   const handlers = new Map(), queue = [], writes = [], requests = [];
   const counts = {active: 0, peak: 0, started: 0, finished: 0};
   let offline = false, skipped = false, claimed = false;
@@ -52,7 +58,8 @@ function startWorker({version = 'new', fail = '', stores = new Map(), code = sou
     if (counts.active >= 3) await new Promise(resolve => queue.push(resolve));
     else counts.active++;
     counts.started++; counts.peak = Math.max(counts.peak, counts.active);
-    const body = page ? `<script type="module" src="app.mjs?v=${version}"></script>` : `${version}: ${url}`;
+    const legacy=legacyDistributions.get(url);
+    const body = page ? `<script type="module" src="app.mjs?v=${version}"></script>` : legacy?.body??`${version}: ${url}`;
     let consumed = false;
     return new Response(new ReadableStream({
       pull(controller) {
@@ -63,13 +70,14 @@ function startWorker({version = 'new', fail = '', stores = new Map(), code = sou
         release();
       }
     }, {highWaterMark: 0}), {
-      status: page ? 200 : 203,
-      headers: {'content-type': page ? 'text/html' : 'application/octet-stream', 'x-fixture-url': url}
+      status: page||legacy ? 200 : 203,
+      headers: {'content-type': page ? 'text/html' : legacy?.type??'application/octet-stream', 'x-fixture-url': url}
     });
   };
   vm.runInNewContext(code, {
     URL, Response, Request, fetch, caches, location: {origin: new URL(scope).origin},
     self: {
+      crypto: noLegacyCrypto ? undefined : webcrypto,
       registration: {scope}, addEventListener: (name, fn) => handlers.set(name, fn),
       skipWaiting: async () => { skipped = true; }, clients: {claim: async () => { claimed = true; }}
     }
@@ -175,7 +183,7 @@ test('actual CDN-era worker copies remain usable after first-party migration wit
   assert.equal(next.stores.has(`atlas-shell-${oldGeneration}`), false);
   next.setOffline();
   assert.equal(await (await next.request('app.mjs?v=old')).text(), `old: ${scope}app.mjs?v=old`);
-  for (const url of oldLibraries) assert.equal(await (await next.request(url)).text(), `old: ${url}`);
+  for (const url of oldLibraries) assert.deepEqual(Buffer.from(await (await next.request(url)).arrayBuffer()),legacyDistributions.get(url).body);
   assert.ok(next.requests.every(url => new URL(url).origin === new URL(scope).origin));
 });
 
@@ -186,4 +194,28 @@ test('a cache miss on an old CDN URL never causes a new CDN download', async () 
   const response = await worker.request('https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js');
   assert.equal(response.type, 'error');
   assert.equal(worker.requests.length, before);
+});
+
+for(const mode of ['tampered-bytes','crypto-unavailable'])test(`legacy cache migration and serving reject ${mode} with otherwise valid responses`,async()=>{
+  const oldCode=readFileSync(new URL('fixtures/sw-before-first-party-libraries.js',import.meta.url),'utf8');
+  const old=startWorker({version:'old',code:oldCode});
+  await bounded(old.lifecycle('install'));
+  const oldGeneration=Number(oldCode.match(/CACHE = `\$\{PREFIX\}(\d+)`/)[1]);
+  const copies=[...legacyDistributions].map(([url,{body,type}])=>[url,new Response(
+    mode==='tampered-bytes'?Buffer.concat([body,Buffer.from('\n/* changed bytes */')]):body,
+    {status:200,headers:{'content-type':type}},
+  )]);
+  for(const [url,response] of copies)old.stores.get(`atlas-shell-${oldGeneration}`).set(url,response.clone());
+  const next=startWorker({stores:old.stores,rejectExternal:true,noLegacyCrypto:mode==='crypto-unavailable'});
+  await bounded(next.lifecycle('install'));
+  const current=next.stores.get(`atlas-shell-${generation}`);
+  for(const [url,response] of copies){
+    assert.equal(current.has(url),false,'unverified legacy bytes must not migrate into the new cache');
+    // Also cover a previously poisoned entry already in the active cache.
+    current.set(url,response.clone());
+    assert.equal((await next.request(url)).type,'error','serving must validate again before exposing the response');
+  }
+  next.setOffline();
+  assert.match(await(await next.request('vendor/maplibre-gl-5.24.0.js')).text(),/^new:/,'first-party installation remains independent of legacy recovery');
+  assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
 });
