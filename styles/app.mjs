@@ -1,22 +1,22 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261008-settings-recovery';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261008-settings-recovery';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261008-settings-recovery';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261008-settings-recovery';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261008-settings-recovery';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261008-settings-recovery';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261009-infobox-cjk';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261009-infobox-cjk';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261009-infobox-cjk';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261009-infobox-cjk';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261009-infobox-cjk';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261009-infobox-cjk';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261008-settings-recovery';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261008-settings-recovery';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261008-settings-recovery';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261008-settings-recovery';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261008-settings-recovery';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261008-settings-recovery';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261008-settings-recovery';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261008-settings-recovery';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261008-settings-recovery';
-import { installWatchGesture } from './watch-map.mjs?v=20261008-settings-recovery';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261008-settings-recovery';
-import { createBundleReader } from './tile-bundles.mjs?v=20261008-settings-recovery';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261009-infobox-cjk';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261009-infobox-cjk';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261009-infobox-cjk';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261009-infobox-cjk';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261009-infobox-cjk';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261009-infobox-cjk';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261009-infobox-cjk';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261009-infobox-cjk';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261009-infobox-cjk';
+import { installWatchGesture } from './watch-map.mjs?v=20261009-infobox-cjk';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261009-infobox-cjk';
+import { createBundleReader } from './tile-bundles.mjs?v=20261009-infobox-cjk';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -52,7 +52,7 @@ let platformLengths,frequencyExpiry;
 let powerFacilities;
 let railRecovery, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261008-settings-recovery';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261009-infobox-cjk';
 const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
@@ -110,7 +110,7 @@ function cjkMeasure(){
   })().catch(()=>null);
   return probeMeasure;
 }
-function refreshCjkFont(){if(ready)reloadLanguage();else if(map)cjkFontRefresh=true;}
+function refreshCjkFont(){updateDetailGlyphs();if(ready)reloadLanguage();else if(map)cjkFontRefresh=true;}
 function ensureCjkChoice(script){
   if(cjkChoices.has(script))return;
   cjkChoices.set(script,null);
@@ -124,8 +124,8 @@ function ensureCjkChoice(script){
     if(choice?.family&&cjkScript(settings.language)===script)refreshCjkFont();
   });
 }
-// The packaged Chinese font is fetched only when Han labels are actually
-// drawn and the installed Chinese font misses some character set. Japanese
+// The packaged Chinese font is fetched only when Han labels or feature
+// details are shown and the installed font misses some character set. Japanese
 // and Korean keep their installed fonts: the packaged ones are Chinese designs.
 function loadCjkFont(script){
   const choice=cjkChoices.get(script);
@@ -154,6 +154,103 @@ ensureCjkChoice(cjkScript(settings.language));
 // applies: often Japanese shapes for Chinese names (e.g. 门). Give the canvas
 // the label language whenever MapLibre sets up one of these fonts.
 const CANVAS_LANG = {'zh-Hans':'zh-CN', 'zh-Hant':'zh-TW', ja:'ja', ko:'ko'};
+const DETAIL_CJK_CHARACTER = String.raw`[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}]`;
+// The neutral Bopomofo tone can precede its syllable; other tones follow it.
+const DETAIL_CJK_START = `(?:${DETAIL_CJK_CHARACTER}|˙(?=\\p{Script=Bopomofo}))`;
+const detailRunPattern = separators => new RegExp(`${DETAIL_CJK_START}(?:${DETAIL_CJK_CHARACTER}|[\\p{Mark}ーｰﾞﾟ゛゜ˉˊˇˋ˙˪˫]|${separators}+(?=${DETAIL_CJK_START}))*`, 'gu');
+// Internal separators and line numbers belong to the CJK name when followed
+// by another CJK character. Latin letters and line breaks remain boundaries.
+const DETAIL_GLYPH_RUNS = detailRunPattern(String.raw`[\p{Punctuation}\p{Space_Separator}\p{Number}]`);
+const DETAIL_LANGUAGE_HINTS = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]|˙?\p{Script=Bopomofo}/gu;
+const DETAIL_CONNECTORS = /[\p{Punctuation}\p{Space_Separator}\p{Number}]+/gu;
+const detailGlyphHints = text => [
+  /[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(text) && 'ja',
+  /\p{Script=Hangul}/u.test(text) && 'ko',
+  /\p{Script=Bopomofo}/u.test(text) && 'zh-TW',
+].filter(Boolean);
+const detailGlyphLanguage = text => detailGlyphHints(text)[0] || CANVAS_LANG[cjkScript(settings.language)];
+function splitDetailGlyphLanguages(run) {
+  if (detailGlyphHints(run[0]).length < 2) return [run];
+  const parts = [];
+  let start = 0, previousEnd = 0, previousLanguage;
+  const append = end => {
+    const part = [run[0].slice(start, end)]; part.index = run.index + start; parts.push(part);
+  };
+  for (const hint of run[0].matchAll(DETAIL_LANGUAGE_HINTS)) {
+    const language = detailGlyphLanguage(hint[0]);
+    if (previousLanguage && language !== previousLanguage) {
+      const gap = run[0].slice(previousEnd, hint.index);
+      const connectors = [...gap.matchAll(DETAIL_CONNECTORS)];
+      // A slash/semicolon separates aliases. Otherwise the first connector
+      // keeps the next name's leading Han with its identified language.
+      const separator = connectors.find(part => /[\/／;；]/u.test(part[0])) || connectors[0];
+      const end = separator ? previousEnd + separator.index : hint.index;
+      append(end);
+      start = separator ? end + separator[0].length : hint.index;
+    }
+    previousEnd = hint.index + hint[0].length; previousLanguage = language;
+  }
+  append(run[0].length); return parts;
+}
+function detailGlyphRuns(text) {
+  // Split aliases at their language boundary, retaining spaces within each
+  // complete name instead of labeling isolated Han words independently.
+  return [...text.matchAll(DETAIL_GLYPH_RUNS)].flatMap(splitDetailGlyphLanguages);
+}
+const detailFontObserver = new MutationObserver(updateDetailGlyphs);
+// CJK text in feature details shares the map's chosen family. Kana or Hangul
+// identifies a mixed name's language; Han-only names use the map's language
+// for system glyph fallback. Both styles stay on CJK runs so installed fonts
+// cannot also replace Latin UI text.
+function updateDetailGlyphs() {
+  const panel = $('detail-content');
+  const family = cjkFont(settings.language).replace(/,\s*sans-serif\s*$/, '');
+  const fontFamily = `${family},system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif`;
+  // Only CJK runs need a regional language for glyph fallback. Fixed English
+  // UI and Latin text keep their inherited language for assistive technology.
+  // Disconnect while wrapping our own text to avoid observing ourselves.
+  detailFontObserver.disconnect();
+  try {
+    for (const span of panel.querySelectorAll('[data-cjk-glyphs]')) {
+      const runs = detailGlyphRuns(span.textContent);
+      if (runs.length === 1 && runs[0][0] === span.textContent) {
+        span.lang = detailGlyphLanguage(span.textContent); span.style.fontFamily = fontFamily;
+      }
+      else span.replaceWith(...span.childNodes);
+    }
+    const walker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT), nodes = [];
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (node.parentElement?.namespaceURI === 'http://www.w3.org/1999/xhtml' && !node.parentElement.closest('[data-cjk-glyphs]')) nodes.push(node);
+    }
+    for (const node of nodes) {
+      const runs = detailGlyphRuns(node.data);
+      if (!runs.length) continue;
+      const fragment = document.createDocumentFragment();
+      let offset = 0;
+      for (const run of runs) {
+        fragment.append(node.data.slice(offset, run.index));
+        const span = document.createElement('span');
+        span.dataset.cjkGlyphs = ''; span.lang = detailGlyphLanguage(run[0]); span.style.fontFamily = fontFamily; span.textContent = run[0];
+        fragment.append(span); offset = run.index + run[0].length;
+      }
+      fragment.append(node.data.slice(offset)); node.replaceWith(fragment);
+    }
+  } finally {
+    // All renderers share this container, including asynchronous departures
+    // and nearby names. Existing text-node edits need the same treatment.
+    detailFontObserver.observe(panel, {childList:true, subtree:true, characterData:true});
+  }
+  loadDetailFonts();
+}
+function loadDetailFonts() {
+  if ($('details').hidden) return;
+  const text = $('detail-content').textContent;
+  if (/\p{Script=Han}/u.test(text)) loadCjkFont(cjkScript(settings.language));
+  const blocks = rareHanBlocks(text);
+  if (blocks.size) void rareHanFonts.ensure(blocks);
+}
+updateDetailGlyphs();
 // MapLibre may draw glyphs on an OffscreenCanvas, whose context is another class.
 for (const context of [window.CanvasRenderingContext2D?.prototype, window.OffscreenCanvasRenderingContext2D?.prototype]) {
   const font = context && Object.getOwnPropertyDescriptor(context, 'font');
@@ -1594,6 +1691,7 @@ function reloadLanguage() {
   select.addEventListener('change',()=>{
     settings.language=select.value;
     ensureCjkChoice(cjkScript(settings.language));
+    updateDetailGlyphs();
     if(ready) reloadLanguage();
     saveSettings();
   });

@@ -28,7 +28,7 @@ const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, platformGeometryOptions } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, platformGeometryOptions, departureLoader } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -141,9 +141,9 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const elevation = new vm.SyntheticModule(Object.keys(elevationModule), function() {
     for (const [key,value] of Object.entries(elevationModule)) this.setExport(key,value);
   }, {context});
-  // Departures without the network: no timetable covers any station here.
+  // Departures without the network; a test may supply a delayed local board.
   const departures = new vm.SyntheticModule(Object.keys(departuresModule), function() {
-    for (const [key,value] of Object.entries(departuresModule)) this.setExport(key, key === 'stationDepartures' ? async () => ({stops: [], rows: []}) : value);
+    for (const [key,value] of Object.entries(departuresModule)) this.setExport(key, key === 'stationDepartures' ? departureLoader || (async () => ({stops: [], rows: []})) : value);
   }, {context});
   const globe = new vm.SyntheticModule(['installGlobeDrag','allowPolarCentres','readoutZoom','viewHash','parseViewHash'], function() { this.setExport('installGlobeDrag', () => ({sync() {}, justDragged: () => false, pan: () => false})); this.setExport('allowPolarCentres', () => ({refresh() {}}));this.setExport('readoutZoom',zoom=>zoom);this.setExport('viewHash',globeModule.viewHash);this.setExport('parseViewHash',globeModule.parseViewHash);  }, {context});
   const keyboard = new vm.SyntheticModule(['installKeyboardPan'], function() { this.setExport('installKeyboardPan', () => {}); }, {context});
@@ -246,6 +246,184 @@ test('Japanese labels keep the installed Japanese font even when it is partial',
 test('unavailable Chinese font preserves a working map and system fallback',async()=>{
  const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true});
  try{assert.deepEqual(errors,[]);maps[0].handlers['style.load']();fonts[0].fail();await new Promise(r=>setTimeout(r,0));assert.equal(window.document.body.dataset.mapReady,'true');assert.match(maps[0].options.localIdeographFontFamily,/Noto Sans TC/);}finally{dom.window.close();}
+});
+
+test('clicked station, service, entrance, power and context details share the selected regional font',async()=>{
+ const fetcher=async url=>({ok:true,json:async()=>String(url).includes('power-facilities.geojson')?{type:'FeatureCollection',features:[]}:structuredClone(style)});
+ const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true,installedFonts:{'Noto Sans CJK TC':ALL_PROBES,'Yu Gothic':ALL_PROBES,'Malgun Gothic':ALL_PROBES},fetcher});
+ try{
+  fonts[0].finish();await new Promise(r=>setTimeout(r,0));
+  const doc=window.document,map=maps[0],panel=doc.getElementById('detail-content');map.handlers['style.load']();
+  map.project=([lng,lat])=>({x:500+lng*100,y:400+lat*100});
+  const point={type:'Point',coordinates:[0,0]};
+  const cases=[
+   ['speed',{source:'stations',layer:{id:'station-detail-large-names'},properties:{name:'中央站',state:'disused'},geometry:point},'中央站'],
+   ['service',{source:'serviceRoutes',layer:{id:'service-routes'},properties:{name:'山海線',kind:'rail',i:0,n:1},geometry:{type:'LineString',coordinates:[[0,0],[1,0]]}},'山海線'],
+   ['infrastructure',{source:'stationEntrances',layer:{id:'infrastructure-entrance-points'},properties:{id:456,label:'北出口'},geometry:point},'北出口'],
+   ['electrification',{source:'electricFacilities',layer:{id:'electrification-supply-points'},properties:{name:'南部水塔',power_kind:'water_tank'},geometry:point},'南部水塔'],
+   ['infrastructure',{source:'openmaptiles',sourceLayer:'poi',layer:{id:'context-transport-bus-label'},properties:{name:'東部轉車站',class:'bus',subclass:'bus_station'},geometry:point},'東部轉車站'],
+  ];
+  for(const [mode,feature,name] of cases){
+   doc.querySelector(`[data-mode="${mode}"]`).click();map.rendered=[feature];
+   map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+   await new Promise(r=>setTimeout(r,0));
+   assert.equal(doc.getElementById('details').hidden,false);
+   assert.equal(panel.querySelector('h2').textContent,name);
+   assert.equal(panel.querySelector('h2 [lang]').lang,'zh-TW');assert.match(panel.querySelector('h2 [lang]').style.fontFamily,/^"?Noto Sans CJK TC"?,/);
+   assert.equal(panel.style.fontFamily,'','the shared panel does not override the interface font');
+   for(const node of panel.querySelectorAll('.eyebrow,dt,p.small,a'))assert.equal(node.closest('[lang]')?.lang,'en','fixed English infobox text keeps its language');
+   assert.match(panel.querySelector('h2 [lang]').style.fontFamily,/Atlas Rare Han/);
+  }
+  const language=doc.getElementById('language');
+  for(const [code,family] of [['ja','Yu Gothic'],['ko','Malgun Gothic']]){
+   language.value=code;language.dispatchEvent(new window.Event('change'));
+   await new Promise(r=>setTimeout(r,0));
+   assert.equal(panel.querySelector('h2 [lang]').lang,code,'Han runs follow the selected glyph language after the infobox redraw');
+   assert.equal(panel.querySelector('h2 [lang]').style.fontFamily.split(',')[0].replaceAll('"',''),family);
+  }
+  language.value='zh-Hant';language.dispatchEvent(new window.Event('change'));
+  doc.querySelector('[data-mode="speed"]').click();
+  map.rendered=[{source:'stations',layer:{id:'station-detail-large-names'},properties:{name:'Central',state:'disused',operator:'Regional Rail 東京'},geometry:point}];
+  map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});await new Promise(r=>setTimeout(r,0));
+  assert.equal(panel.querySelector('h2').textContent,'Central');assert.equal(panel.querySelector('h2').style.fontFamily,'');
+  const han=panel.querySelector('dd [lang]');assert.equal(han.textContent,'東京');assert.match(han.style.fontFamily,/^"?Noto Sans CJK TC"?,/);
+  assert.deepEqual([...panel.querySelectorAll('[style]')].filter(node=>node.style.fontFamily),[han],'even a complete installed CJK font is applied only to the Han text, never Latin names or English UI');
+  assert.equal(doc.documentElement.lang,'en','the surrounding English interface keeps its language');
+  assert.equal(panel.closest('[lang]')?.lang,'en','the infobox container retains the interface language');
+  assert.equal(fonts.length,1,'complete regional fonts need only the small probe');assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('English and local infoboxes scope script languages to CJK runs and preserve English text',async()=>{
+ for(const language of ['en','local','zh-Hant']){
+  const {dom,window,maps,errors}=await start({search:`?language=${language}`});
+  try{
+   const doc=window.document,map=maps[0],panel=doc.getElementById('detail-content');map.handlers['style.load']();
+   const station={source:'stations',layer:{id:'station-detail-large-names'},properties:{name:'Central 東京 | 東京メトロ | 東京・テレポート | 東京･ﾒﾄﾛ | 首都圈·전철 | 경의-中央線 | 東京　メトロ | 大韓민국 | 北ㄅ | カナ | ｶﾞ | ﾊﾟ | カ゛ | ハ゜ | 한글 | ㄅㄆ | 東京・Metro',state:'disused',station_size:'large',operator:'Regional Rail'},geometry:{type:'Point',coordinates:[0,0]}};
+   map.rendered=[station];map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+   await new Promise(r=>setTimeout(r,0));
+   const heading=panel.querySelector('h2');assert.equal(heading.textContent,station.properties.name,'wrapping never changes the recorded text');
+   assert.equal(heading.firstChild.data,'Central ');assert.equal(heading.firstChild.parentElement.closest('[lang]')?.lang,'en','the Latin part of a mixed name keeps English');
+   const hanLanguage=language==='zh-Hant'?'zh-TW':'zh-CN';
+   assert.deepEqual([...heading.querySelectorAll('[lang]')].map(span=>[span.textContent,span.lang]),[['東京',hanLanguage],['東京メトロ','ja'],['東京・テレポート','ja'],['東京･ﾒﾄﾛ','ja'],['首都圈·전철','ko'],['경의-中央線','ko'],['東京　メトロ','ja'],['大韓민국','ko'],['北ㄅ','zh-TW'],['カナ','ja'],['ｶﾞ','ja'],['ﾊﾟ','ja'],['カ゛','ja'],['ハ゜','ja'],['한글','ko'],['ㄅㄆ','zh-TW'],['東京',hanLanguage]],'internal punctuation and ideographic spaces keep mixed CJK names in one language');
+   const latinSuffix=[...heading.childNodes].find(node=>node.nodeType===3&&node.data.includes('・Metro'));
+   assert.ok(latinSuffix,'a separator followed by Latin text stays outside the CJK span');assert.equal(latinSuffix.parentElement.closest('[lang]')?.lang,'en');
+   for(const node of [panel,heading,...panel.querySelectorAll('.eyebrow,dt,p.small,a')])assert.equal(node.closest('[lang]')?.lang,'en',`${language}: the CJK fallback must not relabel the English interface`);
+   assert.equal(panel.style.fontFamily,'');assert.equal(heading.style.fontFamily,'');
+   for(const [name,scriptLanguage] of [['東京',hanLanguage],['東京 テレポート','ja'],['東京\u00a0テレポート','ja'],['경의 중앙線','ko'],['首都圈 전철','ko'],['首都圈\u00a0전철','ko'],['東京メトロ1号線','ja'],['東京メトロ 1号線','ja'],['ㄊㄞˊ ㄅㄟˇ','zh-TW'],['ㄅˉ ㄅˊ ㄅˇ ㄅˋ ㄅ˙ ㄅ˪ ㄅ˫','zh-TW'],['˙ㄉㄜ','zh-TW'],['ㄊㄞˊ ˙ㄉㄜ','zh-TW']]){
+    station.properties.name=name;map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+    await new Promise(r=>setTimeout(r,0));
+    const spacedHeading=panel.querySelector('h2');
+    assert.equal(spacedHeading.textContent,name,'wrapping preserves name whitespace and numbers');
+    assert.deepEqual([...spacedHeading.querySelectorAll('[data-cjk-glyphs]')].map(span=>[span.textContent,span.lang]),[[name,scriptLanguage]],`${name}: internal spaces and numbers keep a name in one identified language`);
+    assert.equal(spacedHeading.closest('[lang]')?.lang,'en','only the name span carries the script language');
+   }
+   for(const [name,names] of [
+    ['東京・テレポート/서울교통공사',[['東京・テレポート','ja'],['서울교통공사','ko']]],
+    ['東京メトロ;大韓민국',[['東京メトロ','ja'],['大韓민국','ko']]],
+    ['東京メトロ・서울교통공사',[['東京メトロ','ja'],['서울교통공사','ko']]],
+    ['東京メトロ서울교통공사',[['東京メトロ','ja'],['서울교통공사','ko']]],
+    ['서울교통공사/東京・テレポート',[['서울교통공사','ko'],['東京・テレポート','ja']]],
+    ['東京 メトロ / 서울교통공사',[['東京 メトロ','ja'],['서울교통공사','ko']]],
+    ['東京メトロ / 경의 중앙線',[['東京メトロ','ja'],['경의 중앙線','ko']]],
+    ['서울교통공사；東京\u00a0テレポート',[['서울교통공사','ko'],['東京\u00a0テレポート','ja']]],
+    ['東京 メトロ・경의 중앙線',[['東京 メトロ','ja'],['경의 중앙線','ko']]],
+    ['東京 メトロ 서울교통공사',[['東京 メトロ','ja'],['서울교통공사','ko']]],
+    ['カナ˙ㄉㄜ',[['カナ','ja'],['˙ㄉㄜ','zh-TW']]],
+   ]){
+    station.properties.name=name;map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+    await new Promise(r=>setTimeout(r,0));
+    const mixedHeading=panel.querySelector('h2');
+    assert.equal(mixedHeading.textContent,name,'splitting languages preserves exact punctuation and text');
+    assert.deepEqual([...mixedHeading.querySelectorAll('[data-cjk-glyphs]')].map(span=>[span.textContent,span.lang]),names,`${name}: conflicting script hints keep separate name languages`);
+    assert.equal(mixedHeading.closest('[lang]')?.lang,'en','separators keep the surrounding interface language');
+   }
+   station.properties.name='Central';map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+   await new Promise(r=>setTimeout(r,0));
+   assert.equal(panel.querySelector('h2').closest('[lang]')?.lang,'en','a Latin-only feature name keeps its inherited language');
+   assert.equal(panel.querySelectorAll('[lang]').length,0,'English-only content needs no script wrappers');assert.deepEqual(errors,[]);
+  }finally{dom.window.close();}
+ }
+});
+
+test('infobox Han text requests the packaged font after probing without requiring map glyph drawing',async()=>{
+ const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true,installedFonts:{'Microsoft JhengHei':'頓嘢冧俆㜏駅峠畑\uF900\uFA11㐀㙟'}});
+ try{
+  const doc=window.document,map=maps[0],panel=doc.getElementById('detail-content');map.handlers['style.load']();
+  const station={source:'stations',layer:{id:'station-detail-large-names'},properties:{name:'Central',state:'disused'},geometry:{type:'Point',coordinates:[0,0]}};
+  map.rendered=[station];map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+  await new Promise(r=>setTimeout(r,0));assert.equal(fonts.length,1,'an English-only infobox does not request a CJK bundle');
+  station.properties.operator='東海旅客鉄道';map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+  await new Promise(r=>setTimeout(r,0));assert.equal(fonts.length,1,'the probe is still pending');
+  fonts[0].finish();await new Promise(r=>setTimeout(r,0));
+  assert.equal(panel.querySelector('h2').textContent,'Central');assert.match(panel.textContent,/東海旅客鉄道/);
+  assert.equal(panel.querySelector('h2').closest('[lang]')?.lang,'en');
+  assert.equal(panel.querySelector('dd [lang]').lang,'zh-TW','the Han operator value carries its own regional language');
+  const packaged=fonts.find(f=>f.family==='Atlas CJK TC');assert.ok(packaged,'Han in a body value needs the font even though the heading is Latin');
+  assert.match(panel.querySelector('dd [lang]').style.fontFamily,/^"?Microsoft JhengHei"?,/);
+  packaged.finish();await new Promise(r=>setTimeout(r,0));
+  assert.match(panel.querySelector('dd [lang]').style.fontFamily,/^"?Atlas CJK TC"?,/);assert.match(panel.querySelector('dd [lang]').style.fontFamily,/Atlas Rare Han/);
+  assert.equal(panel.style.fontFamily,'','English text keeps its interface font while the CJK-only package is loaded');
+  assert.equal(fonts.length,2,'the infobox and redraw share one package load');assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('an open infobox follows language and font changes while map style loading is delayed',async()=>{
+ const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true,installedFonts:{'Microsoft JhengHei':'頓嘢冧俆㜏駅峠畑\uF900\uFA11㐀㙟','Microsoft YaHei':'顿頓嘢冧俆㜏駅峠畑\uF900\uFA11㐀㙟'}});
+ try{
+  fonts[0].finish();await new Promise(r=>setTimeout(r,0));
+  const doc=window.document,map=maps[0],panel=doc.getElementById('detail-content'),language=doc.getElementById('language');map.handlers['style.load']();
+  map.rendered=[{source:'stations',layer:{id:'station-detail-large-names'},properties:{name:'漢岛',state:'disused'},geometry:{type:'Point',coordinates:[0,0]}}];
+  map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});await new Promise(r=>setTimeout(r,0));
+  const traditional=fonts.find(f=>f.family==='Atlas CJK TC');assert.ok(traditional);
+  // Keep the style callback pending as it is when map resources load slowly.
+  map.setStyle=(style,options)=>{map.options.style=style;map.styleOptions=options;};
+  language.value='zh-Hans';language.dispatchEvent(new window.Event('change'));
+  assert.equal(panel.querySelector('h2 [lang]').lang,'zh-CN');assert.doesNotMatch(panel.querySelector('h2 [lang]').style.fontFamily,/JhengHei|CJK TC/);
+  await new Promise(r=>setTimeout(r,0));
+  assert.match(panel.querySelector('h2 [lang]').style.fontFamily,/^"?Microsoft YaHei"?,/);
+  const simplified=fonts.find(f=>f.family==='Atlas CJK SC');assert.ok(simplified);
+  traditional.finish();await new Promise(r=>setTimeout(r,0));
+  assert.doesNotMatch(panel.querySelector('h2 [lang]').style.fontFamily,/CJK TC/,'a stale Traditional download cannot replace the selected Simplified font');
+  simplified.finish();await new Promise(r=>setTimeout(r,0));
+  assert.match(panel.querySelector('h2 [lang]').style.fontFamily,/^"?Atlas CJK SC"?,/,'the loaded font reaches the open infobox before the map style finishes');
+  language.value='zh-Hant';language.dispatchEvent(new window.Event('change'));
+  assert.equal(panel.querySelector('h2 [lang]').lang,'zh-TW');assert.match(panel.querySelector('h2 [lang]').style.fontFamily,/^"?Atlas CJK TC"?,/,'switching back immediately reuses the finished font');
+  assert.equal(panel.style.fontFamily,'');
+  assert.equal(panel.closest('[lang]')?.lang,'en');
+  assert.equal(fonts.length,3);assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('rare Han in infobox body values and later departure text loads only the displayed slices',async()=>{
+ let completeBoard;
+ const board=new Promise(resolve=>{completeBoard=resolve;}),requests=[];
+ const fetcher=async url=>{requests.push(String(url));return {ok:true,status:200,json:async()=>String(url).includes('rare-han-v1/index.json')?{blocks:[0x2a7,0x2a8,0x2a9,0x2aa]}:structuredClone(style)};};
+ const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true,installedFonts:{'Noto Sans CJK TC':ALL_PROBES},fetcher,departureLoader:()=>board});
+ const slice=block=>fonts.find(f=>f.url.includes(`rare-han-v1/${block}.woff2`));
+ const waitForSlice=async block=>{for(let i=0;i<100&&!slice(block);i++)await new Promise(r=>setTimeout(r,0));assert.ok(slice(block),`${block}: displayed text requests its glyph slice`);slice(block).finish();await new Promise(r=>setTimeout(r,0));};
+ try{
+  fonts[0].finish();await new Promise(r=>setTimeout(r,0));
+  const doc=window.document,map=maps[0],panel=doc.getElementById('detail-content');map.handlers['style.load']();
+  assert.ok(!requests.some(url=>url.includes('rare-han-v1')),'no slices are needed before inspecting the feature');
+  map.rendered=[{source:'stations',layer:{id:'station-detail-large-names'},properties:{name:'Central',operator:'Operator \u{2A700}',description:'Unshown \u{2AA00}'},geometry:{type:'Point',coordinates:[0,0]}}];
+  map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+  assert.equal(doc.getElementById('details').hidden,false,'the infobox opens without waiting for a font');
+  assert.equal(panel.querySelector('h2').textContent,'Central');await waitForSlice('2a7');
+  completeBoard({stops:[{id:'fixture:central'}],rows:[{line:'R',headsign:'Destination \u{2A800}',departure:0,tz:'UTC',mode:'RAIL'}]});
+  await waitForSlice('2a8');
+  const headsign=panel.querySelector('.departure-headsign');assert.equal(headsign.textContent,'Destination \u{2A800}');
+  assert.equal(headsign.firstChild.data,'Destination ');assert.equal(headsign.closest('[lang]')?.lang,'en');
+  const han=headsign.querySelector('[lang]');assert.equal(han.lang,'zh-TW');
+  han.firstChild.data='\u{2A900}';await waitForSlice('2a9');assert.equal(headsign.textContent,'Destination \u{2A900}');
+  han.firstChild.data='Extra \u{2A900}';await new Promise(r=>setTimeout(r,0));
+  assert.equal(headsign.textContent,'Destination Extra \u{2A900}');assert.equal(headsign.querySelector('[lang]').textContent,'\u{2A900}','changing a CJK run to mixed text leaves its new English part outside the language span');
+  headsign.querySelector('[lang]').firstChild.data='Central';await new Promise(r=>setTimeout(r,0));
+  assert.equal(headsign.textContent,'Destination Extra Central');assert.equal(headsign.querySelector('[lang]'),null,'a run changed entirely to Latin no longer carries a CJK language');
+  assert.equal(slice('2aa'),undefined,'unrendered feature properties do not download extra font slices');
+  assert.equal(fonts.filter(f=>f.family==='Atlas Rare Han').length,3,'the original body is not downloaded again as asynchronous content arrives');
+  assert.equal(requests.filter(url=>url.includes('rare-han-v1/index.json')).length,1);assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
 });
 
 test('service frequency profile is applied on the first frame and controls persist independently',async()=>{
