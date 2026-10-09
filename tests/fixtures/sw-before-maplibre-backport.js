@@ -11,27 +11,18 @@
 // Their filenames pin the library version, so cached old/new app versions
 // cannot overwrite one another's dependency bytes. Map tiles and data files
 // are not handled here.
-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}24`, KEEP_VERSIONS = 2;
+const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}23`, KEEP_VERSIONS = 2;
 const FONT_CACHE='atlas-label-fonts-v1';
-// Shell 24 selects the hash-pinned MapLibre attribution backport and keeps
-// older open tabs working without any new legacy request.
+// Shell 23 moves map libraries to this app's own origin. migrate() also keeps
+// existing CDN copies for older open tabs, without making any new CDN request.
 // Stored user settings are not touched.
 // Keep in step with loadScript in app.mjs and the stylesheet in index.html.
-const LIBRARIES = ['vendor/maplibre-gl-5.24.0-atlas.1.js', 'vendor/maplibre-gl-5.24.0.css', 'vendor/pmtiles-4.2.1.js'];
+const LIBRARIES = ['vendor/maplibre-gl-5.24.0.js', 'vendor/maplibre-gl-5.24.0.css', 'vendor/pmtiles-4.2.1.js'];
 const LEGACY_LIBRARIES = {
+  'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js': '45a9b07a9189ce56054c620a947ccf41e291e58c95e9b61533b740aaa65ee5cb',
   'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css': 'ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732',
   'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js': 'afc49d216fd24c0a3c0ff3cd2e0c62d6cdaf062854c3dced778dcab168824f79',
 };
-// Historical pages use plain script tags without SRI. Their v5 API remains
-// compatible, so future requests to either old JS URL receive verified fixed
-// bytes. Do not migrate original executable JS into the replacement cache.
-const MAPLIBRE_PATCHED = new URL('vendor/maplibre-gl-5.24.0-atlas.1.js', self.registration.scope).href;
-const MAPLIBRE_PATCHED_SHA256 = '46dc2971db363b0c7efa1d9ae6035d26c872c7110a3384aaec379ff281e0f223';
-const LEGACY_MAPLIBRE = new Set([
-  new URL('vendor/maplibre-gl-5.24.0.js', self.registration.scope).href,
-  'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js',
-]);
-const legacyMapLibre = url => LEGACY_MAPLIBRE.has(url.origin + url.pathname);
 const SHELL = /\/(app\.css|[\w-]+\.mjs|vendor\/[\w.-]+\.(?:js|css)|world\.style\.json|major-stations\.geojson|manifest\.webmanifest|atlas-icon[\w-]*\.(?:png|svg))$/;
 // Saved at installation, so an app installed on the first visit (before this
 // worker controlled the page) also opens offline.
@@ -42,9 +33,10 @@ const pageVersion = html => html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1] ?? nu
 const versioned = (key, version) => `${key}?v=${encodeURIComponent(version)}`;
 // The versions kept (saveVersion), newest first.
 const keptVersions = cache => cache.match(new URL('__versions', self.registration.scope).href).then(r => r ? r.json() : []).catch(() => []);
-// Compatibility responses must match the same immutable byte pins as
-// app.mjs and scripts/browser-libraries.mjs before they are migrated or served.
-async function verifiedLegacyLibrary(cache, url, expected = LEGACY_LIBRARIES[url]) {
+// Previously saved external code must match the same immutable byte pins as
+// app.mjs and scripts/browser-libraries.mjs before it is migrated or served.
+async function verifiedLegacyLibrary(cache, url) {
+  const expected = LEGACY_LIBRARIES[url];
   if (!expected || !self.crypto?.subtle) return null;
   try {
     const response = await cache.match(url);
@@ -107,8 +99,7 @@ async function migrate(cache, version) {
     keep = [...new Set([version, ...keep, ...(await versions(old)), ...(pageOf ? [pageOf] : [])])].slice(0, KEEP_VERSIONS);
     for (const request of await old.keys()) {
       const url = new URL(request.url), v = url.searchParams.get('v');
-      if (legacyMapLibre(url)) continue;
-      // Older tabs may still request original CSS/PMTiles CDN URLs after the
+      // An older tab may still lazily request its original CDN URL after the
       // new worker claims it. Transfer only copies already saved; CDN access
       // is never required for installation or for this compatibility path.
       if (Object.hasOwn(LEGACY_LIBRARIES, request.url)) {
@@ -151,11 +142,6 @@ self.addEventListener('activate', event => event.waitUntil((async () => {
 })()));
 self.addEventListener('fetch', event => {
   const request = event.request, url = new URL(request.url);
-  if (request.method === 'GET' && legacyMapLibre(url)) {
-    event.respondWith(caches.open(CACHE).then(async cache =>
-      await verifiedLegacyLibrary(cache, MAPLIBRE_PATCHED, MAPLIBRE_PATCHED_SHA256) || Response.error()));
-    return;
-  }
   if (request.method === 'GET' && Object.hasOwn(LEGACY_LIBRARIES, request.url)) {
     event.respondWith(caches.open(CACHE).then(async cache => {
       // Compatibility for old open pages only. An absent legacy copy must

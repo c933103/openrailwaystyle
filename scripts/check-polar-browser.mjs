@@ -33,7 +33,7 @@ try {
       await route.fulfill({status:value?200:404,contentType:'application/json',body:JSON.stringify(value||{})});
     });
     await page.route('**/polar-check.html',route=>route.fulfill({contentType:'text/html',body:`<!doctype html><html><body style="margin:0"><div id="map" style="width:100vw;height:100vh"></div>
-      <script src="vendor/maplibre-gl-5.24.0.js"></script>
+      <script src="vendor/maplibre-gl-5.24.0-atlas.1.js"></script>
       <script type="module">
       import {PolarLayer} from './vendor/polar-layer.js';
       import {allowPolarCentres} from './globe-drag.mjs';

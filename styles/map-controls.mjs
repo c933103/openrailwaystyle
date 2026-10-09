@@ -337,3 +337,29 @@ export function installPwaInstall({window = globalThis.window, document = window
     close();
   }};
 }
+
+// MapLibre attribution hardening stays in an existing, versioned app module:
+// an older worker already precaches it during an interrupted shell upgrade.
+// Reproduce upstream 1da69f3cd913a39fa948708e01478663bf48bc27 without changing
+// v5's renderer/worker/API. Only the exact published JavaScript is accepted.
+export const MAPLIBRE_BACKPORT = Object.freeze({
+  upstreamSha256: '45a9b07a9189ce56054c620a947ccf41e291e58c95e9b61533b740aaa65ee5cb',
+  sha256: '46dc2971db363b0c7efa1d9ae6035d26c872c7110a3384aaec379ff281e0f223',
+  target: 'vendor/maplibre-gl-5.24.0-atlas.1.js',
+});
+export async function backportMapLibre524(bytes, subtle) {
+  if (!subtle) throw new Error('MapLibre backport requires integrity verification');
+  const digest = async value => [...new Uint8Array(await subtle.digest('SHA-256', value))]
+    .map(byte => byte.toString(16).padStart(2, '0')).join('');
+  if (await digest(bytes) !== MAPLIBRE_BACKPORT.upstreamSha256) throw new Error('Unexpected MapLibre input');
+  const original = 'static removeAttributes(e){for(const{name:t,value:i}of e.attributes)d.isPossiblyDangerous(t,i)&&e.removeAttribute(t);}';
+  const replacement = original.replace('of e.attributes', 'of Array.from(e.attributes)');
+  const source = new TextDecoder('utf-8', {fatal: true}).decode(bytes);
+  if (source.split(original).length !== 2) throw new Error('Unexpected MapLibre sanitizer');
+  // This one-line change invalidates the upstream source map's columns. Do not
+  // advertise that unchanged map for the locally modified distribution.
+  const patched = new TextEncoder().encode(source.replace(original, replacement)
+    .replace('//# sourceMappingURL=maplibre-gl.js.map\n', ''));
+  if (await digest(patched) !== MAPLIBRE_BACKPORT.sha256) throw new Error('Unexpected MapLibre output');
+  return patched;
+}

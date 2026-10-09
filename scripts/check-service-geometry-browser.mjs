@@ -30,7 +30,7 @@ export async function checkServiceGeometryBrowser({root = process.env.ATLAS_TEST
     browserVersion = browser.version();
     const page = await browser.newPage({viewport: {width: 1200, height: 960}, deviceScaleFactor: 1});
     page.on('pageerror', error => errors.push(error.message));
-    await page.route('**/vendor/maplibre-gl-5.24.0.*', route => {
+    await page.route('**/vendor/maplibre-gl-5.24.0*', route => {
       const asset = renderer.get(route.request().url());
       return asset ? route.fulfill(asset) : route.fallback();
     });
@@ -44,7 +44,7 @@ export async function checkServiceGeometryBrowser({root = process.env.ATLAS_TEST
       <style>body{margin:0;background:#eef2f6;color:#172d43;font:14px system-ui}header{padding:16px 22px}h1{font-size:21px;margin:0 0 8px}#maps{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px}.panel{background:white;border:1px solid #ccd5df;border-radius:5px;overflow:hidden}h2{font-size:13px;margin:0;padding:8px 12px}.map{height:160px}footer{padding:12px 22px;font-size:12px}</style>
       <header><h1>Service geometry: actual generated vector tiles</h1><div id="profile"></div></header><main id="maps"></main>
       <footer>Two shared synthetic services. Production MapLibre service layer. White gaps are intentional withheld geometry. No live OSM or real timetable validation is claimed.</footer>
-      <script src="vendor/maplibre-gl-5.24.0.js"></script>`}));
+      <script src="vendor/maplibre-gl-5.24.0-atlas.1.js"></script>`}));
     await page.goto(`${root}/service-geometry-check.html`);
     await page.evaluate(async ({fixtures, layer, root}) => {
       const frequency = await import('./service-frequency.mjs');

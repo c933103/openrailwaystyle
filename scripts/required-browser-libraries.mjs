@@ -2,6 +2,22 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {BROWSER_LIBRARIES} from './browser-libraries.mjs';
 
+// Failure probes follow the same immutable targets as the build and observer.
+// Do not let a renamed renderer silently escape a test's network failure.
+export async function blockRequiredBrowserScripts(page, base) {
+  const scripts = new Map(BROWSER_LIBRARIES.filter(library => library.target.endsWith('.js'))
+    .map(library => [new URL(library.target, base).href, library]));
+  const blocked = [];
+  await page.route('**/*', route => {
+    const url = new URL(route.request().url());
+    const library = scripts.get(url.origin + url.pathname);
+    if (!library) return route.fallback();
+    blocked.push({url: url.href, package: library.package});
+    return route.abort('blockedbyclient');
+  });
+  return blocked;
+}
+
 // Inspect only requests the tested page already makes. Optional app/data
 // failures are outside this contract, and no checkout bytes replace responses.
 export function observeRequiredBrowserLibraries(page, base) {

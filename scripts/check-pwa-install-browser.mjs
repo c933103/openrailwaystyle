@@ -6,6 +6,7 @@ import {mkdir,writeFile} from 'node:fs/promises';
 import {launchBrowser} from './browser.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {serveAtlasAppFixture} from './atlas-app-browser-fixture.mjs';
+import {blockRequiredBrowserScripts} from './required-browser-libraries.mjs';
 
 const engine=process.env.ATLAS_PWA_ENGINE||'chromium';
 assert.ok(['chromium','webkit'].includes(engine),'Known test browser engine');
@@ -100,10 +101,10 @@ try {
       }
     },profile);
     await installEmptyMapProviders(context,base,{firstParty:'network'});
+    const blockedLibraries=await blockRequiredBrowserScripts(page,base);
     await page.route('**/*',route=>{
       const request=route.request(),url=new URL(request.url());
-      if(/\/(maplibre-gl-5\.24\.0|pmtiles-4\.2\.1)\.js$/.test(url.pathname)
-        ||/jsdelivr\.net$/.test(url.hostname)){
+      if(/jsdelivr\.net$/.test(url.hostname)){
         blocked.push(url.href);return route.abort('blockedbyclient');
       }
       if(['script','stylesheet'].includes(request.resourceType())&&url.origin!==server.origin)return route.abort('blockedbyclient');
@@ -132,7 +133,8 @@ try {
         share.addEventListener('focus',()=>window.fallbackEvents.focuses++);
       });
     }
-    assert.ok(blocked.some(url=>url.includes('maplibre-gl-5.24.0.js')),'renderer must actually fail in this case');
+    assert.ok(blockedLibraries.some(request=>request.package==='maplibre-gl'),'the current renderer request must actually be blocked');
+    assert.equal(await page.evaluate(()=>typeof window.maplibregl),'undefined','a different library failure must not mask a successfully loaded renderer');
     const opener=page.locator('#pwa-install-open'),dialog=page.locator('#pwa-install');
     assert.equal(await dialog.isVisible(),false,'no intrusive automatic installation dialog');
     if(profile.standalone){
@@ -192,7 +194,7 @@ try {
       }
     }
     assert.deepEqual(errors,[],'installation guidance survives renderer failure without unhandled errors');
-    report.push({engine,profile:profile.name,rendererBlocked:true,errors});
+    report.push({engine,profile:profile.name,rendererBlocked:true,blockedLibraries,blockedCdns:blocked,errors});
     await context.close();
   }
   await writeFile(`browser-review/pwa-install-${engine}.json`,JSON.stringify(report,null,2)+'\n');
