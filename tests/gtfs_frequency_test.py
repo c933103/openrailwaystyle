@@ -15,6 +15,58 @@ CONFIG = {'source':{'id':'fixture'},'profiles':{'am':{'start':'07:00:00','end':'
 
 
 class GTFSFrequency(unittest.TestCase):
+    def test_time_padding_preserves_optional_and_extended_hour_values(self):
+        for value, expected in [(None, None), ('', None), (' 6:57:00', 25020),
+                                ('6:57:00 ', 25020), ('\t24:01:02\t', 86462),
+                                (' 103:00:00 ', 370800)]:
+            with self.subTest(value=value):
+                self.assertEqual(compiler.seconds(value), expected)
+
+    def test_time_padding_does_not_accept_empty_or_malformed_times(self):
+        for value in [' ', '\t', '6: 57:00', '6:57: 00', '6:60:00', '6:57:60',
+                      '-18:31:25', '+6:57:00', '6:57', 'n/a']:
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError) as error:
+                    compiler.seconds(value)
+                self.assertEqual(str(error.exception), f'Invalid GTFS time {value!r}')
+
+    def test_padded_departure_and_frequency_times_preserve_profiles(self):
+        patterns = {'t': [('A', '00:00:00'), ('B', '00:30:00'), ('C', '00:40:00')]}
+        for exact in ['0', '1']:
+            with self.subTest(exact_times=exact):
+                frequency = [{'trip_id': 't', 'start_time': '07:00:00',
+                              'end_time': '09:00:00', 'headway_secs': '600',
+                              'exact_times': exact}]
+                path = self.feed(patterns, patterns, frequency)
+                before = compiler.compile_feed(path, CONFIG, '2026-10-05')
+                with zipfile.ZipFile(path) as z:
+                    files = {name: z.read(name) for name in z.namelist()}
+                files['frequencies.txt'] = files['frequencies.txt'].replace(
+                    b'07:00:00', b' 7:00:00 ').replace(b'09:00:00', b' 9:00:00 ')
+                for value in [b'00:00:00', b'00:30:00', b'00:40:00']:
+                    files['stop_times.txt'] = files['stop_times.txt'].replace(
+                        value, b' ' + value + b' ')
+                with zipfile.ZipFile(path, 'w') as z:
+                    for name, data in files.items():
+                        z.writestr(name, data)
+                after = compiler.compile_feed(path, CONFIG, '2026-10-05')
+                self.assertEqual(after['segments'], before['segments'])
+                self.assertEqual(after['source']['calendar_audit'],
+                                 before['source']['calendar_audit'])
+
+    def test_whitespace_only_departure_remains_explicitly_invalid(self):
+        patterns = {'t': [('A', '08:00:00'), ('B', '08:10:00')]}
+        path = self.feed(patterns, patterns)
+        with zipfile.ZipFile(path) as z:
+            files = {name: z.read(name) for name in z.namelist()}
+        files['stop_times.txt'] = files['stop_times.txt'].replace(b'08:00:00', b' ')
+        with zipfile.ZipFile(path, 'w') as z:
+            for name, data in files.items():
+                z.writestr(name, data)
+        # Treating this as an absent value would break max(known) downstream.
+        with self.assertRaisesRegex(ValueError, 'Invalid GTFS time'):
+            compiler.compile_feed(path, CONFIG, '2026-10-05')
+
     def test_future_rail_calendars_without_feed_start_are_unknown_not_zero(self):
         patterns={'t':[('A','08:00:00'),('B','08:10:00')]}
         for added in [False,True]:
