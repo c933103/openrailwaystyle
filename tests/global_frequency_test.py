@@ -451,6 +451,102 @@ class GlobalFrequency(unittest.TestCase):
                         pipeline.fetch_alternative(direct,cache/'bad.zip',1_000_000)
                     self.assertFalse((cache/'bad.zip').exists())
 
+    def test_inconsistent_range_zip_directories_fall_back_or_remain_retriable(self):
+        for kind in ['excess-record-count','short-directory-header','truncated-record-fields']:
+            with self.subTest(kind=kind):
+                data=bytearray(self.archive());end=data.rfind(b'PK\x05\x06')
+                if kind=='excess-record-count':
+                    struct.pack_into('<HH',data,end+8,100,100)
+                elif kind=='short-directory-header':
+                    struct.pack_into('<I',data,end+12,1)
+                else:
+                    central=struct.unpack_from('<I',data,end+16)[0]
+                    struct.pack_into('<H',data,central+28,65535)
+                processed,held=self.server(bytes(data))
+                original,_=self.server(self.archive())
+                entry=pipeline.discover([{'filename':'directory.gtfs.zip','source':original,'country_code':'CA'}],{})[0]
+                entry['processed_url']=processed
+                cache=self.root/kind;cache.mkdir()
+                result=pipeline.compile_entry(entry,cache,self.root/(kind+'-output'),'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                self.assertEqual(result['status'],'compiled')
+                self.assertEqual(result['source']['download_url_sha256'],pipeline.source_url_fingerprint(original))
+                self.assertEqual(result['source']['recovered_source_errors'][0]['code'],'invalid_feed_or_budget')
+                direct=pipeline.discover([{'filename':'broken.gtfs.zip','source':processed,'country_code':'CA','delivery':'direct'}],{})[0]
+                with self.assertRaises(pipeline.SourceRetrievalError) as error:
+                    pipeline.fetch_alternative(direct,cache/'broken.zip',1_000_000)
+                self.assertEqual(error.exception.attempts[0]['code'],'invalid_feed_or_budget')
+                self.assertFalse((cache/'broken.zip').exists())
+                self.assertTrue(all(held['requests']),'malformed ranged directory never triggers a full bad download')
+
+    def test_bounded_zip_header_corruption_matrix_preserves_fallback_and_cache(self):
+        for kind in ['truncated-file','central-signature','local-signature','local-name-overflow','bad-crc','unsupported-version']:
+            data=bytearray(self.archive());end=data.rfind(b'PK\x05\x06')
+            central=struct.unpack_from('<I',data,end+16)[0]
+            with zipfile.ZipFile(io.BytesIO(data)) as archive:local=archive.getinfo('routes.txt').header_offset
+            if kind=='truncated-file':data=data[:-1000]
+            elif kind=='central-signature':data[central:central+4]=b'BAD!'
+            elif kind=='local-signature':data[local:local+4]=b'BAD!'
+            elif kind=='local-name-overflow':struct.pack_into('<H',data,local+26,65535)
+            elif kind=='bad-crc':
+                while True:
+                    name_len=struct.unpack_from('<H',data,central+28)[0]
+                    if data[central+46:central+46+name_len]==b'routes.txt':break
+                    central=data.index(b'PK\x01\x02',central+46+name_len)
+                crc=struct.unpack_from('<I',data,central+16)[0]
+                struct.pack_into('<I',data,central+16,crc^0xffffffff)
+            else:struct.pack_into('<H',data,central+6,99)
+            malformed=bytes(data)
+            for mode in ['whole','ranged','conditional']:
+                with self.subTest(kind=kind,mode=mode):
+                    processed,held=self.server(self.archive() if mode=='conditional' else malformed,ranges=mode!='whole')
+                    original,_=self.server(self.archive())
+                    entry=pipeline.discover([{'filename':'matrix.gtfs.zip','source':original,'country_code':'CA'}],{})[0]
+                    entry['processed_url']=processed
+                    cache=self.root/f'matrix-{kind}-{mode}';cache.mkdir()
+                    output=self.root/f'matrix-out-{kind}-{mode}'
+                    if mode=='conditional':
+                        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                        old=(cache/'matrix.zip').read_bytes()
+                        held['data']=malformed;held['etag']='"two"'
+                    result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                    self.assertEqual(result['status'],'compiled')
+                    self.assertEqual(result['source']['download_url_sha256'],pipeline.source_url_fingerprint(original))
+                    self.assertEqual(result['source']['recovered_source_errors'][0]['code'],'invalid_feed_or_budget')
+                    if mode=='conditional':self.assertEqual((cache/'matrix.zip').read_bytes(),old)
+                    direct=pipeline.discover([{'filename':'bad.gtfs.zip','source':processed,'country_code':'CA','delivery':'direct'}],{})[0]
+                    with self.assertRaises(pipeline.SourceRetrievalError):
+                        pipeline.fetch_alternative(direct,cache/'bad.zip',1_000_000)
+                    self.assertFalse((cache/'bad.zip').exists())
+
+    def test_zip_decoder_boundaries_preserve_programmer_and_control_flow_errors(self):
+        from types import SimpleNamespace
+        archive=SimpleNamespace(getinfo=lambda name:SimpleNamespace(file_size=10,flag_bits=0))
+        errors=[zipfile.BadZipFile('bad'),EOFError('truncated'),struct.error('short'),
+                NotImplementedError('unsupported codec'),pipeline.zlib.error('bad deflate')]
+        if pipeline.lzma:errors.append(pipeline.lzma.LZMAError('bad lzma'))
+        for error in errors:
+            with self.subTest(error=type(error).__name__):
+                with patch.object(pipeline.zipfile,'ZipFile',side_effect=error):
+                    with self.assertRaises(ValueError):pipeline.source_archive(io.BytesIO())
+                archive.read=lambda info,error=error:(_ for _ in ()).throw(error)
+                with self.assertRaises(ValueError):pipeline.archive_metadata(archive,'routes.txt')
+        for error in [TypeError('programmer'),AssertionError('invariant'),RuntimeError('programmer'),
+                      MemoryError('budget'),KeyboardInterrupt(),SystemExit(1)]:
+            with self.subTest(preserved=type(error).__name__):
+                with patch.object(pipeline.zipfile,'ZipFile',side_effect=error):
+                    with self.assertRaises(type(error)) as caught:pipeline.source_archive(io.BytesIO())
+                    self.assertIs(caught.exception,error)
+                archive.read=lambda info,error=error:(_ for _ in ()).throw(error)
+                with self.assertRaises(type(error)) as caught:pipeline.archive_metadata(archive,'routes.txt')
+                self.assertIs(caught.exception,error)
+        for codec in ['zlib','bz2','lzma']:
+            archive.read=lambda info:(_ for _ in ()).throw(RuntimeError(f'Compression requires the (missing) {codec} module'))
+            with self.assertRaises(ValueError):pipeline.archive_metadata(archive,'routes.txt')
+        for size in range(30):
+            with self.assertRaises(ValueError):pipeline.unpack_zip_metadata('<4s5H3I2H',b'X'*size)
+        for size in range(46):
+            with self.assertRaises(ValueError):pipeline.unpack_zip_metadata('<4s6H3I5H2I',b'X'*size)
+
     def test_lineage_fallback_enforces_domains_and_exact_source_review_before_fetch(self):
         from urllib.error import HTTPError
         allowed, held = self.server(self.archive())
@@ -778,15 +874,27 @@ class GlobalFrequency(unittest.TestCase):
     def archive(self,rail=True):
         data=io.BytesIO()
         with zipfile.ZipFile(data,'w',compression=zipfile.ZIP_DEFLATED) as z:
-            z.writestr('routes.txt','route_id,route_type,agency_id,route_short_name\nr,2,a,R\n' if rail else 'route_id,route_type\nb,3\n')
-            z.writestr('agency.txt','agency_id,agency_name,agency_timezone\na,National Rail,Etc/UTC\n')
-            z.writestr('feed_info.txt','feed_start_date,feed_end_date\n20260101,20261231\n')
-            z.writestr('stops.txt','stop_id,stop_name,stop_lat,stop_lon\nA,A,30,31\nB,B,30.01,31\n')
-            z.writestr('trips.txt','trip_id,route_id,service_id\nt,r,w\n')
-            z.writestr('stop_times.txt','trip_id,stop_sequence,stop_id,departure_time\nt,1,A,08:00:00\nt,2,B,08:10:00\n')
-            z.writestr('calendar.txt','service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\nw,1,1,1,1,1,1,1,20260101,20261231\n')
-            z.writestr('unused-padding.bin',bytes(range(256))*2000)
+            def write(name,value):
+                info=zipfile.ZipInfo(name,(2026,1,1,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED
+                z.writestr(info,value)
+            write('routes.txt','route_id,route_type,agency_id,route_short_name\nr,2,a,R\n' if rail else 'route_id,route_type\nb,3\n')
+            write('agency.txt','agency_id,agency_name,agency_timezone\na,National Rail,Etc/UTC\n')
+            write('feed_info.txt','feed_start_date,feed_end_date\n20260101,20261231\n')
+            write('stops.txt','stop_id,stop_name,stop_lat,stop_lon\nA,A,30,31\nB,B,30.01,31\n')
+            write('trips.txt','trip_id,route_id,service_id\nt,r,w\n')
+            write('stop_times.txt','trip_id,stop_sequence,stop_id,departure_time\nt,1,A,08:00:00\nt,2,B,08:10:00\n')
+            write('calendar.txt','service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\nw,1,1,1,1,1,1,1,20260101,20261231\n')
+            write('unused-padding.bin',bytes(range(256))*2000)
         return data.getvalue()
+
+    def test_fixture_archive_bytes_do_not_depend_on_wall_clock(self):
+        with patch('zipfile.time.localtime',return_value=(2026,1,1,0,0,0,0,1,0)):
+            first=self.archive()
+        with patch('zipfile.time.localtime',return_value=(2026,10,9,11,0,2,4,282,0)):
+            second=self.archive()
+        self.assertEqual(first,second)
+        with zipfile.ZipFile(io.BytesIO(first)) as archive:
+            self.assertTrue(all(info.date_time==(2026,1,1,0,0,0) for info in archive.infolist()))
 
     def server(self,data,ranges=True,change=False,last_modified=False):
         held={'requests':[],'conditional_requests':[],'range_validators':[],'etag':None if last_modified else '"one"','last_modified':'Mon, 01 Jun 2026 00:00:00 GMT' if last_modified else None,'data':data}

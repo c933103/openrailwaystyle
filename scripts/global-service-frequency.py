@@ -33,6 +33,12 @@ from urllib.parse import parse_qsl, quote, unquote, urlencode, urljoin, urlparse
 from urllib.request import Request
 import zipfile
 import zlib
+try:
+    import lzma
+except ImportError:  # zipfile also supports builds without optional codecs.
+    lzma = None
+
+ZIP_METADATA_ERRORS = (zipfile.BadZipFile, struct.error, EOFError, NotImplementedError, zlib.error) + ((lzma.LZMAError,) if lzma else ())
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOGUE = 'https://raw.githubusercontent.com/public-transport/transitous/main/website/data/license.json'
@@ -538,6 +544,21 @@ def routes_have_rail(data):
         raise ValueError('Invalid routes.txt CSV metadata') from None
 
 
+def unpack_zip_metadata(layout, data):
+    try:
+        return struct.unpack(layout, data)
+    except struct.error:
+        raise ValueError('Truncated ZIP metadata structure') from None
+
+
+def source_archive(source):
+    """Convert malformed/unsupported archive headers, not arbitrary failures."""
+    try:
+        return zipfile.ZipFile(source)
+    except ZIP_METADATA_ERRORS:
+        raise ValueError('Unreadable ZIP directory') from None
+
+
 def archive_metadata(archive, name):
     """Normalize only ZIP-member decoding failures into source failures."""
     try:
@@ -546,10 +567,18 @@ def archive_metadata(archive, name):
         raise ValueError('Missing '+name) from None
     if info.file_size > 128_000_000:
         raise ValueError('Metadata table exceeds budget')
+    if info.flag_bits & 1:
+        raise ValueError('Encrypted ZIP metadata')
     try:
         return archive.read(info)
-    except (RuntimeError, NotImplementedError, zlib.error):
+    except ZIP_METADATA_ERRORS:
         raise ValueError('Unreadable ZIP metadata') from None
+    except RuntimeError as error:
+        # zipfile reports unavailable optional codecs as RuntimeError. Do not
+        # turn unrelated programmer/control-flow failures into feed failures.
+        if re.fullmatch(r'Compression requires the \(missing\) (?:zlib|bz2|lzma) module', str(error)):
+            raise ValueError('Unavailable ZIP metadata codec') from None
+        raise
 
 
 def archive_has_rail(archive):
@@ -572,7 +601,7 @@ def valid_cached_archive(path, meta, candidates, max_age_days=30):
         delta = (dt.datetime.now(dt.timezone.utc).date() - last_success).days
         if delta < 0 or delta > max_age_days:
             return False
-        with zipfile.ZipFile(path) as archive:
+        with source_archive(path) as archive:
             return archive_has_rail(archive)
     except (ValueError, OSError, zipfile.BadZipFile):
         return False
@@ -599,7 +628,7 @@ def fetch_alternative(entry, path, max_bytes, skip=()):
                     'etag': remote.etag, 'last_modified': remote.last_modified,
                     'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()
                 }, attempts
-            with zipfile.ZipFile(io.BytesIO(remote.download())) as archive:
+            with source_archive(io.BytesIO(remote.download())) as archive:
                 if not archive_has_rail(archive):
                     raise ValueError('Rail metadata changed during full download')
             data = remote.full
@@ -655,18 +684,24 @@ class RemoteZip:
         index = tail.rfind(b'PK\x05\x06')
         if index < 0 or len(tail) < index+22:
             raise ValueError('Missing ZIP directory')
-        _, disk, start_disk, _, count, length, start, comment = struct.unpack('<4s4H2IH', tail[index:index+22])
+        _, disk, start_disk, _, count, length, start, comment = unpack_zip_metadata('<4s4H2IH', tail[index:index+22])
         if disk or start_disk or index+22+comment != len(tail) or count == 65535 or start == 0xffffffff:
             self.directory = None
             return
+        if start+length > offset+index:
+            raise ValueError('ZIP directory exceeds archive bounds')
         directory = tail[start-offset:start-offset+length] if start >= offset else self.range(start, start+length-1)
+        if len(directory) != length:
+            raise ValueError('Truncated ZIP directory')
         self.directory = {}
         position = 0
         for _ in range(count):
-            values = struct.unpack('<4s6H3I5H2I', directory[position:position+46])
+            values = unpack_zip_metadata('<4s6H3I5H2I', directory[position:position+46])
             if values[0] != b'PK\x01\x02':
                 raise ValueError('Invalid ZIP directory record')
             _, _, _, flags, method, _, _, _, compressed, uncompressed, name_len, extra_len, comment_len, _, _, _, location = values
+            if position+46+name_len+extra_len+comment_len > len(directory):
+                raise ValueError('Truncated ZIP directory fields')
             name = directory[position+46:position+46+name_len].decode('utf-8' if flags & 2048 else 'cp437')
             self.directory[name] = (location, compressed, uncompressed)
             position += 46+name_len+extra_len+comment_len
@@ -698,7 +733,7 @@ class RemoteZip:
 
     def table(self, name):
         if self.full is not None:
-            with zipfile.ZipFile(io.BytesIO(self.full)) as archive:
+            with source_archive(io.BytesIO(self.full)) as archive:
                 return archive_metadata(archive, name)
         if self.directory is None:
             self.download()
@@ -709,7 +744,7 @@ class RemoteZip:
         if length > 32_000_000 or expanded > 128_000_000:
             raise ValueError('Metadata table exceeds budget')
         header = self.range(start, start+29)
-        fields = struct.unpack('<4s5H3I2H', header)
+        fields = unpack_zip_metadata('<4s5H3I2H', header)
         if fields[0] != b'PK\x03\x04':
             raise ValueError('Invalid ZIP local header')
         flags, method, name_len, extra_len = fields[2], fields[3], fields[-2], fields[-1]
@@ -786,7 +821,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
                 data = RemoteZip.read_bounded(type('Budget', (), {'max_bytes': max_bytes})(), response)
                 # Never replace a previously usable ZIP with an error page or
                 # malformed archive returned as HTTP 200.
-                with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                with source_archive(io.BytesIO(data)) as archive:
                     archive_has_rail(archive)
                 temporary = path.with_suffix('.download.tmp')
                 temporary.write_bytes(data)
@@ -803,7 +838,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
                     # A validator confirms origin identity, not that an older
                     # local cache passed today's complete metadata checks.
                     if not meta.get('no_rail'):
-                        with zipfile.ZipFile(path) as archive:
+                        with source_archive(path) as archive:
                             archive_has_rail(archive)
                     meta['download_url'] = redacted_source_url(cached_url)
                     meta['download_url_sha256'] = source_url_fingerprint(cached_url)
@@ -849,7 +884,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
         (output/'feeds'/(ident+'.json.gz')).unlink(missing_ok=True)
         return {**entry, 'status': 'no_rail', 'rail_routes': 0}
     # Reinspect changed conditional 200 responses and cached 304 revisions.
-    with zipfile.ZipFile(path) as archive:
+    with source_archive(path) as archive:
         has_rail=archive_has_rail(archive)
     if not meta.get('offline_cached'):
         meta['checked'] = dt.datetime.now(dt.timezone.utc).date().isoformat()
