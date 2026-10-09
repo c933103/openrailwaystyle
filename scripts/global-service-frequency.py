@@ -52,6 +52,9 @@ spec.loader.exec_module(compiler)
 catalogue_spec = importlib.util.spec_from_file_location('frequency_catalogue', ROOT/'scripts/frequency_catalogue.py')
 registry = importlib.util.module_from_spec(catalogue_spec)
 catalogue_spec.loader.exec_module(registry)
+retry_spec = importlib.util.spec_from_file_location('frequency_retry', ROOT/'scripts/frequency_retry.py')
+retry = importlib.util.module_from_spec(retry_spec)
+retry_spec.loader.exec_module(retry)
 
 
 def atomic_json(path, value):
@@ -163,7 +166,12 @@ def retry_after_delay(value, now=None):
         return None
     value = value.strip()
     if re.fullmatch(r'[0-9]+', value):
-        return int(value)
+        try:
+            return int(value)
+        except ValueError:
+            # A decimal beyond Python's parser limit still asks us to wait.
+            # This runtime-only sentinel is never serialized or slept on.
+            return float('inf')
     try:
         deadline = parsedate_to_datetime(value)
         if deadline.tzinfo is None:
@@ -314,7 +322,7 @@ class AcquiredResponse:
         self.close()
 
 
-def urlopen(request, timeout=45, *, policy=None):
+def urlopen(request, timeout=45, *, policy=None, retry_state=None):
     """Public-only HTTP transport with pinned DNS, TLS identity and checked hops.
 
     Ignore environment proxies and implicit urllib auth/redirect handlers.
@@ -325,6 +333,8 @@ def urlopen(request, timeout=45, *, policy=None):
         parsed, host, port = parse_acquisition_url(url)
         if policy:
             policy(url)
+        if retry_state is not None:
+            retry_state.check(url)
         addresses = resolve_public_addresses(host, port)
         connection_type = http.client.HTTPSConnection if parsed.scheme == 'https' else http.client.HTTPConnection
         connection = connection_type(host, port, timeout=timeout)
@@ -337,6 +347,8 @@ def urlopen(request, timeout=45, *, policy=None):
                 path += ';' + parsed.params
             if parsed.query:
                 path += '?' + parsed.query
+            if retry_state is not None:
+                retry_state.metrics['http_requests'] += 1
             connection.request('GET', path, headers={**headers, 'Connection': 'close'})
             response = AcquiredResponse(connection.getresponse(), connection, url)
         except Exception:
@@ -364,17 +376,54 @@ def urlopen(request, timeout=45, *, policy=None):
         return response
 
 
-def get(url, headers=None, *, policy=None):
+def get(url, headers=None, *, policy=None, retry_state=None):
     """Bounded retry for transport outages; never loop on permanent HTTP 404."""
     parse_acquisition_url(url)
+    if retry_state is not None:
+        if policy:
+            policy(url)
+        retry_state.check(url)
     request = Request(url, headers={'User-Agent': 'RailwayAtlas-frequency/1.0 (+https://github.com/c933103/openrailwaystyle)', **(headers or {})})
     for attempt in range(3):
         try:
-            return urlopen(request, timeout=45, policy=policy)
-        except HTTPError as error:
-            if error.code not in RETRYABLE_HTTP or attempt == 2:
+            response = urlopen(request, timeout=45, policy=policy, retry_state=retry_state)
+            try:
+                if retry_state is not None:
+                    retry_state.clear(url)
+                    if isinstance(getattr(response, 'url', None), str):
+                        retry_state.clear(response.url)
+            except BaseException:
+                response.close()
                 raise
-            delay = retry_after_delay(error.headers.get('Retry-After')) if error.headers else None
+            return response
+        except retry.RetryAfterDeferred as error:
+            if retry_state is not None and retry_state.fingerprint(url) != error.fingerprint:
+                retry_state.record(url, error.status, retry_state.now(), error.not_before)
+            raise
+        except HTTPError as error:
+            if error.code not in RETRYABLE_HTTP:
+                raise
+            try:
+                observed = retry_state.now() if retry_state is not None else time.time()
+                delay = retry_after_delay(error.headers.get('Retry-After'), observed) if error.headers else None
+                if delay is not None and delay > 0 and retry_state is not None:
+                    deadline = observed + delay if retry.finite_number(delay) else None
+                    if retry.finite_number(deadline):
+                        for target in {url, error.url}:
+                            # Both the requested source and its checked redirect endpoint
+                            # retain the deadline, avoiding repeated redirect walks.
+                            if isinstance(target, str):
+                                retry_state.record(target, error.code, observed, deadline)
+                        error.retry_after_not_before = deadline
+                    else:
+                        # Do not shorten an unrepresentable hint to a convenient
+                        # deadline. It still defers this run, but cannot be saved.
+                        retry_state.metrics['unpersistable_hints'] += 1
+            except BaseException:
+                error.close()
+                raise
+            if attempt == 2:
+                raise
             if delay is not None and delay > 8:
                 # Respect a publisher's longer retry window: the next
                 # scheduled workflow can retry instead of hammering it now.
@@ -488,8 +537,9 @@ def cached_source_url(meta, candidates, default=None):
 
 class SourceRetrievalError(RuntimeError):
     """Unresolved transport/feed failure after attempting available source links."""
-    def __init__(self, attempts, unsafe_urls=()):
+    def __init__(self, attempts, unsafe_urls=(), acquisition_metrics=None):
         self.attempts = attempts
+        self.acquisition_metrics = acquisition_metrics or {}
         # Raw identities only decide whether an in-memory cache may be used.
         # They are not included in the message, JSON response or source audit.
         self._unsafe_urls = set(unsafe_urls)
@@ -500,6 +550,11 @@ class SourceRetrievalError(RuntimeError):
 def source_attempt(url, error):
     """Structured evidence of a particular endpoint failing, not feed exclusion."""
     code = 'other_source_error'
+    if isinstance(error, retry.RetryAfterDeferred):
+        return {'url': redacted_source_url(url), 'url_sha256': source_url_fingerprint(url),
+                'code': 'retry_after_pending', 'message': 'Source Retry-After deadline has not elapsed',
+                'retry_after_not_before': error.not_before, 'http_status': error.status,
+                'deferred_endpoint_sha256': error.fingerprint}
     if isinstance(error, SourcePolicyError):
         code = 'source_policy'
     elif isinstance(error, UnsafeSourceURL):
@@ -517,8 +572,11 @@ def source_attempt(url, error):
     # and can echo access-like query values. Keep only a bounded category.
     message = ('HTTP '+str(error.code) if isinstance(error, HTTPError)
                else type(error).__name__+': source acquisition failed')
-    return {'url': redacted_source_url(url), 'url_sha256': source_url_fingerprint(url),
-            'code': code, 'message': message}
+    result = {'url': redacted_source_url(url), 'url_sha256': source_url_fingerprint(url),
+              'code': code, 'message': message}
+    if retry.finite_number(getattr(error, 'retry_after_not_before', None)):
+        result['retry_after_not_before'] = error.retry_after_not_before
+    return result
 
 
 def routes_have_rail(data):
@@ -607,7 +665,7 @@ def valid_cached_archive(path, meta, candidates, max_age_days=30):
         return False
 
 
-def fetch_alternative(entry, path, max_bytes, skip=()):
+def fetch_alternative(entry, path, max_bytes, skip=(), *, retry_state=None):
     """Fallback to another real published schedule, without inventing data.
 
     Cache writes only after a valid ZIP has been downloaded. Each upstream
@@ -618,7 +676,7 @@ def fetch_alternative(entry, path, max_bytes, skip=()):
         if url in skip:
             continue
         try:
-            remote = RemoteZip(url, max_bytes, policy=lambda target: source_policy(entry, target))
+            remote = RemoteZip(url, max_bytes, policy=lambda target: source_policy(entry, target), retry_state=retry_state)
             # Keep the cheap preflight: bus-only GTFS must not download its
             # entire stop_times/shapes archive or consume a compile slot.
             if not routes_have_rail(remote.table('routes.txt')):
@@ -640,7 +698,7 @@ def fetch_alternative(entry, path, max_bytes, skip=()):
                 'download_url': redacted_source_url(url), 'download_url_sha256': source_url_fingerprint(url),
                 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()
             }, attempts
-        except (HTTPError, URLError, TimeoutError, ConnectionError, OSError, ValueError, zipfile.BadZipFile, http.client.HTTPException) as error:
+        except (retry.RetryAfterDeferred, HTTPError, URLError, TimeoutError, ConnectionError, OSError, ValueError, zipfile.BadZipFile, http.client.HTTPException) as error:
             if isinstance(error, (SourcePolicyError, UnsafeSourceURL)):
                 unsafe_urls.add(url)
             attempts.append(source_attempt(url, error))
@@ -654,10 +712,10 @@ class RemoteZip:
     identity validator prevents joining byte ranges from different revisions.
     ZIP64 is supported by the full-download fallback, not guessed offsets.
     """
-    def __init__(self, url, max_bytes, *, policy=None):
-        self.url, self.max_bytes, self.policy = url, max_bytes, policy
+    def __init__(self, url, max_bytes, *, policy=None, retry_state=None):
+        self.url, self.max_bytes, self.policy, self.retry_state = url, max_bytes, policy, retry_state
         self.full, self.identity = None, None
-        with get(url, {'Range': 'bytes=-65557'}, policy=self.policy) as response:
+        with get(url, {'Range': 'bytes=-65557'}, policy=self.policy, retry_state=self.retry_state) as response:
             self.etag=response.headers.get('ETag')
             self.last_modified=response.headers.get('Last-Modified')
             self.identity = self.etag or self.last_modified
@@ -718,7 +776,7 @@ class RemoteZip:
         headers = {'Range': f'bytes={begin}-{end}'}
         if self.range_validator:
             headers['If-Range'] = self.range_validator
-        with get(self.url, headers, policy=self.policy) as response:
+        with get(self.url, headers, policy=self.policy, retry_state=self.retry_state) as response:
             if response.status != 206:
                 raise ValueError('Feed changed during range reads, or ranges unavailable')
             identity = response.headers.get('ETag') or response.headers.get('Last-Modified')
@@ -767,7 +825,7 @@ class RemoteZip:
 
     def download(self):
         if self.full is None:
-            with get(self.url, policy=self.policy) as response:
+            with get(self.url, policy=self.policy, retry_state=self.retry_state) as response:
                 identity = response.headers.get('ETag') or response.headers.get('Last-Modified')
                 if self.identity and identity != self.identity:
                     raise ValueError('Feed changed during full download')
@@ -803,8 +861,10 @@ def file_hash(path):
     return digest.hexdigest()
 
 
-def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_seconds=600):
+def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_seconds=600, *, retry_state=None):
     ident, row = entry['id'], entry['catalogue']
+    if retry_state is None:
+        retry_state = retry.RetryAfterCache(cache)
     path, meta_path = cache/(ident+'.zip'), cache/(ident+'.meta.json')
     # 304 from the same successful source may reuse cache. A 404 or transient
     # outage MUST fall through to other known originals, not reject the feed.
@@ -817,7 +877,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
         meta['download_url_sha256'] = source_url_fingerprint(cached_url)
     if path.exists() and headers and cached_url in source_candidates(entry):
         try:
-            with get(cached_url, headers, policy=lambda target: source_policy(entry, target)) as response:
+            with get(cached_url, headers, policy=lambda target: source_policy(entry, target), retry_state=retry_state) as response:
                 data = RemoteZip.read_bounded(type('Budget', (), {'max_bytes': max_bytes})(), response)
                 # Never replace a previously usable ZIP with an error page or
                 # malformed archive returned as HTTP 200.
@@ -834,6 +894,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
         except HTTPError as error:
             if error.code == 304:
                 error.close()
+                retry_state.metrics['conditional_not_modified'] += 1
                 try:
                     # A validator confirms origin identity, not that an older
                     # local cache passed today's complete metadata checks.
@@ -851,14 +912,14 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
             else:
                 attempted.add(cached_url)
                 attempts.append(source_attempt(cached_url, error))
-        except (URLError, TimeoutError, ConnectionError, OSError, ValueError, zipfile.BadZipFile, http.client.HTTPException) as error:
+        except (retry.RetryAfterDeferred, URLError, TimeoutError, ConnectionError, OSError, ValueError, zipfile.BadZipFile, http.client.HTTPException) as error:
             attempted.add(cached_url)
             if isinstance(error, (SourcePolicyError, UnsafeSourceURL)):
                 unsafe_urls.add(cached_url)
             attempts.append(source_attempt(cached_url, error))
     if not fresh:
         try:
-            meta, more_attempts = fetch_alternative(entry, path, max_bytes, skip=attempted)
+            meta, more_attempts = fetch_alternative(entry, path, max_bytes, skip=attempted, retry_state=retry_state)
             attempts.extend(more_attempts)
         except SourceRetrievalError as error:
             attempts.extend(error.attempts)
@@ -868,10 +929,11 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
                 # Continue compiling using the last successfully retrieved
                 # ZIP. Never advance its 'checked' or 'retrieved' timestamps.
                 meta['offline_cached'] = True
+                retry_state.metrics['offline_archive_uses'] += 1
                 meta['recovered_source_errors'] = attempts
                 fresh = True
             else:
-                raise SourceRetrievalError(attempts, unsafe_urls) from error
+                raise SourceRetrievalError(attempts, unsafe_urls, dict(retry_state.metrics)) from error
     if attempts:
         meta['recovered_source_errors'] = attempts
     if meta.get('no_rail'):
@@ -882,7 +944,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
         atomic_json(meta_path, meta)
         path.unlink(missing_ok=True)
         (output/'feeds'/(ident+'.json.gz')).unlink(missing_ok=True)
-        return {**entry, 'status': 'no_rail', 'rail_routes': 0}
+        return {**entry, 'status': 'no_rail', 'rail_routes': 0, 'acquisition_metrics': dict(retry_state.metrics)}
     # Reinspect changed conditional 200 responses and cached 304 revisions.
     with source_archive(path) as archive:
         has_rail=archive_has_rail(archive)
@@ -891,7 +953,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
     atomic_json(meta_path, meta)
     if not has_rail:
         (output/'feeds'/(ident+'.json.gz')).unlink(missing_ok=True)
-        return {**entry, 'status': 'no_rail', 'rail_routes': 0}
+        return {**entry, 'status': 'no_rail', 'rail_routes': 0, 'acquisition_metrics': dict(retry_state.metrics)}
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     signature=hashlib.sha256(json.dumps({'catalogue':row,'profiles':profiles,'denied_source_urls':entry.get('denied_source_urls', []),
         'graph':file_hash(str(graph)) if graph else None,
@@ -901,6 +963,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
         with gzip.open(destination, 'rt') as file:
             previous = json.load(file)
         if previous['source']['sha256'] == digest and previous['source']['service_date'] == date and previous['source'].get('input_signature') == signature:
+            retry_state.metrics['compiled_cache_hits'] += 1
             previous['source'] = published_metadata(previous['source'])
             previous['source']['checked'] = meta['checked']
             previous['source']['download_url'] = meta['download_url']
@@ -910,7 +973,8 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
             write_feed(destination, previous)
             return {**entry, 'status': 'compiled', 'output': 'feeds/'+destination.name, 'sha256': digest,
                     'rail_routes': len(previous['routes']), 'mapped_segments': len(previous['segments']),
-                    'unmapped_segments': len(previous.get('unmapped_segments', [])), 'source': previous['source']}
+                    'unmapped_segments': len(previous.get('unmapped_segments', [])), 'source': previous['source'],
+                    'acquisition_metrics': dict(retry_state.metrics)}
         del previous  # stale national output must not coexist with recompilation.
     publisher = row.get('publisher') if isinstance(row.get('publisher'), dict) else {}
     rights = entry.get('terms') or registry.usage_rights(row)
@@ -959,7 +1023,8 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
     write_feed(destination, result)
     return {**entry, 'status': 'compiled', 'output': 'feeds/'+destination.name, 'sha256': digest,
             'rail_routes': len(result['routes']), 'mapped_segments': len(result['segments']),
-            'unmapped_segments': len(result.get('unmapped_segments', [])), 'source': source}
+            'unmapped_segments': len(result.get('unmapped_segments', [])), 'source': source,
+            'acquisition_metrics': dict(retry_state.metrics)}
 
 
 def compile_entry_isolated(entry, cache, output, date, graph, max_bytes, profiles,
@@ -981,8 +1046,10 @@ def compile_entry_isolated(entry, cache, output, date, graph, max_bytes, profile
         result=json.loads(response.read_text())
         if process.returncode or 'error' in result:
             if 'source_attempts' in result:
-                raise SourceRetrievalError(result['source_attempts'])
-            raise RuntimeError(result.get('error') or f'Feed compiler exited {process.returncode}')
+                raise SourceRetrievalError(result['source_attempts'], acquisition_metrics=result.get('acquisition_metrics'))
+            error = RuntimeError(result.get('error') or f'Feed compiler exited {process.returncode}')
+            error.acquisition_metrics = result.get('acquisition_metrics', {})
+            raise error
         return result['entry']
 
 
@@ -995,13 +1062,16 @@ def compile_one(request, response):
         payload[key]=Path(payload[key])
     if payload['graph']:
         payload['graph']=Path(payload['graph'])
+    retry_state = retry.RetryAfterCache(payload['cache'])
     try:
-        atomic_json(Path(response),{'entry':published_metadata(compile_entry(**payload))})
+        atomic_json(Path(response),{'entry':published_metadata(compile_entry(**payload, retry_state=retry_state))})
     except SourceRetrievalError as error:
-        atomic_json(Path(response),{'error':str(error)[:2000], 'source_attempts':error.attempts})
+        atomic_json(Path(response),{'error':str(error)[:2000], 'source_attempts':error.attempts,
+                                    'acquisition_metrics':dict(retry_state.metrics)})
         return 1
     except Exception as error:
-        atomic_json(Path(response),{'error':redacted_diagnostic(f'{type(error).__name__}: {error}')[:2000]})
+        atomic_json(Path(response),{'error':redacted_diagnostic(f'{type(error).__name__}: {error}')[:2000],
+                                    'acquisition_metrics':dict(retry_state.metrics)})
         return 1
     return 0
 
@@ -1010,6 +1080,8 @@ def classify_failure(error):
     """Annotate the unresolved failure; it remains eligible for future attempts."""
     if isinstance(error, SourceRetrievalError):
         codes = {x['code'] for x in error.attempts}
+        if codes == {'retry_after_pending'}:
+            return 'source_retry_after', 'retrieval'
         if codes == {'http_404'}:
             return 'source_http_404', 'retrieval'
         if codes <= {'http_403', 'http_401'}:
@@ -1112,6 +1184,7 @@ def main():
                          'next_action': ('repair_or_find_feed_url' if code in ('source_http_404', 'missing_source_url')
                                          else 'retry_source_or_repair_compiler'),
                          'source_attempts': error.attempts if isinstance(error, SourceRetrievalError) else []}
+                entry['acquisition_metrics'] = getattr(error, 'acquisition_metrics', {})
         outcomes.append(entry)
         # Inventory-only is read-only: write once rather than serializing the
         # growing worldwide inventory N times (quadratic work at global scale).

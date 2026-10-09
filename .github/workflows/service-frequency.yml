@@ -5,6 +5,7 @@ on:
     paths:
       - scripts/global-service-frequency.py
       - scripts/frequency_catalogue.py
+      - scripts/frequency_retry.py
       - scripts/gtfs-frequency.py
       - scripts/gtfs-shapes.py
       - scripts/gtfs-rail-paths.py
@@ -38,6 +39,7 @@ on:
       - scripts/load-frequency-snapshot.py
       - scripts/global-service-frequency.py
       - scripts/frequency_catalogue.py
+      - scripts/frequency_retry.py
       - scripts/gtfs-frequency.py
       - scripts/gtfs-shapes.py
       - scripts/gtfs-rail-paths.py

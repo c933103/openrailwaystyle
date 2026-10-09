@@ -151,9 +151,10 @@ retained assembly optimizations do not establish a production load reduction.
 The completed [October 9 refresh](https://github.com/c933103/openrailwaystyle/actions/runs/37929168720)
 used 652.7 compile runner-minutes across eight shards. Separating refresh events
 avoids incidental full scans after source merges; it does not make a scheduled
-scan cheaper. Existing caches and per-operation retries do not persist a
-cross-run retry deadline. Persistent source-failure backoff and origin-wide
-resource budgets remain separate work.
+scan cheaper. Explicit provider `Retry-After` deadlines are retained in the
+existing best-effort shard cache as described below. General failure backoff,
+origin-wide scheduling and measured production resource reductions remain
+separate work. The October 9 run predates these receipt counters.
 
 Catalogue acquisition has a 30-minute job ceiling. The Transitous clone and
 sparse materialization each have a 600-second timeout with a 30-second kill
@@ -170,6 +171,61 @@ connection/read timeouts. Retry-After waits above eight seconds defer that retri
 sleeping in the worker. Assembly retains its 90-minute job ceiling, 5.5 GB Node
 heap and complete-inventory checks. The public release contains only the
 aggregate manifest, inventory and tiles, not per-feed derived archives.
+
+### Retained explicit Retry-After deadlines
+
+On the existing retryable HTTP statuses (408, 425, 429, 500, 502, 503 and 504),
+a positive numeric or HTTP-date `Retry-After` with a representable finite
+epoch deadline becomes a per-endpoint receipt.
+The final attempt records the hint too. An unchanged source is not contacted
+before its retained deadline, including conditional GET, range reads, full ZIP
+downloads and already known redirect targets. Hints up to eight seconds keep
+the existing bounded in-run wait; longer hints defer acquisition without
+capping the provider deadline. Missing, invalid, zero or past hints retain the
+existing bounded retries; a 404 or unrelated failure is not labelled a throttle.
+
+Receipts live at `frequency-cache/retry-after/<url_sha256>.json` inside the
+existing Actions shard cache. Schema 1 contains only `schema`, `url_sha256`,
+`status`, `observed_at` and `not_before` (UTC epoch seconds), with an optional
+`rollback_anchor`. Identity is SHA-256 of the exact UTF-8 source URL, including
+its operational query values; neither those values nor a raw URL/header are
+stored in the receipt. Different query-valued sources remain separate.
+Compiler, service-date or output cache-signature changes do not erase a known
+endpoint deadline. A changed source URL has a distinct receipt. Requested
+redirect aliases and the final endpoint are both remembered once observed.
+
+A receipt is read with a 4 KiB limit and strict schema, status, identity and
+finite-time validation. Invalid or unknown-schema receipts count as cache
+misses and are discarded without echoing their contents. If the wall clock
+moves behind the recorded observation (including an accidentally future
+observation), the original full delay is anchored once to the new clock and
+retained across processes. If the clock reaches the original observation,
+its original absolute deadline applies again. This is conservative: one small
+rollback can extend waiting to less than two original intervals while the
+clock subsequently advances; repeated clock changes cannot guarantee elapsed
+real time. Long valid provider hints are not shortened. Invalid current clocks
+fail acquisition rather than bypassing a known deadline.
+
+A valid matching previously retrieved ZIP can still be recompiled locally
+while its source is held, preserving its original `checked` and `retrieved`
+timestamps. Permitted alternatives are still considered. If no usable cache
+or alternative exists, a held source stays `retry_pending`; a set of only
+retained holds has `source_retry_after` / `retrieval` classification. A first
+HTTP failure and mixed failures retain their concrete source-error category.
+Access-review holds and explicit source policy checks precede receipt use.
+
+Per-feed inventory `acquisition_metrics` reports observed HTTP request attempts,
+retained deferrals, receipt record/clear/expiry/corruption/clock events,
+conditional 304s, offline archive uses and compiled-cache hits. Missing counters
+mean zero for completed instrumented attempts. A killed process or absent
+response may lack counters. They are diagnostics, not a production savings
+claim. Receipts are best-effort per endpoint within each restored shard cache,
+not a durable global origin scheduler: cache eviction, an unsuccessful cache
+save, a new shard or unsupported receipt version can lose a known deadline.
+A numeric hint beyond the bounded parser or finite epoch representation defers
+the current acquisition and increments `unpersistable_hints`; it is
+not silently capped, but a later run cannot remember that unsupported hint.
+There is no new credential store, access grant or generic failure cooldown.
 
 Source-failure logs, compiled provenance/agency/route metadata, shard inventories
 and final aggregate metadata redact URL userinfo, query **values** and fragments.

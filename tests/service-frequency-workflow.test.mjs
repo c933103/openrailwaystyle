@@ -17,7 +17,9 @@ test('reconciled catalogue fixtures run inside the isolated PR test process',()=
   assert.match(globalFixtures,/'python3',\['-m','unittest','discover','-s','tests','-p','frequency_catalogue_test\.py'\]/);
   const push=workflow.split('  push:\n')[1].split('  workflow_dispatch:')[0];
   const pr=workflow.split('  pull_request:\n')[1].split('permissions:')[0];
-  for(const trigger of [push,pr])assert.ok(trigger.includes('scripts/frequency_catalogue.py'));
+  for(const trigger of [push,pr]){
+    for(const source of ['scripts/frequency_catalogue.py','scripts/frequency_retry.py'])assert.ok(trigger.includes(source));
+  }
   assert.ok(pr.includes("'tests/*frequency*'"));
   assert.ok(pr.includes('docs/service-frequency.md'));
   assert.doesNotMatch(push,/tests\//,'fixture-only changes do not start production acquisition');
@@ -111,7 +113,7 @@ test('relevant source pushes stay covered while docs and test-only pushes avoid 
   const push=workflow.split('  push:\n')[1].split('  workflow_dispatch:')[0];
   const pr=workflow.split('  pull_request:\n')[1].split('permissions:')[0];
   assert.match(push,/branches: \[main\]/);
-  for(const file of ['scripts/gtfs-frequency.py','scripts/frequency_catalogue.py',
+  for(const file of ['scripts/gtfs-frequency.py','scripts/frequency_catalogue.py','scripts/frequency_retry.py',
     '.github/workflows/service-frequency.yml'])assert.ok(push.includes(file));
   assert.doesNotMatch(push,/docs\/|tests\//);
   assert.ok(pr.includes('docs/service-frequency.md'));
@@ -136,6 +138,7 @@ test('production keeps complete inventory gates, eight shards, caches and bounde
   assert.match(job('compile'),/fail-fast: false/);
   assert.match(job('compile'),/timeout-minutes: 180/);
   assert.match(job('compile'),/restore-keys: worldwide-gtfs-\$\{\{ matrix\.shard \}\}-/);
+  assert.match(job('compile'),/path: \|\n            frequency-cache\n            frequency-output\/feeds/,'Retry-After receipts share the existing retained shard cache');
   assert.match(job('assemble'),/timeout-minutes: 90/);
   assert.match(job('assemble'),/node --max-old-space-size=5500 scripts\/assemble-global-frequency\.mjs frequency-output/);
   assert.match(workflow,/cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \|\| github\.event_name == 'push' \}\}/);
