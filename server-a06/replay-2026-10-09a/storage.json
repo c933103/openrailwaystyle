@@ -1,0 +1,13 @@
+{
+  "input_files": 121,
+  "input_bytes": 38350025,
+  "input_gzip_members": 113,
+  "inflated_gzip_json_bytes": 2289282456,
+  "expected_output_files": 117,
+  "expected_output_bytes": 41772459,
+  "reference_metadata_pack_bytes": 423898,
+  "reference_pack_reused_feed_bytes": true,
+  "timed_region_excludes_preparation_and_final_hashing": true,
+  "assembled_feed_gzip_members": 106,
+  "assembled_feed_inflated_json_bytes": 2164308250
+}

@@ -1,0 +1,209 @@
+{
+  "runs": [
+    {
+      "run_id": "current-check-01",
+      "source_commit": "c62d457a3177f8ae6fe7c75d29e5aa82f8d807ef",
+      "role": "current-code-correctness-only",
+      "executed_harness_sha256": "95479f74da214473d014906fd121034a2f7a2e086d0f768b64972fa7cf7962f0",
+      "source_runtime_dependencies_verified_before_and_after": true,
+      "all_121_input_identities_verified": true,
+      "input_verification_timing": "Post-run verification of preserved input identity against unchanged replay-manifest; final harness now additionally enforces this before launch",
+      "metrics_sha256": "e491da5459bd33c99280fb09fee781f24d954cad531e8315b6c2174141c8a3e2"
+    },
+    {
+      "run_id": "final-harness-check",
+      "role": "final-harness-correctness-only; excluded from baseline",
+      "source_commit": "6f43c9f9ca998ea5b3081655b6a43bb29ae51713",
+      "executed_harness_sha256": "4ee6fd7d29085ee30076d5ddda71018f58b70bdbce8ab285ae6ecf24c073c0b5",
+      "source_runtime_dependencies_verified_before_and_after": true,
+      "all_121_input_identities_verified_before_launch": true,
+      "all_117_output_identities_verified_after_reaping": true,
+      "metrics_sha256": "3c8e51de692b48bae4410622b7916cf3b725553eccdec96a26e4b11fc3a6f2f9"
+    },
+    {
+      "run_id": "historical-01",
+      "status": "tracked source, copied dependency pool and runtime hashes verified; original metrics preserved",
+      "verification_timing": "Source base and dependency versions/tree were inspected before historical-02; exact per-run source-copy digest and full dependency/runtime fingerprints recorded after execution. This is a retrospective receipt, not a claim that v1 enforced these checks at launch.",
+      "verified_utc": "2026-10-09T04:59:08.690523+00:00",
+      "metrics_sha256": "24125bc023efae4009cede9f0486e187199c68b8955f84ae9cd975b50df30e17",
+      "executed_harness_sha256": "434963f674715b9384161f6f4d87d9c13096df961c35d370a6914d5950dc9f5f",
+      "source_commit": "6f43c9f9ca998ea5b3081655b6a43bb29ae51713",
+      "source_excluded_directories": [
+        "node_modules",
+        ".git"
+      ],
+      "source": {
+        "sha256": "c87e12f2f0d8e9602e709547d1ba5ffedbac90614c0acdf83c58600064b4e5da",
+        "entries": 261,
+        "file_bytes": 15535332
+      },
+      "dependencies": {
+        "sha256": "e3333521361057ff70b2f3187f18e4df938824350bb526e9d89f1ad578a6642e",
+        "entries": 3778,
+        "file_bytes": 106688774
+      },
+      "node_binary_sha256": "bc17c508ffeed0ec622934f9b7fa72f8e78da65350e63c3eceb56fa688aa5e12",
+      "node_version": "24.19.0",
+      "role": "calibration-only",
+      "calibration_note": "historical-01 overlapped final source tests; two non-executed Python test caches were created during tests and are excluded from source identity. Only historical-02/03/04 are baseline repetitions.",
+      "source_excluded_files": [
+        "scripts/__pycache__/global-service-frequency.cpython-312.pyc",
+        "scripts/__pycache__/gtfs-frequency.cpython-312.pyc",
+        "scripts/__pycache__/gtfs-shapes.cpython-312.pyc",
+        "scripts/__pycache__/load-frequency-snapshot.cpython-312.pyc",
+        "tests/__pycache__/global_frequency_test.cpython-312.pyc",
+        "tests/__pycache__/load_frequency_snapshot_test.cpython-312.pyc"
+      ],
+      "input_manifest_sha256": "7437aafda2e1bd2e32ad7abc1e16604d4ddd7586c79261fdcbbc205496930215",
+      "all_121_input_identities_verified": true
+    },
+    {
+      "run_id": "historical-02",
+      "status": "tracked source, copied dependency pool and runtime hashes verified; original metrics preserved",
+      "verification_timing": "Source base and dependency versions/tree were inspected before historical-02; exact per-run source-copy digest and full dependency/runtime fingerprints recorded after execution. This is a retrospective receipt, not a claim that v1 enforced these checks at launch.",
+      "verified_utc": "2026-10-09T04:59:08.713218+00:00",
+      "metrics_sha256": "d32be8f233b28b43b3000bc3f6c50ba2475b39b5c7cd8489a83a5e2689aac32e",
+      "executed_harness_sha256": "434963f674715b9384161f6f4d87d9c13096df961c35d370a6914d5950dc9f5f",
+      "source_commit": "6f43c9f9ca998ea5b3081655b6a43bb29ae51713",
+      "source_excluded_directories": [
+        "node_modules",
+        ".git"
+      ],
+      "source": {
+        "sha256": "c87e12f2f0d8e9602e709547d1ba5ffedbac90614c0acdf83c58600064b4e5da",
+        "entries": 261,
+        "file_bytes": 15535332
+      },
+      "dependencies": {
+        "sha256": "e3333521361057ff70b2f3187f18e4df938824350bb526e9d89f1ad578a6642e",
+        "entries": 3778,
+        "file_bytes": 106688774
+      },
+      "node_binary_sha256": "bc17c508ffeed0ec622934f9b7fa72f8e78da65350e63c3eceb56fa688aa5e12",
+      "node_version": "24.19.0",
+      "role": "baseline-repeat",
+      "calibration_note": "historical-01 overlapped final source tests; two non-executed Python test caches were created during tests and are excluded from source identity. Only historical-02/03/04 are baseline repetitions.",
+      "source_excluded_files": [
+        "scripts/__pycache__/global-service-frequency.cpython-312.pyc",
+        "scripts/__pycache__/gtfs-frequency.cpython-312.pyc",
+        "scripts/__pycache__/gtfs-shapes.cpython-312.pyc",
+        "scripts/__pycache__/load-frequency-snapshot.cpython-312.pyc",
+        "tests/__pycache__/global_frequency_test.cpython-312.pyc",
+        "tests/__pycache__/load_frequency_snapshot_test.cpython-312.pyc"
+      ],
+      "input_manifest_sha256": "7437aafda2e1bd2e32ad7abc1e16604d4ddd7586c79261fdcbbc205496930215",
+      "all_121_input_identities_verified": true
+    },
+    {
+      "run_id": "historical-03",
+      "status": "tracked source, copied dependency pool and runtime hashes verified; original metrics preserved",
+      "verification_timing": "Source base and dependency versions/tree were inspected before historical-02; exact per-run source-copy digest and full dependency/runtime fingerprints recorded after execution. This is a retrospective receipt, not a claim that v1 enforced these checks at launch.",
+      "verified_utc": "2026-10-09T04:59:08.735944+00:00",
+      "metrics_sha256": "821c08b20c585c1edc7bb5f079101e5034dbcf5939dd743a4e1c4568dde8f0d8",
+      "executed_harness_sha256": "434963f674715b9384161f6f4d87d9c13096df961c35d370a6914d5950dc9f5f",
+      "source_commit": "6f43c9f9ca998ea5b3081655b6a43bb29ae51713",
+      "source_excluded_directories": [
+        "node_modules",
+        ".git"
+      ],
+      "source": {
+        "sha256": "c87e12f2f0d8e9602e709547d1ba5ffedbac90614c0acdf83c58600064b4e5da",
+        "entries": 261,
+        "file_bytes": 15535332
+      },
+      "dependencies": {
+        "sha256": "e3333521361057ff70b2f3187f18e4df938824350bb526e9d89f1ad578a6642e",
+        "entries": 3778,
+        "file_bytes": 106688774
+      },
+      "node_binary_sha256": "bc17c508ffeed0ec622934f9b7fa72f8e78da65350e63c3eceb56fa688aa5e12",
+      "node_version": "24.19.0",
+      "role": "baseline-repeat",
+      "calibration_note": "historical-01 overlapped final source tests; two non-executed Python test caches were created during tests and are excluded from source identity. Only historical-02/03/04 are baseline repetitions.",
+      "source_excluded_files": [
+        "scripts/__pycache__/global-service-frequency.cpython-312.pyc",
+        "scripts/__pycache__/gtfs-frequency.cpython-312.pyc",
+        "scripts/__pycache__/gtfs-shapes.cpython-312.pyc",
+        "scripts/__pycache__/load-frequency-snapshot.cpython-312.pyc",
+        "tests/__pycache__/global_frequency_test.cpython-312.pyc",
+        "tests/__pycache__/load_frequency_snapshot_test.cpython-312.pyc"
+      ],
+      "input_manifest_sha256": "7437aafda2e1bd2e32ad7abc1e16604d4ddd7586c79261fdcbbc205496930215",
+      "all_121_input_identities_verified": true
+    },
+    {
+      "run_id": "historical-04",
+      "status": "tracked source, copied dependency pool and runtime hashes verified; original metrics preserved",
+      "verification_timing": "Source base and dependency versions/tree were inspected before historical-02; exact per-run source-copy digest and full dependency/runtime fingerprints recorded after execution. This is a retrospective receipt, not a claim that v1 enforced these checks at launch.",
+      "verified_utc": "2026-10-09T04:59:08.758355+00:00",
+      "metrics_sha256": "67bc73760aeb9ca66823554e0f8161d77ed64e49abed0ab1dee010eec09b2697",
+      "executed_harness_sha256": "434963f674715b9384161f6f4d87d9c13096df961c35d370a6914d5950dc9f5f",
+      "source_commit": "6f43c9f9ca998ea5b3081655b6a43bb29ae51713",
+      "source_excluded_directories": [
+        "node_modules",
+        ".git"
+      ],
+      "source": {
+        "sha256": "c87e12f2f0d8e9602e709547d1ba5ffedbac90614c0acdf83c58600064b4e5da",
+        "entries": 261,
+        "file_bytes": 15535332
+      },
+      "dependencies": {
+        "sha256": "e3333521361057ff70b2f3187f18e4df938824350bb526e9d89f1ad578a6642e",
+        "entries": 3778,
+        "file_bytes": 106688774
+      },
+      "node_binary_sha256": "bc17c508ffeed0ec622934f9b7fa72f8e78da65350e63c3eceb56fa688aa5e12",
+      "node_version": "24.19.0",
+      "role": "baseline-repeat",
+      "calibration_note": "historical-01 overlapped final source tests; two non-executed Python test caches were created during tests and are excluded from source identity. Only historical-02/03/04 are baseline repetitions.",
+      "source_excluded_files": [
+        "scripts/__pycache__/global-service-frequency.cpython-312.pyc",
+        "scripts/__pycache__/gtfs-frequency.cpython-312.pyc",
+        "scripts/__pycache__/gtfs-shapes.cpython-312.pyc",
+        "scripts/__pycache__/load-frequency-snapshot.cpython-312.pyc",
+        "tests/__pycache__/global_frequency_test.cpython-312.pyc",
+        "tests/__pycache__/load_frequency_snapshot_test.cpython-312.pyc"
+      ],
+      "input_manifest_sha256": "7437aafda2e1bd2e32ad7abc1e16604d4ddd7586c79261fdcbbc205496930215",
+      "all_121_input_identities_verified": true
+    },
+    {
+      "run_id": "historical-profile",
+      "status": "tracked source, copied dependency pool and runtime hashes verified; original metrics preserved",
+      "verification_timing": "Source base and dependency versions/tree were inspected before historical-02; exact per-run source-copy digest and full dependency/runtime fingerprints recorded after execution. This is a retrospective receipt, not a claim that v1 enforced these checks at launch.",
+      "verified_utc": "2026-10-09T04:59:08.780976+00:00",
+      "metrics_sha256": "8090a58198e66ca8be5fd1b0772956d159dcd364ff9f528f22c16d3e7f4c2288",
+      "executed_harness_sha256": "434963f674715b9384161f6f4d87d9c13096df961c35d370a6914d5950dc9f5f",
+      "source_commit": "6f43c9f9ca998ea5b3081655b6a43bb29ae51713",
+      "source_excluded_directories": [
+        "node_modules",
+        ".git"
+      ],
+      "source": {
+        "sha256": "c87e12f2f0d8e9602e709547d1ba5ffedbac90614c0acdf83c58600064b4e5da",
+        "entries": 261,
+        "file_bytes": 15535332
+      },
+      "dependencies": {
+        "sha256": "e3333521361057ff70b2f3187f18e4df938824350bb526e9d89f1ad578a6642e",
+        "entries": 3778,
+        "file_bytes": 106688774
+      },
+      "node_binary_sha256": "bc17c508ffeed0ec622934f9b7fa72f8e78da65350e63c3eceb56fa688aa5e12",
+      "node_version": "24.19.0",
+      "role": "separate-cpu-profile",
+      "calibration_note": "historical-01 overlapped final source tests; two non-executed Python test caches were created during tests and are excluded from source identity. Only historical-02/03/04 are baseline repetitions.",
+      "source_excluded_files": [
+        "scripts/__pycache__/global-service-frequency.cpython-312.pyc",
+        "scripts/__pycache__/gtfs-frequency.cpython-312.pyc",
+        "scripts/__pycache__/gtfs-shapes.cpython-312.pyc",
+        "scripts/__pycache__/load-frequency-snapshot.cpython-312.pyc",
+        "tests/__pycache__/global_frequency_test.cpython-312.pyc",
+        "tests/__pycache__/load_frequency_snapshot_test.cpython-312.pyc"
+      ],
+      "input_manifest_sha256": "7437aafda2e1bd2e32ad7abc1e16604d4ddd7586c79261fdcbbc205496930215",
+      "all_121_input_identities_verified": true
+    }
+  ]
+}

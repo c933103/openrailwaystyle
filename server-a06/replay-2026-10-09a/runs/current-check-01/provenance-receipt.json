@@ -1,0 +1,10 @@
+{
+  "run_id": "current-check-01",
+  "source_commit": "c62d457a3177f8ae6fe7c75d29e5aa82f8d807ef",
+  "role": "current-code-correctness-only",
+  "executed_harness_sha256": "95479f74da214473d014906fd121034a2f7a2e086d0f768b64972fa7cf7962f0",
+  "source_runtime_dependencies_verified_before_and_after": true,
+  "all_121_input_identities_verified": true,
+  "input_verification_timing": "Post-run verification of preserved input identity against unchanged replay-manifest; final harness now additionally enforces this before launch",
+  "metrics_sha256": "e491da5459bd33c99280fb09fee781f24d954cad531e8315b6c2174141c8a3e2"
+}

@@ -1,0 +1,10 @@
+{
+  "run_id": "final-harness-check",
+  "role": "final-harness-correctness-only; excluded from baseline",
+  "source_commit": "6f43c9f9ca998ea5b3081655b6a43bb29ae51713",
+  "executed_harness_sha256": "4ee6fd7d29085ee30076d5ddda71018f58b70bdbce8ab285ae6ecf24c073c0b5",
+  "source_runtime_dependencies_verified_before_and_after": true,
+  "all_121_input_identities_verified_before_launch": true,
+  "all_117_output_identities_verified_after_reaping": true,
+  "metrics_sha256": "3c8e51de692b48bae4410622b7916cf3b725553eccdec96a26e4b11fc3a6f2f9"
+}

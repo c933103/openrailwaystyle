@@ -1,0 +1,57 @@
+test_absolute_path_normal (__main__.ReplayTests.test_absolute_path_normal) ... ok
+test_absolute_path_optimized (__main__.ReplayTests.test_absolute_path_optimized) ... ok
+test_archive_hash_normal (__main__.ReplayTests.test_archive_hash_normal) ... ok
+test_archive_hash_optimized (__main__.ReplayTests.test_archive_hash_optimized) ... ok
+test_archive_path_normal (__main__.ReplayTests.test_archive_path_normal) ... ok
+test_archive_path_optimized (__main__.ReplayTests.test_archive_path_optimized) ... ok
+test_archive_symlink_normal (__main__.ReplayTests.test_archive_symlink_normal) ... ok
+test_archive_symlink_optimized (__main__.ReplayTests.test_archive_symlink_optimized) ... ok
+test_clean_normal (__main__.ReplayTests.test_clean_normal) ... ok
+test_clean_optimized (__main__.ReplayTests.test_clean_optimized) ... ok
+test_destination_exists_normal (__main__.ReplayTests.test_destination_exists_normal) ... ok
+test_destination_exists_optimized (__main__.ReplayTests.test_destination_exists_optimized) ... ok
+test_destination_symlink_normal (__main__.ReplayTests.test_destination_symlink_normal) ... ok
+test_destination_symlink_optimized (__main__.ReplayTests.test_destination_symlink_optimized) ... ok
+test_duplicate_declared_member_normal (__main__.ReplayTests.test_duplicate_declared_member_normal) ... ok
+test_duplicate_declared_member_optimized (__main__.ReplayTests.test_duplicate_declared_member_optimized) ... ok
+test_duplicate_record_normal (__main__.ReplayTests.test_duplicate_record_normal) ... ok
+test_duplicate_record_optimized (__main__.ReplayTests.test_duplicate_record_optimized) ... ok
+test_expected_hash_normal (__main__.ReplayTests.test_expected_hash_normal) ... ok
+test_expected_hash_optimized (__main__.ReplayTests.test_expected_hash_optimized) ... ok
+test_input_hash_normal (__main__.ReplayTests.test_input_hash_normal) ... ok
+test_input_hash_optimized (__main__.ReplayTests.test_input_hash_optimized) ... ok
+test_input_size_normal (__main__.ReplayTests.test_input_size_normal) ... ok
+test_input_size_optimized (__main__.ReplayTests.test_input_size_optimized) ... ok
+test_invalid_size_normal (__main__.ReplayTests.test_invalid_size_normal) ... ok
+test_invalid_size_optimized (__main__.ReplayTests.test_invalid_size_optimized) ... ok
+test_manifest_symlink_normal (__main__.ReplayTests.test_manifest_symlink_normal) ... ok
+test_manifest_symlink_optimized (__main__.ReplayTests.test_manifest_symlink_optimized) ... ok
+test_record_traversal_normal (__main__.ReplayTests.test_record_traversal_normal) ... ok
+test_record_traversal_optimized (__main__.ReplayTests.test_record_traversal_optimized) ... ok
+test_reference_hash_normal (__main__.ReplayTests.test_reference_hash_normal) ... ok
+test_reference_hash_optimized (__main__.ReplayTests.test_reference_hash_optimized) ... ok
+test_reference_size_normal (__main__.ReplayTests.test_reference_size_normal) ... ok
+test_reference_size_optimized (__main__.ReplayTests.test_reference_size_optimized) ... ok
+test_tar_duplicate_normal (__main__.ReplayTests.test_tar_duplicate_normal) ... ok
+test_tar_duplicate_optimized (__main__.ReplayTests.test_tar_duplicate_optimized) ... ok
+test_tar_expansion_normal (__main__.ReplayTests.test_tar_expansion_normal) ... ok
+test_tar_expansion_optimized (__main__.ReplayTests.test_tar_expansion_optimized) ... ok
+test_tar_extra_normal (__main__.ReplayTests.test_tar_extra_normal) ... ok
+test_tar_extra_optimized (__main__.ReplayTests.test_tar_extra_optimized) ... ok
+test_tar_symlink_normal (__main__.ReplayTests.test_tar_symlink_normal) ... ok
+test_tar_symlink_optimized (__main__.ReplayTests.test_tar_symlink_optimized) ... ok
+test_tar_traversal_normal (__main__.ReplayTests.test_tar_traversal_normal) ... ok
+test_tar_traversal_optimized (__main__.ReplayTests.test_tar_traversal_optimized) ... ok
+test_zip_duplicate_normal (__main__.ReplayTests.test_zip_duplicate_normal) ... /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/zipfile/__init__.py:1625: UserWarning: Duplicate name: 'feeds/a.gz'
+  return self._open_to_write(zinfo, force_zip64=force_zip64)
+ok
+test_zip_duplicate_optimized (__main__.ReplayTests.test_zip_duplicate_optimized) ... ok
+test_zip_extra_normal (__main__.ReplayTests.test_zip_extra_normal) ... ok
+test_zip_extra_optimized (__main__.ReplayTests.test_zip_extra_optimized) ... ok
+test_zip_traversal_normal (__main__.ReplayTests.test_zip_traversal_normal) ... ok
+test_zip_traversal_optimized (__main__.ReplayTests.test_zip_traversal_optimized) ... ok
+
+----------------------------------------------------------------------
+Ran 50 tests in 5.123s
+
+OK

@@ -1,0 +1,24 @@
+test_changed_source (__main__.PinTests.test_changed_source) ... ok
+test_clean (__main__.PinTests.test_clean) ... ok
+test_dependency_symlink (__main__.PinTests.test_dependency_symlink) ... ok
+test_existing_output (__main__.PinTests.test_existing_output) ... ok
+test_output_symlink (__main__.PinTests.test_output_symlink) ... ok
+test_reserved (__main__.PinTests.test_reserved) ... ok
+test_wrong_version (__main__.PinTests.test_wrong_version) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.004s
+
+OK
+test_changed_source (__main__.PinTests.test_changed_source) ... ok
+test_clean (__main__.PinTests.test_clean) ... ok
+test_dependency_symlink (__main__.PinTests.test_dependency_symlink) ... ok
+test_existing_output (__main__.PinTests.test_existing_output) ... ok
+test_output_symlink (__main__.PinTests.test_output_symlink) ... ok
+test_reserved (__main__.PinTests.test_reserved) ... ok
+test_wrong_version (__main__.PinTests.test_wrong_version) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.005s
+
+OK

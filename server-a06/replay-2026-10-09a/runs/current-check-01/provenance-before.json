@@ -1,0 +1,20 @@
+{
+  "configuration_sha256": "a3a7a2aa3dd5a4f0a34e67d95851770e84ad6b56144b739ef501a578b3b1bec1",
+  "cohort": "replay-20261009a",
+  "role": "current-code-correctness-only",
+  "source_commit": "c62d457a3177f8ae6fe7c75d29e5aa82f8d807ef",
+  "identities": {
+    "source": {
+      "sha256": "f723c6e2bafe0fbc24ca54a6a153cdca747681036b5907648c0b76771774860b",
+      "entries": 318,
+      "file_bytes": 16179387
+    },
+    "dependencies": {
+      "sha256": "e3333521361057ff70b2f3187f18e4df938824350bb526e9d89f1ad578a6642e",
+      "entries": 3778,
+      "file_bytes": 106688774
+    },
+    "node_binary_sha256": "bc17c508ffeed0ec622934f9b7fa72f8e78da65350e63c3eceb56fa688aa5e12"
+  },
+  "verified_utc": "2026-10-09T04:58:17.640541+00:00"
+}

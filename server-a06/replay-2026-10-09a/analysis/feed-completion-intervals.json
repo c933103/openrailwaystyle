@@ -1,0 +1,155 @@
+{
+  "method": "Intervals between captured stdout completion lines; include feed read/parse/summary and capture scheduling, not isolated phase timings",
+  "largest_intervals": [
+    {
+      "run_id": "historical-02",
+      "feed_id": "fr_lignes-des-reseaux-transport-zou-provence-alpes-cote-d-azur-express-3-3",
+      "completion_interval_seconds": 3.4750616769997578
+    },
+    {
+      "run_id": "historical-02",
+      "feed_id": "fr_trains-express-regionaux-zou-en-provence-alpes-cote-d-azur",
+      "completion_interval_seconds": 3.377123178000147
+    },
+    {
+      "run_id": "historical-04",
+      "feed_id": "fr_trains-express-regionaux-zou-en-provence-alpes-cote-d-azur",
+      "completion_interval_seconds": 3.3597199249998084
+    },
+    {
+      "run_id": "historical-04",
+      "feed_id": "fr_lignes-des-reseaux-transport-zou-provence-alpes-cote-d-azur-express-3-3",
+      "completion_interval_seconds": 3.242273548999947
+    },
+    {
+      "run_id": "historical-03",
+      "feed_id": "fr_lignes-des-reseaux-transport-zou-provence-alpes-cote-d-azur-express-3-3",
+      "completion_interval_seconds": 3.215506993999952
+    },
+    {
+      "run_id": "historical-03",
+      "feed_id": "fr_trains-express-regionaux-zou-en-provence-alpes-cote-d-azur",
+      "completion_interval_seconds": 3.1507507099995564
+    },
+    {
+      "run_id": "historical-04",
+      "feed_id": "eu_european-sleeper",
+      "completion_interval_seconds": 2.4141718150003726
+    },
+    {
+      "run_id": "historical-02",
+      "feed_id": "eu_european-sleeper",
+      "completion_interval_seconds": 2.378808494000623
+    },
+    {
+      "run_id": "historical-03",
+      "feed_id": "eu_european-sleeper",
+      "completion_interval_seconds": 2.3468584499996723
+    },
+    {
+      "run_id": "historical-03",
+      "feed_id": "ge_georgian-railway",
+      "completion_interval_seconds": 2.1399025309992794
+    },
+    {
+      "run_id": "historical-02",
+      "feed_id": "ge_georgian-railway",
+      "completion_interval_seconds": 2.0575290189999578
+    },
+    {
+      "run_id": "historical-04",
+      "feed_id": "ge_georgian-railway",
+      "completion_interval_seconds": 1.9745394429992302
+    },
+    {
+      "run_id": "historical-04",
+      "feed_id": "lu_administration-des-transports-publics",
+      "completion_interval_seconds": 1.9368427380004505
+    },
+    {
+      "run_id": "historical-03",
+      "feed_id": "lu_administration-des-transports-publics",
+      "completion_interval_seconds": 1.8700604609994116
+    },
+    {
+      "run_id": "historical-02",
+      "feed_id": "lu_administration-des-transports-publics",
+      "completion_interval_seconds": 1.8424562390000574
+    },
+    {
+      "run_id": "historical-02",
+      "feed_id": "jp_tokyo-rail",
+      "completion_interval_seconds": 1.4348299449993647
+    },
+    {
+      "run_id": "historical-04",
+      "feed_id": "me_zpcg",
+      "completion_interval_seconds": 1.4247902029992474
+    },
+    {
+      "run_id": "historical-03",
+      "feed_id": "me_zpcg",
+      "completion_interval_seconds": 1.3970426409996435
+    },
+    {
+      "run_id": "historical-04",
+      "feed_id": "jp_tokyo-rail",
+      "completion_interval_seconds": 1.3876020489997245
+    },
+    {
+      "run_id": "historical-02",
+      "feed_id": "me_zpcg",
+      "completion_interval_seconds": 1.3743302399998356
+    },
+    {
+      "run_id": "historical-04",
+      "feed_id": "au-vic_Transport-Victoria-metro-trains",
+      "completion_interval_seconds": 1.371853170000577
+    },
+    {
+      "run_id": "historical-03",
+      "feed_id": "jp_tokyo-rail",
+      "completion_interval_seconds": 1.3533637250002357
+    },
+    {
+      "run_id": "historical-02",
+      "feed_id": "hu_mav",
+      "completion_interval_seconds": 1.2862556089994541
+    },
+    {
+      "run_id": "historical-04",
+      "feed_id": "hu_mav",
+      "completion_interval_seconds": 1.2270096659995033
+    },
+    {
+      "run_id": "historical-03",
+      "feed_id": "au-vic_Transport-Victoria-metro-trains",
+      "completion_interval_seconds": 1.220547371000066
+    },
+    {
+      "run_id": "historical-03",
+      "feed_id": "hu_mav",
+      "completion_interval_seconds": 1.1593810670001403
+    },
+    {
+      "run_id": "historical-02",
+      "feed_id": "au-vic_Transport-Victoria-metro-trains",
+      "completion_interval_seconds": 1.1515197979997538
+    },
+    {
+      "run_id": "historical-02",
+      "feed_id": "pl_MPK-Wroc-aw-3f06d61a5a8c",
+      "completion_interval_seconds": 1.0766886619994693
+    },
+    {
+      "run_id": "historical-03",
+      "feed_id": "fr_eurostar-gtfs-plan-de-transport-et-temps-reel",
+      "completion_interval_seconds": 1.0667885040002147
+    },
+    {
+      "run_id": "historical-02",
+      "feed_id": "fr_eurostar-gtfs-plan-de-transport-et-temps-reel",
+      "completion_interval_seconds": 1.0606334399999469
+    }
+  ]
+}

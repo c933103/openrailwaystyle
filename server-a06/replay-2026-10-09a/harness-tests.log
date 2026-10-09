@@ -1,0 +1,30 @@
+test_changed_dependency (__main__.Controls.test_changed_dependency) ... ok
+test_changed_replay_manifest (__main__.Controls.test_changed_replay_manifest) ... ok
+test_changed_runtime (__main__.Controls.test_changed_runtime) ... ok
+test_changed_source (__main__.Controls.test_changed_source) ... ok
+test_clean_provenance (__main__.Controls.test_clean_provenance) ... ok
+test_external_dependency_link (__main__.Controls.test_external_dependency_link) ... ok
+test_extra_output_does_not_reduce_matching_expected (__main__.Controls.test_extra_output_does_not_reduce_matching_expected) ... ok
+test_extra_source (__main__.Controls.test_extra_source) ... ok
+test_known_cache_exclusion_is_exact (__main__.Controls.test_known_cache_exclusion_is_exact) ... ok
+test_missing_and_changed_outputs (__main__.Controls.test_missing_and_changed_outputs) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.007s
+
+OK
+test_changed_dependency (__main__.Controls.test_changed_dependency) ... ok
+test_changed_replay_manifest (__main__.Controls.test_changed_replay_manifest) ... ok
+test_changed_runtime (__main__.Controls.test_changed_runtime) ... ok
+test_changed_source (__main__.Controls.test_changed_source) ... ok
+test_clean_provenance (__main__.Controls.test_clean_provenance) ... ok
+test_external_dependency_link (__main__.Controls.test_external_dependency_link) ... ok
+test_extra_output_does_not_reduce_matching_expected (__main__.Controls.test_extra_output_does_not_reduce_matching_expected) ... ok
+test_extra_source (__main__.Controls.test_extra_source) ... ok
+test_known_cache_exclusion_is_exact (__main__.Controls.test_known_cache_exclusion_is_exact) ... ok
+test_missing_and_changed_outputs (__main__.Controls.test_missing_and_changed_outputs) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.005s
+
+OK

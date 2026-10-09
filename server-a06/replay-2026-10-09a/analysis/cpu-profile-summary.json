@@ -1,0 +1,239 @@
+{
+  "method": "Exclusive main-thread CPU-profile sample timeDelta weights; not total process CPU and not worker-thread gzip attribution",
+  "sample_count": 31814,
+  "sampled_microseconds": 35224800,
+  "groups": {
+    "other": {
+      "microseconds": 3017486,
+      "percent": 8.566368013445073
+    },
+    "gc": {
+      "microseconds": 1497766,
+      "percent": 4.252021303172764
+    },
+    "reader": {
+      "microseconds": 23304206,
+      "percent": 66.1585189979787
+    },
+    "idle": {
+      "microseconds": 1009600,
+      "percent": 2.8661624764370557
+    },
+    "timetable-summary": {
+      "microseconds": 6395742,
+      "percent": 18.15692920896641
+    }
+  },
+  "top_functions": [
+    {
+      "function": "parseFrequencyFeed",
+      "url": "file:///workspace/shared/atlas-a06-replay-cohort-20261009a/work/historical-profile/source/scripts/read-frequency-feed.mjs",
+      "line_number_zero_based": 5,
+      "microseconds": 13485181,
+      "percent": 38.28320104017624
+    },
+    {
+      "function": "item",
+      "url": "file:///workspace/shared/atlas-a06-replay-cohort-20261009a/work/historical-profile/source/scripts/read-frequency-feed.mjs",
+      "line_number_zero_based": 10,
+      "microseconds": 9700461,
+      "percent": 27.538725556993935
+    },
+    {
+      "function": "timetableFeatures",
+      "url": "file:///workspace/shared/atlas-a06-replay-cohort-20261009a/work/historical-profile/source/scripts/gtfs-service.mjs",
+      "line_number_zero_based": 16,
+      "microseconds": 5556525,
+      "percent": 15.774468556244464
+    },
+    {
+      "function": "processCallback",
+      "url": "node:zlib",
+      "line_number_zero_based": 522,
+      "microseconds": 1731798,
+      "percent": 4.916416842679022
+    },
+    {
+      "function": "(garbage collector)",
+      "url": "",
+      "line_number_zero_based": -1,
+      "microseconds": 1497766,
+      "percent": 4.252021303172764
+    },
+    {
+      "function": "(idle)",
+      "url": "",
+      "line_number_zero_based": -1,
+      "microseconds": 1009600,
+      "percent": 2.8661624764370557
+    },
+    {
+      "function": "",
+      "url": "file:///workspace/shared/atlas-a06-replay-cohort-20261009a/work/historical-profile/source/scripts/gtfs-service.mjs",
+      "line_number_zero_based": 34,
+      "microseconds": 713387,
+      "percent": 2.0252407394790035
+    },
+    {
+      "function": "assemble",
+      "url": "file:///workspace/shared/atlas-a06-replay-cohort-20261009a/work/historical-profile/source/scripts/assemble-global-frequency.mjs",
+      "line_number_zero_based": 29,
+      "microseconds": 547618,
+      "percent": 1.5546376416615566
+    },
+    {
+      "function": "(program)",
+      "url": "",
+      "line_number_zero_based": -1,
+      "microseconds": 135799,
+      "percent": 0.38552099657059796
+    },
+    {
+      "function": "value",
+      "url": "file:///workspace/shared/atlas-a06-replay-cohort-20261009a/work/historical-profile/source/scripts/read-frequency-feed.mjs",
+      "line_number_zero_based": 9,
+      "microseconds": 111486,
+      "percent": 0.31649860325679635
+    },
+    {
+      "function": "",
+      "url": "file:///workspace/shared/atlas-a06-replay-cohort-20261009a/work/historical-profile/source/scripts/gtfs-service.mjs",
+      "line_number_zero_based": 33,
+      "microseconds": 106249,
+      "percent": 0.3016312370829643
+    },
+    {
+      "function": "runMicrotasks",
+      "url": "",
+      "line_number_zero_based": -1,
+      "microseconds": 77730,
+      "percent": 0.22066839272330857
+    },
+    {
+      "function": "write",
+      "url": "node:string_decoder",
+      "line_number_zero_based": 75,
+      "microseconds": 70301,
+      "percent": 0.1995781381299539
+    },
+    {
+      "function": "createUnsafeBuffer",
+      "url": "node:internal/buffer",
+      "line_number_zero_based": 1096,
+      "microseconds": 50696,
+      "percent": 0.1439213281551634
+    },
+    {
+      "function": "createAsyncIterator",
+      "url": "node:internal/streams/readable",
+      "line_number_zero_based": 1365,
+      "microseconds": 35396,
+      "percent": 0.10048602121232768
+    },
+    {
+      "function": "readableAddChunkPushByteMode",
+      "url": "node:internal/streams/readable",
+      "line_number_zero_based": 464,
+      "microseconds": 27015,
+      "percent": 0.07669312529808545
+    },
+    {
+      "function": "nextTick",
+      "url": "node:internal/process/task_queues",
+      "line_number_zero_based": 112,
+      "microseconds": 26952,
+      "percent": 0.07651427403420318
+    },
+    {
+      "function": "RegExp: ^[0-9a-f]{6}$",
+      "url": "",
+      "line_number_zero_based": -1,
+      "microseconds": 17409,
+      "percent": 0.04942256591946583
+    },
+    {
+      "function": "processTicksAndRejections",
+      "url": "node:internal/process/task_queues",
+      "line_number_zero_based": 71,
+      "microseconds": 16924,
+      "percent": 0.04804569507846744
+    },
+    {
+      "function": "kind",
+      "url": "file:///workspace/shared/atlas-a06-replay-cohort-20261009a/work/historical-profile/source/scripts/gtfs-service.mjs",
+      "line_number_zero_based": 7,
+      "microseconds": 16331,
+      "percent": 0.046362222070813745
+    },
+    {
+      "function": "read",
+      "url": "",
+      "line_number_zero_based": -1,
+      "microseconds": 15498,
+      "percent": 0.04399741091503713
+    },
+    {
+      "function": "processChunk",
+      "url": "node:zlib",
+      "line_number_zero_based": 502,
+      "microseconds": 13017,
+      "percent": 0.036954077808816516
+    },
+    {
+      "function": "",
+      "url": "",
+      "line_number_zero_based": -1,
+      "microseconds": 11595,
+      "percent": 0.03291714928118825
+    },
+    {
+      "function": "addChunk",
+      "url": "node:internal/streams/readable",
+      "line_number_zero_based": 551,
+      "microseconds": 11564,
+      "percent": 0.032829143103722376
+    },
+    {
+      "function": "",
+      "url": "file:///workspace/shared/atlas-a06-replay-cohort-20261009a/work/historical-profile/source/scripts/assemble-global-frequency.mjs",
+      "line_number_zero_based": 31,
+      "microseconds": 10816,
+      "percent": 0.030705639208739297
+    },
+    {
+      "function": "utf8Write",
+      "url": "node:internal/buffer",
+      "line_number_zero_based": 981,
+      "microseconds": 8676,
+      "percent": 0.02463037405464332
+    },
+    {
+      "function": "compileForInternalLoader",
+      "url": "node:internal/bootstrap/realm",
+      "line_number_zero_based": 382,
+      "microseconds": 8628,
+      "percent": 0.024494106425018737
+    },
+    {
+      "function": "decode",
+      "url": "",
+      "line_number_zero_based": -1,
+      "microseconds": 7722,
+      "percent": 0.02192205491585474
+    },
+    {
+      "function": "field",
+      "url": "file:///workspace/shared/atlas-a06-replay-cohort-20261009a/work/historical-profile/source/scripts/read-frequency-feed.mjs",
+      "line_number_zero_based": 11,
+      "microseconds": 7078,
+      "percent": 0.020093797551724923
+    },
+    {
+      "function": "emit",
+      "url": "node:events",
+      "line_number_zero_based": 455,
+      "microseconds": 6885,
+      "percent": 0.01954588812427608
+    }
+  ]
+}

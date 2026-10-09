@@ -1,0 +1,30 @@
+{
+  "historical_commit": "6f43c9f9ca998ea5b3081655b6a43bb29ae51713",
+  "current_commit": "c62d457a3177f8ae6fe7c75d29e5aa82f8d807ef",
+  "fresh_main_read_utc": "2026-10-09T04:55:25Z",
+  "core_files": [
+    {
+      "path": "scripts/assemble-global-frequency.mjs",
+      "historical_sha256": "7cdcf4e4d4409ebae5eb489608fe47a65c0707c943665aa19203ddbe5837f75b",
+      "current_sha256": "7cdcf4e4d4409ebae5eb489608fe47a65c0707c943665aa19203ddbe5837f75b",
+      "identical": true
+    },
+    {
+      "path": "scripts/read-frequency-feed.mjs",
+      "historical_sha256": "59e1e943ddb6a3a411fee1ca3655e0ba8c7c04030681d77805356ac4708c02e3",
+      "current_sha256": "59e1e943ddb6a3a411fee1ca3655e0ba8c7c04030681d77805356ac4708c02e3",
+      "identical": true
+    },
+    {
+      "path": "scripts/gtfs-service.mjs",
+      "historical_sha256": "dc594bf794af785764111d9f05e31d59416be98aa763f7a913dc1cf037c258dc",
+      "current_sha256": "dc594bf794af785764111d9f05e31d59416be98aa763f7a913dc1cf037c258dc",
+      "identical": true
+    }
+  ],
+  "other_direct_closure_or_package_changes": " package-lock.json          | 224 +++++++++++++++++++++++++++++++++++++++++++++\n package.json               |   2 +\n scripts/service-routes.mjs | 213 ++++++++++++++++++++++++++++--------------\n 3 files changed, 371 insertions(+), 68 deletions(-)\n",
+  "current_code_run": "current-check-01",
+  "matching_output_files": 117,
+  "coverage_matches": true,
+  "timing_interpretation": "One correctness run only, excluded from historical baseline statistics."
+}

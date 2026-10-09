@@ -1,0 +1,82 @@
+{
+  "cohort": "replay-20261009a",
+  "baseline_run_ids": [
+    "historical-02",
+    "historical-03",
+    "historical-04"
+  ],
+  "other_runs_excluded_from_baseline": [
+    "current-check-01",
+    "final-harness-check",
+    "historical-01",
+    "historical-profile"
+  ],
+  "metrics": {
+    "wall_seconds": {
+      "values": [
+        34.31991135200042,
+        33.320664691000275,
+        34.07457676899958
+      ],
+      "median": 34.07457676899958,
+      "min": 33.320664691000275,
+      "max": 34.31991135200042
+    },
+    "user_cpu_seconds": {
+      "values": [
+        38.802079,
+        39.050379,
+        38.54194
+      ],
+      "median": 38.802079,
+      "min": 38.54194,
+      "max": 39.050379
+    },
+    "system_cpu_seconds": {
+      "values": [
+        1.924684,
+        1.814681,
+        1.975704
+      ],
+      "median": 1.924684,
+      "min": 1.814681,
+      "max": 1.975704
+    },
+    "total_cpu_seconds": {
+      "values": [
+        40.726763,
+        40.86506,
+        40.517644
+      ],
+      "median": 40.726763,
+      "min": 40.517644,
+      "max": 40.86506
+    },
+    "peak_rss_kib": {
+      "values": [
+        575504,
+        571560,
+        573108
+      ],
+      "median": 573108,
+      "min": 571560,
+      "max": 575504
+    }
+  },
+  "all_output_identities_exact": true,
+  "coverage": {
+    "catalogue_entries": 2039,
+    "summary_feeds": 106,
+    "mapped_feeds": 86,
+    "countries": 66,
+    "tiles": 0,
+    "counts": {
+      "excluded": 1220,
+      "no_rail": 635,
+      "compiled": 106,
+      "failed": 78
+    },
+    "available_segments": 664872,
+    "routes_with_profiles": 1045
+  }
+}

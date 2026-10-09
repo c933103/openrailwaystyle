@@ -1,0 +1,29 @@
+✔ worldwide discovery, selective downloads and shapeless data processing (6237.833209ms)
+✔ global assembly rejects missing shards, duplicate feeds and catalogue drift (7.564363ms)
+✔ published feed directories retain only current verified inventory outputs (8.440105ms)
+✔ snapshot asset and release lookup follow the publishing repository (132.745434ms)
+bad 1 rail services
+good 1 rail services
+{"catalogue":2,"counts":{"compiled":2},"countries":1,"mappedFeeds":2}
+✔ a large feed is kept for matching beside its peers, and no feed builds map tiles (87.372133ms)
+✔ timetables draw no Service lines of their own; profiles keep date and directional provenance (21.349299ms)
+✔ route calendar expiry reaches the profile even while its feed remains current (1.48505ms)
+✔ local services rebundle independently and shared geometry retains every service (3.740271ms)
+✔ national feeds compact consecutive equal-profile edges while keeping disconnected paths (2.219176ms)
+✔ dated multi-region fixtures supply actual mapped rail shapes and profiles (375.635372ms)
+✔ fixture assembly succeeds when the OSM service-data branch supplies no table (527.631059ms)
+✔ production frequency registry has no city feed fallback (1.129974ms)
+✔ successful revalidation keeps unchanged annual feeds fresh without changing retrieval date (1.235234ms)
+✔ global route types preserve cable trams, extended monorails and funiculars (1.428665ms)
+✔ a summary-only pass reports the same feed summary without building features (0.560826ms)
+✔ streamed national feeds preserve nested records, escapes and Unicode across chunk boundaries (8.575093ms)
+✔ gzip feed reader decodes array records without retaining one whole JSON string (28.008652ms)
+✔ streamed reader rejects truncated feeds, duplicate fields and trailing content (0.681939ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6566.724185
