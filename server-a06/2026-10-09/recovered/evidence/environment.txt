@@ -1,0 +1,124 @@
+UTC runtime clock:
+2026-10-09T02:46:50+00:00
+Linux 6.18.44 x86_64 GNU/Linux
+
+Node versions
+v24.19.0
+{"versions":{"node":"24.19.0","acorn":"8.17.0","ada":"3.4.4","amaro":"1.1.10","ares":"1.34.6","brotli":"1.2.0","cldr":"48.0","icu":"78.3","llhttp":"9.4.3","merve":"1.2.2","modules":"137","napi":"10","nbytes":"0.1.4","ncrypto":"0.0.1","nghttp2":"1.69.0","nghttp3":"","ngtcp2":"","openssl":"3.5.7","simdjson":"4.6.4","simdutf":"6.4.0","sqlite":"3.53.3","tz":"2026b","undici":"7.29.0","unicode":"17.0","uv":"1.52.1","uvwasi":"0.0.23","v8":"13.6.233.17-node.51","zlib":"1.3.2.1-motley-3246f1b","zstd":"1.5.7"},"arch":"x64","platform":"linux","availableMemory":7390969856,"constrainedMemory":0}
+
+CPU
+9
+model name	: INTEL(R) XEON(R) PLATINUM 8573C
+Cpus_allowed_list:	0-8
+Mems_allowed_list:	0
+
+Memory
+MemTotal:       10206504 kB
+MemFree:         3807484 kB
+MemAvailable:    7221164 kB
+Buffers:          149832 kB
+Cached:          3956268 kB
+SwapCached:            0 kB
+Active:          3169700 kB
+Inactive:        2357020 kB
+Active(anon):     422768 kB
+Inactive(anon):  1747688 kB
+Active(file):    2746932 kB
+Inactive(file):   609332 kB
+Unevictable:       29920 kB
+Mlocked:               0 kB
+SwapTotal:             0 kB
+SwapFree:              0 kB
+Dirty:             98272 kB
+Writeback:             0 kB
+AnonPages:       1450760 kB
+Mapped:           341992 kB
+Shmem:            720028 kB
+KReclaimable:     371116 kB
+Slab:             463436 kB
+SReclaimable:     371116 kB
+SUnreclaim:        92320 kB
+KernelStack:       11636 kB
+PageTables:        39220 kB
+SecPageTables:         0 kB
+NFS_Unstable:          0 kB
+Bounce:                0 kB
+WritebackTmp:          0 kB
+CommitLimit:     5103252 kB
+Committed_AS:    8956508 kB
+VmallocTotal:   34359738367 kB
+VmallocUsed:       13008 kB
+VmallocChunk:          0 kB
+Percpu:             3312 kB
+AnonHugePages:     49152 kB
+ShmemHugePages:        0 kB
+ShmemPmdMapped:        0 kB
+FileHugePages:    356352 kB
+FilePmdMapped:         0 kB
+Balloon:               0 kB
+HugePages_Total:       0
+HugePages_Free:        0
+HugePages_Rsvd:        0
+HugePages_Surp:        0
+Hugepagesize:       2048 kB
+Hugetlb:               0 kB
+DirectMap4k:      440320 kB
+DirectMap2M:    12007424 kB
+DirectMap1G:    14680064 kB
+
+Filesystem
+Filesystem     Type      1B-blocks       Used   Available Use% Mounted on
+overlay        overlay 33770192896 3616862208 28418568192  12% /workspace/shared
+tmpfs          tmpfs    5225730048  711766016  4513964032  14% /tmp
+
+Limits
+real-time non-blocking time  (microseconds, -R) unlimited
+core file size              (blocks, -c) 0
+data seg size               (kbytes, -d) unlimited
+scheduling priority                 (-e) 0
+file size                   (blocks, -f) unlimited
+pending signals                     (-i) 39792
+max locked memory           (kbytes, -l) 8192
+max memory size             (kbytes, -m) unlimited
+open files                          (-n) 16384
+pipe size                (512 bytes, -p) 8
+POSIX message queues         (bytes, -q) 819200
+real-time priority                  (-r) 0
+stack size                  (kbytes, -s) 8192
+cpu time                   (seconds, -t) unlimited
+max user processes                  (-u) 39792
+virtual memory              (kbytes, -v) unlimited
+file locks                          (-x) unlimited
+
+Cgroup
+0::/
+cpu.max: not exposed in this executor
+memory.max: not exposed in this executor
+memory.current: not exposed in this executor
+memory.peak: not exposed in this executor
+memory.events: not exposed in this executor
+cpuset.cpus.effective: not exposed in this executor
+pids.max: not exposed in this executor
+
+Locale
+LANG=C.UTF-8
+LANGUAGE=
+LC_CTYPE="C.UTF-8"
+LC_NUMERIC="C.UTF-8"
+LC_TIME="C.UTF-8"
+LC_COLLATE="C.UTF-8"
+LC_MONETARY="C.UTF-8"
+LC_MESSAGES="C.UTF-8"
+LC_PAPER="C.UTF-8"
+LC_NAME="C.UTF-8"
+LC_ADDRESS="C.UTF-8"
+LC_TELEPHONE="C.UTF-8"
+LC_MEASUREMENT="C.UTF-8"
+LC_IDENTIFICATION="C.UTF-8"
+LC_ALL=C.UTF-8
+
+Load
+0.50 1.47 2.13 2/751 26
+
+Original checkout
+2d708cca35b29f50a2ca776a664c8770cffc1d35

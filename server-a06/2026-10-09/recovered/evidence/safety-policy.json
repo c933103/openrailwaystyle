@@ -1,0 +1,21 @@
+{
+  "status": "passed_full_deliverable_and_metadata_checks",
+  "original_raw_inputs": "not approved for public retention",
+  "derivative_label": "sanitized fixtures, not byte-identical original inputs",
+  "checks": [
+    "URL username/password user-info",
+    "nonempty authorization/password/token/secret/credential/cookie/header fields",
+    "query names including key/token/auth/credential/signature/sig, cloud signed-URL parameters and opaque uid",
+    "known original access-like values in every deliverable, including decompressed archives",
+    "private-key, bearer-token and common service-token patterns"
+  ],
+  "content_digest_exception": {
+    "field": "input_signature",
+    "reason": "Historical compiler computes SHA-256 over catalogue, profiles, graph and compiler digests; this is a content/cache digest, not an authentication signature. Values required to be 64 hex characters.",
+    "source": "scripts/global-service-frequency.py:291-293",
+    "historical_git_blob_sha1": "9dccfe4c432ce4a17636515a3da264ba93d50b19"
+  },
+  "source_attribution": "Preserve all names, credits, licence text/URLs and query parameter names; remove only bounded potential-access values. Opaque uid is conservatively removed without claiming it is a credential.",
+  "unknown_sensitive_fields_policy": "Any unresolved potential credential field outside the documented transformed query values blocks that deliverable.",
+  "known_limits": "Bounded structural/known-value scan, not proof against every possible encoded or unknown secret. No unresolved flagged metadata remains. Current live published exposure is not established."
+}

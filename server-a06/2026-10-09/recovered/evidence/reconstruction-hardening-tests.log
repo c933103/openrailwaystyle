@@ -1,0 +1,36 @@
+test_archive_read_symlink (__main__.ReconstructionTests.test_archive_read_symlink) ... ok
+test_archive_size_mismatch (__main__.ReconstructionTests.test_archive_size_mismatch) ... ok
+test_auxiliary_symlink (__main__.ReconstructionTests.test_auxiliary_symlink) ... ok
+test_clean_normal (__main__.ReconstructionTests.test_clean_normal) ... ok
+test_clean_optimized_preserves_existing_evidence (__main__.ReconstructionTests.test_clean_optimized_preserves_existing_evidence) ... ok
+test_duplicate_archive_manifest (__main__.ReconstructionTests.test_duplicate_archive_manifest) ... ok
+test_duplicate_between_archives (__main__.ReconstructionTests.test_duplicate_between_archives) ... ok
+test_duplicate_expected_manifest (__main__.ReconstructionTests.test_duplicate_expected_manifest) ... ok
+test_duplicate_input_manifest (__main__.ReconstructionTests.test_duplicate_input_manifest) ... ok
+test_duplicate_tar_member (__main__.ReconstructionTests.test_duplicate_tar_member) ... ok
+test_duplicate_zip_member (__main__.ReconstructionTests.test_duplicate_zip_member) ... /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/zipfile/__init__.py:1625: UserWarning: Duplicate name: 'feeds/demo.json.gz'
+  return self._open_to_write(zinfo, force_zip64=force_zip64)
+ok
+test_existing_destination_preserved (__main__.ReconstructionTests.test_existing_destination_preserved) ... ok
+test_expected_absolute_path (__main__.ReconstructionTests.test_expected_absolute_path) ... ok
+test_input_path_traversal (__main__.ReconstructionTests.test_input_path_traversal) ... ok
+test_manifest_archive_read_traversal (__main__.ReconstructionTests.test_manifest_archive_read_traversal) ... ok
+test_manifest_member_size_mismatch (__main__.ReconstructionTests.test_manifest_member_size_mismatch) ... ok
+test_manifest_read_symlink (__main__.ReconstructionTests.test_manifest_read_symlink) ... ok
+test_manifest_reference_read_traversal (__main__.ReconstructionTests.test_manifest_reference_read_traversal) ... ok
+test_member_hash_mismatch (__main__.ReconstructionTests.test_member_hash_mismatch) ... ok
+test_missing_zip_member (__main__.ReconstructionTests.test_missing_zip_member) ... ok
+test_reference_hash_mismatch (__main__.ReconstructionTests.test_reference_hash_mismatch) ... ok
+test_reference_size_mismatch (__main__.ReconstructionTests.test_reference_size_mismatch) ... ok
+test_tar_link (__main__.ReconstructionTests.test_tar_link) ... ok
+test_tar_manifest_size_mismatch (__main__.ReconstructionTests.test_tar_manifest_size_mismatch) ... ok
+test_tar_traversal (__main__.ReconstructionTests.test_tar_traversal) ... ok
+test_unexpected_tar_member (__main__.ReconstructionTests.test_unexpected_tar_member) ... ok
+test_unexpected_zip_member (__main__.ReconstructionTests.test_unexpected_zip_member) ... ok
+test_zip_hash_mismatch (__main__.ReconstructionTests.test_zip_hash_mismatch) ... ok
+test_zip_traversal (__main__.ReconstructionTests.test_zip_traversal) ... ok
+
+----------------------------------------------------------------------
+Ran 29 tests in 11.748s
+
+OK

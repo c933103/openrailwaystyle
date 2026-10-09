@@ -1,0 +1,24 @@
+{
+  "status": "passed",
+  "security_checks_use_assert": false,
+  "negative_test_count": 29,
+  "clean_reconstruction_checks": [
+    {
+      "optimized_python": false,
+      "exit_code": 0,
+      "input_files": 121,
+      "expected_files": 117,
+      "existing_evidence_preserved": true,
+      "stdout": "Sanitized inputs (121) and expected files (117) verified. These are derivatives, not original raw inputs.\nRun: python measure_sanitized.py 1"
+    },
+    {
+      "optimized_python": true,
+      "exit_code": 0,
+      "input_files": 121,
+      "expected_files": 117,
+      "existing_evidence_preserved": true,
+      "stdout": "Sanitized inputs (121) and expected files (117) verified. These are derivatives, not original raw inputs.\nRun: python measure_sanitized.py 1"
+    }
+  ],
+  "analysis_raw_layout": "passed; preserved aggregate metrics exactly"
+}

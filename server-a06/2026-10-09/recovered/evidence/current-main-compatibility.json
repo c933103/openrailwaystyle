@@ -1,0 +1,101 @@
+{
+  "checked_at": "2026-10-09T02:57:50Z",
+  "current_main": "906cdaef46dec857f6c813966f7f0f88195673ad",
+  "historical": "6f43c9f9ca998ea5b3081655b6a43bb29ae51713",
+  "truncated": false,
+  "files": [
+    {
+      "path": "scripts/assemble-global-frequency.mjs",
+      "historical": "9cf0fa9bb13fc2702f4e353815925f8cf00692d9",
+      "current": "9cf0fa9bb13fc2702f4e353815925f8cf00692d9"
+    },
+    {
+      "path": "scripts/read-frequency-feed.mjs",
+      "historical": "51193a20a9b1f824020efaf7e66d5e7b718fb51f",
+      "current": "51193a20a9b1f824020efaf7e66d5e7b718fb51f"
+    },
+    {
+      "path": "scripts/gtfs-service.mjs",
+      "historical": "84c619547b57c0294c1f03dc8f162a27bfb12362",
+      "current": "84c619547b57c0294c1f03dc8f162a27bfb12362"
+    },
+    {
+      "path": "scripts/service-routes.mjs",
+      "historical": "29dc9d64fac32f944558ace872a4c1b3241207ca",
+      "current": "c87406f6051e7ee7ac5001746fc71a6962d594f8"
+    },
+    {
+      "path": "scripts/branch-lines.mjs",
+      "historical": "a38d91536eed5b5c7b931979144fd3aee71460e0",
+      "current": "a38d91536eed5b5c7b931979144fd3aee71460e0"
+    },
+    {
+      "path": "scripts/lifecycle.mjs",
+      "historical": "5a960c53207c613363a8d42a0e5c12af57e97519",
+      "current": "5a960c53207c613363a8d42a0e5c12af57e97519"
+    },
+    {
+      "path": "scripts/download-stages.mjs",
+      "historical": "f2d55ec3b188df72da39950ede04cadcf9a189d1",
+      "current": "f2d55ec3b188df72da39950ede04cadcf9a189d1"
+    },
+    {
+      "path": "styles/pbf-utf8.mjs",
+      "historical": "8e5c8c1ae4d1a90f3e6e324cee7b98645e3cce8d",
+      "current": "8e5c8c1ae4d1a90f3e6e324cee7b98645e3cce8d"
+    },
+    {
+      "path": "styles/service-frequency.mjs",
+      "historical": "6f5bdc5239aee0281c9264052779025b93930fe4",
+      "current": "6f5bdc5239aee0281c9264052779025b93930fe4"
+    },
+    {
+      "path": "package.json",
+      "historical": "38901d1fdd67b9be722686b9a0ebb61637c9472a",
+      "current": "9b4764263ece51e61243d4a58436a242468441dd"
+    },
+    {
+      "path": "package-lock.json",
+      "historical": "e7c65fd971b93a6d158e0b431d87abe8a7c7780f",
+      "current": "bfa0a0bd807aa9c8fef1f380cf61ff42455b86e5"
+    },
+    {
+      "path": ".github/workflows/service-frequency.yml",
+      "historical": "5eb2da772b6a76e9e91c1428bfd598ffeb986fbe",
+      "current": "5eb2da772b6a76e9e91c1428bfd598ffeb986fbe"
+    },
+    {
+      "path": "tests/global-frequency.test.mjs",
+      "historical": "5fbabeb4e4aa0cdefa78b175c02b15189af8038a",
+      "current": "5fbabeb4e4aa0cdefa78b175c02b15189af8038a"
+    },
+    {
+      "path": "tests/read-frequency-feed.test.mjs",
+      "historical": "fc4251c65ce5997530323076fcdcd92e4a21732f",
+      "current": "fc4251c65ce5997530323076fcdcd92e4a21732f"
+    },
+    {
+      "path": "tests/gtfs-service.test.mjs",
+      "historical": "436f9fce45119a32a98cc28b7fa22a49bc308841",
+      "current": "436f9fce45119a32a98cc28b7fa22a49bc308841"
+    }
+  ],
+  "correctness_replay": {
+    "run": 5,
+    "all_117_files_match_original_reference": true,
+    "coverage": {
+      "catalogue_entries": 2039,
+      "summary_feeds": 106,
+      "mapped_feeds": 86,
+      "countries": 66,
+      "tiles": 0,
+      "counts": {
+        "excluded": 1220,
+        "no_rail": 635,
+        "compiled": 106,
+        "failed": 78
+      }
+    },
+    "timing_interpretation": "Single later compatibility replay, not a controlled performance comparison; excluded from historical baseline aggregates."
+  }
+}

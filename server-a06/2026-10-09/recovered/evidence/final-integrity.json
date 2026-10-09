@@ -1,0 +1,594 @@
+{
+  "archive_members_match_original_inputs": true,
+  "unique_input_files": 121,
+  "original_inputs_unchanged_after_runs": true,
+  "minimal_retention_reconstructs_all_reference_files": true,
+  "reference_files_reconstructed": 117,
+  "reference_hashes": [
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-cbd-and-southeast-lr.json.gz",
+      "bytes": 179915,
+      "sha256": "f39b2a36d2105fe3d666c147a453d93fb5e1e9e80fedbdd412eda9c692aad40d"
+    },
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-inner-west-lr.json.gz",
+      "bytes": 27430,
+      "sha256": "625bc2bcc009bf357c375c720f9b05a0cb1a0a832cf030039e1eef22e3c1435c"
+    },
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-metro.json.gz",
+      "bytes": 340073,
+      "sha256": "14774431524686fce2288ff35bac444d12485103ba760142a4577039cb3ef381"
+    },
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-newcastle-lr.json.gz",
+      "bytes": 10039,
+      "sha256": "bd749c34a9a938664a0eb5c6e8061eed80f548e412270faaae84fddfd799ad35"
+    },
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-nsw-trains.json.gz",
+      "bytes": 22343,
+      "sha256": "8c0e3d76015a1ff1741e0b33a5b0a80c7776b277345cf0631e9f2f3cabda5552"
+    },
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-parramatta-lr.json.gz",
+      "bytes": 20149,
+      "sha256": "c9b6a15227e040f8d52128c120e9c5bc3a70abc2b2e268a6b09a9c4b953e3ec5"
+    },
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-sydney-trains.json.gz",
+      "bytes": 166515,
+      "sha256": "9fe9116d7638f68d69cb1e822541edbcf56156175bb5c4f2c967f2cf7fd45e35"
+    },
+    {
+      "path": "feeds/au-vic_Transport-Victoria-interstate.json.gz",
+      "bytes": 147596,
+      "sha256": "a4819bf23c6cc0a2aa99f4a950724ee4112fdd7dbe751a904b11e778581e6a73"
+    },
+    {
+      "path": "feeds/au-vic_Transport-Victoria-metro-trains.json.gz",
+      "bytes": 1003990,
+      "sha256": "5235c3a213523abc8bdc52de6ec514a41c9c5fe78f6ebcab8c4a96f11990a0d9"
+    },
+    {
+      "path": "feeds/au-vic_Transport-Victoria-metro-trams.json.gz",
+      "bytes": 528023,
+      "sha256": "bd1a708277448ea18e2bf182f0b23f712720d88276365801ef604b00ea884844"
+    },
+    {
+      "path": "feeds/au-vic_Transport-Victoria-regional-trains.json.gz",
+      "bytes": 366935,
+      "sha256": "b4986487fa2fd3bb955d1f0c7735a8848a7d04f0e37b1514f371abd345454c8e"
+    },
+    {
+      "path": "feeds/bg_sofia.json.gz",
+      "bytes": 484716,
+      "sha256": "46491b15f23102c1ee433be09ed7393b7f17f5335022b4e36b2dbe02a462dfcb"
+    },
+    {
+      "path": "feeds/br_sao-paulo.json.gz",
+      "bytes": 189588,
+      "sha256": "28ba3c21a7d637ac6603a3ba890d0440755bda02b468699b8d59b54d3e713564"
+    },
+    {
+      "path": "feeds/cz_IDS-JMK.json.gz",
+      "bytes": 71709,
+      "sha256": "614d72513af866d636ed602fde0135ab7282d504a101fea7f80712cb141e0e9c"
+    },
+    {
+      "path": "feeds/cz_JDF-merged.json.gz",
+      "bytes": 42029,
+      "sha256": "47538167344dcbed2c4fe99b2407ba4e6c7a5d4a85a111d8e52b21439ed468a9"
+    },
+    {
+      "path": "feeds/cz_PMDP.json.gz",
+      "bytes": 12248,
+      "sha256": "762eac8bffa244b1c8408fc5ad423210a19a7491df945ab75ce61faed841f544"
+    },
+    {
+      "path": "feeds/ee_elron.json.gz",
+      "bytes": 717322,
+      "sha256": "02d0c7e1b3012a889fe00117b8a5fe19e0bb7d3d42d9b510391b473d699b41ca"
+    },
+    {
+      "path": "feeds/ee_tallinn.json.gz",
+      "bytes": 89522,
+      "sha256": "b1a5eafc2175d80fe0ea07761b51de9c136748efe028ec0dda774eb1b82b5eee"
+    },
+    {
+      "path": "feeds/es_Cercan-as-Renfe-08947ebad1d6.json.gz",
+      "bytes": 77361,
+      "sha256": "028b00c56026d0503ab07f09202e774b4c2c1b76f8043f8f42e9ac5e74887d81"
+    },
+    {
+      "path": "feeds/es_Euskotren.json.gz",
+      "bytes": 188394,
+      "sha256": "4f3098390da1a9dca3f6626f2e07cd1f7a1d187d04c21743d16206d34b298c5b"
+    },
+    {
+      "path": "feeds/es_Funicular-de-Artxanda.json.gz",
+      "bytes": 3495,
+      "sha256": "78b7c01646db16ec87222eaa82c657e731d88ce883ea98e81a23971d7791ac76"
+    },
+    {
+      "path": "feeds/es_Metro-Bilbao.json.gz",
+      "bytes": 341546,
+      "sha256": "4e15f85a700b1258be27abccb66355a35ad282b495699ecfd1ff3bdf77220cdf"
+    },
+    {
+      "path": "feeds/es_Puente-Colgante-Bizkaia.json.gz",
+      "bytes": 1878,
+      "sha256": "994b3196d8f95fc3661853f35c8773fe99936978831859b663b33c3fe431d0c1"
+    },
+    {
+      "path": "feeds/es_RENFE-Larga-Distancia-y-AVE.json.gz",
+      "bytes": 98841,
+      "sha256": "7dfd59c8877f8e733301dddef8acfdecec0b5328ed562835df9e87b1c8605c47"
+    },
+    {
+      "path": "feeds/es_Transporte-p-blico-de-la-Isla-de-Mallorca-abd9b80431fa.json.gz",
+      "bytes": 71869,
+      "sha256": "d3b16d11854b145b56677082a6f059f3427f10c3adcea6e08b1201a0447536ac"
+    },
+    {
+      "path": "feeds/et_addisababatransportall.json.gz",
+      "bytes": 38619,
+      "sha256": "57e5ede3bd9564bf1246641a3ef49632ed394fc2e6a7c460b23af22a5fafa8f7"
+    },
+    {
+      "path": "feeds/eu_european-sleeper.json.gz",
+      "bytes": 2089098,
+      "sha256": "7a212fb6965d9d495d7a1da03118bc779ea87d0462fb03393169e00b916efcd7"
+    },
+    {
+      "path": "feeds/eu_flixbus.json.gz",
+      "bytes": 6686,
+      "sha256": "a74f82c757e3cf343400fef69feed4e778e2f70751b056f9091432e228927e8a"
+    },
+    {
+      "path": "feeds/eu_optimaexpress.json.gz",
+      "bytes": 2270,
+      "sha256": "ee5b4fa0d9365c5553f64255f12fbfa596341912dab85fa8d3f998c7deb8875c"
+    },
+    {
+      "path": "feeds/fr_angers-loire-metropole-reseau-irigo-gtfs-gtfs-rt-siri.json.gz",
+      "bytes": 53483,
+      "sha256": "ae137f1a446d926470b48419c917a027b17a488263327f077fc856e46b83e884"
+    },
+    {
+      "path": "feeds/fr_base-de-donnees-multimodale-des-reseaux-de-transport-public-normands.json.gz",
+      "bytes": 15211,
+      "sha256": "26dd8f7d7c2a69aa007716800c8db960723d63e880bce2aedb05fe5954065574"
+    },
+    {
+      "path": "feeds/fr_breizhgo-ter.json.gz",
+      "bytes": 64853,
+      "sha256": "e6a9f8bbdc943679154216ee211d26e336bc1c0a2b7d045ac69edf75fef7d890"
+    },
+    {
+      "path": "feeds/fr_caen-la-mer-reseau-twisto-gtfs-siri.json.gz",
+      "bytes": 177105,
+      "sha256": "1f1c4a6f96734a255e10c7d1bb721e83149a273c99154c4e94b34a167bea3325"
+    },
+    {
+      "path": "feeds/fr_citalis-telepherique-papang.json.gz",
+      "bytes": 2038,
+      "sha256": "011c1ea6b5db558c4dbdd4ada35d2890804ba20a7ae1880772057ad52eaae701"
+    },
+    {
+      "path": "feeds/fr_donnees-statiques-et-dynamiques-du-reseau-de-transport-lignes-dazur.json.gz",
+      "bytes": 50239,
+      "sha256": "351408a43096979ac97ad4148b8779a677b4b3e3fc9295872410ced5a808c214"
+    },
+    {
+      "path": "feeds/fr_donnees-statiques-et-temps-reel-du-reseau-astuce-metropole-rouen-normandie.json.gz",
+      "bytes": 6185,
+      "sha256": "140d8d14916c3a2e48293ff1ded4817f07199c659458cd0d786290a8f0afb608"
+    },
+    {
+      "path": "feeds/fr_donnees-theoriques-gtfs-et-temps-reel-siri-lite-du-reseau-cts.json.gz",
+      "bytes": 21347,
+      "sha256": "3d55d10e50dd0df9ac32cce4232e0d4e8bd747abc0cb855f571ef9508bf03a25"
+    },
+    {
+      "path": "feeds/fr_eurostar-gtfs-plan-de-transport-et-temps-reel.json.gz",
+      "bytes": 859939,
+      "sha256": "669e8f08b4a19d94e807672c3e2174b13591f01a3cff099c2de26b104791657e"
+    },
+    {
+      "path": "feeds/fr_fil-bleu-syndicat-des-mobilites-gtfs-gtfs-rt.json.gz",
+      "bytes": 71858,
+      "sha256": "66257292e09b9f0096f1d563b4916b499c1648d486fcf4f9f6cbab90f9069a83"
+    },
+    {
+      "path": "feeds/fr_fr-200052264-t0014-0000-1.json.gz",
+      "bytes": 68922,
+      "sha256": "08427d2b79b1ce340793b56be578250b681076194cd251d912bb5f98c63e4d6a"
+    },
+    {
+      "path": "feeds/fr_fr-200052264-t0017-0000-1.json.gz",
+      "bytes": 3760,
+      "sha256": "eb2e6ba5163b0ae2f5a4b2f4451df825bff1cd2ac9a2cbbfce49109e2a5b8f93"
+    },
+    {
+      "path": "feeds/fr_gtfs-diviamobilites.json.gz",
+      "bytes": 22078,
+      "sha256": "506eeba61edd3ab9a3a6a8fc8c5a1fb6bf889f509155761a34415a5d19146627"
+    },
+    {
+      "path": "feeds/fr_gtfs-du-reseau-des-transports-bus-et-tramway-setram-circulant-sur-le-territoire-le-mans-metropole.json.gz",
+      "bytes": 6643,
+      "sha256": "d02126192d8d3c03d49cf5d79a9bcad12ece782f81ac73aaff549ee49d8a2dde"
+    },
+    {
+      "path": "feeds/fr_gtfs-et-siri-du-reseau-ginko-besancon-lignes-urbaines-et-periurbaines.json.gz",
+      "bytes": 59589,
+      "sha256": "af329ac2474ae82ec816e2558a76ef2f36fec807bee7c8bf4628a58b2597f99d"
+    },
+    {
+      "path": "feeds/fr_horaires-ave-espagne-france.json.gz",
+      "bytes": 3081,
+      "sha256": "b03cd5268ee7852325371474ad1199b0866d5cf9e8955c9f3fefd4f3419429f2"
+    },
+    {
+      "path": "feeds/fr_horaires-des-trains-trenitalia-france.json.gz",
+      "bytes": 3888,
+      "sha256": "b515ec71214acab445e73be3b99af3929aad366426ab4fee2543aa5c0cbff428"
+    },
+    {
+      "path": "feeds/fr_horaires-du-reseau-stas.json.gz",
+      "bytes": 17552,
+      "sha256": "2228785714cbcb60e001e6341c03cf9ac3e9cfbd6dd3e96e916c538ddff988b4"
+    },
+    {
+      "path": "feeds/fr_horaires-sncf.json.gz",
+      "bytes": 537542,
+      "sha256": "f25cc91e9a6d137a6e4430cbb157bc2aa0b23dae88575549357327fac8871653"
+    },
+    {
+      "path": "feeds/fr_horaires-theoriques-du-reseau-tag.json.gz",
+      "bytes": 204909,
+      "sha256": "42fb5836878d2dbbfaa79dc9d28a258c80cd7373664dcfb46aea2f5f516ae799"
+    },
+    {
+      "path": "feeds/fr_horaires-theoriques-et-temps-reel-des-bus-et-tramways-circulant-sur-le-territoire-de-brest-metropole.json.gz",
+      "bytes": 22632,
+      "sha256": "359814007f295db6ae32055599bfd035840d3e03b624526f0cb0c1ec20981ab6"
+    },
+    {
+      "path": "feeds/fr_ilevia-localisation-des-arrets-bus-metro-et-tram-gtfs.json.gz",
+      "bytes": 11985,
+      "sha256": "56719d00f9b991d13e758a25cced39e7692485dadd05ee52ad94cb1d230c7e6d"
+    },
+    {
+      "path": "feeds/fr_jeu-de-donnee-spl-estival-2025--83774.json.gz",
+      "bytes": 60940,
+      "sha256": "cb7dc2752ded4d1bbe3d2d297297b4d58b115029d0b5c0b022432eb32a92dca8"
+    },
+    {
+      "path": "feeds/fr_lignes-des-reseaux-transport-zou-provence-alpes-cote-d-azur-express-3-3.json.gz",
+      "bytes": 2912395,
+      "sha256": "ab4788e23ef6f5b73db191275e0bedbbbed0053d8861d3e2ac9c066afc6adf18"
+    },
+    {
+      "path": "feeds/fr_lyon-tcl.json.gz",
+      "bytes": 169817,
+      "sha256": "d61bf6b3abbe08f1d585436a1ffecf514b707cf031f71a76c8bae4b29f2df89f"
+    },
+    {
+      "path": "feeds/fr_offre-de-transport-du-reseau-grand-reims-mobilites-communaute-urbaine-du-grand-reims.json.gz",
+      "bytes": 4142,
+      "sha256": "ba885c0b5c5655052a305e155d1e552426cc2204a6266a8f192d912a11763987"
+    },
+    {
+      "path": "feeds/fr_offre-de-transport-solea-et-tram-train-en-format-gtfs-1.json.gz",
+      "bytes": 37386,
+      "sha256": "d060e71caf485d0374c55042283c41ffec5c3d25886313f5ae4890b2a65ac543"
+    },
+    {
+      "path": "feeds/fr_offres-de-services-bus-tram-et-scolaire-au-format-gtfs-netex-gtfs-rt-siri-lite.json.gz",
+      "bytes": 566129,
+      "sha256": "4a24b6a751a289aad4b96d2ebb9debd7e159c69e02a8fc6a4e49ef8c1ff4c6eb"
+    },
+    {
+      "path": "feeds/fr_r-seau-urbain-T2C-6d1c277ed679.json.gz",
+      "bytes": 122100,
+      "sha256": "ce162d40e85075b77f6f0a5515f1dd3ef269f76821334dd98b3e1e4e3275cf1c"
+    },
+    {
+      "path": "feeds/fr_reseau-de-transport-en-commun-lia-gtfs-siri.json.gz",
+      "bytes": 5318,
+      "sha256": "3dcbf5948cc72d407bf159534eabf1192ca05158ab7f347fa3e56bae25fa4781"
+    },
+    {
+      "path": "feeds/fr_reseau-orizo-grand-avignon.json.gz",
+      "bytes": 3242,
+      "sha256": "899a37eacb63a74532680585f3c112a139253d4f505623174294d6020bb4e692"
+    },
+    {
+      "path": "feeds/fr_reseau-urbain-STAR.json.gz",
+      "bytes": 30751,
+      "sha256": "7887aa8c840465cf7e0ef4810912e0b8607f0babd25bc7c07947ce8726589a3b"
+    },
+    {
+      "path": "feeds/fr_reseaux-de-transports-en-commun-de-la-metropole-daix-marseille-provence-et-des-bouches-du-rhone--39589.json.gz",
+      "bytes": 80533,
+      "sha256": "62a1de0f9d560d023cde67d031b90e348a6786eb42f0daa3d0c10c80aca69e9b"
+    },
+    {
+      "path": "feeds/fr_thonon-agglomeration-donnees-gtfs.json.gz",
+      "bytes": 3088,
+      "sha256": "9f379b82fe7edc982a0413c3e659e0e39b78f29edcfe9575386f6c02c429ecfb"
+    },
+    {
+      "path": "feeds/fr_tisseo-reseau-transport-urbain-toulousain.json.gz",
+      "bytes": 232997,
+      "sha256": "c637c064340f17bf47d3adca78449d21bf9a478dbea8351b8ae97be7fef81108"
+    },
+    {
+      "path": "feeds/fr_trains-express-regionaux-zou-en-provence-alpes-cote-d-azur.json.gz",
+      "bytes": 2825422,
+      "sha256": "998393a5ecec39cd3618b4086f282c5be458b001288f41a6d98ba80ca1efb0d3"
+    },
+    {
+      "path": "feeds/fr_yceo-arrets-horaires-et-lignes-urbaines-et-scolaires-gtfs-1.json.gz",
+      "bytes": 24131,
+      "sha256": "48c90594ceac95d927e90e62ad43bba25e2d6b5fbc480bf0534f22e6e888ae6c"
+    },
+    {
+      "path": "feeds/fr_zou.json.gz",
+      "bytes": 2899,
+      "sha256": "b3e51680597e72a707129ee2e908db8c962972309d15a6b204bde2df10e634b0"
+    },
+    {
+      "path": "feeds/ge_georgian-railway.json.gz",
+      "bytes": 1609275,
+      "sha256": "ef7699f78e8a1dd77377b6cc6e5d1bbb6daac5010e28fd0384a682da687c5c8f"
+    },
+    {
+      "path": "feeds/hk_Hong-Kong-Transit.json.gz",
+      "bytes": 397259,
+      "sha256": "18f5874e40aeacb580f7a26c3113e8200cc932e3b7a780c00674987bae27c409"
+    },
+    {
+      "path": "feeds/hu_mav.json.gz",
+      "bytes": 1072708,
+      "sha256": "a6a0f1c6ddf4e6763080bce19c4147159d0ccb0959e7151c888b46ce2b6ca220"
+    },
+    {
+      "path": "feeds/hu_szkt.json.gz",
+      "bytes": 130085,
+      "sha256": "32f724eb68303819e85e5f9db0239b62e2fe1250472eec7e657ffb0231e92b27"
+    },
+    {
+      "path": "feeds/it_Campania-EAV.json.gz",
+      "bytes": 17696,
+      "sha256": "e0c387dced049efc3f4f59bc3d2e91b138a892b931903a2e472bcc31349a1ed3"
+    },
+    {
+      "path": "feeds/it_Emilia-Romagna-TPER-BLQ-Airport.json.gz",
+      "bytes": 4821,
+      "sha256": "2291b68eb7f92c23eee1ea1f1d6e7affc97bdef4bba980d7037748df0d156f9d"
+    },
+    {
+      "path": "feeds/it_Lombardia-Trenord.json.gz",
+      "bytes": 74026,
+      "sha256": "9ed19bb54e827f117900bd3c8d815d17bafe0d688a1c2a5231a8dcccfd32c00b"
+    },
+    {
+      "path": "feeds/it_Piemonte-Gruppo-Torinese-Trasporti.json.gz",
+      "bytes": 74554,
+      "sha256": "e22a6e3003e297fbdde90cb80cf5a277219b6e718a0f58414ec1fae7ad26690b"
+    },
+    {
+      "path": "feeds/it_Sicilia-Palermo-AMAT.json.gz",
+      "bytes": 16889,
+      "sha256": "aea27ac9e115a0bf5ea931c11acc832a4834cc8fa277cac0e52ca27daf3ad5e3"
+    },
+    {
+      "path": "feeds/jp_tokyo-rail.json.gz",
+      "bytes": 1281840,
+      "sha256": "16db03c8f06bacfb2f170a211da7c03dc761389139f0766d0f9d5be4cf107e5a"
+    },
+    {
+      "path": "feeds/lu_administration-des-transports-publics.json.gz",
+      "bytes": 1926361,
+      "sha256": "44243a65d5ea13bb956adbd051dbf90d60a72655b79795a2a58b41200a4359b3"
+    },
+    {
+      "path": "feeds/me_zpcg.json.gz",
+      "bytes": 1129756,
+      "sha256": "8bbb6314382201b397186c1eb9ffecb1af395bf553b1a74994b324f82d42210d"
+    },
+    {
+      "path": "feeds/ma_oncf.json.gz",
+      "bytes": 201786,
+      "sha256": "e804378a8b631c461185e6091e15f6e265c53a5e718afbab90af651343baf2b5"
+    },
+    {
+      "path": "feeds/my_ktmb.json.gz",
+      "bytes": 15500,
+      "sha256": "deee48145a0d19b7ebd724f4aa1c8b1abc9046211bc5a575775b4c41c007db07"
+    },
+    {
+      "path": "feeds/my_rail-kl.json.gz",
+      "bytes": 165391,
+      "sha256": "bd69bb460f47b82f352f63b6055352c2c2b731cb56b2342c1347ce77bab4d8e0"
+    },
+    {
+      "path": "feeds/pl_Bydgoszcz.json.gz",
+      "bytes": 22017,
+      "sha256": "e700b2123667300412ea9f7f23495d866a586f8edeefe60d83b60122965e9d3f"
+    },
+    {
+      "path": "feeds/pl_--d-fc9cc9c3d302.json.gz",
+      "bytes": 463456,
+      "sha256": "8a7ca16790899012bdeae9fb3a2d1e23ed736c0ff5524aa35b0a6c241b84d59b"
+    },
+    {
+      "path": "feeds/pl_Cz-stochowa-c320cd902162.json.gz",
+      "bytes": 55259,
+      "sha256": "badade905a49124585e5dcc9ebed8ee1aad3b4c7d5af89a977a89be7e4ed59f0"
+    },
+    {
+      "path": "feeds/pl_Elbl-g-5a11725a6f4f.json.gz",
+      "bytes": 34210,
+      "sha256": "4e894a39fd161af9beabc00fc84e6f9f775702220d1500f46e12280d2b261e7e"
+    },
+    {
+      "path": "feeds/pl_Gda-sk-97391932cbf6.json.gz",
+      "bytes": 212413,
+      "sha256": "53706e182b5337a877d69711514d8f935b8d95db6ceb312955483905b94e274d"
+    },
+    {
+      "path": "feeds/pl_Gorz-w-Wielkopolski-89b75a6bc4ec.json.gz",
+      "bytes": 28639,
+      "sha256": "254f030405a92c5b5b5f44c09298f6619bf0a27481f9fc7fb61534a5eab2550e"
+    },
+    {
+      "path": "feeds/pl_MPK-Wroc-aw-3f06d61a5a8c.json.gz",
+      "bytes": 932544,
+      "sha256": "63cf2512985f1e9fffc684b6de20b5e2edb850d0b92111750b78bc3c33429cae"
+    },
+    {
+      "path": "feeds/pl_Olsztyn.json.gz",
+      "bytes": 56031,
+      "sha256": "7443997bf8689434bf5528abf8afb4c733289feb1324651896ae82a92fcb5dec"
+    },
+    {
+      "path": "feeds/pl_PKP-Intercity-Germany.json.gz",
+      "bytes": 6704,
+      "sha256": "72ec10399aac46b416d5abb2610230357798f1c228f6a5bc5662109eabbe28b4"
+    },
+    {
+      "path": "feeds/pl_Szczecin.json.gz",
+      "bytes": 404716,
+      "sha256": "907d8fd922199840bb50caca3e3e594d5ea92f2bd9da6b5adef9ccc9173f2023"
+    },
+    {
+      "path": "feeds/pl_Toru-d9480c71f395.json.gz",
+      "bytes": 87318,
+      "sha256": "20f8619a74d15d7dd7a5a9beb471919babbe401306af287c7b73bbbb201a7082"
+    },
+    {
+      "path": "feeds/pl_TransportGZM.json.gz",
+      "bytes": 562791,
+      "sha256": "59d15d67e789c378f8def989d4f3fb4549376ec15af783f515887b43eaa969a6"
+    },
+    {
+      "path": "feeds/pl_Warszawa.json.gz",
+      "bytes": 1049889,
+      "sha256": "f78f26b97fbd2d41f404a192f69a093f416c29b3545b2d321865ee9161f1146a"
+    },
+    {
+      "path": "feeds/pl_Warszawska-Kolej-Dojazdowa.json.gz",
+      "bytes": 12602,
+      "sha256": "f08119fa3c4cb28816261a720dd04d6fbe3a39eb916fa4e9f289f74887da2076"
+    },
+    {
+      "path": "feeds/pt_Metro-Lisboa.json.gz",
+      "bytes": 5786,
+      "sha256": "9fe6d7efd6d99ee9af808a71a4d8d3e4d974d16b4ce4d271e60789d0b9f9bc67"
+    },
+    {
+      "path": "feeds/pt_Metro-Porto.json.gz",
+      "bytes": 13614,
+      "sha256": "d70e70df618ed9a3efb55360a2902bf80af46d66987beda451edbe9602373d6b"
+    },
+    {
+      "path": "feeds/ro_Bucuresti-Ilfov.json.gz",
+      "bytes": 173752,
+      "sha256": "2d1b8afb97ad6a2e240bb369eadb8252558ae2e6097d87033b4c6f1553960fca"
+    },
+    {
+      "path": "feeds/ro_Cluj-Napoca.json.gz",
+      "bytes": 79272,
+      "sha256": "b831726430b065fc91c794813ee47c7516012fca269c97a8294862abfc176e76"
+    },
+    {
+      "path": "feeds/ro_Ia-i-ac584bc45d3c.json.gz",
+      "bytes": 128199,
+      "sha256": "403b3293e4f1bddb8a49654cae357f2a9ce86dd1214d47a01d8b4191da7ec050"
+    },
+    {
+      "path": "feeds/ua_kyiv.json.gz",
+      "bytes": 70330,
+      "sha256": "a8dc4e9b0aaaf2ca4c32fa14c7e32abef3dd317bdac2ed8eb06816733964e5b6"
+    },
+    {
+      "path": "feeds/sk_Bratislava.json.gz",
+      "bytes": 12661,
+      "sha256": "fa94a5720c18d80aeb5e2c6e0df5c35d052cca390aef9ee6bce62b09a6a67338"
+    },
+    {
+      "path": "feeds/us-az_valleymetro.json.gz",
+      "bytes": 49363,
+      "sha256": "a9724560497d6b1c25efe226a6b970a1060aeba5137a5881bece804c8cd5aed0"
+    },
+    {
+      "path": "feeds/ua_odesa.json.gz",
+      "bytes": 260967,
+      "sha256": "de2bbf3942a1dbd05091bff2c193f71fc7650d104cb8adfc03bd8a6bfc179c8a"
+    },
+    {
+      "path": "feeds/us-ny_MTA-NYCSubway.json.gz",
+      "bytes": 666369,
+      "sha256": "c931c17af1be5fb9fc7dec8668f51fff49bbae74790e00465c77a62599380bbf"
+    },
+    {
+      "path": "inventory-0.json",
+      "bytes": 400745,
+      "sha256": "c6ac93eba995e05e85ff8575677e69bc4e27f61812e9b0089e25e7b9b86ed17e"
+    },
+    {
+      "path": "inventory-1.json",
+      "bytes": 1160597,
+      "sha256": "1b93fe8de7eb832115ff9b750d3537ad545251f244ef6abf9ae9f2168b425cad"
+    },
+    {
+      "path": "inventory-2.json",
+      "bytes": 409647,
+      "sha256": "11277448097e273b49844799b384ea2a2a21c424fb2f71164fcca352a88c289b"
+    },
+    {
+      "path": "inventory-3.json",
+      "bytes": 333314,
+      "sha256": "a6943ba231d3288f4e30d936471396810a2fafa45ac85cc3ce88d5bb87316fff"
+    },
+    {
+      "path": "inventory-4.json",
+      "bytes": 267202,
+      "sha256": "f27e1c1dfa2be8f9ca6047dc607d34a670d120b3752082662187a326f60c97d8"
+    },
+    {
+      "path": "inventory-5.json",
+      "bytes": 422822,
+      "sha256": "8c0a7267970fc6d16480face7b8e75689a4f19870de6c062aae24af9f16049aa"
+    },
+    {
+      "path": "inventory-6.json",
+      "bytes": 315999,
+      "sha256": "09aa3bc7fa970ee206df5924d2edc75979dae82742191c2344854b1f8645a681"
+    },
+    {
+      "path": "inventory-7.json",
+      "bytes": 1202742,
+      "sha256": "71a8f3ce78fea0ff24bf82c3e7b1a8b3cd7fa03c9adeb27887aee15048694350"
+    },
+    {
+      "path": "inventory.json",
+      "bytes": 4509525,
+      "sha256": "2a9f3a7a085be10d335693a23ae0523de26d379d83360e4aeb611580ee960185"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 2537952,
+      "sha256": "cfa237aafcd64a0c68e352dd13cef3ed9f078f5dbdca8c59c23e2e9a98a2b38b"
+    },
+    {
+      "path": "tiles/index.json",
+      "bytes": 12,
+      "sha256": "7d8f1de8b7de7bc21dfb546a1d0c51bf31f16eee5fad49dbceae1e76da38e5c3"
+    }
+  ]
+}

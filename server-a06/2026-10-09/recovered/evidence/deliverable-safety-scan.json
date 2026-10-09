@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "file_count": 75,
+  "scanned_members_and_files": 189,
+  "scanned_uncompressed_bytes": 2302679208,
+  "known_original_values_checked": 10,
+  "issues": [],
+  "scope": "Every proposed deliverable scanned, including full decompressed shard members. Known original access-like values, common secret patterns, URL user-info and signed/access URL parameters in retained inventories/reference metadata checked. Every compiled/stale source metadata object is covered by the separate structural metadata audit. Source input_signature is a verified 64-hex compiler content digest, not an auth field.",
+  "no_values_in_report": true
+}

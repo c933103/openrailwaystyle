@@ -1,0 +1,130 @@
+{
+  "files": [
+    {
+      "path": "scripts/assemble-global-frequency.mjs",
+      "bytes": 4730,
+      "git_blob_sha1": "9cf0fa9bb13fc2702f4e353815925f8cf00692d9",
+      "sha256": "7cdcf4e4d4409ebae5eb489608fe47a65c0707c943665aa19203ddbe5837f75b"
+    },
+    {
+      "path": "package.json",
+      "bytes": 673,
+      "git_blob_sha1": "9b4764263ece51e61243d4a58436a242468441dd",
+      "sha256": "c8ee069f17be8763633106ed65e341cd9321e53246f1bc69384aca8fe5b43cb0"
+    },
+    {
+      "path": "package-lock.json",
+      "bytes": 59158,
+      "git_blob_sha1": "bfa0a0bd807aa9c8fef1f380cf61ff42455b86e5",
+      "sha256": "0326163419f2c16947c500946ce65d8ff105450ef3131fd7e9902775140c1027"
+    },
+    {
+      "path": "tests/global-frequency.test.mjs",
+      "bytes": 4656,
+      "git_blob_sha1": "5fbabeb4e4aa0cdefa78b175c02b15189af8038a",
+      "sha256": "601ed2f7046f9d1cf3fccc625aff93efa1357ae444177b026dbf5b52e72ef86c"
+    },
+    {
+      "path": "tests/read-frequency-feed.test.mjs",
+      "bytes": 1910,
+      "git_blob_sha1": "fc4251c65ce5997530323076fcdcd92e4a21732f",
+      "sha256": "025357a07467ea9db036785450e55290ea83ffb0f802a586a4d895410cca9bc2"
+    },
+    {
+      "path": ".github/workflows/service-frequency.yml",
+      "bytes": 6901,
+      "git_blob_sha1": "5eb2da772b6a76e9e91c1428bfd598ffeb986fbe",
+      "sha256": "0593cc46a73233f962874a013f9969070a4f350900281cd46cf26609a2b681e4"
+    },
+    {
+      "path": "scripts/gtfs-service.mjs",
+      "bytes": 5511,
+      "git_blob_sha1": "84c619547b57c0294c1f03dc8f162a27bfb12362",
+      "sha256": "dc594bf794af785764111d9f05e31d59416be98aa763f7a913dc1cf037c258dc"
+    },
+    {
+      "path": "scripts/read-frequency-feed.mjs",
+      "bytes": 3148,
+      "git_blob_sha1": "51193a20a9b1f824020efaf7e66d5e7b718fb51f",
+      "sha256": "59e1e943ddb6a3a411fee1ca3655e0ba8c7c04030681d77805356ac4708c02e3"
+    },
+    {
+      "path": "styles/service-frequency.mjs",
+      "bytes": 9137,
+      "git_blob_sha1": "6f5bdc5239aee0281c9264052779025b93930fe4",
+      "sha256": "267e90e7fd780e0f073b7d04e7098046b6e74f74316bb4a625749db0aa2e3336"
+    },
+    {
+      "path": "scripts/service-routes.mjs",
+      "bytes": 29148,
+      "git_blob_sha1": "c87406f6051e7ee7ac5001746fc71a6962d594f8",
+      "sha256": "79dc7a4158a7571e3c7f0e89ab8574ec2b12d54ac96248b99d31f1980fe8d0bc"
+    },
+    {
+      "path": "scripts/service-relations.mjs",
+      "bytes": 11501,
+      "git_blob_sha1": "6669eb9ea72f2ffea1bc8112eff69b72b6e72ba2",
+      "sha256": "b0a80ff76c12f04d2b3aed160c69740f8dd073665c24b88dce67e868673405eb"
+    },
+    {
+      "path": "styles/pbf-utf8.mjs",
+      "bytes": 570,
+      "git_blob_sha1": "8e5c8c1ae4d1a90f3e6e324cee7b98645e3cce8d",
+      "sha256": "c0013fedfd55ab81b8d2502444138fcac602dc25bdf6dc7c9418d1fcbcbba2fb"
+    },
+    {
+      "path": "scripts/service-geometry.mjs",
+      "bytes": 8807,
+      "git_blob_sha1": "970ac4382a22a20d4e536ebaaf243df7de87bb76",
+      "sha256": "ca25c74bbb55d79f6ecfffd93df0e871a3d39ae591f0f38c45b5edcdf53d46c8"
+    },
+    {
+      "path": "scripts/download-stages.mjs",
+      "bytes": 7298,
+      "git_blob_sha1": "f2d55ec3b188df72da39950ede04cadcf9a189d1",
+      "sha256": "5b75da5baa54ec244f982c51d886d7da463fc29411f3968baf15ba20f86fbfc9"
+    },
+    {
+      "path": "scripts/branch-lines.mjs",
+      "bytes": 15637,
+      "git_blob_sha1": "a38d91536eed5b5c7b931979144fd3aee71460e0",
+      "sha256": "3fafb3ebfaf39b002511565beef82f09199c599906d605f42b3c987a55e1c078"
+    },
+    {
+      "path": "scripts/lifecycle.mjs",
+      "bytes": 3411,
+      "git_blob_sha1": "5a960c53207c613363a8d42a0e5c12af57e97519",
+      "sha256": "e256e6104042b1de444ac08d94ed11936a77120118a16e64da462c3ab94e619a"
+    }
+  ],
+  "old_package_records_unchanged": 107,
+  "new_lock_entries": [
+    "node_modules/@mapbox/tiny-sdf",
+    "node_modules/@mapbox/whoots-js",
+    "node_modules/@maplibre/geojson-vt",
+    "node_modules/@maplibre/mlt",
+    "node_modules/@maplibre/mlt/node_modules/@mapbox/point-geometry",
+    "node_modules/@maplibre/vt-pbf",
+    "node_modules/@maplibre/vt-pbf/node_modules/@mapbox/point-geometry",
+    "node_modules/@maplibre/vt-pbf/node_modules/pbf",
+    "node_modules/@types/geojson",
+    "node_modules/fflate",
+    "node_modules/gl-matrix",
+    "node_modules/kdbush",
+    "node_modules/maplibre-gl",
+    "node_modules/maplibre-gl/node_modules/@mapbox/point-geometry",
+    "node_modules/maplibre-gl/node_modules/@mapbox/vector-tile",
+    "node_modules/maplibre-gl/node_modules/@maplibre/maplibre-gl-style-spec",
+    "node_modules/maplibre-gl/node_modules/@maplibre/maplibre-gl-style-spec/node_modules/@mapbox/unitbezier",
+    "node_modules/maplibre-gl/node_modules/pbf",
+    "node_modules/murmurhash-js",
+    "node_modules/pmtiles",
+    "node_modules/potpack"
+  ],
+  "runtime_dependencies": [
+    "geojson-vt",
+    "pbf",
+    "vt-pbf"
+  ],
+  "dependency_scope": "All historical installed package versions/integrity metadata remain current; added browser-only packages are not imported by this assembly closure and are not installed."
+}

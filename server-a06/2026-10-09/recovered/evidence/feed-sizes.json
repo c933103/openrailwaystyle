@@ -1,0 +1,642 @@
+{
+  "method": "Verified gzip ISIZE footer (modulo 2^32); aggregate agrees with prior fully inflated validation total. None expected >=4 GiB.",
+  "total_gzip_isize_bytes": 2164308370,
+  "feeds": [
+    {
+      "id": "au-nsw_Transport-for-New-South-Wales-inner-west-lr",
+      "output": "feeds/au-nsw_Transport-for-New-South-Wales-inner-west-lr.json.gz",
+      "compressed_bytes": 27430,
+      "gzip_isize_bytes": 1901030
+    },
+    {
+      "id": "au-nsw_Transport-for-New-South-Wales-nsw-trains",
+      "output": "feeds/au-nsw_Transport-for-New-South-Wales-nsw-trains.json.gz",
+      "compressed_bytes": 22343,
+      "gzip_isize_bytes": 1252439
+    },
+    {
+      "id": "au-vic_Transport-Victoria-interstate",
+      "output": "feeds/au-vic_Transport-Victoria-interstate.json.gz",
+      "compressed_bytes": 147596,
+      "gzip_isize_bytes": 12598018
+    },
+    {
+      "id": "cz_IDS-JMK",
+      "output": "feeds/cz_IDS-JMK.json.gz",
+      "compressed_bytes": 71709,
+      "gzip_isize_bytes": 3458793
+    },
+    {
+      "id": "es_Transporte-p-blico-de-la-Isla-de-Mallorca-abd9b80431fa",
+      "output": "feeds/es_Transporte-p-blico-de-la-Isla-de-Mallorca-abd9b80431fa.json.gz",
+      "compressed_bytes": 71869,
+      "gzip_isize_bytes": 5803450
+    },
+    {
+      "id": "eu_european-sleeper",
+      "output": "feeds/eu_european-sleeper.json.gz",
+      "compressed_bytes": 2089098,
+      "gzip_isize_bytes": 159639248
+    },
+    {
+      "id": "fr_horaires-des-trains-trenitalia-france",
+      "output": "feeds/fr_horaires-des-trains-trenitalia-france.json.gz",
+      "compressed_bytes": 3888,
+      "gzip_isize_bytes": 89390
+    },
+    {
+      "id": "fr_horaires-theoriques-et-temps-reel-des-bus-et-tramways-circulant-sur-le-territoire-de-brest-metropole",
+      "output": "feeds/fr_horaires-theoriques-et-temps-reel-des-bus-et-tramways-circulant-sur-le-territoire-de-brest-metropole.json.gz",
+      "compressed_bytes": 22632,
+      "gzip_isize_bytes": 1280214
+    },
+    {
+      "id": "fr_lyon-tcl",
+      "output": "feeds/fr_lyon-tcl.json.gz",
+      "compressed_bytes": 169817,
+      "gzip_isize_bytes": 11191761
+    },
+    {
+      "id": "fr_reseau-de-transport-en-commun-lia-gtfs-siri",
+      "output": "feeds/fr_reseau-de-transport-en-commun-lia-gtfs-siri.json.gz",
+      "compressed_bytes": 5318,
+      "gzip_isize_bytes": 151156
+    },
+    {
+      "id": "fr_yceo-arrets-horaires-et-lignes-urbaines-et-scolaires-gtfs-1",
+      "output": "feeds/fr_yceo-arrets-horaires-et-lignes-urbaines-et-scolaires-gtfs-1.json.gz",
+      "compressed_bytes": 24131,
+      "gzip_isize_bytes": 1409231
+    },
+    {
+      "id": "ma_oncf",
+      "output": "feeds/ma_oncf.json.gz",
+      "compressed_bytes": 201786,
+      "gzip_isize_bytes": 13990443
+    },
+    {
+      "id": "me_zpcg",
+      "output": "feeds/me_zpcg.json.gz",
+      "compressed_bytes": 1129756,
+      "gzip_isize_bytes": 88810352
+    },
+    {
+      "id": "pl_Cz-stochowa-c320cd902162",
+      "output": "feeds/pl_Cz-stochowa-c320cd902162.json.gz",
+      "compressed_bytes": 55259,
+      "gzip_isize_bytes": 3429195
+    },
+    {
+      "id": "pl_Olsztyn",
+      "output": "feeds/pl_Olsztyn.json.gz",
+      "compressed_bytes": 56031,
+      "gzip_isize_bytes": 3692744
+    },
+    {
+      "id": "pl_Szczecin",
+      "output": "feeds/pl_Szczecin.json.gz",
+      "compressed_bytes": 404716,
+      "gzip_isize_bytes": 29134707
+    },
+    {
+      "id": "au-nsw_Transport-for-New-South-Wales-sydney-trains",
+      "output": "feeds/au-nsw_Transport-for-New-South-Wales-sydney-trains.json.gz",
+      "compressed_bytes": 166515,
+      "gzip_isize_bytes": 14281244
+    },
+    {
+      "id": "es_RENFE-Larga-Distancia-y-AVE",
+      "output": "feeds/es_RENFE-Larga-Distancia-y-AVE.json.gz",
+      "compressed_bytes": 98841,
+      "gzip_isize_bytes": 5349253
+    },
+    {
+      "id": "fr_donnees-statiques-et-dynamiques-du-reseau-de-transport-lignes-dazur",
+      "output": "feeds/fr_donnees-statiques-et-dynamiques-du-reseau-de-transport-lignes-dazur.json.gz",
+      "compressed_bytes": 50239,
+      "gzip_isize_bytes": 3086406
+    },
+    {
+      "id": "fr_gtfs-du-reseau-des-transports-bus-et-tramway-setram-circulant-sur-le-territoire-le-mans-metropole",
+      "output": "feeds/fr_gtfs-du-reseau-des-transports-bus-et-tramway-setram-circulant-sur-le-territoire-le-mans-metropole.json.gz",
+      "compressed_bytes": 6643,
+      "gzip_isize_bytes": 156349
+    },
+    {
+      "id": "fr_gtfs-et-siri-du-reseau-ginko-besancon-lignes-urbaines-et-periurbaines",
+      "output": "feeds/fr_gtfs-et-siri-du-reseau-ginko-besancon-lignes-urbaines-et-periurbaines.json.gz",
+      "compressed_bytes": 59589,
+      "gzip_isize_bytes": 4274268
+    },
+    {
+      "id": "fr_reseau-orizo-grand-avignon",
+      "output": "feeds/fr_reseau-orizo-grand-avignon.json.gz",
+      "compressed_bytes": 3242,
+      "gzip_isize_bytes": 57709
+    },
+    {
+      "id": "fr_trains-express-regionaux-zou-en-provence-alpes-cote-d-azur",
+      "output": "feeds/fr_trains-express-regionaux-zou-en-provence-alpes-cote-d-azur.json.gz",
+      "compressed_bytes": 2825422,
+      "gzip_isize_bytes": 207803905
+    },
+    {
+      "id": "hu_szkt",
+      "output": "feeds/hu_szkt.json.gz",
+      "compressed_bytes": 130085,
+      "gzip_isize_bytes": 9951250
+    },
+    {
+      "id": "pl_Bydgoszcz",
+      "output": "feeds/pl_Bydgoszcz.json.gz",
+      "compressed_bytes": 22017,
+      "gzip_isize_bytes": 1313948
+    },
+    {
+      "id": "pl_PKP-Intercity-Germany",
+      "output": "feeds/pl_PKP-Intercity-Germany.json.gz",
+      "compressed_bytes": 6704,
+      "gzip_isize_bytes": 204136
+    },
+    {
+      "id": "ro_Bucuresti-Ilfov",
+      "output": "feeds/ro_Bucuresti-Ilfov.json.gz",
+      "compressed_bytes": 173752,
+      "gzip_isize_bytes": 10766198
+    },
+    {
+      "id": "au-nsw_Transport-for-New-South-Wales-newcastle-lr",
+      "output": "feeds/au-nsw_Transport-for-New-South-Wales-newcastle-lr.json.gz",
+      "compressed_bytes": 10039,
+      "gzip_isize_bytes": 692087
+    },
+    {
+      "id": "au-vic_Transport-Victoria-metro-trains",
+      "output": "feeds/au-vic_Transport-Victoria-metro-trains.json.gz",
+      "compressed_bytes": 1003990,
+      "gzip_isize_bytes": 74656749
+    },
+    {
+      "id": "au-vic_Transport-Victoria-regional-trains",
+      "output": "feeds/au-vic_Transport-Victoria-regional-trains.json.gz",
+      "compressed_bytes": 366935,
+      "gzip_isize_bytes": 28586087
+    },
+    {
+      "id": "ee_elron",
+      "output": "feeds/ee_elron.json.gz",
+      "compressed_bytes": 717322,
+      "gzip_isize_bytes": 53797580
+    },
+    {
+      "id": "fr_gtfs-diviamobilites",
+      "output": "feeds/fr_gtfs-diviamobilites.json.gz",
+      "compressed_bytes": 22078,
+      "gzip_isize_bytes": 1171200
+    },
+    {
+      "id": "fr_horaires-theoriques-du-reseau-tag",
+      "output": "feeds/fr_horaires-theoriques-du-reseau-tag.json.gz",
+      "compressed_bytes": 204909,
+      "gzip_isize_bytes": 14644939
+    },
+    {
+      "id": "fr_jeu-de-donnee-spl-estival-2025--83774",
+      "output": "feeds/fr_jeu-de-donnee-spl-estival-2025--83774.json.gz",
+      "compressed_bytes": 60940,
+      "gzip_isize_bytes": 4238605
+    },
+    {
+      "id": "fr_reseau-urbain-STAR",
+      "output": "feeds/fr_reseau-urbain-STAR.json.gz",
+      "compressed_bytes": 30751,
+      "gzip_isize_bytes": 1959380
+    },
+    {
+      "id": "fr_zou",
+      "output": "feeds/fr_zou.json.gz",
+      "compressed_bytes": 2899,
+      "gzip_isize_bytes": 39403
+    },
+    {
+      "id": "ge_georgian-railway",
+      "output": "feeds/ge_georgian-railway.json.gz",
+      "compressed_bytes": 1609275,
+      "gzip_isize_bytes": 131160342
+    },
+    {
+      "id": "it_Sicilia-Palermo-AMAT",
+      "output": "feeds/it_Sicilia-Palermo-AMAT.json.gz",
+      "compressed_bytes": 16889,
+      "gzip_isize_bytes": 800989
+    },
+    {
+      "id": "pl_Gorz-w-Wielkopolski-89b75a6bc4ec",
+      "output": "feeds/pl_Gorz-w-Wielkopolski-89b75a6bc4ec.json.gz",
+      "compressed_bytes": 28639,
+      "gzip_isize_bytes": 1830023
+    },
+    {
+      "id": "pl_Warszawa",
+      "output": "feeds/pl_Warszawa.json.gz",
+      "compressed_bytes": 1049889,
+      "gzip_isize_bytes": 61364654
+    },
+    {
+      "id": "pt_Metro-Porto",
+      "output": "feeds/pt_Metro-Porto.json.gz",
+      "compressed_bytes": 13614,
+      "gzip_isize_bytes": 709604
+    },
+    {
+      "id": "ro_Ia-i-ac584bc45d3c",
+      "output": "feeds/ro_Ia-i-ac584bc45d3c.json.gz",
+      "compressed_bytes": 128199,
+      "gzip_isize_bytes": 8557193
+    },
+    {
+      "id": "us-az_valleymetro",
+      "output": "feeds/us-az_valleymetro.json.gz",
+      "compressed_bytes": 49363,
+      "gzip_isize_bytes": 3356107
+    },
+    {
+      "id": "au-nsw_Transport-for-New-South-Wales-cbd-and-southeast-lr",
+      "output": "feeds/au-nsw_Transport-for-New-South-Wales-cbd-and-southeast-lr.json.gz",
+      "compressed_bytes": 179915,
+      "gzip_isize_bytes": 13985312
+    },
+    {
+      "id": "ee_tallinn",
+      "output": "feeds/ee_tallinn.json.gz",
+      "compressed_bytes": 89522,
+      "gzip_isize_bytes": 5787185
+    },
+    {
+      "id": "es_Cercan-as-Renfe-08947ebad1d6",
+      "output": "feeds/es_Cercan-as-Renfe-08947ebad1d6.json.gz",
+      "compressed_bytes": 77361,
+      "gzip_isize_bytes": 3496564
+    },
+    {
+      "id": "fr_breizhgo-ter",
+      "output": "feeds/fr_breizhgo-ter.json.gz",
+      "compressed_bytes": 64853,
+      "gzip_isize_bytes": 3203136
+    },
+    {
+      "id": "fr_donnees-theoriques-gtfs-et-temps-reel-siri-lite-du-reseau-cts",
+      "output": "feeds/fr_donnees-theoriques-gtfs-et-temps-reel-siri-lite-du-reseau-cts.json.gz",
+      "compressed_bytes": 21347,
+      "gzip_isize_bytes": 733494
+    },
+    {
+      "id": "fr_horaires-sncf",
+      "output": "feeds/fr_horaires-sncf.json.gz",
+      "compressed_bytes": 537542,
+      "gzip_isize_bytes": 27468428
+    },
+    {
+      "id": "my_rail-kl",
+      "output": "feeds/my_rail-kl.json.gz",
+      "compressed_bytes": 165391,
+      "gzip_isize_bytes": 10964429
+    },
+    {
+      "id": "pl_Toru-d9480c71f395",
+      "output": "feeds/pl_Toru-d9480c71f395.json.gz",
+      "compressed_bytes": 87318,
+      "gzip_isize_bytes": 6187904
+    },
+    {
+      "id": "pl_TransportGZM",
+      "output": "feeds/pl_TransportGZM.json.gz",
+      "compressed_bytes": 562791,
+      "gzip_isize_bytes": 40219015
+    },
+    {
+      "id": "ua_kyiv",
+      "output": "feeds/ua_kyiv.json.gz",
+      "compressed_bytes": 70330,
+      "gzip_isize_bytes": 4374806
+    },
+    {
+      "id": "au-nsw_Transport-for-New-South-Wales-metro",
+      "output": "feeds/au-nsw_Transport-for-New-South-Wales-metro.json.gz",
+      "compressed_bytes": 340073,
+      "gzip_isize_bytes": 27870942
+    },
+    {
+      "id": "au-vic_Transport-Victoria-metro-trams",
+      "output": "feeds/au-vic_Transport-Victoria-metro-trams.json.gz",
+      "compressed_bytes": 528023,
+      "gzip_isize_bytes": 36007636
+    },
+    {
+      "id": "br_sao-paulo",
+      "output": "feeds/br_sao-paulo.json.gz",
+      "compressed_bytes": 189588,
+      "gzip_isize_bytes": 13010381
+    },
+    {
+      "id": "fr_base-de-donnees-multimodale-des-reseaux-de-transport-public-normands",
+      "output": "feeds/fr_base-de-donnees-multimodale-des-reseaux-de-transport-public-normands.json.gz",
+      "compressed_bytes": 15211,
+      "gzip_isize_bytes": 556608
+    },
+    {
+      "id": "fr_horaires-du-reseau-stas",
+      "output": "feeds/fr_horaires-du-reseau-stas.json.gz",
+      "compressed_bytes": 17552,
+      "gzip_isize_bytes": 938449
+    },
+    {
+      "id": "fr_offres-de-services-bus-tram-et-scolaire-au-format-gtfs-netex-gtfs-rt-siri-lite",
+      "output": "feeds/fr_offres-de-services-bus-tram-et-scolaire-au-format-gtfs-netex-gtfs-rt-siri-lite.json.gz",
+      "compressed_bytes": 566129,
+      "gzip_isize_bytes": 42300452
+    },
+    {
+      "id": "fr_reseaux-de-transports-en-commun-de-la-metropole-daix-marseille-provence-et-des-bouches-du-rhone--39589",
+      "output": "feeds/fr_reseaux-de-transports-en-commun-de-la-metropole-daix-marseille-provence-et-des-bouches-du-rhone--39589.json.gz",
+      "compressed_bytes": 80533,
+      "gzip_isize_bytes": 4986916
+    },
+    {
+      "id": "fr_tisseo-reseau-transport-urbain-toulousain",
+      "output": "feeds/fr_tisseo-reseau-transport-urbain-toulousain.json.gz",
+      "compressed_bytes": 232997,
+      "gzip_isize_bytes": 14005553
+    },
+    {
+      "id": "it_Piemonte-Gruppo-Torinese-Trasporti",
+      "output": "feeds/it_Piemonte-Gruppo-Torinese-Trasporti.json.gz",
+      "compressed_bytes": 74554,
+      "gzip_isize_bytes": 4112479
+    },
+    {
+      "id": "ua_odesa",
+      "output": "feeds/ua_odesa.json.gz",
+      "compressed_bytes": 260967,
+      "gzip_isize_bytes": 17669266
+    },
+    {
+      "id": "cz_JDF-merged",
+      "output": "feeds/cz_JDF-merged.json.gz",
+      "compressed_bytes": 42029,
+      "gzip_isize_bytes": 1672187
+    },
+    {
+      "id": "et_addisababatransportall",
+      "output": "feeds/et_addisababatransportall.json.gz",
+      "compressed_bytes": 38619,
+      "gzip_isize_bytes": 2676570
+    },
+    {
+      "id": "eu_flixbus",
+      "output": "feeds/eu_flixbus.json.gz",
+      "compressed_bytes": 6686,
+      "gzip_isize_bytes": 137953
+    },
+    {
+      "id": "fr_angers-loire-metropole-reseau-irigo-gtfs-gtfs-rt-siri",
+      "output": "feeds/fr_angers-loire-metropole-reseau-irigo-gtfs-gtfs-rt-siri.json.gz",
+      "compressed_bytes": 53483,
+      "gzip_isize_bytes": 3108960
+    },
+    {
+      "id": "fr_horaires-ave-espagne-france",
+      "output": "feeds/fr_horaires-ave-espagne-france.json.gz",
+      "compressed_bytes": 3081,
+      "gzip_isize_bytes": 47338
+    },
+    {
+      "id": "fr_offre-de-transport-du-reseau-grand-reims-mobilites-communaute-urbaine-du-grand-reims",
+      "output": "feeds/fr_offre-de-transport-du-reseau-grand-reims-mobilites-communaute-urbaine-du-grand-reims.json.gz",
+      "compressed_bytes": 4142,
+      "gzip_isize_bytes": 66686
+    },
+    {
+      "id": "hk_Hong-Kong-Transit",
+      "output": "feeds/hk_Hong-Kong-Transit.json.gz",
+      "compressed_bytes": 397259,
+      "gzip_isize_bytes": 25648739
+    },
+    {
+      "id": "hu_mav",
+      "output": "feeds/hu_mav.json.gz",
+      "compressed_bytes": 1072708,
+      "gzip_isize_bytes": 89328246
+    },
+    {
+      "id": "pl_Elbl-g-5a11725a6f4f",
+      "output": "feeds/pl_Elbl-g-5a11725a6f4f.json.gz",
+      "compressed_bytes": 34210,
+      "gzip_isize_bytes": 2063858
+    },
+    {
+      "id": "pl_Gda-sk-97391932cbf6",
+      "output": "feeds/pl_Gda-sk-97391932cbf6.json.gz",
+      "compressed_bytes": 212413,
+      "gzip_isize_bytes": 14176558
+    },
+    {
+      "id": "us-ny_MTA-NYCSubway",
+      "output": "feeds/us-ny_MTA-NYCSubway.json.gz",
+      "compressed_bytes": 666369,
+      "gzip_isize_bytes": 50112592
+    },
+    {
+      "id": "cz_PMDP",
+      "output": "feeds/cz_PMDP.json.gz",
+      "compressed_bytes": 12248,
+      "gzip_isize_bytes": 411887
+    },
+    {
+      "id": "es_Euskotren",
+      "output": "feeds/es_Euskotren.json.gz",
+      "compressed_bytes": 188394,
+      "gzip_isize_bytes": 14830047
+    },
+    {
+      "id": "es_Funicular-de-Artxanda",
+      "output": "feeds/es_Funicular-de-Artxanda.json.gz",
+      "compressed_bytes": 3495,
+      "gzip_isize_bytes": 113916
+    },
+    {
+      "id": "es_Metro-Bilbao",
+      "output": "feeds/es_Metro-Bilbao.json.gz",
+      "compressed_bytes": 341546,
+      "gzip_isize_bytes": 30947564
+    },
+    {
+      "id": "eu_optimaexpress",
+      "output": "feeds/eu_optimaexpress.json.gz",
+      "compressed_bytes": 2270,
+      "gzip_isize_bytes": 26017
+    },
+    {
+      "id": "fr_donnees-statiques-et-temps-reel-du-reseau-astuce-metropole-rouen-normandie",
+      "output": "feeds/fr_donnees-statiques-et-temps-reel-du-reseau-astuce-metropole-rouen-normandie.json.gz",
+      "compressed_bytes": 6185,
+      "gzip_isize_bytes": 176647
+    },
+    {
+      "id": "fr_ilevia-localisation-des-arrets-bus-metro-et-tram-gtfs",
+      "output": "feeds/fr_ilevia-localisation-des-arrets-bus-metro-et-tram-gtfs.json.gz",
+      "compressed_bytes": 11985,
+      "gzip_isize_bytes": 266071
+    },
+    {
+      "id": "fr_r-seau-urbain-T2C-6d1c277ed679",
+      "output": "feeds/fr_r-seau-urbain-T2C-6d1c277ed679.json.gz",
+      "compressed_bytes": 122100,
+      "gzip_isize_bytes": 8197217
+    },
+    {
+      "id": "fr_thonon-agglomeration-donnees-gtfs",
+      "output": "feeds/fr_thonon-agglomeration-donnees-gtfs.json.gz",
+      "compressed_bytes": 3088,
+      "gzip_isize_bytes": 76435
+    },
+    {
+      "id": "it_Campania-EAV",
+      "output": "feeds/it_Campania-EAV.json.gz",
+      "compressed_bytes": 17696,
+      "gzip_isize_bytes": 889079
+    },
+    {
+      "id": "it_Emilia-Romagna-TPER-BLQ-Airport",
+      "output": "feeds/it_Emilia-Romagna-TPER-BLQ-Airport.json.gz",
+      "compressed_bytes": 4821,
+      "gzip_isize_bytes": 188479
+    },
+    {
+      "id": "it_Lombardia-Trenord",
+      "output": "feeds/it_Lombardia-Trenord.json.gz",
+      "compressed_bytes": 74026,
+      "gzip_isize_bytes": 4204347
+    },
+    {
+      "id": "jp_tokyo-rail",
+      "output": "feeds/jp_tokyo-rail.json.gz",
+      "compressed_bytes": 1281840,
+      "gzip_isize_bytes": 90974435
+    },
+    {
+      "id": "my_ktmb",
+      "output": "feeds/my_ktmb.json.gz",
+      "compressed_bytes": 15500,
+      "gzip_isize_bytes": 631415
+    },
+    {
+      "id": "pl_--d-fc9cc9c3d302",
+      "output": "feeds/pl_--d-fc9cc9c3d302.json.gz",
+      "compressed_bytes": 463456,
+      "gzip_isize_bytes": 30703034
+    },
+    {
+      "id": "pl_MPK-Wroc-aw-3f06d61a5a8c",
+      "output": "feeds/pl_MPK-Wroc-aw-3f06d61a5a8c.json.gz",
+      "compressed_bytes": 932544,
+      "gzip_isize_bytes": 61007763
+    },
+    {
+      "id": "pt_Metro-Lisboa",
+      "output": "feeds/pt_Metro-Lisboa.json.gz",
+      "compressed_bytes": 5786,
+      "gzip_isize_bytes": 145173
+    },
+    {
+      "id": "au-nsw_Transport-for-New-South-Wales-parramatta-lr",
+      "output": "feeds/au-nsw_Transport-for-New-South-Wales-parramatta-lr.json.gz",
+      "compressed_bytes": 20149,
+      "gzip_isize_bytes": 1393965
+    },
+    {
+      "id": "bg_sofia",
+      "output": "feeds/bg_sofia.json.gz",
+      "compressed_bytes": 484716,
+      "gzip_isize_bytes": 34702339
+    },
+    {
+      "id": "es_Puente-Colgante-Bizkaia",
+      "output": "feeds/es_Puente-Colgante-Bizkaia.json.gz",
+      "compressed_bytes": 1878,
+      "gzip_isize_bytes": 8265
+    },
+    {
+      "id": "fr_caen-la-mer-reseau-twisto-gtfs-siri",
+      "output": "feeds/fr_caen-la-mer-reseau-twisto-gtfs-siri.json.gz",
+      "compressed_bytes": 177105,
+      "gzip_isize_bytes": 10927624
+    },
+    {
+      "id": "fr_citalis-telepherique-papang",
+      "output": "feeds/fr_citalis-telepherique-papang.json.gz",
+      "compressed_bytes": 2038,
+      "gzip_isize_bytes": 16185
+    },
+    {
+      "id": "fr_eurostar-gtfs-plan-de-transport-et-temps-reel",
+      "output": "feeds/fr_eurostar-gtfs-plan-de-transport-et-temps-reel.json.gz",
+      "compressed_bytes": 859939,
+      "gzip_isize_bytes": 69952700
+    },
+    {
+      "id": "fr_fil-bleu-syndicat-des-mobilites-gtfs-gtfs-rt",
+      "output": "feeds/fr_fil-bleu-syndicat-des-mobilites-gtfs-gtfs-rt.json.gz",
+      "compressed_bytes": 71858,
+      "gzip_isize_bytes": 4719065
+    },
+    {
+      "id": "fr_fr-200052264-t0014-0000-1",
+      "output": "feeds/fr_fr-200052264-t0014-0000-1.json.gz",
+      "compressed_bytes": 68922,
+      "gzip_isize_bytes": 5047033
+    },
+    {
+      "id": "fr_fr-200052264-t0017-0000-1",
+      "output": "feeds/fr_fr-200052264-t0017-0000-1.json.gz",
+      "compressed_bytes": 3760,
+      "gzip_isize_bytes": 73053
+    },
+    {
+      "id": "fr_lignes-des-reseaux-transport-zou-provence-alpes-cote-d-azur-express-3-3",
+      "output": "feeds/fr_lignes-des-reseaux-transport-zou-provence-alpes-cote-d-azur-express-3-3.json.gz",
+      "compressed_bytes": 2912395,
+      "gzip_isize_bytes": 213384217
+    },
+    {
+      "id": "fr_offre-de-transport-solea-et-tram-train-en-format-gtfs-1",
+      "output": "feeds/fr_offre-de-transport-solea-et-tram-train-en-format-gtfs-1.json.gz",
+      "compressed_bytes": 37386,
+      "gzip_isize_bytes": 2742884
+    },
+    {
+      "id": "lu_administration-des-transports-publics",
+      "output": "feeds/lu_administration-des-transports-publics.json.gz",
+      "compressed_bytes": 1926361,
+      "gzip_isize_bytes": 121021972
+    },
+    {
+      "id": "pl_Warszawska-Kolej-Dojazdowa",
+      "output": "feeds/pl_Warszawska-Kolej-Dojazdowa.json.gz",
+      "compressed_bytes": 12602,
+      "gzip_isize_bytes": 816226
+    },
+    {
+      "id": "ro_Cluj-Napoca",
+      "output": "feeds/ro_Cluj-Napoca.json.gz",
+      "compressed_bytes": 79272,
+      "gzip_isize_bytes": 5628222
+    },
+    {
+      "id": "sk_Bratislava",
+      "output": "feeds/sk_Bratislava.json.gz",
+      "compressed_bytes": 12661,
+      "gzip_isize_bytes": 524673
+    }
+  ]
+}

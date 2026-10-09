@@ -1,0 +1,110 @@
+[
+  {
+    "path": "scripts/assemble-global-frequency.mjs",
+    "bytes": 4730,
+    "git_blob_sha1": "9cf0fa9bb13fc2702f4e353815925f8cf00692d9",
+    "sha256": "7cdcf4e4d4409ebae5eb489608fe47a65c0707c943665aa19203ddbe5837f75b"
+  },
+  {
+    "path": ".github/workflows/service-frequency.yml",
+    "bytes": 6901,
+    "git_blob_sha1": "5eb2da772b6a76e9e91c1428bfd598ffeb986fbe",
+    "sha256": "0593cc46a73233f962874a013f9969070a4f350900281cd46cf26609a2b681e4"
+  },
+  {
+    "path": "CONTRIBUTING.md",
+    "bytes": 1484,
+    "git_blob_sha1": "d9a617d3724f8123948ffce380f9217485ecf10e",
+    "sha256": "7067f8561b415632dcf1536769093f72307e69fce2deacd46d9acfbde9e5efe0"
+  },
+  {
+    "path": "docs/development.md",
+    "bytes": 9904,
+    "git_blob_sha1": "b86d50bb576db44db914b146d992fc7af1c48d41",
+    "sha256": "827f33f9cb6e8a16db78d96963ca7d85f7ab6fcd3c06105a2045f595f3df57f3"
+  },
+  {
+    "path": "docs/service-frequency.md",
+    "bytes": 11195,
+    "git_blob_sha1": "cd282777fbabb248e6c005920f0afec1de594fc4",
+    "sha256": "f5168b1febaec5f901b10170e2427776eb713a700a64cc7ab328ca640ffd39ab"
+  },
+  {
+    "path": "package.json",
+    "bytes": 620,
+    "git_blob_sha1": "38901d1fdd67b9be722686b9a0ebb61637c9472a",
+    "sha256": "6601c2130d8955f28ab7276fcf48be6263db2f083f52feb62593ec9fd2818d31"
+  },
+  {
+    "path": "package-lock.json",
+    "bytes": 49954,
+    "git_blob_sha1": "e7c65fd971b93a6d158e0b431d87abe8a7c7780f",
+    "sha256": "75d173e70273f5254f71ef586b6b1dc529509963adf0cd43c0fb942b2f451619"
+  },
+  {
+    "path": "tests/global-frequency.test.mjs",
+    "bytes": 4656,
+    "git_blob_sha1": "5fbabeb4e4aa0cdefa78b175c02b15189af8038a",
+    "sha256": "601ed2f7046f9d1cf3fccc625aff93efa1357ae444177b026dbf5b52e72ef86c"
+  },
+  {
+    "path": "tests/read-frequency-feed.test.mjs",
+    "bytes": 1910,
+    "git_blob_sha1": "fc4251c65ce5997530323076fcdcd92e4a21732f",
+    "sha256": "025357a07467ea9db036785450e55290ea83ffb0f802a586a4d895410cca9bc2"
+  },
+  {
+    "path": "tests/gtfs-service.test.mjs",
+    "bytes": 7456,
+    "git_blob_sha1": "436f9fce45119a32a98cc28b7fa22a49bc308841",
+    "sha256": "7636a1a2bcdd9f7f585a4c59773b780f779e67870b653c6c6e7c842b11aed54d"
+  },
+  {
+    "path": "scripts/gtfs-service.mjs",
+    "bytes": 5511,
+    "git_blob_sha1": "84c619547b57c0294c1f03dc8f162a27bfb12362",
+    "sha256": "dc594bf794af785764111d9f05e31d59416be98aa763f7a913dc1cf037c258dc"
+  },
+  {
+    "path": "scripts/read-frequency-feed.mjs",
+    "bytes": 3148,
+    "git_blob_sha1": "51193a20a9b1f824020efaf7e66d5e7b718fb51f",
+    "sha256": "59e1e943ddb6a3a411fee1ca3655e0ba8c7c04030681d77805356ac4708c02e3"
+  },
+  {
+    "path": "styles/service-frequency.mjs",
+    "bytes": 9137,
+    "git_blob_sha1": "6f5bdc5239aee0281c9264052779025b93930fe4",
+    "sha256": "267e90e7fd780e0f073b7d04e7098046b6e74f74316bb4a625749db0aa2e3336"
+  },
+  {
+    "path": "scripts/service-routes.mjs",
+    "bytes": 22628,
+    "git_blob_sha1": "29dc9d64fac32f944558ace872a4c1b3241207ca",
+    "sha256": "8696c1e3b07523e6d0c6f010891ba6454fb8e888a595520c4d3b9f26e7a120ed"
+  },
+  {
+    "path": "styles/pbf-utf8.mjs",
+    "bytes": 570,
+    "git_blob_sha1": "8e5c8c1ae4d1a90f3e6e324cee7b98645e3cce8d",
+    "sha256": "c0013fedfd55ab81b8d2502444138fcac602dc25bdf6dc7c9418d1fcbcbba2fb"
+  },
+  {
+    "path": "scripts/branch-lines.mjs",
+    "bytes": 15637,
+    "git_blob_sha1": "a38d91536eed5b5c7b931979144fd3aee71460e0",
+    "sha256": "3fafb3ebfaf39b002511565beef82f09199c599906d605f42b3c987a55e1c078"
+  },
+  {
+    "path": "scripts/download-stages.mjs",
+    "bytes": 7298,
+    "git_blob_sha1": "f2d55ec3b188df72da39950ede04cadcf9a189d1",
+    "sha256": "5b75da5baa54ec244f982c51d886d7da463fc29411f3968baf15ba20f86fbfc9"
+  },
+  {
+    "path": "scripts/lifecycle.mjs",
+    "bytes": 3411,
+    "git_blob_sha1": "5a960c53207c613363a8d42a0e5c12af57e97519",
+    "sha256": "e256e6104042b1de444ac08d94ed11936a77120118a16e64da462c3ab94e619a"
+  }
+]

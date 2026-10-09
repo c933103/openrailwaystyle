@@ -1,0 +1,747 @@
+{
+  "status": "partial_recovery_only; original full package did not survive",
+  "original_planned_files": 83,
+  "recovered_original_files": 47,
+  "unrecovered_original_files": 36,
+  "recovered_original_bytes": 392718,
+  "original_planned_bytes": 25814962,
+  "workspace_replacement_confirmed_utc": "2026-10-09T03:43:20Z",
+  "new_measurement_runs_after_replacement": 0,
+  "recovery_rules": [
+    "Recovered originals must match their pre-loss byte length and SHA-256.",
+    "Identical content-addressed files and zero-byte files may be restored with the same recorded hash.",
+    "Deterministic reconstruction is labelled and accepted only after the original hash matches.",
+    "Missing timing traces, CPU profile or metrics are not invented, replaced or silently inferred.",
+    "Any replacement-host rerun must use a new identity, environment record and separate results."
+  ],
+  "historical_records_notice": "recovered/report.md, recovered/REPRODUCE.md and recovered/publication-manifest.json are frozen records from before the workspace loss. Their complete-package descriptions do not describe this partial delivery. This ledger and the root README state current availability.",
+  "credential_safety": "No original credential-bearing input ZIP or metadata pack is included. Sanitized fixture archives were part of the lost package and are currently absent too. Current live release exposure remains unverified.",
+  "files": [
+    {
+      "original_path": "REPRODUCE.md",
+      "expected_bytes": 3169,
+      "original_sha256": "e5f788988a867cbd72ebf1bfb3ac40bd5a1171f08fd64776b8d564fcdc324355",
+      "original_git_blob_sha1": "762408f246b8ef93b8e50d805c721740a93378c4",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/REPRODUCE.md",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "analyze_results.py",
+      "expected_bytes": 6364,
+      "original_sha256": "c52846786a220b39d91c98af5562842b8ffbca6660aa4d3dea05f58c2014d90a",
+      "original_git_blob_sha1": "d51d802917d9b0cc2ba8641b2315b00094acb8fb",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/analyze_results.py",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/README.md",
+      "expected_bytes": 1336,
+      "original_sha256": "3b788f1452aa282347501600d3a72ca8f31d716e9ab523830b8e94e015b21680",
+      "original_git_blob_sha1": "be4214d68821df569e1ffa215b2f17d89ab1e7da",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/README.md",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/actions-retention.json",
+      "expected_bytes": 8177,
+      "original_sha256": "e17eed62a25bbf88f8a260e6b88b2dc735a3cd6d70ed23c60a22af82d27c6e43",
+      "original_git_blob_sha1": "fe16db987535ab74dcb6854f1c39dee60980dd64",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/actions-retention.json",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/assembly-tests.log",
+      "expected_bytes": 511,
+      "original_sha256": "093b8a715d1af250020fa57fd3d717042b7e3cd022c26cb30daf70e6359836b9",
+      "original_git_blob_sha1": "bd5b44bb021792bf3e00e23133dee0b97a1eecd2",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/assembly-tests.log",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/cpu-profile-summary.json",
+      "expected_bytes": 9823,
+      "original_sha256": "44494605775bfa03382c3650adc028ca794ef9a524dd3048a316e0b8e9dae0dd",
+      "original_git_blob_sha1": "f25ae1c8ee32e011fc61bc42c50879d5b53b3b64",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/cpu-profile-summary.json",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/current-assembly-tests.log",
+      "expected_bytes": 512,
+      "original_sha256": "9659337dc364f9f9190fcf0172cc0c5fa2aafaca99ff85633549f265e313aa1b",
+      "original_git_blob_sha1": "04f61215c75d970e0af4f054d91d0807e5ccf5df",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/current-assembly-tests.log",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/current-main-compatibility.json",
+      "expected_bytes": 3451,
+      "original_sha256": "b492d5f7c7145ca6f48af5d35a2a78cbdc9675e73ded7e292943d295645d393f",
+      "original_git_blob_sha1": "9246ddfe5c1ce267d1734038be738ca550b89482",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/current-main-compatibility.json",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/current-reader-tests.log",
+      "expected_bytes": 419,
+      "original_sha256": "789ab420dde620d13f6a1f83fadd3e210f73da90bfa0e800d5b59f674b4685ee",
+      "original_git_blob_sha1": "68948cd6a8d4f90adabdcb20088ef2617684611b",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/current-reader-tests.log",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/current-release-metadata.json",
+      "expected_bytes": 1437,
+      "original_sha256": "504a28d7d645fce02fbf11d33a03a8d75afdae13bbf931ffa93cb07c195a0445",
+      "original_git_blob_sha1": "1d0b62ecf5b4faa62da249a4aae489f9ecdaf882",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/current-release-metadata.json",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/current-source-files.json",
+      "expected_bytes": 5014,
+      "original_sha256": "4fe171a49384e8ff85d1577c32bc0d3a7434d6afd05d520303f94beeb0a10a0f",
+      "original_git_blob_sha1": "f092302fe4f6ef2ededf340795e9fdc030596cf3",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/current-source-files.json",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/deliverable-safety-scan.json",
+      "expected_bytes": 648,
+      "original_sha256": "50e911d2518c19195d570bfa424686287fde4c6d182296705fa4816b583d6d09",
+      "original_git_blob_sha1": "9993e47c549428119236974750b36b8d1b02b846",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/deliverable-safety-scan.json",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/dependency-verification.json",
+      "expected_bytes": 16498,
+      "original_sha256": "fa595d43faab120d259c05bd79b562787cea993c553763bed9a869ad5d61b875",
+      "original_git_blob_sha1": "113ade4c416e3cd4fc04ebce290aa6bb92683431",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/dependency-verification.json",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/environment.txt",
+      "expected_bytes": 4008,
+      "original_sha256": "1ff81395218ce8493ce6381ca9b84c7f51ecedc13b636b867090810fa97b8f87",
+      "original_git_blob_sha1": "03dabcfe597f7602a6181cac2dd2e2693a8a08aa",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/environment.txt",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/feed-sizes.json",
+      "expected_bytes": 20800,
+      "original_sha256": "e02db8c1224b7217b0ed0e2f33f36e8d45c28b30ed8a82b596c68cbff22256e9",
+      "original_git_blob_sha1": "625a9b8a59ca87405621cd592eb96cb68ede9c2a",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/feed-sizes.json",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/feed-timing.json",
+      "expected_bytes": 39577,
+      "original_sha256": "ea10be9c6a47470a7c246247271ef647572d58c4c72afe79793a3c3e9877bac9",
+      "original_git_blob_sha1": "b61ebd07230ba141730e899ffc8e6b534a29ca92",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/feed-timing.json",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/final-integrity.json",
+      "expected_bytes": 21262,
+      "original_sha256": "e90117ad88b5fcc18f5a0d6f66daa08c2505afd224cbaf260ae1377023191442",
+      "original_git_blob_sha1": "0578fdc09b29f422d877a5773be72d2efe6da049",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/final-integrity.json",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/final-publication-verification.json",
+      "expected_bytes": 1003,
+      "original_sha256": "640080231faba560d2196365e686525ff1d282977542dcf0188bd88de90d6279",
+      "original_git_blob_sha1": "efa24f30b09e7a7c419919be4846adacd1f7ed95",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/final-publication-verification.json",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/input-reverification.json",
+      "expected_bytes": 23658,
+      "original_sha256": "1a3ec2ed2b99bc6685d02900633992e13cd907c0f776f61ac5f9c18c368adc51",
+      "original_git_blob_sha1": "db001093f3f102066be1da6b5a00e1f8d55cc06f",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/input-reverification.json",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/original-output-identity.json",
+      "expected_bytes": 24893,
+      "original_sha256": "501c00cfaa81eddb375589d663fdc727ff1839a0f9ac7a4eb25e668e8387350f",
+      "original_git_blob_sha1": "d848f715a2726623653df670b30e96ea1ababc4d",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/original-output-identity.json",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/prepublication-hardening-safety.json",
+      "expected_bytes": 2234,
+      "original_sha256": "6b67a712a0aeef69cd85e7320a629c8f5da1a5a62ab4dc3900f67be6936218c7",
+      "original_git_blob_sha1": "1fbb714e7ac741cf607179d0a1d0d833b07e4f96",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/prepublication-hardening-safety.json",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/reader-tests.log",
+      "expected_bytes": 419,
+      "original_sha256": "ba91e05654da6709664c3b4088a225162d7eed726b276287007a60672e5f87a1",
+      "original_git_blob_sha1": "1c7156c9818d2c2891e111c1166a719bce785484",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/reader-tests.log",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/reconstruction-check.log",
+      "expected_bytes": 129,
+      "original_sha256": "7a48fce8bd60f656f6b2e996c471536c8d93adefe08f738c70c20d280fbec140",
+      "original_git_blob_sha1": "8795b35279baa6986e0ebd227a69fa725e480e35",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/reconstruction-check.log",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/reconstruction-hardening-tests.log",
+      "expected_bytes": 3054,
+      "original_sha256": "962d9bb9480e87a56ba57da3133d06064181f1384d9e759f90e5a0dafbda0b1f",
+      "original_git_blob_sha1": "36c28bbac57d752f112746c72bba3d3d481fcc51",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/reconstruction-hardening-tests.log",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/reconstruction-hardening-verification.json",
+      "expected_bytes": 855,
+      "original_sha256": "d20ca6e43e88c4fa8f4c1b5b32fd5d2a1624126636ad432548ec47fa69301a37",
+      "original_git_blob_sha1": "55b757dc2f6dfc0fa46f8527d4decc095a66a900",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/reconstruction-hardening-verification.json",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/safety-policy.json",
+      "expected_bytes": 1624,
+      "original_sha256": "875b5abc771d66218175351af9f1b9fe7995278927340547996c36442efd8a2f",
+      "original_git_blob_sha1": "9aaf0d3f30e3fcf5460b41c60b2427caba5d1b16",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/safety-policy.json",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "evidence/source-files.json",
+      "expected_bytes": 3881,
+      "original_sha256": "93351cdceb32cd784d2d680b8accc52389162a436291a5b998cded5c163fb22d",
+      "original_git_blob_sha1": "9772946ff38aac4e5c8462248c31401857fe536a",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/evidence/source-files.json",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "measure_baseline.py",
+      "expected_bytes": 7791,
+      "original_sha256": "1e51bf273cdb9b3a9439024a4880fe18f886bc8b05ccb0fda465fc15a6933e81",
+      "original_git_blob_sha1": "93608dc579c920a0f9e505eb9fe46e389763188f",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "measure_sanitized.py",
+      "expected_bytes": 7747,
+      "original_sha256": "8eede19e00f99989b3873f6c957c320928a56d227e17ce6af89bd5cbcdf9ed61",
+      "original_git_blob_sha1": "fae10db74424fa65716c6bd076f791cad9fff646",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "metrics.csv",
+      "expected_bytes": 565,
+      "original_sha256": "9b0604e4ed3d0a32730bd05159fdd23a998425fd73503596d1e3f2619b3df26d",
+      "original_git_blob_sha1": "6dbf80ad1734ce4bb2da8d89fadc9998c375961d",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/metrics.csv",
+      "recovery_method": "reconstructed from complete previously observed CSV; exact original SHA-256 verified"
+    },
+    {
+      "original_path": "metrics.json",
+      "expected_bytes": 11693,
+      "original_sha256": "56328e786419b276b8cdbf5cf5d9cac5878ab716a97f4d10570f101037e02153",
+      "original_git_blob_sha1": "8a694f024a6cd0a2a69fed4a5975436727928a62",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "publication-manifest.json",
+      "expected_bytes": 14210,
+      "original_sha256": "7871ba6b87a6b8947b52d06f2b56a0e2794471a0e380f6ebab436949070ffdb8",
+      "original_git_blob_sha1": "c05cd0317c2fb0d7e1f64315fb1ce0e5b2e855a7",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/publication-manifest.json",
+      "recovery_method": "reconstructed from retained plan and known header; exact original SHA-256 verified"
+    },
+    {
+      "original_path": "raw/run-01/metrics.json",
+      "expected_bytes": 1981,
+      "original_sha256": "f0b575988c49510cd93b98f2f44c3d207efcfddf18e6223b4265295c3326e5b1",
+      "original_git_blob_sha1": "c3efb6a264b7bf64d4642190628fb3a2b43387da",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-01/output-identity.json",
+      "expected_bytes": 24893,
+      "original_sha256": "501c00cfaa81eddb375589d663fdc727ff1839a0f9ac7a4eb25e668e8387350f",
+      "original_git_blob_sha1": "d848f715a2726623653df670b30e96ea1ababc4d",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/raw/run-01/output-identity.json",
+      "recovery_method": "byte-identical verified blob reused"
+    },
+    {
+      "original_path": "raw/run-01/progress.jsonl",
+      "expected_bytes": 10737,
+      "original_sha256": "e40e028f9435d4c0dd83d3edec6b2242c3945eb25add7b7c79ed4d49c2659527",
+      "original_git_blob_sha1": "3965a1a50166052f5b702a74f5feed23fd013abb",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-01/samples.jsonl",
+      "expected_bytes": 84333,
+      "original_sha256": "2e5fa1defdbf50477327799c3df74d18c75aaf4cbf6a9e74e9be42d86dd48de4",
+      "original_git_blob_sha1": "d8642e342440334cb79294bf58069b1c87372bce",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-01/stderr.log",
+      "expected_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/raw/run-01/stderr.log",
+      "recovery_method": "verified original zero-byte identity"
+    },
+    {
+      "original_path": "raw/run-01/stdout.log",
+      "expected_bytes": 5355,
+      "original_sha256": "989dbd54ac63c6ebf13caa8bcd563c442a50f8708f2a31de757af8b81f82e0f3",
+      "original_git_blob_sha1": "83412c61c59d5f0d3cb391f3c31c5576d5292dff",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/raw/run-01/stdout.log",
+      "recovery_method": "Exact deterministic log content reconstructed from the revalidated frozen snapshot and original assembly logging format; accepted only where original recorded SHA-256 and length match. No new workload measurement was substituted."
+    },
+    {
+      "original_path": "raw/run-02/metrics.json",
+      "expected_bytes": 2107,
+      "original_sha256": "53fcc5f135792a00ffd34cdd6465f76f26a9ad83dc526fc252644d9f13e49229",
+      "original_git_blob_sha1": "bfa7f8bddd52f5de72e5790ea1b1feab18f6af59",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-02/output-identity.json",
+      "expected_bytes": 24893,
+      "original_sha256": "501c00cfaa81eddb375589d663fdc727ff1839a0f9ac7a4eb25e668e8387350f",
+      "original_git_blob_sha1": "d848f715a2726623653df670b30e96ea1ababc4d",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/raw/run-02/output-identity.json",
+      "recovery_method": "byte-identical verified blob reused"
+    },
+    {
+      "original_path": "raw/run-02/progress.jsonl",
+      "expected_bytes": 10750,
+      "original_sha256": "618538315292b60ff9d1234fb4b020f709651f3d3a0ab5e6d6da1fabdcf5bbbe",
+      "original_git_blob_sha1": "9e4270257a2c241b0fd8e5ffc94de79e514dd8f4",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-02/samples.jsonl",
+      "expected_bytes": 89514,
+      "original_sha256": "5a264b25dd6716d81fc40bda38bc13d8022e8bf1f5ec7061ae1d4325d69f41dd",
+      "original_git_blob_sha1": "b327e11f8537ebb6eaf04c2b99151ea688a0f625",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-02/stderr.log",
+      "expected_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/raw/run-02/stderr.log",
+      "recovery_method": "verified original zero-byte identity"
+    },
+    {
+      "original_path": "raw/run-02/stdout.log",
+      "expected_bytes": 5355,
+      "original_sha256": "989dbd54ac63c6ebf13caa8bcd563c442a50f8708f2a31de757af8b81f82e0f3",
+      "original_git_blob_sha1": "83412c61c59d5f0d3cb391f3c31c5576d5292dff",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/raw/run-02/stdout.log",
+      "recovery_method": "Exact deterministic log content reconstructed from the revalidated frozen snapshot and original assembly logging format; accepted only where original recorded SHA-256 and length match. No new workload measurement was substituted."
+    },
+    {
+      "original_path": "raw/run-03/metrics.json",
+      "expected_bytes": 2108,
+      "original_sha256": "727c9fe0ca7386886a32e2fbe65740e54816b41698808c08dc790936efea949d",
+      "original_git_blob_sha1": "dcb41aeb368146dc28e1e0055785c57cdf56172c",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-03/output-identity.json",
+      "expected_bytes": 24893,
+      "original_sha256": "501c00cfaa81eddb375589d663fdc727ff1839a0f9ac7a4eb25e668e8387350f",
+      "original_git_blob_sha1": "d848f715a2726623653df670b30e96ea1ababc4d",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/raw/run-03/output-identity.json",
+      "recovery_method": "byte-identical verified blob reused"
+    },
+    {
+      "original_path": "raw/run-03/progress.jsonl",
+      "expected_bytes": 10743,
+      "original_sha256": "61419284565b0dd9fae00ff394b7b3082e0562e795e6f7bd278a0834a408bb70",
+      "original_git_blob_sha1": "b9ce2c3fd8f9498846dc0a2e49d117cdfbca47ed",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-03/samples.jsonl",
+      "expected_bytes": 90478,
+      "original_sha256": "5145d02860c4840fc33502c84e2602fb9c25ba515ff846a91d31d5679ec7ccf3",
+      "original_git_blob_sha1": "51a66d50dbea042e65e67df21ad7d52f1d60b453",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-03/stderr.log",
+      "expected_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/raw/run-03/stderr.log",
+      "recovery_method": "verified original zero-byte identity"
+    },
+    {
+      "original_path": "raw/run-03/stdout.log",
+      "expected_bytes": 5355,
+      "original_sha256": "989dbd54ac63c6ebf13caa8bcd563c442a50f8708f2a31de757af8b81f82e0f3",
+      "original_git_blob_sha1": "83412c61c59d5f0d3cb391f3c31c5576d5292dff",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/raw/run-03/stdout.log",
+      "recovery_method": "Exact deterministic log content reconstructed from the revalidated frozen snapshot and original assembly logging format; accepted only where original recorded SHA-256 and length match. No new workload measurement was substituted."
+    },
+    {
+      "original_path": "raw/run-04/assembly.cpuprofile",
+      "expected_bytes": 737654,
+      "original_sha256": "6ec1274fa8c9205a1a5a32f0b8ea58250f3bdbc09df9739804b15561ff86808e",
+      "original_git_blob_sha1": "39b1186ee01c1b8b9872464a6e0ddf2ffd80b2cb",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-04/metrics.json",
+      "expected_bytes": 2286,
+      "original_sha256": "38179ee00939241252d1739270be7691c3b343ab2bb94b474b0aa40e04f3e0c2",
+      "original_git_blob_sha1": "38ced8859500b7648a77c42c6bdbbc87a881d29d",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-04/output-identity.json",
+      "expected_bytes": 24893,
+      "original_sha256": "501c00cfaa81eddb375589d663fdc727ff1839a0f9ac7a4eb25e668e8387350f",
+      "original_git_blob_sha1": "d848f715a2726623653df670b30e96ea1ababc4d",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/raw/run-04/output-identity.json",
+      "recovery_method": "byte-identical verified blob reused"
+    },
+    {
+      "original_path": "raw/run-04/progress.jsonl",
+      "expected_bytes": 10757,
+      "original_sha256": "106807b9873e9f08eb36fdfe70e3ee937c4c3613da2c00644b9f73c6e790885a",
+      "original_git_blob_sha1": "1b6fa22c9d114a1e5385c36325d8792d2f1edf30",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-04/samples.jsonl",
+      "expected_bytes": 84431,
+      "original_sha256": "000934b7a9214bd16d1e496a2466cdf18f47faf9042d4f852ea976b35d2fdc5e",
+      "original_git_blob_sha1": "c5f7d33b9a539e857ea60136ac7303c9df1f402d",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-04/stderr.log",
+      "expected_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/raw/run-04/stderr.log",
+      "recovery_method": "verified original zero-byte identity"
+    },
+    {
+      "original_path": "raw/run-04/stdout.log",
+      "expected_bytes": 5355,
+      "original_sha256": "989dbd54ac63c6ebf13caa8bcd563c442a50f8708f2a31de757af8b81f82e0f3",
+      "original_git_blob_sha1": "83412c61c59d5f0d3cb391f3c31c5576d5292dff",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/raw/run-04/stdout.log",
+      "recovery_method": "Exact deterministic log content reconstructed from the revalidated frozen snapshot and original assembly logging format; accepted only where original recorded SHA-256 and length match. No new workload measurement was substituted."
+    },
+    {
+      "original_path": "raw/run-05/metrics.json",
+      "expected_bytes": 2103,
+      "original_sha256": "85ee03d7b680c829407f23f82fb9eaea9ade576f07f9c694fe059e89a32f59e5",
+      "original_git_blob_sha1": "5ec9532b46cde00f6934c3a36ffae606fce96948",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-05/output-identity.json",
+      "expected_bytes": 24893,
+      "original_sha256": "501c00cfaa81eddb375589d663fdc727ff1839a0f9ac7a4eb25e668e8387350f",
+      "original_git_blob_sha1": "d848f715a2726623653df670b30e96ea1ababc4d",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/raw/run-05/output-identity.json",
+      "recovery_method": "byte-identical verified blob reused"
+    },
+    {
+      "original_path": "raw/run-05/progress.jsonl",
+      "expected_bytes": 10771,
+      "original_sha256": "7c7022d53b995a713d762e01bf27f34fa4516977252adeb09d88e8a24c424bca",
+      "original_git_blob_sha1": "6248803683616a0735698e6eb85cbdc294d92af9",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-05/samples.jsonl",
+      "expected_bytes": 54282,
+      "original_sha256": "689ea8776469b601be871e9fbd5ff0470dcf719a430d3a9cf00a473456d9cc1c",
+      "original_git_blob_sha1": "6c9885e2ef7f2e46dc506133a78f88b0f171b734",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-05/stderr.log",
+      "expected_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/raw/run-05/stderr.log",
+      "recovery_method": "verified original zero-byte identity"
+    },
+    {
+      "original_path": "raw/run-05/stdout.log",
+      "expected_bytes": 5355,
+      "original_sha256": "989dbd54ac63c6ebf13caa8bcd563c442a50f8708f2a31de757af8b81f82e0f3",
+      "original_git_blob_sha1": "83412c61c59d5f0d3cb391f3c31c5576d5292dff",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/raw/run-05/stdout.log",
+      "recovery_method": "Exact deterministic log content reconstructed from the revalidated frozen snapshot and original assembly logging format; accepted only where original recorded SHA-256 and length match. No new workload measurement was substituted."
+    },
+    {
+      "original_path": "raw/run-07/metrics.json",
+      "expected_bytes": 2125,
+      "original_sha256": "62194fccbc7258026c43b13f6150eb8ccb7980d1f5db724cd6d54a782038a679",
+      "original_git_blob_sha1": "b73259bcd7fe863fc4ab8a3c615c3db08d187cb3",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-07/output-identity.json",
+      "expected_bytes": 24893,
+      "original_sha256": "ea426621f4c970efd86b5326966b2f6e2afd2b8a46d60635779cffd08b49cdfd",
+      "original_git_blob_sha1": "6c08fff44673a821610374b178e37a163a8563f7",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-07/progress.jsonl",
+      "expected_bytes": 10763,
+      "original_sha256": "aea31192fcb416ea24e519d709de41ad1e1ff3c4d9eddf6b33075ed5bb016c40",
+      "original_git_blob_sha1": "2e8159de4e9baf3474b2085e9566735afbf524a4",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-07/samples.jsonl",
+      "expected_bytes": 109065,
+      "original_sha256": "e20613663e8d14e6ce352c1f4f3bc5f2097d39573688277ac147795ad25177c6",
+      "original_git_blob_sha1": "3756e7a0c02cdf6a66b2e44f661b4eee8ec29f21",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "raw/run-07/stderr.log",
+      "expected_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/raw/run-07/stderr.log",
+      "recovery_method": "verified original zero-byte identity"
+    },
+    {
+      "original_path": "raw/run-07/stdout.log",
+      "expected_bytes": 5355,
+      "original_sha256": "989dbd54ac63c6ebf13caa8bcd563c442a50f8708f2a31de757af8b81f82e0f3",
+      "original_git_blob_sha1": "83412c61c59d5f0d3cb391f3c31c5576d5292dff",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/raw/run-07/stdout.log",
+      "recovery_method": "Exact deterministic log content reconstructed from the revalidated frozen snapshot and original assembly logging format; accepted only where original recorded SHA-256 and length match. No new workload measurement was substituted."
+    },
+    {
+      "original_path": "report.md",
+      "expected_bytes": 16592,
+      "original_sha256": "1dccece655978f9925b9730ecd9aacca3c3ffba94f3115b5a46d71e71fdabedb",
+      "original_git_blob_sha1": "9ae1e19f950432fcd79abe76b821eb6e38147d41",
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/report.md",
+      "recovery_method": "GitHub blob readback; original SHA-256 verified"
+    },
+    {
+      "original_path": "reproduce_sanitized.py",
+      "expected_bytes": 9273,
+      "original_sha256": "fa68c3b03e6d47b94111254ca7245fe2bbf596e6250089e9fb83a9e9a5b47267",
+      "original_git_blob_sha1": "7c23764e0dfc217c6106a31e6642268e484309b1",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "sanitization-manifest.json",
+      "expected_bytes": 85746,
+      "original_sha256": "4371113758c7588cc03cb246d45bfdc8a9b7c9f2d20564617dbbde0a3e790d39",
+      "original_git_blob_sha1": "42236732aeda7c5ba2f7580d9582eb1f2e2c6628",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "sanitize_fixtures.py",
+      "expected_bytes": 4882,
+      "original_sha256": "befbf26a2245d444c6c93bbf11bc680ac58e16db2e8f3a564c69cfb5a96eeb69",
+      "original_git_blob_sha1": "3696ed6af38dafe8c6e04b73d07a1056476c78c1",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "sanitized-retention/matching-snapshot-reference-sanitized.tar.gz",
+      "expected_bytes": 423648,
+      "original_sha256": "2e82e4f8972cdedb760e4d0ee7119a6742c03f4cf7f8dc3274e05332ee413f4e",
+      "original_git_blob_sha1": "56444a4230b394be95888b9f008a392ecf1b471d",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "sanitized-retention/worldwide-frequency-shard-0-sanitized.zip",
+      "expected_bytes": 2708071,
+      "original_sha256": "c2a95ed9208b535787af74b605278d71a3332d32218f11c56803f59f9b2bf133",
+      "original_git_blob_sha1": "859606df63afaaf300920a822341282fb41d18b6",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "sanitized-retention/worldwide-frequency-shard-1-sanitized.zip",
+      "expected_bytes": 2405988,
+      "original_sha256": "4eb66842a0703f77aa276404c950bd9ae9a4937fab726607e09acbad8a8db293",
+      "original_git_blob_sha1": "46ad2b8e99591da4a6e003681ad58635cbb7dd00",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "sanitized-retention/worldwide-frequency-shard-2-sanitized.zip",
+      "expected_bytes": 3529540,
+      "original_sha256": "f40d9318750a61e93f8504bad46967d2bd33858fa64b37247f863b36ab3eabef",
+      "original_git_blob_sha1": "52cdf6d5d73f998ff55fddbfaf6b9a89c222baca",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "sanitized-retention/worldwide-frequency-shard-3-sanitized.zip",
+      "expected_bytes": 3514769,
+      "original_sha256": "fed65f4db929e5c52f0479330e7e60f8bf913d199f096f4c936ff2c361cf0c28",
+      "original_git_blob_sha1": "cc39c3e785f6cd07caf0705b235506e9fa908912",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "sanitized-retention/worldwide-frequency-shard-4-sanitized.zip",
+      "expected_bytes": 1652435,
+      "original_sha256": "909b5930f781f774886df5f01ae7ec9bac37624fa44d9d55b80a9f3f7e3f5e46",
+      "original_git_blob_sha1": "9a0822e042e1d05fba7d6815154e2a377279b803",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "sanitized-retention/worldwide-frequency-shard-5-sanitized.zip",
+      "expected_bytes": 2512440,
+      "original_sha256": "e6ac177f21ea938de7f49862778726b1b7281e9bffadaea0538ea1982760c537",
+      "original_git_blob_sha1": "0cd84f6499e1b3ec157f9ec5ed2df31501531348",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "sanitized-retention/worldwide-frequency-shard-6-sanitized.zip",
+      "expected_bytes": 2539400,
+      "original_sha256": "d03fb8d8f49f0e45673daaa51116ab70e1d9b758fdf6e0e4263341ae19937fb2",
+      "original_git_blob_sha1": "fc8971b2054b1f2b5d043099a2f7278f32f56433",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "sanitized-retention/worldwide-frequency-shard-7-sanitized.zip",
+      "expected_bytes": 4648448,
+      "original_sha256": "9039db1a4a06f84394b4e8995ffcd97332b372a9f38da4a34c6b4be7befb938d",
+      "original_git_blob_sha1": "2d6bd0bc64dc281b19bf7344252bd7f8b242fdbc",
+      "status": "unrecovered",
+      "published_path": null
+    },
+    {
+      "original_path": "test_reproduce_sanitized.py",
+      "expected_bytes": 8492,
+      "original_sha256": "33f024eb83f8cab727bf9e69b607357b2335cebcc1801adb4193702631c5ece6",
+      "original_git_blob_sha1": "39f02322347df687e9611032b354241d63289f5d",
+      "status": "unrecovered",
+      "published_path": null
+    }
+  ],
+  "partial_payload_safety": {
+    "status": "passed",
+    "files_checked": 50,
+    "known_original_access_values_checked": 10,
+    "no_access_values_or_common_credential_patterns_found": true,
+    "no_original_data_archives_or_private_approval_metadata_included": true
+  },
+  "historical_clarifications": [
+    {
+      "path": "recovered/evidence/reconstruction-hardening-verification.json",
+      "field": "negative_test_count",
+      "recorded": 29,
+      "correct_interpretation": "29 tests total: 27 negative cases and 2 clean success cases. Original bytes remain frozen; preserved test log is the evidence."
+    }
+  ]
+}

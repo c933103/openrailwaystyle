@@ -1,0 +1,11 @@
+✔ streamed national feeds preserve nested records, escapes and Unicode across chunk boundaries (10.212271ms)
+✔ gzip feed reader decodes array records without retaining one whole JSON string (40.884191ms)
+✔ streamed reader rejects truncated feeds, duplicate fields and trailing content (0.920439ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 203.324506

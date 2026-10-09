@@ -1,0 +1,55 @@
+{
+  "status": "passed",
+  "original_full_archive_scan": "evidence/deliverable-safety-scan.json",
+  "archive_hash_checks": [
+    {
+      "path": "sanitized-retention/matching-snapshot-reference-sanitized.tar.gz",
+      "sha256": "2e82e4f8972cdedb760e4d0ee7119a6742c03f4cf7f8dc3274e05332ee413f4e",
+      "unchanged_from_full_scan": true
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-0-sanitized.zip",
+      "sha256": "c2a95ed9208b535787af74b605278d71a3332d32218f11c56803f59f9b2bf133",
+      "unchanged_from_full_scan": true
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-1-sanitized.zip",
+      "sha256": "4eb66842a0703f77aa276404c950bd9ae9a4937fab726607e09acbad8a8db293",
+      "unchanged_from_full_scan": true
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-2-sanitized.zip",
+      "sha256": "f40d9318750a61e93f8504bad46967d2bd33858fa64b37247f863b36ab3eabef",
+      "unchanged_from_full_scan": true
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-3-sanitized.zip",
+      "sha256": "fed65f4db929e5c52f0479330e7e60f8bf913d199f096f4c936ff2c361cf0c28",
+      "unchanged_from_full_scan": true
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-4-sanitized.zip",
+      "sha256": "909b5930f781f774886df5f01ae7ec9bac37624fa44d9d55b80a9f3f7e3f5e46",
+      "unchanged_from_full_scan": true
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-5-sanitized.zip",
+      "sha256": "e6ac177f21ea938de7f49862778726b1b7281e9bffadaea0538ea1982760c537",
+      "unchanged_from_full_scan": true
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-6-sanitized.zip",
+      "sha256": "d03fb8d8f49f0e45673daaa51116ab70e1d9b758fdf6e0e4263341ae19937fb2",
+      "unchanged_from_full_scan": true
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-7-sanitized.zip",
+      "sha256": "9039db1a4a06f84394b4e8995ffcd97332b372a9f38da4a34c6b4be7befb938d",
+      "unchanged_from_full_scan": true
+    }
+  ],
+  "hardening_plaintext_files_scanned": 73,
+  "hardening_plaintext_bytes_scanned": 1877234,
+  "issues": [],
+  "no_original_or_private_candidate_artifacts_added": true
+}

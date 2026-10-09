@@ -1,0 +1,283 @@
+{
+  "file": "runs/run-04/assembly.cpuprofile",
+  "sha256": "6ec1274fa8c9205a1a5a32f0b8ea58250f3bdbc09df9739804b15561ff86808e",
+  "sample_count": 68002,
+  "sampled_seconds": 86.643808,
+  "interpretation": "Main-thread V8 sampled elapsed-time weights, not exact OS CPU time. Categories are exclusive by ancestry; native/background zlib workers are not comprehensively represented. Instrumented run is excluded from the uninstrumented baseline.",
+  "categories": [
+    {
+      "category": "read_frequency_feed_inclusive",
+      "sampled_seconds": 49.480915,
+      "percent_of_sampled_time": 57.108426028551285
+    },
+    {
+      "category": "timetableFeatures_inclusive",
+      "sampled_seconds": 17.65413,
+      "percent_of_sampled_time": 20.375524122854806
+    },
+    {
+      "category": "other",
+      "sampled_seconds": 8.570096,
+      "percent_of_sampled_time": 9.891181144762243
+    },
+    {
+      "category": "idle",
+      "sampled_seconds": 7.228697,
+      "percent_of_sampled_time": 8.343004730355341
+    },
+    {
+      "category": "garbage_collector",
+      "sampled_seconds": 3.70997,
+      "percent_of_sampled_time": 4.2818639734763275
+    }
+  ],
+  "top_exclusive": [
+    {
+      "function": "parseFrequencyFeed",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/read-frequency-feed.mjs",
+      "line_1based": 6,
+      "sampled_seconds": 27.382727,
+      "percent_of_sampled_time": 31.60378985189571
+    },
+    {
+      "function": "item",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/read-frequency-feed.mjs",
+      "line_1based": 11,
+      "sampled_seconds": 21.420722,
+      "percent_of_sampled_time": 24.722738409650695
+    },
+    {
+      "function": "timetableFeatures",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/gtfs-service.mjs",
+      "line_1based": 17,
+      "sampled_seconds": 15.050366,
+      "percent_of_sampled_time": 17.370388429834478
+    },
+    {
+      "function": "(idle)",
+      "url": "",
+      "line_1based": 0,
+      "sampled_seconds": 7.228697,
+      "percent_of_sampled_time": 8.343004730355341
+    },
+    {
+      "function": "(garbage collector)",
+      "url": "",
+      "line_1based": 0,
+      "sampled_seconds": 3.70997,
+      "percent_of_sampled_time": 4.2818639734763275
+    },
+    {
+      "function": "processCallback",
+      "url": "node:zlib",
+      "line_1based": 523,
+      "sampled_seconds": 3.659898,
+      "percent_of_sampled_time": 4.22407334636077
+    },
+    {
+      "function": "(anonymous)",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/gtfs-service.mjs",
+      "line_1based": 35,
+      "sampled_seconds": 2.198536,
+      "percent_of_sampled_time": 2.5374415676651703
+    },
+    {
+      "function": "assemble",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/assemble-global-frequency.mjs",
+      "line_1based": 30,
+      "sampled_seconds": 1.586395,
+      "percent_of_sampled_time": 1.8309386863513664
+    },
+    {
+      "function": "write",
+      "url": "node:string_decoder",
+      "line_1based": 76,
+      "sampled_seconds": 0.505213,
+      "percent_of_sampled_time": 0.5830918696463572
+    },
+    {
+      "function": "value",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/read-frequency-feed.mjs",
+      "line_1based": 10,
+      "sampled_seconds": 0.483423,
+      "percent_of_sampled_time": 0.557942928824181
+    },
+    {
+      "function": "(program)",
+      "url": "",
+      "line_1based": 0,
+      "sampled_seconds": 0.458821,
+      "percent_of_sampled_time": 0.5295485166118277
+    },
+    {
+      "function": "runMicrotasks",
+      "url": "",
+      "line_1based": 0,
+      "sampled_seconds": 0.326558,
+      "percent_of_sampled_time": 0.37689710036751845
+    },
+    {
+      "function": "createUnsafeBuffer",
+      "url": "node:internal/buffer",
+      "line_1based": 1097,
+      "sampled_seconds": 0.273577,
+      "percent_of_sampled_time": 0.31574904925693015
+    },
+    {
+      "function": "(anonymous)",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/gtfs-service.mjs",
+      "line_1based": 34,
+      "sampled_seconds": 0.24094,
+      "percent_of_sampled_time": 0.2780810372508097
+    },
+    {
+      "function": "readableAddChunkPushByteMode",
+      "url": "node:internal/streams/readable",
+      "line_1based": 465,
+      "sampled_seconds": 0.17966,
+      "percent_of_sampled_time": 0.20735469059716305
+    },
+    {
+      "function": "processTicksAndRejections",
+      "url": "node:internal/process/task_queues",
+      "line_1based": 72,
+      "sampled_seconds": 0.145192,
+      "percent_of_sampled_time": 0.16757342890561783
+    },
+    {
+      "function": "fromList",
+      "url": "node:internal/streams/readable",
+      "line_1based": 1620,
+      "sampled_seconds": 0.124353,
+      "percent_of_sampled_time": 0.1435220852712291
+    },
+    {
+      "function": "Readable.read",
+      "url": "node:internal/streams/readable",
+      "line_1based": 649,
+      "sampled_seconds": 0.089481,
+      "percent_of_sampled_time": 0.10327454675122312
+    },
+    {
+      "function": "kind",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/gtfs-service.mjs",
+      "line_1based": 8,
+      "sampled_seconds": 0.081129,
+      "percent_of_sampled_time": 0.09363508122819349
+    },
+    {
+      "function": "assemble",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/assemble-global-frequency.mjs",
+      "line_1based": 30,
+      "sampled_seconds": 0.08076,
+      "percent_of_sampled_time": 0.09320919966952514
+    },
+    {
+      "function": "RegExp: ^[0-9a-f]{6}$",
+      "url": "",
+      "line_1based": 0,
+      "sampled_seconds": 0.076852,
+      "percent_of_sampled_time": 0.08869877925956347
+    },
+    {
+      "function": "nextTick",
+      "url": "node:internal/process/task_queues",
+      "line_1based": 113,
+      "sampled_seconds": 0.063611,
+      "percent_of_sampled_time": 0.07341667162181975
+    },
+    {
+      "function": "createAsyncIterator",
+      "url": "node:internal/streams/readable",
+      "line_1based": 1366,
+      "sampled_seconds": 0.062745,
+      "percent_of_sampled_time": 0.07241717723209949
+    },
+    {
+      "function": "createUnsafeArrayBuffer",
+      "url": "",
+      "line_1based": 0,
+      "sampled_seconds": 0.060464,
+      "percent_of_sampled_time": 0.06978455979220119
+    },
+    {
+      "function": "field",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/read-frequency-feed.mjs",
+      "line_1based": 12,
+      "sampled_seconds": 0.044144,
+      "percent_of_sampled_time": 0.050948822563292695
+    }
+  ],
+  "named_inclusive": [
+    {
+      "function": "assemble",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/assemble-global-frequency.mjs",
+      "line_1based": 30,
+      "sampled_seconds": 0.002681,
+      "percent_of_sampled_time": 0.0030942776660970394
+    },
+    {
+      "function": "assemble",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/assemble-global-frequency.mjs",
+      "line_1based": 30,
+      "sampled_seconds": 0.147695,
+      "percent_of_sampled_time": 0.1704622677710564
+    },
+    {
+      "function": "readFrequencyFeed",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/read-frequency-feed.mjs",
+      "line_1based": 63,
+      "sampled_seconds": 0.004466,
+      "percent_of_sampled_time": 0.005154436425508906
+    },
+    {
+      "function": "parseFrequencyFeed",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/read-frequency-feed.mjs",
+      "line_1based": 6,
+      "sampled_seconds": 0.002211,
+      "percent_of_sampled_time": 0.0025518269003135226
+    },
+    {
+      "function": "parseFrequencyFeed",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/read-frequency-feed.mjs",
+      "line_1based": 6,
+      "sampled_seconds": 49.42044,
+      "percent_of_sampled_time": 57.038628773102864
+    },
+    {
+      "function": "assemble",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/assemble-global-frequency.mjs",
+      "line_1based": 30,
+      "sampled_seconds": 19.374678,
+      "percent_of_sampled_time": 22.36129557001927
+    },
+    {
+      "function": "timetableFeatures",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/gtfs-service.mjs",
+      "line_1based": 17,
+      "sampled_seconds": 17.65413,
+      "percent_of_sampled_time": 20.375524122854806
+    },
+    {
+      "function": "readFrequencyFeed",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/read-frequency-feed.mjs",
+      "line_1based": 63,
+      "sampled_seconds": 0.053549,
+      "percent_of_sampled_time": 0.06180360863179052
+    },
+    {
+      "function": "parseFrequencyFeed",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/read-frequency-feed.mjs",
+      "line_1based": 6,
+      "sampled_seconds": 0.012177,
+      "percent_of_sampled_time": 0.014054091436055072
+    },
+    {
+      "function": "readFrequencyFeed",
+      "url": "file:///workspace/shared/atlas-a06-server-baseline-20261009/runs/run-04/work/scripts/read-frequency-feed.mjs",
+      "line_1based": 63,
+      "sampled_seconds": 0.00246,
+      "percent_of_sampled_time": 0.002839210391122237
+    }
+  ]
+}
