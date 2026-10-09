@@ -2,6 +2,7 @@ import csv
 import importlib.util
 import io
 import json
+import socket
 from pathlib import Path
 import tempfile
 import threading
@@ -18,6 +19,14 @@ class GlobalFrequency(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name)
+        self.fixture_ports = set()
+        def fixture_addresses(host, port):
+            # Only this test instance's registered servers can use real sockets.
+            # Catalogue values cannot enable fixture access in production.
+            if host != '127.0.0.1' or port not in self.fixture_ports:
+                raise AssertionError('Unexpected network destination in offline fixture')
+            return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, (host, port))]
+        self.enterContext(patch.object(pipeline, 'resolve_public_addresses', side_effect=fixture_addresses))
 
     def test_discovery_covers_non_latin_names_licences_and_exclusions_without_city_choices(self):
         countries=['DE','JP','BR','EG','NZ','CA','CN','RU','IR','KP']
@@ -80,6 +89,23 @@ class GlobalFrequency(unittest.TestCase):
         self.assertTrue(item['retry_eligible'])
         self.assertEqual(item['reason_code'],'missing_source_url')
 
+    def test_exact_source_prohibition_covers_catalogue_alias_and_its_processed_copy(self):
+        rules={'sources':{'original.gtfs.zip':{
+            'expected_source':'https://reviewed.example/rail.zip',
+            'prohibit_frequency_use':True,'license_url':'https://reviewed.example/terms'}}}
+        for source in ['https://reviewed.example/rail.zip',
+                       'https://REVIEWED.example:443/rail.zip#catalogue-fragment']:
+            with self.subTest(source=source):
+                entry=pipeline.discover([{'filename':'new-alias.gtfs.zip',
+                                         'source':source,'country_code':'CA'}],rules)[0]
+                self.assertEqual(entry['status'],'excluded')
+                self.assertEqual(entry['reason_code'],'source_terms_prohibit_derived_use')
+                self.assertEqual(pipeline.source_candidates(entry),[])
+        other=pipeline.discover([{'filename':'new-alias.gtfs.zip',
+                                  'source':'https://reviewed.example/different.zip','country_code':'CA'}],rules)[0]
+        self.assertEqual(other['status'],'pending')
+        self.assertEqual(len(pipeline.source_candidates(other)),2)
+
     def test_processing_failures_keep_distinct_codes_and_stages(self):
         observed = [
             (RuntimeError('HTTPError: HTTP Error 404: Not Found'), 'source_http_404', 'retrieval'),
@@ -106,11 +132,11 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual(entry['status'],'pending')
         processed=entry['processed_url']
         real_get=pipeline.get
-        def broken_processed(url, headers=None):
+        def broken_processed(url, headers=None, **kwargs):
             if url == processed:
                 from urllib.error import HTTPError
                 raise HTTPError(url, 404, 'Not Found', {}, io.BytesIO())
-            return real_get(url,headers)
+            return real_get(url,headers, **kwargs)
         cache,output=self.root/'fallback-cache',self.root/'fallback-output'
         cache.mkdir()
         with patch.object(pipeline,'get',side_effect=broken_processed):
@@ -125,13 +151,99 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual(same['status'],'compiled')
         self.assertEqual(same['source']['retrieved'],result['source']['retrieved'])
 
+    def test_lineage_fallback_enforces_domains_and_exact_source_review_before_fetch(self):
+        from urllib.error import HTTPError
+        allowed, held = self.server(self.archive())
+        denied = 'https://reviewed.example/rail.zip'
+        row = {'filename': 'jp_rail.gtfs.zip', 'source': 'https://operator.example/old.zip',
+               'country_code': 'JP', 'lineage': [
+                   {'source': 'https://publisher.ru/rail.zip'},
+                   {'source': 'https://PUBLISHER.RU./rail.zip'},
+                   {'source': denied}, {'source': denied + '#fragment'},
+                   {'source': 'https://REVIEWED.example:443/rail.zip'},
+                   {'source': allowed}]}
+        # The reviewed original has changed in the primary row, but still appears
+        # in lineage; its exact-source prohibition still applies to acquisition.
+        rules = {'sources': {'jp_rail.gtfs.zip': {'expected_source': denied,
+                  'prohibit_frequency_use': True, 'license_url': 'https://reviewed.example/terms'}}}
+        entry = pipeline.discover([row], rules)[0]
+        self.assertEqual(entry['status'], 'pending')
+        self.assertEqual(pipeline.source_candidates(entry), [entry['processed_url'], row['source'], allowed])
+        entry = json.loads(json.dumps(entry))  # The worker receives the same rules.
+        seen = []
+        real_get = pipeline.get
+        def fetch(url, headers=None, **kwargs):
+            seen.append(url)
+            if url != allowed:
+                raise HTTPError(url, 404, 'Missing fixture', {}, io.BytesIO())
+            return real_get(url, headers, **kwargs)
+        cache, output = self.root/'policy-cache', self.root/'policy-output'
+        cache.mkdir()
+        with patch.object(pipeline, 'get', side_effect=fetch):
+            result = pipeline.compile_entry(entry, cache, output, '2026-10-05', None,
+                                            1_000_000, pipeline.PROFILES)
+        self.assertEqual(result['status'], 'compiled')
+        self.assertEqual(result['source']['download_url'], allowed)
+        self.assertEqual(set(seen), {entry['processed_url'], row['source'], allowed})
+        self.assertTrue(held['requests'])
+        self.assertEqual(len(result['source']['recovered_source_errors']), 2)
+
+    def test_source_rules_are_exact_and_unknown_rights_remain_eligible(self):
+        rule = {'sources': {'other.gtfs.zip': {'expected_source': 'https://reviewed.example/rail.zip',
+                'prohibit_frequency_use': True, 'terms_url': 'https://reviewed.example/terms'},
+                'blocked.gtfs.zip': {'expected_source': 'https://publisher.ru/rail.zip',
+                'prohibit_frequency_use': True, 'license_url': 'https://publisher.ru/terms'}}}
+        row = {'filename': 'rail.gtfs.zip', 'source': 'https://unreviewed.example/rail.zip',
+               'country_code': 'JP', 'lineage': [{'source': 'https://reviewed.example/rail.zip'},
+                                               {'source': 'https://reviewed.example/different.zip'}]}
+        entry = pipeline.discover([row], rule)[0]
+        self.assertEqual(entry['terms']['state'], 'not_provided')
+        self.assertEqual(entry['status'], 'pending')
+        self.assertEqual(pipeline.source_candidates(entry), [entry['processed_url'], row['source'],
+                                                             'https://reviewed.example/different.zip'])
+        entry['catalogue']['country_code'] = 'RU'
+        self.assertEqual(pipeline.source_candidates(entry), [])
+
+    def test_new_source_rule_prevents_conditional_or_offline_cache_reuse(self):
+        from urllib.error import HTTPError
+        url, held = self.server(self.archive())
+        row = {'filename': 'rail.gtfs.zip', 'source': 'https://operator.example/rail.zip',
+               'country_code': 'JP', 'lineage': [{'source': url}]}
+        entry = pipeline.discover([row], {})[0]
+        entry['processed_url'] = url
+        cache, output = self.root/'rule-cache', self.root/'rule-output'
+        cache.mkdir()
+        pipeline.compile_entry(entry, cache, output, '2026-10-05', None, 1_000_000, pipeline.PROFILES)
+        entry['denied_source_urls'] = [url]
+        seen = []
+        def unavailable(target, headers=None, **kwargs):
+            seen.append(target)
+            raise HTTPError(target, 404, 'Missing fixture', {}, io.BytesIO())
+        with patch.object(pipeline, 'get', side_effect=unavailable), \
+             self.assertRaises(pipeline.SourceRetrievalError):
+            pipeline.compile_entry(entry, cache, output, '2026-10-05', None, 1_000_000, pipeline.PROFILES)
+        self.assertEqual(seen, [row['source']])
+
+    def test_unsafe_refresh_target_does_not_become_an_offline_cache_success(self):
+        url, held = self.server(self.archive())
+        entry = pipeline.discover([{'filename': 'rail.gtfs.zip', 'source': url, 'country_code': 'JP'}], {})[0]
+        entry['processed_url'] = url
+        cache, output = self.root/'target-cache', self.root/'target-output'
+        cache.mkdir()
+        pipeline.compile_entry(entry, cache, output, '2026-10-05', None, 1_000_000, pipeline.PROFILES)
+        with patch.object(pipeline, 'get', side_effect=pipeline.UnsafeSourceURL('Non-public acquisition address')), \
+             self.assertRaises(pipeline.SourceRetrievalError) as caught:
+            pipeline.compile_entry(entry, cache, output, '2026-10-05', None, 1_000_000, pipeline.PROFILES)
+        self.assertEqual(caught.exception.attempts[0]['code'], 'unsafe_source_url')
+        self.assertEqual(pipeline.classify_failure(caught.exception), ('source_retrieval_error', 'retrieval'))
+
     def test_all_source_404s_are_recoverable_with_inspectable_attempts(self):
         from urllib.error import HTTPError
         row={'filename':'jp_rail.gtfs.zip','source':'https://operator.example/rail.zip','country_code':'JP'}
         entry=pipeline.discover([row],{})[0]
         cache,output=self.root/'missing-cache',self.root/'missing-output'
         cache.mkdir()
-        def only_404(url, headers=None):
+        def only_404(url, headers=None, **kwargs):
             raise HTTPError(url,404,'Not Found',{},io.BytesIO())
         with patch.object(pipeline,'get',side_effect=only_404):
             with self.assertRaises(pipeline.SourceRetrievalError) as context:
@@ -158,7 +270,7 @@ class GlobalFrequency(unittest.TestCase):
         meta['download_url']=entry['processed_url']
         (cache/'de_rail.meta.json').write_text(json.dumps(meta))
         real_get=pipeline.get
-        def broken(url, headers=None):
+        def broken(url, headers=None, **kwargs):
             if url==entry['processed_url']:
                 from email.message import Message
                 class Response(io.BytesIO):
@@ -167,7 +279,7 @@ class GlobalFrequency(unittest.TestCase):
                     def __enter__(self): return self
                     def __exit__(self,*_): self.close()
                 return Response(b'not-a-zip')
-            return real_get(url,headers)
+            return real_get(url,headers, **kwargs)
         with patch.object(pipeline,'get',side_effect=broken):
             result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
         self.assertEqual(result['status'],'compiled')
@@ -187,7 +299,7 @@ class GlobalFrequency(unittest.TestCase):
         old_retrieved=good['source']['retrieved']
         old_checked=good['source']['checked']
 
-        def offline(url,headers=None):
+        def offline(url,headers=None, **kwargs):
             raise HTTPError(url,503,'Service unavailable',{'Retry-After':'120'},io.BytesIO())
         with patch.object(pipeline,'get',side_effect=offline):
             stale=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
@@ -214,7 +326,7 @@ class GlobalFrequency(unittest.TestCase):
         pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
         meta_file=cache/'jp_old.meta.json'
         meta=json.loads(meta_file.read_text())
-        def unavailable(url,headers=None):
+        def unavailable(url,headers=None, **kwargs):
             raise HTTPError(url,404,'Gone',{},io.BytesIO())
         meta['checked']='2020-01-01'
         meta_file.write_text(json.dumps(meta))
@@ -231,7 +343,7 @@ class GlobalFrequency(unittest.TestCase):
     def test_bounded_retries_respect_publisher_backoff_and_do_not_repeat_404(self):
         from urllib.error import HTTPError
         attempts=[]
-        def transient(request, timeout=45):
+        def transient(request, timeout=45, **kwargs):
             attempts.append(request.full_url)
             if len(attempts)<3:
                 code=429 if len(attempts)==1 else 503
@@ -243,7 +355,7 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual(len(attempts),3)
         self.assertEqual(sleep.call_count,2)
 
-        def permanent(request, timeout=45):
+        def permanent(request, timeout=45, **kwargs):
             attempts.append(request.full_url)
             raise HTTPError(request.full_url,404,'Not Found',{},io.BytesIO())
         attempts.clear()
@@ -253,7 +365,7 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual(len(attempts),1,'retry the alternate feed, not the dead 404 itself')
         sleep.assert_not_called()
 
-        def delayed(request, timeout=45):
+        def delayed(request, timeout=45, **kwargs):
             raise HTTPError(request.full_url,429,'Rate Limited',{'Retry-After':'120'},io.BytesIO())
         with patch.object(pipeline,'urlopen',side_effect=delayed), patch.object(pipeline.time,'sleep') as sleep:
             with self.assertRaises(HTTPError):
@@ -300,7 +412,7 @@ class GlobalFrequency(unittest.TestCase):
         clock=[1791536400.0]
         deadline=clock[0]+5
         requests=[]
-        def upstream(request,timeout=45):
+        def upstream(request,timeout=45, **kwargs):
             requests.append(clock[0])
             if len(requests)==1:
                 raise HTTPError(request.full_url,503,'Unavailable',
@@ -326,7 +438,7 @@ class GlobalFrequency(unittest.TestCase):
                 (formatdate(now - 5, usegmt=True), [0.0, 0.0], 3),
                 ('invalid', [1.0, 2.0], 3)]:
             with self.subTest(header=header):
-                def unavailable(request, timeout=45):
+                def unavailable(request, timeout=45, **kwargs):
                     raise HTTPError(request.full_url,503,'Unavailable',{'Retry-After':header},io.BytesIO())
                 with patch.object(pipeline,'urlopen',side_effect=unavailable) as request, \
                      patch.object(pipeline.time,'time',return_value=now), \
@@ -345,7 +457,7 @@ class GlobalFrequency(unittest.TestCase):
                 pipeline.get(entry['processed_url'])
             except HTTPError as error:
                 raise pipeline.SourceRetrievalError([pipeline.source_attempt(entry['processed_url'],error)])
-        def long_delay(request,timeout=45):
+        def long_delay(request,timeout=45, **kwargs):
             raise HTTPError(request.full_url,429,'Rate Limited',
                             {'Retry-After':formatdate(now+3600,usegmt=True)},io.BytesIO())
         with patch('sys.argv',['global-service-frequency.py','--catalogue',str(catalogue),
@@ -399,6 +511,7 @@ class GlobalFrequency(unittest.TestCase):
             def log_message(self,*args):pass
         server=ThreadingHTTPServer(('127.0.0.1',0),Handler);thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         self.addCleanup(server.server_close);self.addCleanup(server.shutdown)
+        self.fixture_ports.add(server.server_port)
         return 'http://127.0.0.1:'+str(server.server_port)+'/feed.zip',held
 
     def test_range_inspection_full_fallback_and_revision_changes(self):
@@ -464,9 +577,9 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual(first['status'],'compiled')
         archive=cache/'ca_changed.zip';old=archive.read_bytes()
         real_get=pipeline.get
-        def missing_processed(url,headers=None):
+        def missing_processed(url,headers=None,*,policy=None):
             if url==processed:raise HTTPError(url,404,'Gone',{},io.BytesIO())
-            return real_get(url,headers)
+            return real_get(url,headers,policy=policy)
         with patch.object(pipeline,'get',side_effect=missing_processed):
             current=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
         self.assertEqual(current['status'],'no_rail')
@@ -479,7 +592,7 @@ class GlobalFrequency(unittest.TestCase):
         # offline reuse even if the prior cache deletion was interrupted.
         archive.write_bytes(old)
         self.assertFalse(pipeline.valid_cached_archive(archive,meta,pipeline.source_candidates(entry)))
-        def unavailable(url,headers=None):raise HTTPError(url,503,'Unavailable',{},io.BytesIO())
+        def unavailable(url,headers=None,*,policy=None):raise HTTPError(url,503,'Unavailable',{},io.BytesIO())
         with patch.object(pipeline,'get',side_effect=unavailable):
             with self.assertRaises(pipeline.SourceRetrievalError):
                 pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
@@ -564,6 +677,225 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual(feed['unmapped_segments'][0]['profiles']['am']['display_tph'],.5)
         self.assertIn('time budget',feed['source']['geometry_audit']['reason'])
         self.assertEqual(len(feed['unmapped_stops']),2)
+
+
+class PublicAcquisition(unittest.TestCase):
+    """Run the real HTTP client against fake sockets; there is no real egress."""
+    def setUp(self):
+        self.responses = []
+        self.sockets = []
+        self.dns_calls = []
+        owner = self
+        class FakeSocket:
+            def __init__(self, *args):
+                self.sent = b''
+                self.closed = False
+                owner.sockets.append(self)
+            def settimeout(self, value): self.timeout = value
+            def setsockopt(self, *args): pass
+            def connect(self, address): self.address = address
+            def getpeername(self): return self.address
+            def sendall(self, value): self.sent += value
+            def makefile(self, *args):
+                if not owner.responses:
+                    raise AssertionError('Unexpected HTTP request')
+                return io.BytesIO(owner.responses.pop(0))
+            def close(self): self.closed = True
+        self.socket_type = FakeSocket
+        self.socket_factory = self.enterContext(patch.object(pipeline.socket, 'socket', side_effect=FakeSocket))
+        self.resolver = self.enterContext(patch.object(pipeline.socket, 'getaddrinfo', side_effect=self.public_dns))
+        self.sleep = self.enterContext(patch.object(pipeline.time, 'sleep'))
+
+    def public_dns(self, host, port, **kwargs):
+        self.dns_calls.append((host, port))
+        return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, '', ('93.184.216.34', port))]
+
+    def response(self, code=200, headers=None, data=b'feed'):
+        fields = {'Content-Length': str(len(data)), **(headers or {})}
+        self.responses.append((f'HTTP/1.1 {code} Fixture\r\n' +
+                               ''.join(f'{key}: {value}\r\n' for key, value in fields.items()) +
+                               '\r\n').encode() + data)
+
+    def test_literal_special_use_targets_are_blocked_before_dns_or_connect(self):
+        addresses = ['0.0.0.0', '10.0.0.1', '100.64.0.1', '127.0.0.1',
+                     '169.254.169.254', '172.16.0.1', '192.168.1.1', '192.0.0.8',
+                     '192.0.2.1', '192.88.99.1', '198.18.0.1', '224.0.0.1', '255.255.255.255',
+                     '[::]', '[::1]', '[fc00::1]', '[fe80::1]', '[fec0::1]', '[ff02::1]',
+                     '[::ffff:127.0.0.1]', '[::ffff:8.8.8.8]', '[64:ff9b::a00:1]',
+                     '[2002:7f00:1::]', '[2001::1]', '[2001:20::1]', '[2001:db8::1]', '[3fff::1]']
+        for address in addresses:
+            with self.subTest(address=address), self.assertRaises(pipeline.UnsafeSourceURL):
+                pipeline.get('http://' + address + '/feed.zip')
+        self.resolver.assert_not_called()
+        self.socket_factory.assert_not_called()
+        self.sleep.assert_not_called()
+
+    def test_non_http_credentials_malformed_urls_and_policy_domains_never_resolve(self):
+        urls = ['file:///tmp/feed.zip', 'ftp://operator.example/feed.zip', 'http:///feed.zip',
+                'http://name:password@operator.example/feed.zip', 'http://operator.example:0/x',
+                'http://operator.example:65536/x', 'http://operator.example:/x',
+                'http://[fe80::1%25eth0]/x', 'http://operator.example\\@127.0.0.1/x',
+                'http://operator.example/\nfeed.zip', ' http://operator.example/feed.zip',
+                'http://operator.example/ feed.zip', 'https://publisher.ru/feed.zip',
+                'https://PUBLISHER.RU./feed.zip', 'https://publisher.ＲＵ/feed.zip']
+        for url in urls:
+            with self.subTest(url=url), self.assertRaises(ValueError):
+                pipeline.get(url)
+        self.resolver.assert_not_called()
+        self.socket_factory.assert_not_called()
+
+    def test_dns_private_mixed_empty_and_legacy_numeric_targets_are_blocked(self):
+        for host, addresses in [('private.example', ['10.1.2.3']),
+                                ('mixed.example', ['93.184.216.34', '127.0.0.1']),
+                                ('ipv6.example', ['fe80::1']), ('empty.example', []),
+                                ('2130706433', ['127.0.0.1']), ('127.1', ['127.0.0.1']),
+                                ('0x7f000001', ['127.0.0.1'])]:
+            answers = [(socket.AF_INET6 if ':' in value else socket.AF_INET,
+                        socket.SOCK_STREAM, socket.IPPROTO_TCP, '', (value, 80)) for value in addresses]
+            with self.subTest(host=host), patch.object(pipeline.socket, 'getaddrinfo', return_value=answers), \
+                 self.assertRaises(pipeline.UnsafeSourceURL):
+                pipeline.get('http://' + host + '/feed.zip')
+        self.socket_factory.assert_not_called()
+        self.sleep.assert_not_called()
+
+    def test_http_dns_is_pinned_and_original_host_range_and_conditions_survive(self):
+        self.response(206, {'Content-Range': 'bytes 0-3/4', 'ETag': '"one"'})
+        answers = self.public_dns('operator.example', 80)
+        # A second resolution would rebind to loopback. The transport must not do it.
+        self.resolver.side_effect = [answers, [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP,
+                                               '', ('127.0.0.1', 80))]]
+        with patch.dict('os.environ', {'http_proxy': 'http://127.0.0.1:1', 'HTTP_PROXY': 'http://127.0.0.1:1'}):
+            with pipeline.get('http://operator.example/feed.zip?version=1',
+                              {'Range': 'bytes=0-3', 'If-Range': '"one"', 'If-None-Match': '"old"'}) as response:
+                self.assertEqual(response.status, 206)
+                self.assertEqual(response.read(), b'feed')
+        self.assertEqual(self.resolver.call_count, 1)
+        self.assertEqual(self.sockets[0].address, ('93.184.216.34', 80))
+        sent = self.sockets[0].sent.lower()
+        for field in [b'get /feed.zip?version=1 http/1.1', b'host: operator.example',
+                      b'range: bytes=0-3', b'if-range: "one"', b'if-none-match: "old"']:
+            self.assertIn(field, sent)
+        self.assertTrue(self.sockets[0].closed)
+
+    def test_https_keeps_certificate_verification_and_original_sni_on_pinned_socket(self):
+        import ssl
+        self.response()
+        context = ssl.create_default_context()
+        seen = []
+        def wrap(sock, server_hostname):
+            self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+            self.assertTrue(context.check_hostname)
+            seen.append((sock.address, server_hostname))
+            return sock
+        with patch.object(context, 'wrap_socket', side_effect=wrap), \
+             patch.object(pipeline.http.client.ssl, '_create_default_https_context', return_value=context):
+            with pipeline.get('https://operator.example/feed.zip') as response:
+                self.assertEqual(response.read(), b'feed')
+        self.assertEqual(seen, [(('93.184.216.34', 443), 'operator.example')])
+        self.assertEqual(self.resolver.call_count, 1)
+
+    def test_peer_mismatch_is_rejected_before_request_bytes(self):
+        with patch.object(self.socket_type, 'getpeername', return_value=('127.0.0.1', 80)), \
+             self.assertRaises(pipeline.UnsafeSourceURL):
+            pipeline.get('http://operator.example/feed.zip')
+        self.assertEqual(len(self.sockets), 1)
+        self.assertEqual(self.sockets[0].sent, b'')
+        self.assertTrue(self.sockets[0].closed)
+        self.sleep.assert_not_called()
+
+    def test_every_redirect_hop_is_validated_before_destination_connect(self):
+        for destination in ['http://127.0.0.1/feed.zip', 'http://169.254.169.254/feed.zip',
+                            'http://[::1]/feed.zip', 'file:///tmp/feed.zip',
+                            'http://user:password@operator.example/feed.zip',
+                            'http://publisher.ru/feed.zip', 'http://denied.example/feed.zip']:
+            self.sockets.clear()
+            self.response(302, {'Location': destination})
+            def policy(url):
+                pipeline.source_policy({'denied_source_urls': ['http://denied.example/feed.zip']}, url)
+            with self.subTest(destination=destination), self.assertRaises(ValueError):
+                pipeline.get('http://operator.example/feed.zip', policy=policy)
+            self.assertEqual(len(self.sockets), 1)
+            self.assertTrue(self.sockets[0].closed)
+        self.sleep.assert_not_called()
+
+    def test_redirect_dns_rebinding_and_mixed_answers_never_create_second_socket(self):
+        self.response(302, {'Location': '/new.zip'})
+        self.resolver.side_effect = [self.public_dns('operator.example', 80),
+                                    [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP,
+                                      '', ('10.0.0.1', 80))]]
+        with self.assertRaises(pipeline.UnsafeSourceURL):
+            pipeline.get('http://operator.example/feed.zip')
+        self.assertEqual(self.resolver.call_count, 2)
+        self.assertEqual(len(self.sockets), 1)
+        self.assertTrue(self.sockets[0].closed)
+
+    def test_public_redirect_chain_preserves_range_conditions_but_not_cross_host_auth(self):
+        self.response(302, {'Location': '/next.zip'})
+        self.response(307, {'Location': 'http://cdn.example/feed.zip'})
+        self.response(206, {'Content-Range': 'bytes 0-3/4'})
+        visited = []
+        with pipeline.get('http://operator.example/feed.zip',
+                          {'Range': 'bytes=0-3', 'If-Range': '"one"', 'Authorization': 'fixture',
+                           'Cookie': 'fixture', 'Host': 'override.example'}, policy=visited.append) as response:
+            self.assertEqual(response.read(), b'feed')
+            self.assertEqual(response.url, 'http://cdn.example/feed.zip')
+        self.assertEqual(visited, ['http://operator.example/feed.zip', 'http://operator.example/next.zip',
+                                   'http://cdn.example/feed.zip'])
+        self.assertEqual([host for host, _ in self.dns_calls], ['operator.example', 'operator.example', 'cdn.example'])
+        for sock in self.sockets:
+            self.assertIn(b'Range: bytes=0-3'.lower(), sock.sent.lower())
+            self.assertIn(b'If-range: "one"'.lower(), sock.sent.lower())
+            self.assertTrue(sock.closed)
+        self.assertIn(b'Host: cdn.example', self.sockets[-1].sent)
+        self.assertNotIn(b'override.example', self.sockets[-1].sent)
+        self.assertNotIn(b'authorization:', self.sockets[-1].sent.lower())
+        self.assertNotIn(b'cookie:', self.sockets[-1].sent.lower())
+
+    def test_redirect_loop_limit_and_https_downgrade_are_bounded(self):
+        for _ in range(6):
+            self.response(302, {'Location': '/feed.zip'})
+        with self.assertRaisesRegex(pipeline.UnsafeSourceURL, 'redirects'):
+            pipeline.get('http://operator.example/feed.zip')
+        self.assertEqual(len(self.sockets), 6)
+        self.assertTrue(all(sock.closed for sock in self.sockets))
+        self.sleep.assert_not_called()
+        self.response(302, {'Location': 'http://cdn.example/feed.zip'})
+        # HTTPS factory is substituted only for this no-network redirect test.
+        with patch.object(pipeline.http.client, 'HTTPSConnection', pipeline.http.client.HTTPConnection), \
+             self.assertRaisesRegex(pipeline.UnsafeSourceURL, 'downgrades'):
+            pipeline.get('https://operator.example/feed.zip')
+        self.assertEqual(len(self.sockets), 7)
+
+    def test_304_errors_close_connections_and_non_public_attempts_are_structured(self):
+        from urllib.error import HTTPError
+        self.response(304, {'ETag': '"one"'}, b'')
+        with self.assertRaises(HTTPError) as caught:
+            pipeline.get('http://operator.example/feed.zip', {'If-None-Match': '"one"'})
+        self.assertEqual(caught.exception.code, 304)
+        caught.exception.close()
+        self.assertTrue(self.sockets[0].closed)
+        error = pipeline.UnsafeSourceURL('Non-public acquisition address')
+        attempt = pipeline.source_attempt('http://127.0.0.1/feed.zip', error)
+        self.assertEqual(attempt['code'], 'unsafe_source_url')
+        self.assertEqual(pipeline.classify_failure(pipeline.SourceRetrievalError([attempt])),
+                         ('source_retrieval_error', 'retrieval'))
+
+    def test_eligible_literals_and_ipv6_dns_answers_do_not_require_second_resolution(self):
+        for host, expected in [('93.184.216.34', ('93.184.216.34', 80)),
+                               ('[2606:4700:4700::1111]', ('2606:4700:4700::1111', 80, 0, 0))]:
+            self.response()
+            with pipeline.get('http://' + host + '/feed.zip') as response:
+                self.assertEqual(response.read(), b'feed')
+            self.assertEqual(self.sockets[-1].address, expected)
+        self.resolver.assert_not_called()
+        answer = [(socket.AF_INET6, socket.SOCK_STREAM, socket.IPPROTO_TCP, '',
+                   ('2606:4700:4700::1111', 80, 0, 0))]
+        self.response()
+        with patch.object(pipeline.socket, 'getaddrinfo', return_value=answer) as dns:
+            with pipeline.get('http://ipv6.example/feed.zip') as response:
+                self.assertEqual(response.read(), b'feed')
+            dns.assert_called_once()
+        self.assertEqual(self.sockets[-1].address, answer[0][-1])
 
 
 if __name__=='__main__':unittest.main()

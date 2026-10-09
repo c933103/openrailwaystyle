@@ -214,6 +214,7 @@ class GTFSFrequency(unittest.TestCase):
         import http.server
         import threading
         import contextlib
+        from unittest.mock import patch
         module_spec=importlib.util.spec_from_file_location('global_frequency',Path(__file__).parent.parent/'scripts/global-service-frequency.py')
         global_compiler=importlib.util.module_from_spec(module_spec);module_spec.loader.exec_module(global_compiler)
         patterns={'t':[('A','08:00:00'),('B','08:10:00')]}
@@ -240,9 +241,36 @@ class GTFSFrequency(unittest.TestCase):
                     return {'id':ident,'name':ident,'country':'FI','status':'pending','processed_url':url+'/'+ident+'.zip',
                             'catalogue':{'source':url,'spdx_license_identifier':'CC0-1.0'}}
                 args=(cache,output,'2026-10-05',None,1_000_000,CONFIG['profiles'])
-                with self.assertRaisesRegex(RuntimeError,'retained stop-row budget'):
-                    global_compiler.compile_entry_isolated(entry('bad'),*args,max_seconds=10,max_memory_bytes=256*1024*1024)
-                result=global_compiler.compile_entry_isolated(entry('good'),*args,max_seconds=10,max_memory_bytes=256*1024*1024)
+                # Production's unchanged subprocess entry must reject catalogue
+                # loopback even when that catalogue asks for fixture access.
+                untrusted = {**entry('good'), 'allow_private': True, 'test_mode': True}
+                with self.assertRaises(global_compiler.SourceRetrievalError) as denied:
+                    global_compiler.compile_entry_isolated(untrusted,*args,max_seconds=10,max_memory_bytes=256*1024*1024)
+                self.assertEqual({item['code'] for item in denied.exception.attempts}, {'unsafe_source_url'})
+                # Bootstrap belongs only to this test. Retain a real child process,
+                # the real compile_one path, and its memory/time limits; inject only
+                # this server's exact port, never an environment/catalogue opt-in.
+                run = global_compiler.subprocess.run
+                bootstrap = """
+import importlib.util, socket, sys
+spec = importlib.util.spec_from_file_location('fixture_compiler', sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+def fixture_addresses(host, port):
+    if host != '127.0.0.1' or port != int(sys.argv[4]):
+        raise AssertionError('Unexpected network destination in offline child fixture')
+    return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, (host, port))]
+module.resolve_public_addresses = fixture_addresses
+sys.exit(module.compile_one(sys.argv[2], sys.argv[3]))
+"""
+                def fixture_child(command, **kwargs):
+                    self.assertEqual(command[2], '--compile-one')
+                    return run([command[0], '-c', bootstrap, command[1], command[3], command[4],
+                                str(server.server_port)], **kwargs)
+                with patch.object(global_compiler.subprocess, 'run', side_effect=fixture_child):
+                    with self.assertRaisesRegex(RuntimeError,'retained stop-row budget'):
+                        global_compiler.compile_entry_isolated(entry('bad'),*args,max_seconds=10,max_memory_bytes=256*1024*1024)
+                    result=global_compiler.compile_entry_isolated(entry('good'),*args,max_seconds=10,max_memory_bytes=256*1024*1024)
                 self.assertEqual(result['status'],'compiled')
                 self.assertTrue((output/result['output']).exists())
         finally:

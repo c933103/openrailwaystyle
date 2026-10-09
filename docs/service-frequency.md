@@ -65,6 +65,11 @@ operator**. HTTP 408/429/5xx and transient network failures receive bounded
 retries; after failure of a Transitous processed URL, the compiler tries
 published original source links from reconciled catalogue lineage. Successful
 fallback records the original download URL and prior endpoint errors.
+Every acquisition candidate and redirect must satisfy the project's provider
+and exact-source reviewed-use rules. Downloads require public HTTP(S)
+destinations, retain verified HTTPS host identity, and preserve normal range
+and conditional-cache semantics. Local HTTP fixtures use an in-process test
+injection; catalogue metadata and production CLI settings cannot enable it.
 Retried sources retain their unsuccessful attempts and a recommended next
 action; subsequent scheduled runs try them again. If every remote source is
 unavailable but a locally cached ZIP was **successfully retrieved/checked
@@ -134,8 +139,8 @@ Production retains eight deterministic compile shards with 180-minute job
 ceilings. Per-feed limits remain 600 MB downloaded, 3 GB process address space,
 600 seconds for geometry compilation plus a 600-second stop-pair fallback, and
 a 1,500-second outer subprocess deadline. Each source has at most eight
-candidate URLs; each HTTP operation has at most three attempts with a 45-second
-timeout. Retry-After waits above eight seconds defer that retrieval rather than
+candidate URLs; each HTTP operation has at most three attempts with 45-second
+connection/read timeouts. Retry-After waits above eight seconds defer that retrieval rather than
 sleeping in the worker. Assembly retains its 90-minute job ceiling, 5.5 GB Node
 heap and complete-inventory checks. The public release contains only the
 aggregate manifest, inventory and tiles, not per-feed derived archives.

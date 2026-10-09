@@ -14,19 +14,22 @@ import gzip
 import hashlib
 import importlib.util
 import io
+import http.client
+import ipaddress
 import json
 from functools import lru_cache
 from pathlib import Path
 import re
 import signal
+import socket
 import struct
 import subprocess
 import sys
 import tempfile
 import time
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlparse
-from urllib.request import Request, urlopen
+from urllib.parse import quote, urljoin, urlparse
+from urllib.request import Request
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -68,8 +71,11 @@ def blocked(row):
         return 'excluded provider jurisdiction'
     publisher = row.get('publisher') or {}
     for value in [row.get('source') or '', publisher.get('url', '') if isinstance(publisher, dict) else '']:
-        host = (urlparse(value).hostname or '').lower()
-        if any(host.endswith('.'+code.lower()) for code in EXCLUDED):
+        try:
+            host = (urlparse(value).hostname or '').encode('idna').decode('ascii').rstrip('.').lower()
+        except (ValueError, UnicodeError):
+            continue
+        if any(host == code.lower() or host.endswith('.'+code.lower()) for code in EXCLUDED):
             return 'excluded provider domain'
     return None
 
@@ -77,6 +83,18 @@ def blocked(row):
 def discover(rows, rules):
     """Inventory each normalized feed; unknown catalogue rights are not denials."""
     out, seen = [], set()
+    # Rules belong to the trusted local configuration, never catalogue lineage.
+    # Index by exact source URL so a reconciled alias cannot evade its review.
+    denied_sources = set()
+    reviewed_denials = {}
+    for rule in rules.get('sources', {}).values():
+        evidence = registry.licence_evidence(rule, 'source-specific-reviewed-rule',
+                                             'styles/data-src/frequency-source-rules.json')
+        if (rule.get('expected_source') and evidence
+                and registry.usage_rights({'rights_evidence': [evidence]})['prohibitions']):
+            denied_sources.add(rule['expected_source'])
+            reviewed_denials.setdefault(acquisition_url_key(rule['expected_source']), []).append(evidence)
+    denied_sources = sorted(denied_sources)
     for original in rows:
         row = dict(original)
         rule = rules.get('sources', {}).get(row.get('filename'), {})
@@ -86,6 +104,13 @@ def discover(rows, rules):
                                                   'styles/data-src/frequency-source-rules.json')
             if evidence:
                 row['rights_evidence'] = list(row.get('rights_evidence') or []) + [evidence]
+        # The same source may have another catalogue filename. A known ban on
+        # that primary source also covers its processed copy, not just the
+        # direct endpoint removed from the fallback candidate list.
+        if isinstance(row.get('source'), str):
+            for evidence in reviewed_denials.get(acquisition_url_key(row['source']), []):
+                if evidence not in (row.get('rights_evidence') or []):
+                    row['rights_evidence'] = list(row.get('rights_evidence') or []) + [evidence]
         try:
             ident = source_id(row)
         except ValueError:
@@ -107,7 +132,7 @@ def discover(rows, rules):
         out.append({'id': ident, 'status': status, 'reason': reason,
                     'reason_code': reason_code, 'retry_eligible': status == 'retry_pending',
                     'failure_stage': 'discovery' if reason_code == 'missing_source_url' else '',
-                    'terms': rights,
+                    'terms': rights, 'denied_source_urls': denied_sources,
                     'country': row.get('country_code', ''),
                     'name': row.get('human_name', ident), 'catalogue': row,
                     'processed_url': (row.get('source', '') if row.get('delivery') == 'direct'
@@ -134,12 +159,202 @@ def retry_after_delay(value, now=None):
         return None
 
 
-def get(url, headers=None):
+class UnsafeSourceURL(ValueError):
+    """An acquisition target does not meet the public HTTP(S) boundary."""
+
+
+class SourcePolicyError(ValueError):
+    """A particular endpoint is prohibited by an existing source rule."""
+
+
+def source_policy(entry, url):
+    if blocked({'source': url}):
+        raise SourcePolicyError('excluded provider domain')
+    key = acquisition_url_key(url)
+    if any(key == acquisition_url_key(denied) for denied in entry.get('denied_source_urls', [])):
+        raise SourcePolicyError('source terms explicitly forbid end-user timetable-frequency use')
+
+
+def parse_acquisition_url(url):
+    """Reject ambiguous authorities before DNS, connection or redirect handling."""
+    if not isinstance(url, str) or any(ord(c) < 33 or ord(c) == 127 for c in url) or '\\' in url:
+        raise UnsafeSourceURL('Invalid acquisition URL')
+    try:
+        parsed = urlparse(url)
+        if (parsed.scheme not in ('http', 'https') or not parsed.hostname
+                or parsed.username is not None or parsed.password is not None
+                or '%' in parsed.hostname):
+            raise ValueError()
+        host = parsed.hostname.encode('idna').decode('ascii').rstrip('.').lower()
+        port = parsed.port if parsed.port is not None else (443 if parsed.scheme == 'https' else 80)
+        if not host or not 1 <= port <= 65535 or parsed.netloc.endswith(':'):
+            raise ValueError()
+    except (ValueError, UnicodeError):
+        raise UnsafeSourceURL('Expected a public HTTP(S) URL without credentials') from None
+    if blocked({'source': url}):
+        raise SourcePolicyError('excluded provider domain')
+    return parsed, host, port
+
+
+def acquisition_url_key(url):
+    """Compare an exact HTTP resource without fragment/authority spelling aliases."""
+    try:
+        parsed, host, port = parse_acquisition_url(url)
+    except ValueError:
+        return ('invalid', url)
+    return parsed.scheme, host, port, parsed.path or '/', parsed.params, parsed.query
+
+
+def public_address(value):
+    """Fail closed on special-use and address-translation destinations."""
+    try:
+        address = ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    if (not address.is_global or address.is_multicast or address.is_reserved
+            or address.is_unspecified or address.is_loopback or address.is_link_local):
+        return False
+    if isinstance(address, ipaddress.IPv6Address):
+        if (address not in ipaddress.ip_network('2000::/3')
+                or address in ipaddress.ip_network('2001::/23')
+                or address in ipaddress.ip_network('3fff::/20')
+                or address.ipv4_mapped or address.sixtofour or address.teredo
+                or address.is_site_local
+                or address in ipaddress.ip_network('64:ff9b::/96')
+                or address in ipaddress.ip_network('64:ff9b:1::/48')):
+            return False
+    # Keep the boundary conservative on older Python special-use registries.
+    elif address in ipaddress.ip_network('192.0.0.0/24') or address in ipaddress.ip_network('192.88.99.0/24'):
+        return False
+    return True
+
+
+def resolve_public_addresses(host, port):
+    """Resolve once and reject the whole answer if any destination is non-public.
+
+    Tests may inject a resolver restricted to their own loopback fixture ports.
+    No catalogue field, CLI option or environment setting enables that seam.
+    """
+    try:
+        literal = ipaddress.ip_address(host)
+    except ValueError:
+        literal = None
+    if literal is not None:
+        if not public_address(host):
+            raise UnsafeSourceURL('Non-public acquisition address')
+        family = socket.AF_INET6 if literal.version == 6 else socket.AF_INET
+        answers = [(family, socket.SOCK_STREAM, socket.IPPROTO_TCP, '',
+                    (host, port, 0, 0) if literal.version == 6 else (host, port))]
+    else:
+        try:
+            answers = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
+        except OSError as error:
+            raise URLError(error) from error
+    if not answers or any(family not in (socket.AF_INET, socket.AF_INET6)
+                          or not public_address(address[0])
+                          for family, _, _, _, address in answers):
+        raise UnsafeSourceURL('DNS includes a non-public acquisition address')
+    return list(dict.fromkeys((family, kind, protocol, address)
+                             for family, kind, protocol, _, address in answers))
+
+
+def connect_pinned(addresses, timeout):
+    """Connect numeric sockaddrs directly: never let HTTP/TLS resolve again."""
+    last_error = None
+    for family, kind, protocol, address in addresses:
+        sock = socket.socket(family, kind, protocol)
+        try:
+            sock.settimeout(timeout)
+            sock.connect(address)
+            if ipaddress.ip_address(sock.getpeername()[0]) != ipaddress.ip_address(address[0]):
+                raise UnsafeSourceURL('Connected peer differs from the validated destination')
+            return sock
+        except (OSError, ValueError) as error:
+            sock.close()
+            if isinstance(error, UnsafeSourceURL):
+                raise
+            last_error = error
+    raise URLError(last_error or 'No acquisition addresses')
+
+
+class AcquiredResponse:
+    """Own both the HTTP response and connection, including errors/range exits."""
+    def __init__(self, response, connection, url):
+        self.response, self.connection, self.url = response, connection, url
+
+    def __getattr__(self, name):
+        return getattr(self.response, name)
+
+    def close(self):
+        try:
+            self.response.close()
+        finally:
+            self.connection.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
+
+
+def urlopen(request, timeout=45, *, policy=None):
+    """Public-only HTTP transport with pinned DNS, TLS identity and checked hops.
+
+    Ignore environment proxies and implicit urllib auth/redirect handlers.
+    HTTPS still verifies certificates/SNI against the original hostname.
+    """
+    url, headers = request.full_url, dict(request.header_items())
+    for hop in range(6):
+        parsed, host, port = parse_acquisition_url(url)
+        if policy:
+            policy(url)
+        addresses = resolve_public_addresses(host, port)
+        connection_type = http.client.HTTPSConnection if parsed.scheme == 'https' else http.client.HTTPConnection
+        connection = connection_type(host, port, timeout=timeout)
+        connection._create_connection = lambda *args, **kwargs: connect_pinned(addresses, timeout)
+        # Host is generated by http.client from the validated authority.
+        headers = {key: value for key, value in headers.items() if key.lower() not in ('host', 'proxy-authorization')}
+        try:
+            path = parsed.path or '/'
+            if parsed.params:
+                path += ';' + parsed.params
+            if parsed.query:
+                path += '?' + parsed.query
+            connection.request('GET', path, headers={**headers, 'Connection': 'close'})
+            response = AcquiredResponse(connection.getresponse(), connection, url)
+        except Exception:
+            connection.close()
+            raise
+        if response.status in (301, 302, 303, 307, 308):
+            location = response.headers.get('Location')
+            response.close()
+            if not location or hop == 5:
+                raise UnsafeSourceURL('Missing or excessive acquisition redirects')
+            # Validate raw Location before urljoin can discard control characters.
+            if any(ord(c) < 33 or ord(c) == 127 for c in location) or '\\' in location:
+                raise UnsafeSourceURL('Invalid acquisition redirect')
+            destination = urljoin(url, location)
+            next_parsed, next_host, next_port = parse_acquisition_url(destination)
+            if parsed.scheme == 'https' and next_parsed.scheme != 'https':
+                raise UnsafeSourceURL('Acquisition redirect downgrades HTTPS')
+            if (parsed.scheme, host, port) != (next_parsed.scheme, next_host, next_port):
+                headers = {key: value for key, value in headers.items()
+                           if key.lower() not in ('authorization', 'cookie')}
+            url = destination
+            continue
+        if not 200 <= response.status < 300:
+            raise HTTPError(url, response.status, response.reason, response.headers, response)
+        return response
+
+
+def get(url, headers=None, *, policy=None):
     """Bounded retry for transport outages; never loop on permanent HTTP 404."""
+    parse_acquisition_url(url)
     request = Request(url, headers={'User-Agent': 'RailwayAtlas-frequency/1.0 (+https://github.com/c933103/openrailwaystyle)', **(headers or {})})
     for attempt in range(3):
         try:
-            return urlopen(request, timeout=45)
+            return urlopen(request, timeout=45, policy=policy)
         except HTTPError as error:
             if error.code not in RETRYABLE_HTTP or attempt == 2:
                 raise
@@ -150,7 +365,7 @@ def get(url, headers=None):
                 raise
             error.close()
             time.sleep(float(2 ** attempt) if delay is None else delay)
-        except (URLError, TimeoutError, ConnectionError):
+        except (URLError, TimeoutError, ConnectionError, http.client.HTTPException):
             if attempt == 2:
                 raise
             time.sleep(float(2 ** attempt))
@@ -159,6 +374,8 @@ def get(url, headers=None):
 def source_candidates(entry):
     """Distinct public source endpoints, processed first, originals as fallback."""
     row = entry.get('catalogue') or {}
+    if blocked(row) or (entry.get('terms') or registry.usage_rights(row))['prohibitions']:
+        return []
     values = [entry.get('processed_url'), row.get('source')]
     values.extend(x.get('source') for x in row.get('lineage', []) if isinstance(x, dict))
     urls, seen = [], set()
@@ -166,10 +383,9 @@ def source_candidates(entry):
         if not isinstance(url, str) or url in seen:
             continue
         try:
-            parsed = urlparse(url)
+            parse_acquisition_url(url)
+            source_policy(entry, url)
         except ValueError:
-            continue
-        if parsed.scheme not in ('http', 'https') or not parsed.hostname:
             continue
         seen.add(url)
         urls.append(url)
@@ -187,10 +403,14 @@ class SourceRetrievalError(RuntimeError):
 def source_attempt(url, error):
     """Structured evidence of a particular endpoint failing, not feed exclusion."""
     code = 'other_source_error'
-    if isinstance(error, HTTPError):
+    if isinstance(error, SourcePolicyError):
+        code = 'source_policy'
+    elif isinstance(error, UnsafeSourceURL):
+        code = 'unsafe_source_url'
+    elif isinstance(error, HTTPError):
         code = 'http_' + str(error.code)
         error.close()
-    elif isinstance(error, (URLError, TimeoutError, ConnectionError)):
+    elif isinstance(error, (URLError, TimeoutError, ConnectionError, http.client.HTTPException)):
         code = 'connection_error'
     elif isinstance(error, zipfile.BadZipFile):
         code = 'invalid_zip'
@@ -231,7 +451,7 @@ def fetch_alternative(entry, path, max_bytes, skip=()):
         if url in skip:
             continue
         try:
-            remote = RemoteZip(url, max_bytes)
+            remote = RemoteZip(url, max_bytes, policy=lambda target: source_policy(entry, target))
             # Keep the cheap preflight: bus-only GTFS must not download its
             # entire stop_times/shapes archive or consume a compile slot.
             import csv
@@ -253,7 +473,7 @@ def fetch_alternative(entry, path, max_bytes, skip=()):
                 'etag': remote.etag, 'last_modified': remote.last_modified,
                 'download_url': url, 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()
             }, attempts
-        except (HTTPError, URLError, TimeoutError, ConnectionError, OSError, ValueError, zipfile.BadZipFile) as error:
+        except (HTTPError, URLError, TimeoutError, ConnectionError, OSError, ValueError, zipfile.BadZipFile, http.client.HTTPException) as error:
             attempts.append(source_attempt(url, error))
     raise SourceRetrievalError(attempts or [{'url': '', 'code': 'missing_source_url', 'message': 'No suitable published GTFS source URL'}])
 
@@ -265,10 +485,10 @@ class RemoteZip:
     identity validator prevents joining byte ranges from different revisions.
     ZIP64 is supported by the full-download fallback, not guessed offsets.
     """
-    def __init__(self, url, max_bytes):
-        self.url, self.max_bytes = url, max_bytes
+    def __init__(self, url, max_bytes, *, policy=None):
+        self.url, self.max_bytes, self.policy = url, max_bytes, policy
         self.full, self.identity = None, None
-        with get(url, {'Range': 'bytes=-65557'}) as response:
+        with get(url, {'Range': 'bytes=-65557'}, policy=self.policy) as response:
             self.etag=response.headers.get('ETag')
             self.last_modified=response.headers.get('Last-Modified')
             self.identity = self.etag or self.last_modified
@@ -323,7 +543,7 @@ class RemoteZip:
         headers = {'Range': f'bytes={begin}-{end}'}
         if self.range_validator:
             headers['If-Range'] = self.range_validator
-        with get(self.url, headers) as response:
+        with get(self.url, headers, policy=self.policy) as response:
             if response.status != 206:
                 raise ValueError('Feed changed during range reads, or ranges unavailable')
             identity = response.headers.get('ETag') or response.headers.get('Last-Modified')
@@ -372,7 +592,7 @@ class RemoteZip:
 
     def download(self):
         if self.full is None:
-            with get(self.url) as response:
+            with get(self.url, policy=self.policy) as response:
                 identity = response.headers.get('ETag') or response.headers.get('Last-Modified')
                 if self.identity and identity != self.identity:
                     raise ValueError('Feed changed during full download')
@@ -412,7 +632,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
     cached_url = meta.get('download_url') or entry.get('processed_url')
     if path.exists() and headers and cached_url in source_candidates(entry):
         try:
-            with get(cached_url, headers) as response:
+            with get(cached_url, headers, policy=lambda target: source_policy(entry, target)) as response:
                 data = RemoteZip.read_bounded(type('Budget', (), {'max_bytes': max_bytes})(), response)
                 # Never replace a previously usable ZIP with an error page or
                 # malformed archive returned as HTTP 200.
@@ -435,7 +655,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
             else:
                 attempted.add(cached_url)
                 attempts.append(source_attempt(cached_url, error))
-        except (URLError, TimeoutError, ConnectionError, OSError, ValueError, zipfile.BadZipFile) as error:
+        except (URLError, TimeoutError, ConnectionError, OSError, ValueError, zipfile.BadZipFile, http.client.HTTPException) as error:
             attempted.add(cached_url)
             attempts.append(source_attempt(cached_url, error))
     if not fresh:
@@ -444,7 +664,10 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
             attempts.extend(more_attempts)
         except SourceRetrievalError as error:
             attempts.extend(error.attempts)
-            if valid_cached_archive(path, meta, source_candidates(entry)):
+            safe_cache_urls = [url for url in source_candidates(entry)
+                               if not any(item['url'] == url and item['code'] in ('source_policy', 'unsafe_source_url')
+                                          for item in attempts)]
+            if valid_cached_archive(path, meta, safe_cache_urls):
                 # Continue compiling using the last successfully retrieved
                 # ZIP. Never advance its 'checked' or 'retrieved' timestamps.
                 meta['offline_cached'] = True
@@ -473,7 +696,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
         (output/'feeds'/(ident+'.json.gz')).unlink(missing_ok=True)
         return {**entry, 'status': 'no_rail', 'rail_routes': 0}
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    signature=hashlib.sha256(json.dumps({'catalogue':row,'profiles':profiles,
+    signature=hashlib.sha256(json.dumps({'catalogue':row,'profiles':profiles,'denied_source_urls':entry.get('denied_source_urls', []),
         'graph':file_hash(str(graph)) if graph else None,
         'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['global-service-frequency.py','frequency_catalogue.py','gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()
     destination = output/'feeds'/(ident+'.json.gz')
