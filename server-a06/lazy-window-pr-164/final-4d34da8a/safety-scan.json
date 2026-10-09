@@ -1,0 +1,27 @@
+{
+  "status": "passed",
+  "scope": "PR164 accepted-head CI/review gate receipt and exact successful public platform job log only. No screenshot archive, input/output working data, benchmarks, runtime/dependencies or private tool metadata.",
+  "original_access_values_screened_count": 11,
+  "files_scanned": 2,
+  "scanned_uncompressed_or_plaintext_bytes": 46919,
+  "metadata_URLs_checked": 61,
+  "checks": [
+    "Known original access-like values searched without recording values",
+    "All UTF-8 text URLs checked for user-info and signed/access-like query parameters; JSON/JSONL also checked for nonempty authentication-like fields",
+    "All outputs are represented by exact identity manifests only; no working output or input archive copies are included",
+    "No node_modules, working source/output copies, private security draft or approval/tool metadata in scoped publication"
+  ],
+  "findings": [],
+  "files": [
+    {
+      "path": "final-gates.json",
+      "bytes": 2372,
+      "sha256": "7af086af726ee4331db01b427e3ff8eae797f004e0a2ddeedfbfc206f14bbcd4"
+    },
+    {
+      "path": "platform-success.raw.log",
+      "bytes": 44547,
+      "sha256": "c10b28ed335a82cb72bbb0de98f84fa5d752045eb6214cdf8e39396319cb26ae"
+    }
+  ]
+}

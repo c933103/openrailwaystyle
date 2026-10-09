@@ -1,0 +1,21 @@
+{
+  "scope": "Final PR164 review and CI gates; accepted tree identity; successful platform log",
+  "files_excluding_self": 3,
+  "files": [
+    {
+      "path": "final-gates.json",
+      "bytes": 2372,
+      "sha256": "7af086af726ee4331db01b427e3ff8eae797f004e0a2ddeedfbfc206f14bbcd4"
+    },
+    {
+      "path": "platform-success.raw.log",
+      "bytes": 44547,
+      "sha256": "c10b28ed335a82cb72bbb0de98f84fa5d752045eb6214cdf8e39396319cb26ae"
+    },
+    {
+      "path": "safety-scan.json",
+      "bytes": 1236,
+      "sha256": "3f067b7935a39247e58334cba13cfe128b82249269a623e15468bf987e2f3f74"
+    }
+  ]
+}

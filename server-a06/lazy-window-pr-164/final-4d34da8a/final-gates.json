@@ -1,0 +1,54 @@
+{
+  "verified_utc": "2026-10-09T07:38:10.954Z",
+  "pr": 164,
+  "pr_url": "https://github.com/c933103/openrailwaystyle/pull/164",
+  "head": "4d34da8a3d06e83b7c979bd882c4725d3cebbd7a",
+  "base": "6c5fbb21ed86b0437f1bf2d6caca8819781e67f2",
+  "changed_files": 2,
+  "draft": false,
+  "mergeable": null,
+  "mergeable_state": "unknown",
+  "merged_at_readback": true,
+  "merge_commit_sha": "2875a0744912633f35cd6faba25e3260dae09d89",
+  "workflows": [
+    {
+      "id": 37898693045,
+      "name": "Validate and deploy world railway map",
+      "head_sha": "4d34da8a3d06e83b7c979bd882c4725d3cebbd7a",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/37898693045"
+    },
+    {
+      "id": 37898692653,
+      "name": "Build worldwide service frequencies",
+      "head_sha": "4d34da8a3d06e83b7c979bd882c4725d3cebbd7a",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/c933103/openrailwaystyle/actions/runs/37898692653"
+    }
+  ],
+  "code_review": {
+    "status": "completed",
+    "completed_at": "2026-10-09T07:35:47.879921Z",
+    "head": "4d34da8a3d06e83b7c979bd882c4725d3cebbd7a",
+    "explicit_no_major_issues_comment": "https://github.com/c933103/openrailwaystyle/pull/164#issuecomment-6076444498"
+  },
+  "security_review": {
+    "status": "completed",
+    "completed_at": "2026-10-09T07:36:46.821113Z",
+    "head": "4d34da8a3d06e83b7c979bd882c4725d3cebbd7a",
+    "summary": "https://github.com/c933103/openrailwaystyle/pull/164#issuecomment-6076213276",
+    "finding_observation": "No findings reported in issue or inline comments at readback; formal reviews endpoint was empty."
+  },
+  "runtime": "Node22.23.3",
+  "local_tests": 848,
+  "frozen_output_matches": 117,
+  "prior_timeout": "Retained. Current integrated-head platform job113716985162 passes desktop and mobile packaged CJK-font checks; cause of earlier timeout is not established.",
+  "benchmark": "Unchanged earlier base802062b5 cohort; no new performance sample or general capacity claim.",
+  "original_recovery": "57/83;26missing",
+  "accepted_merge_commit": "2875a0744912633f35cd6faba25e3260dae09d89",
+  "accepted_tree": "022a4b8cdc6d42ecb96da5969fe27217e4932fde",
+  "accepted_tree_matches_reviewed_tested_tree": true,
+  "accepted_tree_verified_utc": "2026-10-09T07:39:56.192766+00:00"
+}
