@@ -33,7 +33,7 @@ test('deployment fixture mode leaves deployed first-party style and data untouch
   assert.equal(client.result.continued,true,'the published PMTiles client must come from its first-party URL');
   assert.equal(client.result.fulfilled,undefined,'even an explicitly supplied checkout asset must not replace deployed JavaScript');
   assert.equal(context.state.initScripts,0,'deployment must not replace the deployed PMTiles client/data path');
-  for(const path of ['app.mjs','world.style.json','vendor/maplibre-gl-5.24.0.js','vendor/maplibre-gl-5.24.0.css','data/manifest.json','data/example.pmtiles','major-stations.geojson']){
+  for(const path of ['app.mjs','world.style.json','vendor/maplibre-gl-5.24.0-atlas.1.js','vendor/maplibre-gl-5.24.0.css','data/manifest.json','data/example.pmtiles','major-stations.geojson']){
     const {route,result}=fakeRoute(base+path);await context.state.handler(route);
     assert.equal(result.continued,true,path+' must come from the deployed site');
     assert.equal(result.fulfilled,undefined,path+' must not be fulfilled from checkout fixtures');

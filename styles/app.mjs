@@ -1,22 +1,22 @@
-import {installControlLayout, rememberAttribution, installPwaInstall} from './map-controls.mjs?v=20261009-ios-install-5';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261009-ios-install-5';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261009-ios-install-5';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261009-ios-install-5';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261009-ios-install-5';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261009-ios-install-5';
+import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261009-maplibre-attribution-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261009-maplibre-attribution-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261009-maplibre-attribution-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261009-maplibre-attribution-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261009-maplibre-attribution-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261009-maplibre-attribution-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261009-ios-install-5';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261009-ios-install-5';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261009-ios-install-5';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261009-ios-install-5';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261009-ios-install-5';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261009-ios-install-5';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261009-ios-install-5';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261009-ios-install-5';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261009-ios-install-5';
-import { installWatchGesture } from './watch-map.mjs?v=20261009-ios-install-5';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261009-ios-install-5';
-import { createBundleReader } from './tile-bundles.mjs?v=20261009-ios-install-5';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261009-maplibre-attribution-1';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261009-maplibre-attribution-1';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261009-maplibre-attribution-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261009-maplibre-attribution-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261009-maplibre-attribution-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261009-maplibre-attribution-1';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261009-maplibre-attribution-1';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261009-maplibre-attribution-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261009-maplibre-attribution-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261009-maplibre-attribution-1';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261009-maplibre-attribution-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261009-maplibre-attribution-1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -53,19 +53,19 @@ let platformLengths,frequencyExpiry;
 let powerFacilities;
 let railRecovery, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261009-ios-install-5';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261009-maplibre-attribution-1';
 // An old active worker can save this new page before its replacement has
-// installed. If that update is interrupted, only the old CDN copies may be
-// available offline. Read those exact saved responses without contacting the
+// installed. If that update is interrupted, only old first-party/CDN copies
+// may be available offline. Read exact saved responses without contacting the
 // CDN; first visits and successful upgrades use the first-party files below.
 async function cachedLegacyLibrary(name) {
   // Match scripts/browser-libraries.mjs. Cache Storage is not a trusted source
   // of executable bytes: verify each pinned distribution before using it as
   // a same-origin blob or stylesheet, and fail closed without Web Crypto.
   const library = {
-    'maplibre-js': {url: 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js', sha256: '45a9b07a9189ce56054c620a947ccf41e291e58c95e9b61533b740aaa65ee5cb'},
-    'maplibre-css': {url: 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css', sha256: 'ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732'},
-    'pmtiles-js': {url: 'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js', sha256: 'afc49d216fd24c0a3c0ff3cd2e0c62d6cdaf062854c3dced778dcab168824f79'},
+    'maplibre-js': {local: 'vendor/maplibre-gl-5.24.0.js', url: 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js', sha256: '45a9b07a9189ce56054c620a947ccf41e291e58c95e9b61533b740aaa65ee5cb'},
+    'maplibre-css': {local: 'vendor/maplibre-gl-5.24.0.css', url: 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css', sha256: 'ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732'},
+    'pmtiles-js': {local: 'vendor/pmtiles-4.2.1.js', url: 'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js', sha256: 'afc49d216fd24c0a3c0ff3cd2e0c62d6cdaf062854c3dced778dcab168824f79'},
   }[name];
   if (!library || !window.caches || !window.crypto?.subtle) return null;
   try {
@@ -74,13 +74,24 @@ async function cachedLegacyLibrary(name) {
     for (const key of names) {
       const cache = await window.caches.open(key);
       if (!await cache.match(new URL('./', import.meta.url).href)) continue;
-      const response = await cache.match(library.url);
-      if (!response?.ok || response.type === 'opaque') continue;
-      const type = (response.headers.get('content-type') || '').split(';')[0].trim();
-      if (!(name.endsWith('-css') ? /^text\/css$/i.test(type) : /^(?:text|application)\/(?:x-)?(?:java|ecma)script$/i.test(type))) continue;
-      const digest = await window.crypto.subtle.digest('SHA-256', await response.clone().arrayBuffer());
-      const sha256 = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
-      if (sha256 === library.sha256) return response;
+      const urls = [...(name === 'maplibre-js' ? [new URL(MAPLIBRE_BACKPORT.target, import.meta.url).href] : []),
+        new URL(library.local, import.meta.url).href, library.url];
+      for (const url of urls) {
+        const response = await cache.match(url);
+        if (!response?.ok || response.type === 'opaque') continue;
+        const type = (response.headers.get('content-type') || '').split(';')[0].trim();
+        if (!(name.endsWith('-css') ? /^text\/css$/i.test(type) : /^(?:text|application)\/(?:x-)?(?:java|ecma)script$/i.test(type))) continue;
+        const digest = await window.crypto.subtle.digest('SHA-256', await response.clone().arrayBuffer());
+        const sha256 = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+        if (name === 'maplibre-js' && sha256 === MAPLIBRE_BACKPORT.sha256) return response;
+        if (sha256 !== library.sha256) continue;
+        if (name === 'maplibre-js') {
+          // Never execute the old distribution, even when its hash is genuine.
+          const patched = await backportMapLibre524(await response.arrayBuffer(), window.crypto.subtle);
+          return new Response(patched, {headers: {'content-type': 'text/javascript'}});
+        }
+        return response;
+      }
     }
   } catch {}
   return null;
@@ -125,7 +136,7 @@ function restoreCachedMapStyle() {
 $('maplibre-css')?.addEventListener('error', () => restoreCachedMapStyle().catch(() => {}), {once: true});
 restoreCachedMapStyle().catch(() => {});
 const libraries = Promise.all([
-  loadScript(new URL('vendor/maplibre-gl-5.24.0.js', import.meta.url).href, 'maplibregl', 'maplibre-js'),
+  loadScript(new URL('vendor/maplibre-gl-5.24.0-atlas.1.js', import.meta.url).href, 'maplibregl', 'maplibre-js'),
   loadScript(new URL('vendor/pmtiles-4.2.1.js', import.meta.url).href, 'pmtiles', 'pmtiles-js'),
   loadScript(new URL(`vendor/maplibre-contour.js?v=${assetVersion}`, import.meta.url).href, 'mlcontour'),
 ]);

@@ -2,13 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {readFile} from 'node:fs/promises';
+import {backportMapLibre524} from '../styles/map-controls.mjs';
+import {webcrypto} from 'node:crypto';
 import {BROWSER_LIBRARIES} from '../scripts/browser-libraries.mjs';
 import {observeRequiredBrowserLibraries} from '../scripts/required-browser-libraries.mjs';
 
 const base='https://atlas.example/project/';
-const bodies=new Map(await Promise.all(BROWSER_LIBRARIES.map(async library=>[
-  library.target,await readFile(new URL(`../node_modules/${library.package}/${library.source}`,import.meta.url)),
-])));
+const bodies=new Map(await Promise.all(BROWSER_LIBRARIES.map(async library=>{
+  const bytes=await readFile(new URL(`../node_modules/${library.package}/${library.source}`,import.meta.url));
+  return [library.target,library.sourceSha256?Buffer.from(await backportMapLibre524(bytes,webcrypto.subtle)):bytes];
+})));
 const css=BROWSER_LIBRARIES.find(library=>library.target.endsWith('.css'));
 
 function respond(page,library,{url=new URL(library.target,base).href,status=200,type=library.target.endsWith('.css')?'text/css':'text/javascript',

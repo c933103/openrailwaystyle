@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261009-ios-install-5';
+import { MODES } from './map-model.mjs?v=20261009-maplibre-attribution-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
