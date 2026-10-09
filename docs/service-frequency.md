@@ -155,13 +155,22 @@ cache URLs migrate after matching the complete current source URL; redacted
 display URLs never become retrieval inputs or cache-identity comparisons.
 
 The pinned operational `catalogue/catalogue.json` is passed between acquisition
-and compile jobs as a GitHub Actions staging artifact with its original public
+and compile jobs as a GitHub Actions staging artifact with ordinary public
 source URLs. Ordinary public query parameters can be required for retrieval;
 they are not all secrets and cannot simply be removed. Staging artifacts and
 the retained raw cache are separate from the aggregate-only release. This
 redaction does not claim to sanitize historical artifacts or arbitrary secrets
 embedded in paths/free text. Confirmed private access material requires stopping
 the affected publication/acquisition path and separate private review.
+
+Before writing a new staging catalogue, explicitly recognized signed-storage
+grants and URL credentials are redacted with full-URL fingerprints. An affected
+schedule source remains `retry_pending` / `source_access_review`, with no
+acquisition candidate until its access or a separately declared public
+alternative is reviewed. An unsigned endpoint is never invented by stripping a
+signature. Recognized access material in ancillary metadata is redacted without
+disabling an unrelated ordinary timetable source. This is a narrow access-data
+boundary, not a general ban on query-valued URLs or unknown licence metadata.
 
 These are per-feed and per-job limits, **not** a global run byte/request budget
 or cross-shard origin scheduler. Measuring the expanded workload and designing

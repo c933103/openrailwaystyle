@@ -8,18 +8,145 @@ downloaded by this script; the main compiler decides whether a schedule is rail.
 import argparse
 from collections import Counter
 import csv
+import hashlib
 import json
 from pathlib import Path
 import re
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 TRANSITOUS_LICENSES = "https://github.com/public-transport/transitous/blob/main/website/data/license.json"
 TRANSITOUS_FEEDS = "https://github.com/public-transport/transitous/tree/main/feeds"
 MOBILITY_CSV = "https://files.mobilitydatabase.org/feeds_v2.csv"
 
 
+def access_review_url(url):
+    """Recognize explicit URL credentials/grants, not arbitrary query names."""
+    if not isinstance(url, str):
+        return None
+    try:
+        parts = urlsplit(url)
+        if parts.scheme.lower() not in ('http', 'https') or not parts.hostname:
+            return None
+        # Do not turn a recognition budget/parse failure into an unsigned URL.
+        # This scans the already loaded catalogue string; no request is made.
+        parameters = parse_qsl(parts.query, keep_blank_values=True)
+        names = {name.lower() for name, value in parameters if value}
+        host = parts.hostname.lower().rstrip('.')
+        if parts.username is not None or parts.password is not None:
+            reason = 'embedded_url_credentials'
+        elif (host.endswith('.blob.core.windows.net')
+              and {'sig', 'sv', 'se', 'sp'} <= names
+              and ('sr' in names or {'ss', 'srt'} <= names)):
+            reason = 'signed_storage_access'
+        elif host == 'api.511.org' and 'api_key' in names:
+            # Provider documentation identifies this as an issued access key.
+            # Its appearance in ancillary real-time metadata is not permission
+            # to retain it with a static timetable's public provenance.
+            reason = 'documented_api_access_key'
+        else:
+            return None
+        safe_names = lambda values: sorted({name if re.fullmatch(r'[A-Za-z0-9_.-]{1,80}', name) else 'parameter' for name in values})
+        authority = '['+host+']' if ':' in host else host
+        try:
+            port = parts.port
+        except ValueError:
+            port = None  # Display only; the record remains paused, not acquired.
+        if port is not None:
+            authority += ':'+str(port)
+        display = urlunsplit((parts.scheme, authority, parts.path,
+            urlencode([(name if re.fullmatch(r'[A-Za-z0-9_.-]{1,80}', name) else 'parameter',
+                        '[redacted]') for name, _ in parameters]), ''))
+        return {'reason': reason, 'host': host, 'parameter_names': safe_names(names),
+                'url': display, 'url_sha256': hashlib.sha256(url.encode('utf-8')).hexdigest()}
+    except (ValueError, UnicodeError):
+        return None
+
+
+def prepare_catalogue_row(row):
+    """Keep ordinary operational URLs; pause grants before staging publication.
+
+    Reconciliation happens on the original inputs before this one-way boundary.
+    No unsigned URL is invented by removing a signature. A future source-specific
+    review may replace the input with an independently declared public endpoint.
+    """
+    lineage = row.get('lineage') if isinstance(row.get('lineage'), list) else []
+    acquisition_items = [row]+[item for item in lineage if isinstance(item, dict)]
+    current_pairs = {(item.get('source'), item.get('source_sha256')) for item in acquisition_items
+                     if isinstance(item.get('source'), str) and isinstance(item.get('source_sha256'), str)}
+    reviews, prepared_identities = [], set()
+    existing = row.get('access_review')
+    for item in existing if isinstance(existing, list) else []:
+        if not isinstance(item, dict) or item.get('reason') not in ('embedded_url_credentials', 'signed_storage_access', 'documented_api_access_key'):
+            continue
+        fingerprint, display = item.get('url_sha256'), item.get('url')
+        if not isinstance(fingerprint, str) or not re.fullmatch(r'[a-f0-9]{64}', fingerprint) or not isinstance(display, str):
+            continue
+        if (display, fingerprint) not in current_pairs:
+            continue  # An unrelated inherited audit cannot pause another feed.
+        try:
+            parts = urlsplit(display)
+            parameters = parse_qsl(parts.query, keep_blank_values=True)
+            if (parts.scheme not in ('http', 'https') or not parts.hostname or parts.username is not None
+                    or parts.password is not None or parts.fragment or any(value != '[redacted]' for _, value in parameters)):
+                continue
+            recognized = access_review_url(display)
+            if item['reason'] != 'embedded_url_credentials' and (not recognized or recognized['reason'] != item['reason']):
+                continue
+            prepared_identities.add((display, fingerprint))
+            safe_parameters = [(name if re.fullmatch(r'[A-Za-z0-9_.-]{1,80}', name) else 'parameter', value) for name, value in parameters]
+            display = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(safe_parameters), ''))
+            # Reconstruct the small evidence schema, never copy upstream extras.
+            reviews.append({'reason': item['reason'], 'host': parts.hostname.lower().rstrip('.'),
+                'parameter_names': sorted({name.lower() for name, _ in safe_parameters}),
+                'url': display, 'url_sha256': fingerprint})
+        except ValueError:
+            continue
+    acquisition_urls = [row.get('source')]+[item.get('source') for item in lineage if isinstance(item, dict)]
+    acquisition_hashes = {hashlib.sha256(url.encode('utf-8')).hexdigest() for url in acquisition_urls if isinstance(url, str)}
+    # Already prepared rows retain original identities alongside display URLs.
+    acquisition_hashes.update(item.get('url_sha256') for item in reviews)
+    def record(grant, original_identity=None):
+        if (original_identity or grant['url_sha256']) in acquisition_hashes:
+            reviews.append(grant)
+    def sanitize(value):
+        if isinstance(value, list):
+            return [sanitize(item) for item in value]
+        if not isinstance(value, dict):
+            grant = access_review_url(value)
+            if grant:
+                record(grant)
+                return grant['url']
+            return value
+        result = {}
+        for key, item in value.items():
+            if key == 'access_review':
+                continue
+            grant = access_review_url(item)
+            if grant:
+                original_identity = grant['url_sha256']
+                fingerprint = value.get(key+'_sha256')
+                if (isinstance(fingerprint, str) and re.fullmatch(r'[a-f0-9]{64}', fingerprint)
+                        and ((item, fingerprint) in prepared_identities or item == grant['url'])):
+                    grant['url_sha256'] = fingerprint
+                # Raw acquisition identity decides the pause before any
+                # prepared display fingerprint is reused for audit continuity.
+                record(grant, original_identity)
+                result[key] = grant['url']
+                result[key+'_sha256'] = grant['url_sha256']
+            elif key not in result:
+                result[key] = sanitize(item)
+        return result
+    result = sanitize(row)
+    if reviews:
+        unique = {item['url_sha256']: item for item in reviews}
+        result['access_review'] = [unique[key] for key in sorted(unique)]
+    return result
+
+
 def source_key(url):
     """Deduplicate an identical producer URL, not an operator name or region."""
+    if not isinstance(url, str):
+        return ''
     try:
         parts = urlsplit(url or "")
     except ValueError:
@@ -109,7 +236,7 @@ def build_catalogue(licences, feed_sources, mobility_rows):
     counts = Counter()
     for item in licences:
         name = item.get("filename", "")
-        if not name.endswith(".gtfs.zip"):
+        if not isinstance(name, str) or not name.endswith(".gtfs.zip"):
             continue
         row = dict(item)
         row["catalogue_url"] = TRANSITOUS_LICENSES
@@ -201,7 +328,9 @@ def build_catalogue(licences, feed_sources, mobility_rows):
     counts["with_terms_evidence"] = sum(bool(row["rights_evidence"]) for row in rows.values())
     counts["without_terms_evidence"] = len(rows) - counts["with_terms_evidence"]
     counts["with_source_link"] = sum(bool(row.get("source")) for row in rows.values())
-    return [rows[key] for key in sorted(rows)], dict(counts)
+    prepared = [prepare_catalogue_row(rows[key]) for key in sorted(rows)]
+    counts['pending_access_review'] = sum(bool(row.get('access_review')) for row in prepared)
+    return prepared, dict(counts)
 
 
 def read_transitous(directory, ref):

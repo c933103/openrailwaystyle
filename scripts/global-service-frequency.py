@@ -55,7 +55,7 @@ def atomic_json(path, value):
 
 def source_id(row):
     name = row.get('filename', '')
-    if not name.endswith('.gtfs.zip') or '/' in name or '\\' in name or '\0' in name:
+    if not isinstance(name, str) or not name.endswith('.gtfs.zip') or '/' in name or '\\' in name or '\0' in name:
         raise ValueError('Not a safe GTFS filename')
     ident = name[:-9]
     if re.fullmatch(r'[A-Za-z0-9_.-]+', ident):
@@ -71,6 +71,8 @@ def blocked(row):
         return 'excluded provider jurisdiction'
     publisher = row.get('publisher') or {}
     for value in [row.get('source') or '', publisher.get('url', '') if isinstance(publisher, dict) else '']:
+        if not isinstance(value, str):
+            continue
         try:
             host = (urlparse(value).hostname or '').encode('idna').decode('ascii').rstrip('.').lower()
         except (ValueError, UnicodeError):
@@ -96,7 +98,7 @@ def discover(rows, rules):
             reviewed_denials.setdefault(acquisition_url_key(rule['expected_source']), []).append(evidence)
     denied_sources = sorted(denied_sources)
     for original in rows:
-        row = dict(original)
+        row = registry.prepare_catalogue_row(original)
         rule = rules.get('sources', {}).get(row.get('filename'), {})
         if rule and rule.get('expected_source') == row.get('source'):
             row.update({key: value for key, value in rule.items() if key != 'expected_source'})
@@ -120,18 +122,22 @@ def discover(rows, rules):
         seen.add(ident)
         rights = registry.usage_rights(row)
         policy_reason = blocked(row)
-        if policy_reason:
+        if row.get('access_review'):
+            status, reason_code = 'retry_pending', 'source_access_review'
+            reason = 'Source access material requires review; acquisition paused'
+        elif policy_reason:
             status, reason, reason_code = 'excluded', policy_reason, 'provider_policy'
         elif rights['prohibitions']:
             status, reason_code = 'excluded', 'source_terms_prohibit_derived_use'
             reason = '; '.join(item['basis'] for item in rights['prohibitions'])
-        elif row.get('delivery') == 'direct' and not row.get('source'):
+        elif row.get('delivery') == 'direct' and (not isinstance(row.get('source'), str) or not row.get('source')):
             status, reason, reason_code = 'retry_pending', 'Original GTFS URL unresolved', 'missing_source_url'
         else:
             status, reason, reason_code = 'pending', '', ''
         out.append({'id': ident, 'status': status, 'reason': reason,
                     'reason_code': reason_code, 'retry_eligible': status == 'retry_pending',
-                    'failure_stage': 'discovery' if reason_code == 'missing_source_url' else '',
+                    'failure_stage': 'discovery' if reason_code in ('missing_source_url', 'source_access_review') else '',
+                    'next_action': 'review_source_access_or_declared_public_alternative' if reason_code == 'source_access_review' else '',
                     'terms': rights, 'denied_source_urls': denied_sources,
                     'country': row.get('country_code', ''),
                     'name': row.get('human_name', ident), 'catalogue': row,
@@ -179,6 +185,8 @@ def parse_acquisition_url(url):
     """Reject ambiguous authorities before DNS, connection or redirect handling."""
     if not isinstance(url, str) or any(ord(c) < 33 or ord(c) == 127 for c in url) or '\\' in url:
         raise UnsafeSourceURL('Invalid acquisition URL')
+    if registry.access_review_url(url):
+        raise UnsafeSourceURL('Acquisition URL requires access review')
     try:
         parsed = urlparse(url)
         if (parsed.scheme not in ('http', 'https') or not parsed.hostname
@@ -374,10 +382,14 @@ def get(url, headers=None, *, policy=None):
 def source_candidates(entry):
     """Distinct public source endpoints, processed first, originals as fallback."""
     row = entry.get('catalogue') or {}
+    lineage = row.get('lineage') if isinstance(row.get('lineage'), list) else []
+    if row.get('access_review') or any(registry.access_review_url(url) for url in
+            [row.get('source'), entry.get('processed_url')]+[x.get('source') for x in lineage if isinstance(x, dict)]):
+        return []
     if blocked(row) or (entry.get('terms') or registry.usage_rights(row))['prohibitions']:
         return []
     values = [entry.get('processed_url'), row.get('source')]
-    values.extend(x.get('source') for x in row.get('lineage', []) if isinstance(x, dict))
+    values.extend(x.get('source') for x in lineage if isinstance(x, dict))
     urls, seen = [], set()
     for url in values:
         if not isinstance(url, str) or url in seen:

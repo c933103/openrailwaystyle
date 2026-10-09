@@ -91,6 +91,40 @@ class GlobalFrequency(unittest.TestCase):
         self.assertTrue(item['retry_eligible'])
         self.assertEqual(item['reason_code'],'missing_source_url')
 
+    def test_signed_access_records_remain_pending_and_never_become_acquisition_candidates(self):
+        signed='https://fixture.blob.core.windows.net/feed.zip?sv=fixture-version&se=fixture-expiry&sp=rl&sr=c&sig=fixture-signature'
+        rows=[{'filename':'nz_signed.gtfs.zip','source':signed,'country_code':'NZ','delivery':'direct'},
+              {'filename':'nz_public.gtfs.zip','source':'https://operator.example/feed.zip?rid=public-selector','country_code':'NZ','delivery':'direct'}]
+        discovered=pipeline.discover(rows,{})
+        signed_entry=next(item for item in discovered if item['id']=='nz_signed')
+        self.assertEqual(signed_entry['status'],'retry_pending')
+        self.assertEqual(signed_entry['reason_code'],'source_access_review')
+        self.assertTrue(signed_entry['retry_eligible'])
+        self.assertFalse(signed_entry['terms']['prohibitions'])
+        self.assertEqual(pipeline.source_candidates(signed_entry),[])
+        self.assertEqual(pipeline.source_candidates({'catalogue':rows[0],'processed_url':signed}),[],'legacy raw catalogue cannot bypass the acquisition pause')
+        public_entry=next(item for item in discovered if item['id']=='nz_public')
+        self.assertEqual(public_entry['status'],'pending')
+        self.assertEqual(pipeline.source_candidates(public_entry),[rows[1]['source']])
+        with patch.object(pipeline,'resolve_public_addresses') as resolve:
+            with self.assertRaises(pipeline.UnsafeSourceURL):pipeline.get(signed)
+        resolve.assert_not_called()
+        self.assertNotIn('fixture-signature',json.dumps(discovered))
+
+    def test_untrusted_audit_hash_and_long_query_cannot_unpause_source_access(self):
+        sources=['https://fixture-user:fixture-password@operator.example/feed',
+            'https://fixture.blob.core.windows.net/feed?sig=fixture-signature&sv=x&se=y&sp=r&sr=b&'+'&'.join('p'+str(i)+'=v' for i in range(130))]
+        for source in sources:
+            entry=pipeline.discover([{'filename':'test.gtfs.zip','source':source,'source_sha256':'a'*64,
+                                      'country_code':'NZ','delivery':'direct','lineage':None,'access_review':[None]}],{})[0]
+            self.assertEqual(entry['status'],'retry_pending')
+            self.assertEqual(entry['reason_code'],'source_access_review')
+            self.assertEqual(pipeline.source_candidates(entry),[])
+            with self.assertRaises(pipeline.UnsafeSourceURL):pipeline.parse_acquisition_url(source)
+        invalid=pipeline.discover([{'filename':'bad.gtfs.zip','source':{},'lineage':3,'delivery':'direct'}, {'filename':None}],{})
+        self.assertEqual(len(invalid),1)
+        self.assertEqual(invalid[0]['reason_code'],'missing_source_url')
+
     def test_source_failure_evidence_redacts_credentials_query_values_and_fragments(self):
         from urllib.error import HTTPError
         from urllib.parse import parse_qsl,urlparse
@@ -168,7 +202,7 @@ class GlobalFrequency(unittest.TestCase):
         base,_=self.server(self.archive())
         source=base+'?feed=fixture-download'
         row={'filename':'ca_diagnostic.gtfs.zip','source':source,'country_code':'CA','delivery':'direct',
-             'lineage':[{'source':target}], 'publisher':{'url':target}}
+             'lineage':[{'source':target.replace('fixture-user:fixture-password@','')}], 'publisher':{'url':target}}
         entry=pipeline.discover([row],{})[0]
         cache,output=self.root/'diagnostic-cache',self.root/'diagnostic-output';cache.mkdir()
         result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)

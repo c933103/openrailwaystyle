@@ -14,6 +14,77 @@ spec.loader.exec_module(catalogue)
 
 
 class FrequencyCatalogue(unittest.TestCase):
+    def test_staging_pauses_signed_schedule_sources_but_retains_ordinary_queries(self):
+        signed='https://fixture.blob.core.windows.net/feed.zip?sv=fixture-version&se=fixture-expiry&sp=rl&sr=c&sig=fixture-signature'
+        ordinary='https://operator.test/feed.zip?token=public-selector&rid=ordinary-feed'
+        ancillary='https://api.511.org/transit/datafeeds?api_key=fixture-issued-key&operator_id=fixture-operator'
+        inputs=[{'filename':'signed.gtfs.zip','source':signed,'country_code':'NZ'},
+                {'filename':'ordinary.gtfs.zip','source':ordinary,'country_code':'US','rt':[{'source':ancillary}]}]
+        rows,counts=catalogue.build_catalogue(inputs,[],[])
+        by_name={row['filename']:row for row in rows}
+        self.assertEqual(counts['merged_entries'],2)
+        self.assertEqual(counts['pending_access_review'],1)
+        self.assertEqual(by_name['ordinary.gtfs.zip']['source'],ordinary)
+        self.assertNotIn('access_review',by_name['ordinary.gtfs.zip'],'ancillary access metadata does not disable unrelated timetable acquisition')
+        evidence=json.dumps(rows)
+        for value in ['fixture-signature','fixture-issued-key','fixture-expiry','fixture-version','fixture-operator']:
+            self.assertNotIn(value,evidence)
+        signed_row=by_name['signed.gtfs.zip']
+        self.assertEqual(signed_row['access_review'][0]['reason'],'signed_storage_access')
+        self.assertEqual(signed_row['source_sha256'],__import__('hashlib').sha256(signed.encode()).hexdigest())
+        self.assertEqual(catalogue.prepare_catalogue_row(signed_row),signed_row,'repeat boundary retains exact identities')
+        self.assertEqual(catalogue.prepare_catalogue_row(by_name['ordinary.gtfs.zip']),by_name['ordinary.gtfs.zip'])
+        self.assertEqual(inputs[0]['source'],signed,'operational reconciliation input is not mutated')
+
+    def test_access_review_recognizes_only_explicit_grant_structures(self):
+        for url in ['https://operator.test/feed?token=value&key=value&apiKey=value',
+                    'https://fixture.blob.core.windows.net/feed?sv=version&region=selector',
+                    'https://operator.test/feed?sig=value&sv=value&se=value&sp=value&sr=value']:
+            self.assertIsNone(catalogue.access_review_url(url))
+        self.assertEqual(catalogue.access_review_url('https://fixture-user:fixture-password@operator.test/feed')['reason'],'embedded_url_credentials')
+
+    def test_access_review_boundary_rejects_forged_identity_and_malformed_audit_metadata(self):
+        source='https://fixture-user:fixture-password@operator.test/feed'
+        for existing in ['invalid',[None],[{}],[{'url_sha256':'a'*64,'raw':'https://api.511.org/feed?api_key=fixture-secret'}]]:
+            with self.subTest(existing_type=type(existing).__name__):
+                row={'source':source,'source_sha256':'a'*64,'access_review':existing,'lineage':None}
+                result=catalogue.prepare_catalogue_row(row)
+                self.assertEqual(len(result['access_review']),1)
+                self.assertEqual(result['source_sha256'],__import__('hashlib').sha256(source.encode()).hexdigest())
+                self.assertEqual(catalogue.prepare_catalogue_row(result),result)
+                for marker in ['fixture-user','fixture-password','fixture-secret']:
+                    self.assertNotIn(marker,json.dumps(result))
+        result=catalogue.prepare_catalogue_row({'source':source,'source_sha256':{},'lineage':3})
+        self.assertEqual(len(result['access_review']),1)
+
+    def test_long_signed_query_and_invalid_port_do_not_fail_open(self):
+        long_name='fixture-sensitive-name-'+'x'*100
+        query='sv=fixture-version&se=fixture-expiry&sp=rl&sr=c&sig=fixture-signature&'+long_name+'=value&'+'&'.join('p'+str(i)+'=value' for i in range(130))
+        for authority in ['fixture.blob.core.windows.net','fixture.blob.core.windows.net:invalid']:
+            source='https://'+authority+'/feed?'+query
+            result=catalogue.prepare_catalogue_row({'source':source})
+            self.assertEqual(len(result['access_review']),1)
+            self.assertNotIn(long_name,json.dumps(result))
+            self.assertNotIn('fixture-signature',json.dumps(result))
+            self.assertEqual(catalogue.prepare_catalogue_row(result),result)
+
+    def test_retained_access_reviews_are_source_bound_and_canonical(self):
+        source='https://fixture-user:fixture-password@operator.test/feed?Mode=fixture-mode'
+        prepared=catalogue.prepare_catalogue_row({'source':source})
+        self.assertEqual(prepared['access_review'][0]['parameter_names'],['mode'])
+        self.assertEqual(catalogue.prepare_catalogue_row(prepared),prepared)
+        ordinary={'source':'https://operator.test/ordinary?rid=public-selector','access_review':prepared['access_review']}
+        self.assertNotIn('access_review',catalogue.prepare_catalogue_row(ordinary),'unrelated audit does not pause an ordinary source')
+        long_name='fixture-sensitive-name-'+'x'*100
+        display='https://api.511.org/feed?api_key=%5Bredacted%5D&'+long_name+'=%5Bredacted%5D'
+        existing={'source':display,'source_sha256':'a'*64,'access_review':[{
+            'url':display,'url_sha256':'a'*64,'reason':'documented_api_access_key'}]}
+        sanitized=catalogue.prepare_catalogue_row(existing)
+        self.assertNotIn(long_name,json.dumps(sanitized))
+        self.assertEqual(sanitized['source_sha256'],'a'*64)
+        self.assertEqual(len(sanitized['access_review']),1)
+        self.assertEqual(catalogue.prepare_catalogue_row(sanitized),sanitized)
+
     def test_source_lists_recover_missing_rail_feeds(self):
         older=[{'filename':'jp_tokyo-rail.gtfs.zip','country_code':'JP',
                 'human_name':'Tokyo rail','source':'https://mkuran.pl/gtfs/tokyo/rail.zip',
