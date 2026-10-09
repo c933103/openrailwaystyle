@@ -261,3 +261,19 @@ test('a differently scoped operator assertion is not a stale same-feed alternati
     assert.equal(status(input), 'verified');
   }
 });
+
+test('stale same-feed station alternatives cannot be filtered out of a complete crosswalk', () => {
+  const input = fixture();
+  input.crosswalk.push({...input.crosswalk[0], source_sha256: 'b'.repeat(64), osm_station_id: 'node:99'});
+  assert.equal(status(input), 'stale');
+  input.crosswalk.reverse();
+  assert.equal(status(input), 'stale');
+});
+
+test('crosswalk alternatives belonging to a different feed or unserved station remain separate', () => {
+  for (const change of [{feed_id: 'other'}, {station_id: 'unserved'}]) {
+    const input = fixture();
+    input.crosswalk.push({...input.crosswalk[0], source_sha256: 'b'.repeat(64), osm_station_id: 'node:99', ...change});
+    assert.equal(status(input), 'verified');
+  }
+});

@@ -118,7 +118,8 @@ export function matchTimetablePattern(input = {}) {
   if (served.length < 2) return result('missing_evidence', 'insufficient_served_stops');
   const stations = [];
   for (const call of served) {
-    const rows = crosswalk.filter(row => bound(row) && row.station_id === call.station_id);
+    const rows = crosswalk.filter(row => row?.feed_id === source.feed_id && row.station_id === call.station_id);
+    if (rows.some(row => row.source_sha256 !== source.sha256)) return result('stale', 'station_source_mismatch');
     if (!rows.length) return result('missing_evidence', 'missing_station_crosswalk');
     if (rows.some(row => row.status === 'conflict') || new Set(rows.map(row => row.osm_station_id)).size !== 1) return result('conflicting', 'station_crosswalk_conflict');
     if (rows.some(row => row.osm_snapshot !== context.osm_snapshot)) return result('stale', 'station_snapshot_mismatch');
