@@ -206,7 +206,7 @@ def valid_cached_archive(path, meta, candidates, max_age_days=30):
     are still checked by the ordinary compiler, not presumed from ZIP age.
     """
     checked = meta.get('checked') or meta.get('retrieved')
-    if (not checked or not path.is_file()
+    if (meta.get('no_rail') or not checked or not path.is_file()
             or meta.get('download_url') not in candidates):
         return False
     try:
@@ -455,6 +455,12 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
     if attempts:
         meta['recovered_source_errors'] = attempts
     if meta.get('no_rail'):
+        # A successful newer bus-only source supersedes any previous rail
+        # archive. Persist that fact before removing the old cache, so even
+        # an interrupted deletion cannot resurrect it during a later outage.
+        meta['checked'] = dt.datetime.now(dt.timezone.utc).date().isoformat()
+        atomic_json(meta_path, meta)
+        path.unlink(missing_ok=True)
         (output/'feeds'/(ident+'.json.gz')).unlink(missing_ok=True)
         return {**entry, 'status': 'no_rail', 'rail_routes': 0}
     # Reinspect changed conditional 200 responses and cached 304 revisions.

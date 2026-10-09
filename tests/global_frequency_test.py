@@ -452,6 +452,39 @@ class GlobalFrequency(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'budget'):
             pipeline.RemoteZip(url,100)
 
+    def test_bus_only_fallback_invalidates_old_rail_cache_before_a_later_outage(self):
+        from urllib.error import HTTPError
+        processed,_=self.server(self.archive())
+        original,_=self.server(self.archive(rail=False))
+        entry=pipeline.discover([{'filename':'ca_changed.gtfs.zip','source':original,
+                                 'country_code':'CA'}],{})[0]
+        entry['processed_url']=processed
+        cache,output=self.root/'changed-cache',self.root/'changed-output';cache.mkdir()
+        first=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(first['status'],'compiled')
+        archive=cache/'ca_changed.zip';old=archive.read_bytes()
+        real_get=pipeline.get
+        def missing_processed(url,headers=None):
+            if url==processed:raise HTTPError(url,404,'Gone',{},io.BytesIO())
+            return real_get(url,headers)
+        with patch.object(pipeline,'get',side_effect=missing_processed):
+            current=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(current['status'],'no_rail')
+        self.assertFalse(archive.exists())
+        self.assertFalse((output/'feeds/ca_changed.json.gz').exists())
+        meta=json.loads((cache/'ca_changed.meta.json').read_text())
+        self.assertTrue(meta['no_rail'])
+        self.assertEqual(meta['download_url'],original)
+        # Also cover an orphaned old ZIP: a persisted no-rail fact prevents
+        # offline reuse even if the prior cache deletion was interrupted.
+        archive.write_bytes(old)
+        self.assertFalse(pipeline.valid_cached_archive(archive,meta,pipeline.source_candidates(entry)))
+        def unavailable(url,headers=None):raise HTTPError(url,503,'Unavailable',{},io.BytesIO())
+        with patch.object(pipeline,'get',side_effect=unavailable):
+            with self.assertRaises(pipeline.SourceRetrievalError):
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertFalse((output/'feeds/ca_changed.json.gz').exists())
+
     def test_changed_cached_rail_archive_is_reclassified_when_bus_only(self):
         cache,output=self.root/'cache',self.root/'out';cache.mkdir()
         row={'filename':'eg_rail.gtfs.zip','source':'https://example.org/feed.zip','country_code':'EG','spdx_license_identifier':'CC-BY-4.0'}
