@@ -141,7 +141,7 @@ test('the site workflow plans the browser checks and runs them through the runne
   assert.match(workflow, /run: node scripts\/ci-plan\.mjs/);
   assert.match(workflow, /matrix: \$\{\{ fromJSON\(needs\.plan\.outputs\.matrix\) \}\}/);
   assert.match(workflow, /node scripts\/run-browser-checks\.mjs --concurrency 1 --label "\$GROUP" \$CHECKS/);
-  assert.match(workflow, /BROWSER_TILE_CACHE: \$\{\{ github\.workspace \}\}\/\.browser-tiles/);
+  assert.doesNotMatch(workflow, /BROWSER_TILE_CACHE|Restore browser tile cache|Save browser tile cache/);
   // Every check is named in exactly one job of scripts/ci-plan.mjs (tests/ci-plan.test.mjs).
 });
 
@@ -184,7 +184,7 @@ test('automated OpenRailwayMap routing aborts unfixed public requests without fe
 
 test('CI uses a synthetic railway fixture rather than the provider-dependent globe/map audit', async () => {
   const workflow=await readFile(new URL('../.github/workflows/site.yml',import.meta.url),'utf8');
-  assert.match(workflow,/browser-tiles-v2-no-public-orm/);
+  assert.doesNotMatch(workflow,/browser-tiles-v2-no-public-orm/);
   assert.match(workflow,/run: node scripts\/check-orm-fixture-browser\.mjs/);
   assert.doesNotMatch(workflow,/run: node scripts\/check-map-browser\.mjs/);
   assert.doesNotMatch(workflow,/run: node scripts\/check-planning-browser\.mjs/);

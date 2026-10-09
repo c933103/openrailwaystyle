@@ -1,21 +1,21 @@
+import {installBathymetryFixtures} from './bathymetry-browser-fixture.mjs';
 import {launchBrowser} from './browser.mjs';
 import assert from 'node:assert/strict';
 import {mkdir, readFile} from 'node:fs/promises';
 
-// A small, real map using the site's sources/layers, without loading unrelated
+// A small, real-renderer map using the site's sources/layers, without loading unrelated
 // railway snapshots. Pixel checks exercise the protocol and coastline mask.
 const base = (process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/, '/');
 const app = await readFile(new URL('../styles/app.mjs',import.meta.url),'utf8');
 const library = new URL(app.match(/loadScript\(new URL\('([^']+maplibre-gl[^']+\.js)'/)[1], base).href;
 const deadline=setTimeout(()=>{console.error('Bathymetry validation exceeded five minutes');process.exit(1);},300000);deadline.unref();
-const proxyURL=process.env.HTTPS_PROXY || process.env.https_proxy;
-const proxy=proxyURL ? {server:proxyURL,bypass:'localhost,127.0.0.1'} : undefined;
-const browser = await launchBrowser({headless:true,proxy,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+const browser = await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page = await browser.newPage({viewport:{width:1365,height:900},deviceScaleFactor:1});
 const errors = [];
 page.on('pageerror',error=>errors.push(error.message));
 page.on('requestfailed',request=>console.warn('Resource failed:',request.url(),request.failure()?.errorText));
 try {
+  await installBathymetryFixtures(page.context(),JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8')));
   await page.route('**/__bathymetry-check',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><style>body{margin:0}#map{position:absolute;inset:0}</style><div id="map"></div>'}));
   await page.goto(base+'__bathymetry-check');
   await page.addScriptTag({url:library});
@@ -80,16 +80,17 @@ try {
   for(const tile of checks.tiles) {
     assert.ok(tile.shallow>50,`${tile.key} must reveal shallow reefs`);
     assert.ok(tile.deep>1000,`${tile.key} must distinguish the deep basin`);
+    assert.ok(tile.clear>1000,`${tile.key} must preserve the synthetic island hole`);
   }
-  console.log('PASS: real Bikini and Spratly depth tiles, drawn in the depth worker, contain distinct shallow/deep colours',JSON.stringify(checks));
+  console.log('PASS: synthetic coastal depth tiles, drawn in the depth worker, contain distinct shallow/deep colours',JSON.stringify(checks));
   await mkdir('browser-review',{recursive:true});
   async function frame() {
     await page.waitForFunction(()=>depthMap.isSourceLoaded('bathymetry'),undefined,{timeout:90000});
     await page.evaluate(()=>new Promise(resolve=>{depthMap.once('render',resolve);depthMap.triggerRepaint();}));
   }
-  await frame(); await page.screenshot({path:'browser-review/bathymetry-marshall.png'});
+  await frame(); await page.screenshot({path:'browser-review/bathymetry-shelf.png'});
   await page.evaluate(()=>depthMap.jumpTo({center:[114.37,11.43],zoom:9.2}));
-  await frame(); await page.screenshot({path:'browser-review/bathymetry-spratly.png'});
+  await frame(); await page.screenshot({path:'browser-review/bathymetry-basin.png'});
   await page.setViewportSize({width:412,height:915});
   await page.evaluate(()=>{depthMap.resize();depthMap.jumpTo({center:[165.38,11.60],zoom:9.2});});
   await frame(); await page.screenshot({path:'browser-review/bathymetry-mobile.png'});

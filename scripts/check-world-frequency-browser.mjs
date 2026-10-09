@@ -1,3 +1,4 @@
+import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 // The Service view draws OSM routes only. In the regions of the dated
 // timetable fixtures (rebuilt with --fixtures), no timetable route may appear
 // as a line of its own, in equal or frequency width.
@@ -10,6 +11,7 @@ const examples=[{id:'hong-kong',lat:22.302,lon:114.172,osm:true},{id:'hsl',lat:6
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 try {
   const context=await browser.newContext({viewport:{width:720,height:600}}),page=await context.newPage();
+  await installEmptyMapProviders(context,root.replace(/\/?$/,'/'),{firstParty:'network'});
   await page.clock.install({time:new Date('2026-10-05T12:00:00Z')});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const index=JSON.parse(await readFile('styles/data/service-routes/index.json','utf8'));

@@ -1,3 +1,4 @@
+import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {launchBrowser} from './browser.mjs';
 import {ormVectorFixture} from './orm-vector-fixture.mjs';
 import {readFile,mkdir} from 'node:fs/promises';
@@ -25,6 +26,7 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  // MapLibre can throw from queryRenderedFeatures while it swaps tiles
  // ("Out of bounds"); such a poll answers "not yet" and tries again.
  const settle=(predicate,options)=>page.waitForFunction(`(()=>{try{return (${predicate})();}catch{return false;}})()`,undefined,options);
+  await installEmptyMapProviders(page.context(),base,{firstParty:'network'});
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
  page.on('console',message=>{if(message.type()==='error')console.error(kind,message.text());});
  await page.addInitScript(()=>{const getContext=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(kind,options){return getContext.call(this,kind,/^webgl2?$/.test(kind)?{...options,preserveDrawingBuffer:true}:options);};});

@@ -3,7 +3,6 @@
 // Set ATLAS_PWA_ENGINE=webkit for WebKit engine coverage (not physical iOS).
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
-import {webkit} from 'playwright';
 import {launchBrowser} from './browser.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {serveAtlasAppFixture} from './atlas-app-browser-fixture.mjs';
@@ -11,7 +10,7 @@ import {serveAtlasAppFixture} from './atlas-app-browser-fixture.mjs';
 const engine=process.env.ATLAS_PWA_ENGINE||'chromium';
 assert.ok(['chromium','webkit'].includes(engine),'Known test browser engine');
 const server=await serveAtlasAppFixture();
-const browser=engine==='webkit'?await webkit.launch({headless:true}):await launchBrowser();
+const browser=await launchBrowser({engine});
 const report=[];
 const profiles=[
   {name:'iphone',viewport:{width:393,height:852},userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',platform:'iPhone',touch:5},

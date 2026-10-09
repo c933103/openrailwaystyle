@@ -254,10 +254,9 @@ jobs:
           name: railway-world-site
           path: styles
           compression-level: 0
-  # Browser checks use synthetic OpenRailwayMap fixtures only; geographic
-  # audits requiring its real tiles run only against self-hosted local data.
-  # Other providers may be cached for a week, but public openrailwaymap.app
-  # never participates in the cache (scripts/browser.mjs).
+  # Browser checks use synthetic responses for every external provider.
+  # The shared browser transport rejects unmocked egress before requests leave.
+  # Actual first-party local/deployed assets are still read and checked.
   browser:
     name: browser (${{ matrix.group }})
     needs: [plan, validate]
@@ -268,7 +267,6 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     env:
-      BROWSER_TILE_CACHE: ${{ github.workspace }}/.browser-tiles
       GROUP: ${{ matrix.group }}
       CHECKS: ${{ matrix.checks }}
       PREPARE: ${{ matrix.prepare }}
@@ -287,16 +285,8 @@ jobs:
       - name: Install WebKit for Safari installation checks
         if: matrix.group == 'controls' && contains(matrix.checks, 'check-pwa-install-browser.mjs')
         run: npx playwright install --with-deps webkit
-      - name: Restore browser tile cache
-        uses: actions/cache/restore@v4
-        with:
-          path: .browser-tiles
-          key: browser-tiles-v2-no-public-orm-${{ matrix.group }}-${{ github.run_id }}
-          restore-keys: browser-tiles-v2-no-public-orm-${{ matrix.group }}-
       - name: Start test server
-        run: |
-          rm -f .browser-tiles/.changed
-          node scripts/serve.mjs &
+        run: node scripts/serve.mjs &
       # Real dated feeds are test fixtures, never a production city list;
       # this job's copy of the site is discarded afterwards.
       - name: Prepare check data
@@ -309,15 +299,6 @@ jobs:
         run: node scripts/check-pwa-install-browser.mjs
       - name: Run browser checks
         run: node scripts/run-browser-checks.mjs --concurrency 1 --label "$GROUP" $CHECKS
-      - name: Prune browser tile cache
-        if: success() && hashFiles('.browser-tiles/.changed') != ''
-        run: node scripts/browser.mjs prune .browser-tiles
-      - name: Save browser tile cache
-        if: success() && hashFiles('.browser-tiles/.changed') != ''
-        uses: actions/cache/save@v4
-        with:
-          path: .browser-tiles
-          key: browser-tiles-v2-no-public-orm-${{ matrix.group }}-${{ github.run_id }}
       - name: Save browser review
         if: always()
         uses: actions/upload-artifact@v4
@@ -398,7 +379,7 @@ jobs:
             for(const encoding of ['identity','gzip, deflate, br, zstd, identity']) {
               for(let attempt=0;attempt<12;attempt++) {
                 try {
-                  const response=await fetch(base+key+'.pbf.gz',{headers:{'Accept-Encoding':encoding},signal:AbortSignal.timeout(20000)});
+                  const response=await fetch(base+key+'.pbf.gz',{redirect:'error',headers:{'Accept-Encoding':encoding},signal:AbortSignal.timeout(20000)});
                   assert.equal(response.status,200);
                   assert.deepEqual(decode(Buffer.from(await response.arrayBuffer())),expected);
                   console.log('PASS: exact deployed vector tile',key,encoding);
