@@ -159,7 +159,6 @@ const detailRunPattern = separators => new RegExp(`${DETAIL_CJK_CHARACTER}(?:${D
 // Internal separators and line numbers belong to the CJK name when followed
 // by another CJK character. Latin letters and line breaks remain boundaries.
 const DETAIL_GLYPH_RUNS = detailRunPattern(String.raw`[\p{Punctuation}\p{Space_Separator}\p{Number}]`);
-const DETAIL_GLYPH_WORDS = detailRunPattern(String.raw`[\p{Punctuation}\p{Number}\u3000]`);
 const DETAIL_LANGUAGE_HINTS = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}]/gu;
 const DETAIL_CONNECTORS = /[\p{Punctuation}\p{Space_Separator}\p{Number}]+/gu;
 const detailGlyphHints = text => [
@@ -192,12 +191,9 @@ function splitDetailGlyphLanguages(run) {
   append(run[0].length); return parts;
 }
 function detailGlyphRuns(text) {
-  return [...text.matchAll(DETAIL_GLYPH_RUNS)].flatMap(run => {
-    if (detailGlyphHints(run[0]).length < 2) return [run];
-    // Several identifiable languages in one value are separate names; do
-    // not merge them through ordinary spaces and choose one arbitrarily.
-    return [...run[0].matchAll(DETAIL_GLYPH_WORDS)].flatMap(word => {word.index += run.index; return splitDetailGlyphLanguages(word);});
-  });
+  // Split aliases at their language boundary, retaining spaces within each
+  // complete name instead of labeling isolated Han words independently.
+  return [...text.matchAll(DETAIL_GLYPH_RUNS)].flatMap(splitDetailGlyphLanguages);
 }
 const detailFontObserver = new MutationObserver(updateDetailGlyphs);
 // CJK text in feature details shares the map's chosen family. Kana or Hangul

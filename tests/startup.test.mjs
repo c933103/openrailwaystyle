@@ -299,7 +299,7 @@ test('English and local infoboxes scope script languages to CJK runs and preserv
   const {dom,window,maps,errors}=await start({search:`?language=${language}`});
   try{
    const doc=window.document,map=maps[0],panel=doc.getElementById('detail-content');map.handlers['style.load']();
-   const station={source:'stations',layer:{id:'station-detail-large-names'},properties:{name:'Central 東京 東京メトロ 東京・テレポート 東京･ﾒﾄﾛ 首都圈·전철 경의-中央線 東京　メトロ 大韓민국 北ㄅ カナ ｶﾞ ﾊﾟ カ゛ ハ゜ 한글 ㄅㄆ 東京・Metro',state:'disused',station_size:'large',operator:'Regional Rail'},geometry:{type:'Point',coordinates:[0,0]}};
+   const station={source:'stations',layer:{id:'station-detail-large-names'},properties:{name:'Central 東京 | 東京メトロ | 東京・テレポート | 東京･ﾒﾄﾛ | 首都圈·전철 | 경의-中央線 | 東京　メトロ | 大韓민국 | 北ㄅ | カナ | ｶﾞ | ﾊﾟ | カ゛ | ハ゜ | 한글 | ㄅㄆ | 東京・Metro',state:'disused',station_size:'large',operator:'Regional Rail'},geometry:{type:'Point',coordinates:[0,0]}};
    map.rendered=[station];map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
    await new Promise(r=>setTimeout(r,0));
    const heading=panel.querySelector('h2');assert.equal(heading.textContent,station.properties.name,'wrapping never changes the recorded text');
@@ -310,7 +310,7 @@ test('English and local infoboxes scope script languages to CJK runs and preserv
    assert.ok(latinSuffix,'a separator followed by Latin text stays outside the CJK span');assert.equal(latinSuffix.parentElement.closest('[lang]')?.lang,'en');
    for(const node of [panel,heading,...panel.querySelectorAll('.eyebrow,dt,p.small,a')])assert.equal(node.closest('[lang]')?.lang,'en',`${language}: the CJK fallback must not relabel the English interface`);
    assert.equal(panel.style.fontFamily,'');assert.equal(heading.style.fontFamily,'');
-   for(const [name,scriptLanguage] of [['東京 テレポート','ja'],['東京\u00a0テレポート','ja'],['경의 중앙線','ko'],['首都圈 전철','ko'],['首都圈\u00a0전철','ko'],['東京メトロ1号線','ja'],['東京メトロ 1号線','ja']]){
+   for(const [name,scriptLanguage] of [['東京',hanLanguage],['東京 テレポート','ja'],['東京\u00a0テレポート','ja'],['경의 중앙線','ko'],['首都圈 전철','ko'],['首都圈\u00a0전철','ko'],['東京メトロ1号線','ja'],['東京メトロ 1号線','ja']]){
     station.properties.name=name;map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
     await new Promise(r=>setTimeout(r,0));
     const spacedHeading=panel.querySelector('h2');
@@ -324,6 +324,11 @@ test('English and local infoboxes scope script languages to CJK runs and preserv
     ['東京メトロ・서울교통공사',[['東京メトロ','ja'],['서울교통공사','ko']]],
     ['東京メトロ서울교통공사',[['東京メトロ','ja'],['서울교통공사','ko']]],
     ['서울교통공사/東京・テレポート',[['서울교통공사','ko'],['東京・テレポート','ja']]],
+    ['東京 メトロ / 서울교통공사',[['東京 メトロ','ja'],['서울교통공사','ko']]],
+    ['東京メトロ / 경의 중앙線',[['東京メトロ','ja'],['경의 중앙線','ko']]],
+    ['서울교통공사；東京\u00a0テレポート',[['서울교통공사','ko'],['東京\u00a0テレポート','ja']]],
+    ['東京 メトロ・경의 중앙線',[['東京 メトロ','ja'],['경의 중앙線','ko']]],
+    ['東京 メトロ 서울교통공사',[['東京 メトロ','ja'],['서울교통공사','ko']]],
    ]){
     station.properties.name=name;map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
     await new Promise(r=>setTimeout(r,0));
