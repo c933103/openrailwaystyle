@@ -284,6 +284,9 @@ jobs:
           path: styles
       - name: Install test browser
         run: npx playwright install --with-deps chromium
+      - name: Install WebKit for Safari installation checks
+        if: matrix.group == 'controls' && contains(matrix.checks, 'check-pwa-install-browser.mjs')
+        run: npx playwright install --with-deps webkit
       - name: Restore browser tile cache
         uses: actions/cache/restore@v4
         with:
@@ -299,6 +302,11 @@ jobs:
       - name: Prepare check data
         if: matrix.prepare != ''
         run: bash -c "$PREPARE"
+      - name: Verify Safari installation help in WebKit
+        if: matrix.group == 'controls' && contains(matrix.checks, 'check-pwa-install-browser.mjs')
+        env:
+          ATLAS_PWA_ENGINE: webkit
+        run: node scripts/check-pwa-install-browser.mjs
       - name: Run browser checks
         run: node scripts/run-browser-checks.mjs --concurrency 1 --label "$GROUP" $CHECKS
       - name: Prune browser tile cache
