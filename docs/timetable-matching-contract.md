@@ -172,7 +172,11 @@ unknown values, such as a missing departure time. Resource-limit outcomes remain
 A plausible stale, conflicting or incomplete alternative prevents a verified
 first candidate from winning. A supplied same-feed/agency operator assertion
 remains relevant beside an exact route binding, even without a route ref;
-conflict or uncertainty is distinct from absent or differently scoped evidence. Every result says
+conflict or uncertainty is distinct from absent or differently scoped evidence.
+A same-feed/agency alternative must have a bounded, content-consistent and
+snapshot-current OSM declaration before its ref can establish irrelevance. Its
+validation counts toward the shared work cap even when the intact ref differs.
+Every result says
 `frequency_status: "not_evaluated"`; it supplies no rate or profile. A successful
 identity decision alone must never copy a consolidated route's frequency onto
 all matched branches. Unknown is not zero.

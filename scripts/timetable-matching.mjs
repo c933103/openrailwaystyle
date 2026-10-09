@@ -138,6 +138,17 @@ export function matchTimetablePattern(input = {}) {
   let matchCount = 0, selectedMatch = null, work = 0;
   const blockers = [];
   let eligible = 0;
+  const inspectOsm = osm => {
+    if (!record(osm, osmFields) || osm.status !== 'captured' || !array(osm.reasons, 0) || !positive(osm.relation_id) || !positive(osm.version) || !instant(osm.timestamp) || !instant(osm.snapshot) || Date.parse(osm.timestamp) > Date.parse(osm.snapshot) || !capturedTags(osm.tags) || !digest(osm.fingerprint)) return ['missing_evidence', 'missing_osm_declaration'];
+    if (!array(osm.served_members, 512) || !array(osm.track_members, 10000)) return ['missing_evidence', 'invalid_service_sections'];
+    work += osm.served_members.length + osm.track_members.length;
+    if (work > 100000) return ['missing_evidence', 'candidate_work_limit'];
+    if (osm.served_members.some(member => !record(member, ['id', 'role', 'position']) || !typedId(member.id) || typeof member.role !== 'string' || member.role.length > 64 || !Number.isSafeInteger(member.position) || member.position < 0 || member.position >= 10000) || osm.track_members.some(way => !positive(way))) return ['missing_evidence', 'invalid_service_members'];
+    const declaration = Object.fromEntries(['relation_id', 'version', 'timestamp', 'snapshot', 'tags', 'served_members', 'track_members'].map(key => [key, osm[key]]));
+    if (osm.schema !== 1 || hash(declaration) !== osm.fingerprint) return ['conflicting', 'osm_fingerprint_mismatch'];
+    if (osm.snapshot !== context.osm_snapshot) return ['stale', 'service_snapshot_mismatch'];
+    return null;
+  };
   for (const candidate of candidates) {
     if (candidate?.eligibility === 'excluded') continue;
     if (!candidate || !array(candidate.route_bindings, 32)) { blockers.push(['missing_evidence', 'invalid_candidate']); continue; }
@@ -145,7 +156,16 @@ export function matchTimetablePattern(input = {}) {
     if (previous && candidate.eligibility !== 'excluded') { blockers.push(['stale', 'route_binding_source_mismatch']); continue; }
     const exact = candidate.route_bindings.filter(row => bound(row) && row.route_id === pattern.source_route_id);
     const sameOperator = candidate.operator_binding?.feed_id === source.feed_id && candidate.operator_binding.agency_id === pattern.agency_id;
-    const refMatches = id(pattern.route_ref) && candidate.osm?.tags?.ref === pattern.route_ref;
+    const osm = candidate.osm;
+    // A same-scope operator alternative is not unrelated merely because its
+    // mutable ref says so. Check the captured declaration before using that ref
+    // to discard it; valid different refs remain independent.
+    if (sameOperator) {
+      const problem = inspectOsm(osm);
+      if (work > 100000) return result('missing_evidence', 'candidate_work_limit');
+      if (problem) { blockers.push(problem); continue; }
+    }
+    const refMatches = id(pattern.route_ref) && osm?.tags?.ref === pattern.route_ref;
     const relevantOperator = sameOperator && (exact.length > 0 || refMatches);
     if (relevantOperator && candidate.operator_binding.source_sha256 !== source.sha256) { blockers.push(['stale', 'operator_binding_source_mismatch']); continue; }
     const fallback = sameOperator && refMatches && bound(candidate.operator_binding);
@@ -154,14 +174,15 @@ export function matchTimetablePattern(input = {}) {
     eligible++;
     if (candidate.status === 'conflict' || exact.some(row => row.status === 'conflict') || (relevantOperator && candidate.operator_binding.status === 'conflict')) { blockers.push(['conflicting', 'service_identity_conflict']); continue; }
     if (candidate.status !== 'verified' || exact.some(row => row.status !== 'verified') || (relevantOperator && candidate.operator_binding.status !== 'verified')) { blockers.push(['missing_evidence', 'unverified_service_identity']); continue; }
-    const osm = candidate.osm;
-    if (!record(osm, osmFields) || osm?.status !== 'captured' || !array(osm.reasons, 0) || !positive(osm.relation_id) || !positive(osm.version) || !instant(osm.timestamp) || !instant(osm.snapshot) || Date.parse(osm.timestamp) > Date.parse(osm.snapshot) || !capturedTags(osm.tags) || !digest(osm.fingerprint) || !id(candidate.service_id)) { blockers.push(['missing_evidence', 'missing_osm_declaration']); continue; }
-    if (!array(osm.served_members, 512) || !array(osm.track_members, 10000) || !array(candidate.eligible_way_ids, 10000) || !array(candidate.variants, 128)) { blockers.push(['missing_evidence', 'invalid_service_sections']); continue; }
-    if (osm.served_members.some(member => !record(member, ['id', 'role', 'position']) || !typedId(member.id) || typeof member.role !== 'string' || member.role.length > 64 || !Number.isSafeInteger(member.position) || member.position < 0 || member.position >= 10000) || osm.track_members.some(way => !positive(way)) || candidate.eligible_way_ids.some(way => !positive(way))) { blockers.push(['missing_evidence', 'invalid_service_members']); continue; }
-    const declaration = Object.fromEntries(['relation_id', 'version', 'timestamp', 'snapshot', 'tags', 'served_members', 'track_members'].map(key => [key, osm[key]]));
-    if (osm.schema !== 1 || hash(declaration) !== osm.fingerprint) { blockers.push(['conflicting', 'osm_fingerprint_mismatch']); continue; }
-    if (osm.snapshot !== context.osm_snapshot) { blockers.push(['stale', 'service_snapshot_mismatch']); continue; }
-    work += osm.served_members.length + osm.track_members.length + candidate.eligible_way_ids.length;
+    if (!id(candidate.service_id)) { blockers.push(['missing_evidence', 'missing_service_id']); continue; }
+    if (!sameOperator) {
+      const problem = inspectOsm(osm);
+      if (work > 100000) return result('missing_evidence', 'candidate_work_limit');
+      if (problem) { blockers.push(problem); continue; }
+    }
+    if (!array(candidate.eligible_way_ids, 10000) || !array(candidate.variants, 128)) { blockers.push(['missing_evidence', 'invalid_service_sections']); continue; }
+    if (candidate.eligible_way_ids.some(way => !positive(way))) { blockers.push(['missing_evidence', 'invalid_service_members']); continue; }
+    work += candidate.eligible_way_ids.length;
     for (const variant of candidate.variants) {
       if (!variant || !array(variant.stations, 512) || !array(variant.section_way_ids, 10000)) { blockers.push(['missing_evidence', 'invalid_variant']); continue; }
       work += variant.stations.length + variant.section_way_ids.length;

@@ -455,3 +455,38 @@ test('conflicting, stale and missing candidate blockers have stable precedence i
     assert.equal(output.frequency_status, 'not_evaluated');
   }
 });
+
+test('operator alternative relevance cannot rely on a damaged or missing OSM declaration', () => {
+  for (const change of ['ref', 'missing']) for (const reverse of [false, true]) {
+    const input = fixture(), alternate = structuredClone(input.candidates[0]);
+    alternate.service_id = 'alternative'; alternate.route_bindings = [];
+    alternate.operator_binding = {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: 'verified'};
+    input.candidates.push(alternate);
+    assert.equal(status(input), 'ambiguous', 'both intact candidates are plausible');
+    if (change === 'ref') alternate.osm.tags.ref = 'Q';
+    else delete alternate.osm;
+    if (reverse) input.candidates.reverse();
+    assert.equal(status(input), change === 'ref' ? 'conflicting' : 'missing_evidence', `${change}/${reverse}`);
+  }
+});
+
+test('only intact current nonmatching refs can exclude same-scope operator alternatives', () => {
+  for (const reverse of [false, true]) {
+    const input = fixture(), alternate = structuredClone(input.candidates[0]);
+    alternate.route_bindings = []; alternate.service_id = 'different-ref';
+    alternate.operator_binding = {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: 'verified'};
+    alternate.osm = captureOsmServiceEvidence(relation({tags: {...relation().tags, ref: 'Q'}}), snapshot);
+    input.candidates.push(alternate);
+    if (reverse) input.candidates.reverse();
+    assert.equal(status(input), 'verified', 'a valid current different ref is unrelated');
+    alternate.osm = captureOsmServiceEvidence(relation({tags: {...relation().tags, ref: 'Q'}}), '2026-10-04T00:00:00Z');
+    assert.equal(status(input), 'stale', 'an old declaration cannot establish current irrelevance');
+  }
+});
+
+test('OSM work for same-operator alternatives is bounded even when every intact ref differs', () => {
+  const input = fixture();
+  const osm = captureOsmServiceEvidence(relation({tags: {...relation().tags, ref: 'Q'}, members: Array.from({length: 10000}, (_, i) => ({type: 'way', ref: i + 1, role: ''}))}), snapshot);
+  for (let i = 0; i < 11; i++) input.candidates.push({eligibility: 'eligible', route_bindings: [], operator_binding: {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: 'verified'}, osm});
+  assert.deepEqual(matchTimetablePattern(input).reasons, ['candidate_work_limit']);
+});
