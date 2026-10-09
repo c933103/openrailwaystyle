@@ -208,14 +208,14 @@ refresh behavior is handled separately in #167.
 
 [Full machine-readable A/B results](investigations/timetable-evidence-benchmark-20261009.json)
 record the exact measured source hashes. With 10,000 trips, 240,000 stop rows and
-28 profiles, median compile times across three fresh-process pairs were 10.070 s
-for the saved parent, 9.936 s with capture disabled, and 10.867 s with capture
-enabled. Median peak RSS was 111,576 / 111,744 / 140,040 KiB respectively. Enabled
-capture retained 2 patterns, 10,000 distinct observations and a 5,015,157-byte
+28 profiles, median compile times across three fresh-process pairs were 9.587 s
+for the saved parent, 9.726 s with capture disabled, and 10.477 s with capture
+enabled. Median peak RSS was 111,736 / 111,696 / 144,756 KiB respectively. Enabled
+capture retained 2 patterns, 10,000 distinct observations and a 5,825,203-byte
 sidecar. All nine legacy output hashes were identical within the cohort.
 
 A separate 12,000-trip, 288,000-stop-row unique-pattern adversary reached the
-16 MiB evidence cap and returned a 283-byte `incomplete` sidecar with no retained
+16 MiB evidence cap and returned a 329-byte `incomplete` sidecar with no retained
 arrays. Its legacy output still matched both controls; enabled peak RSS was
-178,552 KiB. These observations support keeping capture explicitly opt-in and
+179,068 KiB. These observations support keeping capture explicitly opt-in and
 bounded; they do not justify enabling it across the production registry yet.
