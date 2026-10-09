@@ -56,8 +56,15 @@ const mergeObservations = group => {
   // live predictions conflict, keep the later prediction deterministically,
   // without claiming it is the newest update. Cancellation is never dropped.
   const live = ordered.filter(r => r.live).sort((a, b) => b.departure - a.departure || Number(!a.track) - Number(!b.track) || compareRows(a, b))[0];
-  const merged = {...keep, cancelled: group.some(r => r.cancelled), track: keep.track || ordered.find(r => r.track)?.track || ''};
-  if (live) Object.assign(merged, {departure: live.departure, live: true, delay: live.delay, track: live.track || merged.track});
+  // A time-only update must not hide an explicit live platform. Carry the
+  // platform's own prediction through both merge stages: borrowed scheduled
+  // platforms are not live updates, and later time-only predictions must not
+  // make an older platform observation appear newer. Ties are deterministic.
+  const liveTrack = group.map(r => r.liveTrack).filter(Boolean)
+    .sort((a, b) => b.departure - a.departure || compareText(a.track, b.track))[0] || null;
+  const merged = {...keep, cancelled: group.some(r => r.cancelled), liveTrack,
+    track: liveTrack?.track || live?.track || keep.track || ordered.find(r => r.track)?.track || ''};
+  if (live) Object.assign(merged, {departure: live.departure, live: true, delay: live.delay});
   return merged;
 };
 // Board rows from departure lists (one list per stop; merged, earliest first,
@@ -98,6 +105,7 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
       color: /^[0-9a-f]{6}$/i.test(time.routeColor || '') ? `#${time.routeColor}` : null,
       textColor: /^[0-9a-f]{6}$/i.test(time.routeTextColor || '') ? `#${time.routeTextColor}` : null,
       track: place.track || place.scheduledTrack || '', live: time.realTime === true,
+      liveTrack: time.realTime === true && place.track ? {track: place.track, departure} : null,
       delay: time.realTime === true && Number.isFinite(scheduled) ? Math.round((departure - scheduled) / 60000) : null,
       cancelled: time.cancelled === true || time.tripCancelled === true || place.cancelled === true, mode: time.mode,
       list, to: squash(headsign), minute: Math.floor(scheduled / 60000),
@@ -124,7 +132,7 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
     if (new Set(group.map(r => r.list)).size < group.length) { out.push(...group); continue; }
     out.push(mergeObservations(group));
   }
-  return out.sort((a, b) => a.departure - b.departure || compareRows(a, b)).slice(0, count).map(({list, to, minute, ...row}) => row);
+  return out.sort((a, b) => a.departure - b.departure || compareRows(a, b)).slice(0, count).map(({list, to, minute, liveTrack, ...row}) => row);
 }
 
 // Clock time at the station (its own time zone).

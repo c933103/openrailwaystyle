@@ -14,7 +14,11 @@ time agree. Distinguishable simultaneous services remain separate. A combined
 row retains any cancellation and uses a live prediction when available. When
 live predictions disagree and no update timestamp is available, the later
 predicted departure is displayed consistently; this does not establish which
-update is newest. Ambiguous matches between different boards remain separate.
+update is newest. An explicit live platform is retained when another update
+supplies only a departure time; scheduled platforms remain a fallback. If live
+platforms conflict, the platform attached to the later predicted departure is
+used, with a consistent choice for equal times. This also cannot establish which
+platform update is newest. Ambiguous matches between different boards remain separate.
 
 Stations appear progressively as you zoom in. Construction, proposed and former lines use distinct patterns. The [rendering reference](rendering.md) explains symbols, zoom levels, units and coverage limits.
 
