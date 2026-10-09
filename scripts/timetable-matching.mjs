@@ -47,6 +47,11 @@ const same = (a, b) => a.length === b.length && a.every((value, index) => value 
 
 
 const plain = value => value !== null && typeof value === 'object' && !Array.isArray(value) && [Object.prototype, null].includes(Object.getPrototypeOf(value));
+// Only ordinary JSON fields can establish assertions. Unknown envelope/raw-OSM
+// metadata stays unused; inherited or hidden fields never enter a selector.
+const ownField = (value, key) => plain(value) && Object.prototype.propertyIsEnumerable.call(value, key);
+const ownFields = (value, fields) => plain(value) && fields.every(key => Object.prototype.propertyIsEnumerable.call(value, key));
+const readField = (value, key) => ownField(value, key) ? value[key] : undefined;
 // Inspect only a bounded exact shape before recursive canonical hashing. Extra
 // fields are not silently dropped: they may carry a newer, unsupported schema.
 function record(value, fields) {
@@ -81,10 +86,10 @@ const osmFields = ['schema', 'status', 'reasons', 'relation_id', 'version', 'tim
 // classification, and does not fetch stations or declare their equivalence.
 export function captureOsmServiceEvidence(relation, snapshot) {
   const incomplete = reason => ({schema: 1, status: 'incomplete', reasons: [reason]});
-  if (relation?.type !== 'relation' || !positive(relation?.id) || !positive(relation.version) || !instant(relation.timestamp) ||
+  if (!ownFields(relation, ['type', 'id', 'version', 'timestamp', 'members']) || relation.type !== 'relation' || !positive(relation.id) || !positive(relation.version) || !instant(relation.timestamp) ||
       !instant(snapshot) || Date.parse(relation.timestamp) > Date.parse(snapshot)) return incomplete('unverified_revision');
-  if (!array(relation.members, 10000) || relation.members.some(m => !m || !['node', 'way', 'relation'].includes(m.type) || !positive(m.ref) || typeof m.role !== 'string' || m.role.length > 64 || Buffer.byteLength(m.role) > 64)) return incomplete('incomplete_members');
-  const rawTags = relation.tags || {}, selected = [];
+  if (!array(relation.members, 10000) || relation.members.some(m => !ownFields(m, ['type', 'ref', 'role']) || !['node', 'way', 'relation'].includes(m.type) || !positive(m.ref) || typeof m.role !== 'string' || m.role.length > 64 || Buffer.byteLength(m.role) > 64)) return incomplete('incomplete_members');
+  const rawTags = readField(relation, 'tags') || {}, selected = [];
   if (!plain(rawTags)) return incomplete('invalid_tags');
   let scanned = 0;
   for (const key in rawTags) {
@@ -144,8 +149,8 @@ function variantSchema(variant, budget) {
 }
 function candidateSchema(candidate, budget) {
   const fields = ['service_id', 'status', 'eligibility', 'osm', 'eligible_way_ids', 'route_bindings', 'variants'];
-  if (candidate?.operator_binding !== undefined) fields.push('operator_binding');
-  if (!record(candidate, fields) || !id(candidate.service_id) || !assertionState(candidate.status) || !['eligible', 'unknown'].includes(candidate.eligibility) || !array(candidate.route_bindings, 32) || candidate.route_bindings.some(row => !routeBinding(row)) || (candidate.operator_binding !== undefined && !operatorBinding(candidate.operator_binding))) return ['missing_evidence', 'invalid_candidate'];
+  if (ownField(candidate, 'operator_binding')) fields.push('operator_binding');
+  if (!record(candidate, fields) || !id(candidate.service_id) || !assertionState(candidate.status) || !['eligible', 'unknown'].includes(candidate.eligibility) || !array(candidate.route_bindings, 32) || candidate.route_bindings.some(row => !routeBinding(row)) || (ownField(candidate, 'operator_binding') && !operatorBinding(candidate.operator_binding))) return ['missing_evidence', 'invalid_candidate'];
   if (!array(candidate.eligible_way_ids, 10000) || !array(candidate.variants, 128)) return ['missing_evidence', 'invalid_service_sections'];
   budget.references(candidate.eligible_way_ids.length);
   if (candidate.eligible_way_ids.some(way => !positive(way))) return ['missing_evidence', 'invalid_service_members'];
@@ -168,10 +173,11 @@ export function matchTimetablePattern(input = {}) {
   }
 }
 function matchPattern(input) {
-  const {evidence, pattern_id, context, candidates, crosswalk, now} = input ?? {};
-  if (!digest(pattern_id) || !Number.isFinite(now) || !context || !id(context.feed_id) || !digest(context.source_sha256) || !instant(context.osm_snapshot) || !calendarDate(context.service_date) || !Number.isFinite(context.review_until)) return result('missing_evidence', 'invalid_context');
+  if (!ownFields(input, ['evidence', 'pattern_id', 'context', 'candidates', 'now'])) return result('missing_evidence', 'invalid_input');
+  const {evidence, pattern_id, context, candidates, now} = input;
+  if (!digest(pattern_id) || !Number.isFinite(now) || !ownFields(context, ['feed_id', 'source_sha256', 'service_date', 'osm_snapshot', 'review_until', 'candidate_inventory']) || !id(context.feed_id) || !digest(context.source_sha256) || !instant(context.osm_snapshot) || !calendarDate(context.service_date) || !Number.isFinite(context.review_until)) return result('missing_evidence', 'invalid_context');
   if (Date.parse(context.osm_snapshot) / 1000 > now) return result('conflicting', 'future_osm_snapshot');
-  if (evidence?.schema !== 1 || evidence.status !== 'captured' || !array(evidence.patterns, 10000) || !array(evidence.observations, 100000) || !array(evidence.stops, 50000)) return result('missing_evidence', 'capture_incomplete');
+  if (!ownFields(evidence, ['schema', 'status', 'source', 'patterns', 'observations', 'stops']) || evidence.schema !== 1 || evidence.status !== 'captured' || !array(evidence.patterns, 10000) || !array(evidence.observations, 100000) || !array(evidence.stops, 50000)) return result('missing_evidence', 'capture_incomplete');
   const source = evidence.source;
   if (!record(source, ['feed_id', 'sha256', 'service_date', 'valid_until'])) return result('missing_evidence', 'invalid_source_schema');
   if (source.feed_id !== context.feed_id || source.sha256 !== context.source_sha256 || source.service_date !== context.service_date) return result('conflicting', 'source_context_mismatch');
@@ -206,9 +212,10 @@ function matchPattern(input) {
   if (!suppliedCandidates) return result('missing_evidence', 'candidate_or_crosswalk_limit');
   // Explicit exclusion alone needs no match-only schema. No other missing or
   // unknown field can stand in for exclusion.
-  const included = suppliedCandidates.filter(candidate => candidate?.eligibility !== 'excluded');
+  const included = suppliedCandidates.filter(candidate => readField(candidate, 'eligibility') !== 'excluded');
   const sparseCandidates = suppliedCandidates.length !== candidates.length;
   if (!included.length) return sparseCandidates ? result('missing_evidence', 'sparse_candidate_inventory') : result('no_eligible_service', 'no_eligible_identity_in_candidates');
+  const crosswalk = readField(input, 'crosswalk');
   const suppliedCrosswalk = ownedEntries(crosswalk, 1024);
   if (!suppliedCrosswalk) return result('missing_evidence', 'candidate_or_crosswalk_limit');
   if (pattern.calls.some(call => ['2', '3'].includes(call.pickup_type) || ['2', '3'].includes(call.drop_off_type))) return result('missing_evidence', 'conditional_stop_service');
@@ -226,9 +233,10 @@ function matchPattern(input) {
     recognizedStations.set(row.station_id, row.osm_station_id);
   }
   for (const candidate of included) {
-    const routes = (ownedEntries(candidate?.route_bindings, 32) ?? []).filter(row => routeBinding(row) && bound(row) && row.route_id === pattern.source_route_id);
-    const operator = operatorBinding(candidate?.operator_binding) && bound(candidate.operator_binding) && candidate.operator_binding.agency_id === pattern.agency_id;
-    if (routes.some(row => row.status === 'conflict') || (routes.length && (candidate.status === 'conflict' || (operator && candidate.operator_binding.status === 'conflict')))) blockers.push(['conflicting', 'service_identity_conflict']);
+    const routes = (ownedEntries(readField(candidate, 'route_bindings'), 32) ?? []).filter(row => routeBinding(row) && bound(row) && row.route_id === pattern.source_route_id);
+    const operator = readField(candidate, 'operator_binding');
+    const sameOperator = operatorBinding(operator) && bound(operator) && operator.agency_id === pattern.agency_id;
+    if (routes.some(row => row.status === 'conflict') || (routes.length && (readField(candidate, 'status') === 'conflict' || (sameOperator && operator.status === 'conflict')))) blockers.push(['conflicting', 'service_identity_conflict']);
   }
   const validCrosswalk = suppliedCrosswalk.filter(stationBinding);
   if (validCrosswalk.length !== suppliedCrosswalk.length) blockers.push(['missing_evidence', 'invalid_station_binding']);
@@ -237,17 +245,17 @@ function matchPattern(input) {
   for (const candidate of included) {
     const schemaProblem = candidateSchema(candidate, candidateWork);
     if (schemaProblem) blockers.push(schemaProblem);
-    else candidateWork.encode([candidate.service_id, candidate.status, candidate.eligibility, candidate.route_bindings, candidate.operator_binding ?? null, candidate.eligible_way_ids, candidate.variants]);
-    const osmProblem = inspectOsm(candidate?.osm, context.osm_snapshot, candidateWork);
+    else candidateWork.encode([candidate.service_id, candidate.status, candidate.eligibility, candidate.route_bindings, readField(candidate, 'operator_binding') ?? null, candidate.eligible_way_ids, candidate.variants]);
+    const osmProblem = inspectOsm(readField(candidate, 'osm'), context.osm_snapshot, candidateWork);
     if (osmProblem) blockers.push(osmProblem);
     // An independently complete operator assertion and intact ref can still
     // identify a current conflict beside malformed match-only fields.
-    const operator = candidate?.operator_binding;
-    const currentFallback = !osmProblem && operatorBinding(operator) && bound(operator) && operator.agency_id === pattern.agency_id && id(pattern.route_ref) && candidate.osm.tags.ref === pattern.route_ref;
-    if (currentFallback && (operator.status === 'conflict' || candidate.status === 'conflict')) blockers.push(['conflicting', 'service_identity_conflict']);
+    const operator = readField(candidate, 'operator_binding');
+    const currentFallback = !osmProblem && operatorBinding(operator) && bound(operator) && operator.agency_id === pattern.agency_id && id(pattern.route_ref) && readField(candidate.osm.tags, 'ref') === pattern.route_ref;
+    if (currentFallback && (operator.status === 'conflict' || readField(candidate, 'status') === 'conflict')) blockers.push(['conflicting', 'service_identity_conflict']);
     if (schemaProblem && !osmProblem) {
-      const currentExact = (ownedEntries(candidate.route_bindings, 32) ?? []).some(row => routeBinding(row) && bound(row) && row.route_id === pattern.source_route_id);
-      if (currentExact || currentFallback) for (const variant of ownedEntries(candidate.variants, 128) ?? []) {
+      const currentExact = (ownedEntries(readField(candidate, 'route_bindings'), 32) ?? []).some(row => routeBinding(row) && bound(row) && row.route_id === pattern.source_route_id);
+      if (currentExact || currentFallback) for (const variant of ownedEntries(readField(candidate, 'variants'), 128) ?? []) {
         if (variantSchema(variant, candidateWork) && variant.status === 'conflict') blockers.push(['conflicting', 'variant_identity_conflict']);
       }
     }
@@ -280,9 +288,9 @@ function matchPattern(input) {
   for (const candidate of prepared) {
     const exact = candidate.route_bindings.filter(row => bound(row) && row.route_id === pattern.source_route_id);
     const previous = candidate.route_bindings.some(row => row.feed_id === source.feed_id && !bound(row));
-    const operator = candidate.operator_binding;
+    const operator = readField(candidate, 'operator_binding');
     const sameOperator = operator?.feed_id === source.feed_id && operator.agency_id === pattern.agency_id;
-    const refMatches = id(pattern.route_ref) && candidate.osm.tags.ref === pattern.route_ref;
+    const refMatches = id(pattern.route_ref) && readField(candidate.osm.tags, 'ref') === pattern.route_ref;
     const relevantOperator = sameOperator && (exact.length > 0 || refMatches);
     const fallback = sameOperator && refMatches && bound(operator);
     if (previous) blockers.push(['stale', 'route_binding_source_mismatch']);

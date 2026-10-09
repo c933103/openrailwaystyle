@@ -136,6 +136,17 @@ OSM extraction does not yet call it or acquire the necessary station crosswalks.
 5. Either a reviewed feed/revision-scoped source-route binding, or a reviewed
    agency/operator binding with the exact route ref and verified served pattern.
 
+All consumed invocation/context/evidence, raw OSM relation/member, exclusion and
+optional selector fields must be own enumerable properties of plain records
+(ordinary or null-prototype JSON-shaped objects). Required hidden/inherited
+fields withhold matching; unused optional envelope/raw-OSM metadata is not
+traversed, hashed or treated as an assertion. In particular, operator/ref
+fallback reads only the retained enumerable own `ref`, so a hidden or inherited
+label cannot bypass the captured declaration fingerprint. Exact nested schemas
+already require enumerable own fields before hashing. The helper is a bounded
+data contract, not a sandbox for executable getters, proxies or modified runtime
+intrinsics.
+
 The `verified` and `eligible` fields are assertions supplied by a future audited
 reconciliation pipeline or controlled test fixture. **This function checks their
 consistency; it does not independently establish their real-world truth.** A
@@ -174,7 +185,9 @@ unknown values, such as a missing departure time. Resource-limit outcomes remain
 Positive selection uses distinct phases: source/context validity, complete
 bounded record schemas, content integrity, relevance filtering, then blocker
 and ambiguity resolution. The deliberate exception is an explicit candidate
-`eligibility: "excluded"`, which needs no match-only fields. Unknown eligibility
+`eligibility: "excluded"` on a plain candidate with an own enumerable field,
+which needs no match-only fields. Inherited values, non-plain candidates and
+hidden fields cannot establish exclusions. Unknown eligibility
 is not exclusion. A candidate with neither route nor operator identity blocks a
 positive result; absence of an operator on a sound exact route binding is fine.
 An unreviewed assertion cannot establish that a non-excluded candidate is
@@ -311,14 +324,14 @@ bounded; they do not justify enabling it across the production registry yet.
 The same report also records fresh, serial Node 22.23.3 matcher processes over a
 controlled 10,000-observation, 2-pattern, 5,825,261-byte sidecar produced from the
 240,000-stop-row/28-profile fixture. Across three repetitions, the valid identity
-case took a median 130.450 ms; an unbound alternative was withheld in 126.298 ms.
-Median peak process RSS was 116,884 and 116,580 KiB respectively. These elapsed
+case took a median 137.671 ms; an unbound alternative was withheld in 130.010 ms.
+Median peak process RSS was 116,592 and 116,544 KiB respectively. These elapsed
 times cover matching after parsing/preparation; RSS includes startup, parsing
 and fixture preparation and is not a matcher-only allocation measurement.
 
 The source-work adversary and candidate-reference adversary returned explicit
-work-limit outcomes in median 46.588 and 134.845 ms, with median peak process RSS
-121,088 and 117,516 KiB. The source adversary fails during all-pattern validation
+work-limit outcomes in median 49.035 and 149.015 ms, with median peak process RSS
+121,832 and 117,684 KiB. The source adversary fails during all-pattern validation
 before reaching the ordinary observation scan, so its lower elapsed time is not
 a speed improvement. The script publishes only aggregate measurements and
 source hashes, never the temporary synthetic sidecar or ZIP. Compiler and

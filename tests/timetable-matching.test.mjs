@@ -898,3 +898,107 @@ test('invalid container types and length caps precede negative diagnostic scanni
     assert.equal(status(input), 'missing_evidence', `${field}/over limit`);
   }
 });
+
+test('only plain candidates with owned eligibility can establish explicit exclusions', () => {
+  const inherited = Object.create({eligibility: 'excluded'});
+  class Unreviewed { constructor() { this.eligibility = 'excluded'; } }
+  for (const candidate of [inherited, hiddenField({eligibility: 'excluded'}, 'eligibility'), new Unreviewed(), Object.assign([], {eligibility: 'excluded'}), Object.assign(() => {}, {eligibility: 'excluded'})]) {
+    assert.equal(status({...fixture(), candidates: [candidate]}), 'missing_evidence', 'invalid exclusion alone');
+    for (const reverse of [false, true]) {
+      const input = fixture(); input.candidates.push(candidate);
+      if (reverse) input.candidates.reverse();
+      const output = matchTimetablePattern(input);
+      assert.equal(output.status, 'missing_evidence', 'invalid exclusion beside a valid candidate');
+      assert.equal(output.frequency_status, 'not_evaluated');
+    }
+  }
+  for (const candidate of [{eligibility: 'excluded'}, Object.assign(Object.create(null), {eligibility: 'excluded'})]) {
+    assert.equal(status({...fixture(), candidates: [candidate]}), 'no_eligible_service', 'explicit own exclusion');
+    const input = fixture(); input.candidates.push(candidate);
+    assert.equal(status(input), 'verified', 'valid explicit exclusion remains independent');
+  }
+});
+
+function hiddenField(object, field) {
+  Object.defineProperty(object, field, {value: object[field], enumerable: false, writable: true, configurable: true});
+  return object;
+}
+function withPrototypeField(field, value, run) {
+  const previous = Object.getOwnPropertyDescriptor(Object.prototype, field);
+  try {
+    Object.defineProperty(Object.prototype, field, {value, enumerable: false, writable: true, configurable: true});
+    return run();
+  } finally {
+    if (previous) Object.defineProperty(Object.prototype, field, previous);
+    else delete Object.prototype[field];
+  }
+}
+for (const container of ['invocation', 'context', 'evidence']) {
+  test(`${container} envelope assertions require ordinary owned enumerable fields`, () => {
+    const keys = container === 'invocation' ? ['evidence', 'pattern_id', 'context', 'candidates', 'now'] : container === 'context' ? ['feed_id', 'source_sha256', 'service_date', 'osm_snapshot', 'review_until', 'candidate_inventory'] : ['schema', 'status', 'source', 'patterns', 'observations', 'stops'];
+    for (const kind of ['inherited', 'hidden']) for (const key of keys) {
+      const input = fixture(), value = container === 'invocation' ? input : input[container];
+      const changed = kind === 'inherited' ? Object.assign(Object.create({[key]: value[key]}), value) : value;
+      if (kind === 'inherited') delete changed[key];
+      else hiddenField(changed, key);
+      if (container === 'invocation') assert.equal(status(changed), 'missing_evidence', `${kind}/${key}`);
+      else { input[container] = changed; assert.equal(status(input), 'missing_evidence', `${kind}/${key}`); }
+    }
+    const input = fixture();
+    if (container === 'invocation') assert.equal(status(Object.assign(Object.create(null), input)), 'verified');
+    else { input[container] = Object.assign(Object.create(null), input[container]); assert.equal(status(input), 'verified'); }
+  });
+}
+
+test('prototype fields cannot supply completeness, capture status or exclusions', () => {
+  for (const [container, key] of [['context', 'candidate_inventory'], ['evidence', 'status']]) {
+    const input = fixture(), value = input[container][key]; delete input[container][key];
+    assert.equal(withPrototypeField(key, value, () => status(input)), 'missing_evidence', key);
+  }
+  const input = fixture(); input.candidates.push({});
+  assert.equal(withPrototypeField('eligibility', 'excluded', () => status(input)), 'missing_evidence');
+});
+
+test('raw OSM relation and member assertions cannot come from inherited or hidden fields', () => {
+  for (const member of [false, true]) for (const kind of ['inherited', 'hidden']) {
+    const raw = relation(), value = member ? raw.members[0] : raw;
+    const changed = kind === 'inherited' ? Object.create(value) : hiddenField(value, member ? 'ref' : 'version');
+    if (member) raw.members[0] = changed;
+    assert.equal(captureOsmServiceEvidence(member ? raw : changed, snapshot).status, 'incomplete', `${member}/${kind}`);
+  }
+  assert.equal(captureOsmServiceEvidence(Object.assign(Object.create(null), relation()), snapshot).status, 'captured');
+});
+
+test('optional ref fallback consumes only enumerable own content-bound tags', () => {
+  for (const kind of ['inherited', 'hidden']) {
+    const input = fixture(), candidate = input.candidates[0], raw = relation(); delete raw.tags.ref;
+    candidate.osm = captureOsmServiceEvidence(raw, snapshot);
+    candidate.route_bindings = [];
+    candidate.operator_binding = {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: 'verified'};
+    assert.equal(status(input), 'missing_evidence', 'no captured ref control');
+    if (kind === 'hidden') { Object.defineProperty(candidate.osm.tags, 'ref', {value: 'R'}); assert.equal(status(input), 'missing_evidence'); }
+    else assert.equal(withPrototypeField('ref', 'R', () => status(input)), 'missing_evidence');
+  }
+});
+
+test('partial candidate negative preflight does not consume inherited assertion fields', () => {
+  for (const kind of ['inherited', 'hidden']) {
+    const input = fixture(), candidate = input.candidates[0];
+    candidate.route_bindings[0].status = 'conflict';
+    const value = candidate.route_bindings;
+    if (kind === 'hidden') { hiddenField(candidate, 'route_bindings'); assert.equal(status(input), 'missing_evidence'); }
+    else { delete candidate.route_bindings; assert.equal(withPrototypeField('route_bindings', value, () => status(input)), 'missing_evidence'); }
+  }
+});
+
+test('unconsumed hidden or inherited optional operator metadata is not hashed or asserted', () => {
+  for (const kind of ['inherited', 'hidden']) {
+    const input = fixture(), candidate = input.candidates[0];
+    let unused = {status: 'conflict'};
+    for (let i = 0; i < 10000; i++) unused = {extra: unused};
+    if (kind === 'hidden') {
+      Object.defineProperty(candidate, 'operator_binding', {value: unused});
+      assert.equal(status(input), 'verified', 'exact binding has no consumed operator assertion');
+    } else assert.equal(withPrototypeField('operator_binding', unused, () => status(input)), 'verified');
+  }
+});
