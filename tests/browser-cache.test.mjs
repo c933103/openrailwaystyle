@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp, readdir, readFile} from 'node:fs/promises';
+import {mkdtemp, readdir, readFile, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import encode from 'vt-pbf';
 import {cacheOtherOrigins, cacheKey, pruneTileCache, isPublicOrm, localOrmTarget, isolatePublicOrm} from '../scripts/browser.mjs';
+import {validProviderVectorTile} from '../styles/vector-tile-validation.mjs';
 
 // A Playwright context reduced to what the cache uses: one route whose
 // handler is called with fake routes.
@@ -71,6 +73,40 @@ test('other origins are served from the cache until it expires; the site and non
   assert.deepEqual((await readdir(directory)).filter(name => !name.startsWith('.')).sort(), [`${cacheKey('https://tiles.example/1/2/3')}.body`, `${cacheKey('https://tiles.example/1/2/3')}.json`]);
 });
 
+test('provider tile validation remains strict but public tiles bypass even a poisoned browser cache', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'tile-cache-')), context = fakeContext();
+  const url = 'https://openrailwaymap.app/railway_line_high/7/104/52';
+  const tile = Buffer.from(encode.fromGeojsonVt({railway_line_high: {features: [{
+    type: 2, geometry: [[[1, 1], [100, 100]]], tags: {feature: 'rail', state: 'present'},
+  }]}}));
+  const bad = Buffer.from('temporarily unavailable');
+  assert.equal(validProviderVectorTile(url, 200, bad), false);
+  assert.equal(validProviderVectorTile(url, 200, tile), true);
+  assert.equal(validProviderVectorTile('https://tiles.example/7/104/52', 200, bad), true,
+    'only the known provider vector-tile contract is parsed');
+
+  let body = tile;
+  const network = {calls: 0, respond: () =>
+    ({status: 200, headers: {'content-type': 'application/x-protobuf'}, body})};
+  await cacheOtherOrigins(context, directory, {now: () => 1000, maxAge: 5000});
+  const call = async target => {
+    const {route, result} = fakeRoute(target, {network});
+    await context.handler(route);
+    return result;
+  };
+
+  const key = cacheKey(url), file = join(directory, key);
+  await writeFile(`${file}.body`, bad);
+  await writeFile(`${file}.json`, JSON.stringify({
+    url, range: '', status: 200, headers: {'content-type': 'application/x-protobuf'},
+    size: bad.length, saved: 1000,
+  }));
+  assert.equal(context.match(new URL(url)), false, 'public tiles never enter the cache route');
+  assert.equal((await call(url)).fallback, true, 'defensive handler also yields to the public-host guard');
+  assert.equal(network.calls, 0, 'even a poisoned historical entry must not trigger a public refetch');
+  assert.deepEqual(await readFile(`${file}.body`), bad, 'excluded historical entry is never replayed or rewritten');
+});
+
 test('a request whose page closes mid-flight fails quietly instead of crashing the check', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'tile-cache-')), context = fakeContext();
   await cacheOtherOrigins(context, directory);
@@ -91,7 +127,11 @@ test('every browser check launches through the shared helper', async () => {
   assert.ok(scripts.length >= 16);
   for (const name of scripts) {
     const source = await readFile(new URL(`../scripts/${name}`, import.meta.url), 'utf8');
-    assert.match(source, /import \{launchBrowser\} from '\.\/browser\.mjs';/, name);
+    if(name==='check-deployed-fixture-browser.mjs'){
+      // This orchestration check delegates both URL cases to the guarded checker.
+      assert.match(source,/new URL\('\.\/check-orm-fixture-browser\.mjs',import.meta.url\)/);
+      assert.match(source,/spawn\(process.execPath,\[check\]/);
+    }else assert.match(source, /import \{launchBrowser\} from '\.\/browser\.mjs';/, name);
     assert.doesNotMatch(source, /chromium\.launch\(/, name);
   }
 });
@@ -101,7 +141,7 @@ test('the site workflow plans the browser checks and runs them through the runne
   assert.match(workflow, /run: node scripts\/ci-plan\.mjs/);
   assert.match(workflow, /matrix: \$\{\{ fromJSON\(needs\.plan\.outputs\.matrix\) \}\}/);
   assert.match(workflow, /node scripts\/run-browser-checks\.mjs --concurrency 1 --label "\$GROUP" \$CHECKS/);
-  assert.match(workflow, /BROWSER_TILE_CACHE: \$\{\{ github\.workspace \}\}\/\.browser-tiles/);
+  assert.doesNotMatch(workflow, /BROWSER_TILE_CACHE|Restore browser tile cache|Save browser tile cache/);
   // Every check is named in exactly one job of scripts/ci-plan.mjs (tests/ci-plan.test.mjs).
 });
 
@@ -144,7 +184,7 @@ test('automated OpenRailwayMap routing aborts unfixed public requests without fe
 
 test('CI uses a synthetic railway fixture rather than the provider-dependent globe/map audit', async () => {
   const workflow=await readFile(new URL('../.github/workflows/site.yml',import.meta.url),'utf8');
-  assert.match(workflow,/browser-tiles-v2-no-public-orm/);
+  assert.doesNotMatch(workflow,/browser-tiles-v2-no-public-orm/);
   assert.match(workflow,/run: node scripts\/check-orm-fixture-browser\.mjs/);
   assert.doesNotMatch(workflow,/run: node scripts\/check-map-browser\.mjs/);
   assert.doesNotMatch(workflow,/run: node scripts\/check-planning-browser\.mjs/);

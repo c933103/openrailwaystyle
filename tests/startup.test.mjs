@@ -4,6 +4,7 @@ import * as labelModule from '../styles/tile-labels.mjs';
 import encodeTile from 'vt-pbf';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import {webcrypto,createHash} from 'node:crypto';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 import * as model from '../styles/map-model.mjs';
@@ -19,15 +20,23 @@ import * as frequencyModule from '../styles/service-frequency.mjs';
 import * as powerFacilities from '../styles/power-facilities.mjs';
 import * as controlFunctions from '../styles/map-controls.mjs';
 import * as watchModule from '../styles/watch-map.mjs';
+import * as railRecoveryModule from '../styles/rail-provider-recovery.mjs';
 import * as tileBundleModule from '../styles/tile-bundles.mjs';
 import * as layerSemantics from '../styles/layer-semantics.mjs';
+import {BROWSER_LIBRARIES} from '../scripts/browser-libraries.mjs';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
 const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
+const legacyDistributions=await Promise.all(BROWSER_LIBRARIES.map(async library=>({...library,
+  url:`https://cdn.jsdelivr.net/npm/${library.package}@${library.version}/${library.source}`,
+  body:await readFile(new URL(`../node_modules/${library.package}/${library.source}`,import.meta.url)),
+}))).then(async libraries=>Promise.all(libraries.map(async library=>({...library,
+  patchedBody:library.sourceSha256?Buffer.from(await controlFunctions.backportMapLibre524(library.body,webcrypto.subtle)):null,
+}))));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, platformGeometryOptions, departureLoader, cacheOnlyLibraries, noLegacyCrypto=false, controlSource } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -68,7 +77,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     }
     getStyle() { return this.options.style; }
     getSource(id) { return (this.sources ||= {})[id] ||= {setData:data=>{(this.sourceData ||= {})[id]=data;},setUrl:url=>{this.options.style.sources[id].url=url;},setTiles:tiles=>{this.options.style.sources[id].tiles=tiles;}}; }
-    setLayoutProperty(id, property, value) { if (property === 'visibility') this.visibility[id] = value; else (this.layout ||= {})[id] = value; }
+    setLayoutProperty(id, property, value) { if (property === 'visibility') { this.visibility[id] = value; const layer=this.options.style.layers.find(l=>l.id===id); if(layer)(layer.layout ||= {}).visibility=value; } else (this.layout ||= {})[id] = value; }
     setPaintProperty(id, property, value) { (this.paint ||= {})[id] = value; ((this.paintProperties ||= {})[id] ||= {})[property] = value; }
     setPixelRatio(ratio) { this.pixelRatio = ratio; }
     zoom = 20;
@@ -111,19 +120,50 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     Object.assign(window, libraries);
     for (const script of window.document.head.querySelectorAll('script')) script.onload?.();
   };
-  if (!delayLibraries) Object.assign(window, libraries);
+  const scriptLoads=[],revoked=[];
+  if (cacheOnlyLibraries) {
+    window.caches=cacheOnlyLibraries;
+    window.Blob=Blob; window.Response=Response; window.TextDecoder=TextDecoder; window.TextEncoder=TextEncoder;
+    Object.defineProperty(window.crypto,'subtle',{value:noLegacyCrypto?undefined:webcrypto.subtle});
+    Object.assign(window,{mlcontour:libraries.mlcontour});
+    const blobs=new globalThis.Map();let sequence=0;
+    window.URL.createObjectURL=blob=>{const url=`blob:https://example.org/${++sequence}`;blobs.set(url,blob);return url;};
+    window.URL.revokeObjectURL=url=>{revoked.push(url);blobs.delete(url);};
+    const append=window.document.head.append.bind(window.document.head);
+    window.document.head.append=(...nodes)=>{
+      append(...nodes);
+      for(const script of nodes.filter(node=>node.tagName==='SCRIPT')) {
+        scriptLoads.push(script.src);
+        queueMicrotask(async()=>{
+          const saved=blobs.get(script.src);
+          if(!saved){script.onerror?.();return;}
+          try {
+            const body=Buffer.from(await saved.arrayBuffer());
+            const library=legacyDistributions.find(library=>(library.patchedBody || library.body).equals(body));
+            // The real app has hashed the actual upstream bytes. This DOM
+            // unit harness substitutes only the renderer API after accepting
+            // those exact bytes; browser coverage also executes the real code.
+            if(library)window[library.package==='maplibre-gl'?'maplibregl':'pmtiles']=libraries[library.package==='maplibre-gl'?'maplibregl':'pmtiles'];
+            else window.eval(body.toString('utf8'));
+            script.onload?.();
+          }
+          catch {script.onerror?.();}
+        });
+      }
+    };
+  } else if (!delayLibraries) Object.assign(window, libraries);
   window.fetch = fetcher || (async () => ({ok:true,json:async()=>structuredClone(style)}));
   window.matchMedia = () => ({matches:compact});
   const context = dom.getInternalVMContext();
   const dependency = new vm.SyntheticModule(Object.keys(model), function() {
-    for (const [key,value] of Object.entries(model)) this.setExport(key,value);
+    for (const [key,value] of Object.entries(model)) this.setExport(key,key==='createPlatformTileGeometry'&&platformGeometryOptions?options=>{platformGeometryOptions(options);return value(options);}:value);
   }, {context});
   const protocols=new vm.SyntheticModule(['installLabelProtocols','localizeTile','tileTextBlocks','locate','buildInfo','timedSource','readTile'],function(){this.setExport('buildInfo',labelBuild);this.setExport('readTile',labelModule.readTile);this.setExport('tileTextBlocks',labelModule.tileTextBlocks);this.setExport('installLabelProtocols',()=>stationTile?{stationTile}:{});this.setExport('timedSource',(inner,ms)=>({inner,ms,getKey:()=>inner.url}));this.setExport('localizeTile',x=>x);this.setExport('locate',(lon,lat)=>{assert.ok(Number.isFinite(lon)&&Number.isFinite(lat),'label region lookup takes longitude and latitude separately');return {atlas_han:'none',atlas_zh:''};});},{context});
   // The label code is imported on demand, after the controls are wired.
   let loadLabels;
   const labelsReady=new Promise(resolve=>{loadLabels=resolve;});
   if(!delayLabels)loadLabels();
-  const app = new vm.SourceTextModule(code, {
+  const app = new vm.SourceTextModule(code+'\nexport {libraries as __testLibraryLoads, legacyStyle as __testLegacyStyle};', {
     context,
     initializeImportMeta(meta) { meta.url = 'https://example.org/openrailwaystyle/app.mjs'+assetQuery; },
     importModuleDynamically: async specifier => {
@@ -140,9 +180,9 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const elevation = new vm.SyntheticModule(Object.keys(elevationModule), function() {
     for (const [key,value] of Object.entries(elevationModule)) this.setExport(key,value);
   }, {context});
-  // Departures without the network: no timetable covers any station here.
+  // Departures without the network; a test may supply a delayed local board.
   const departures = new vm.SyntheticModule(Object.keys(departuresModule), function() {
-    for (const [key,value] of Object.entries(departuresModule)) this.setExport(key, key === 'stationDepartures' ? async () => ({stops: [], rows: []}) : value);
+    for (const [key,value] of Object.entries(departuresModule)) this.setExport(key, key === 'stationDepartures' ? departureLoader || (async () => ({stops: [], rows: []})) : value);
   }, {context});
   const globe = new vm.SyntheticModule(['installGlobeDrag','allowPolarCentres','readoutZoom','viewHash','parseViewHash'], function() { this.setExport('installGlobeDrag', () => ({sync() {}, justDragged: () => false, pan: () => false})); this.setExport('allowPolarCentres', () => ({refresh() {}}));this.setExport('readoutZoom',zoom=>zoom);this.setExport('viewHash',globeModule.viewHash);this.setExport('parseViewHash',globeModule.parseViewHash);  }, {context});
   const keyboard = new vm.SyntheticModule(['installKeyboardPan'], function() { this.setExport('installKeyboardPan', () => {}); }, {context});
@@ -168,18 +208,165 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const semantics = new vm.SyntheticModule(Object.keys(layerSemantics), function() {
     for (const [key,value] of Object.entries(layerSemantics)) this.setExport(key,value);
   }, {context});
-  const mapControls = new vm.SyntheticModule(Object.keys(controlFunctions), function() {
+  const mapControls = controlSource ? new vm.SourceTextModule(controlSource, {context}) : new vm.SyntheticModule(Object.keys(controlFunctions), function() {
     for (const [key,value] of Object.entries(controlFunctions)) this.setExport(key,value);
   }, {context});
   const bundles = new vm.SyntheticModule(Object.keys(tileBundleModule),function(){for(const [key,value] of Object.entries(tileBundleModule))this.setExport(key,value);},{context});
   const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
-  await app.link(specifier => specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  const recovery = new vm.SyntheticModule(Object.keys(railRecoveryModule),function(){for(const [key,value] of Object.entries(railRecoveryModule))this.setExport(key,key==='createRailProviderRecovery'&&recoveryClock?(map,options)=>value(map,{...options,...recoveryClock}):value);},{context});
+  await app.link(specifier => specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
+  if(cacheOnlyLibraries)await Promise.allSettled([app.namespace.__testLibraryLoads,app.namespace.__testLegacyStyle]);
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
-  return {dom,window,maps,errors,loadLibraries,loadLabels,fonts};
+  return {dom,window,maps,errors,loadLibraries,loadLabels,fonts,scriptLoads,revoked};
 }
 
 const ALL_PROBES='顿頓嘢冧𨋢俆㜏駅峠畑\uF900\uFA11㐀㙟𠮷';
+
+for (const previous of ['sw-before-first-party-libraries.js','sw-before-maplibre-backport.js']) test(`actual ${previous} keeps app/control versions coherent and safely recovers cached libraries`,async()=>{
+  const [oldSource,newSource]=await Promise.all([
+    readFile(new URL(`fixtures/${previous}`,import.meta.url),'utf8'),
+    readFile(new URL('../styles/sw.js',import.meta.url),'utf8'),
+  ]);
+  const scope='https://example.org/openrailwaystyle/',stores=new Map(),fetched=[];
+  const controlCode=await readFile(new URL('../styles/map-controls.mjs',import.meta.url),'utf8');
+  const oldControlCode=controlCode.split('// MapLibre attribution hardening')[0];
+  let deployed='old',offline=false,failReplacement=false,failControl=false;
+  const caches={
+    keys:async()=>[...stores.keys()],delete:async key=>stores.delete(key),
+    open:async key=>{
+      if(!stores.has(key))stores.set(key,new Map());const rows=stores.get(key);
+      const keyOf=key=>typeof key==='string'?key:key.url;
+      return {match:async key=>rows.get(keyOf(key))?.clone(),put:async(key,response)=>rows.set(keyOf(key),response.clone()),
+        keys:async()=>[...rows.keys()].map(url=>new Request(url)),delete:async key=>rows.delete(keyOf(key))};
+    },
+  };
+  const fetcher=async input=>{
+    const url=new URL(typeof input==='string'?input:input.url||input.href);fetched.push(url.href);
+    if(offline)throw Error('offline');
+    if(failControl&&url.pathname.endsWith('/map-controls.mjs'))throw Error('control download interrupted');
+    if(failReplacement&&url.pathname.endsWith('vendor/maplibre-gl-5.24.0-atlas.1.js'))throw Error('replacement library unavailable');
+    const oldFirstParty=legacyDistributions.find(library=>url.pathname.endsWith('/'+library.target.replace('-atlas.1.js','.js')));
+    if(url.hostname==='cdn.jsdelivr.net'||oldFirstParty) {
+      const css=url.pathname.endsWith('.css');
+      const library=oldFirstParty||legacyDistributions.find(library=>library.url===url.href);
+      assert.ok(library,'only exact released dependencies enter the old cache');
+      const body=library.body;
+      assert.equal(createHash('sha256').update(body).digest('hex'),library.sourceSha256 || library.sha256);
+      return new Response(body,{headers:{'content-type':css?'text/css':'application/javascript'}});
+    }
+    const body=url.href===scope?(deployed==='old'?'<script type="module" src="app.mjs?v=old"></script>':html)
+      :url.pathname.endsWith('/app.mjs')&&deployed==='new'?code
+      :url.pathname.endsWith('/map-controls.mjs')?(deployed==='new'?controlCode:oldControlCode):`${deployed}:${url.pathname}`;
+    return new Response(body);
+  };
+  const worker=source=>{
+    const handlers={};
+    vm.runInNewContext(source,{URL,Response,Request,fetch:fetcher,caches,location:{origin:new URL(scope).origin},
+      self:{registration:{scope},addEventListener:(name,handler)=>handlers[name]=handler,skipWaiting:async()=>{},clients:{claim:async()=>{}}}});
+    return handlers;
+  };
+  const install=handlers=>{let result;handlers.install({waitUntil:promise=>result=promise});return result;};
+  const request=(handlers,path)=>{let result;handlers.fetch({request:{method:'GET',url:new URL(path,scope).href,mode:path==='./'?'navigate':'cors'},respondWith:promise=>result=promise});return result;};
+  const old=worker(oldSource);await install(old);deployed='new';
+  failControl=true;
+  assert.match(await (await request(old,'./')).text(),/app.mjs\?v=old/, 'failed updated control module keeps the complete old page');
+  failControl=false;
+  assert.equal(await (await request(old,'./')).text(),html,'old worker really admitted the new HTML');
+  failReplacement=true;await assert.rejects(install(worker(newSource)),/replacement library unavailable/);
+  offline=true;
+  assert.equal(await (await request(old,'./')).text(),html);
+  const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
+  assert.equal(await (await request(old,`app.mjs?v=${version}`)).text(),code,'the tested app is exactly the copy kept by the old worker');
+  if(previous==='sw-before-first-party-libraries.js')assert.equal(request(old,'vendor/maplibre-gl-5.24.0-atlas.1.js'),undefined,'the actual CDN-era worker cannot serve the new dotted vendor path');
+  const savedControls=await (await request(old,`map-controls.mjs?v=${version}`)).text();
+  assert.equal(savedControls,controlCode,'new app receives exact updated controls from its own version');
+  assert.equal(await (await request(old,'map-controls.mjs?v=old')).text(),oldControlCode,'old tab still receives its own controls');
+  const before=fetched.length;
+  const result=await start({cacheOnlyLibraries:caches,controlSource:savedControls});
+  try {
+    assert.equal(result.maps.length,1,'cached legacy JavaScript can still initialize the app');
+    assert.deepEqual(result.errors,[]);
+    assert.equal(result.scriptLoads.filter(url=>url.startsWith('blob:')).length,2);
+    assert.equal(result.revoked.length,2,'temporary script URLs are released');
+    assert.ok(result.scriptLoads.filter(url=>!url.startsWith('blob:')).every(url=>url.startsWith(scope+'vendor/')));
+    const link=result.window.document.getElementById('maplibre-css'),fallback=link.nextElementSibling;
+    assert.equal(fallback.tagName,'STYLE');
+    assert.match(fallback.textContent,/maplibregl-map/);
+    assert.ok(fallback.nextElementSibling.href.includes('app.css'),'app styling keeps priority over recovered MapLibre CSS');
+    assert.equal(fetched.length,before,'cache recovery makes no network request, including to the old CDN');
+  } finally {result.dom.window.close();}
+});
+
+test('new app recovers verified already-patched first-party cache bytes without a second patch',async()=>{
+  const scope='https://example.org/openrailwaystyle/';
+  const caches={keys:async()=>['atlas-shell-24'],open:async()=>({match:async url=>{
+    if(url===scope)return new Response(html,{headers:{'content-type':'text/html'}});
+    const library=legacyDistributions.find(library=>new URL(library.target,scope).href===url);
+    if(!library)return undefined;
+    return new Response(library.patchedBody||library.body,{headers:{'content-type':library.target.endsWith('.css')?'text/css':'text/javascript'}});
+  }})};
+  const result=await start({cacheOnlyLibraries:caches});
+  try {
+    assert.equal(result.maps.length,1);
+    assert.deepEqual(result.errors,[]);
+    assert.equal(result.scriptLoads.filter(url=>url.startsWith('blob:')).length,2);
+    assert.equal(result.revoked.length,2);
+  } finally {result.dom.window.close();}
+});
+
+test('legacy startup recovery ignores unrelated caches and non-JavaScript saved responses',async()=>{
+  const requested=[];
+  const caches={keys:async()=>['unrelated-cache','atlas-shell-22'],open:async name=>{
+    assert.equal(name,'atlas-shell-22');
+    return {match:async url=>{requested.push(url);return new Response('not executable',{headers:{'content-type':'text/plain'}});}};
+  }};
+  const result=await start({cacheOnlyLibraries:caches});
+  try {
+    assert.equal(result.maps.length,0);
+    assert.equal(result.scriptLoads.filter(url=>url.startsWith('blob:')).length,0);
+    assert.equal(result.window.document.getElementById('maplibre-css').nextElementSibling.tagName,'LINK');
+    assert.ok(result.scriptLoads.every(url=>url.startsWith('https://example.org/openrailwaystyle/vendor/')));
+    assert.ok(requested.length>0);
+  } finally {result.dom.window.close();}
+});
+for(const mode of ['tampered-bytes','crypto-unavailable'])test(`legacy startup recovery rejects ${mode} even with HTTP 200 and correct MIME`,async()=>{
+  const served=[];
+  const caches={keys:async()=>['atlas-shell-22'],open:async()=>({match:async url=>{
+    if(url==='https://example.org/openrailwaystyle/')return new Response(html,{headers:{'content-type':'text/html'}});
+    const library=legacyDistributions.find(library=>library.url===url);
+    if (!library) return undefined;
+    const body=mode==='tampered-bytes'?Buffer.concat([library.body,Buffer.from('\n/* modified cached distribution */')]):library.body;
+    const type=library.target.endsWith('.css')?'text/css':'application/javascript';
+    served.push({url,status:200,type});
+    return new Response(body,{status:200,headers:{'content-type':type}});
+  }})};
+  const result=await start({cacheOnlyLibraries:caches,noLegacyCrypto:mode==='crypto-unavailable'});
+  try {
+    assert.equal(result.maps.length,0);
+    assert.equal(result.scriptLoads.filter(url=>url.startsWith('blob:')).length,0,'unverified bytes must never become an executable blob');
+    assert.equal(result.window.document.getElementById('maplibre-css').nextElementSibling.tagName,'LINK','unverified CSS must never be inserted');
+    assert.ok(result.scriptLoads.every(url=>url.startsWith('https://example.org/openrailwaystyle/vendor/')),'there is no network fallback to the CDN');
+    assert.equal(served.length,mode==='tampered-bytes'?3:0,'all three valid-MIME responses reach integrity verification, or fail closed before reading without crypto');
+  } finally {result.dom.window.close();}
+});
+test('installation help works before renderer libraries load and after WebGL initialization fails', async t => {
+  for (const options of [{delayLibraries: true}, {failWebGL: true}]) await t.test(JSON.stringify(options), async () => {
+    const {dom, window, maps} = await start(options);
+    try {
+      const get = id => window.document.getElementById(id);
+      assert.equal(maps.length, 0, 'the renderer is unavailable in both cases');
+      assert.equal(get('pwa-install-open').hidden, false);
+      get('pwa-install-open').focus();
+      get('pwa-install-open').click();
+      assert.equal(get('pwa-install').open, true);
+      assert.equal(get('pwa-install-generic').hidden, false);
+      get('pwa-install-close').click();
+      assert.equal(get('pwa-install').open, false);
+      assert.equal(window.document.activeElement, get('pwa-install-open'));
+    } finally { dom.window.close(); }
+  });
+});
 test('a complete installed Chinese font is used without any download',async()=>{
  const {dom,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true,installedFonts:{'Noto Sans CJK TC':ALL_PROBES}});
  try{
@@ -244,6 +431,184 @@ test('Japanese labels keep the installed Japanese font even when it is partial',
 test('unavailable Chinese font preserves a working map and system fallback',async()=>{
  const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true});
  try{assert.deepEqual(errors,[]);maps[0].handlers['style.load']();fonts[0].fail();await new Promise(r=>setTimeout(r,0));assert.equal(window.document.body.dataset.mapReady,'true');assert.match(maps[0].options.localIdeographFontFamily,/Noto Sans TC/);}finally{dom.window.close();}
+});
+
+test('clicked station, service, entrance, power and context details share the selected regional font',async()=>{
+ const fetcher=async url=>({ok:true,json:async()=>String(url).includes('power-facilities.geojson')?{type:'FeatureCollection',features:[]}:structuredClone(style)});
+ const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true,installedFonts:{'Noto Sans CJK TC':ALL_PROBES,'Yu Gothic':ALL_PROBES,'Malgun Gothic':ALL_PROBES},fetcher});
+ try{
+  fonts[0].finish();await new Promise(r=>setTimeout(r,0));
+  const doc=window.document,map=maps[0],panel=doc.getElementById('detail-content');map.handlers['style.load']();
+  map.project=([lng,lat])=>({x:500+lng*100,y:400+lat*100});
+  const point={type:'Point',coordinates:[0,0]};
+  const cases=[
+   ['speed',{source:'stations',layer:{id:'station-detail-large-names'},properties:{name:'中央站',state:'disused'},geometry:point},'中央站'],
+   ['service',{source:'serviceRoutes',layer:{id:'service-routes'},properties:{name:'山海線',kind:'rail',i:0,n:1},geometry:{type:'LineString',coordinates:[[0,0],[1,0]]}},'山海線'],
+   ['infrastructure',{source:'stationEntrances',layer:{id:'infrastructure-entrance-points'},properties:{id:456,label:'北出口'},geometry:point},'北出口'],
+   ['electrification',{source:'electricFacilities',layer:{id:'electrification-supply-points'},properties:{name:'南部水塔',power_kind:'water_tank'},geometry:point},'南部水塔'],
+   ['infrastructure',{source:'openmaptiles',sourceLayer:'poi',layer:{id:'context-transport-bus-label'},properties:{name:'東部轉車站',class:'bus',subclass:'bus_station'},geometry:point},'東部轉車站'],
+  ];
+  for(const [mode,feature,name] of cases){
+   doc.querySelector(`[data-mode="${mode}"]`).click();map.rendered=[feature];
+   map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+   await new Promise(r=>setTimeout(r,0));
+   assert.equal(doc.getElementById('details').hidden,false);
+   assert.equal(panel.querySelector('h2').textContent,name);
+   assert.equal(panel.querySelector('h2 [lang]').lang,'zh-TW');assert.match(panel.querySelector('h2 [lang]').style.fontFamily,/^"?Noto Sans CJK TC"?,/);
+   assert.equal(panel.style.fontFamily,'','the shared panel does not override the interface font');
+   for(const node of panel.querySelectorAll('.eyebrow,dt,p.small,a'))assert.equal(node.closest('[lang]')?.lang,'en','fixed English infobox text keeps its language');
+   assert.match(panel.querySelector('h2 [lang]').style.fontFamily,/Atlas Rare Han/);
+  }
+  const language=doc.getElementById('language');
+  for(const [code,family] of [['ja','Yu Gothic'],['ko','Malgun Gothic']]){
+   language.value=code;language.dispatchEvent(new window.Event('change'));
+   await new Promise(r=>setTimeout(r,0));
+   assert.equal(panel.querySelector('h2 [lang]').lang,code,'Han runs follow the selected glyph language after the infobox redraw');
+   assert.equal(panel.querySelector('h2 [lang]').style.fontFamily.split(',')[0].replaceAll('"',''),family);
+  }
+  language.value='zh-Hant';language.dispatchEvent(new window.Event('change'));
+  doc.querySelector('[data-mode="speed"]').click();
+  map.rendered=[{source:'stations',layer:{id:'station-detail-large-names'},properties:{name:'Central',state:'disused',operator:'Regional Rail 東京'},geometry:point}];
+  map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});await new Promise(r=>setTimeout(r,0));
+  assert.equal(panel.querySelector('h2').textContent,'Central');assert.equal(panel.querySelector('h2').style.fontFamily,'');
+  const han=panel.querySelector('dd [lang]');assert.equal(han.textContent,'東京');assert.match(han.style.fontFamily,/^"?Noto Sans CJK TC"?,/);
+  assert.deepEqual([...panel.querySelectorAll('[style]')].filter(node=>node.style.fontFamily),[han],'even a complete installed CJK font is applied only to the Han text, never Latin names or English UI');
+  assert.equal(doc.documentElement.lang,'en','the surrounding English interface keeps its language');
+  assert.equal(panel.closest('[lang]')?.lang,'en','the infobox container retains the interface language');
+  assert.equal(fonts.length,1,'complete regional fonts need only the small probe');assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('English and local infoboxes scope script languages to CJK runs and preserve English text',async()=>{
+ for(const language of ['en','local','zh-Hant']){
+  const {dom,window,maps,errors}=await start({search:`?language=${language}`});
+  try{
+   const doc=window.document,map=maps[0],panel=doc.getElementById('detail-content');map.handlers['style.load']();
+   const station={source:'stations',layer:{id:'station-detail-large-names'},properties:{name:'Central 東京 | 東京メトロ | 東京・テレポート | 東京･ﾒﾄﾛ | 首都圈·전철 | 경의-中央線 | 東京　メトロ | 大韓민국 | 北ㄅ | カナ | ｶﾞ | ﾊﾟ | カ゛ | ハ゜ | 한글 | ㄅㄆ | 東京・Metro',state:'disused',station_size:'large',operator:'Regional Rail'},geometry:{type:'Point',coordinates:[0,0]}};
+   map.rendered=[station];map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+   await new Promise(r=>setTimeout(r,0));
+   const heading=panel.querySelector('h2');assert.equal(heading.textContent,station.properties.name,'wrapping never changes the recorded text');
+   assert.equal(heading.firstChild.data,'Central ');assert.equal(heading.firstChild.parentElement.closest('[lang]')?.lang,'en','the Latin part of a mixed name keeps English');
+   const hanLanguage=language==='zh-Hant'?'zh-TW':'zh-CN';
+   assert.deepEqual([...heading.querySelectorAll('[lang]')].map(span=>[span.textContent,span.lang]),[['東京',hanLanguage],['東京メトロ','ja'],['東京・テレポート','ja'],['東京･ﾒﾄﾛ','ja'],['首都圈·전철','ko'],['경의-中央線','ko'],['東京　メトロ','ja'],['大韓민국','ko'],['北ㄅ','zh-TW'],['カナ','ja'],['ｶﾞ','ja'],['ﾊﾟ','ja'],['カ゛','ja'],['ハ゜','ja'],['한글','ko'],['ㄅㄆ','zh-TW'],['東京',hanLanguage]],'internal punctuation and ideographic spaces keep mixed CJK names in one language');
+   const latinSuffix=[...heading.childNodes].find(node=>node.nodeType===3&&node.data.includes('・Metro'));
+   assert.ok(latinSuffix,'a separator followed by Latin text stays outside the CJK span');assert.equal(latinSuffix.parentElement.closest('[lang]')?.lang,'en');
+   for(const node of [panel,heading,...panel.querySelectorAll('.eyebrow,dt,p.small,a')])assert.equal(node.closest('[lang]')?.lang,'en',`${language}: the CJK fallback must not relabel the English interface`);
+   assert.equal(panel.style.fontFamily,'');assert.equal(heading.style.fontFamily,'');
+   for(const [name,scriptLanguage] of [['東京',hanLanguage],['東京 テレポート','ja'],['東京\u00a0テレポート','ja'],['경의 중앙線','ko'],['首都圈 전철','ko'],['首都圈\u00a0전철','ko'],['東京メトロ1号線','ja'],['東京メトロ 1号線','ja'],['ㄊㄞˊ ㄅㄟˇ','zh-TW'],['ㄅˉ ㄅˊ ㄅˇ ㄅˋ ㄅ˙ ㄅ˪ ㄅ˫','zh-TW'],['˙ㄉㄜ','zh-TW'],['ㄊㄞˊ ˙ㄉㄜ','zh-TW']]){
+    station.properties.name=name;map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+    await new Promise(r=>setTimeout(r,0));
+    const spacedHeading=panel.querySelector('h2');
+    assert.equal(spacedHeading.textContent,name,'wrapping preserves name whitespace and numbers');
+    assert.deepEqual([...spacedHeading.querySelectorAll('[data-cjk-glyphs]')].map(span=>[span.textContent,span.lang]),[[name,scriptLanguage]],`${name}: internal spaces and numbers keep a name in one identified language`);
+    assert.equal(spacedHeading.closest('[lang]')?.lang,'en','only the name span carries the script language');
+   }
+   for(const [name,names] of [
+    ['東京・テレポート/서울교통공사',[['東京・テレポート','ja'],['서울교통공사','ko']]],
+    ['東京メトロ;大韓민국',[['東京メトロ','ja'],['大韓민국','ko']]],
+    ['東京メトロ・서울교통공사',[['東京メトロ','ja'],['서울교통공사','ko']]],
+    ['東京メトロ서울교통공사',[['東京メトロ','ja'],['서울교통공사','ko']]],
+    ['서울교통공사/東京・テレポート',[['서울교통공사','ko'],['東京・テレポート','ja']]],
+    ['東京 メトロ / 서울교통공사',[['東京 メトロ','ja'],['서울교통공사','ko']]],
+    ['東京メトロ / 경의 중앙線',[['東京メトロ','ja'],['경의 중앙線','ko']]],
+    ['서울교통공사；東京\u00a0テレポート',[['서울교통공사','ko'],['東京\u00a0テレポート','ja']]],
+    ['東京 メトロ・경의 중앙線',[['東京 メトロ','ja'],['경의 중앙線','ko']]],
+    ['東京 メトロ 서울교통공사',[['東京 メトロ','ja'],['서울교통공사','ko']]],
+    ['カナ˙ㄉㄜ',[['カナ','ja'],['˙ㄉㄜ','zh-TW']]],
+   ]){
+    station.properties.name=name;map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+    await new Promise(r=>setTimeout(r,0));
+    const mixedHeading=panel.querySelector('h2');
+    assert.equal(mixedHeading.textContent,name,'splitting languages preserves exact punctuation and text');
+    assert.deepEqual([...mixedHeading.querySelectorAll('[data-cjk-glyphs]')].map(span=>[span.textContent,span.lang]),names,`${name}: conflicting script hints keep separate name languages`);
+    assert.equal(mixedHeading.closest('[lang]')?.lang,'en','separators keep the surrounding interface language');
+   }
+   station.properties.name='Central';map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+   await new Promise(r=>setTimeout(r,0));
+   assert.equal(panel.querySelector('h2').closest('[lang]')?.lang,'en','a Latin-only feature name keeps its inherited language');
+   assert.equal(panel.querySelectorAll('[lang]').length,0,'English-only content needs no script wrappers');assert.deepEqual(errors,[]);
+  }finally{dom.window.close();}
+ }
+});
+
+test('infobox Han text requests the packaged font after probing without requiring map glyph drawing',async()=>{
+ const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true,installedFonts:{'Microsoft JhengHei':'頓嘢冧俆㜏駅峠畑\uF900\uFA11㐀㙟'}});
+ try{
+  const doc=window.document,map=maps[0],panel=doc.getElementById('detail-content');map.handlers['style.load']();
+  const station={source:'stations',layer:{id:'station-detail-large-names'},properties:{name:'Central',state:'disused'},geometry:{type:'Point',coordinates:[0,0]}};
+  map.rendered=[station];map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+  await new Promise(r=>setTimeout(r,0));assert.equal(fonts.length,1,'an English-only infobox does not request a CJK bundle');
+  station.properties.operator='東海旅客鉄道';map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+  await new Promise(r=>setTimeout(r,0));assert.equal(fonts.length,1,'the probe is still pending');
+  fonts[0].finish();await new Promise(r=>setTimeout(r,0));
+  assert.equal(panel.querySelector('h2').textContent,'Central');assert.match(panel.textContent,/東海旅客鉄道/);
+  assert.equal(panel.querySelector('h2').closest('[lang]')?.lang,'en');
+  assert.equal(panel.querySelector('dd [lang]').lang,'zh-TW','the Han operator value carries its own regional language');
+  const packaged=fonts.find(f=>f.family==='Atlas CJK TC');assert.ok(packaged,'Han in a body value needs the font even though the heading is Latin');
+  assert.match(panel.querySelector('dd [lang]').style.fontFamily,/^"?Microsoft JhengHei"?,/);
+  packaged.finish();await new Promise(r=>setTimeout(r,0));
+  assert.match(panel.querySelector('dd [lang]').style.fontFamily,/^"?Atlas CJK TC"?,/);assert.match(panel.querySelector('dd [lang]').style.fontFamily,/Atlas Rare Han/);
+  assert.equal(panel.style.fontFamily,'','English text keeps its interface font while the CJK-only package is loaded');
+  assert.equal(fonts.length,2,'the infobox and redraw share one package load');assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('an open infobox follows language and font changes while map style loading is delayed',async()=>{
+ const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true,installedFonts:{'Microsoft JhengHei':'頓嘢冧俆㜏駅峠畑\uF900\uFA11㐀㙟','Microsoft YaHei':'顿頓嘢冧俆㜏駅峠畑\uF900\uFA11㐀㙟'}});
+ try{
+  fonts[0].finish();await new Promise(r=>setTimeout(r,0));
+  const doc=window.document,map=maps[0],panel=doc.getElementById('detail-content'),language=doc.getElementById('language');map.handlers['style.load']();
+  map.rendered=[{source:'stations',layer:{id:'station-detail-large-names'},properties:{name:'漢岛',state:'disused'},geometry:{type:'Point',coordinates:[0,0]}}];
+  map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});await new Promise(r=>setTimeout(r,0));
+  const traditional=fonts.find(f=>f.family==='Atlas CJK TC');assert.ok(traditional);
+  // Keep the style callback pending as it is when map resources load slowly.
+  map.setStyle=(style,options)=>{map.options.style=style;map.styleOptions=options;};
+  language.value='zh-Hans';language.dispatchEvent(new window.Event('change'));
+  assert.equal(panel.querySelector('h2 [lang]').lang,'zh-CN');assert.doesNotMatch(panel.querySelector('h2 [lang]').style.fontFamily,/JhengHei|CJK TC/);
+  await new Promise(r=>setTimeout(r,0));
+  assert.match(panel.querySelector('h2 [lang]').style.fontFamily,/^"?Microsoft YaHei"?,/);
+  const simplified=fonts.find(f=>f.family==='Atlas CJK SC');assert.ok(simplified);
+  traditional.finish();await new Promise(r=>setTimeout(r,0));
+  assert.doesNotMatch(panel.querySelector('h2 [lang]').style.fontFamily,/CJK TC/,'a stale Traditional download cannot replace the selected Simplified font');
+  simplified.finish();await new Promise(r=>setTimeout(r,0));
+  assert.match(panel.querySelector('h2 [lang]').style.fontFamily,/^"?Atlas CJK SC"?,/,'the loaded font reaches the open infobox before the map style finishes');
+  language.value='zh-Hant';language.dispatchEvent(new window.Event('change'));
+  assert.equal(panel.querySelector('h2 [lang]').lang,'zh-TW');assert.match(panel.querySelector('h2 [lang]').style.fontFamily,/^"?Atlas CJK TC"?,/,'switching back immediately reuses the finished font');
+  assert.equal(panel.style.fontFamily,'');
+  assert.equal(panel.closest('[lang]')?.lang,'en');
+  assert.equal(fonts.length,3);assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
+});
+
+test('rare Han in infobox body values and later departure text loads only the displayed slices',async()=>{
+ let completeBoard;
+ const board=new Promise(resolve=>{completeBoard=resolve;}),requests=[];
+ const fetcher=async url=>{requests.push(String(url));return {ok:true,status:200,json:async()=>String(url).includes('rare-han-v1/index.json')?{blocks:[0x2a7,0x2a8,0x2a9,0x2aa]}:structuredClone(style)};};
+ const {dom,window,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true,installedFonts:{'Noto Sans CJK TC':ALL_PROBES},fetcher,departureLoader:()=>board});
+ const slice=block=>fonts.find(f=>f.url.includes(`rare-han-v1/${block}.woff2`));
+ const waitForSlice=async block=>{for(let i=0;i<100&&!slice(block);i++)await new Promise(r=>setTimeout(r,0));assert.ok(slice(block),`${block}: displayed text requests its glyph slice`);slice(block).finish();await new Promise(r=>setTimeout(r,0));};
+ try{
+  fonts[0].finish();await new Promise(r=>setTimeout(r,0));
+  const doc=window.document,map=maps[0],panel=doc.getElementById('detail-content');map.handlers['style.load']();
+  assert.ok(!requests.some(url=>url.includes('rare-han-v1')),'no slices are needed before inspecting the feature');
+  map.rendered=[{source:'stations',layer:{id:'station-detail-large-names'},properties:{name:'Central',operator:'Operator \u{2A700}',description:'Unshown \u{2AA00}'},geometry:{type:'Point',coordinates:[0,0]}}];
+  map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+  assert.equal(doc.getElementById('details').hidden,false,'the infobox opens without waiting for a font');
+  assert.equal(panel.querySelector('h2').textContent,'Central');await waitForSlice('2a7');
+  completeBoard({stops:[{id:'fixture:central'}],rows:[{line:'R',headsign:'Destination \u{2A800}',departure:0,tz:'UTC',mode:'RAIL'}]});
+  await waitForSlice('2a8');
+  const headsign=panel.querySelector('.departure-headsign');assert.equal(headsign.textContent,'Destination \u{2A800}');
+  assert.equal(headsign.firstChild.data,'Destination ');assert.equal(headsign.closest('[lang]')?.lang,'en');
+  const han=headsign.querySelector('[lang]');assert.equal(han.lang,'zh-TW');
+  han.firstChild.data='\u{2A900}';await waitForSlice('2a9');assert.equal(headsign.textContent,'Destination \u{2A900}');
+  han.firstChild.data='Extra \u{2A900}';await new Promise(r=>setTimeout(r,0));
+  assert.equal(headsign.textContent,'Destination Extra \u{2A900}');assert.equal(headsign.querySelector('[lang]').textContent,'\u{2A900}','changing a CJK run to mixed text leaves its new English part outside the language span');
+  headsign.querySelector('[lang]').firstChild.data='Central';await new Promise(r=>setTimeout(r,0));
+  assert.equal(headsign.textContent,'Destination Extra Central');assert.equal(headsign.querySelector('[lang]'),null,'a run changed entirely to Latin no longer carries a CJK language');
+  assert.equal(slice('2aa'),undefined,'unrendered feature properties do not download extra font slices');
+  assert.equal(fonts.filter(f=>f.family==='Atlas Rare Han').length,3,'the original body is not downloaded again as asynchronous content arrives');
+  assert.equal(requests.filter(url=>url.includes('rare-han-v1/index.json')).length,1);assert.deepEqual(errors,[]);
+ }finally{dom.window.close();}
 });
 
 test('service frequency profile is applied on the first frame and controls persist independently',async()=>{
@@ -897,4 +1262,183 @@ test('entering watch mode deactivates hidden drawing and measurement input',asyn
       watch.checked=false;watch.dispatchEvent(new window.Event('change'));assert.equal(tool.getAttribute('aria-pressed'),'false','returning to normal does not restore hidden editing');
     }
   } finally {dom.window.close();}
+});
+
+function recoveryClock() {
+  const timers = new Map(), retries = [];
+  let next = 0;
+  return {timers, retries, active:() => true,
+    setTimer:(fn, delay) => {timers.set(++next, {fn, delay});return next;},
+    clearTimer:id => timers.delete(id)};
+}
+const failedRailTile = (x = 1) => ({state:'errored', tileID:{canonical:{z:7, x, y:2}}});
+async function recoveryApp({early = false} = {}) {
+  const clock = recoveryClock(), app = await start({recoveryClock:clock, search:'?mode=speed'});
+  const map = app.maps[0];
+  if (!early) map.handlers['style.load']();
+  map.zoom = 7;
+  map.sources ||= {};
+  map.sources.railway = {url:'atlasrail://https://openrailwaymap.app/railway_line_high', setUrl:() => clock.retries.push('metadata')};
+  map.refreshTiles = (...args) => clock.retries.push(args);
+  const status = app.window.document.getElementById('map-status');
+  return {...app, map, clock, status,
+    fail:tile => map.handlers.error({sourceId:'railway', tile, error:new Error('Map names returned 520')}),
+    data:event => map.handlers.sourcedata({sourceId:'railway', ...event}),
+    close:() => {map.handlers.remove();app.dom.window.close();}};
+}
+
+test('rail tile recovery updates visible app status without idle, after bookkeeping, including early style events', async () => {
+  for (const early of [false, true]) {
+    const f = await recoveryApp({early});
+    try {
+      if (early) f.map.queryRenderedFeatures = () => {throw new Error('style is not ready');};
+      const tile = failedRailTile();f.fail(tile);
+      assert.equal(f.status.classList.contains('error'), true);
+      tile.state = 'loaded';f.data({tile, isSourceLoaded:true});
+      assert.equal(f.status.classList.contains('error'), false, 'recovered tile clears status without an idle event');
+      assert.match(f.status.textContent, /Explore the rail network/);
+      f.data({tile, isSourceLoaded:true});
+      assert.equal(f.status.classList.contains('error'), false, 'duplicate success is harmless');
+      assert.equal(f.clock.timers.size, 0);assert.deepEqual(f.clock.retries, []);
+    } finally {f.close();}
+  }
+});
+
+test('partial rail recovery and loaded-but-errored sources retain the outage state without extra retries', async () => {
+  const f = await recoveryApp();
+  try {
+    const a = failedRailTile(), b = failedRailTile(2);f.fail(a);f.fail(b);
+    f.data({isSourceLoaded:true});f.data({tile:a, isSourceLoaded:true});
+    assert.equal(f.status.classList.contains('error'), true);
+    a.state = 'loaded';f.data({tile:a, isSourceLoaded:true});
+    assert.match(f.status.textContent, /Retrying automatically/);
+    assert.equal(f.clock.timers.size, 1);
+    b.state = 'loaded';f.data({tile:b, isSourceLoaded:true});
+    assert.equal(f.status.classList.contains('error'), false);
+    assert.equal(f.clock.timers.size, 0);assert.deepEqual(f.clock.retries, []);
+  } finally {f.close();}
+});
+
+test('rail recovery preserves unrelated app errors until actual unrelated success', async () => {
+  const f = await recoveryApp();
+  try {
+    const tile = failedRailTile();f.fail(tile);
+    f.map.handlers.error({sourceId:'openmaptiles', tile:{}, error:new Error('unrelated error')});
+    tile.state = 'loaded';f.data({tile, isSourceLoaded:true});
+    assert.equal(f.status.classList.contains('error'), true);
+    assert.match(f.status.textContent, /Some map data could not load/);
+    f.map.handlers.sourcedata({sourceId:'openmaptiles', isSourceLoaded:true});
+    assert.equal(f.status.classList.contains('error'), true, 'loaded flag alone is not recovery');
+    f.map.handlers.sourcedata({sourceId:'openmaptiles', tile:{state:'loaded'}, isSourceLoaded:true});
+    assert.equal(f.status.classList.contains('error'), false);
+    assert.deepEqual(f.clock.retries, []);
+  } finally {f.close();}
+});
+
+test('metadata recovery clears app bookkeeping without idle and cancellation is not an outage', async () => {
+  const f = await recoveryApp();
+  try {
+    f.fail(undefined);f.data({isSourceLoaded:true});
+    assert.equal(f.status.classList.contains('error'), true);
+    f.data({sourceDataType:'metadata', isSourceLoaded:true});
+    assert.equal(f.status.classList.contains('error'), false);
+    f.map.handlers.error({sourceId:'railway', error:{name:'AbortError', message:'AbortError'}});
+    assert.equal(f.status.classList.contains('error'), false);
+    assert.equal(f.clock.timers.size, 0);assert.deepEqual(f.clock.retries, []);
+  } finally {f.close();}
+});
+
+test('source replacement retires old recovery and disposal cancels every scheduled retry', async () => {
+  const f = await recoveryApp();
+  try {
+    f.fail(failedRailTile());
+    f.map.sources.railway = {url:'atlasrail://https://openrailwaymap.app/railway_line_high'};
+    f.data({sourceDataType:'metadata', isSourceLoaded:true});
+    assert.equal(f.status.classList.contains('error'), false);
+    assert.equal(f.clock.timers.size, 0);
+    f.fail(failedRailTile(3));assert.equal(f.clock.timers.size, 1);
+    f.map.handlers.remove();assert.equal(f.clock.timers.size, 0);
+    f.map.handlers.moveend();assert.equal(f.clock.timers.size, 0);
+    assert.deepEqual(f.clock.retries, []);
+  } finally {f.close();}
+});
+
+
+test('platform measurement fetches HTTP templates rather than MapLibre protocol URLs', async () => {
+  let options;
+  const {dom,maps}=await start({platformGeometryOptions:value=>{options=value;}});
+  try {
+    const map=maps[0];map.sources ||= {};
+    assert.ok(options);
+    for(const raw of ['https://openrailwaymap.app/standard_railway_platforms/{z}/{x}/{y}',
+      'http://127.0.0.1:4173/review-station-tiles/standard_railway_platforms/{z}/{x}/{y}.pbf']) {
+      map.sources.platforms={tiles:[`atlasrail://${raw}`]};
+      assert.equal(options.tileURL(),raw,'measurement uses native fetch, not the renderer protocol dispatcher');
+      map.sources.platforms={tiles:[raw]};assert.equal(options.tileURL(),raw,'unwrapped fallback stays valid');
+    }
+    map.sources.platforms={};assert.equal(options.tileURL(),undefined,'metadata not ready stays pending');
+  } finally {maps[0].handlers.remove();dom.window.close();}
+});
+
+test('settings hide and show failed layers without pan or idle resumes exactly one recovery timer',async()=>{
+ const f=await recoveryApp();
+ try{
+  f.fail(failedRailTile());assert.equal(f.clock.timers.size,1);
+  const doc=f.window.document;
+  for(let i=0;i<2;i++){
+   doc.querySelector('[data-background="satellite"]').click();assert.equal(f.clock.timers.size,0);
+   assert.equal(f.status.classList.contains('error'),true,'hidden failures remain retained');
+   doc.querySelector('[data-background="map"]').click();assert.equal(f.clock.timers.size,1);
+   const id=[...f.clock.timers.keys()][0];doc.querySelector('[data-mode="infrastructure"]').click();assert.deepEqual([...f.clock.timers.keys()],[id],'settings do not postpone an existing timer');
+  }
+  f.map.sources.railwaySignals={url:'atlastext://https://openrailwaymap.app/railway_signals'};f.map.zoom=18;
+  f.map.handlers.error({sourceId:'railwaySignals',tile:failedRailTile(),error:{status:520}});
+  const railway=f.map.sources.railway;f.map.sources.railway={url:railway.url};
+  doc.querySelector('[data-mode="speed"]').click();assert.equal(f.clock.timers.size,0);
+  doc.querySelector('[data-mode="infrastructure"]').click();assert.equal(f.clock.timers.size,1);
+  f.map.handlers.remove();doc.querySelector('[data-mode="speed"]').click();doc.querySelector('[data-mode="infrastructure"]').click();assert.equal(f.clock.timers.size,0);
+ }finally{f.close();}
+});
+
+test('off-screen retirement reconciles owned errors without source success and retains other failures',async()=>{
+ const f=await recoveryApp();
+ try{
+  const a=failedRailTile(1),b=failedRailTile(2);f.fail(a);f.fail(b);
+  f.map.getBounds=()=>({getWest:()=>-174,getEast:()=>-172,getSouth:()=>80,getNorth:()=>85});
+  f.map.handlers.moveend();assert.match(f.status.textContent,/Retrying automatically/,'one remaining tile retains the warning');
+  f.map.getBounds=()=>({getWest:()=>0,getEast:()=>10,getSouth:()=>-10,getNorth:()=>10});
+  f.map.handlers.moveend();assert.equal(f.status.classList.contains('error'),false);assert.equal(f.clock.timers.size,0);
+  f.map.getBounds=()=>undefined;f.fail(failedRailTile());
+  f.map.handlers.error({sourceId:'openmaptiles',error:new Error('unrelated')});
+  f.map.getBounds=()=>({getWest:()=>0,getEast:()=>10,getSouth:()=>-10,getNorth:()=>10});f.map.handlers.moveend();
+  assert.match(f.status.textContent,/Some map data could not load/);assert.equal(f.status.classList.contains('error'),true);assert.equal(f.clock.timers.size,0);
+ }finally{f.close();}
+});
+
+test('retirement cannot clear nonretryable or newer same-ID errors',async()=>{
+ for(const replace of [false,true]){
+  const f=await recoveryApp();try{
+   f.fail(failedRailTile());if(replace)f.map.sources.railway={url:f.map.sources.railway.url};
+   f.map.handlers.error({sourceId:'railway',tile:failedRailTile(3),error:{status:403,message:'HTTP 403'}});
+   f.fail(failedRailTile(4));
+   f.map.getBounds=()=>({getWest:()=>0,getEast:()=>10,getSouth:()=>-10,getNorth:()=>10});f.map.handlers.moveend();
+   assert.equal(f.status.classList.contains('error'),true);assert.match(f.status.textContent,/Some map data could not load/);assert.equal(f.clock.timers.size,0);
+  }finally{f.close();}
+ }
+});
+
+test('timer retirement reconciles status after its transaction and queued notifications are inert after disposal',async()=>{
+ const f=await recoveryApp();
+ try{
+  f.fail(failedRailTile());
+  f.map.getBounds=()=>({getWest:()=>0,getEast:()=>10,getSouth:()=>-10,getNorth:()=>10});
+  const [id,timer]=f.clock.timers.entries().next().value;f.clock.timers.delete(id);timer.fn();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(f.status.classList.contains('error'),false);assert.equal(f.clock.timers.size,0);assert.deepEqual(f.clock.retries,[]);
+  f.map.getBounds=()=>undefined;f.fail(failedRailTile());
+  const before=f.status.textContent;f.map.handlers.remove();
+  f.map.queryRenderedFeatures=()=>{throw new Error('disposed map must not be queried');};
+  f.window.dispatchEvent(new f.window.Event('online'));f.window.document.dispatchEvent(new f.window.Event('visibilitychange'));f.map.handlers.moveend();
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(f.status.textContent,before);assert.equal(f.clock.timers.size,0);
+ }finally{f.close();}
 });

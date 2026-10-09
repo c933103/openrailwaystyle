@@ -22,9 +22,7 @@ const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader'
 try {
   const page=await browser.newPage({viewport:{width:480,height:480}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
-  // Local runs can reuse downloaded, version-pinned CDN assets.
-  if(process.env.ATLAS_MAPLIBRE_ASSETS)for(const name of ['maplibre-gl.js','maplibre-gl.css'])await page.route(`**/maplibre-gl@5.24.0/dist/${name}`,async r=>r.fulfill({body:await readFile(`${process.env.ATLAS_MAPLIBRE_ASSETS}/${name}`),contentType:name.endsWith('.js')?'text/javascript':'text/css'}));
-  await page.route('**/frequency-check.html',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css"><style>body{margin:0}#map{position:absolute;inset:0}</style><div id="map"></div><script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>'}));
+  await page.route('**/frequency-check.html',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><link rel="stylesheet" href="vendor/maplibre-gl-5.24.0.css"><style>body{margin:0}#map{position:absolute;inset:0}</style><div id="map"></div><script src="vendor/maplibre-gl-5.24.0-atlas.1.js"></script>'}));
   await page.goto(root+'/frequency-check.html');
   await page.evaluate(async({features,now})=>{
     const frequency=await import('./service-frequency.mjs');window.frequency=frequency;

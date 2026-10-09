@@ -25,9 +25,17 @@ on:
     - cron: '41 2 * * 1'
   pull_request:
     paths:
-      - tests/global_frequency_test.py
-      - tests/frequency_catalogue_test.py
+      - package.json
+      - package-lock.json
+      - 'tests/*frequency*'
       - docs/service-frequency.md
+      - tests/gtfs-service.test.mjs
+      - tests/service-routes.test.mjs
+      - tests/pbf-utf8.test.mjs
+      - 'tests/fixtures/service-frequency/**'
+      - scripts/rebuild-service-frequency.mjs
+      - scripts/frequency-credits.mjs
+      - scripts/load-frequency-snapshot.py
       - scripts/global-service-frequency.py
       - scripts/frequency_catalogue.py
       - scripts/gtfs-frequency.py
@@ -44,13 +52,44 @@ on:
 permissions:
   contents: read
 concurrency:
-  # PRs only reconcile catalogue metadata and run offline fixtures. They can
-  # supersede stale PR checks without queuing behind production ingestion.
-  # Full worldwide main-branch compiles still queue and preserve their cache.
-  group: worldwide-frequency-${{ github.head_ref || github.ref }}-${{ github.event_name == 'pull_request' && 'catalogue-check' || 'worldwide-build' }}
+  group: worldwide-frequency-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}
+  # Supersede stale fixture checks; preserve costly production scans and caches.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  validate-pr:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate PR code with frequency fixtures and loopback-only networking
+        run: |
+          # Only this child process loses external networking. Loopback serves
+          # the real range/conditional-download fixtures; no provider is queried.
+          # Drop root and disable privilege gains in this fixture process.
+          sudo unshare --net -- bash -euc '
+            ip link set lo up
+            exec setpriv --reuid="$1" --regid="$2" --init-groups --no-new-privs \
+              "$3" --test \
+              tests/global-frequency.test.mjs \
+              tests/gtfs-frequency.test.mjs \
+              tests/gtfs-service.test.mjs \
+              tests/read-frequency-feed.test.mjs \
+              tests/pbf-utf8.test.mjs \
+              tests/service-frequency.test.mjs \
+              tests/service-routes.test.mjs \
+              tests/frequency-credits.test.mjs \
+              tests/service-frequency-workflow.test.mjs
+          ' _ "$(id -u)" "$(id -g)" "$(command -v node)"
   catalogue:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     outputs:
       service_date: ${{ steps.date.outputs.value }}
