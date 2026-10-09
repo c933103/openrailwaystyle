@@ -47,7 +47,15 @@ Service view draws OpenStreetMap routes only (`scripts/service-routes.mjs`).
 Compiled timetables are kept for matching to those routes (#111); until then
 none is applied, and the viewer never downloads feeds or queries an extraction API. Scheduled main-branch runs
 publish the complete snapshot in the `service-frequency-data` data release and
-trigger site assembly. PR runs create reviewable artifacts without publishing.
+trigger site assembly. Pull requests validate their exact head revision with the
+existing compiler, geometry, streaming-reader, inventory/assembly and profile
+fixtures. The test process runs as the ordinary runner user in a temporary network
+namespace with only loopback enabled, for the local HTTP download/cache fixtures.
+It neither acquires a live catalogue nor starts worldwide provider downloads,
+restores production caches, or publishes snapshots. Locked dependency installation
+precedes that isolated test process and disables package lifecycle scripts.
+Production push, scheduled and manual refreshes retain the complete eight-shard
+pipeline, budgets, inventory gates, caches and publication restrictions.
 The site uses the published worldwide snapshot; absent data remains unknown.
 The four earlier city datasets are now **test fixtures only**.
 
