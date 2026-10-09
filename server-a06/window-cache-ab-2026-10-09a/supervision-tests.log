@@ -1,0 +1,32 @@
+test_any_non_null_guard_reason_is_rejected (__main__.SupervisionTests.test_any_non_null_guard_reason_is_rejected) ... ok
+test_blocking_wait4_is_used (__main__.SupervisionTests.test_blocking_wait4_is_used) ... ok
+test_descendant_holding_stdout_is_terminated (__main__.SupervisionTests.test_descendant_holding_stdout_is_terminated) ... ok
+test_guarded_zero_exit_is_rejected (__main__.SupervisionTests.test_guarded_zero_exit_is_rejected) ... ok
+test_interruption_cleanup_reaps (__main__.SupervisionTests.test_interruption_cleanup_reaps) ... ok
+test_nonzero_exit_reaped (__main__.SupervisionTests.test_nonzero_exit_reaped) ... ok
+test_raw_non_utf8_stdout_preserved (__main__.SupervisionTests.test_raw_non_utf8_stdout_preserved) ... ok
+test_rss_guard_terminates_and_reaps (__main__.SupervisionTests.test_rss_guard_terminates_and_reaps) ... ok
+test_short_child_does_not_wait_for_one_second_sample_tick (__main__.SupervisionTests.test_short_child_does_not_wait_for_one_second_sample_tick) ... ok
+test_stdout_stderr_preserved (__main__.SupervisionTests.test_stdout_stderr_preserved) ... ok
+test_wall_guard_terminates_and_reaps (__main__.SupervisionTests.test_wall_guard_terminates_and_reaps) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.405s
+
+OK
+test_any_non_null_guard_reason_is_rejected (__main__.SupervisionTests.test_any_non_null_guard_reason_is_rejected) ... ok
+test_blocking_wait4_is_used (__main__.SupervisionTests.test_blocking_wait4_is_used) ... ok
+test_descendant_holding_stdout_is_terminated (__main__.SupervisionTests.test_descendant_holding_stdout_is_terminated) ... ok
+test_guarded_zero_exit_is_rejected (__main__.SupervisionTests.test_guarded_zero_exit_is_rejected) ... ok
+test_interruption_cleanup_reaps (__main__.SupervisionTests.test_interruption_cleanup_reaps) ... ok
+test_nonzero_exit_reaped (__main__.SupervisionTests.test_nonzero_exit_reaped) ... ok
+test_raw_non_utf8_stdout_preserved (__main__.SupervisionTests.test_raw_non_utf8_stdout_preserved) ... ok
+test_rss_guard_terminates_and_reaps (__main__.SupervisionTests.test_rss_guard_terminates_and_reaps) ... ok
+test_short_child_does_not_wait_for_one_second_sample_tick (__main__.SupervisionTests.test_short_child_does_not_wait_for_one_second_sample_tick) ... ok
+test_stdout_stderr_preserved (__main__.SupervisionTests.test_stdout_stderr_preserved) ... ok
+test_wall_guard_terminates_and_reaps (__main__.SupervisionTests.test_wall_guard_terminates_and_reaps) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.404s
+
+OK

@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "cohort": "window-cache-ab-20261009a",
+  "role": "candidate",
+  "source_commit": "802062b5c44718e6baf3d36db5010ee42799368c",
+  "source": {
+    "sha256": "73c69bcfb7271a2c924d620609236757e484ca1cc5550bb0b41527689da36b15",
+    "entries": 319,
+    "file_bytes": 16189308
+  },
+  "dependencies": {
+    "sha256": "e3333521361057ff70b2f3187f18e4df938824350bb526e9d89f1ad578a6642e",
+    "entries": 3778,
+    "file_bytes": 106688774
+  },
+  "node_binary_sha256": "fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48",
+  "node_version": "22.23.3",
+  "runtime_policy": "Exact binary digest is host/build specific; change runtime only as a separately labelled cohort and retain its actual identity.",
+  "source_excluded_directories": [
+    "node_modules",
+    ".git"
+  ],
+  "source_excluded_files": [
+    "scripts/__pycache__/global-service-frequency.cpython-312.pyc",
+    "scripts/__pycache__/gtfs-frequency.cpython-312.pyc",
+    "scripts/__pycache__/gtfs-shapes.cpython-312.pyc",
+    "scripts/__pycache__/load-frequency-snapshot.cpython-312.pyc",
+    "tests/__pycache__/global_frequency_test.cpython-312.pyc",
+    "tests/__pycache__/load_frequency_snapshot_test.cpython-312.pyc"
+  ],
+  "replay_manifest_sha256": "7437aafda2e1bd2e32ad7abc1e16604d4ddd7586c79261fdcbbc205496930215",
+  "source_revision": {
+    "base_commit": "802062b5c44718e6baf3d36db5010ee42799368c",
+    "patch_sha256": "d554d7b987e05e676e30635fe70f905e652746f559cf0c0e1b2ca3345e93568b",
+    "note": "Source commit denotes base; candidate is only the separate lazy per-feed window-string cache patch, without rich-record gating."
+  }
+}

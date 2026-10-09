@@ -1,0 +1,9 @@
+{
+  "scope": "Generated Python import cache found by final publication scan and excluded from public payload. Read-only verification that its executable code equals compiling the frozen measured harness source. Python -B disables cache writes, not cache reads, so this check makes that possible import path explicit.",
+  "source_sha256": "961272ea8baf94aabb1bc9c886c0120290cbeb4a3b97d8b81d3e8a7f715441a2",
+  "cache_sha256": "ea0cab5b12a97d0bed0f090fbc0bdf008956fac840392ca649fc9eef4f2adf59",
+  "cache_bytes": 25453,
+  "compiled_code_equal": true,
+  "cache_header_flags": 0,
+  "verified_utc": "2026-10-09T06:26:05.663350+00:00"
+}

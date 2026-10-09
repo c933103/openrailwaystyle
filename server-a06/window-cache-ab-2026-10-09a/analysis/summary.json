@@ -1,0 +1,128 @@
+{
+  "cohort": "window-cache-ab-20261009a",
+  "pairs": 4,
+  "executions": 8,
+  "all_output_identity_gates_passed": true,
+  "expected_output_files_per_run": 117,
+  "original_recovery_status": "unchanged:57/83; none of these runs count as recovered originals",
+  "metrics": {
+    "wall_seconds": {
+      "control": {
+        "median": 36.441442207500586,
+        "min": 36.41555821899965,
+        "max": 37.48344679699949,
+        "values": [
+          37.48344679699949,
+          36.41555821899965,
+          36.44804584900157,
+          36.4348385659996
+        ]
+      },
+      "candidate": {
+        "median": 33.18982473650067,
+        "min": 32.81961828000021,
+        "max": 33.8067660859997,
+        "values": [
+          33.385426181001094,
+          32.81961828000021,
+          33.8067660859997,
+          32.99422329200024
+        ]
+      },
+      "paired_percent_change": {
+        "values": [
+          -10.932880954604302,
+          -9.87473518152269,
+          -7.246697872210421,
+          -9.443201642754312
+        ],
+        "median": -9.6589684121385,
+        "min": -10.932880954604302,
+        "max": -7.246697872210421
+      },
+      "paired_absolute_change_median": -3.518277606499396,
+      "candidate_lower_pairs": 4,
+      "candidate_equal_pairs": 0,
+      "candidate_higher_pairs": 0
+    },
+    "total_cpu_seconds": {
+      "control": {
+        "median": 44.727609,
+        "min": 44.471312999999995,
+        "max": 45.409767,
+        "values": [
+          45.409767,
+          44.853963,
+          44.601255,
+          44.471312999999995
+        ]
+      },
+      "candidate": {
+        "median": 41.690824,
+        "min": 40.800784,
+        "max": 42.32133,
+        "values": [
+          42.181326,
+          40.800784,
+          42.32133,
+          41.200322
+        ]
+      },
+      "paired_percent_change": {
+        "values": [
+          -7.109574026222164,
+          -9.036389939502113,
+          -5.111795620997657,
+          -7.355283168724961
+        ],
+        "median": -7.232428597473563,
+        "min": -9.036389939502113,
+        "max": -5.111795620997657
+      },
+      "paired_absolute_change_median": -3.2497159999999994,
+      "candidate_lower_pairs": 4,
+      "candidate_equal_pairs": 0,
+      "candidate_higher_pairs": 0
+    },
+    "peak_rss_kib": {
+      "control": {
+        "median": 451598.0,
+        "min": 445452,
+        "max": 507604,
+        "values": [
+          445452,
+          449856,
+          507604,
+          453340
+        ]
+      },
+      "candidate": {
+        "median": 455456.0,
+        "min": 423436,
+        "max": 508636,
+        "values": [
+          461472,
+          423436,
+          449440,
+          508636
+        ]
+      },
+      "paired_percent_change": {
+        "values": [
+          3.5963470811669946,
+          -5.87299046806089,
+          -11.458538545795541,
+          12.19746768429876
+        ],
+        "median": -1.1383216934469478,
+        "min": -11.458538545795541,
+        "max": 12.19746768429876
+      },
+      "paired_absolute_change_median": -5200.0,
+      "candidate_lower_pairs": 2,
+      "candidate_equal_pairs": 0,
+      "candidate_higher_pairs": 2
+    }
+  },
+  "interpretation": "Negative candidate-minus-control values indicate lower time/RSS. Four non-independent shared-host pairs are descriptive, not a population confidence interval. No result is pooled with the old host or Node24 cohorts. Wall completion uses blocking wait4 and is independent of the250ms monitor interval; scheduler wakeup latency remains possible."
+}

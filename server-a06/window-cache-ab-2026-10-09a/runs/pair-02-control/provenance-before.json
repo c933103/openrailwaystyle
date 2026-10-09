@@ -1,0 +1,21 @@
+{
+  "configuration_sha256": "7db2eaa7d5df5c915d75dcadff1fd84539533f9c7628daf58d99c3f4789367ef",
+  "cohort": "window-cache-ab-20261009a",
+  "role": "control",
+  "source_commit": "802062b5c44718e6baf3d36db5010ee42799368c",
+  "identities": {
+    "source": {
+      "sha256": "5d086cd7031e131f55880e055e4333789ee751ff06b882775fa5986f932808e2",
+      "entries": 319,
+      "file_bytes": 16189218
+    },
+    "dependencies": {
+      "sha256": "e3333521361057ff70b2f3187f18e4df938824350bb526e9d89f1ad578a6642e",
+      "entries": 3778,
+      "file_bytes": 106688774
+    },
+    "node_binary_sha256": "fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48",
+    "replay_manifest_sha256": "7437aafda2e1bd2e32ad7abc1e16604d4ddd7586c79261fdcbbc205496930215"
+  },
+  "verified_utc": "2026-10-09T06:20:57.944836+00:00"
+}

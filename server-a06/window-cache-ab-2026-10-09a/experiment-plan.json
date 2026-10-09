@@ -1,0 +1,76 @@
+{
+  "cohort": "window-cache-ab-20261009a",
+  "planned_utc": "2026-10-09T06:17:41.558413+00:00",
+  "base_main_commit": "802062b5c44718e6baf3d36db5010ee42799368c",
+  "base_main_verified_utc": "2026-10-09T06:08:33Z",
+  "candidate_patch_sha256": "d554d7b987e05e676e30635fe70f905e652746f559cf0c0e1b2ca3345e93568b",
+  "only_source_differences": [
+    {
+      "path": "scripts/gtfs-service.mjs",
+      "control_sha256": "dc594bf794af785764111d9f05e31d59416be98aa763f7a913dc1cf037c258dc",
+      "candidate_sha256": "98617ff13c34fec98c9cc9ab6b3745f4b5456ff08b02cf43505dfb4a56bcf65e"
+    }
+  ],
+  "pairs": [
+    {
+      "pair": 1,
+      "order": [
+        "control",
+        "candidate"
+      ]
+    },
+    {
+      "pair": 2,
+      "order": [
+        "candidate",
+        "control"
+      ]
+    },
+    {
+      "pair": 3,
+      "order": [
+        "control",
+        "candidate"
+      ]
+    },
+    {
+      "pair": 4,
+      "order": [
+        "candidate",
+        "control"
+      ]
+    }
+  ],
+  "runtime": "Node22.23.3; same binary for both variants and all eight runs; separately labelled from Node24 cohorts",
+  "node_binary_sha256": "fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48",
+  "harness": {
+    "path": "measure_replay.py",
+    "sha256": "961272ea8baf94aabb1bc9c886c0120290cbeb4a3b97d8b81d3e8a7f715441a2"
+  },
+  "inputs": "Frozen sanitized replay-20261009a: verify121inputs and117outputs per run; no provider network",
+  "input_scope": "Immutable parsed-JSON feed objects; no generalized guarantee for getters or mutating iterables",
+  "time_policy": "Unmodified Date.now; exact raw output hashes; any expiry difference fails comparison",
+  "measurement_policy": "Fresh copies/processes; four uninstrumented pairs in balanced AB/BA/AB/BA order. Source/dependency/runtime/input checks and preparation outside timing. Blocking wait4 timestamps process completion; independent250ms sampler never reaps. CPU/RSS from wait4. Every guard reason or capture/cleanup error fails. Same bounds both variants. All pairs retained; no adaptive stopping or posthoc exclusions.",
+  "bounds": {
+    "node_heap_mib": 1536,
+    "rss_guard_mib": 2048,
+    "wall_seconds": 300,
+    "cpu_soft_seconds": 300,
+    "cpu_hard_seconds": 305,
+    "per_file_bytes": 268435456
+  },
+  "cache_policy": "Input copies and hashing warm filesystem cache; no cold-cache or exclusive-host claim",
+  "background_policy": "Request other known workers defer heavy tests during the measurement window; record actual load/memory and any known overlap. Host remains shared and uncontrolled.",
+  "decision_policy": "Describe pair direction, dispersion and order effects. Hold unmerged unless correctness and meaningful repeatable benefit are demonstrated; no cross-host/runtime speedup claim.",
+  "base_policy": "Retain802062b5 as the earlier verified comparison base for both variants. Main advanced before measurements; do not label this cohort as measured current main.",
+  "new_main_observation": {
+    "sha": "cce34eb12a31ebd3259bfa6bec308952c71da8c6",
+    "verified_utc": "2026-10-09T06:18:16Z",
+    "delta_files": [
+      "docs/development.md",
+      "scripts/serve.mjs",
+      "tests/serve.test.mjs"
+    ],
+    "assembly_source_changed": false
+  }
+}

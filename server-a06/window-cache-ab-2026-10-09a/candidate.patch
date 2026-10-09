@@ -1,0 +1,20 @@
+--- a/scripts/gtfs-service.mjs
++++ b/scripts/gtfs-service.mjs
+@@ -24,6 +24,8 @@
+     // and review interval. Local expiry is compiled by the importer.
+     const feedUntil=Math.min(review/1000,source.valid_until||Infinity);
+     let available=0;const mapped=new Set(),known=new Set();
++    // Parsed-JSON feed profiles are stable; keep the first evaluation lazy.
++    let windows;
+     for(const segment of feed.segments){
+       if(!segment.geometry||segment.geometry.length<2)continue;
+       const route=routes.get(segment.route_id),agency=agencies.get(segment.agency_id);
+@@ -32,7 +34,7 @@
+       const coordinates=summaryOnly?null:segment.geometry.map(p=>p.map(round)),key=summaryOnly?null:JSON.stringify(coordinates);
+       if(!summaryOnly&&!edges.has(key))edges.set(key,{coordinates,records:[]});
+       const profiles=Object.fromEntries(Object.entries(segment.profiles).map(([p,v])=>[p,{rate:v.display_tph,high:v.display_tph,quality:v.quality,forward:v.forward_tph,backward:v.backward_tph}]));
+-      const windows=Object.entries(feed.profiles).map(([p,v])=>`${p}: ${v.start.slice(0,5)}–${v.end.slice(0,5)}`).join('; ');
++      windows??=Object.entries(feed.profiles).map(([p,v])=>`${p}: ${v.start.slice(0,5)}–${v.end.slice(0,5)}`).join('; ');
+       const record={properties:{id:`gtfs:${source.id}:${route.route_id}`,gtfs_route_id:route.route_id,geometry_source:source.geometry||'GTFS supplied shape',name:route.route_long_name||route.route_short_name||route.route_id,
+         ref:route.route_short_name||route.route_long_name||route.route_id,colour:/^[0-9a-f]{6}$/i.test(route.route_color||'')?`#${route.route_color}`:'',kind:kind(route.route_type),network:source.name,operator:agency.agency_name,
+         frequency_id:`${source.id}:${route.route_id}`,frequency_source:source.name,frequency_url:source.terms_url,frequency_checked:checked,frequency_credit:source.attribution,frequency_license:source.license,

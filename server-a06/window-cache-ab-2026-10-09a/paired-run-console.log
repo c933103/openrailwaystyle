@@ -1,0 +1,8 @@
+{"run_id": "pair-01-control", "wall_seconds": 37.48344679699949, "total_cpu_seconds": 45.409767, "peak_rss_kib": 445452, "exit_code": 0, "exact_expected_match": true}
+{"run_id": "pair-01-candidate", "wall_seconds": 33.385426181001094, "total_cpu_seconds": 42.181326, "peak_rss_kib": 461472, "exit_code": 0, "exact_expected_match": true}
+{"run_id": "pair-02-candidate", "wall_seconds": 32.81961828000021, "total_cpu_seconds": 40.800784, "peak_rss_kib": 423436, "exit_code": 0, "exact_expected_match": true}
+{"run_id": "pair-02-control", "wall_seconds": 36.41555821899965, "total_cpu_seconds": 44.853963, "peak_rss_kib": 449856, "exit_code": 0, "exact_expected_match": true}
+{"run_id": "pair-03-control", "wall_seconds": 36.44804584900157, "total_cpu_seconds": 44.601255, "peak_rss_kib": 507604, "exit_code": 0, "exact_expected_match": true}
+{"run_id": "pair-03-candidate", "wall_seconds": 33.8067660859997, "total_cpu_seconds": 42.32133, "peak_rss_kib": 449440, "exit_code": 0, "exact_expected_match": true}
+{"run_id": "pair-04-candidate", "wall_seconds": 32.99422329200024, "total_cpu_seconds": 41.200322, "peak_rss_kib": 508636, "exit_code": 0, "exact_expected_match": true}
+{"run_id": "pair-04-control", "wall_seconds": 36.4348385659996, "total_cpu_seconds": 44.471312999999995, "peak_rss_kib": 453340, "exit_code": 0, "exact_expected_match": true}

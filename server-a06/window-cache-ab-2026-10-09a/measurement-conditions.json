@@ -1,0 +1,23 @@
+{
+  "planned_deferral_window_utc": [
+    "2026-10-09T06:19:00Z",
+    "2026-10-09T06:26:00Z"
+  ],
+  "measured_interval_utc": [
+    "2026-10-09T06:19:09.858262+00:00",
+    "2026-10-09T06:24:00.180175+00:00"
+  ],
+  "coordination": "Known local testing workers were asked to defer heavy tests; coordinating work avoided heavy local execution. Remote CI and browser research could continue. This does not prove exclusive host access.",
+  "acknowledgment_status": "Three known local work streams confirmed no heavy work needed or deferred heavy tests. One additional source-research stream was asked to defer heavy extraction, with no heavy activity reported. Coordinating work used only small file reads and remote connector calls; host research used browser/docs. Coordination was released after all runs completed.",
+  "overrun": false,
+  "sample_count": 1120,
+  "sampled_load_1_min_range": [
+    0.0615234375,
+    1.48291015625
+  ],
+  "sampled_mem_available_kib_range": [
+    7728660,
+    8142324
+  ],
+  "known_heavy_local_overlap": "None reported by the coordinated work streams. This is not process-wide proof of no background load."
+}

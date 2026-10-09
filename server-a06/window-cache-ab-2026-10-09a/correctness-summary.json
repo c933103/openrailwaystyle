@@ -1,0 +1,27 @@
+{
+  "results": [
+    {
+      "scope": "Untimed full-data correctness check, not part of performance cohort",
+      "side": "control",
+      "start_utc": "2026-10-09T06:13:18.198331+00:00",
+      "end_utc": "2026-10-09T06:13:55.665244+00:00",
+      "exit_code": 0,
+      "matching_files": 117,
+      "exact_match": true,
+      "node_version": "22.23.3",
+      "node_binary_sha256": "fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48"
+    },
+    {
+      "scope": "Untimed full-data correctness check, not part of performance cohort",
+      "side": "candidate",
+      "start_utc": "2026-10-09T06:13:55.828730+00:00",
+      "end_utc": "2026-10-09T06:14:28.473082+00:00",
+      "exit_code": 0,
+      "matching_files": 117,
+      "exact_match": true,
+      "node_version": "22.23.3",
+      "node_binary_sha256": "fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48"
+    }
+  ],
+  "performance_measurements_started": false
+}

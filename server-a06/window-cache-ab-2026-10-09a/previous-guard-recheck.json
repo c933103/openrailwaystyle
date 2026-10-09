@@ -1,0 +1,70 @@
+{
+  "scope": "Preventive harness control added to new cohort. Published Node24 paired measurements remain unchanged.",
+  "evidence_commit": "1737ed97a3e4d42ab54c56a686115bf526eee0a1",
+  "records": [
+    {
+      "run_id": "pair-01-candidate",
+      "metrics_sha256": "2807553605d235543c9af29861dc00c00cfe7da133d254dbb406b6287badc50a",
+      "termination_reason": null,
+      "exit_code": 0,
+      "exact_expected_match": true,
+      "capture_errors": []
+    },
+    {
+      "run_id": "pair-01-control",
+      "metrics_sha256": "3896e9ed97ef6cf7e1ac20e9178edc23bfff2856f00f6a78d48867a299d010f5",
+      "termination_reason": null,
+      "exit_code": 0,
+      "exact_expected_match": true,
+      "capture_errors": []
+    },
+    {
+      "run_id": "pair-02-candidate",
+      "metrics_sha256": "a47d3395d4566efc82101c4922b6d7be844787ea0547c78e164db91196e61c9e",
+      "termination_reason": null,
+      "exit_code": 0,
+      "exact_expected_match": true,
+      "capture_errors": []
+    },
+    {
+      "run_id": "pair-02-control",
+      "metrics_sha256": "79ae23c724fcc2880120795e8c6099af13504b88870824b31bdb046792d62243",
+      "termination_reason": null,
+      "exit_code": 0,
+      "exact_expected_match": true,
+      "capture_errors": []
+    },
+    {
+      "run_id": "pair-03-candidate",
+      "metrics_sha256": "b97f8ee8d9672316f7c661be2ae11ee43bc703565790f9410e67c68cdc435a0a",
+      "termination_reason": null,
+      "exit_code": 0,
+      "exact_expected_match": true,
+      "capture_errors": []
+    },
+    {
+      "run_id": "pair-03-control",
+      "metrics_sha256": "1006c695516f275fa6f202b566213f4d9793d072e1d02e2e84a6c5264e013667",
+      "termination_reason": null,
+      "exit_code": 0,
+      "exact_expected_match": true,
+      "capture_errors": []
+    },
+    {
+      "run_id": "pair-04-candidate",
+      "metrics_sha256": "39b88d6f81244d3c980f97f4655df8fecba7bd00779fe273582fa88d664f4588",
+      "termination_reason": null,
+      "exit_code": 0,
+      "exact_expected_match": true,
+      "capture_errors": []
+    },
+    {
+      "run_id": "pair-04-control",
+      "metrics_sha256": "d8cb32ceb30e93e87f25041d4dc730b1424085874bcc419d0c19585a53c96657",
+      "termination_reason": null,
+      "exit_code": 0,
+      "exact_expected_match": true,
+      "capture_errors": []
+    }
+  ]
+}

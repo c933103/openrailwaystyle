@@ -1,0 +1,24 @@
+test_capture_error (__main__.AnalysisTests.test_capture_error) ... ok
+test_clean (__main__.AnalysisTests.test_clean) ... ok
+test_guarded_zero_exit (__main__.AnalysisTests.test_guarded_zero_exit) ... ok
+test_mixed_cohort (__main__.AnalysisTests.test_mixed_cohort) ... ok
+test_nonzero (__main__.AnalysisTests.test_nonzero) ... ok
+test_output_mismatch (__main__.AnalysisTests.test_output_mismatch) ... ok
+test_profile (__main__.AnalysisTests.test_profile) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.005s
+
+OK
+test_capture_error (__main__.AnalysisTests.test_capture_error) ... ok
+test_clean (__main__.AnalysisTests.test_clean) ... ok
+test_guarded_zero_exit (__main__.AnalysisTests.test_guarded_zero_exit) ... ok
+test_mixed_cohort (__main__.AnalysisTests.test_mixed_cohort) ... ok
+test_nonzero (__main__.AnalysisTests.test_nonzero) ... ok
+test_output_mismatch (__main__.AnalysisTests.test_output_mismatch) ... ok
+test_profile (__main__.AnalysisTests.test_profile) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.005s
+
+OK

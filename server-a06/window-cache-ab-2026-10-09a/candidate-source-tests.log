@@ -1,0 +1,247 @@
+(node:20) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+TAP version 13
+# (node:27) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: worldwide discovery, selective downloads and shapeless data processing
+ok 1 - worldwide discovery, selective downloads and shapeless data processing
+  ---
+  duration_ms: 6238.294397
+  type: 'test'
+  ...
+# Subtest: global assembly rejects missing shards, duplicate feeds and catalogue drift
+ok 2 - global assembly rejects missing shards, duplicate feeds and catalogue drift
+  ---
+  duration_ms: 8.498508
+  type: 'test'
+  ...
+# Subtest: published feed directories retain only current verified inventory outputs
+ok 3 - published feed directories retain only current verified inventory outputs
+  ---
+  duration_ms: 8.621043
+  type: 'test'
+  ...
+# Subtest: snapshot asset and release lookup follow the publishing repository
+ok 4 - snapshot asset and release lookup follow the publishing repository
+  ---
+  duration_ms: 111.324925
+  type: 'test'
+  ...
+# bad 1 rail services
+# good 1 rail services
+# {"catalogue":2,"counts":{"compiled":2},"countries":1,"mappedFeeds":2}
+# Subtest: a large feed is kept for matching beside its peers, and no feed builds map tiles
+ok 5 - a large feed is kept for matching beside its peers, and no feed builds map tiles
+  ---
+  duration_ms: 95.548399
+  type: 'test'
+  ...
+# (node:28) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: timetables draw no Service lines of their own; profiles keep date and directional provenance
+ok 6 - timetables draw no Service lines of their own; profiles keep date and directional provenance
+  ---
+  duration_ms: 21.946958
+  type: 'test'
+  ...
+# Subtest: route calendar expiry reaches the profile even while its feed remains current
+ok 7 - route calendar expiry reaches the profile even while its feed remains current
+  ---
+  duration_ms: 1.266668
+  type: 'test'
+  ...
+# Subtest: local services rebundle independently and shared geometry retains every service
+ok 8 - local services rebundle independently and shared geometry retains every service
+  ---
+  duration_ms: 1.909096
+  type: 'test'
+  ...
+# Subtest: national feeds compact consecutive equal-profile edges while keeping disconnected paths
+ok 9 - national feeds compact consecutive equal-profile edges while keeping disconnected paths
+  ---
+  duration_ms: 1.706582
+  type: 'test'
+  ...
+# Subtest: dated multi-region fixtures supply actual mapped rail shapes and profiles
+ok 10 - dated multi-region fixtures supply actual mapped rail shapes and profiles
+  ---
+  duration_ms: 445.514201
+  type: 'test'
+  ...
+# Subtest: fixture assembly succeeds when the OSM service-data branch supplies no table
+ok 11 - fixture assembly succeeds when the OSM service-data branch supplies no table
+  ---
+  duration_ms: 499.151984
+  type: 'test'
+  ...
+# Subtest: production frequency registry has no city feed fallback
+ok 12 - production frequency registry has no city feed fallback
+  ---
+  duration_ms: 1.290925
+  type: 'test'
+  ...
+# Subtest: successful revalidation keeps unchanged annual feeds fresh without changing retrieval date
+ok 13 - successful revalidation keeps unchanged annual feeds fresh without changing retrieval date
+  ---
+  duration_ms: 1.275802
+  type: 'test'
+  ...
+# Subtest: global route types preserve cable trams, extended monorails and funiculars
+ok 14 - global route types preserve cable trams, extended monorails and funiculars
+  ---
+  duration_ms: 1.673782
+  type: 'test'
+  ...
+# Subtest: a summary-only pass reports the same feed summary without building features
+ok 15 - a summary-only pass reports the same feed summary without building features
+  ---
+  duration_ms: 0.834137
+  type: 'test'
+  ...
+# (node:29) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: streamed national feeds preserve nested records, escapes and Unicode across chunk boundaries
+ok 16 - streamed national feeds preserve nested records, escapes and Unicode across chunk boundaries
+  ---
+  duration_ms: 5.211753
+  type: 'test'
+  ...
+# Subtest: gzip feed reader decodes array records without retaining one whole JSON string
+ok 17 - gzip feed reader decodes array records without retaining one whole JSON string
+  ---
+  duration_ms: 38.936697
+  type: 'test'
+  ...
+# Subtest: streamed reader rejects truncated feeds, duplicate fields and trailing content
+ok 18 - streamed reader rejects truncated feeds, duplicate fields and trailing content
+  ---
+  duration_ms: 0.651892
+  type: 'test'
+  ...
+# (node:35) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: published data keeps all rows, ranges and unmapped branches
+ok 19 - published data keeps all rows, ranges and unmapped branches
+  ---
+  duration_ms: 1.272237
+  type: 'test'
+  ...
+# Subtest: shared scale keeps equal rates equal across profiles and separates unknown
+ok 20 - shared scale keeps equal rates equal across profiles and separates unknown
+  ---
+  duration_ms: 1.806452
+  type: 'test'
+  ...
+# Subtest: paint, label placement and hit selection share the changed bundle geometry
+ok 21 - paint, label placement and hit selection share the changed bundle geometry
+  ---
+  duration_ms: 40.403186
+  type: 'test'
+  ...
+# Subtest: old tiles and stale sources keep unknown distinct from zero and preserve equal mode
+ok 22 - old tiles and stale sources keep unknown distinct from zero and preserve equal mode
+  ---
+  duration_ms: 2.199204
+  type: 'test'
+  ...
+# Subtest: all profile styles validate against the pinned MapLibre specification
+ok 23 - all profile styles validate against the pinned MapLibre specification
+  ---
+  duration_ms: 1222.089254
+  type: 'test'
+  ...
+# Subtest: profile selection round trips through settings and shared links
+ok 24 - profile selection round trips through settings and shared links
+  ---
+  duration_ms: 1.063141
+  type: 'test'
+  ...
+# Subtest: route clicks select the visible line after a profile changes its bundle position
+ok 25 - route clicks select the visible line after a profile changes its bundle position
+  ---
+  duration_ms: 1.156473
+  type: 'test'
+  ...
+# Subtest: loaded profiles expire without a reload and resume refreshes deferred paints
+ok 26 - loaded profiles expire without a reload and resume refreshes deferred paints
+  ---
+  duration_ms: 0.503859
+  type: 'test'
+  ...
+# Subtest: hour and overnight settings select separate profiles, preserve unknowns and share the width scale
+ok 27 - hour and overnight settings select separate profiles, preserve unknowns and share the width scale
+  ---
+  duration_ms: 12.939786
+  type: 'test'
+  ...
+# Subtest: operator peak categories do not acquire configured GTFS clock windows
+ok 28 - operator peak categories do not acquire configured GTFS clock windows
+  ---
+  duration_ms: 0.373112
+  type: 'test'
+  ...
+# (node:41) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: service routes: names without their direction
+ok 29 - service routes: names without their direction
+  ---
+  duration_ms: 1.166247
+  type: 'test'
+  ...
+# Subtest: service routes: both directions are one route; urban kinds only in the query
+ok 30 - service routes: both directions are one route; urban kinds only in the query
+  ---
+  duration_ms: 0.820045
+  type: 'test'
+  ...
+# Subtest: service routes: table and tiles, each route along its tracks in its place
+ok 31 - service routes: table and tiles, each route along its tracks in its place
+  ---
+  duration_ms: 14.604515
+  type: 'test'
+  ...
+# Subtest: service routes: consecutive ways join into one line, long enough for a name
+ok 32 - service routes: consecutive ways join into one line, long enough for a name
+  ---
+  duration_ms: 0.240953
+  type: 'test'
+  ...
+# Subtest: service view: grey tracks under the services, side by side, named in the label language
+ok 33 - service view: grey tracks under the services, side by side, named in the label language
+  ---
+  duration_ms: 21.201104
+  type: 'test'
+  ...
+# Subtest: service routes: memberships add up within a pass, are kept per stage, and a rejected refresh changes nothing
+ok 34 - service routes: memberships add up within a pass, are kept per stage, and a rejected refresh changes nothing
+  ---
+  duration_ms: 1.237575
+  type: 'test'
+  ...
+# Subtest: service routes: the same reference and network in two places are two routes; both directions of one are one
+ok 35 - service routes: the same reference and network in two places are two routes; both directions of one are one
+  ---
+  duration_ms: 1.806883
+  type: 'test'
+  ...
+# Subtest: service routes: relations of one line from different boxes or stages are one route, drawn once
+ok 36 - service routes: relations of one line from different boxes or stages are one route, drawn once
+  ---
+  duration_ms: 3.854498
+  type: 'test'
+  ...
+# Subtest: service routes: a refresh missing many routes is caught even when their ways are still found
+ok 37 - service routes: a refresh missing many routes is caught even when their ways are still found
+  ---
+  duration_ms: 3.738723
+  type: 'test'
+  ...
+1..37
+# tests 37
+# suites 0
+# pass 37
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 6568.525789

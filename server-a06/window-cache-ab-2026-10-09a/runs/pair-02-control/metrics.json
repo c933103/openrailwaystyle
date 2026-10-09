@@ -1,0 +1,109 @@
+{
+  "cohort": "window-cache-ab-20261009a",
+  "run_id": "pair-02-control",
+  "classification": "new replacement-host cohort, not an original recovered measurement",
+  "instrumented_cpu_profile": false,
+  "start_utc": "2026-10-09T06:20:57.984638+00:00",
+  "end_utc": "2026-10-09T06:21:34.400206+00:00",
+  "command": [
+    "/workspace/shared/atlas-a06-window-cache-ab-20261009a/runtime/node",
+    "--max-old-space-size=1536",
+    "/workspace/shared/atlas-a06-window-cache-ab-20261009a/work/pair-02-control/source/scripts/assemble-global-frequency.mjs",
+    "/workspace/shared/atlas-a06-window-cache-ab-20261009a/work/pair-02-control/output"
+  ],
+  "wall_seconds": 36.41555821899965,
+  "user_cpu_seconds": 42.652029,
+  "system_cpu_seconds": 2.201934,
+  "total_cpu_seconds": 44.853963,
+  "peak_rss_kib": 449856,
+  "exit_code": 0,
+  "termination_reason": null,
+  "capture_errors": [],
+  "sample_interval_seconds": 0.25,
+  "wait4_minor_faults": 140360,
+  "wait4_major_faults": 0,
+  "wait4_voluntary_switches": 169006,
+  "wait4_involuntary_switches": 21682,
+  "io_bytes": "unavailable; previously denied optional per-process I/O source was not retried",
+  "input_bytes": 38350025,
+  "output_bytes": 41772459,
+  "output_allocated_bytes": 42008576,
+  "output_files": 117,
+  "exact_expected_match": true,
+  "coverage": {
+    "catalogue_entries": 2039,
+    "summary_feeds": 106,
+    "mapped_feeds": 86,
+    "countries": 66,
+    "tiles": 0,
+    "counts": {
+      "excluded": 1220,
+      "no_rail": 635,
+      "compiled": 106,
+      "failed": 78
+    },
+    "available_segments": 664872,
+    "routes_with_profiles": 1045
+  },
+  "start_conditions": {
+    "utc": "2026-10-09T06:20:57.984442+00:00",
+    "load_average": [
+      0.98681640625,
+      0.50830078125,
+      0.39794921875
+    ],
+    "memory_kib": {
+      "MemTotal": 10206508,
+      "MemAvailable": 8128764,
+      "SwapTotal": 0,
+      "SwapFree": 0
+    }
+  },
+  "end_conditions": {
+    "utc": "2026-10-09T06:21:34.470550+00:00",
+    "load_average": [
+      1.07421875,
+      0.5810546875,
+      0.42724609375
+    ],
+    "memory_kib": {
+      "MemTotal": 10206508,
+      "MemAvailable": 8191764,
+      "SwapTotal": 0,
+      "SwapFree": 0
+    }
+  },
+  "cache_state": "fresh source/input copies and fresh Node process; filesystem cache uncontrolled and warmed by copying/verification, not a cold-cache run",
+  "time_policy": "Unmodified Date.now(); actual UTC captured; exact raw output hashes compared without field removal",
+  "bounds": {
+    "node_heap_mib": 1536,
+    "rss_guard_mib": 2048,
+    "wall_seconds": 300,
+    "cpu_soft_seconds": 300,
+    "file_limit_bytes": 268435456
+  },
+  "completion_method": "blocking os.wait4(pid,0), monotonic timestamp immediately after return; sampling thread never reaps",
+  "role": "control",
+  "source_commit": "802062b5c44718e6baf3d36db5010ee42799368c",
+  "provenance": {
+    "configuration_sha256": "7db2eaa7d5df5c915d75dcadff1fd84539533f9c7628daf58d99c3f4789367ef",
+    "cohort": "window-cache-ab-20261009a",
+    "role": "control",
+    "source_commit": "802062b5c44718e6baf3d36db5010ee42799368c",
+    "identities": {
+      "source": {
+        "sha256": "5d086cd7031e131f55880e055e4333789ee751ff06b882775fa5986f932808e2",
+        "entries": 319,
+        "file_bytes": 16189218
+      },
+      "dependencies": {
+        "sha256": "e3333521361057ff70b2f3187f18e4df938824350bb526e9d89f1ad578a6642e",
+        "entries": 3778,
+        "file_bytes": 106688774
+      },
+      "node_binary_sha256": "fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48",
+      "replay_manifest_sha256": "7437aafda2e1bd2e32ad7abc1e16604d4ddd7586c79261fdcbbc205496930215"
+    },
+    "verified_utc": "2026-10-09T06:20:57.944836+00:00"
+  }
+}
