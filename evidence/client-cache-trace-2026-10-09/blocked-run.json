@@ -1,0 +1,27 @@
+{
+  "dateUtc": "2026-10-09",
+  "status": "prepared-not-browser-validated",
+  "sourceCommit": "2875a0744912633f35cd6faba25e3260dae09d89",
+  "sourceTree": "022a4b8cdc6d42ecb96da5969fe27217e4932fde",
+  "trackedSourceFilesVerified": 326,
+  "sourceIdentityMethod": "Every tracked blob independently compared to GitHub recursive tree using Git blob SHA-1; lengths and SHA-256 retained.",
+  "completedBrowserSamples": 0,
+  "attempts": [
+    {"kind": "local headless launch", "outcome": "failed before navigation", "error": "FATAL:chrome/browser/process_singleton_posix.cc:297] Check failed: . socket() failed: Operation not permitted (1)"},
+    {"kind": "approved escalated launch retry", "outcome": "same socket error before navigation"},
+    {"kind": "supported existing cloud browser loopback navigation", "outcome": "net::ERR_CONNECTION_REFUSED", "note": "The fixture was listening, but its command-local loopback was not reachable from the cloud browser or a second command."}
+  ],
+  "verifiedCapability": "Within one shell invocation, Node loopback client/server self-tests work. The browser cannot be launched there and the already-running cloud browser cannot reach that invocation's loopback server.",
+  "runtime": {
+    "node": "22.23.3",
+    "nodeSha256": "fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48",
+    "attemptedChromium": "154.0.8037.57",
+    "attemptedChromiumSha256": "4dc9f9f9b20e9bd95bf201f43d2d643f48938f36a70ddcb6fce3dd611a178180"
+  },
+  "validation": {"transportTests": 16, "passed": 16, "failed": 0, "sourceBuild": "passed", "scriptSyntax": "passed", "browserCacheHitControl": "not run", "browserGeometryGate": "not run"},
+  "testDevelopmentCorrection": "The initial nonempty-tile positive control used an off-line tile. Its coordinate was corrected to the unchanged fixture's exact vertex at z14/13396/6729; all 16 checks subsequently passed. This was a test-coordinate error, not an application defect.",
+  "unmeasured": ["time-to-usable", "rAF/frame time", "CPU time", "peak JS heap", "post-GC retained JS heap", "browser HTTP-cache hits", "provider request/byte/concurrency baseline"],
+  "productionChanges": false,
+  "publicProviderRequests": 0,
+  "measuredBottleneck": null
+}

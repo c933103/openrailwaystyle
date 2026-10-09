@@ -1,0 +1,56 @@
+{
+  "sourceCommit": "2875a0744912633f35cd6faba25e3260dae09d89",
+  "status": "prepared-not-browser-validated",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 5513,
+      "sha256": "d36c3455ec0100bc408bed36312b293ec1d08a7277e776c7bdb901859fc7381c"
+    },
+    {
+      "path": "blocked-run.json",
+      "bytes": 2221,
+      "sha256": "f7288eee12eff7e1b005b619d7f8b46f003a117e50e9f6f37b5eb108096e657c"
+    },
+    {
+      "path": "build.log",
+      "bytes": 387,
+      "sha256": "088c0a51002f72c61353069a72c8f76532a17563a65165b7337929e18e0933d8"
+    },
+    {
+      "path": "fixture-server.mjs",
+      "bytes": 6817,
+      "sha256": "1d53a1f968229e8a6f41bce952a701427b730f8889cb31ec8ffe4a5553d4faf8"
+    },
+    {
+      "path": "publication-safety-scan.json",
+      "bytes": 263,
+      "sha256": "3a31711e64b5fe787985f3d1e651e0c43cee54812acf85a52c327860aa1285be"
+    },
+    {
+      "path": "source-tree.json",
+      "bytes": 84494,
+      "sha256": "79ca07c5870766745c98bb3543ce8316545af5a4dc30d8033c5ada1e97b94504"
+    },
+    {
+      "path": "source-verification.json",
+      "bytes": 75510,
+      "sha256": "2dc1329bbb4478906a13a5ebb6ab3cf2b983d8e7f6dfd5cecbefb5752422186c"
+    },
+    {
+      "path": "trace.mjs",
+      "bytes": 11795,
+      "sha256": "18926d41f058cadcbc2475f169b4c47c316586444432f555e31f54ccce9e099b"
+    },
+    {
+      "path": "transport.tap",
+      "bytes": 3970,
+      "sha256": "147708d5d99c96acded426ff231499b6fba05e12107889f9862b4be6d47c0c96"
+    },
+    {
+      "path": "transport.test.mjs",
+      "bytes": 5633,
+      "sha256": "07688a3b193da9054c42c91e9ac3d594738096066ec5a5d924465bd8f858de3f"
+    }
+  ]
+}

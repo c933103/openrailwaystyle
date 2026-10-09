@@ -1,0 +1,111 @@
+(node:15) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node22 --trace-warnings ...` to show where the warning was created)
+TAP version 13
+# (node:22) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+# (Use `node22 --trace-warnings ...` to show where the warning was created)
+# Subtest: fixture coordinates/properties are exactly the accepted production-browser fixture
+ok 1 - fixture coordinates/properties are exactly the accepted production-browser fixture
+  ---
+  duration_ms: 6.837311
+  type: 'test'
+  ...
+# Subtest: route-free loopback transport preserves cache, bytes, range and fail-closed contracts
+    # Subtest: all three origins are distinct loopback HTTP endpoints
+    ok 1 - all three origins are distinct loopback HTTP endpoints
+      ---
+      duration_ms: 0.267303
+      type: 'test'
+      ...
+    # Subtest: fresh cache control + conditional ETag returns 304 without a body
+    ok 2 - fresh cache control + conditional ETag returns 304 without a body
+      ---
+      duration_ms: 14.130759
+      type: 'test'
+      ...
+    # Subtest: stale-cache control requires revalidation
+    ok 3 - stale-cache control requires revalidation
+      ---
+      duration_ms: 1.540333
+      type: 'test'
+      ...
+    # Subtest: root and project documents serve the same current HTML with no-store
+    ok 4 - root and project documents serve the same current HTML with no-store
+      ---
+      duration_ms: 5.006861
+      type: 'test'
+      ...
+    # Subtest: production vendor renderer bytes remain byte-exact
+    ok 5 - production vendor renderer bytes remain byte-exact
+      ---
+      duration_ms: 14.214126
+      type: 'test'
+      ...
+    # Subtest: only declared provider origins relocate; provenance records original/served hashes
+    ok 6 - only declared provider origins relocate; provenance records original/served hashes
+      ---
+      duration_ms: 47.891613
+      type: 'test'
+      ...
+    # Subtest: CSP allows only the synthetic loopback origins for connect
+    ok 7 - CSP allows only the synthetic loopback origins for connect
+      ---
+      duration_ms: 3.367228
+      type: 'test'
+      ...
+    # Subtest: PMTiles response and range bytes match accepted fixture exactly
+    ok 8 - PMTiles response and range bytes match accepted fixture exactly
+      ---
+      duration_ms: 3.855425
+      type: 'test'
+      ...
+    # Subtest: known empty tiles are successful exact empty bodies
+    ok 9 - known empty tiles are successful exact empty bodies
+      ---
+      duration_ms: 2.366658
+      type: 'test'
+      ...
+    # Subtest: known nonempty fixture tile contains actual encoded bytes
+    ok 10 - known nonempty fixture tile contains actual encoded bytes
+      ---
+      duration_ms: 2.81165
+      type: 'test'
+      ...
+    # Subtest: unknown origin path and forbidden metadata fail instead of fake success
+    ok 11 - unknown origin path and forbidden metadata fail instead of fake success
+      ---
+      duration_ms: 1.860766
+      type: 'test'
+      ...
+    # Subtest: HEAD has no transmitted entity and preserves entity length
+    ok 12 - HEAD has no transmitted entity and preserves entity length
+      ---
+      duration_ms: 1.481254
+      type: 'test'
+      ...
+    # Subtest: deny proxy rejects HTTP and CONNECT without forwarding
+    ok 13 - deny proxy rejects HTTP and CONNECT without forwarding
+      ---
+      duration_ms: 2.439699
+      type: 'test'
+      ...
+    # Subtest: ledger retains status, body size and completed HTTP lifecycle
+    ok 14 - ledger retains status, body size and completed HTTP lifecycle
+      ---
+      duration_ms: 0.429779
+      type: 'test'
+      ...
+    1..14
+ok 2 - route-free loopback transport preserves cache, bytes, range and fail-closed contracts
+  ---
+  duration_ms: 113.204477
+  type: 'test'
+  ...
+1..2
+# tests 16
+# suites 0
+# pass 16
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 208.553808

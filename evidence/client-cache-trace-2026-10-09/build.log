@@ -1,0 +1,5 @@
+(node:6) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node22 --trace-warnings ...` to show where the warning was created)
+Built world.style.json: 234 layers
+(node:5) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node22 --trace-warnings ...` to show where the warning was created)

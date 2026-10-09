@@ -1,0 +1,5 @@
+{
+  "filesScanned": 10,
+  "findings": [],
+  "note": "Only source identity hashes, synthetic-fixture code, local test evidence and technical blocker details. No credentials, provider archives, private master content, runtime binaries or unrelated project data."
+}
