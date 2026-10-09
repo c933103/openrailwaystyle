@@ -8,6 +8,14 @@ Use station search to locate a place and choose a railway view: infrastructure (
 
 A station's panel lists its next rail departures from [Transitous](https://transitous.org), which combines operators' published timetables (GTFS) with their live updates (GTFS-RT) where they publish any: live rows show the expected time and the delay, others the timetabled time, and cancellations are marked. Coverage follows what operators publish; the panel says when no timetable covers a station. “Journey from here” and “Journey to here” open the Transitous journey planner with the station filled in. Only opening a station sends its position to Transitous.
 
+Repeated observations within one timetable board are combined only when their
+trip and route identifiers, service names, mode family, destination and scheduled
+time agree. Distinguishable simultaneous services remain separate. A combined
+row retains any cancellation and uses a live prediction when available. When
+live predictions disagree and no update timestamp is available, the later
+predicted departure is displayed consistently; this does not establish which
+update is newest. Ambiguous matches between different boards remain separate.
+
 Stations appear progressively as you zoom in. Construction, proposed and former lines use distinct patterns. The [rendering reference](rendering.md) explains symbols, zoom levels, units and coverage limits.
 
 Train control shows concurrent systems as adjacent colour bands along the track. The legend and infobox use short system names; hover for the full description, or tap/click a name to expand it. The same descriptions can be opened with the keyboard.
