@@ -340,8 +340,12 @@ test('all nested bounded arrays reject holes before hashing, equality or selecti
   ];
   for (const path of paths) {
     const input = fixture(), values = path.split('.').reduce((value, key) => value[key], input);
+    assert.equal(status(input), 'verified', `${path}: dense control`);
     values.length++;
-    assert.equal(status(input), 'missing_evidence', path);
+    assert.equal(status(input), 'missing_evidence', `${path}: sparse`);
+    const nullInput = fixture(), keys = path.split('.'), key = keys.pop();
+    keys.reduce((value, key) => value[key], nullInput)[key] = null;
+    assert.equal(status(nullInput), 'missing_evidence', `${path}: null array`);
   }
   const inherited = fixture(), stations = inherited.candidates[0].variants[0].stations;
   const prototype = Object.create(Array.prototype);
@@ -349,7 +353,9 @@ test('all nested bounded arrays reject holes before hashing, equality or selecti
   delete stations[0];
   Object.setPrototypeOf(stations, prototype);
   assert.equal(status(inherited), 'missing_evidence', 'an inherited station is not owned evidence');
+  assert.equal(captureOsmServiceEvidence(relation(), snapshot).status, 'captured');
   assert.equal(captureOsmServiceEvidence(relation({members: Array(3)}), snapshot).status, 'incomplete');
+  assert.equal(captureOsmServiceEvidence(relation({members: null}), snapshot).status, 'incomplete');
 });
 
 test('explicit null evidence entries stay invalid while unknown departure times remain representable', () => {
@@ -374,4 +380,78 @@ test('explicit null evidence entries stay invalid while unknown departure times 
   sealObservations(unknown);
   assert.equal(status(unknown), 'verified', 'identity can verify without manufacturing a departure or frequency');
   assert.equal(matchTimetablePattern(unknown).frequency_status, 'not_evaluated');
+});
+
+test('route and operator assertion matrix preserves blockers, exclusions and order independence', () => {
+  const states = [
+    ['current', {}, 'ambiguous'],
+    ['stale', {source_sha256: 'b'.repeat(64)}, 'stale'],
+    ['conflicting', {status: 'conflict'}, 'conflicting'],
+    ['missing', {status: undefined}, 'missing_evidence'],
+    ['unrelated', {feed_id: 'other'}, 'verified'],
+    ['absent', null, 'verified'],
+  ];
+  for (const kind of ['route', 'operator']) for (const [label, change, expected] of states) {
+    for (const excluded of [false, true]) for (const reverse of [false, true]) {
+      const input = fixture(), alternate = structuredClone(input.candidates[0]);
+      alternate.service_id = 'alternative';
+      if (kind === 'operator') {
+        alternate.route_bindings = [];
+        if (change !== null) alternate.operator_binding = {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: 'verified', ...change};
+      } else alternate.route_bindings = change === null ? [] : [{...alternate.route_bindings[0], ...change}];
+      if (excluded) alternate.eligibility = 'excluded';
+      input.candidates.push(alternate);
+      if (reverse) input.candidates.reverse();
+      const output = matchTimetablePattern(input);
+      assert.equal(output.status, excluded ? 'verified' : expected, `${kind}/${label}/excluded=${excluded}/reverse=${reverse}`);
+      assert.equal(output.frequency_status, 'not_evaluated');
+      assert.equal(output.profiles, undefined);
+    }
+  }
+});
+
+test('station assertion matrix keeps relevant alternatives distinct from unrelated or absent evidence', () => {
+  const states = [
+    ['current', {}, 'verified'],
+    ['stale source', {source_sha256: 'b'.repeat(64)}, 'stale'],
+    ['stale snapshot', {osm_snapshot: '2026-10-04T00:00:00Z'}, 'stale'],
+    ['conflicting', {status: 'conflict'}, 'conflicting'],
+    ['different station', {osm_station_id: 'node:99'}, 'conflicting'],
+    ['missing status', {status: undefined}, 'missing_evidence'],
+    ['excluded is not station proof', {status: 'excluded'}, 'missing_evidence'],
+    ['unrelated feed', {feed_id: 'other'}, 'verified'],
+    ['unserved station', {station_id: 'other'}, 'verified'],
+  ];
+  for (const [label, change, expected] of states) for (const reverse of [false, true]) {
+    const input = fixture();
+    input.crosswalk.push({...input.crosswalk[0], ...change});
+    input.candidates.push({eligibility: 'excluded'});
+    if (reverse) { input.crosswalk.reverse(); input.candidates.reverse(); }
+    const output = matchTimetablePattern(input);
+    assert.equal(output.status, expected, `${label}/reverse=${reverse}`);
+    assert.equal(output.frequency_status, 'not_evaluated');
+  }
+  const absent = fixture(); absent.crosswalk.shift();
+  assert.equal(status(absent), 'missing_evidence');
+});
+
+test('conflicting, stale and missing candidate blockers have stable precedence in either order', () => {
+  for (const [left, right, expected] of [
+    ['conflict', 'stale', 'conflicting'],
+    ['conflict', 'unknown', 'conflicting'],
+    ['stale', 'unknown', 'stale'],
+  ]) for (const reverse of [false, true]) {
+    const input = fixture();
+    for (const state of [left, right]) {
+      const alternate = structuredClone(input.candidates[0]);
+      alternate.service_id = `alternative-${state}`;
+      if (state === 'stale') alternate.route_bindings[0].source_sha256 = 'b'.repeat(64);
+      else alternate.route_bindings[0].status = state;
+      input.candidates.push(alternate);
+    }
+    if (reverse) input.candidates.reverse();
+    const output = matchTimetablePattern(input);
+    assert.equal(output.status, expected, `${left}/${right}/reverse=${reverse}`);
+    assert.equal(output.frequency_status, 'not_evaluated');
+  }
 });
