@@ -159,6 +159,49 @@ class TimetableEvidence(unittest.TestCase):
                     self.assertEqual(sidecar['reasons'], ['duplicate_source_id'])
                     self.assertEqual(sidecar['observations'], [])
 
+    def test_numeric_evidence_outside_consumer_domain_withholds_only_sidecar(self):
+        patterns = {'t': [('A', '00:00:00'), ('B', '00:10:00')]}
+        for field, value in [('headway_secs', str(2 ** 53)), ('end_time', '9000:00:00')]:
+            with self.subTest(field=field):
+                frequency = {'trip_id': 't', 'start_time': '07:00:00', 'end_time': '09:00:00', 'headway_secs': '600', 'exact_times': '0', field: value}
+                sidecar, _ = self.compile(self.fixture.feed(patterns, patterns, [frequency], blank=True))
+                self.assertEqual(sidecar['status'], 'incomplete')
+                self.assertEqual(sidecar['observations'], [])
+
+    def test_numeric_evidence_boundaries_match_the_javascript_contract(self):
+        maximum = 366 * 86400
+        def clock(value):
+            return f'{value // 3600}:{value // 60 % 60:02}:{value % 60:02}'
+        patterns = {'t': [('A', '00:00:00'), ('B', '00:10:00')]}
+        for field, value, expected in [
+            ('headway_secs', 2 ** 53 - 1, 'captured'),
+            ('headway_secs', 2 ** 53, 'incomplete'),
+            ('start_time', maximum - 1, 'captured'),
+            ('start_time', maximum, 'incomplete'),
+            ('end_time', maximum, 'captured'),
+            ('end_time', maximum + 1, 'incomplete'),
+        ]:
+            with self.subTest(field=field, value=value):
+                frequency = {'trip_id': 't', 'start_time': '00:00:00', 'end_time': clock(maximum), 'headway_secs': '600', 'exact_times': '0'}
+                frequency[field] = str(value) if field == 'headway_secs' else clock(value)
+                sidecar, _ = self.compile(self.fixture.feed(patterns, patterns, [frequency], blank=True))
+                self.assertEqual(sidecar['status'], expected)
+                if expected == 'incomplete':
+                    self.assertEqual(sidecar['patterns'], [])
+                    self.assertEqual(sidecar['observations'], [])
+                    self.assertEqual(sidecar['stops'], [])
+        for value in [0, maximum, maximum + 1]:
+            with self.subTest(departure=value):
+                # Exercise the collector boundary directly: the legacy compiler
+                # has an independent, stricter whole-day processing budget.
+                routes = {'R': {'agency_id': 'A', 'route_short_name': 'R'}}
+                trips = {'t': {'route_id': 'R', 'service_id': 'W', 'direction_id': '0', '_calendar_until': 2000000000, '_calendar_expired': False, '_calendar_future': False}}
+                times = {'t': [{'stop_id': stop, 'stop_sequence': str(i), 'departure_time': clock(value)} for i, stop in enumerate(['A', 'B'])]}
+                stops = {stop: {'stop_lat': '60', 'stop_lon': '24'} for stop in ['A', 'B']}
+                source = {'id': 'feed', 'sha256': 'a' * 64, 'service_date': '2026-10-05', 'valid_until': 2000000000}
+                sidecar = evidence.build_evidence(source, evidence.capture_identity(routes, trips), trips, times, stops, {}, {}, {'A': {'agency_timezone': 'Europe/Helsinki'}}, compiler.seconds)
+                self.assertEqual(sidecar['status'], 'captured' if value <= maximum else 'incomplete')
+
     def test_catalogue_config_cannot_enable_evidence_capture(self):
         path = self.fixture.shape_feed()
         result = compiler.compile_feed(path, {**fixtures.CONFIG, 'matching_evidence': True}, '2026-10-05', geometry=True)

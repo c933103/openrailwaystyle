@@ -490,3 +490,27 @@ test('OSM work for same-operator alternatives is bounded even when every intact 
   for (let i = 0; i < 11; i++) input.candidates.push({eligibility: 'eligible', route_bindings: [], operator_binding: {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: 'verified'}, osm});
   assert.deepEqual(matchTimetablePattern(input).reasons, ['candidate_work_limit']);
 });
+
+test('consumer numeric boundaries preserve supported integers and reject unsupported offsets', () => {
+  const maximum = 366 * 86400;
+  for (const [field, value, expected] of [
+    ['headway_secs', Number.MAX_SAFE_INTEGER, 'verified'],
+    ['headway_secs', Number.MAX_SAFE_INTEGER + 1, 'missing_evidence'],
+    ['start', maximum - 1, 'verified'],
+    ['start', maximum, 'missing_evidence'],
+    ['end', maximum, 'verified'],
+    ['end', maximum + 1, 'missing_evidence'],
+    ['departure', 0, 'verified'],
+    ['departure', maximum, 'verified'],
+    ['departure', maximum + 1, 'missing_evidence'],
+  ]) {
+    const input = fixture(), observation = input.evidence.observations[0];
+    observation.departures = [null, field === 'departure' ? value : 600];
+    observation.frequencies = [{start: 0, end: maximum, headway_secs: 600, exact_times: '0'}];
+    if (field !== 'departure') observation.frequencies[0][field] = value;
+    sealObservations(input);
+    const output = matchTimetablePattern(input);
+    assert.equal(output.status, expected, `${field}/${value}`);
+    assert.equal(output.frequency_status, 'not_evaluated');
+  }
+});

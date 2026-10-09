@@ -19,6 +19,8 @@ LIMITS = {
     'string_bytes': 1024,
     'source_ids': 100000,
     'source_id_bytes': 4 * 1024 * 1024,
+    'offset_seconds': 366 * 86400,
+    'safe_integer': 2 ** 53 - 1,
 }
 
 
@@ -146,12 +148,16 @@ def build_evidence(source, identity, trips, times, stops, frequencies, active,
                 raise EvidenceUnavailable('frequency_intervals_limit')
             departures = [seconds(row.get('departure_time')) for row in sequence]
             known = [value for value in departures if value is not None]
+            if any(not 0 <= value <= LIMITS['offset_seconds'] for value in known):
+                raise EvidenceUnavailable('unsupported_numeric_evidence')
             if any(b < a for a, b in zip(known, known[1:])):
                 raise EvidenceUnavailable('nonmonotonic_departures')
             frequency_rows = [{'start': seconds(row.get('start_time')), 'end': seconds(row.get('end_time')),
                                'headway_secs': int(row['headway_secs']), 'exact_times': row.get('exact_times') or '0'}
                               for row in intervals]
             for index, interval in enumerate(frequency_rows):
+                if any(value is not None and not 0 <= value <= LIMITS['offset_seconds'] for value in [interval['start'], interval['end']]) or not 0 < interval['headway_secs'] <= LIMITS['safe_integer']:
+                    raise EvidenceUnavailable('unsupported_numeric_evidence')
                 if interval['start'] is None or interval['end'] is None or interval['end'] <= interval['start'] or interval['headway_secs'] <= 0 or interval['exact_times'] not in ('0', '1'):
                     raise EvidenceUnavailable('invalid_frequency_interval')
                 if any(interval['start'] < other['end'] and interval['end'] > other['start'] for other in frequency_rows[:index]):

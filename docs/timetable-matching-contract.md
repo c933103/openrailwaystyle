@@ -88,6 +88,9 @@ and per-trip-row budgets:
 - 50,000 retained stop/platform/parent records
 - 512 calls per pattern; 128 frequency intervals per observation
 - 367 candidate service days; 1,024 UTF-8 bytes per retained string
+- Departure/frequency offsets from zero through 366 days in seconds; positive
+  frequency headways no greater than the JavaScript safe-integer maximum
+  (9,007,199,254,740,991). Unsupported numeric evidence withholds the sidecar.
 - Feed-wide source-ID audit per table: 100,000 IDs and 4 MiB of ID bytes,
   checked before rail filtering. Hitting this audit cap withholds evidence only.
 
@@ -218,14 +221,14 @@ refresh behavior is handled separately in #167.
 
 [Full machine-readable A/B results](investigations/timetable-evidence-benchmark-20261009.json)
 record the exact measured source hashes. With 10,000 trips, 240,000 stop rows and
-28 profiles, median compile times across three fresh-process pairs were 9.587 s
-for the saved parent, 9.726 s with capture disabled, and 10.477 s with capture
-enabled. Median peak RSS was 111,736 / 111,696 / 144,756 KiB respectively. Enabled
-capture retained 2 patterns, 10,000 distinct observations and a 5,825,203-byte
+28 profiles, median compile times across three fresh-process pairs were 9.281 s
+for the saved parent, 9.154 s with capture disabled, and 10.565 s with capture
+enabled. Median peak RSS was 111,560 / 111,696 / 144,868 KiB respectively. Enabled
+capture retained 2 patterns, 10,000 distinct observations and a 5,825,261-byte
 sidecar. All nine legacy output hashes were identical within the cohort.
 
 A separate 12,000-trip, 288,000-stop-row unique-pattern adversary reached the
-16 MiB evidence cap and returned a 329-byte `incomplete` sidecar with no retained
+16 MiB evidence cap and returned a 387-byte `incomplete` sidecar with no retained
 arrays. Its legacy output still matched both controls; enabled peak RSS was
-179,068 KiB. These observations support keeping capture explicitly opt-in and
+179,056 KiB. These observations support keeping capture explicitly opt-in and
 bounded; they do not justify enabling it across the production registry yet.
