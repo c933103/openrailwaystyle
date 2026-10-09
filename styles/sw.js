@@ -18,7 +18,11 @@ const FONT_CACHE='atlas-label-fonts-v1';
 // Stored user settings are not touched.
 // Keep in step with loadScript in app.mjs and the stylesheet in index.html.
 const LIBRARIES = ['vendor/maplibre-gl-5.24.0.js', 'vendor/maplibre-gl-5.24.0.css', 'vendor/pmtiles-4.2.1.js'];
-const LEGACY_LIBRARIES = ['https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js', 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css', 'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js'];
+const LEGACY_LIBRARIES = {
+  'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js': '45a9b07a9189ce56054c620a947ccf41e291e58c95e9b61533b740aaa65ee5cb',
+  'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css': 'ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732',
+  'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js': 'afc49d216fd24c0a3c0ff3cd2e0c62d6cdaf062854c3dced778dcab168824f79',
+};
 const SHELL = /\/(app\.css|[\w-]+\.mjs|vendor\/[\w.-]+\.(?:js|css)|world\.style\.json|major-stations\.geojson|manifest\.webmanifest|atlas-icon[\w-]*\.(?:png|svg))$/;
 // Saved at installation, so an app installed on the first visit (before this
 // worker controlled the page) also opens offline.
@@ -29,6 +33,21 @@ const pageVersion = html => html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1] ?? nu
 const versioned = (key, version) => `${key}?v=${encodeURIComponent(version)}`;
 // The versions kept (saveVersion), newest first.
 const keptVersions = cache => cache.match(new URL('__versions', self.registration.scope).href).then(r => r ? r.json() : []).catch(() => []);
+// Previously saved external code must match the same immutable byte pins as
+// app.mjs and scripts/browser-libraries.mjs before it is migrated or served.
+async function verifiedLegacyLibrary(cache, url) {
+  const expected = LEGACY_LIBRARIES[url];
+  if (!expected || !self.crypto?.subtle) return null;
+  try {
+    const response = await cache.match(url);
+    if (!response?.ok || response.type === 'opaque') return null;
+    const type = (response.headers.get('content-type') || '').split(';')[0].trim();
+    if (!(url.endsWith('.css') ? /^text\/css$/i.test(type) : /^(?:text|application)\/(?:x-)?(?:java|ecma)script$/i.test(type))) return null;
+    const digest = await self.crypto.subtle.digest('SHA-256', await response.clone().arrayBuffer());
+    const sha256 = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    return sha256 === expected ? response : null;
+  } catch { return null; }
+}
 // Saves every file of one version, all fetched now (so they match each
 // other), under both the plain and the versioned address; then drops the
 // files of other versions. Throws if any file fails, keeping what was there.
@@ -83,9 +102,9 @@ async function migrate(cache, version) {
       // An older tab may still lazily request its original CDN URL after the
       // new worker claims it. Transfer only copies already saved; CDN access
       // is never required for installation or for this compatibility path.
-      if (LEGACY_LIBRARIES.includes(request.url)) {
-        if (!await cache.match(request.url)) {
-          const response = await old.match(request);
+      if (Object.hasOwn(LEGACY_LIBRARIES, request.url)) {
+        if (!await verifiedLegacyLibrary(cache, request.url)) {
+          const response = await verifiedLegacyLibrary(old, request.url);
           if (response) await cache.put(request.url, response);
         }
         continue;
@@ -123,11 +142,11 @@ self.addEventListener('activate', event => event.waitUntil((async () => {
 })()));
 self.addEventListener('fetch', event => {
   const request = event.request, url = new URL(request.url);
-  if (request.method === 'GET' && LEGACY_LIBRARIES.includes(request.url)) {
+  if (request.method === 'GET' && Object.hasOwn(LEGACY_LIBRARIES, request.url)) {
     event.respondWith(caches.open(CACHE).then(async cache => {
       // Compatibility for old open pages only. An absent legacy copy must
       // not cause a new CDN download, even when the browser is online.
-      return await cache.match(request.url) || Response.error();
+      return await verifiedLegacyLibrary(cache, request.url) || Response.error();
     }));
     return;
   }

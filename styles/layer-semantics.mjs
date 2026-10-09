@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261009-first-party-libraries';
+import { MODES } from './map-model.mjs?v=20261009-first-party-libraries-2';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
