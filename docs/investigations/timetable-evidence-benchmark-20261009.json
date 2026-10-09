@@ -192,5 +192,9 @@
         }
       ]
     }
-  ]
+  ],
+  "integration_base_commit": "741b5e858710fb20fa55533eacd330142ad1c271",
+  "integration_base_tree": "cc883ee7543bf317d38770b11dc1c47aa19f76c9",
+  "baseline_compiler_git_blob": "fd62dbf5b23811052c084f4d20c4beb88133f103",
+  "integration_note": "The measured baseline compiler is byte-identical on main61ccbc97 and main741b5e85; the latter Retry-After acquisition merge does not change this compiler benchmark path."
 }
