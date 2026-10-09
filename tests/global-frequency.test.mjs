@@ -180,6 +180,12 @@ test('format and alias outcomes retain identity accounting without duplicate con
   }
   assert.throws(()=>tryAlias({...alias,catalogue:{...alias.catalogue,lineage:[{source:'https://different.test/static'}]}}),/Invalid static source alias/);
   assert.throws(()=>tryAlias({...alias,output:'feeds/alias.json.gz'}),/Invalid static source alias/);
+  for(const authentication_type of ['0','1','2']){
+    const inventories=[{...base,shard:0,entries:[{...owner,catalogue:{...owner.catalogue,lineage:[{catalogue:'mobility-database',source:owner.catalogue.source,source_sha256:hash,authentication_type}]}},bikes]},{...base,shard:1,entries:[alias]}];
+    if(authentication_type==='0')assert.equal(mergeInventories(inventories).entries.find(e=>e.id==='alias').status,'source_alias');
+    else assert.throws(()=>mergeInventories(inventories),/Invalid static source alias/);
+  }
+
   for(const policy of [{status:'excluded',reason_code:'provider_policy'},{status:'retry_pending',reason_code:'source_access_review'},{catalogue:{...owner.catalogue,source_resolution:{schema:1,state:'unresolved'}}}])assert.throws(()=>mergeInventories([{...base,shard:0,entries:[{...owner,...policy},bikes]},{...base,shard:1,entries:[alias]}]),/Invalid static source alias/);
   assert.throws(()=>mergeInventories([{...base,shard:0,entries:[{...owner,status:'source_alias',catalogue:{...owner.catalogue,source_resolution:{acquisition_alias_of:'alias'}}},bikes]},{...base,shard:1,entries:[alias]}]),/Invalid static source alias/);
 });

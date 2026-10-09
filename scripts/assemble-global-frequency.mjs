@@ -76,6 +76,11 @@ const sourceFingerprints=row=>{
   }
   return [...result].sort();
 };
+const ownerMetadataCompatible=row=>{
+  const lineage=row?.lineage??[];
+  return row?.lineage!==null&&Array.isArray(lineage)&&lineage.length<=64&&lineage.every(item=>item&&typeof item==='object'&&!Array.isArray(item)&&
+    (item.catalogue!=='mobility-database'||item.authentication_type==null||['','0','none'].includes(String(item.authentication_type).trim().toLowerCase())));
+};
 export function mergeInventories(inventories){
   if(!inventories.length)throw new Error('No worldwide inventory');
   const first=inventories[0],ids=new Set(),shards=new Set(),entries=[];
@@ -91,7 +96,7 @@ export function mergeInventories(inventories){
     if(entry.status!=='source_alias')continue;
     const resolution=entry.catalogue?.source_resolution,target=byId.get(resolution?.acquisition_alias_of),targetResolution=target?.catalogue?.source_resolution;
     if(resolution?.schema!==1||resolution.state!=='schedule'||!target||target.id===entry.id||target.status==='source_alias'||
-        targetResolution?.acquisition_alias_of||target.catalogue?.delivery!=='direct'||
+        targetResolution?.acquisition_alias_of||target.catalogue?.delivery!=='direct'||!ownerMetadataCompatible(target.catalogue)||
         (targetResolution&&(targetResolution.schema!==1||targetResolution.state!=='schedule'||!targetResolution.specs?.includes('gtfs')))||
         target.catalogue?.access_review||resolution.processed_filename!=null||
         !isDeepStrictEqual(sourceFingerprints(entry.catalogue),[resolution.alias_source_sha256])||

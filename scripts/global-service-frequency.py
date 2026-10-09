@@ -178,6 +178,8 @@ def discover(rows, rules):
         target_resolution = target_resolution if isinstance(target_resolution, dict) else {}
         if (not target or target['id'] == entry['id'] or target_row.get('delivery') != 'direct'
                 or target_resolution.get('acquisition_alias_of') or target['status'] != 'pending'
+                or not registry.references.alias_owner_metadata_compatible(target_row)
+                or registry.references.withheld_static_identities(target_row)
                 or registry.references.candidate_identities(entry['catalogue']) != registry.references.candidate_identities(target_row)
                 or not isinstance(source, str) or hashlib.sha256(source.encode()).hexdigest() != resolution['alias_source_sha256']):
             entry.update(status='retry_pending', reason_code='ambiguous_source_reference',
@@ -483,9 +485,11 @@ def source_candidates(entry):
         processed = PROCESSED+quote(row['filename']) if row['source_resolution'].get('processed_filename') else ''
     values = [processed, row.get('source')]
     values.extend(x.get('source') for x in lineage if isinstance(x, dict))
+    allowed = registry.references.evidenced_static_identities(row) if reference_state is not None else None
     urls, seen = [], set()
     for url in values:
-        if not isinstance(url, str) or url in seen:
+        if (not isinstance(url, str) or url in seen or (allowed is not None and url != processed
+                and hashlib.sha256(url.encode()).hexdigest() not in allowed)):
             continue
         try:
             parse_acquisition_url(url)

@@ -81,7 +81,7 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual(json.loads(assembly.stdout), {'compiled': 1, 'non_timetable': 1, 'source_alias': 1, 'retry_pending': 1})
 
     def test_malformed_resolution_and_alias_targets_fail_closed(self):
-        base = {'filename': 'x.gtfs.zip', 'source': 'https://operator.test/feed', 'delivery': 'direct', 'lineage': [{'catalogue': 'mobility-database', 'id': 'known'}]}
+        base = {'filename': 'x.gtfs.zip', 'source': 'https://operator.test/feed', 'delivery': 'direct', 'lineage': [{'catalogue': 'mobility-database', 'id': 'known', 'source': 'https://operator.test/feed'}]}
         for value in [[], 'schedule', {'schema': 2}, {'schema': 1, 'state': 'schedule', 'specs': ['gbfs'], 'declarations': []}, {'schema': 1, 'state': 'non_timetable_format', 'specs': ['gtfs'], 'declarations': []},
                       {'schema': 1, 'state': 'schedule', 'specs': ['gtfs'], 'declarations': [], 'processed_filename': '../escape.zip'}]:
             with self.subTest(value=value):
@@ -112,6 +112,211 @@ class GlobalFrequency(unittest.TestCase):
         self.assertIn('https://independent.test/rail.zip', pipeline.source_candidates(entry))
         self.assertEqual(entry['processed_url'], pipeline.PROCESSED+'xx_reference.gtfs.zip')
         self.assertIsNone(entry['catalogue']['source_resolution']['acquisition_alias_of'])
+
+    def test_reference_override_does_not_erase_inherited_authorization(self):
+        url = 'https://private.test/feed.zip'
+        index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs',
+            'authorization': {'type': 'header', 'param_name': 'Authorization'}, 'urls': {'static_current': url}},
+            'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+        definition = ('xx', {'name': 'reference', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static',
+            'url-override': 'https://override.test/feed.zip'}, 'https://github.test/pin/xx.json')
+        rows = pipeline.registry.build_catalogue([], [definition], [], 'b'*40, index)[0]
+        entry = pipeline.discover(rows, {})[0]
+        self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
+        self.assertEqual(pipeline.source_candidates(entry), [])
+        self.assertEqual(rows[0]['source_resolution']['declarations'][0]['resolution']['state'], 'authorization_required')
+        rows = pipeline.registry.build_catalogue([{'filename': 'xx_reference.gtfs.zip', 'source': url}], [definition], [], 'b'*40, index)[0]
+        entry = pipeline.discover(rows, {})[0]
+        self.assertEqual(pipeline.source_candidates(entry), [pipeline.PROCESSED+'xx_reference.gtfs.zip'])
+
+    def test_authenticated_mobility_reference_requires_distinct_public_static_evidence(self):
+        private = 'https://private.test/feed.zip'; public = 'https://public.test/rail.zip'
+        definition = ('xx', {'name': 'rail', 'type': 'mobility-database', 'mdb-id': 'private'}, 'https://github.test/pin/xx.json')
+        mobility = [{'id': 'private', 'data_type': 'gtfs', 'urls.direct_download': private, 'urls.authentication_type': '1'}]
+        rows = pipeline.registry.build_catalogue([], [definition], mobility, 'b'*40)[0]
+        entry = pipeline.discover(rows, {})[0]
+        self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
+        self.assertEqual(pipeline.source_candidates(entry), [])
+        for source in [public, private]:
+            ordinary = ('xx', {'name': 'rail', 'type': 'http', 'url': source}, 'https://github.test/pin/xx.json')
+            rows = pipeline.registry.build_catalogue([], [definition, ordinary], mobility, 'b'*40)[0]
+            entry = pipeline.discover(rows, {})[0]
+            self.assertNotIn(private, pipeline.source_candidates(entry))
+            self.assertEqual(entry['status'], 'pending' if source == public else 'retry_pending')
+            if source == public:
+                self.assertIn(public, pipeline.source_candidates(entry))
+        rows = pipeline.registry.build_catalogue([{'filename': 'xx_rail.gtfs.zip', 'source': private}], [definition], mobility, 'b'*40)[0]
+        entry = pipeline.discover(rows, {})[0]
+        self.assertEqual(pipeline.source_candidates(entry), [pipeline.PROCESSED+'xx_rail.gtfs.zip'])
+
+    def test_multiple_static_reference_identities_in_malformed_schema_fail_closed(self):
+        import copy, hashlib
+        url = 'https://public.test/rail.zip'
+        index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
+            'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+        definition = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static'}, 'https://github.test/pin/xx.json')
+        row = pipeline.registry.build_catalogue([], [definition], [], 'b'*40, index)[0][0]
+        other = copy.deepcopy(row['source_resolution']['declarations'][0]); other['id'] = 'b'*64; other['reference_id'] = 'other'
+        other['resolution']['endpoints'][0].update(url='https://other.test/rail.zip', url_sha256=hashlib.sha256(b'https://other.test/rail.zip').hexdigest())
+        row['source_resolution']['declarations'].append(other)
+        entry = pipeline.discover([row], {})[0]
+        self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
+        self.assertEqual(pipeline.source_candidates(entry), [])
+
+    def test_reference_access_and_companion_matrix(self):
+        static_url = 'https://public.test/rail.zip'; override = 'https://override.test/rail.zip'
+        for required in [False, True]:
+            for options in [{}, {'url-override': override}, {'url-override': override, 'api-key': 'fixture-secret'},
+                            {'url-override': 'https://fixture-user:fixture-password@override.test/rail.zip'}]:
+                with self.subTest(required=required, option_names=list(options)):
+                    feed = {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': static_url}}
+                    if required:
+                        feed['authorization'] = {'type': 'header', 'param_name': 'Authorization'}
+                    index = {'state': 'available', 'by_id': {'static': [{'feed': feed,
+                        'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+                    definition = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static', **options}, 'https://github.test/pin/xx.json')
+                    row = pipeline.registry.build_catalogue([], [definition], [], 'b'*40, index)[0][0]
+                    entry = pipeline.discover([row], {})[0]
+                    credentialed = required or 'api-key' in options or 'fixture-password' in options.get('url-override', '')
+                    self.assertEqual(entry['status'], 'retry_pending' if credentialed else 'pending')
+                    self.assertEqual(bool(pipeline.source_candidates(entry)), not credentialed)
+                    for secret in ['fixture-user', 'fixture-password', 'fixture-secret']:
+                        self.assertNotIn(secret, json.dumps(row))
+        for auth in ['', '0', 'none', '1', '2']:
+            definition = ('xx', {'name': 'rail', 'type': 'mobility-database', 'mdb-id': 'known'}, 'https://github.test/pin/xx.json')
+            rows = pipeline.registry.build_catalogue([], [definition], [{'id': 'known', 'data_type': 'gtfs', 'urls.direct_download': static_url, 'urls.authentication_type': auth}], 'b'*40)[0]
+            entry = pipeline.discover(rows, {})[0]
+            self.assertEqual(entry['status'], 'pending' if auth in ('', '0', 'none') else 'retry_pending')
+        for first in ['static', 'rt']:
+            feeds = {'static': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': static_url}},
+                     'rt': {'id': 'rt', 'spec': 'gtfs-rt', 'authorization': {'type': 'header', 'param_name': 'Authorization'},
+                            'urls': {'realtime_trip_updates': 'https://private.test/rt'}}}
+            index = {'state': 'available', 'by_id': {key: [{'feed': feed, 'url': 'https://github.test/pin/data.json',
+                'pointer': '/feeds/'+str(i), 'blob_sha': 'a'*40}] for i, (key, feed) in enumerate(feeds.items())}}
+            definitions = [('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': key}, 'https://github.test/pin/xx.json')
+                for key in [first, 'rt' if first == 'static' else 'static']]
+            entry = pipeline.discover(pipeline.registry.build_catalogue([], definitions, [], 'b'*40, index)[0], {})[0]
+            self.assertEqual(entry['status'], 'pending')
+            self.assertIn(static_url, pipeline.source_candidates(entry))
+            self.assertNotIn('https://private.test/rt', pipeline.source_candidates(entry))
+
+    def test_static_identity_option_and_selection_matrix(self):
+        import copy, hashlib
+        url = 'https://public.test/rail.zip'
+        index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
+            'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+        definition = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static'}, 'https://github.test/pin/xx.json')
+        baseline = pipeline.registry.build_catalogue([], [definition], [], 'b'*40, index)[0][0]
+        for case in ['identical_occurrence', 'different_id_same_url', 'different_options', 'different_url',
+                     'missing_selection', 'unknown_selection', 'malformed_selection']:
+            for independently_published in [False, True]:
+                with self.subTest(case=case, independently_published=independently_published):
+                    row = copy.deepcopy(baseline)
+                    if independently_published:
+                        row['lineage'].append({'catalogue': 'transitous-licence', 'source': url})
+                    resolution = row['source_resolution']; other = copy.deepcopy(resolution['declarations'][0])
+                    if case == 'different_id_same_url': other['id'] = 'b'*64
+                    if case == 'different_options': other['definition']['sha256'] = 'b'*64
+                    if case == 'different_url': other['resolution']['endpoints'][0].update(url='https://different.test/rail.zip', url_sha256=hashlib.sha256(b'https://different.test/rail.zip').hexdigest())
+                    if case == 'missing_selection': resolution['selected_static_declaration'] = None
+                    elif case == 'unknown_selection': resolution['selected_static_declaration'] = 'missing'
+                    elif case == 'malformed_selection': resolution['selected_static_declaration'] = []
+                    else: resolution['declarations'].append(other)
+                    entry = pipeline.discover([row], {})[0]
+                    valid = case == 'identical_occurrence' or case == 'missing_selection' and independently_published
+                    self.assertEqual(entry['status'], 'pending' if valid else 'retry_pending')
+                    self.assertEqual(bool(pipeline.source_candidates(entry)), valid)
+
+    def test_ordinary_access_options_do_not_hide_static_format_or_publish_secrets(self):
+        ordinary = ('xx', {'name': 'rail', 'type': 'http', 'url': 'https://private.test/static',
+            'http-options': {'headers': {'Ocp-Apim-Subscription-Key': 'fixture-secret'}}}, 'https://github.test/pin/xx.json')
+        rt = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'rt'}, 'https://github.test/pin/xx.json')
+        index = {'state': 'available', 'by_id': {'rt': [{'feed': {'id': 'rt', 'spec': 'gtfs-rt',
+            'authorization': {'type': 'header', 'param_name': 'Authorization'}, 'urls': {'realtime_trip_updates': 'https://private.test/rt'}},
+            'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+        row = pipeline.registry.build_catalogue([], [ordinary, rt], [], 'b'*40, index)[0][0]
+        entry = pipeline.discover([row], {})[0]
+        self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
+        self.assertEqual(row['source_resolution']['specs'], ['gtfs', 'gtfs-rt'])
+        self.assertEqual(pipeline.source_candidates(entry), [])
+        self.assertNotIn('fixture-secret', json.dumps(row))
+        self.assertEqual(row['source_resolution']['ordinary_static_declarations'][0]['access_state'], 'review_required')
+
+    def test_complete_reference_schema_consistency_before_selection(self):
+        import copy
+        url = 'https://public.test/rail.zip'
+        index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
+            'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+        definition = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static'}, 'https://github.test/pin/xx.json')
+        baseline = pipeline.registry.build_catalogue([], [definition], [], 'b'*40, index)[0][0]
+        for case in ['duplicate_stale_hash', 'duplicate_role_stale_hash', 'contradictory_authorization', 'unknown_non_companion', 'conflicting_non_companion', 'conflicting_rt_companion', 'null_lineage', 'missing_lineage']:
+            for published in [False, True]:
+                with self.subTest(case=case, published=published):
+                    row = copy.deepcopy(baseline); resolution = row['source_resolution']; declaration = resolution['declarations'][0]
+                    if published:
+                        row['lineage'].append({'catalogue': 'transitous-licence', 'source': url})
+                    if case == 'duplicate_stale_hash':
+                        other = copy.deepcopy(declaration); other['resolution']['endpoints'][0]['url'] = 'https://different.test/rail.zip'
+                        resolution['declarations'].append(other)
+                    elif case == 'duplicate_role_stale_hash':
+                        other = copy.deepcopy(declaration['resolution']['endpoints'][0]); other['url'] = 'https://different.test/rail.zip'
+                        declaration['resolution']['endpoints'].append(other)
+                    elif case == 'contradictory_authorization':
+                        declaration['resolution']['state'] = 'authorization_required'; resolution['selected_static_declaration'] = None
+                    elif case in ('unknown_non_companion', 'conflicting_non_companion', 'conflicting_rt_companion'):
+                        other = copy.deepcopy(declaration); other['id'] = 'b'*64; other['reference_id'] = 'missing'
+                        other['resolution'] = {'state': 'missing_reference' if case == 'unknown_non_companion' else 'conflicting_reference',
+                            'specs': ['gtfs-rt'] if case == 'conflicting_rt_companion' else [], 'endpoints': []}
+                        resolution['declarations'].append(other)
+                    elif case == 'null_lineage': row['lineage'] = None
+                    elif case == 'missing_lineage': row.pop('lineage')
+                    entry = pipeline.discover([row], {})[0]
+                    valid = case in ('missing_lineage', 'conflicting_rt_companion') or case == 'unknown_non_companion' and published
+                    self.assertEqual(entry['status'], 'pending' if valid else 'retry_pending')
+                    self.assertEqual(bool(pipeline.source_candidates(entry)), valid)
+
+    def test_alias_rejects_authenticated_owner_without_changing_owner(self):
+        import copy
+        url = 'https://public.test/feed.zip'
+        index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
+            'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+        definition = ('xx', {'name': 'reference', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static', 'skip': True}, 'https://github.test/pin/xx.json')
+        for auth in ['0', '1', '2']:
+            mobility = [{'id': 'owner', 'data_type': 'gtfs', 'urls.direct_download': url, 'urls.authentication_type': auth}]
+            standalone = pipeline.registry.build_catalogue([], [], mobility, 'b'*40, index)[0][0]
+            owner_before = pipeline.discover([copy.deepcopy(standalone)], {})[0]
+            rows = pipeline.registry.build_catalogue([], [definition], mobility, 'b'*40, index)[0]
+            entries = {e['id']: e for e in pipeline.discover(rows, {})}
+            self.assertEqual(entries['mdb_owner'], owner_before)
+            self.assertEqual(entries['mdb_owner']['catalogue'], standalone)
+            self.assertEqual(entries['xx_reference']['status'], 'source_alias' if auth == '0' else 'retry_pending')
+            self.assertEqual(pipeline.source_candidates(entries['xx_reference']), [])
+
+    def test_missing_skip_and_unproven_original_do_not_borrow_published_proof(self):
+        import copy
+        url = 'https://public.test/rail.zip'
+        index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
+            'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+        definition = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static'}, 'https://github.test/pin/xx.json')
+        baseline = pipeline.registry.build_catalogue([], [definition], [], 'b'*40, index)[0][0]
+        processed = pipeline.PROCESSED+'xx_rail.gtfs.zip'
+        for published in [False, True]:
+            row = copy.deepcopy(baseline); row['source_resolution']['declarations'][0].pop('upstream_skip')
+            if published: row['lineage'].append({'catalogue': 'transitous-licence', 'source': url})
+            entry = pipeline.discover([row], {})[0]
+            self.assertEqual(pipeline.source_candidates(entry), [processed, url] if published else [])
+            row['source_resolution']['processed_filename'] = None
+            entry = pipeline.discover([row], {})[0]
+            self.assertEqual(pipeline.source_candidates(entry), [url], 'missing processing eligibility does not erase the proven public original')
+        row = copy.deepcopy(baseline); row['source_resolution']['selected_static_declaration'] = None
+        row['lineage'].append({'catalogue': 'transitous-licence', 'source': url})
+        row['source'] = 'https://unproven.test/unverified.zip'
+        entry = pipeline.discover([row], {})[0]
+        self.assertEqual(entry['status'], 'pending')
+        self.assertEqual(pipeline.source_candidates(entry), [processed, url])
+        # A stale asserted hash cannot make the unproven URL an original-source proof.
+        row['lineage'][-1]['source_sha256'] = __import__('hashlib').sha256(row['source'].encode()).hexdigest()
+        self.assertEqual(pipeline.source_candidates(pipeline.discover([row], {})[0]), [processed, url])
 
     def test_retry_after_receipts_survive_two_runs_without_early_requests(self):
         from email.utils import formatdate

@@ -229,7 +229,7 @@ def resolve_declaration(item, source_url, ordinal, index, mobility):
         endpoint = {'role': role, 'spec': ROLE_SPECS[role], 'url': effective,
             'url_sha256': hashlib.sha256(effective.encode()).hexdigest(),
             'url_origin': 'url_override' if override else 'metadata',
-            'access_state': ('authorization_required' if (authorization and not override) or inherited_authorization else
+            'access_state': ('authorization_required' if authorization or inherited_authorization else
                              'review_required' if transport_options else 'public_declared')}
         if override:
             endpoint['declared_url'] = url
@@ -247,6 +247,81 @@ def candidate_identities(row):
     lineage = row.get('lineage') if isinstance(row.get('lineage'), list) else []
     values = [row.get('source')] + [item.get('source') for item in lineage if isinstance(item, dict)]
     return {hashlib.sha256(value.encode()).hexdigest() for value in values if _url(value)}
+
+
+def public_authentication(value):
+    return value is None or isinstance(value, (str, int)) and str(value).strip().lower() in ('', '0', 'none')
+
+
+def source_identities(item, key='source'):
+    value = item.get(key)
+    if not _url(value):
+        return set()
+    result = {hashlib.sha256(value.encode()).hexdigest()}
+    stored = item.get(key + '_sha256')
+    if isinstance(stored, str) and re.fullmatch('[a-f0-9]{64}', stored):
+        result.add(stored)
+    return result
+
+
+def withheld_static_identities(row):
+    """Access requirements bind original identities, even beside a public primary."""
+    evidence = row.get('source_resolution') or {}
+    withheld = set()
+    for declaration in evidence.get('declarations', []):
+        for endpoint in declaration['resolution']['endpoints']:
+            if endpoint['spec'] == 'gtfs' and endpoint['access_state'] != 'public_declared':
+                withheld.update(source_identities(endpoint, 'url'))
+                withheld.update(source_identities(endpoint, 'declared_url'))
+    for item in evidence.get('ordinary_static_declarations', []):
+        if item.get('access_state') != 'public_declared':
+            withheld.update(source_identities(item, 'url'))
+    for item in row.get('lineage') or []:
+        if item.get('catalogue') == 'mobility-database' and not public_authentication(item.get('authentication_type')):
+            withheld.update(source_identities(item))
+    return withheld
+
+
+def evidenced_static_identities(row):
+    """Acquisition authority comes from source evidence, never a display hash."""
+    evidence = row.get('source_resolution') or {}
+    urls = []
+    for declaration in evidence.get('declarations', []):
+        for endpoint in declaration['resolution']['endpoints']:
+            if (endpoint['spec'] == 'gtfs' and endpoint['access_state'] == 'public_declared'
+                    and declaration['resolution']['state'] == 'resolved'):
+                urls.append(endpoint['url'])
+    urls.extend(item['url'] for item in evidence.get('ordinary_static_declarations', [])
+        if item['access_state'] == 'public_declared')
+    for item in row.get('lineage') or []:
+        if (item.get('catalogue') == 'transitous-licence' or item.get('catalogue') == 'mobility-database'
+                and public_authentication(item.get('authentication_type'))):
+            urls.append(item.get('source'))
+    return {hashlib.sha256(url.encode()).hexdigest() for url in urls if _url(url)} - withheld_static_identities(row)
+
+
+def alias_owner_metadata_compatible(row):
+    """Legacy owner outcomes stay unchanged; new aliases need compatible proof."""
+    lineage = row.get('lineage', [])
+    return (isinstance(lineage, list) and len(lineage) <= MAX_DECLARATIONS
+        and all(isinstance(item, dict) and (item.get('catalogue') != 'mobility-database'
+            or public_authentication(item.get('authentication_type'))) for item in lineage))
+
+
+def independent_static_evidence(row):
+    evidence = row.get('source_resolution') or {}
+    withheld = withheld_static_identities(row)
+    lineage = row.get('lineage') if isinstance(row.get('lineage'), list) else []
+    # Published GTFS establishes the public processed archive, not that an
+    # authenticated original suddenly became public.
+    published = any(isinstance(item, dict) and item.get('catalogue') == 'transitous-licence' for item in lineage)
+    mobility = any(isinstance(item, dict) and item.get('catalogue') == 'mobility-database'
+        and public_authentication(item.get('authentication_type')) and source_identities(item)
+        and not source_identities(item) & withheld for item in lineage)
+    ordinary = [item for item in evidence.get('ordinary_static_declarations', [])
+        if item.get('access_state') == 'public_declared' and source_identities(item, 'url')
+        and not source_identities(item, 'url') & withheld]
+    return published, mobility, ordinary
 
 
 def companion_only(declaration):
@@ -312,7 +387,6 @@ def apply_references(rows, feed_sources, mobility_rows, compact_mobility, index=
             identities[d['id']].add(d['definition']['sha256'])
         specs = sorted({s for d in declarations for s in d['resolution']['specs']})
         evidence['specs'] = specs
-        independent = any(x.get('catalogue') in ('transitous-licence', 'mobility-database') for x in row.get('lineage', []) if isinstance(x, dict))
         # A separately declared ordinary static source is also independent.
         ordinary_static = []
         for item, url, ordinal in definitions:
@@ -320,12 +394,17 @@ def apply_references(rows, feed_sources, mobility_rows, compact_mobility, index=
                     and _url(item.get('url'))):
                 ordinary_static.append({'type': text(item.get('type'), 80) or 'http', 'spec': 'gtfs',
                     'url': item['url'], 'url_sha256': hashlib.sha256(item['url'].encode()).hexdigest(),
+                    'access_state': 'authorization_required' if item.get('api-key') else
+                                    'review_required' if item.get('http-options') or item.get('function') else 'public_declared',
                     'upstream_skip': item.get('skip') is True,
                     'definition': {'url': url, 'pointer': '/sources/' + str(ordinal), 'sha256': digest(item),
                                    **(definition_metadata or {}).get(url, {})}})
         evidence['ordinary_static_declarations'] = ordinary_static
-        independent = independent or bool(ordinary_static)
-        active_ordinary = any(d['type'] in ('http', 'ftp') and not d['upstream_skip'] for d in ordinary_static)
+        if ordinary_static:
+            evidence['specs'] = sorted(set(specs) | {'gtfs'})
+        published, public_mobility, public_ordinary = independent_static_evidence(row)
+        independent = published or public_mobility or bool(public_ordinary)
+        active_ordinary = any(d['type'] in ('http', 'ftp') and not d['upstream_skip'] for d in public_ordinary)
         unknown = [d for d in declarations if d['resolution']['state'] not in ('resolved', 'authorization_required')]
         static = [(d, e) for d in declarations for e in d['resolution']['endpoints'] if e['spec'] == 'gtfs']
         static_ids = {d['id'] for d, _ in static}
@@ -348,7 +427,7 @@ def apply_references(rows, feed_sources, mobility_rows, compact_mobility, index=
                 evidence['companion_resolution_incomplete'] = True
             if static:
                 d, endpoint = static[0]
-                if not row.get('source') or row.get('source') == endpoint['url']:
+                if endpoint['access_state'] == 'public_declared' and (not row.get('source') or row.get('source') == endpoint['url']):
                     evidence['selected_static_declaration'] = d['id']
                 evidence['identity_state'] = 'static_with_companions' if len(declarations) > 1 else 'single'
                 if endpoint['access_state'] == 'public_declared' and not row.get('source'):
@@ -361,15 +440,16 @@ def apply_references(rows, feed_sources, mobility_rows, compact_mobility, index=
                     ev = licence_evidence(d['licence'], d['type'], d['resolution'].get('metadata_url', ''))
                     if ev and ev not in row.get('rights_evidence', []):
                         row.setdefault('rights_evidence', []).append(ev)
-            published = any(x.get('catalogue') == 'transitous-licence' for x in row.get('lineage', []) if isinstance(x, dict))
             if published or active_ordinary or (static and not static[0][0]['upstream_skip'] and static[0][1]['access_state'] == 'public_declared'):
                 evidence['processed_filename'] = filename
                 evidence['processed_basis'] = 'published_gtfs_record' if published else 'active_static_declaration'
             else:
                 evidence['processed_basis'] = 'upstream_skip' if static else 'unresolved'
-            if not evidence['processed_filename'] and not _url(row.get('source')):
+            if not evidence['processed_filename'] and not (candidate_identities(row) - withheld_static_identities(row)):
                 evidence['state'] = 'unresolved'
                 evidence['reason'] = 'no_public_static_candidate'
+        elif ordinary_static:
+            evidence['reason'] = 'no_public_static_candidate'
         elif specs and not unknown:
             evidence.update(state='non_timetable_format', processed_basis='non_timetable')
         if evidence['state'] == 'schedule' and not evidence['processed_filename'] and static:
@@ -388,7 +468,7 @@ def apply_references(rows, feed_sources, mobility_rows, compact_mobility, index=
 
 
 def resolution_state(row):
-    """Validate acquisition-affecting fields; malformed new schemas fail closed."""
+    """Validate all static proof before selection; malformed new schemas hold."""
     value = row.get('source_resolution')
     if value is None:
         return None
@@ -407,47 +487,87 @@ def resolution_state(row):
         return 'invalid'
     if state == 'non_timetable_format' and (not specs or 'gtfs' in specs):
         return 'invalid'
+    static, options, proofs = [], defaultdict(set), defaultdict(set)
     for declaration in declarations:
         resolution = declaration.get('resolution')
-        if (not isinstance(resolution, dict) or resolution.get('state') not in
+        definition = declaration.get('definition')
+        if (not isinstance(declaration.get('id'), str) or not re.fullmatch('[a-f0-9]{64}', declaration['id'])
+                or not isinstance(definition, dict) or not isinstance(definition.get('sha256'), str)
+                or not re.fullmatch('[a-f0-9]{64}', definition['sha256'])
+                or not isinstance(resolution, dict) or resolution.get('state') not in
                 ('resolved', 'authorization_required', 'transport_options_required', 'metadata_unavailable',
                  'conflicting_reference', 'missing_reference', 'malformed_reference', 'unsupported_type')):
+            return 'invalid'
+        if (declaration.get('declared_spec') is not None and not text(declaration.get('declared_spec'), 80)
+                or not isinstance(declaration.get('upstream_skip', False), bool)):
             return 'invalid'
         child_specs, endpoints = resolution.get('specs'), resolution.get('endpoints')
         if (not isinstance(child_specs, list) or len(child_specs) > 3
                 or any(spec not in ('gtfs', 'gtfs-rt', 'gbfs') for spec in child_specs)
                 or not isinstance(endpoints, list) or len(endpoints) > len(ROLE_SPECS)):
             return 'invalid'
+        if not companion_only(declaration):
+            options[declaration['id']].add(definition['sha256'])
         for endpoint in endpoints:
             if (not isinstance(endpoint, dict) or not isinstance(endpoint.get('role'), str)
                     or endpoint['role'] not in ROLE_SPECS or endpoint.get('spec') != ROLE_SPECS[endpoint['role']]
-                    or endpoint.get('spec') not in child_specs
-                    or not _url(endpoint.get('url'))
-                    or endpoint.get('access_state') not in ('public_declared', 'authorization_required', 'review_required')):
+                    or endpoint.get('spec') not in child_specs or not _url(endpoint.get('url'))
+                    or not isinstance(endpoint.get('url_sha256'), str) or not re.fullmatch('[a-f0-9]{64}', endpoint['url_sha256'])
+                    or endpoint.get('access_state') not in ('public_declared', 'authorization_required', 'review_required')
+                    or ('declared_url' in endpoint and not _url(endpoint['declared_url']))
+                    or (endpoint.get('authorization') is not None and endpoint['access_state'] != 'authorization_required')):
                 return 'invalid'
-    if state == 'schedule':
-        selected = value.get('selected_static_declaration')
-        selected_static = any(d.get('id') == selected and isinstance(d.get('resolution'), dict)
-            and d['resolution'].get('state') == 'resolved' and 'gtfs' in (d['resolution'].get('specs') or [])
-            and any(isinstance(e, dict) and e.get('role') == 'static_current' and e.get('spec') == 'gtfs'
-                    and e.get('access_state') == 'public_declared'
-                    and (not row.get('source') or e.get('url') == row['source'])
-                    for e in (d['resolution'].get('endpoints') or [])) for d in declarations) if isinstance(selected, str) else False
-        lineage = row.get('lineage') if isinstance(row.get('lineage'), list) else []
-        independently_published = any(isinstance(item, dict) and item.get('catalogue') in
-            ('transitous-licence', 'mobility-database') for item in lineage)
-        ordinary = value.get('ordinary_static_declarations')
-        if ordinary is None:
-            ordinary = []
-        if (not isinstance(ordinary, list) or len(ordinary) > MAX_DECLARATIONS
-                or any(not isinstance(d, dict) for d in ordinary)):
+            if endpoint['spec'] == 'gtfs':
+                static.append((declaration, endpoint))
+        if len({e['role'] for e in endpoints}) != len(endpoints):
             return 'invalid'
-        ordinary_static = any(d.get('spec') == 'gtfs' and _url(d.get('url')) for d in ordinary)
-        if not (selected_static or independently_published or ordinary_static):
-            return 'invalid'
-    processed = value.get('processed_filename')
-    if processed is not None and processed != row.get('filename'):
+        if endpoints:
+            expected = ('authorization_required' if any(e['access_state'] == 'authorization_required' for e in endpoints)
+                else 'transport_options_required' if any(e['access_state'] == 'review_required' for e in endpoints) else 'resolved')
+            if resolution['state'] != expected:
+                return 'invalid'
+        if not companion_only(declaration):
+            proofs[declaration['id']].add((resolution['state'], tuple(child_specs), declaration.get('upstream_skip', False),
+                tuple((e['role'], e['spec'], e['url'], e['url_sha256'], e.get('declared_url', ''), e['access_state']) for e in endpoints)))
+    ordinary = value.get('ordinary_static_declarations', [])
+    if (not isinstance(ordinary, list) or len(ordinary) > MAX_DECLARATIONS
+            or any(not isinstance(d, dict) or d.get('spec') != 'gtfs' or not _url(d.get('url'))
+                or d.get('access_state') not in ('public_declared', 'authorization_required', 'review_required')
+                for d in ordinary)):
         return 'invalid'
+    lineage = row.get('lineage', [])
+    if not isinstance(lineage, list) or any(not isinstance(item, dict) for item in lineage):
+        return 'invalid'
+    processed = value.get('processed_filename')
+    if processed is not None and (state != 'schedule' or processed != row.get('filename')):
+        return 'invalid'
+    if state == 'schedule':
+        # A selected declaration cannot hide another static identity or distinct
+        # options under the same identity, even in externally supplied schemas.
+        if (len({d['id'] for d, _ in static}) > 1 or len({e['url_sha256'] for _, e in static}) > 1
+                or len({e['url'] for _, e in static}) > 1
+                or any(len(values) > 1 for values in options.values())
+                or any(len(values) > 1 for values in proofs.values())):
+            return 'invalid'
+        if any(d['resolution']['state'] == 'conflicting_reference' and not companion_only(d) for d in declarations):
+            return 'invalid'
+        selected = value.get('selected_static_declaration')
+        selected_static = [(d, e) for d, e in static if d['id'] == selected
+            and d['resolution']['state'] == 'resolved' and e['access_state'] == 'public_declared'
+            and (not row.get('source') or e['url'] == row['source'])]
+        if selected is not None and (not isinstance(selected, str) or not selected_static):
+            return 'invalid'
+        published, public_mobility, public_ordinary = independent_static_evidence(row)
+        if (not (published or public_mobility or public_ordinary) and any(
+                d['resolution']['state'] not in ('resolved', 'authorization_required') and not companion_only(d) for d in declarations)):
+            return 'invalid'
+        if not (selected_static or published or public_mobility or public_ordinary):
+            return 'invalid'
+        if processed and not (published or any(d.get('upstream_skip') is False for d, _ in selected_static)
+                or any(d.get('upstream_skip') is False and d.get('type') in ('http', 'ftp') for d in public_ordinary)):
+            return 'invalid'
+        if not processed and not (candidate_identities(row) & evidenced_static_identities(row)):
+            return 'invalid'
     alias = value.get('acquisition_alias_of')
     if alias is not None and (state != 'schedule' or processed is not None
             or not isinstance(alias, str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,256}', alias)

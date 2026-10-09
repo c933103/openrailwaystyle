@@ -397,7 +397,8 @@ object, schema 1, supplies the actual acquisition decision:
   pinned source-list/file URLs, JSON pointers, original file/blob and declaration
   hashes, upstream skip/reason, endpoint roles and declared format metadata
 - `ordinary_static_declarations` retains independent same-name static URL sources,
-  including their exact definition pointers, hashes and upstream skip metadata
+  including their exact definition pointers, hashes, upstream skip metadata and
+  access state; unsupported transport options never establish public access
 - `selected_static_declaration` and nullable `processed_filename` with its
   evidence basis; neither an unresolved reference nor upstream skip alone
   establishes a processed archive
@@ -405,7 +406,11 @@ object, schema 1, supplies the actual acquisition decision:
   acquisition owner; both historical catalogue identities remain present
 
 Only the selected static endpoint enters acquisition lineage. Realtime and GBFS
-endpoints remain separate evidence, never GTFS fallback URLs. Original and
+endpoints remain separate evidence, never GTFS fallback URLs. An override retains
+any inherited authorization requirement; its URL alone does not prove public
+access. Authenticated Mobility lineage is not independent public-static proof.
+Withheld original identities remain excluded even when a separately published
+processed archive or distinct public static primary is usable. Original and
 `url-override` identities remain distinct. Authorization descriptions retain only
 the type, parameter name and public documentation; no credential value, custom
 request body, encrypted payload or arbitrary HTTP options is copied. Unsupported
@@ -441,7 +446,9 @@ current endpoint roles do not become a new verified static source; the Microsoft
 Shuttles declaration is one such case, while its separately published static
 source remains available. Missing metadata, duplicate Atlas IDs, invalid overrides,
 unknown companions and different static references collapsed under one name
-cannot be resolved by a name/suffix guess. Identical declaration occurrences keep
+cannot be resolved by a name/suffix guess. Acquisition schema validation reconciles
+all static identities and differing declaration options before honoring a selected
+reference; a malformed selection cannot hide another static source. Identical declaration occurrences keep
 all pointers. Different options under one reference identity are visible conflicts.
 Four regression groups retain the original collapsed-name evidence: Burlington
 GTFS+RT, TransIt GTFS+authorization-held RT, Milwaukee GTFS+RT, and Slobozia's two
@@ -501,10 +508,10 @@ fixtures separately test Mobility RT/missing/duplicate cases.
 All 5,489 IDs remain. All 2,836 existing direct-owner rows and both existing access
 holds remain byte-equivalent under the same compact row serialization. The overlay
 adds 1,876 declaration records across 1,454 rows. It records 131 non-timetable rows,
-11 aliases, eight unresolved and two ambiguous reference outcomes; 14 changed
+11 aliases, 32 unresolved and two ambiguous reference outcomes; 38 changed
 discovery outcomes lie outside the focused 141-row cohort and every one is listed.
 The ledger distinguishes these proposed discovery outcomes from the historical
-runtime results. It also lists all 227 changed candidate lists by original-URL
+runtime results. It also lists all 332 changed candidate lists by original-URL
 hash, all 11 unique owners and the exact spec/role disagreements.
 
 Within the [focused attribution](investigations/catalogue-reference-attribution-20261009.json),
@@ -516,3 +523,33 @@ No provider endpoint, production refresh or held archive was used for this repla
 no new coverage, successful availability or production savings is claimed. The
 historical 5,489-row published scope and 652.7 compile runner-minute baseline remain
 historical measurements.
+
+The later access-proof review supersedes the earlier 228/227 candidate-change
+checkpoints. It withholds authenticated originals alongside usable published
+processed feeds, and holds 23 additional Mobility references plus Metro
+Christchurch when no distinct public candidate is evidenced. Christchurch retains
+its GTFS declaration and source identity, but its unsupported header transport
+setup is `review_required`; only the parameter name
+`Ocp-Apim-Subscription-Key`, never its value, explains the evidence. The ledger
+records all per-row withheld fingerprints, surviving candidates and the exact
+checkpoint comparison. These are metadata-based discovery holds, not new runtime
+access results or a no-rail classification.
+
+The 330-to-332 refinement also binds authorization to the original declared URL
+when an override exists: SF Bay Area and SFMTA retain their independently
+published processed candidates while the authenticated originals are withheld.
+This is separate from the two pre-existing access-held rows, which remain
+byte-equivalent. Schema validation compares actual endpoint URLs as well as
+recorded fingerprints, rejects contradictory access states and malformed lineage,
+and does not let selection hide an unknown non-companion. New aliases also reject
+legacy owners with authenticated Mobility metadata; the owner rows and their
+existing discovery policy are not rewritten by that compatibility check.
+
+For new-schema rows, original acquisition URLs must be covered by explicit static
+endpoint, ordinary-source or published/Mobility evidence; an unrelated row.source
+cannot borrow a different source's proof or a stale display fingerprint. Unknown
+upstream skip metadata cannot establish an active processed archive, although
+independent published processed proof and verified public originals remain usable.
+Non-companion reference conflicts retain strict ambiguity precedence; a missing
+reference with independent public proof or a held/conflicting RT companion does
+not erase that independently usable primary.
