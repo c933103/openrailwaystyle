@@ -1,9 +1,9 @@
 {
   "status": "partial_recovery_only; original full package did not survive",
   "original_planned_files": 83,
-  "recovered_original_files": 47,
-  "unrecovered_original_files": 36,
-  "recovered_original_bytes": 392718,
+  "recovered_original_files": 57,
+  "unrecovered_original_files": 26,
+  "recovered_original_bytes": 24014448,
   "original_planned_bytes": 25814962,
   "workspace_replacement_confirmed_utc": "2026-10-09T03:43:20Z",
   "new_measurement_runs_after_replacement": 0,
@@ -15,7 +15,7 @@
     "Any replacement-host rerun must use a new identity, environment record and separate results."
   ],
   "historical_records_notice": "recovered/report.md, recovered/REPRODUCE.md and recovered/publication-manifest.json are frozen records from before the workspace loss. Their complete-package descriptions do not describe this partial delivery. This ledger and the root README state current availability.",
-  "credential_safety": "No original credential-bearing input ZIP or metadata pack is included. Sanitized fixture archives were part of the lost package and are currently absent too. Current live release exposure remains unverified.",
+  "credential_safety": "No original credential-bearing input ZIP or metadata pack is included. Eight sanitized derivative ZIPs have now been recovered exactly and retain their prior clearance. The original sanitized reference tarball container remains missing. Current live release exposure remains unverified.",
   "files": [
     {
       "original_path": "REPRODUCE.md",
@@ -578,8 +578,9 @@
       "expected_bytes": 24893,
       "original_sha256": "ea426621f4c970efd86b5326966b2f6e2afd2b8a46d60635779cffd08b49cdfd",
       "original_git_blob_sha1": "6c08fff44673a821610374b178e37a163a8563f7",
-      "status": "unrecovered",
-      "published_path": null
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/raw/run-07/output-identity.json",
+      "recovery_method": "Reconstructed after workspace replacement; full original byte length and SHA-256 matched. See separately labelled new recovery helpers/provenance. Not a replacement measurement."
     },
     {
       "original_path": "raw/run-07/progress.jsonl",
@@ -637,8 +638,9 @@
       "expected_bytes": 85746,
       "original_sha256": "4371113758c7588cc03cb246d45bfdc8a9b7c9f2d20564617dbbde0a3e790d39",
       "original_git_blob_sha1": "42236732aeda7c5ba2f7580d9582eb1f2e2c6628",
-      "status": "unrecovered",
-      "published_path": null
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/sanitization-manifest.json",
+      "recovery_method": "Reconstructed after workspace replacement; full original byte length and SHA-256 matched. See separately labelled new recovery helpers/provenance. Not a replacement measurement."
     },
     {
       "original_path": "sanitize_fixtures.py",
@@ -661,64 +663,72 @@
       "expected_bytes": 2708071,
       "original_sha256": "c2a95ed9208b535787af74b605278d71a3332d32218f11c56803f59f9b2bf133",
       "original_git_blob_sha1": "859606df63afaaf300920a822341282fb41d18b6",
-      "status": "unrecovered",
-      "published_path": null
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/sanitized-retention/worldwide-frequency-shard-0-sanitized.zip",
+      "recovery_method": "Reconstructed after workspace replacement; full original byte length and SHA-256 matched. See separately labelled new recovery helpers/provenance. Not a replacement measurement."
     },
     {
       "original_path": "sanitized-retention/worldwide-frequency-shard-1-sanitized.zip",
       "expected_bytes": 2405988,
       "original_sha256": "4eb66842a0703f77aa276404c950bd9ae9a4937fab726607e09acbad8a8db293",
       "original_git_blob_sha1": "46ad2b8e99591da4a6e003681ad58635cbb7dd00",
-      "status": "unrecovered",
-      "published_path": null
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/sanitized-retention/worldwide-frequency-shard-1-sanitized.zip",
+      "recovery_method": "Reconstructed after workspace replacement; full original byte length and SHA-256 matched. See separately labelled new recovery helpers/provenance. Not a replacement measurement."
     },
     {
       "original_path": "sanitized-retention/worldwide-frequency-shard-2-sanitized.zip",
       "expected_bytes": 3529540,
       "original_sha256": "f40d9318750a61e93f8504bad46967d2bd33858fa64b37247f863b36ab3eabef",
       "original_git_blob_sha1": "52cdf6d5d73f998ff55fddbfaf6b9a89c222baca",
-      "status": "unrecovered",
-      "published_path": null
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/sanitized-retention/worldwide-frequency-shard-2-sanitized.zip",
+      "recovery_method": "Reconstructed after workspace replacement; full original byte length and SHA-256 matched. See separately labelled new recovery helpers/provenance. Not a replacement measurement."
     },
     {
       "original_path": "sanitized-retention/worldwide-frequency-shard-3-sanitized.zip",
       "expected_bytes": 3514769,
       "original_sha256": "fed65f4db929e5c52f0479330e7e60f8bf913d199f096f4c936ff2c361cf0c28",
       "original_git_blob_sha1": "cc39c3e785f6cd07caf0705b235506e9fa908912",
-      "status": "unrecovered",
-      "published_path": null
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/sanitized-retention/worldwide-frequency-shard-3-sanitized.zip",
+      "recovery_method": "Reconstructed after workspace replacement; full original byte length and SHA-256 matched. See separately labelled new recovery helpers/provenance. Not a replacement measurement."
     },
     {
       "original_path": "sanitized-retention/worldwide-frequency-shard-4-sanitized.zip",
       "expected_bytes": 1652435,
       "original_sha256": "909b5930f781f774886df5f01ae7ec9bac37624fa44d9d55b80a9f3f7e3f5e46",
       "original_git_blob_sha1": "9a0822e042e1d05fba7d6815154e2a377279b803",
-      "status": "unrecovered",
-      "published_path": null
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/sanitized-retention/worldwide-frequency-shard-4-sanitized.zip",
+      "recovery_method": "Reconstructed after workspace replacement; full original byte length and SHA-256 matched. See separately labelled new recovery helpers/provenance. Not a replacement measurement."
     },
     {
       "original_path": "sanitized-retention/worldwide-frequency-shard-5-sanitized.zip",
       "expected_bytes": 2512440,
       "original_sha256": "e6ac177f21ea938de7f49862778726b1b7281e9bffadaea0538ea1982760c537",
       "original_git_blob_sha1": "0cd84f6499e1b3ec157f9ec5ed2df31501531348",
-      "status": "unrecovered",
-      "published_path": null
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/sanitized-retention/worldwide-frequency-shard-5-sanitized.zip",
+      "recovery_method": "Reconstructed after workspace replacement; full original byte length and SHA-256 matched. See separately labelled new recovery helpers/provenance. Not a replacement measurement."
     },
     {
       "original_path": "sanitized-retention/worldwide-frequency-shard-6-sanitized.zip",
       "expected_bytes": 2539400,
       "original_sha256": "d03fb8d8f49f0e45673daaa51116ab70e1d9b758fdf6e0e4263341ae19937fb2",
       "original_git_blob_sha1": "fc8971b2054b1f2b5d043099a2f7278f32f56433",
-      "status": "unrecovered",
-      "published_path": null
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/sanitized-retention/worldwide-frequency-shard-6-sanitized.zip",
+      "recovery_method": "Reconstructed after workspace replacement; full original byte length and SHA-256 matched. See separately labelled new recovery helpers/provenance. Not a replacement measurement."
     },
     {
       "original_path": "sanitized-retention/worldwide-frequency-shard-7-sanitized.zip",
       "expected_bytes": 4648448,
       "original_sha256": "9039db1a4a06f84394b4e8995ffcd97332b372a9f38da4a34c6b4be7befb938d",
       "original_git_blob_sha1": "2d6bd0bc64dc281b19bf7344252bd7f8b242fdbc",
-      "status": "unrecovered",
-      "published_path": null
+      "status": "recovered_original_bytes",
+      "published_path": "recovered/sanitized-retention/worldwide-frequency-shard-7-sanitized.zip",
+      "recovery_method": "Reconstructed after workspace replacement; full original byte length and SHA-256 matched. See separately labelled new recovery helpers/provenance. Not a replacement measurement."
     },
     {
       "original_path": "test_reproduce_sanitized.py",
@@ -730,10 +740,9 @@
     }
   ],
   "partial_payload_safety": {
-    "status": "passed",
-    "files_checked": 50,
-    "known_original_access_values_checked": 10,
-    "no_access_values_or_common_credential_patterns_found": true,
+    "status": "passed_hash_inheritance_and_new_plaintext_scan",
+    "archive_count": 8,
+    "archive_clearance": "All eight archive hashes match the original pre-loss manifest and the prepublication-hardening-safety.json archive checks; full prior decompressed-content scan remains applicable to those identical bytes.",
     "no_original_data_archives_or_private_approval_metadata_included": true
   },
   "historical_clarifications": [
@@ -743,5 +752,7 @@
       "recorded": 29,
       "correct_interpretation": "29 tests total: 27 negative cases and 2 clean success cases. Original bytes remain frozen; preserved test log is the evidence."
     }
-  ]
+  ],
+  "prior_checkpoint": "3386e0a7294956c2c8b2f709869863b0f3e3b89d",
+  "latest_exact_recovery": "recovery-updates/2026-10-09-exact-derivatives/recovery-receipt.json"
 }

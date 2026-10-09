@@ -1,0 +1,99 @@
+{
+  "status": "ten_additional_original_files_recovered_exactly",
+  "prior_checkpoint": "3386e0a7294956c2c8b2f709869863b0f3e3b89d",
+  "newly_recovered_original_paths": [
+    "sanitized-retention/worldwide-frequency-shard-0-sanitized.zip",
+    "sanitized-retention/worldwide-frequency-shard-1-sanitized.zip",
+    "sanitized-retention/worldwide-frequency-shard-2-sanitized.zip",
+    "sanitized-retention/worldwide-frequency-shard-3-sanitized.zip",
+    "sanitized-retention/worldwide-frequency-shard-4-sanitized.zip",
+    "sanitized-retention/worldwide-frequency-shard-5-sanitized.zip",
+    "sanitized-retention/worldwide-frequency-shard-6-sanitized.zip",
+    "sanitized-retention/worldwide-frequency-shard-7-sanitized.zip",
+    "sanitization-manifest.json",
+    "raw/run-07/output-identity.json"
+  ],
+  "recovered_original_files": 57,
+  "unrecovered_original_files": 26,
+  "measurement_reruns": 0,
+  "archive_recovery": "Eight deterministic sanitized ZIPs match their original pre-loss SHA-256 and byte lengths. The same 23 potential-access query values are removed across eight input members; timetable content remains unchanged.",
+  "record_recovery": "The sanitization manifest and run-07 output-identity record were reconstructed from hash-verified frozen data and accepted only because their complete original record hashes match.",
+  "original_inputs": "Eight original shard ZIPs and the matching snapshot were restored privately and verified against recorded archive SHA-256/CRC, 121 input member hashes and 117 reference member hashes. They are not published and do not count as cleared public artifacts.",
+  "safety": "Published recovered archives are byte-identical to the previously fully scanned cleared derivatives. Exact hashes are recorded here and in the completeness ledger. New plaintext is screened separately. No original access-bearing metadata archive, approval transcript or private security draft is included.",
+  "new_helpers": [
+    {
+      "path": "helpers/recovery_derivatives_v1.py",
+      "bytes": 3680,
+      "sha256": "d4906d7785e639fc9b6a63fe889c34c5a5faf058b7d0815490b36aa1ae01ecbc",
+      "classification": "new recovery helper written after workspace replacement; not an original recovered helper or a measurement rerun"
+    },
+    {
+      "path": "helpers/recovery_manifests_v1.py",
+      "bytes": 6050,
+      "sha256": "db2088f2d9ca848964ae30c3a30e40d83e09110a59c0f6c7146fd20c1b5a0ceb",
+      "classification": "new recovery helper written after workspace replacement; not an original recovered helper or a measurement rerun"
+    }
+  ],
+  "files": [
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-0-sanitized.zip",
+      "bytes": 2708071,
+      "sha256": "c2a95ed9208b535787af74b605278d71a3332d32218f11c56803f59f9b2bf133",
+      "original_git_blob_sha1": "859606df63afaaf300920a822341282fb41d18b6"
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-1-sanitized.zip",
+      "bytes": 2405988,
+      "sha256": "4eb66842a0703f77aa276404c950bd9ae9a4937fab726607e09acbad8a8db293",
+      "original_git_blob_sha1": "46ad2b8e99591da4a6e003681ad58635cbb7dd00"
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-2-sanitized.zip",
+      "bytes": 3529540,
+      "sha256": "f40d9318750a61e93f8504bad46967d2bd33858fa64b37247f863b36ab3eabef",
+      "original_git_blob_sha1": "52cdf6d5d73f998ff55fddbfaf6b9a89c222baca"
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-3-sanitized.zip",
+      "bytes": 3514769,
+      "sha256": "fed65f4db929e5c52f0479330e7e60f8bf913d199f096f4c936ff2c361cf0c28",
+      "original_git_blob_sha1": "cc39c3e785f6cd07caf0705b235506e9fa908912"
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-4-sanitized.zip",
+      "bytes": 1652435,
+      "sha256": "909b5930f781f774886df5f01ae7ec9bac37624fa44d9d55b80a9f3f7e3f5e46",
+      "original_git_blob_sha1": "9a0822e042e1d05fba7d6815154e2a377279b803"
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-5-sanitized.zip",
+      "bytes": 2512440,
+      "sha256": "e6ac177f21ea938de7f49862778726b1b7281e9bffadaea0538ea1982760c537",
+      "original_git_blob_sha1": "0cd84f6499e1b3ec157f9ec5ed2df31501531348"
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-6-sanitized.zip",
+      "bytes": 2539400,
+      "sha256": "d03fb8d8f49f0e45673daaa51116ab70e1d9b758fdf6e0e4263341ae19937fb2",
+      "original_git_blob_sha1": "fc8971b2054b1f2b5d043099a2f7278f32f56433"
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-7-sanitized.zip",
+      "bytes": 4648448,
+      "sha256": "9039db1a4a06f84394b4e8995ffcd97332b372a9f38da4a34c6b4be7befb938d",
+      "original_git_blob_sha1": "2d6bd0bc64dc281b19bf7344252bd7f8b242fdbc"
+    },
+    {
+      "path": "sanitization-manifest.json",
+      "bytes": 85746,
+      "sha256": "4371113758c7588cc03cb246d45bfdc8a9b7c9f2d20564617dbbde0a3e790d39",
+      "original_git_blob_sha1": "42236732aeda7c5ba2f7580d9582eb1f2e2c6628"
+    },
+    {
+      "path": "raw/run-07/output-identity.json",
+      "bytes": 24893,
+      "sha256": "ea426621f4c970efd86b5326966b2f6e2afd2b8a46d60635779cffd08b49cdfd",
+      "original_git_blob_sha1": "6c08fff44673a821610374b178e37a163a8563f7"
+    }
+  ]
+}

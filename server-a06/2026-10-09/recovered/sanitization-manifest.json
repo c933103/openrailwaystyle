@@ -1,0 +1,1895 @@
+{
+  "classification": "sanitized derived fixtures, not byte-identical original inputs",
+  "transformation": "For URL-style query parameters with case-insensitive names api[_-]?key, token, key, rlkey, access[_-]?token, refresh[_-]?token, secret, password, signature, credential, session, auth, uid, remove nonempty value bytes between = and the next delimiter. Keep parameter names and all other bytes unchanged. Recompress only changed .json.gz members with gzip level 9, mtime 0. Repackage original shard member sets as separately named deterministic ZIPs. The opaque uid parameter is removed conservatively because its access semantics were not established; this is not a claim that uid is a working credential. No original is modified. Apply the same transformation to exact reference metadata and retained compiled-feed bytes.",
+  "regex_ascii": "([?&](?:api[_-]?key|token|key|rlkey|access[_-]?token|refresh[_-]?token|secret|password|signature|credential|session|auth|uid)=)([^&#\"\\\\\\s]+)",
+  "input_files": [
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-cbd-and-southeast-lr.json.gz",
+      "original_sha256": "f39b2a36d2105fe3d666c147a453d93fb5e1e9e80fedbdd412eda9c692aad40d",
+      "sanitized_sha256": "f39b2a36d2105fe3d666c147a453d93fb5e1e9e80fedbdd412eda9c692aad40d",
+      "original_bytes": 179915,
+      "sanitized_bytes": 179915,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-inner-west-lr.json.gz",
+      "original_sha256": "625bc2bcc009bf357c375c720f9b05a0cb1a0a832cf030039e1eef22e3c1435c",
+      "sanitized_sha256": "625bc2bcc009bf357c375c720f9b05a0cb1a0a832cf030039e1eef22e3c1435c",
+      "original_bytes": 27430,
+      "sanitized_bytes": 27430,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-metro.json.gz",
+      "original_sha256": "14774431524686fce2288ff35bac444d12485103ba760142a4577039cb3ef381",
+      "sanitized_sha256": "14774431524686fce2288ff35bac444d12485103ba760142a4577039cb3ef381",
+      "original_bytes": 340073,
+      "sanitized_bytes": 340073,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-newcastle-lr.json.gz",
+      "original_sha256": "bd749c34a9a938664a0eb5c6e8061eed80f548e412270faaae84fddfd799ad35",
+      "sanitized_sha256": "bd749c34a9a938664a0eb5c6e8061eed80f548e412270faaae84fddfd799ad35",
+      "original_bytes": 10039,
+      "sanitized_bytes": 10039,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-nsw-trains.json.gz",
+      "original_sha256": "8c0e3d76015a1ff1741e0b33a5b0a80c7776b277345cf0631e9f2f3cabda5552",
+      "sanitized_sha256": "8c0e3d76015a1ff1741e0b33a5b0a80c7776b277345cf0631e9f2f3cabda5552",
+      "original_bytes": 22343,
+      "sanitized_bytes": 22343,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-parramatta-lr.json.gz",
+      "original_sha256": "c9b6a15227e040f8d52128c120e9c5bc3a70abc2b2e268a6b09a9c4b953e3ec5",
+      "sanitized_sha256": "c9b6a15227e040f8d52128c120e9c5bc3a70abc2b2e268a6b09a9c4b953e3ec5",
+      "original_bytes": 20149,
+      "sanitized_bytes": 20149,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-sydney-trains.json.gz",
+      "original_sha256": "9fe9116d7638f68d69cb1e822541edbcf56156175bb5c4f2c967f2cf7fd45e35",
+      "sanitized_sha256": "9fe9116d7638f68d69cb1e822541edbcf56156175bb5c4f2c967f2cf7fd45e35",
+      "original_bytes": 166515,
+      "sanitized_bytes": 166515,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/au-qld_Translink-SEQ.json.gz",
+      "original_sha256": "5852cd3084ca754123f23f84e65a80917851aadf9f9daa639ec44ea91dfaf987",
+      "sanitized_sha256": "5852cd3084ca754123f23f84e65a80917851aadf9f9daa639ec44ea91dfaf987",
+      "original_bytes": 1302491,
+      "sanitized_bytes": 1302491,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/au-vic_Transport-Victoria-interstate.json.gz",
+      "original_sha256": "a4819bf23c6cc0a2aa99f4a950724ee4112fdd7dbe751a904b11e778581e6a73",
+      "sanitized_sha256": "a4819bf23c6cc0a2aa99f4a950724ee4112fdd7dbe751a904b11e778581e6a73",
+      "original_bytes": 147596,
+      "sanitized_bytes": 147596,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/au-vic_Transport-Victoria-metro-trains.json.gz",
+      "original_sha256": "5235c3a213523abc8bdc52de6ec514a41c9c5fe78f6ebcab8c4a96f11990a0d9",
+      "sanitized_sha256": "5235c3a213523abc8bdc52de6ec514a41c9c5fe78f6ebcab8c4a96f11990a0d9",
+      "original_bytes": 1003990,
+      "sanitized_bytes": 1003990,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/au-vic_Transport-Victoria-metro-trams.json.gz",
+      "original_sha256": "bd1a708277448ea18e2bf182f0b23f712720d88276365801ef604b00ea884844",
+      "sanitized_sha256": "bd1a708277448ea18e2bf182f0b23f712720d88276365801ef604b00ea884844",
+      "original_bytes": 528023,
+      "sanitized_bytes": 528023,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/au-vic_Transport-Victoria-regional-trains.json.gz",
+      "original_sha256": "b4986487fa2fd3bb955d1f0c7735a8848a7d04f0e37b1514f371abd345454c8e",
+      "sanitized_sha256": "b4986487fa2fd3bb955d1f0c7735a8848a7d04f0e37b1514f371abd345454c8e",
+      "original_bytes": 366935,
+      "sanitized_bytes": 366935,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/bg_sofia.json.gz",
+      "original_sha256": "46491b15f23102c1ee433be09ed7393b7f17f5335022b4e36b2dbe02a462dfcb",
+      "sanitized_sha256": "46491b15f23102c1ee433be09ed7393b7f17f5335022b4e36b2dbe02a462dfcb",
+      "original_bytes": 484716,
+      "sanitized_bytes": 484716,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/br_sao-paulo.json.gz",
+      "original_sha256": "28ba3c21a7d637ac6603a3ba890d0440755bda02b468699b8d59b54d3e713564",
+      "sanitized_sha256": "28ba3c21a7d637ac6603a3ba890d0440755bda02b468699b8d59b54d3e713564",
+      "original_bytes": 189588,
+      "sanitized_bytes": 189588,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/cz_IDS-JMK.json.gz",
+      "original_sha256": "614d72513af866d636ed602fde0135ab7282d504a101fea7f80712cb141e0e9c",
+      "sanitized_sha256": "614d72513af866d636ed602fde0135ab7282d504a101fea7f80712cb141e0e9c",
+      "original_bytes": 71709,
+      "sanitized_bytes": 71709,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/cz_JDF-merged.json.gz",
+      "original_sha256": "47538167344dcbed2c4fe99b2407ba4e6c7a5d4a85a111d8e52b21439ed468a9",
+      "sanitized_sha256": "47538167344dcbed2c4fe99b2407ba4e6c7a5d4a85a111d8e52b21439ed468a9",
+      "original_bytes": 42029,
+      "sanitized_bytes": 42029,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/cz_PMDP.json.gz",
+      "original_sha256": "762eac8bffa244b1c8408fc5ad423210a19a7491df945ab75ce61faed841f544",
+      "sanitized_sha256": "762eac8bffa244b1c8408fc5ad423210a19a7491df945ab75ce61faed841f544",
+      "original_bytes": 12248,
+      "sanitized_bytes": 12248,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/ee_elron.json.gz",
+      "original_sha256": "02d0c7e1b3012a889fe00117b8a5fe19e0bb7d3d42d9b510391b473d699b41ca",
+      "sanitized_sha256": "02d0c7e1b3012a889fe00117b8a5fe19e0bb7d3d42d9b510391b473d699b41ca",
+      "original_bytes": 717322,
+      "sanitized_bytes": 717322,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/ee_tallinn.json.gz",
+      "original_sha256": "b1a5eafc2175d80fe0ea07761b51de9c136748efe028ec0dda774eb1b82b5eee",
+      "sanitized_sha256": "b1a5eafc2175d80fe0ea07761b51de9c136748efe028ec0dda774eb1b82b5eee",
+      "original_bytes": 89522,
+      "sanitized_bytes": 89522,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/es_Cercan-as-Renfe-08947ebad1d6.json.gz",
+      "original_sha256": "028b00c56026d0503ab07f09202e774b4c2c1b76f8043f8f42e9ac5e74887d81",
+      "sanitized_sha256": "028b00c56026d0503ab07f09202e774b4c2c1b76f8043f8f42e9ac5e74887d81",
+      "original_bytes": 77361,
+      "sanitized_bytes": 77361,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/es_Euskotren.json.gz",
+      "original_sha256": "4f3098390da1a9dca3f6626f2e07cd1f7a1d187d04c21743d16206d34b298c5b",
+      "sanitized_sha256": "4f3098390da1a9dca3f6626f2e07cd1f7a1d187d04c21743d16206d34b298c5b",
+      "original_bytes": 188394,
+      "sanitized_bytes": 188394,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/es_Funicular-de-Artxanda.json.gz",
+      "original_sha256": "78b7c01646db16ec87222eaa82c657e731d88ce883ea98e81a23971d7791ac76",
+      "sanitized_sha256": "78b7c01646db16ec87222eaa82c657e731d88ce883ea98e81a23971d7791ac76",
+      "original_bytes": 3495,
+      "sanitized_bytes": 3495,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/es_Metro-Bilbao.json.gz",
+      "original_sha256": "4e15f85a700b1258be27abccb66355a35ad282b495699ecfd1ff3bdf77220cdf",
+      "sanitized_sha256": "4e15f85a700b1258be27abccb66355a35ad282b495699ecfd1ff3bdf77220cdf",
+      "original_bytes": 341546,
+      "sanitized_bytes": 341546,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/es_Puente-Colgante-Bizkaia.json.gz",
+      "original_sha256": "994b3196d8f95fc3661853f35c8773fe99936978831859b663b33c3fe431d0c1",
+      "sanitized_sha256": "994b3196d8f95fc3661853f35c8773fe99936978831859b663b33c3fe431d0c1",
+      "original_bytes": 1878,
+      "sanitized_bytes": 1878,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/es_RENFE-Larga-Distancia-y-AVE.json.gz",
+      "original_sha256": "7dfd59c8877f8e733301dddef8acfdecec0b5328ed562835df9e87b1c8605c47",
+      "sanitized_sha256": "7dfd59c8877f8e733301dddef8acfdecec0b5328ed562835df9e87b1c8605c47",
+      "original_bytes": 98841,
+      "sanitized_bytes": 98841,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/es_Transporte-p-blico-de-la-Isla-de-Mallorca-abd9b80431fa.json.gz",
+      "original_sha256": "d3b16d11854b145b56677082a6f059f3427f10c3adcea6e08b1201a0447536ac",
+      "sanitized_sha256": "d3b16d11854b145b56677082a6f059f3427f10c3adcea6e08b1201a0447536ac",
+      "original_bytes": 71869,
+      "sanitized_bytes": 71869,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/et_addisababatransportall.json.gz",
+      "original_sha256": "57e5ede3bd9564bf1246641a3ef49632ed394fc2e6a7c460b23af22a5fafa8f7",
+      "sanitized_sha256": "57e5ede3bd9564bf1246641a3ef49632ed394fc2e6a7c460b23af22a5fafa8f7",
+      "original_bytes": 38619,
+      "sanitized_bytes": 38619,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/eu_european-sleeper.json.gz",
+      "original_sha256": "7a212fb6965d9d495d7a1da03118bc779ea87d0462fb03393169e00b916efcd7",
+      "sanitized_sha256": "7a212fb6965d9d495d7a1da03118bc779ea87d0462fb03393169e00b916efcd7",
+      "original_bytes": 2089098,
+      "sanitized_bytes": 2089098,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/eu_flixbus.json.gz",
+      "original_sha256": "a74f82c757e3cf343400fef69feed4e778e2f70751b056f9091432e228927e8a",
+      "sanitized_sha256": "a74f82c757e3cf343400fef69feed4e778e2f70751b056f9091432e228927e8a",
+      "original_bytes": 6686,
+      "sanitized_bytes": 6686,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/eu_optimaexpress.json.gz",
+      "original_sha256": "ee5b4fa0d9365c5553f64255f12fbfa596341912dab85fa8d3f998c7deb8875c",
+      "sanitized_sha256": "ee5b4fa0d9365c5553f64255f12fbfa596341912dab85fa8d3f998c7deb8875c",
+      "original_bytes": 2270,
+      "sanitized_bytes": 2270,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_angers-loire-metropole-reseau-irigo-gtfs-gtfs-rt-siri.json.gz",
+      "original_sha256": "ae137f1a446d926470b48419c917a027b17a488263327f077fc856e46b83e884",
+      "sanitized_sha256": "ae137f1a446d926470b48419c917a027b17a488263327f077fc856e46b83e884",
+      "original_bytes": 53483,
+      "sanitized_bytes": 53483,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_arrets-itineraires-et-horaires-theoriques-des-reseaux-de-transport-des-membres-de-jvmalin.json.gz",
+      "original_sha256": "d867f7c9e64bcf1bfc7cd687618d0bb09a3e2d275d2790cbb29df7b9faf4ea92",
+      "sanitized_sha256": "d867f7c9e64bcf1bfc7cd687618d0bb09a3e2d275d2790cbb29df7b9faf4ea92",
+      "original_bytes": 91142,
+      "sanitized_bytes": 91142,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_base-de-donnees-multimodale-des-reseaux-de-transport-public-normands.json.gz",
+      "original_sha256": "26dd8f7d7c2a69aa007716800c8db960723d63e880bce2aedb05fe5954065574",
+      "sanitized_sha256": "26dd8f7d7c2a69aa007716800c8db960723d63e880bce2aedb05fe5954065574",
+      "original_bytes": 15211,
+      "sanitized_bytes": 15211,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_breizhgo-ter.json.gz",
+      "original_sha256": "e6a9f8bbdc943679154216ee211d26e336bc1c0a2b7d045ac69edf75fef7d890",
+      "sanitized_sha256": "e6a9f8bbdc943679154216ee211d26e336bc1c0a2b7d045ac69edf75fef7d890",
+      "original_bytes": 64853,
+      "sanitized_bytes": 64853,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_caen-la-mer-reseau-twisto-gtfs-siri.json.gz",
+      "original_sha256": "1f1c4a6f96734a255e10c7d1bb721e83149a273c99154c4e94b34a167bea3325",
+      "sanitized_sha256": "1f1c4a6f96734a255e10c7d1bb721e83149a273c99154c4e94b34a167bea3325",
+      "original_bytes": 177105,
+      "sanitized_bytes": 177105,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_citalis-telepherique-papang.json.gz",
+      "original_sha256": "011c1ea6b5db558c4dbdd4ada35d2890804ba20a7ae1880772057ad52eaae701",
+      "sanitized_sha256": "011c1ea6b5db558c4dbdd4ada35d2890804ba20a7ae1880772057ad52eaae701",
+      "original_bytes": 2038,
+      "sanitized_bytes": 2038,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_donnees-statiques-et-dynamiques-du-reseau-de-transport-lignes-dazur.json.gz",
+      "original_sha256": "351408a43096979ac97ad4148b8779a677b4b3e3fc9295872410ced5a808c214",
+      "sanitized_sha256": "351408a43096979ac97ad4148b8779a677b4b3e3fc9295872410ced5a808c214",
+      "original_bytes": 50239,
+      "sanitized_bytes": 50239,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_donnees-statiques-et-temps-reel-du-reseau-astuce-metropole-rouen-normandie.json.gz",
+      "original_sha256": "140d8d14916c3a2e48293ff1ded4817f07199c659458cd0d786290a8f0afb608",
+      "sanitized_sha256": "140d8d14916c3a2e48293ff1ded4817f07199c659458cd0d786290a8f0afb608",
+      "original_bytes": 6185,
+      "sanitized_bytes": 6185,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_donnees-theoriques-gtfs-et-temps-reel-siri-lite-du-reseau-cts.json.gz",
+      "original_sha256": "3d55d10e50dd0df9ac32cce4232e0d4e8bd747abc0cb855f571ef9508bf03a25",
+      "sanitized_sha256": "3d55d10e50dd0df9ac32cce4232e0d4e8bd747abc0cb855f571ef9508bf03a25",
+      "original_bytes": 21347,
+      "sanitized_bytes": 21347,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_eurostar-gtfs-plan-de-transport-et-temps-reel.json.gz",
+      "original_sha256": "669e8f08b4a19d94e807672c3e2174b13591f01a3cff099c2de26b104791657e",
+      "sanitized_sha256": "669e8f08b4a19d94e807672c3e2174b13591f01a3cff099c2de26b104791657e",
+      "original_bytes": 859939,
+      "sanitized_bytes": 859939,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_fil-bleu-syndicat-des-mobilites-gtfs-gtfs-rt.json.gz",
+      "original_sha256": "66257292e09b9f0096f1d563b4916b499c1648d486fcf4f9f6cbab90f9069a83",
+      "sanitized_sha256": "66257292e09b9f0096f1d563b4916b499c1648d486fcf4f9f6cbab90f9069a83",
+      "original_bytes": 71858,
+      "sanitized_bytes": 71858,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_fr-200052264-t0014-0000-1.json.gz",
+      "original_sha256": "08427d2b79b1ce340793b56be578250b681076194cd251d912bb5f98c63e4d6a",
+      "sanitized_sha256": "08427d2b79b1ce340793b56be578250b681076194cd251d912bb5f98c63e4d6a",
+      "original_bytes": 68922,
+      "sanitized_bytes": 68922,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_fr-200052264-t0017-0000-1.json.gz",
+      "original_sha256": "eb2e6ba5163b0ae2f5a4b2f4451df825bff1cd2ac9a2cbbfce49109e2a5b8f93",
+      "sanitized_sha256": "eb2e6ba5163b0ae2f5a4b2f4451df825bff1cd2ac9a2cbbfce49109e2a5b8f93",
+      "original_bytes": 3760,
+      "sanitized_bytes": 3760,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_gtfs-diviamobilites.json.gz",
+      "original_sha256": "506eeba61edd3ab9a3a6a8fc8c5a1fb6bf889f509155761a34415a5d19146627",
+      "sanitized_sha256": "506eeba61edd3ab9a3a6a8fc8c5a1fb6bf889f509155761a34415a5d19146627",
+      "original_bytes": 22078,
+      "sanitized_bytes": 22078,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_gtfs-du-reseau-des-transports-bus-et-tramway-setram-circulant-sur-le-territoire-le-mans-metropole.json.gz",
+      "original_sha256": "d02126192d8d3c03d49cf5d79a9bcad12ece782f81ac73aaff549ee49d8a2dde",
+      "sanitized_sha256": "d02126192d8d3c03d49cf5d79a9bcad12ece782f81ac73aaff549ee49d8a2dde",
+      "original_bytes": 6643,
+      "sanitized_bytes": 6643,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_gtfs-et-siri-du-reseau-ginko-besancon-lignes-urbaines-et-periurbaines.json.gz",
+      "original_sha256": "af329ac2474ae82ec816e2558a76ef2f36fec807bee7c8bf4628a58b2597f99d",
+      "sanitized_sha256": "af329ac2474ae82ec816e2558a76ef2f36fec807bee7c8bf4628a58b2597f99d",
+      "original_bytes": 59589,
+      "sanitized_bytes": 59589,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_gtfs-netex-et-gtfs-rt-reseau-tao-orleans-metropole.json.gz",
+      "original_sha256": "f2638fea892e77dc513b306a770f704b56da4724a79a83d2d87029e94dd2f75f",
+      "sanitized_sha256": "f2638fea892e77dc513b306a770f704b56da4724a79a83d2d87029e94dd2f75f",
+      "original_bytes": 2144099,
+      "sanitized_bytes": 2144099,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_horaires-ave-espagne-france.json.gz",
+      "original_sha256": "b03cd5268ee7852325371474ad1199b0866d5cf9e8955c9f3fefd4f3419429f2",
+      "sanitized_sha256": "b03cd5268ee7852325371474ad1199b0866d5cf9e8955c9f3fefd4f3419429f2",
+      "original_bytes": 3081,
+      "sanitized_bytes": 3081,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_horaires-des-trains-trenitalia-france.json.gz",
+      "original_sha256": "b515ec71214acab445e73be3b99af3929aad366426ab4fee2543aa5c0cbff428",
+      "sanitized_sha256": "b515ec71214acab445e73be3b99af3929aad366426ab4fee2543aa5c0cbff428",
+      "original_bytes": 3888,
+      "sanitized_bytes": 3888,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_horaires-du-reseau-stas.json.gz",
+      "original_sha256": "2228785714cbcb60e001e6341c03cf9ac3e9cfbd6dd3e96e916c538ddff988b4",
+      "sanitized_sha256": "2228785714cbcb60e001e6341c03cf9ac3e9cfbd6dd3e96e916c538ddff988b4",
+      "original_bytes": 17552,
+      "sanitized_bytes": 17552,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_horaires-sncf.json.gz",
+      "original_sha256": "f25cc91e9a6d137a6e4430cbb157bc2aa0b23dae88575549357327fac8871653",
+      "sanitized_sha256": "f25cc91e9a6d137a6e4430cbb157bc2aa0b23dae88575549357327fac8871653",
+      "original_bytes": 537542,
+      "sanitized_bytes": 537542,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_horaires-theoriques-du-reseau-tag.json.gz",
+      "original_sha256": "42fb5836878d2dbbfaa79dc9d28a258c80cd7373664dcfb46aea2f5f516ae799",
+      "sanitized_sha256": "42fb5836878d2dbbfaa79dc9d28a258c80cd7373664dcfb46aea2f5f516ae799",
+      "original_bytes": 204909,
+      "sanitized_bytes": 204909,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_horaires-theoriques-et-temps-reel-des-bus-et-tramways-circulant-sur-le-territoire-de-brest-metropole.json.gz",
+      "original_sha256": "359814007f295db6ae32055599bfd035840d3e03b624526f0cb0c1ec20981ab6",
+      "sanitized_sha256": "359814007f295db6ae32055599bfd035840d3e03b624526f0cb0c1ec20981ab6",
+      "original_bytes": 22632,
+      "sanitized_bytes": 22632,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_ilevia-localisation-des-arrets-bus-metro-et-tram-gtfs.json.gz",
+      "original_sha256": "56719d00f9b991d13e758a25cced39e7692485dadd05ee52ad94cb1d230c7e6d",
+      "sanitized_sha256": "56719d00f9b991d13e758a25cced39e7692485dadd05ee52ad94cb1d230c7e6d",
+      "original_bytes": 11985,
+      "sanitized_bytes": 11985,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_jeu-de-donnee-spl-estival-2025--83774.json.gz",
+      "original_sha256": "cb7dc2752ded4d1bbe3d2d297297b4d58b115029d0b5c0b022432eb32a92dca8",
+      "sanitized_sha256": "cb7dc2752ded4d1bbe3d2d297297b4d58b115029d0b5c0b022432eb32a92dca8",
+      "original_bytes": 60940,
+      "sanitized_bytes": 60940,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_lignes-des-reseaux-transport-zou-provence-alpes-cote-d-azur-express-3-3.json.gz",
+      "original_sha256": "ab4788e23ef6f5b73db191275e0bedbbbed0053d8861d3e2ac9c066afc6adf18",
+      "sanitized_sha256": "ab4788e23ef6f5b73db191275e0bedbbbed0053d8861d3e2ac9c066afc6adf18",
+      "original_bytes": 2912395,
+      "sanitized_bytes": 2912395,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_lyon-tcl.json.gz",
+      "original_sha256": "d61bf6b3abbe08f1d585436a1ffecf514b707cf031f71a76c8bae4b29f2df89f",
+      "sanitized_sha256": "d61bf6b3abbe08f1d585436a1ffecf514b707cf031f71a76c8bae4b29f2df89f",
+      "original_bytes": 169817,
+      "sanitized_bytes": 169817,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_offre-de-transport-du-reseau-grand-reims-mobilites-communaute-urbaine-du-grand-reims.json.gz",
+      "original_sha256": "ba885c0b5c5655052a305e155d1e552426cc2204a6266a8f192d912a11763987",
+      "sanitized_sha256": "ba885c0b5c5655052a305e155d1e552426cc2204a6266a8f192d912a11763987",
+      "original_bytes": 4142,
+      "sanitized_bytes": 4142,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_offre-de-transport-solea-et-tram-train-en-format-gtfs-1.json.gz",
+      "original_sha256": "d060e71caf485d0374c55042283c41ffec5c3d25886313f5ae4890b2a65ac543",
+      "sanitized_sha256": "d060e71caf485d0374c55042283c41ffec5c3d25886313f5ae4890b2a65ac543",
+      "original_bytes": 37386,
+      "sanitized_bytes": 37386,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_offres-de-services-bus-tram-et-scolaire-au-format-gtfs-netex-gtfs-rt-siri-lite.json.gz",
+      "original_sha256": "4a24b6a751a289aad4b96d2ebb9debd7e159c69e02a8fc6a4e49ef8c1ff4c6eb",
+      "sanitized_sha256": "4a24b6a751a289aad4b96d2ebb9debd7e159c69e02a8fc6a4e49ef8c1ff4c6eb",
+      "original_bytes": 566129,
+      "sanitized_bytes": 566129,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_r-seau-urbain-T2C-6d1c277ed679.json.gz",
+      "original_sha256": "ce162d40e85075b77f6f0a5515f1dd3ef269f76821334dd98b3e1e4e3275cf1c",
+      "sanitized_sha256": "ce162d40e85075b77f6f0a5515f1dd3ef269f76821334dd98b3e1e4e3275cf1c",
+      "original_bytes": 122100,
+      "sanitized_bytes": 122100,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_reseau-de-transport-en-commun-lia-gtfs-siri.json.gz",
+      "original_sha256": "3dcbf5948cc72d407bf159534eabf1192ca05158ab7f347fa3e56bae25fa4781",
+      "sanitized_sha256": "3dcbf5948cc72d407bf159534eabf1192ca05158ab7f347fa3e56bae25fa4781",
+      "original_bytes": 5318,
+      "sanitized_bytes": 5318,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_reseau-orizo-grand-avignon.json.gz",
+      "original_sha256": "899a37eacb63a74532680585f3c112a139253d4f505623174294d6020bb4e692",
+      "sanitized_sha256": "899a37eacb63a74532680585f3c112a139253d4f505623174294d6020bb4e692",
+      "original_bytes": 3242,
+      "sanitized_bytes": 3242,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_reseau-urbain-STAR.json.gz",
+      "original_sha256": "7887aa8c840465cf7e0ef4810912e0b8607f0babd25bc7c07947ce8726589a3b",
+      "sanitized_sha256": "7887aa8c840465cf7e0ef4810912e0b8607f0babd25bc7c07947ce8726589a3b",
+      "original_bytes": 30751,
+      "sanitized_bytes": 30751,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_reseaux-de-transports-en-commun-de-la-metropole-daix-marseille-provence-et-des-bouches-du-rhone--39589.json.gz",
+      "original_sha256": "62a1de0f9d560d023cde67d031b90e348a6786eb42f0daa3d0c10c80aca69e9b",
+      "sanitized_sha256": "62a1de0f9d560d023cde67d031b90e348a6786eb42f0daa3d0c10c80aca69e9b",
+      "original_bytes": 80533,
+      "sanitized_bytes": 80533,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_thonon-agglomeration-donnees-gtfs.json.gz",
+      "original_sha256": "9f379b82fe7edc982a0413c3e659e0e39b78f29edcfe9575386f6c02c429ecfb",
+      "sanitized_sha256": "9f379b82fe7edc982a0413c3e659e0e39b78f29edcfe9575386f6c02c429ecfb",
+      "original_bytes": 3088,
+      "sanitized_bytes": 3088,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_tisseo-reseau-transport-urbain-toulousain.json.gz",
+      "original_sha256": "c637c064340f17bf47d3adca78449d21bf9a478dbea8351b8ae97be7fef81108",
+      "sanitized_sha256": "c637c064340f17bf47d3adca78449d21bf9a478dbea8351b8ae97be7fef81108",
+      "original_bytes": 232997,
+      "sanitized_bytes": 232997,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_trains-express-regionaux-zou-en-provence-alpes-cote-d-azur.json.gz",
+      "original_sha256": "998393a5ecec39cd3618b4086f282c5be458b001288f41a6d98ba80ca1efb0d3",
+      "sanitized_sha256": "998393a5ecec39cd3618b4086f282c5be458b001288f41a6d98ba80ca1efb0d3",
+      "original_bytes": 2825422,
+      "sanitized_bytes": 2825422,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_yceo-arrets-horaires-et-lignes-urbaines-et-scolaires-gtfs-1.json.gz",
+      "original_sha256": "48c90594ceac95d927e90e62ad43bba25e2d6b5fbc480bf0534f22e6e888ae6c",
+      "sanitized_sha256": "48c90594ceac95d927e90e62ad43bba25e2d6b5fbc480bf0534f22e6e888ae6c",
+      "original_bytes": 24131,
+      "sanitized_bytes": 24131,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/fr_zou.json.gz",
+      "original_sha256": "b3e51680597e72a707129ee2e908db8c962972309d15a6b204bde2df10e634b0",
+      "sanitized_sha256": "b3e51680597e72a707129ee2e908db8c962972309d15a6b204bde2df10e634b0",
+      "original_bytes": 2899,
+      "sanitized_bytes": 2899,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/ge_georgian-railway.json.gz",
+      "original_sha256": "ef7699f78e8a1dd77377b6cc6e5d1bbb6daac5010e28fd0384a682da687c5c8f",
+      "sanitized_sha256": "ef7699f78e8a1dd77377b6cc6e5d1bbb6daac5010e28fd0384a682da687c5c8f",
+      "original_bytes": 1609275,
+      "sanitized_bytes": 1609275,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/hk_Hong-Kong-Transit.json.gz",
+      "original_sha256": "18f5874e40aeacb580f7a26c3113e8200cc932e3b7a780c00674987bae27c409",
+      "sanitized_sha256": "18f5874e40aeacb580f7a26c3113e8200cc932e3b7a780c00674987bae27c409",
+      "original_bytes": 397259,
+      "sanitized_bytes": 397259,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/hu_mav.json.gz",
+      "original_sha256": "a6a0f1c6ddf4e6763080bce19c4147159d0ccb0959e7151c888b46ce2b6ca220",
+      "sanitized_sha256": "a6a0f1c6ddf4e6763080bce19c4147159d0ccb0959e7151c888b46ce2b6ca220",
+      "original_bytes": 1072708,
+      "sanitized_bytes": 1072708,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/hu_szkt.json.gz",
+      "original_sha256": "32f724eb68303819e85e5f9db0239b62e2fe1250472eec7e657ffb0231e92b27",
+      "sanitized_sha256": "32f724eb68303819e85e5f9db0239b62e2fe1250472eec7e657ffb0231e92b27",
+      "original_bytes": 130085,
+      "sanitized_bytes": 130085,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/it_Campania-EAV.json.gz",
+      "original_sha256": "e0c387dced049efc3f4f59bc3d2e91b138a892b931903a2e472bcc31349a1ed3",
+      "sanitized_sha256": "e0c387dced049efc3f4f59bc3d2e91b138a892b931903a2e472bcc31349a1ed3",
+      "original_bytes": 17696,
+      "sanitized_bytes": 17696,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/it_Emilia-Romagna-TPER-BLQ-Airport.json.gz",
+      "original_sha256": "2291b68eb7f92c23eee1ea1f1d6e7affc97bdef4bba980d7037748df0d156f9d",
+      "sanitized_sha256": "2291b68eb7f92c23eee1ea1f1d6e7affc97bdef4bba980d7037748df0d156f9d",
+      "original_bytes": 4821,
+      "sanitized_bytes": 4821,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/it_Lombardia-Trenord.json.gz",
+      "original_sha256": "9ed19bb54e827f117900bd3c8d815d17bafe0d688a1c2a5231a8dcccfd32c00b",
+      "sanitized_sha256": "9ed19bb54e827f117900bd3c8d815d17bafe0d688a1c2a5231a8dcccfd32c00b",
+      "original_bytes": 74026,
+      "sanitized_bytes": 74026,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/it_Piemonte-Gruppo-Torinese-Trasporti.json.gz",
+      "original_sha256": "e22a6e3003e297fbdde90cb80cf5a277219b6e718a0f58414ec1fae7ad26690b",
+      "sanitized_sha256": "e22a6e3003e297fbdde90cb80cf5a277219b6e718a0f58414ec1fae7ad26690b",
+      "original_bytes": 74554,
+      "sanitized_bytes": 74554,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/it_Piemonte-Trenitalia.json.gz",
+      "original_sha256": "d4957118470bf930eee7acb7c45fbb8de777a868b506777b74b1045e2d2e577b",
+      "sanitized_sha256": "d4957118470bf930eee7acb7c45fbb8de777a868b506777b74b1045e2d2e577b",
+      "original_bytes": 15483,
+      "sanitized_bytes": 15483,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/it_Sicilia-Palermo-AMAT.json.gz",
+      "original_sha256": "aea27ac9e115a0bf5ea931c11acc832a4834cc8fa277cac0e52ca27daf3ad5e3",
+      "sanitized_sha256": "aea27ac9e115a0bf5ea931c11acc832a4834cc8fa277cac0e52ca27daf3ad5e3",
+      "original_bytes": 16889,
+      "sanitized_bytes": 16889,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/it_Toscana-Trenitalia.json.gz",
+      "original_sha256": "ada5135df3bc49a732c9628da8477cc18f9f8a15489570fedbe0a90ca726ffe6",
+      "sanitized_sha256": "ada5135df3bc49a732c9628da8477cc18f9f8a15489570fedbe0a90ca726ffe6",
+      "original_bytes": 56419,
+      "sanitized_bytes": 56419,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/it_Trentino-Extraurbano.json.gz",
+      "original_sha256": "7c76b69e24e31e6b509897093e6a97ba5793451798274ab9c23251907c2a5a54",
+      "sanitized_sha256": "7c76b69e24e31e6b509897093e6a97ba5793451798274ab9c23251907c2a5a54",
+      "original_bytes": 12869,
+      "sanitized_bytes": 12869,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/it_Trentino-Urbano.json.gz",
+      "original_sha256": "48a39bc77f1b2019f5e04b72024bd9fef3cf921be4d8751736d8b40ac7070246",
+      "sanitized_sha256": "48a39bc77f1b2019f5e04b72024bd9fef3cf921be4d8751736d8b40ac7070246",
+      "original_bytes": 1873,
+      "sanitized_bytes": 1873,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/jp_tokyo-rail.json.gz",
+      "original_sha256": "16db03c8f06bacfb2f170a211da7c03dc761389139f0766d0f9d5be4cf107e5a",
+      "sanitized_sha256": "16db03c8f06bacfb2f170a211da7c03dc761389139f0766d0f9d5be4cf107e5a",
+      "original_bytes": 1281840,
+      "sanitized_bytes": 1281840,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/lu_administration-des-transports-publics.json.gz",
+      "original_sha256": "44243a65d5ea13bb956adbd051dbf90d60a72655b79795a2a58b41200a4359b3",
+      "sanitized_sha256": "44243a65d5ea13bb956adbd051dbf90d60a72655b79795a2a58b41200a4359b3",
+      "original_bytes": 1926361,
+      "sanitized_bytes": 1926361,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/ma_oncf.json.gz",
+      "original_sha256": "e804378a8b631c461185e6091e15f6e265c53a5e718afbab90af651343baf2b5",
+      "sanitized_sha256": "e804378a8b631c461185e6091e15f6e265c53a5e718afbab90af651343baf2b5",
+      "original_bytes": 201786,
+      "sanitized_bytes": 201786,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/me_zpcg.json.gz",
+      "original_sha256": "8bbb6314382201b397186c1eb9ffecb1af395bf553b1a74994b324f82d42210d",
+      "sanitized_sha256": "8bbb6314382201b397186c1eb9ffecb1af395bf553b1a74994b324f82d42210d",
+      "original_bytes": 1129756,
+      "sanitized_bytes": 1129756,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/my_ktmb.json.gz",
+      "original_sha256": "deee48145a0d19b7ebd724f4aa1c8b1abc9046211bc5a575775b4c41c007db07",
+      "sanitized_sha256": "deee48145a0d19b7ebd724f4aa1c8b1abc9046211bc5a575775b4c41c007db07",
+      "original_bytes": 15500,
+      "sanitized_bytes": 15500,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/my_rail-kl.json.gz",
+      "original_sha256": "bd69bb460f47b82f352f63b6055352c2c2b731cb56b2342c1347ce77bab4d8e0",
+      "sanitized_sha256": "bd69bb460f47b82f352f63b6055352c2c2b731cb56b2342c1347ce77bab4d8e0",
+      "original_bytes": 165391,
+      "sanitized_bytes": 165391,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/pl_--d-fc9cc9c3d302.json.gz",
+      "original_sha256": "8a7ca16790899012bdeae9fb3a2d1e23ed736c0ff5524aa35b0a6c241b84d59b",
+      "sanitized_sha256": "8a7ca16790899012bdeae9fb3a2d1e23ed736c0ff5524aa35b0a6c241b84d59b",
+      "original_bytes": 463456,
+      "sanitized_bytes": 463456,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/pl_Bydgoszcz.json.gz",
+      "original_sha256": "e700b2123667300412ea9f7f23495d866a586f8edeefe60d83b60122965e9d3f",
+      "sanitized_sha256": "e700b2123667300412ea9f7f23495d866a586f8edeefe60d83b60122965e9d3f",
+      "original_bytes": 22017,
+      "sanitized_bytes": 22017,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/pl_Cz-stochowa-c320cd902162.json.gz",
+      "original_sha256": "badade905a49124585e5dcc9ebed8ee1aad3b4c7d5af89a977a89be7e4ed59f0",
+      "sanitized_sha256": "badade905a49124585e5dcc9ebed8ee1aad3b4c7d5af89a977a89be7e4ed59f0",
+      "original_bytes": 55259,
+      "sanitized_bytes": 55259,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/pl_Elbl-g-5a11725a6f4f.json.gz",
+      "original_sha256": "4e894a39fd161af9beabc00fc84e6f9f775702220d1500f46e12280d2b261e7e",
+      "sanitized_sha256": "4e894a39fd161af9beabc00fc84e6f9f775702220d1500f46e12280d2b261e7e",
+      "original_bytes": 34210,
+      "sanitized_bytes": 34210,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/pl_Gda-sk-97391932cbf6.json.gz",
+      "original_sha256": "53706e182b5337a877d69711514d8f935b8d95db6ceb312955483905b94e274d",
+      "sanitized_sha256": "53706e182b5337a877d69711514d8f935b8d95db6ceb312955483905b94e274d",
+      "original_bytes": 212413,
+      "sanitized_bytes": 212413,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/pl_Gorz-w-Wielkopolski-89b75a6bc4ec.json.gz",
+      "original_sha256": "254f030405a92c5b5b5f44c09298f6619bf0a27481f9fc7fb61534a5eab2550e",
+      "sanitized_sha256": "254f030405a92c5b5b5f44c09298f6619bf0a27481f9fc7fb61534a5eab2550e",
+      "original_bytes": 28639,
+      "sanitized_bytes": 28639,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/pl_MPK-Wroc-aw-3f06d61a5a8c.json.gz",
+      "original_sha256": "63cf2512985f1e9fffc684b6de20b5e2edb850d0b92111750b78bc3c33429cae",
+      "sanitized_sha256": "63cf2512985f1e9fffc684b6de20b5e2edb850d0b92111750b78bc3c33429cae",
+      "original_bytes": 932544,
+      "sanitized_bytes": 932544,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/pl_Olsztyn.json.gz",
+      "original_sha256": "7443997bf8689434bf5528abf8afb4c733289feb1324651896ae82a92fcb5dec",
+      "sanitized_sha256": "7443997bf8689434bf5528abf8afb4c733289feb1324651896ae82a92fcb5dec",
+      "original_bytes": 56031,
+      "sanitized_bytes": 56031,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/pl_PKP-Intercity-Germany.json.gz",
+      "original_sha256": "72ec10399aac46b416d5abb2610230357798f1c228f6a5bc5662109eabbe28b4",
+      "sanitized_sha256": "72ec10399aac46b416d5abb2610230357798f1c228f6a5bc5662109eabbe28b4",
+      "original_bytes": 6704,
+      "sanitized_bytes": 6704,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/pl_Szczecin.json.gz",
+      "original_sha256": "907d8fd922199840bb50caca3e3e594d5ea92f2bd9da6b5adef9ccc9173f2023",
+      "sanitized_sha256": "907d8fd922199840bb50caca3e3e594d5ea92f2bd9da6b5adef9ccc9173f2023",
+      "original_bytes": 404716,
+      "sanitized_bytes": 404716,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/pl_Toru-d9480c71f395.json.gz",
+      "original_sha256": "20f8619a74d15d7dd7a5a9beb471919babbe401306af287c7b73bbbb201a7082",
+      "sanitized_sha256": "20f8619a74d15d7dd7a5a9beb471919babbe401306af287c7b73bbbb201a7082",
+      "original_bytes": 87318,
+      "sanitized_bytes": 87318,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/pl_TransportGZM.json.gz",
+      "original_sha256": "59d15d67e789c378f8def989d4f3fb4549376ec15af783f515887b43eaa969a6",
+      "sanitized_sha256": "59d15d67e789c378f8def989d4f3fb4549376ec15af783f515887b43eaa969a6",
+      "original_bytes": 562791,
+      "sanitized_bytes": 562791,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/pl_Warszawa.json.gz",
+      "original_sha256": "f78f26b97fbd2d41f404a192f69a093f416c29b3545b2d321865ee9161f1146a",
+      "sanitized_sha256": "f78f26b97fbd2d41f404a192f69a093f416c29b3545b2d321865ee9161f1146a",
+      "original_bytes": 1049889,
+      "sanitized_bytes": 1049889,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/pl_Warszawska-Kolej-Dojazdowa.json.gz",
+      "original_sha256": "f08119fa3c4cb28816261a720dd04d6fbe3a39eb916fa4e9f289f74887da2076",
+      "sanitized_sha256": "f08119fa3c4cb28816261a720dd04d6fbe3a39eb916fa4e9f289f74887da2076",
+      "original_bytes": 12602,
+      "sanitized_bytes": 12602,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/pt_Metro-Lisboa.json.gz",
+      "original_sha256": "9fe6d7efd6d99ee9af808a71a4d8d3e4d974d16b4ce4d271e60789d0b9f9bc67",
+      "sanitized_sha256": "9fe6d7efd6d99ee9af808a71a4d8d3e4d974d16b4ce4d271e60789d0b9f9bc67",
+      "original_bytes": 5786,
+      "sanitized_bytes": 5786,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/pt_Metro-Porto.json.gz",
+      "original_sha256": "d70e70df618ed9a3efb55360a2902bf80af46d66987beda451edbe9602373d6b",
+      "sanitized_sha256": "d70e70df618ed9a3efb55360a2902bf80af46d66987beda451edbe9602373d6b",
+      "original_bytes": 13614,
+      "sanitized_bytes": 13614,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/ro_Bucuresti-Ilfov.json.gz",
+      "original_sha256": "2d1b8afb97ad6a2e240bb369eadb8252558ae2e6097d87033b4c6f1553960fca",
+      "sanitized_sha256": "2d1b8afb97ad6a2e240bb369eadb8252558ae2e6097d87033b4c6f1553960fca",
+      "original_bytes": 173752,
+      "sanitized_bytes": 173752,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/ro_Cluj-Napoca.json.gz",
+      "original_sha256": "b831726430b065fc91c794813ee47c7516012fca269c97a8294862abfc176e76",
+      "sanitized_sha256": "b831726430b065fc91c794813ee47c7516012fca269c97a8294862abfc176e76",
+      "original_bytes": 79272,
+      "sanitized_bytes": 79272,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/ro_Ia-i-ac584bc45d3c.json.gz",
+      "original_sha256": "403b3293e4f1bddb8a49654cae357f2a9ce86dd1214d47a01d8b4191da7ec050",
+      "sanitized_sha256": "403b3293e4f1bddb8a49654cae357f2a9ce86dd1214d47a01d8b4191da7ec050",
+      "original_bytes": 128199,
+      "sanitized_bytes": 128199,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/sk_Bratislava.json.gz",
+      "original_sha256": "fa94a5720c18d80aeb5e2c6e0df5c35d052cca390aef9ee6bce62b09a6a67338",
+      "sanitized_sha256": "fa94a5720c18d80aeb5e2c6e0df5c35d052cca390aef9ee6bce62b09a6a67338",
+      "original_bytes": 12661,
+      "sanitized_bytes": 12661,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/ua_kyiv.json.gz",
+      "original_sha256": "a8dc4e9b0aaaf2ca4c32fa14c7e32abef3dd317bdac2ed8eb06816733964e5b6",
+      "sanitized_sha256": "a8dc4e9b0aaaf2ca4c32fa14c7e32abef3dd317bdac2ed8eb06816733964e5b6",
+      "original_bytes": 70330,
+      "sanitized_bytes": 70330,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/ua_odesa.json.gz",
+      "original_sha256": "de2bbf3942a1dbd05091bff2c193f71fc7650d104cb8adfc03bd8a6bfc179c8a",
+      "sanitized_sha256": "de2bbf3942a1dbd05091bff2c193f71fc7650d104cb8adfc03bd8a6bfc179c8a",
+      "original_bytes": 260967,
+      "sanitized_bytes": 260967,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "feeds/us-az_valleymetro.json.gz",
+      "original_sha256": "a9724560497d6b1c25efe226a6b970a1060aeba5137a5881bece804c8cd5aed0",
+      "sanitized_sha256": "3d7229cd2b831a33a196e5f3a1df517933877773c9369ea389170b80f0fecb54",
+      "original_bytes": 49363,
+      "sanitized_bytes": 49326,
+      "removed_query_values": 3,
+      "gzip_recompressed": true
+    },
+    {
+      "path": "feeds/us-ny_MTA-NYCSubway.json.gz",
+      "original_sha256": "c931c17af1be5fb9fc7dec8668f51fff49bbae74790e00465c77a62599380bbf",
+      "sanitized_sha256": "c931c17af1be5fb9fc7dec8668f51fff49bbae74790e00465c77a62599380bbf",
+      "original_bytes": 666369,
+      "sanitized_bytes": 666369,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "inventory-0.json",
+      "original_sha256": "c6ac93eba995e05e85ff8575677e69bc4e27f61812e9b0089e25e7b9b86ed17e",
+      "sanitized_sha256": "5e5925d52a1d667687fe6f8f11e9b5e10595b2f7e0961f5d0e4d47d101e2e563",
+      "original_bytes": 400745,
+      "sanitized_bytes": 400717,
+      "removed_query_values": 2,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "inventory-1.json",
+      "original_sha256": "1b93fe8de7eb832115ff9b750d3537ad545251f244ef6abf9ae9f2168b425cad",
+      "sanitized_sha256": "548c7e004f125c234cde4022a652549be98f9013d2f04c555de62d23420490f7",
+      "original_bytes": 1160597,
+      "sanitized_bytes": 1160536,
+      "removed_query_values": 2,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "inventory-2.json",
+      "original_sha256": "11277448097e273b49844799b384ea2a2a21c424fb2f71164fcca352a88c289b",
+      "sanitized_sha256": "4f2bbe738f6748b3d08cf64ae0d46ad7d50589c8deac9c9b161a9c26e5648a54",
+      "original_bytes": 409647,
+      "sanitized_bytes": 409379,
+      "removed_query_values": 8,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "inventory-3.json",
+      "original_sha256": "a6943ba231d3288f4e30d936471396810a2fafa45ac85cc3ce88d5bb87316fff",
+      "sanitized_sha256": "c96f6dfe57a16eb423e3cb413e77a760d7d0473e9edae28e833e8da2c0b53811",
+      "original_bytes": 333314,
+      "sanitized_bytes": 333249,
+      "removed_query_values": 5,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "inventory-4.json",
+      "original_sha256": "f27e1c1dfa2be8f9ca6047dc607d34a670d120b3752082662187a326f60c97d8",
+      "sanitized_sha256": "ec180f9e607fe7decc8475551a5d58b23c54866bb921bffb37b31cbe50244cec",
+      "original_bytes": 267202,
+      "sanitized_bytes": 267142,
+      "removed_query_values": 1,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "inventory-5.json",
+      "original_sha256": "8c0a7267970fc6d16480face7b8e75689a4f19870de6c062aae24af9f16049aa",
+      "sanitized_sha256": "9d60eb7a7be082a03a301533f6d20746dd7601c7e9671e4f6f268347c2377818",
+      "original_bytes": 422822,
+      "sanitized_bytes": 422781,
+      "removed_query_values": 1,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "inventory-6.json",
+      "original_sha256": "09aa3bc7fa970ee206df5924d2edc75979dae82742191c2344854b1f8645a681",
+      "sanitized_sha256": "f3f2ecea100baeecb0c332fd82f068ea433f89906b3133970196d545e2cb7e40",
+      "original_bytes": 315999,
+      "sanitized_bytes": 315963,
+      "removed_query_values": 1,
+      "gzip_recompressed": false
+    },
+    {
+      "path": "inventory-7.json",
+      "original_sha256": "71a8f3ce78fea0ff24bf82c3e7b1a8b3cd7fa03c9adeb27887aee15048694350",
+      "sanitized_sha256": "71a8f3ce78fea0ff24bf82c3e7b1a8b3cd7fa03c9adeb27887aee15048694350",
+      "original_bytes": 1202742,
+      "sanitized_bytes": 1202742,
+      "removed_query_values": 0,
+      "gzip_recompressed": false
+    }
+  ],
+  "expected_files": [
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-cbd-and-southeast-lr.json.gz",
+      "original_sha256": "f39b2a36d2105fe3d666c147a453d93fb5e1e9e80fedbdd412eda9c692aad40d",
+      "sanitized_sha256": "f39b2a36d2105fe3d666c147a453d93fb5e1e9e80fedbdd412eda9c692aad40d",
+      "bytes": 179915
+    },
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-inner-west-lr.json.gz",
+      "original_sha256": "625bc2bcc009bf357c375c720f9b05a0cb1a0a832cf030039e1eef22e3c1435c",
+      "sanitized_sha256": "625bc2bcc009bf357c375c720f9b05a0cb1a0a832cf030039e1eef22e3c1435c",
+      "bytes": 27430
+    },
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-metro.json.gz",
+      "original_sha256": "14774431524686fce2288ff35bac444d12485103ba760142a4577039cb3ef381",
+      "sanitized_sha256": "14774431524686fce2288ff35bac444d12485103ba760142a4577039cb3ef381",
+      "bytes": 340073
+    },
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-newcastle-lr.json.gz",
+      "original_sha256": "bd749c34a9a938664a0eb5c6e8061eed80f548e412270faaae84fddfd799ad35",
+      "sanitized_sha256": "bd749c34a9a938664a0eb5c6e8061eed80f548e412270faaae84fddfd799ad35",
+      "bytes": 10039
+    },
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-nsw-trains.json.gz",
+      "original_sha256": "8c0e3d76015a1ff1741e0b33a5b0a80c7776b277345cf0631e9f2f3cabda5552",
+      "sanitized_sha256": "8c0e3d76015a1ff1741e0b33a5b0a80c7776b277345cf0631e9f2f3cabda5552",
+      "bytes": 22343
+    },
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-parramatta-lr.json.gz",
+      "original_sha256": "c9b6a15227e040f8d52128c120e9c5bc3a70abc2b2e268a6b09a9c4b953e3ec5",
+      "sanitized_sha256": "c9b6a15227e040f8d52128c120e9c5bc3a70abc2b2e268a6b09a9c4b953e3ec5",
+      "bytes": 20149
+    },
+    {
+      "path": "feeds/au-nsw_Transport-for-New-South-Wales-sydney-trains.json.gz",
+      "original_sha256": "9fe9116d7638f68d69cb1e822541edbcf56156175bb5c4f2c967f2cf7fd45e35",
+      "sanitized_sha256": "9fe9116d7638f68d69cb1e822541edbcf56156175bb5c4f2c967f2cf7fd45e35",
+      "bytes": 166515
+    },
+    {
+      "path": "feeds/au-vic_Transport-Victoria-interstate.json.gz",
+      "original_sha256": "a4819bf23c6cc0a2aa99f4a950724ee4112fdd7dbe751a904b11e778581e6a73",
+      "sanitized_sha256": "a4819bf23c6cc0a2aa99f4a950724ee4112fdd7dbe751a904b11e778581e6a73",
+      "bytes": 147596
+    },
+    {
+      "path": "feeds/au-vic_Transport-Victoria-metro-trains.json.gz",
+      "original_sha256": "5235c3a213523abc8bdc52de6ec514a41c9c5fe78f6ebcab8c4a96f11990a0d9",
+      "sanitized_sha256": "5235c3a213523abc8bdc52de6ec514a41c9c5fe78f6ebcab8c4a96f11990a0d9",
+      "bytes": 1003990
+    },
+    {
+      "path": "feeds/au-vic_Transport-Victoria-metro-trams.json.gz",
+      "original_sha256": "bd1a708277448ea18e2bf182f0b23f712720d88276365801ef604b00ea884844",
+      "sanitized_sha256": "bd1a708277448ea18e2bf182f0b23f712720d88276365801ef604b00ea884844",
+      "bytes": 528023
+    },
+    {
+      "path": "feeds/au-vic_Transport-Victoria-regional-trains.json.gz",
+      "original_sha256": "b4986487fa2fd3bb955d1f0c7735a8848a7d04f0e37b1514f371abd345454c8e",
+      "sanitized_sha256": "b4986487fa2fd3bb955d1f0c7735a8848a7d04f0e37b1514f371abd345454c8e",
+      "bytes": 366935
+    },
+    {
+      "path": "feeds/bg_sofia.json.gz",
+      "original_sha256": "46491b15f23102c1ee433be09ed7393b7f17f5335022b4e36b2dbe02a462dfcb",
+      "sanitized_sha256": "46491b15f23102c1ee433be09ed7393b7f17f5335022b4e36b2dbe02a462dfcb",
+      "bytes": 484716
+    },
+    {
+      "path": "feeds/br_sao-paulo.json.gz",
+      "original_sha256": "28ba3c21a7d637ac6603a3ba890d0440755bda02b468699b8d59b54d3e713564",
+      "sanitized_sha256": "28ba3c21a7d637ac6603a3ba890d0440755bda02b468699b8d59b54d3e713564",
+      "bytes": 189588
+    },
+    {
+      "path": "feeds/cz_IDS-JMK.json.gz",
+      "original_sha256": "614d72513af866d636ed602fde0135ab7282d504a101fea7f80712cb141e0e9c",
+      "sanitized_sha256": "614d72513af866d636ed602fde0135ab7282d504a101fea7f80712cb141e0e9c",
+      "bytes": 71709
+    },
+    {
+      "path": "feeds/cz_JDF-merged.json.gz",
+      "original_sha256": "47538167344dcbed2c4fe99b2407ba4e6c7a5d4a85a111d8e52b21439ed468a9",
+      "sanitized_sha256": "47538167344dcbed2c4fe99b2407ba4e6c7a5d4a85a111d8e52b21439ed468a9",
+      "bytes": 42029
+    },
+    {
+      "path": "feeds/cz_PMDP.json.gz",
+      "original_sha256": "762eac8bffa244b1c8408fc5ad423210a19a7491df945ab75ce61faed841f544",
+      "sanitized_sha256": "762eac8bffa244b1c8408fc5ad423210a19a7491df945ab75ce61faed841f544",
+      "bytes": 12248
+    },
+    {
+      "path": "feeds/ee_elron.json.gz",
+      "original_sha256": "02d0c7e1b3012a889fe00117b8a5fe19e0bb7d3d42d9b510391b473d699b41ca",
+      "sanitized_sha256": "02d0c7e1b3012a889fe00117b8a5fe19e0bb7d3d42d9b510391b473d699b41ca",
+      "bytes": 717322
+    },
+    {
+      "path": "feeds/ee_tallinn.json.gz",
+      "original_sha256": "b1a5eafc2175d80fe0ea07761b51de9c136748efe028ec0dda774eb1b82b5eee",
+      "sanitized_sha256": "b1a5eafc2175d80fe0ea07761b51de9c136748efe028ec0dda774eb1b82b5eee",
+      "bytes": 89522
+    },
+    {
+      "path": "feeds/es_Cercan-as-Renfe-08947ebad1d6.json.gz",
+      "original_sha256": "028b00c56026d0503ab07f09202e774b4c2c1b76f8043f8f42e9ac5e74887d81",
+      "sanitized_sha256": "028b00c56026d0503ab07f09202e774b4c2c1b76f8043f8f42e9ac5e74887d81",
+      "bytes": 77361
+    },
+    {
+      "path": "feeds/es_Euskotren.json.gz",
+      "original_sha256": "4f3098390da1a9dca3f6626f2e07cd1f7a1d187d04c21743d16206d34b298c5b",
+      "sanitized_sha256": "4f3098390da1a9dca3f6626f2e07cd1f7a1d187d04c21743d16206d34b298c5b",
+      "bytes": 188394
+    },
+    {
+      "path": "feeds/es_Funicular-de-Artxanda.json.gz",
+      "original_sha256": "78b7c01646db16ec87222eaa82c657e731d88ce883ea98e81a23971d7791ac76",
+      "sanitized_sha256": "78b7c01646db16ec87222eaa82c657e731d88ce883ea98e81a23971d7791ac76",
+      "bytes": 3495
+    },
+    {
+      "path": "feeds/es_Metro-Bilbao.json.gz",
+      "original_sha256": "4e15f85a700b1258be27abccb66355a35ad282b495699ecfd1ff3bdf77220cdf",
+      "sanitized_sha256": "4e15f85a700b1258be27abccb66355a35ad282b495699ecfd1ff3bdf77220cdf",
+      "bytes": 341546
+    },
+    {
+      "path": "feeds/es_Puente-Colgante-Bizkaia.json.gz",
+      "original_sha256": "994b3196d8f95fc3661853f35c8773fe99936978831859b663b33c3fe431d0c1",
+      "sanitized_sha256": "994b3196d8f95fc3661853f35c8773fe99936978831859b663b33c3fe431d0c1",
+      "bytes": 1878
+    },
+    {
+      "path": "feeds/es_RENFE-Larga-Distancia-y-AVE.json.gz",
+      "original_sha256": "7dfd59c8877f8e733301dddef8acfdecec0b5328ed562835df9e87b1c8605c47",
+      "sanitized_sha256": "7dfd59c8877f8e733301dddef8acfdecec0b5328ed562835df9e87b1c8605c47",
+      "bytes": 98841
+    },
+    {
+      "path": "feeds/es_Transporte-p-blico-de-la-Isla-de-Mallorca-abd9b80431fa.json.gz",
+      "original_sha256": "d3b16d11854b145b56677082a6f059f3427f10c3adcea6e08b1201a0447536ac",
+      "sanitized_sha256": "d3b16d11854b145b56677082a6f059f3427f10c3adcea6e08b1201a0447536ac",
+      "bytes": 71869
+    },
+    {
+      "path": "feeds/et_addisababatransportall.json.gz",
+      "original_sha256": "57e5ede3bd9564bf1246641a3ef49632ed394fc2e6a7c460b23af22a5fafa8f7",
+      "sanitized_sha256": "57e5ede3bd9564bf1246641a3ef49632ed394fc2e6a7c460b23af22a5fafa8f7",
+      "bytes": 38619
+    },
+    {
+      "path": "feeds/eu_european-sleeper.json.gz",
+      "original_sha256": "7a212fb6965d9d495d7a1da03118bc779ea87d0462fb03393169e00b916efcd7",
+      "sanitized_sha256": "7a212fb6965d9d495d7a1da03118bc779ea87d0462fb03393169e00b916efcd7",
+      "bytes": 2089098
+    },
+    {
+      "path": "feeds/eu_flixbus.json.gz",
+      "original_sha256": "a74f82c757e3cf343400fef69feed4e778e2f70751b056f9091432e228927e8a",
+      "sanitized_sha256": "a74f82c757e3cf343400fef69feed4e778e2f70751b056f9091432e228927e8a",
+      "bytes": 6686
+    },
+    {
+      "path": "feeds/eu_optimaexpress.json.gz",
+      "original_sha256": "ee5b4fa0d9365c5553f64255f12fbfa596341912dab85fa8d3f998c7deb8875c",
+      "sanitized_sha256": "ee5b4fa0d9365c5553f64255f12fbfa596341912dab85fa8d3f998c7deb8875c",
+      "bytes": 2270
+    },
+    {
+      "path": "feeds/fr_angers-loire-metropole-reseau-irigo-gtfs-gtfs-rt-siri.json.gz",
+      "original_sha256": "ae137f1a446d926470b48419c917a027b17a488263327f077fc856e46b83e884",
+      "sanitized_sha256": "ae137f1a446d926470b48419c917a027b17a488263327f077fc856e46b83e884",
+      "bytes": 53483
+    },
+    {
+      "path": "feeds/fr_base-de-donnees-multimodale-des-reseaux-de-transport-public-normands.json.gz",
+      "original_sha256": "26dd8f7d7c2a69aa007716800c8db960723d63e880bce2aedb05fe5954065574",
+      "sanitized_sha256": "26dd8f7d7c2a69aa007716800c8db960723d63e880bce2aedb05fe5954065574",
+      "bytes": 15211
+    },
+    {
+      "path": "feeds/fr_breizhgo-ter.json.gz",
+      "original_sha256": "e6a9f8bbdc943679154216ee211d26e336bc1c0a2b7d045ac69edf75fef7d890",
+      "sanitized_sha256": "e6a9f8bbdc943679154216ee211d26e336bc1c0a2b7d045ac69edf75fef7d890",
+      "bytes": 64853
+    },
+    {
+      "path": "feeds/fr_caen-la-mer-reseau-twisto-gtfs-siri.json.gz",
+      "original_sha256": "1f1c4a6f96734a255e10c7d1bb721e83149a273c99154c4e94b34a167bea3325",
+      "sanitized_sha256": "1f1c4a6f96734a255e10c7d1bb721e83149a273c99154c4e94b34a167bea3325",
+      "bytes": 177105
+    },
+    {
+      "path": "feeds/fr_citalis-telepherique-papang.json.gz",
+      "original_sha256": "011c1ea6b5db558c4dbdd4ada35d2890804ba20a7ae1880772057ad52eaae701",
+      "sanitized_sha256": "011c1ea6b5db558c4dbdd4ada35d2890804ba20a7ae1880772057ad52eaae701",
+      "bytes": 2038
+    },
+    {
+      "path": "feeds/fr_donnees-statiques-et-dynamiques-du-reseau-de-transport-lignes-dazur.json.gz",
+      "original_sha256": "351408a43096979ac97ad4148b8779a677b4b3e3fc9295872410ced5a808c214",
+      "sanitized_sha256": "351408a43096979ac97ad4148b8779a677b4b3e3fc9295872410ced5a808c214",
+      "bytes": 50239
+    },
+    {
+      "path": "feeds/fr_donnees-statiques-et-temps-reel-du-reseau-astuce-metropole-rouen-normandie.json.gz",
+      "original_sha256": "140d8d14916c3a2e48293ff1ded4817f07199c659458cd0d786290a8f0afb608",
+      "sanitized_sha256": "140d8d14916c3a2e48293ff1ded4817f07199c659458cd0d786290a8f0afb608",
+      "bytes": 6185
+    },
+    {
+      "path": "feeds/fr_donnees-theoriques-gtfs-et-temps-reel-siri-lite-du-reseau-cts.json.gz",
+      "original_sha256": "3d55d10e50dd0df9ac32cce4232e0d4e8bd747abc0cb855f571ef9508bf03a25",
+      "sanitized_sha256": "3d55d10e50dd0df9ac32cce4232e0d4e8bd747abc0cb855f571ef9508bf03a25",
+      "bytes": 21347
+    },
+    {
+      "path": "feeds/fr_eurostar-gtfs-plan-de-transport-et-temps-reel.json.gz",
+      "original_sha256": "669e8f08b4a19d94e807672c3e2174b13591f01a3cff099c2de26b104791657e",
+      "sanitized_sha256": "669e8f08b4a19d94e807672c3e2174b13591f01a3cff099c2de26b104791657e",
+      "bytes": 859939
+    },
+    {
+      "path": "feeds/fr_fil-bleu-syndicat-des-mobilites-gtfs-gtfs-rt.json.gz",
+      "original_sha256": "66257292e09b9f0096f1d563b4916b499c1648d486fcf4f9f6cbab90f9069a83",
+      "sanitized_sha256": "66257292e09b9f0096f1d563b4916b499c1648d486fcf4f9f6cbab90f9069a83",
+      "bytes": 71858
+    },
+    {
+      "path": "feeds/fr_fr-200052264-t0014-0000-1.json.gz",
+      "original_sha256": "08427d2b79b1ce340793b56be578250b681076194cd251d912bb5f98c63e4d6a",
+      "sanitized_sha256": "08427d2b79b1ce340793b56be578250b681076194cd251d912bb5f98c63e4d6a",
+      "bytes": 68922
+    },
+    {
+      "path": "feeds/fr_fr-200052264-t0017-0000-1.json.gz",
+      "original_sha256": "eb2e6ba5163b0ae2f5a4b2f4451df825bff1cd2ac9a2cbbfce49109e2a5b8f93",
+      "sanitized_sha256": "eb2e6ba5163b0ae2f5a4b2f4451df825bff1cd2ac9a2cbbfce49109e2a5b8f93",
+      "bytes": 3760
+    },
+    {
+      "path": "feeds/fr_gtfs-diviamobilites.json.gz",
+      "original_sha256": "506eeba61edd3ab9a3a6a8fc8c5a1fb6bf889f509155761a34415a5d19146627",
+      "sanitized_sha256": "506eeba61edd3ab9a3a6a8fc8c5a1fb6bf889f509155761a34415a5d19146627",
+      "bytes": 22078
+    },
+    {
+      "path": "feeds/fr_gtfs-du-reseau-des-transports-bus-et-tramway-setram-circulant-sur-le-territoire-le-mans-metropole.json.gz",
+      "original_sha256": "d02126192d8d3c03d49cf5d79a9bcad12ece782f81ac73aaff549ee49d8a2dde",
+      "sanitized_sha256": "d02126192d8d3c03d49cf5d79a9bcad12ece782f81ac73aaff549ee49d8a2dde",
+      "bytes": 6643
+    },
+    {
+      "path": "feeds/fr_gtfs-et-siri-du-reseau-ginko-besancon-lignes-urbaines-et-periurbaines.json.gz",
+      "original_sha256": "af329ac2474ae82ec816e2558a76ef2f36fec807bee7c8bf4628a58b2597f99d",
+      "sanitized_sha256": "af329ac2474ae82ec816e2558a76ef2f36fec807bee7c8bf4628a58b2597f99d",
+      "bytes": 59589
+    },
+    {
+      "path": "feeds/fr_horaires-ave-espagne-france.json.gz",
+      "original_sha256": "b03cd5268ee7852325371474ad1199b0866d5cf9e8955c9f3fefd4f3419429f2",
+      "sanitized_sha256": "b03cd5268ee7852325371474ad1199b0866d5cf9e8955c9f3fefd4f3419429f2",
+      "bytes": 3081
+    },
+    {
+      "path": "feeds/fr_horaires-des-trains-trenitalia-france.json.gz",
+      "original_sha256": "b515ec71214acab445e73be3b99af3929aad366426ab4fee2543aa5c0cbff428",
+      "sanitized_sha256": "b515ec71214acab445e73be3b99af3929aad366426ab4fee2543aa5c0cbff428",
+      "bytes": 3888
+    },
+    {
+      "path": "feeds/fr_horaires-du-reseau-stas.json.gz",
+      "original_sha256": "2228785714cbcb60e001e6341c03cf9ac3e9cfbd6dd3e96e916c538ddff988b4",
+      "sanitized_sha256": "2228785714cbcb60e001e6341c03cf9ac3e9cfbd6dd3e96e916c538ddff988b4",
+      "bytes": 17552
+    },
+    {
+      "path": "feeds/fr_horaires-sncf.json.gz",
+      "original_sha256": "f25cc91e9a6d137a6e4430cbb157bc2aa0b23dae88575549357327fac8871653",
+      "sanitized_sha256": "f25cc91e9a6d137a6e4430cbb157bc2aa0b23dae88575549357327fac8871653",
+      "bytes": 537542
+    },
+    {
+      "path": "feeds/fr_horaires-theoriques-du-reseau-tag.json.gz",
+      "original_sha256": "42fb5836878d2dbbfaa79dc9d28a258c80cd7373664dcfb46aea2f5f516ae799",
+      "sanitized_sha256": "42fb5836878d2dbbfaa79dc9d28a258c80cd7373664dcfb46aea2f5f516ae799",
+      "bytes": 204909
+    },
+    {
+      "path": "feeds/fr_horaires-theoriques-et-temps-reel-des-bus-et-tramways-circulant-sur-le-territoire-de-brest-metropole.json.gz",
+      "original_sha256": "359814007f295db6ae32055599bfd035840d3e03b624526f0cb0c1ec20981ab6",
+      "sanitized_sha256": "359814007f295db6ae32055599bfd035840d3e03b624526f0cb0c1ec20981ab6",
+      "bytes": 22632
+    },
+    {
+      "path": "feeds/fr_ilevia-localisation-des-arrets-bus-metro-et-tram-gtfs.json.gz",
+      "original_sha256": "56719d00f9b991d13e758a25cced39e7692485dadd05ee52ad94cb1d230c7e6d",
+      "sanitized_sha256": "56719d00f9b991d13e758a25cced39e7692485dadd05ee52ad94cb1d230c7e6d",
+      "bytes": 11985
+    },
+    {
+      "path": "feeds/fr_jeu-de-donnee-spl-estival-2025--83774.json.gz",
+      "original_sha256": "cb7dc2752ded4d1bbe3d2d297297b4d58b115029d0b5c0b022432eb32a92dca8",
+      "sanitized_sha256": "cb7dc2752ded4d1bbe3d2d297297b4d58b115029d0b5c0b022432eb32a92dca8",
+      "bytes": 60940
+    },
+    {
+      "path": "feeds/fr_lignes-des-reseaux-transport-zou-provence-alpes-cote-d-azur-express-3-3.json.gz",
+      "original_sha256": "ab4788e23ef6f5b73db191275e0bedbbbed0053d8861d3e2ac9c066afc6adf18",
+      "sanitized_sha256": "ab4788e23ef6f5b73db191275e0bedbbbed0053d8861d3e2ac9c066afc6adf18",
+      "bytes": 2912395
+    },
+    {
+      "path": "feeds/fr_lyon-tcl.json.gz",
+      "original_sha256": "d61bf6b3abbe08f1d585436a1ffecf514b707cf031f71a76c8bae4b29f2df89f",
+      "sanitized_sha256": "d61bf6b3abbe08f1d585436a1ffecf514b707cf031f71a76c8bae4b29f2df89f",
+      "bytes": 169817
+    },
+    {
+      "path": "feeds/fr_offre-de-transport-du-reseau-grand-reims-mobilites-communaute-urbaine-du-grand-reims.json.gz",
+      "original_sha256": "ba885c0b5c5655052a305e155d1e552426cc2204a6266a8f192d912a11763987",
+      "sanitized_sha256": "ba885c0b5c5655052a305e155d1e552426cc2204a6266a8f192d912a11763987",
+      "bytes": 4142
+    },
+    {
+      "path": "feeds/fr_offre-de-transport-solea-et-tram-train-en-format-gtfs-1.json.gz",
+      "original_sha256": "d060e71caf485d0374c55042283c41ffec5c3d25886313f5ae4890b2a65ac543",
+      "sanitized_sha256": "d060e71caf485d0374c55042283c41ffec5c3d25886313f5ae4890b2a65ac543",
+      "bytes": 37386
+    },
+    {
+      "path": "feeds/fr_offres-de-services-bus-tram-et-scolaire-au-format-gtfs-netex-gtfs-rt-siri-lite.json.gz",
+      "original_sha256": "4a24b6a751a289aad4b96d2ebb9debd7e159c69e02a8fc6a4e49ef8c1ff4c6eb",
+      "sanitized_sha256": "4a24b6a751a289aad4b96d2ebb9debd7e159c69e02a8fc6a4e49ef8c1ff4c6eb",
+      "bytes": 566129
+    },
+    {
+      "path": "feeds/fr_r-seau-urbain-T2C-6d1c277ed679.json.gz",
+      "original_sha256": "ce162d40e85075b77f6f0a5515f1dd3ef269f76821334dd98b3e1e4e3275cf1c",
+      "sanitized_sha256": "ce162d40e85075b77f6f0a5515f1dd3ef269f76821334dd98b3e1e4e3275cf1c",
+      "bytes": 122100
+    },
+    {
+      "path": "feeds/fr_reseau-de-transport-en-commun-lia-gtfs-siri.json.gz",
+      "original_sha256": "3dcbf5948cc72d407bf159534eabf1192ca05158ab7f347fa3e56bae25fa4781",
+      "sanitized_sha256": "3dcbf5948cc72d407bf159534eabf1192ca05158ab7f347fa3e56bae25fa4781",
+      "bytes": 5318
+    },
+    {
+      "path": "feeds/fr_reseau-orizo-grand-avignon.json.gz",
+      "original_sha256": "899a37eacb63a74532680585f3c112a139253d4f505623174294d6020bb4e692",
+      "sanitized_sha256": "899a37eacb63a74532680585f3c112a139253d4f505623174294d6020bb4e692",
+      "bytes": 3242
+    },
+    {
+      "path": "feeds/fr_reseau-urbain-STAR.json.gz",
+      "original_sha256": "7887aa8c840465cf7e0ef4810912e0b8607f0babd25bc7c07947ce8726589a3b",
+      "sanitized_sha256": "7887aa8c840465cf7e0ef4810912e0b8607f0babd25bc7c07947ce8726589a3b",
+      "bytes": 30751
+    },
+    {
+      "path": "feeds/fr_reseaux-de-transports-en-commun-de-la-metropole-daix-marseille-provence-et-des-bouches-du-rhone--39589.json.gz",
+      "original_sha256": "62a1de0f9d560d023cde67d031b90e348a6786eb42f0daa3d0c10c80aca69e9b",
+      "sanitized_sha256": "62a1de0f9d560d023cde67d031b90e348a6786eb42f0daa3d0c10c80aca69e9b",
+      "bytes": 80533
+    },
+    {
+      "path": "feeds/fr_thonon-agglomeration-donnees-gtfs.json.gz",
+      "original_sha256": "9f379b82fe7edc982a0413c3e659e0e39b78f29edcfe9575386f6c02c429ecfb",
+      "sanitized_sha256": "9f379b82fe7edc982a0413c3e659e0e39b78f29edcfe9575386f6c02c429ecfb",
+      "bytes": 3088
+    },
+    {
+      "path": "feeds/fr_tisseo-reseau-transport-urbain-toulousain.json.gz",
+      "original_sha256": "c637c064340f17bf47d3adca78449d21bf9a478dbea8351b8ae97be7fef81108",
+      "sanitized_sha256": "c637c064340f17bf47d3adca78449d21bf9a478dbea8351b8ae97be7fef81108",
+      "bytes": 232997
+    },
+    {
+      "path": "feeds/fr_trains-express-regionaux-zou-en-provence-alpes-cote-d-azur.json.gz",
+      "original_sha256": "998393a5ecec39cd3618b4086f282c5be458b001288f41a6d98ba80ca1efb0d3",
+      "sanitized_sha256": "998393a5ecec39cd3618b4086f282c5be458b001288f41a6d98ba80ca1efb0d3",
+      "bytes": 2825422
+    },
+    {
+      "path": "feeds/fr_yceo-arrets-horaires-et-lignes-urbaines-et-scolaires-gtfs-1.json.gz",
+      "original_sha256": "48c90594ceac95d927e90e62ad43bba25e2d6b5fbc480bf0534f22e6e888ae6c",
+      "sanitized_sha256": "48c90594ceac95d927e90e62ad43bba25e2d6b5fbc480bf0534f22e6e888ae6c",
+      "bytes": 24131
+    },
+    {
+      "path": "feeds/fr_zou.json.gz",
+      "original_sha256": "b3e51680597e72a707129ee2e908db8c962972309d15a6b204bde2df10e634b0",
+      "sanitized_sha256": "b3e51680597e72a707129ee2e908db8c962972309d15a6b204bde2df10e634b0",
+      "bytes": 2899
+    },
+    {
+      "path": "feeds/ge_georgian-railway.json.gz",
+      "original_sha256": "ef7699f78e8a1dd77377b6cc6e5d1bbb6daac5010e28fd0384a682da687c5c8f",
+      "sanitized_sha256": "ef7699f78e8a1dd77377b6cc6e5d1bbb6daac5010e28fd0384a682da687c5c8f",
+      "bytes": 1609275
+    },
+    {
+      "path": "feeds/hk_Hong-Kong-Transit.json.gz",
+      "original_sha256": "18f5874e40aeacb580f7a26c3113e8200cc932e3b7a780c00674987bae27c409",
+      "sanitized_sha256": "18f5874e40aeacb580f7a26c3113e8200cc932e3b7a780c00674987bae27c409",
+      "bytes": 397259
+    },
+    {
+      "path": "feeds/hu_mav.json.gz",
+      "original_sha256": "a6a0f1c6ddf4e6763080bce19c4147159d0ccb0959e7151c888b46ce2b6ca220",
+      "sanitized_sha256": "a6a0f1c6ddf4e6763080bce19c4147159d0ccb0959e7151c888b46ce2b6ca220",
+      "bytes": 1072708
+    },
+    {
+      "path": "feeds/hu_szkt.json.gz",
+      "original_sha256": "32f724eb68303819e85e5f9db0239b62e2fe1250472eec7e657ffb0231e92b27",
+      "sanitized_sha256": "32f724eb68303819e85e5f9db0239b62e2fe1250472eec7e657ffb0231e92b27",
+      "bytes": 130085
+    },
+    {
+      "path": "feeds/it_Campania-EAV.json.gz",
+      "original_sha256": "e0c387dced049efc3f4f59bc3d2e91b138a892b931903a2e472bcc31349a1ed3",
+      "sanitized_sha256": "e0c387dced049efc3f4f59bc3d2e91b138a892b931903a2e472bcc31349a1ed3",
+      "bytes": 17696
+    },
+    {
+      "path": "feeds/it_Emilia-Romagna-TPER-BLQ-Airport.json.gz",
+      "original_sha256": "2291b68eb7f92c23eee1ea1f1d6e7affc97bdef4bba980d7037748df0d156f9d",
+      "sanitized_sha256": "2291b68eb7f92c23eee1ea1f1d6e7affc97bdef4bba980d7037748df0d156f9d",
+      "bytes": 4821
+    },
+    {
+      "path": "feeds/it_Lombardia-Trenord.json.gz",
+      "original_sha256": "9ed19bb54e827f117900bd3c8d815d17bafe0d688a1c2a5231a8dcccfd32c00b",
+      "sanitized_sha256": "9ed19bb54e827f117900bd3c8d815d17bafe0d688a1c2a5231a8dcccfd32c00b",
+      "bytes": 74026
+    },
+    {
+      "path": "feeds/it_Piemonte-Gruppo-Torinese-Trasporti.json.gz",
+      "original_sha256": "e22a6e3003e297fbdde90cb80cf5a277219b6e718a0f58414ec1fae7ad26690b",
+      "sanitized_sha256": "e22a6e3003e297fbdde90cb80cf5a277219b6e718a0f58414ec1fae7ad26690b",
+      "bytes": 74554
+    },
+    {
+      "path": "feeds/it_Sicilia-Palermo-AMAT.json.gz",
+      "original_sha256": "aea27ac9e115a0bf5ea931c11acc832a4834cc8fa277cac0e52ca27daf3ad5e3",
+      "sanitized_sha256": "aea27ac9e115a0bf5ea931c11acc832a4834cc8fa277cac0e52ca27daf3ad5e3",
+      "bytes": 16889
+    },
+    {
+      "path": "feeds/jp_tokyo-rail.json.gz",
+      "original_sha256": "16db03c8f06bacfb2f170a211da7c03dc761389139f0766d0f9d5be4cf107e5a",
+      "sanitized_sha256": "16db03c8f06bacfb2f170a211da7c03dc761389139f0766d0f9d5be4cf107e5a",
+      "bytes": 1281840
+    },
+    {
+      "path": "feeds/lu_administration-des-transports-publics.json.gz",
+      "original_sha256": "44243a65d5ea13bb956adbd051dbf90d60a72655b79795a2a58b41200a4359b3",
+      "sanitized_sha256": "44243a65d5ea13bb956adbd051dbf90d60a72655b79795a2a58b41200a4359b3",
+      "bytes": 1926361
+    },
+    {
+      "path": "feeds/ma_oncf.json.gz",
+      "original_sha256": "e804378a8b631c461185e6091e15f6e265c53a5e718afbab90af651343baf2b5",
+      "sanitized_sha256": "e804378a8b631c461185e6091e15f6e265c53a5e718afbab90af651343baf2b5",
+      "bytes": 201786
+    },
+    {
+      "path": "feeds/me_zpcg.json.gz",
+      "original_sha256": "8bbb6314382201b397186c1eb9ffecb1af395bf553b1a74994b324f82d42210d",
+      "sanitized_sha256": "8bbb6314382201b397186c1eb9ffecb1af395bf553b1a74994b324f82d42210d",
+      "bytes": 1129756
+    },
+    {
+      "path": "feeds/my_ktmb.json.gz",
+      "original_sha256": "deee48145a0d19b7ebd724f4aa1c8b1abc9046211bc5a575775b4c41c007db07",
+      "sanitized_sha256": "deee48145a0d19b7ebd724f4aa1c8b1abc9046211bc5a575775b4c41c007db07",
+      "bytes": 15500
+    },
+    {
+      "path": "feeds/my_rail-kl.json.gz",
+      "original_sha256": "bd69bb460f47b82f352f63b6055352c2c2b731cb56b2342c1347ce77bab4d8e0",
+      "sanitized_sha256": "bd69bb460f47b82f352f63b6055352c2c2b731cb56b2342c1347ce77bab4d8e0",
+      "bytes": 165391
+    },
+    {
+      "path": "feeds/pl_--d-fc9cc9c3d302.json.gz",
+      "original_sha256": "8a7ca16790899012bdeae9fb3a2d1e23ed736c0ff5524aa35b0a6c241b84d59b",
+      "sanitized_sha256": "8a7ca16790899012bdeae9fb3a2d1e23ed736c0ff5524aa35b0a6c241b84d59b",
+      "bytes": 463456
+    },
+    {
+      "path": "feeds/pl_Bydgoszcz.json.gz",
+      "original_sha256": "e700b2123667300412ea9f7f23495d866a586f8edeefe60d83b60122965e9d3f",
+      "sanitized_sha256": "e700b2123667300412ea9f7f23495d866a586f8edeefe60d83b60122965e9d3f",
+      "bytes": 22017
+    },
+    {
+      "path": "feeds/pl_Cz-stochowa-c320cd902162.json.gz",
+      "original_sha256": "badade905a49124585e5dcc9ebed8ee1aad3b4c7d5af89a977a89be7e4ed59f0",
+      "sanitized_sha256": "badade905a49124585e5dcc9ebed8ee1aad3b4c7d5af89a977a89be7e4ed59f0",
+      "bytes": 55259
+    },
+    {
+      "path": "feeds/pl_Elbl-g-5a11725a6f4f.json.gz",
+      "original_sha256": "4e894a39fd161af9beabc00fc84e6f9f775702220d1500f46e12280d2b261e7e",
+      "sanitized_sha256": "4e894a39fd161af9beabc00fc84e6f9f775702220d1500f46e12280d2b261e7e",
+      "bytes": 34210
+    },
+    {
+      "path": "feeds/pl_Gda-sk-97391932cbf6.json.gz",
+      "original_sha256": "53706e182b5337a877d69711514d8f935b8d95db6ceb312955483905b94e274d",
+      "sanitized_sha256": "53706e182b5337a877d69711514d8f935b8d95db6ceb312955483905b94e274d",
+      "bytes": 212413
+    },
+    {
+      "path": "feeds/pl_Gorz-w-Wielkopolski-89b75a6bc4ec.json.gz",
+      "original_sha256": "254f030405a92c5b5b5f44c09298f6619bf0a27481f9fc7fb61534a5eab2550e",
+      "sanitized_sha256": "254f030405a92c5b5b5f44c09298f6619bf0a27481f9fc7fb61534a5eab2550e",
+      "bytes": 28639
+    },
+    {
+      "path": "feeds/pl_MPK-Wroc-aw-3f06d61a5a8c.json.gz",
+      "original_sha256": "63cf2512985f1e9fffc684b6de20b5e2edb850d0b92111750b78bc3c33429cae",
+      "sanitized_sha256": "63cf2512985f1e9fffc684b6de20b5e2edb850d0b92111750b78bc3c33429cae",
+      "bytes": 932544
+    },
+    {
+      "path": "feeds/pl_Olsztyn.json.gz",
+      "original_sha256": "7443997bf8689434bf5528abf8afb4c733289feb1324651896ae82a92fcb5dec",
+      "sanitized_sha256": "7443997bf8689434bf5528abf8afb4c733289feb1324651896ae82a92fcb5dec",
+      "bytes": 56031
+    },
+    {
+      "path": "feeds/pl_PKP-Intercity-Germany.json.gz",
+      "original_sha256": "72ec10399aac46b416d5abb2610230357798f1c228f6a5bc5662109eabbe28b4",
+      "sanitized_sha256": "72ec10399aac46b416d5abb2610230357798f1c228f6a5bc5662109eabbe28b4",
+      "bytes": 6704
+    },
+    {
+      "path": "feeds/pl_Szczecin.json.gz",
+      "original_sha256": "907d8fd922199840bb50caca3e3e594d5ea92f2bd9da6b5adef9ccc9173f2023",
+      "sanitized_sha256": "907d8fd922199840bb50caca3e3e594d5ea92f2bd9da6b5adef9ccc9173f2023",
+      "bytes": 404716
+    },
+    {
+      "path": "feeds/pl_Toru-d9480c71f395.json.gz",
+      "original_sha256": "20f8619a74d15d7dd7a5a9beb471919babbe401306af287c7b73bbbb201a7082",
+      "sanitized_sha256": "20f8619a74d15d7dd7a5a9beb471919babbe401306af287c7b73bbbb201a7082",
+      "bytes": 87318
+    },
+    {
+      "path": "feeds/pl_TransportGZM.json.gz",
+      "original_sha256": "59d15d67e789c378f8def989d4f3fb4549376ec15af783f515887b43eaa969a6",
+      "sanitized_sha256": "59d15d67e789c378f8def989d4f3fb4549376ec15af783f515887b43eaa969a6",
+      "bytes": 562791
+    },
+    {
+      "path": "feeds/pl_Warszawa.json.gz",
+      "original_sha256": "f78f26b97fbd2d41f404a192f69a093f416c29b3545b2d321865ee9161f1146a",
+      "sanitized_sha256": "f78f26b97fbd2d41f404a192f69a093f416c29b3545b2d321865ee9161f1146a",
+      "bytes": 1049889
+    },
+    {
+      "path": "feeds/pl_Warszawska-Kolej-Dojazdowa.json.gz",
+      "original_sha256": "f08119fa3c4cb28816261a720dd04d6fbe3a39eb916fa4e9f289f74887da2076",
+      "sanitized_sha256": "f08119fa3c4cb28816261a720dd04d6fbe3a39eb916fa4e9f289f74887da2076",
+      "bytes": 12602
+    },
+    {
+      "path": "feeds/pt_Metro-Lisboa.json.gz",
+      "original_sha256": "9fe6d7efd6d99ee9af808a71a4d8d3e4d974d16b4ce4d271e60789d0b9f9bc67",
+      "sanitized_sha256": "9fe6d7efd6d99ee9af808a71a4d8d3e4d974d16b4ce4d271e60789d0b9f9bc67",
+      "bytes": 5786
+    },
+    {
+      "path": "feeds/pt_Metro-Porto.json.gz",
+      "original_sha256": "d70e70df618ed9a3efb55360a2902bf80af46d66987beda451edbe9602373d6b",
+      "sanitized_sha256": "d70e70df618ed9a3efb55360a2902bf80af46d66987beda451edbe9602373d6b",
+      "bytes": 13614
+    },
+    {
+      "path": "feeds/ro_Bucuresti-Ilfov.json.gz",
+      "original_sha256": "2d1b8afb97ad6a2e240bb369eadb8252558ae2e6097d87033b4c6f1553960fca",
+      "sanitized_sha256": "2d1b8afb97ad6a2e240bb369eadb8252558ae2e6097d87033b4c6f1553960fca",
+      "bytes": 173752
+    },
+    {
+      "path": "feeds/ro_Cluj-Napoca.json.gz",
+      "original_sha256": "b831726430b065fc91c794813ee47c7516012fca269c97a8294862abfc176e76",
+      "sanitized_sha256": "b831726430b065fc91c794813ee47c7516012fca269c97a8294862abfc176e76",
+      "bytes": 79272
+    },
+    {
+      "path": "feeds/ro_Ia-i-ac584bc45d3c.json.gz",
+      "original_sha256": "403b3293e4f1bddb8a49654cae357f2a9ce86dd1214d47a01d8b4191da7ec050",
+      "sanitized_sha256": "403b3293e4f1bddb8a49654cae357f2a9ce86dd1214d47a01d8b4191da7ec050",
+      "bytes": 128199
+    },
+    {
+      "path": "feeds/sk_Bratislava.json.gz",
+      "original_sha256": "fa94a5720c18d80aeb5e2c6e0df5c35d052cca390aef9ee6bce62b09a6a67338",
+      "sanitized_sha256": "fa94a5720c18d80aeb5e2c6e0df5c35d052cca390aef9ee6bce62b09a6a67338",
+      "bytes": 12661
+    },
+    {
+      "path": "feeds/ua_kyiv.json.gz",
+      "original_sha256": "a8dc4e9b0aaaf2ca4c32fa14c7e32abef3dd317bdac2ed8eb06816733964e5b6",
+      "sanitized_sha256": "a8dc4e9b0aaaf2ca4c32fa14c7e32abef3dd317bdac2ed8eb06816733964e5b6",
+      "bytes": 70330
+    },
+    {
+      "path": "feeds/ua_odesa.json.gz",
+      "original_sha256": "de2bbf3942a1dbd05091bff2c193f71fc7650d104cb8adfc03bd8a6bfc179c8a",
+      "sanitized_sha256": "de2bbf3942a1dbd05091bff2c193f71fc7650d104cb8adfc03bd8a6bfc179c8a",
+      "bytes": 260967
+    },
+    {
+      "path": "feeds/us-az_valleymetro.json.gz",
+      "original_sha256": "a9724560497d6b1c25efe226a6b970a1060aeba5137a5881bece804c8cd5aed0",
+      "sanitized_sha256": "3d7229cd2b831a33a196e5f3a1df517933877773c9369ea389170b80f0fecb54",
+      "bytes": 49326
+    },
+    {
+      "path": "feeds/us-ny_MTA-NYCSubway.json.gz",
+      "original_sha256": "c931c17af1be5fb9fc7dec8668f51fff49bbae74790e00465c77a62599380bbf",
+      "sanitized_sha256": "c931c17af1be5fb9fc7dec8668f51fff49bbae74790e00465c77a62599380bbf",
+      "bytes": 666369
+    },
+    {
+      "path": "inventory-0.json",
+      "original_sha256": "c6ac93eba995e05e85ff8575677e69bc4e27f61812e9b0089e25e7b9b86ed17e",
+      "sanitized_sha256": "5e5925d52a1d667687fe6f8f11e9b5e10595b2f7e0961f5d0e4d47d101e2e563",
+      "bytes": 400717
+    },
+    {
+      "path": "inventory-1.json",
+      "original_sha256": "1b93fe8de7eb832115ff9b750d3537ad545251f244ef6abf9ae9f2168b425cad",
+      "sanitized_sha256": "548c7e004f125c234cde4022a652549be98f9013d2f04c555de62d23420490f7",
+      "bytes": 1160536
+    },
+    {
+      "path": "inventory-2.json",
+      "original_sha256": "11277448097e273b49844799b384ea2a2a21c424fb2f71164fcca352a88c289b",
+      "sanitized_sha256": "4f2bbe738f6748b3d08cf64ae0d46ad7d50589c8deac9c9b161a9c26e5648a54",
+      "bytes": 409379
+    },
+    {
+      "path": "inventory-3.json",
+      "original_sha256": "a6943ba231d3288f4e30d936471396810a2fafa45ac85cc3ce88d5bb87316fff",
+      "sanitized_sha256": "c96f6dfe57a16eb423e3cb413e77a760d7d0473e9edae28e833e8da2c0b53811",
+      "bytes": 333249
+    },
+    {
+      "path": "inventory-4.json",
+      "original_sha256": "f27e1c1dfa2be8f9ca6047dc607d34a670d120b3752082662187a326f60c97d8",
+      "sanitized_sha256": "ec180f9e607fe7decc8475551a5d58b23c54866bb921bffb37b31cbe50244cec",
+      "bytes": 267142
+    },
+    {
+      "path": "inventory-5.json",
+      "original_sha256": "8c0a7267970fc6d16480face7b8e75689a4f19870de6c062aae24af9f16049aa",
+      "sanitized_sha256": "9d60eb7a7be082a03a301533f6d20746dd7601c7e9671e4f6f268347c2377818",
+      "bytes": 422781
+    },
+    {
+      "path": "inventory-6.json",
+      "original_sha256": "09aa3bc7fa970ee206df5924d2edc75979dae82742191c2344854b1f8645a681",
+      "sanitized_sha256": "f3f2ecea100baeecb0c332fd82f068ea433f89906b3133970196d545e2cb7e40",
+      "bytes": 315963
+    },
+    {
+      "path": "inventory-7.json",
+      "original_sha256": "71a8f3ce78fea0ff24bf82c3e7b1a8b3cd7fa03c9adeb27887aee15048694350",
+      "sanitized_sha256": "71a8f3ce78fea0ff24bf82c3e7b1a8b3cd7fa03c9adeb27887aee15048694350",
+      "bytes": 1202742
+    },
+    {
+      "path": "inventory.json",
+      "original_sha256": "2a9f3a7a085be10d335693a23ae0523de26d379d83360e4aeb611580ee960185",
+      "sanitized_sha256": "13f22cb2794bb4238e96fe9762b4aa3ae3ee46bdd203cfd6fc109a89a9f96059",
+      "bytes": 4508966
+    },
+    {
+      "path": "manifest.json",
+      "original_sha256": "cfa237aafcd64a0c68e352dd13cef3ed9f078f5dbdca8c59c23e2e9a98a2b38b",
+      "sanitized_sha256": "d8771988b2386195def34424296fc126dfacdbdd737cbcd96acb42d364604869",
+      "bytes": 2537832
+    },
+    {
+      "path": "tiles/index.json",
+      "original_sha256": "7d8f1de8b7de7bc21dfb546a1d0c51bf31f16eee5fad49dbceae1e76da38e5c3",
+      "sanitized_sha256": "7d8f1de8b7de7bc21dfb546a1d0c51bf31f16eee5fad49dbceae1e76da38e5c3",
+      "bytes": 12
+    }
+  ],
+  "derived_archives": [
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-0-sanitized.zip",
+      "original_artifact_id": 11530718543,
+      "original_archive_sha256": "cf9c9b9b81b4212d2d5d7be750964c3b48c86ebc0ba05c4a389abd5349654f10",
+      "sanitized_archive_sha256": "c2a95ed9208b535787af74b605278d71a3332d32218f11c56803f59f9b2bf133",
+      "bytes": 2708071
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-1-sanitized.zip",
+      "original_artifact_id": 11531250130,
+      "original_archive_sha256": "adfb941652e87ecd7df1c7b63ad99eb9e9833222c60def9b09d0aaf21dfe1ea7",
+      "sanitized_archive_sha256": "4eb66842a0703f77aa276404c950bd9ae9a4937fab726607e09acbad8a8db293",
+      "bytes": 2405988
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-2-sanitized.zip",
+      "original_artifact_id": 11530902449,
+      "original_archive_sha256": "68f63a033523f98fd60b0dd25bbffb5efcf591f790f5473040ec37882dcc0648",
+      "sanitized_archive_sha256": "f40d9318750a61e93f8504bad46967d2bd33858fa64b37247f863b36ab3eabef",
+      "bytes": 3529540
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-3-sanitized.zip",
+      "original_artifact_id": 11531106976,
+      "original_archive_sha256": "be754ae90d6700300b4ed95f455fabd200dff5e0f7982a312938ba5f498647d9",
+      "sanitized_archive_sha256": "fed65f4db929e5c52f0479330e7e60f8bf913d199f096f4c936ff2c361cf0c28",
+      "bytes": 3514769
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-4-sanitized.zip",
+      "original_artifact_id": 11530988280,
+      "original_archive_sha256": "f519b4ab3586e3b99c5db813c6259856e761777c845387f16f65ab30ec6fbc60",
+      "sanitized_archive_sha256": "909b5930f781f774886df5f01ae7ec9bac37624fa44d9d55b80a9f3f7e3f5e46",
+      "bytes": 1652435
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-5-sanitized.zip",
+      "original_artifact_id": 11530688654,
+      "original_archive_sha256": "4785c7ff5a766ec3211b6090901f6ce2a5ca51c6cbf1d822a9669561732e9035",
+      "sanitized_archive_sha256": "e6ac177f21ea938de7f49862778726b1b7281e9bffadaea0538ea1982760c537",
+      "bytes": 2512440
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-6-sanitized.zip",
+      "original_artifact_id": 11530638353,
+      "original_archive_sha256": "07caec06c18cc98432c0349a7379c72421c91681bd0e23dc392354767b5fe7bf",
+      "sanitized_archive_sha256": "d03fb8d8f49f0e45673daaa51116ab70e1d9b758fdf6e0e4263341ae19937fb2",
+      "bytes": 2539400
+    },
+    {
+      "path": "sanitized-retention/worldwide-frequency-shard-7-sanitized.zip",
+      "original_artifact_id": 11531011398,
+      "original_archive_sha256": "bbf206ea17b6ac8c4ddad46915ac7156926951090dbc121446eb3265b3de532d",
+      "sanitized_archive_sha256": "9039db1a4a06f84394b4e8995ffcd97332b372a9f38da4a34c6b4be7befb938d",
+      "bytes": 4648448
+    }
+  ],
+  "changed_input_files": [
+    "feeds/us-az_valleymetro.json.gz",
+    "inventory-0.json",
+    "inventory-1.json",
+    "inventory-2.json",
+    "inventory-3.json",
+    "inventory-4.json",
+    "inventory-5.json",
+    "inventory-6.json"
+  ],
+  "total_removed_query_values_in_inputs": 23,
+  "non_source_timetable_content_unchanged": true,
+  "source_attribution_policy": "All names, credits, licences, URLs and query-parameter names remain; only possible access/authentication value bytes are removed. Sanitized URLs are evidence metadata and must not be exercised as live download links.",
+  "reference_pack": {
+    "path": "sanitized-retention/matching-snapshot-reference-sanitized.tar.gz",
+    "bytes": 423648,
+    "sha256": "2e82e4f8972cdedb760e4d0ee7119a6742c03f4cf7f8dc3274e05332ee413f4e"
+  },
+  "verified_replay": {
+    "run": 7,
+    "source_commit": "6f43c9f9ca998ea5b3081655b6a43bb29ae51713",
+    "comparison_target": "equivalently sanitized expected snapshot, not the original snapshot",
+    "matching_files": 117,
+    "coverage": {
+      "catalogue_entries": 2039,
+      "summary_feeds": 106,
+      "mapped_feeds": 86,
+      "countries": 66,
+      "tiles": 0,
+      "counts": {
+        "excluded": 1220,
+        "no_rail": 635,
+        "compiled": 106,
+        "failed": 78
+      }
+    }
+  }
+}

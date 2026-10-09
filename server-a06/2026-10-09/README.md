@@ -1,6 +1,6 @@
 # Atlas A06: partial recovery of server-baseline evidence
 
-**Status: 47 of 83 original planned files recovered; 36 remain unavailable. The original full package did not survive a replaced execution workspace. This is a partial evidence checkpoint.**
+**Status: 57 of 83 original planned files recovered; 26 remain unavailable. The original full package did not survive a replaced execution workspace. This is a partial evidence checkpoint.**
 
 The preserved historical measurements report three offline assembly runs with a median **92.91 s wall**, **101.24 CPU-seconds** and **849.5 MiB** wait4-reported peak RSS. All 117 outputs matched the frozen same-run snapshot at measurement time, preserving 2,039 inventory entries, 106 summary feeds and 86 mapped feeds. Node.js 24.19.0 differed from the historical workflow's Node.js 22. No performance improvement is claimed.
 
@@ -16,17 +16,17 @@ The preserved historical measurements report three offline assembly runs with a 
 
 ## What survived
 
-Twenty-eight files were read back from content-addressed GitHub blobs and checked against their pre-loss SHA-256 values. Another nineteen were restored through verified identical content, known zero-byte identities or deterministic reconstruction that matched the exact original hash. These include the original CSV, package manifest, output identities and all six stdout logs. No replacement-host workload measurement was substituted.
+The [original 47/83 checkpoint](https://github.com/c933103/openrailwaystyle/tree/3386e0a7294956c2c8b2f709869863b0f3e3b89d/server-a06/2026-10-09) remains preserved in history. It contained 28 files read back from GitHub plus 19 exact-hash reconstructions. Ten more originals are now recovered: eight sanitized shard ZIPs, the sanitization manifest and the run-07 output-identity record. Every restored original matches its pre-loss byte length and SHA-256. [New recovery helpers and provenance](recovery-updates/2026-10-09-exact-derivatives/recovery-receipt.json) are labelled separately and do not count as original helpers or new measurement runs.
 
 ## What is missing
 
-The unrecovered files include the original raw timing/progress samples, raw V8 CPU profile, complete metrics JSON/per-run metrics, reconstruction/measurement helpers, the sanitized fixture archives and their manifest. See the ledger for the exact list. The available CSV and summaries preserve results but do not recreate the missing raw measurements.
+The 26 unrecovered originals are 7 metrics JSON files, 12 timed progress/memory logs, 1 raw V8 CPU profile, 5 original measurement/reconstruction helpers and 1 sanitized reference tarball container. The eight sanitized shard archives and their manifest are now available. See the ledger for the exact list. The available CSV and summaries preserve results but do not recreate missing raw measurements.
 
 The frozen report, reconstruction guide and original manifest describe a complete package that existed before workspace replacement. **They must not be read as a claim that every referenced file is present here. The partial snapshot is not a complete runnable reproduction bundle.** Previously recorded test/verification results remain historical observations; missing helpers cannot be rerun from this partial snapshot.
 
 ## Safety and remaining work
 
-No original credential-bearing dataset was published. The proposed safe fixtures had deliberately removed potential-access query values and retained attribution; their lost archives are not replaced by the unredacted inputs. Original workflow artifacts and source revisions remain recoverable through their existing services, but any repack must have its actual new identity unless the original hash is reproduced exactly. Known expiring Actions links alone do not establish durable retention.
+No original credential-bearing dataset was published. The eight recovered sanitized shard archives are byte-identical to the previously cleared derivatives: potential-access query values are removed and attribution retained. Restored original input ZIPs remain private and are not substituted for these cleared artifacts. Original workflow artifacts and source revisions remain recoverable through their existing services, but any repack must have its actual new identity unless the original hash is reproduced exactly. Known expiring Actions links alone do not establish durable retention.
 
 Current live release exposure remains unverified. No production code, main-branch reference, deployment or provider acquisition is changed by this evidence checkpoint. Missing originals remain open; any future replacement-host measurement must be clearly separated with a new run ID and environment record.
 
