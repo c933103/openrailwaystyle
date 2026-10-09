@@ -26,7 +26,8 @@ MAX_TRIP_STOP_ROWS = 10_000
 def seconds(value):
     if not value:
         return None
-    match = re.fullmatch(r"(\d+):([0-5]\d):([0-5]\d)", value)
+    # Some feeds pad CSV time values; keep blank/malformed values explicit.
+    match = re.fullmatch(r"(\d+):([0-5]\d):([0-5]\d)", value.strip())
     if not match:
         raise ValueError(f"Invalid GTFS time {value!r}")
     return int(match[1]) * 3600 + int(match[2]) * 60 + int(match[3])
