@@ -47,6 +47,10 @@ const patternFields = ['id', 'source_route_id', 'compiled_route_id', 'agency_id'
 const callFields = ['stop_id', 'station_id', 'pickup_type', 'drop_off_type'];
 const observationFields = ['id', 'trip_id', 'service_id', 'pattern_id', 'timezone', 'valid_until', 'calendar_state', 'active_service_dates', 'departures', 'frequencies', 'fingerprint'];
 const offset = value => Number.isSafeInteger(value) && value >= 0 && value <= 366 * 86400;
+const assertionState = value => ['verified', 'conflict', 'unknown'].includes(value);
+const routeBinding = row => record(row, ['feed_id', 'source_sha256', 'route_id', 'status']) && id(row.feed_id) && digest(row.source_sha256) && id(row.route_id) && assertionState(row.status);
+const operatorBinding = row => record(row, ['feed_id', 'source_sha256', 'agency_id', 'status']) && id(row.feed_id) && digest(row.source_sha256) && id(row.agency_id) && assertionState(row.status);
+const stationBinding = row => record(row, ['feed_id', 'source_sha256', 'station_id', 'osm_station_id', 'osm_snapshot', 'status']) && id(row.feed_id) && digest(row.source_sha256) && id(row.station_id) && typedId(row.osm_station_id) && instant(row.osm_snapshot) && assertionState(row.status);
 const osmFields = ['schema', 'status', 'reasons', 'relation_id', 'version', 'timestamp', 'snapshot', 'tags', 'served_members', 'track_members', 'fingerprint'];
 
 // Preserve OSM tags and served-member order before a display view discards
@@ -121,6 +125,7 @@ export function matchTimetablePattern(input = {}) {
   if (!array(candidates, 256)) return result('missing_evidence', 'candidate_or_crosswalk_limit');
   if (candidates.every(candidate => candidate?.eligibility === 'excluded')) return result('no_eligible_service', 'no_eligible_identity_in_candidates');
   if (!array(crosswalk, 1024)) return result('missing_evidence', 'candidate_or_crosswalk_limit');
+  if (crosswalk.some(row => !stationBinding(row))) return result('missing_evidence', 'invalid_station_binding');
   const bound = row => row && row.feed_id === source.feed_id && row.source_sha256 === source.sha256;
   if (pattern.calls.some(call => ['2', '3'].includes(call.pickup_type) || ['2', '3'].includes(call.drop_off_type))) return result('missing_evidence', 'conditional_stop_service');
   const served = pattern.calls.filter(call => call.pickup_type !== '1' || call.drop_off_type !== '1');
@@ -151,7 +156,7 @@ export function matchTimetablePattern(input = {}) {
   };
   for (const candidate of candidates) {
     if (candidate?.eligibility === 'excluded') continue;
-    if (!candidate || !array(candidate.route_bindings, 32)) { blockers.push(['missing_evidence', 'invalid_candidate']); continue; }
+    if (!candidate || !array(candidate.route_bindings, 32) || candidate.route_bindings.some(row => !routeBinding(row)) || (candidate.operator_binding !== undefined && !operatorBinding(candidate.operator_binding))) { blockers.push(['missing_evidence', 'invalid_candidate']); continue; }
     const previous = candidate.route_bindings.some(row => row && row.feed_id === source.feed_id && row.route_id === pattern.source_route_id && row.source_sha256 !== source.sha256);
     if (previous && candidate.eligibility !== 'excluded') { blockers.push(['stale', 'route_binding_source_mismatch']); continue; }
     const exact = candidate.route_bindings.filter(row => bound(row) && row.route_id === pattern.source_route_id);

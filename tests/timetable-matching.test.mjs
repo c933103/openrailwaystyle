@@ -514,3 +514,27 @@ test('consumer numeric boundaries preserve supported integers and reject unsuppo
     assert.equal(output.frequency_status, 'not_evaluated');
   }
 });
+
+test('dense route binding inventories cannot silently discard malformed entries', () => {
+  for (const malformed of [null, {}]) for (const reverse of [false, true]) {
+    const input = fixture(); input.candidates[0].route_bindings.push(malformed);
+    if (reverse) input.candidates[0].route_bindings.reverse();
+    assert.equal(status(input), 'missing_evidence');
+  }
+});
+
+test('binding inventories validate every bounded record before scope filtering', () => {
+  for (const malformed of [null, {}, {feed_id: 'other'}, {...fixture().crosswalk[0], extra: 'unsupported'}]) {
+    const input = fixture(); input.crosswalk.push(malformed);
+    assert.equal(status(input), 'missing_evidence', 'malformed crosswalk rows cannot disappear');
+  }
+  for (const malformed of [null, {}, {feed_id: 'other'}]) {
+    const input = fixture(); input.candidates[0].operator_binding = malformed;
+    assert.equal(status(input), 'missing_evidence', 'malformed operator evidence is not absent');
+    input.candidates[0].eligibility = 'excluded';
+    assert.equal(status(input), 'no_eligible_service', 'explicit exclusions still need no match-only fields');
+  }
+  const oversized = fixture();
+  oversized.candidates[0].route_bindings.push({feed_id: 'other', source_sha256: sha, route_id: 'x'.repeat(1025), status: 'verified'});
+  assert.equal(status(oversized), 'missing_evidence');
+});
