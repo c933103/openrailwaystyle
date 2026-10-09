@@ -21,14 +21,79 @@ const profiles=[
   {name:'legacy-dialog',viewport:{width:320,height:568},userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 15_3 like Mac OS X) AppleWebKit/605.1.15 Version/15.3 Mobile/15E148 Safari/604.1',platform:'iPhone',touch:5,legacyDialog:true},
 ];
 
+async function offerNativePrompt(page,scenario){
+  // Controlled capability events exercise real DOM and focus rules without
+  // performing an OS installation in browser automation.
+  await page.evaluate(({outcome,immediateFailure})=>{
+    window.installPromptCalls=0;window.installPromptInClick=false;
+    const event=new Event('beforeinstallprompt',{cancelable:true});
+    event.prompt=()=>{
+      window.installPromptCalls++;window.installPromptInClick=window.installClickActive;
+      if(immediateFailure)throw new Error('Installation prompt failed');
+      return Promise.resolve();
+    };
+    event.userChoice=new Promise((resolve,reject)=>{
+      window.finishInstallPrompt=()=>outcome==='failed'?reject(new Error('Installation choice failed')):resolve({outcome});
+    });
+    window.dispatchEvent(event);
+  },scenario);
+}
+
+async function checkDirectInstallPrompt(page,opener,dialog){
+  for(const scenario of [
+    {outcome:'dismissed'},
+    {outcome:'accepted'},
+    {outcome:'failed'},
+    {outcome:'failed',immediateFailure:true},
+    {outcome:'failed',focusElsewhere:true},
+    {outcome:'dismissed',blur:true},
+  ]){
+    await offerNativePrompt(page,scenario);
+    assert.equal(await opener.getAttribute('aria-controls'),null,'direct install does not claim to open the help dialog');
+    await opener.focus();
+    await opener.press('Enter');
+    assert.deepEqual(await page.evaluate(()=>({calls:window.installPromptCalls,inClick:window.installPromptInClick})),
+      {calls:1,inClick:true},'the original icon activation calls prompt() synchronously');
+    assert.equal(await opener.evaluate(node=>node.disabled),false,'the pending icon stays natively focusable');
+    if(!scenario.immediateFailure){
+      assert.equal(await dialog.isVisible(),false,'direct installation has no intermediate dialog');
+      assert.equal(await opener.evaluate(node=>node===document.activeElement),true);
+      assert.equal(await opener.getAttribute('aria-busy'),'true');
+      await opener.press('Enter');
+      assert.equal(await page.evaluate(()=>window.installPromptCalls),1,'a repeated pending click does not reuse the prompt');
+      assert.equal(await dialog.isVisible(),false,'a repeated pending click does not open help');
+      if(scenario.focusElsewhere)await page.locator('#settings-open').focus();
+      if(scenario.blur)await opener.evaluate(node=>node.blur());
+      await page.evaluate(()=>window.finishInstallPrompt());
+    }
+    const marker=scenario.outcome==='failed'?'could not open':scenario.outcome;
+    await page.waitForFunction(marker=>document.getElementById('pwa-install-status').textContent.includes(marker),marker);
+    const fallback=scenario.outcome==='failed'&&!scenario.focusElsewhere;
+    assert.equal(await dialog.isVisible(),fallback,'only a relevant prompt failure opens the manual fallback');
+    assert.equal(await opener.getAttribute('aria-busy'),null);
+    assert.equal(await page.evaluate(()=>document.activeElement.id),
+      fallback?'pwa-install-close':scenario.focusElsewhere?'settings-open':'pwa-install-open',
+      'completion keeps meaningful focus and preserves a later control choice');
+    if(!fallback){
+      await opener.click();await dialog.waitFor({state:'visible'});
+      assert.equal(await page.evaluate(()=>window.installPromptCalls),1,'a consumed offer falls back to instructions on the next click');
+    }
+    assert.equal(await page.locator('#pwa-install-native').isVisible(),false);
+    await page.locator('#pwa-install-close').click();await dialog.waitFor({state:'hidden'});
+  }
+}
+
 async function checkNativePromptFocus(page,opener,dialog){
   const action=page.locator('#pwa-install-native'),close=page.locator('#pwa-install-close');
   await page.evaluate(()=>{
     // This flag is cleared as the click bubbles out. A deferred prompt()
     // invocation would miss the initiating click even if it ran soon after.
-    document.getElementById('pwa-install-native').addEventListener('click',()=>{window.installClickActive=true;},{capture:true});
+    for(const id of ['pwa-install-open','pwa-install-native']){
+      document.getElementById(id).addEventListener('click',()=>{window.installClickActive=true;},{capture:true});
+    }
     window.addEventListener('click',()=>{window.installClickActive=false;});
   });
+  await checkDirectInstallPrompt(page,opener,dialog);
   for(const scenario of [
     {outcome:'dismissed'},
     {outcome:'accepted'},
@@ -37,22 +102,9 @@ async function checkNativePromptFocus(page,opener,dialog){
     {outcome:'dismissed',focusElsewhere:true},
     {outcome:'dismissed',closeBeforeChoice:true},
   ]){
-    // Controlled capability events exercise the real DOM and focus rules;
-    // they do not perform an OS installation in browser automation.
-    await page.evaluate(({outcome,immediateFailure})=>{
-      window.installPromptCalls=0;window.installPromptInClick=false;
-      const event=new Event('beforeinstallprompt',{cancelable:true});
-      event.prompt=()=>{
-        window.installPromptCalls++;window.installPromptInClick=window.installClickActive;
-        if(immediateFailure)throw new Error('Installation prompt failed');
-        return Promise.resolve();
-      };
-      event.userChoice=new Promise((resolve,reject)=>{
-        window.finishInstallPrompt=()=>outcome==='failed'?reject(new Error('Installation choice failed')):resolve({outcome});
-      });
-      window.dispatchEvent(event);
-    },scenario);
+    // A late capability event must retain the action in already-open help.
     await opener.click();
+    await offerNativePrompt(page,scenario);
     // Pointer clicks in WebKit may retain the previous focus. Keyboard
     // activation ensures the action really owns focus before it is disabled.
     await action.focus();
@@ -141,6 +193,24 @@ try {
       assert.equal(await opener.isVisible(),false,'standalone session hides installation control');
     }else{
       if(await page.locator('#controls-open').getAttribute('aria-expanded')==='false')await page.locator('#controls-open').click();
+      await opener.scrollIntoViewIfNeeded();
+      const toolbar=await opener.evaluate(button=>{
+        const siblings=[...button.parentElement.querySelectorAll('button')];
+        const cluster=siblings.slice(-3).map(node=>({id:node.id,...Object.fromEntries(
+          ['left','top','right','width','height'].map(key=>[key,node.getBoundingClientRect()[key]]))}));
+        return {text:button.textContent.trim(),label:button.getAttribute('aria-label'),title:button.title,
+          icon:button.classList.contains('icon-button'),cluster};
+      });
+      assert.equal(toolbar.text,'','Install is icon-only');
+      assert.equal(toolbar.icon,true);
+      assert.equal(toolbar.label,'Install Railway Atlas');assert.equal(toolbar.title,toolbar.label);
+      assert.deepEqual(toolbar.cluster.map(button=>button.id).sort(),['about-open','pwa-install-open','settings-open']);
+      for(const button of toolbar.cluster){
+        assert.ok(Math.abs(button.width-40)<1,'Install uses the existing compact icon width');
+        assert.ok(Math.abs(button.top-toolbar.cluster[0].top)<1,'Install, Settings and Help share a row, including at 320px');
+        assert.ok(button.left>=0&&button.right<=profile.viewport.width,'the icon cluster fits the viewport');
+      }
+      if(profile.viewport.width===320)await page.screenshot({path:`browser-review/pwa-install-${engine}-toolbar-320.png`});
       await opener.click();await dialog.waitFor({state:'visible'});
       if(profile.legacyDialog){
         const fallback=await page.evaluate(()=>{
