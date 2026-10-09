@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "cohort": "summary-records-ab-20261009a",
+  "role": "candidate",
+  "source_commit": "802062b5c44718e6baf3d36db5010ee42799368c",
+  "source": {
+    "sha256": "610a9551b4ceb35f5bf5b081ff7061c5f7d6a7d28b9f01b279b4d358550b831a",
+    "entries": 319,
+    "file_bytes": 16189342
+  },
+  "dependencies": {
+    "sha256": "e3333521361057ff70b2f3187f18e4df938824350bb526e9d89f1ad578a6642e",
+    "entries": 3778,
+    "file_bytes": 106688774
+  },
+  "node_binary_sha256": "bc17c508ffeed0ec622934f9b7fa72f8e78da65350e63c3eceb56fa688aa5e12",
+  "node_version": "24.19.0",
+  "runtime_policy": "Exact binary digest is host/build specific; change runtime only as a separately labelled cohort and retain its actual identity.",
+  "source_excluded_directories": [
+    "node_modules",
+    ".git"
+  ],
+  "source_excluded_files": [
+    "scripts/__pycache__/global-service-frequency.cpython-312.pyc",
+    "scripts/__pycache__/gtfs-frequency.cpython-312.pyc",
+    "scripts/__pycache__/gtfs-shapes.cpython-312.pyc",
+    "scripts/__pycache__/load-frequency-snapshot.cpython-312.pyc",
+    "tests/__pycache__/global_frequency_test.cpython-312.pyc",
+    "tests/__pycache__/load_frequency_snapshot_test.cpython-312.pyc"
+  ],
+  "replay_manifest_sha256": "7437aafda2e1bd2e32ad7abc1e16604d4ddd7586c79261fdcbbc205496930215",
+  "source_revision": {
+    "base_commit": "802062b5c44718e6baf3d36db5010ee42799368c",
+    "patch_sha256": "b5585de1a23d8a3a97e0ed4f866819aeff8b1b3bb5c1d3fefb88399d9828d473",
+    "note": "Candidate is an unmerged patch over base commit, identified by this configuration and its full source digest; source_commit denotes the base."
+  }
+}

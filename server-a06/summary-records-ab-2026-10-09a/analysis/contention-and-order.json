@@ -1,0 +1,207 @@
+{
+  "known_condition": "Other local tests were running concurrently on the shared host during this experiment. Per-run host observations cannot isolate their interference.",
+  "frozen_order_changed": false,
+  "order_groups": {
+    "control/candidate": {
+      "wall_seconds": {
+        "percent_changes": [
+          -4.199425195600084,
+          -3.39524493918493
+        ],
+        "median_percent_change": -3.797335067392507
+      },
+      "total_cpu_seconds": {
+        "percent_changes": [
+          -3.427870126884185,
+          -2.720042056864559
+        ],
+        "median_percent_change": -3.073956091874372
+      },
+      "peak_rss_kib": {
+        "percent_changes": [
+          0.34562594118388495,
+          6.128511505431834
+        ],
+        "median_percent_change": 3.237068723307859
+      }
+    },
+    "candidate/control": {
+      "wall_seconds": {
+        "percent_changes": [
+          -0.7150065749784963,
+          -0.7343905599078823
+        ],
+        "median_percent_change": -0.7246985674431893
+      },
+      "total_cpu_seconds": {
+        "percent_changes": [
+          -1.3982329765880939,
+          -1.71716138793351
+        ],
+        "median_percent_change": -1.557697182260802
+      },
+      "peak_rss_kib": {
+        "percent_changes": [
+          -4.388727555319236,
+          -9.627891520917963
+        ],
+        "median_percent_change": -7.008309538118599
+      }
+    }
+  },
+  "runs": [
+    {
+      "run_id": "pair-01-candidate",
+      "start_utc": "2026-10-09T05:49:56.457140+00:00",
+      "end_utc": "2026-10-09T05:50:31.333909+00:00",
+      "start_load": [
+        2.6708984375,
+        0.9482421875,
+        0.44677734375
+      ],
+      "end_load": [
+        2.16015625,
+        1.0166015625,
+        0.4892578125
+      ],
+      "sampled_one_minute_load_min": 2.16015625,
+      "sampled_one_minute_load_max": 2.697265625,
+      "sampled_memory_available_kib_min": 7472020,
+      "sampled_memory_available_kib_max": 8176040
+    },
+    {
+      "run_id": "pair-01-control",
+      "start_utc": "2026-10-09T05:49:18.452975+00:00",
+      "end_utc": "2026-10-09T05:49:54.865227+00:00",
+      "start_load": [
+        1.21044921875,
+        0.54638671875,
+        0.30322265625
+      ],
+      "end_load": [
+        2.20654296875,
+        0.8291015625,
+        0.40576171875
+      ],
+      "sampled_one_minute_load_min": 1.1796875,
+      "sampled_one_minute_load_max": 2.20654296875,
+      "sampled_memory_available_kib_min": 7001484,
+      "sampled_memory_available_kib_max": 8517548
+    },
+    {
+      "run_id": "pair-02-candidate",
+      "start_utc": "2026-10-09T05:50:32.790281+00:00",
+      "end_utc": "2026-10-09T05:51:07.669737+00:00",
+      "start_load": [
+        2.16015625,
+        1.0166015625,
+        0.4892578125
+      ],
+      "end_load": [
+        1.69384765625,
+        1.0283203125,
+        0.51513671875
+      ],
+      "sampled_one_minute_load_min": 1.69384765625,
+      "sampled_one_minute_load_max": 2.16015625,
+      "sampled_memory_available_kib_min": 8083688,
+      "sampled_memory_available_kib_max": 8456444
+    },
+    {
+      "run_id": "pair-02-control",
+      "start_utc": "2026-10-09T05:51:09.103682+00:00",
+      "end_utc": "2026-10-09T05:51:44.232884+00:00",
+      "start_load": [
+        1.69384765625,
+        1.0283203125,
+        0.51513671875
+      ],
+      "end_load": [
+        1.51708984375,
+        1.05712890625,
+        0.54638671875
+      ],
+      "sampled_one_minute_load_min": 1.51708984375,
+      "sampled_one_minute_load_max": 1.69384765625,
+      "sampled_memory_available_kib_min": 8046356,
+      "sampled_memory_available_kib_max": 8458676
+    },
+    {
+      "run_id": "pair-03-candidate",
+      "start_utc": "2026-10-09T05:52:23.816703+00:00",
+      "end_utc": "2026-10-09T05:52:59.223183+00:00",
+      "start_load": [
+        1.5078125,
+        1.11376953125,
+        0.58740234375
+      ],
+      "end_load": [
+        1.6416015625,
+        1.18212890625,
+        0.63134765625
+      ],
+      "sampled_one_minute_load_min": 1.40185546875,
+      "sampled_one_minute_load_max": 1.6416015625,
+      "sampled_memory_available_kib_min": 7797196,
+      "sampled_memory_available_kib_max": 8372140
+    },
+    {
+      "run_id": "pair-03-control",
+      "start_utc": "2026-10-09T05:51:45.712968+00:00",
+      "end_utc": "2026-10-09T05:52:22.372254+00:00",
+      "start_load": [
+        1.51708984375,
+        1.05712890625,
+        0.54638671875
+      ],
+      "end_load": [
+        1.5078125,
+        1.11376953125,
+        0.58740234375
+      ],
+      "sampled_one_minute_load_min": 1.470703125,
+      "sampled_one_minute_load_max": 1.55712890625,
+      "sampled_memory_available_kib_min": 7936852,
+      "sampled_memory_available_kib_max": 8453428
+    },
+    {
+      "run_id": "pair-04-candidate",
+      "start_utc": "2026-10-09T05:53:00.792314+00:00",
+      "end_utc": "2026-10-09T05:53:34.667277+00:00",
+      "start_load": [
+        1.91064453125,
+        1.24560546875,
+        0.6552734375
+      ],
+      "end_load": [
+        1.55029296875,
+        1.220703125,
+        0.6669921875
+      ],
+      "sampled_one_minute_load_min": 1.55029296875,
+      "sampled_one_minute_load_max": 1.91064453125,
+      "sampled_memory_available_kib_min": 8123396,
+      "sampled_memory_available_kib_max": 8278532
+    },
+    {
+      "run_id": "pair-04-control",
+      "start_utc": "2026-10-09T05:53:36.156021+00:00",
+      "end_utc": "2026-10-09T05:54:10.284331+00:00",
+      "start_load": [
+        1.505859375,
+        1.216796875,
+        0.6689453125
+      ],
+      "end_load": [
+        1.3857421875,
+        1.2119140625,
+        0.68603515625
+      ],
+      "sampled_one_minute_load_min": 1.33203125,
+      "sampled_one_minute_load_max": 1.505859375,
+      "sampled_memory_available_kib_min": 8066936,
+      "sampled_memory_available_kib_max": 8443884
+    }
+  ],
+  "interpretation": "All four pairs favor the candidate for wall/CPU, but wall gains differ strongly by treatment order; candidate-first wall differences are approximately one 250 ms completion-poll interval. Do not promote a noisy few-percent result into a general speedup claim."
+}

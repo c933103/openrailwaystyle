@@ -1,0 +1,26 @@
+test_clean (__main__.PrepareTests.test_clean) ... ok
+test_dependency_changed (__main__.PrepareTests.test_dependency_changed) ... ok
+test_existing_output (__main__.PrepareTests.test_existing_output) ... ok
+test_harness_changed (__main__.PrepareTests.test_harness_changed) ... ok
+test_manifest_changed (__main__.PrepareTests.test_manifest_changed) ... ok
+test_output_symlink (__main__.PrepareTests.test_output_symlink) ... ok
+test_reserved (__main__.PrepareTests.test_reserved) ... ok
+test_source_changed (__main__.PrepareTests.test_source_changed) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.021s
+
+OK
+test_clean (__main__.PrepareTests.test_clean) ... ok
+test_dependency_changed (__main__.PrepareTests.test_dependency_changed) ... ok
+test_existing_output (__main__.PrepareTests.test_existing_output) ... ok
+test_harness_changed (__main__.PrepareTests.test_harness_changed) ... ok
+test_manifest_changed (__main__.PrepareTests.test_manifest_changed) ... ok
+test_output_symlink (__main__.PrepareTests.test_output_symlink) ... ok
+test_reserved (__main__.PrepareTests.test_reserved) ... ok
+test_source_changed (__main__.PrepareTests.test_source_changed) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.023s
+
+OK

@@ -1,0 +1,53 @@
+{
+  "cohort": "summary-records-ab-20261009a",
+  "planned_utc": "2026-10-09T05:48:46.996241+00:00",
+  "base_main_commit": "802062b5c44718e6baf3d36db5010ee42799368c",
+  "candidate_patch_sha256": "b5585de1a23d8a3a97e0ed4f866819aeff8b1b3bb5c1d3fefb88399d9828d473",
+  "only_source_differences": [
+    {
+      "path": "scripts/gtfs-service.mjs",
+      "control_sha256": "dc594bf794af785764111d9f05e31d59416be98aa763f7a913dc1cf037c258dc",
+      "candidate_sha256": "d2cc970302661df993fcd146162238afc28fe76c34581b7c5f1b9b12860e82ec"
+    }
+  ],
+  "pairs": [
+    {
+      "pair": 1,
+      "order": [
+        "control",
+        "candidate"
+      ]
+    },
+    {
+      "pair": 2,
+      "order": [
+        "candidate",
+        "control"
+      ]
+    },
+    {
+      "pair": 3,
+      "order": [
+        "control",
+        "candidate"
+      ]
+    },
+    {
+      "pair": 4,
+      "order": [
+        "candidate",
+        "control"
+      ]
+    }
+  ],
+  "runtime": "Node24.19.0, same verified binary for all runs",
+  "harness": {
+    "evidence_commit": "41704fa765c85576567833d083a658158810d493",
+    "path": "server-a06/replay-2026-10-09a/measure_replay.py",
+    "sha256": "4ee6fd7d29085ee30076d5ddda71018f58b70bdbce8ab285ae6ecf24c073c0b5"
+  },
+  "inputs": "Reuse durable sanitized inputs/reference from replay-20261009a; all121input and117output identities must match per run",
+  "time_policy": "Unmodified Date.now; compare exact output hashes; no crossing expiry mismatch accepted",
+  "measurement_policy": "Fresh copies and processes, same bounds/harness/dependency tree; uninstrumented four-pair AB/BA/AB/BA order; preparation and identity checks excluded from timing",
+  "decision_policy": "Descriptive paired differences on shared host. Do not merge without correctness and meaningful measured benefit. Record a negative result if no gain or regression. No production change."
+}

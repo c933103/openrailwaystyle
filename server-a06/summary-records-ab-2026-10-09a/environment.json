@@ -1,0 +1,26 @@
+{
+  "utc": "2026-10-09T05:48:46.996388+00:00",
+  "host": "3b36148b4b66",
+  "cpu_model_names": [
+    "AMD EPYC 9V74 80-Core Processor"
+  ],
+  "affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "load": [
+    1.703125,
+    0.55224609375,
+    0.2978515625
+  ],
+  "memory_info": "MemTotal:       10206508 kB\nMemFree:         5725932 kB\nMemAvailable:    8209476 kB\nBuffers:           56752 kB\nCached:          2565392 kB\nSwapCached:            0 kB\nActive:          1267960 kB\nInactive:        2175608 kB\nActive(anon):       9864 kB\nInactive(anon):   872448 kB\nActive(file):    1258096 kB\nInactive(file):  1303160 kB\nUnevictable:       29920 kB\nMlocked:               0 kB\nSwapTotal:             0 kB\nSwapFree:              0 kB\nDirty:             54772 kB\nWriteback:             0 kB\nAnonPages:        851688 kB\nMapped:           371428 kB\nShmem:             31124 kB\nKReclaimable:     235988 kB\nSlab:             314180 kB\nSReclaimable:     235988 kB\nSUnreclaim:        78192 kB\nKernelStack:        9856 kB\nPageTables:        28808 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:     5103252 kB\nCommitted_AS:    6062496 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:       11228 kB\nVmallocChunk:          0 kB\nPercpu:             3456 kB\nAnonHugePages:         0 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:    110592 kB\nFilePmdMapped:         0 kB\nBalloon:               0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:      280576 kB\nDirectMap2M:     6664192 kB\nDirectMap1G:    19922944 kB\n",
+  "shared_uncontrolled_host": true,
+  "same_host_as_reference_cohort": true
+}

@@ -1,0 +1,108 @@
+{
+  "cohort": "summary-records-ab-20261009a",
+  "run_id": "pair-02-candidate",
+  "classification": "new replacement-host cohort, not an original recovered measurement",
+  "instrumented_cpu_profile": false,
+  "start_utc": "2026-10-09T05:50:32.790281+00:00",
+  "end_utc": "2026-10-09T05:51:07.669737+00:00",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+    "--max-old-space-size=1536",
+    "/workspace/shared/atlas-a06-summary-records-ab-20261009a/work/pair-02-candidate/source/scripts/assemble-global-frequency.mjs",
+    "/workspace/shared/atlas-a06-summary-records-ab-20261009a/work/pair-02-candidate/output"
+  ],
+  "wall_seconds": 34.82244110800093,
+  "user_cpu_seconds": 39.876119,
+  "system_cpu_seconds": 1.956926,
+  "total_cpu_seconds": 41.833045000000006,
+  "peak_rss_kib": 561024,
+  "exit_code": 0,
+  "termination_reason": null,
+  "capture_errors": [],
+  "sample_interval_seconds": 0.25,
+  "wait4_minor_faults": 177830,
+  "wait4_major_faults": 0,
+  "wait4_voluntary_switches": 157219,
+  "wait4_involuntary_switches": 31569,
+  "io_bytes": "unavailable; previously denied optional per-process I/O source was not retried",
+  "input_bytes": 38350025,
+  "output_bytes": 41772459,
+  "output_allocated_bytes": 42008576,
+  "output_files": 117,
+  "exact_expected_match": true,
+  "coverage": {
+    "catalogue_entries": 2039,
+    "summary_feeds": 106,
+    "mapped_feeds": 86,
+    "countries": 66,
+    "tiles": 0,
+    "counts": {
+      "excluded": 1220,
+      "no_rail": 635,
+      "compiled": 106,
+      "failed": 78
+    },
+    "available_segments": 664872,
+    "routes_with_profiles": 1045
+  },
+  "start_conditions": {
+    "utc": "2026-10-09T05:50:32.790209+00:00",
+    "load_average": [
+      2.16015625,
+      1.0166015625,
+      0.4892578125
+    ],
+    "memory_kib": {
+      "MemTotal": 10206508,
+      "MemAvailable": 8456900,
+      "SwapTotal": 0,
+      "SwapFree": 0
+    }
+  },
+  "end_conditions": {
+    "utc": "2026-10-09T05:51:07.669764+00:00",
+    "load_average": [
+      1.69384765625,
+      1.0283203125,
+      0.51513671875
+    ],
+    "memory_kib": {
+      "MemTotal": 10206508,
+      "MemAvailable": 8636568,
+      "SwapTotal": 0,
+      "SwapFree": 0
+    }
+  },
+  "cache_state": "fresh source/input copies and fresh Node process; filesystem cache uncontrolled and warmed by copying/verification, not a cold-cache run",
+  "time_policy": "Unmodified Date.now(); actual UTC captured; exact raw output hashes compared without field removal",
+  "bounds": {
+    "node_heap_mib": 1536,
+    "rss_guard_mib": 2048,
+    "wall_seconds": 300,
+    "cpu_soft_seconds": 300,
+    "file_limit_bytes": 268435456
+  },
+  "role": "candidate",
+  "source_commit": "802062b5c44718e6baf3d36db5010ee42799368c",
+  "provenance": {
+    "configuration_sha256": "484c7e9dba8185e860127197bbd9dc167e067eeef0380337f2a55eb412649217",
+    "cohort": "summary-records-ab-20261009a",
+    "role": "candidate",
+    "source_commit": "802062b5c44718e6baf3d36db5010ee42799368c",
+    "identities": {
+      "source": {
+        "sha256": "610a9551b4ceb35f5bf5b081ff7061c5f7d6a7d28b9f01b279b4d358550b831a",
+        "entries": 319,
+        "file_bytes": 16189342
+      },
+      "dependencies": {
+        "sha256": "e3333521361057ff70b2f3187f18e4df938824350bb526e9d89f1ad578a6642e",
+        "entries": 3778,
+        "file_bytes": 106688774
+      },
+      "node_binary_sha256": "bc17c508ffeed0ec622934f9b7fa72f8e78da65350e63c3eceb56fa688aa5e12",
+      "replay_manifest_sha256": "7437aafda2e1bd2e32ad7abc1e16604d4ddd7586c79261fdcbbc205496930215"
+    },
+    "verified_utc": "2026-10-09T05:50:32.757521+00:00"
+  }
+}

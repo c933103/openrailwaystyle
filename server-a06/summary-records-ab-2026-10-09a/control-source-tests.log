@@ -1,0 +1,48 @@
+✔ worldwide discovery, selective downloads and shapeless data processing (6273.683361ms)
+✔ global assembly rejects missing shards, duplicate feeds and catalogue drift (7.815162ms)
+✔ published feed directories retain only current verified inventory outputs (9.064918ms)
+✔ snapshot asset and release lookup follow the publishing repository (114.029548ms)
+bad 1 rail services
+good 1 rail services
+{"catalogue":2,"counts":{"compiled":2},"countries":1,"mappedFeeds":2}
+✔ a large feed is kept for matching beside its peers, and no feed builds map tiles (104.434351ms)
+✔ timetables draw no Service lines of their own; profiles keep date and directional provenance (16.959224ms)
+✔ route calendar expiry reaches the profile even while its feed remains current (2.14739ms)
+✔ local services rebundle independently and shared geometry retains every service (1.59057ms)
+✔ national feeds compact consecutive equal-profile edges while keeping disconnected paths (1.503358ms)
+✔ dated multi-region fixtures supply actual mapped rail shapes and profiles (384.935103ms)
+✔ fixture assembly succeeds when the OSM service-data branch supplies no table (656.410106ms)
+✔ production frequency registry has no city feed fallback (1.24598ms)
+✔ successful revalidation keeps unchanged annual feeds fresh without changing retrieval date (1.255144ms)
+✔ global route types preserve cable trams, extended monorails and funiculars (1.571631ms)
+✔ a summary-only pass reports the same feed summary without building features (0.766667ms)
+✔ streamed national feeds preserve nested records, escapes and Unicode across chunk boundaries (6.794756ms)
+✔ gzip feed reader decodes array records without retaining one whole JSON string (41.146815ms)
+✔ streamed reader rejects truncated feeds, duplicate fields and trailing content (0.721458ms)
+✔ published data keeps all rows, ranges and unmapped branches (1.393482ms)
+✔ shared scale keeps equal rates equal across profiles and separates unknown (2.576387ms)
+✔ paint, label placement and hit selection share the changed bundle geometry (26.406737ms)
+✔ old tiles and stale sources keep unknown distinct from zero and preserve equal mode (1.474084ms)
+✔ all profile styles validate against the pinned MapLibre specification (1229.452179ms)
+✔ profile selection round trips through settings and shared links (1.159319ms)
+✔ route clicks select the visible line after a profile changes its bundle position (1.045457ms)
+✔ loaded profiles expire without a reload and resume refreshes deferred paints (0.600326ms)
+✔ hour and overnight settings select separate profiles, preserve unknowns and share the width scale (16.647865ms)
+✔ operator peak categories do not acquire configured GTFS clock windows (0.44453ms)
+✔ service routes: names without their direction (1.495987ms)
+✔ service routes: both directions are one route; urban kinds only in the query (0.980549ms)
+✔ service routes: table and tiles, each route along its tracks in its place (14.514387ms)
+✔ service routes: consecutive ways join into one line, long enough for a name (0.323137ms)
+✔ service view: grey tracks under the services, side by side, named in the label language (21.163127ms)
+✔ service routes: memberships add up within a pass, are kept per stage, and a rejected refresh changes nothing (1.287442ms)
+✔ service routes: the same reference and network in two places are two routes; both directions of one are one (2.246279ms)
+✔ service routes: relations of one line from different boxes or stages are one route, drawn once (5.340937ms)
+✔ service routes: a refresh missing many routes is caught even when their ways are still found (7.884475ms)
+ℹ tests 37
+ℹ suites 0
+ℹ pass 37
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6630.198548

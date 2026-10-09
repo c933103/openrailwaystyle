@@ -1,0 +1,170 @@
+[
+  {
+    "pair": 1,
+    "order": "control/candidate",
+    "control_run": "pair-01-control",
+    "candidate_run": "pair-01-candidate",
+    "metrics": {
+      "wall_seconds": {
+        "control": 36.35269390200028,
+        "candidate": 34.82608971500031,
+        "candidate_minus_control": -1.5266041869999754,
+        "percent_change": -4.199425195600084
+      },
+      "total_cpu_seconds": {
+        "control": 42.171376,
+        "candidate": 40.725795999999995,
+        "candidate_minus_control": -1.4455800000000067,
+        "percent_change": -3.427870126884185
+      },
+      "peak_rss_kib": {
+        "control": 602964,
+        "candidate": 605048,
+        "candidate_minus_control": 2084,
+        "percent_change": 0.34562594118388495
+      }
+    },
+    "start_load_average": {
+      "control": [
+        1.21044921875,
+        0.54638671875,
+        0.30322265625
+      ],
+      "candidate": [
+        2.6708984375,
+        0.9482421875,
+        0.44677734375
+      ]
+    },
+    "start_memory_available_kib": {
+      "control": 8517548,
+      "candidate": 7714756
+    }
+  },
+  {
+    "pair": 2,
+    "order": "candidate/control",
+    "control_run": "pair-02-control",
+    "candidate_run": "pair-02-candidate",
+    "metrics": {
+      "wall_seconds": {
+        "control": 35.07321691499965,
+        "candidate": 34.82244110800093,
+        "candidate_minus_control": -0.2507758069987176,
+        "percent_change": -0.7150065749784963
+      },
+      "total_cpu_seconds": {
+        "control": 42.426263,
+        "candidate": 41.833045000000006,
+        "candidate_minus_control": -0.5932179999999931,
+        "percent_change": -1.3982329765880939
+      },
+      "peak_rss_kib": {
+        "control": 586776,
+        "candidate": 561024,
+        "candidate_minus_control": -25752,
+        "percent_change": -4.388727555319236
+      }
+    },
+    "start_load_average": {
+      "control": [
+        1.69384765625,
+        1.0283203125,
+        0.51513671875
+      ],
+      "candidate": [
+        2.16015625,
+        1.0166015625,
+        0.4892578125
+      ]
+    },
+    "start_memory_available_kib": {
+      "control": 8458676,
+      "candidate": 8456900
+    }
+  },
+  {
+    "pair": 3,
+    "order": "control/candidate",
+    "control_run": "pair-03-control",
+    "candidate_run": "pair-03-candidate",
+    "metrics": {
+      "wall_seconds": {
+        "control": 36.59509944799902,
+        "candidate": 35.35260618600114,
+        "candidate_minus_control": -1.242493261997879,
+        "percent_change": -3.39524493918493
+      },
+      "total_cpu_seconds": {
+        "control": 43.510614,
+        "candidate": 42.327107,
+        "candidate_minus_control": -1.1835069999999988,
+        "percent_change": -2.720042056864559
+      },
+      "peak_rss_kib": {
+        "control": 604584,
+        "candidate": 641636,
+        "candidate_minus_control": 37052,
+        "percent_change": 6.128511505431834
+      }
+    },
+    "start_load_average": {
+      "control": [
+        1.51708984375,
+        1.05712890625,
+        0.54638671875
+      ],
+      "candidate": [
+        1.5078125,
+        1.11376953125,
+        0.58740234375
+      ]
+    },
+    "start_memory_available_kib": {
+      "control": 8453884,
+      "candidate": 8373052
+    }
+  },
+  {
+    "pair": 4,
+    "order": "candidate/control",
+    "control_run": "pair-04-control",
+    "candidate_run": "pair-04-candidate",
+    "metrics": {
+      "wall_seconds": {
+        "control": 34.071948315000554,
+        "candidate": 33.8217271429985,
+        "candidate_minus_control": -0.25022117200205685,
+        "percent_change": -0.7343905599078823
+      },
+      "total_cpu_seconds": {
+        "control": 41.629401,
+        "candidate": 40.914556999999995,
+        "candidate_minus_control": -0.7148440000000065,
+        "percent_change": -1.71716138793351
+      },
+      "peak_rss_kib": {
+        "control": 589828,
+        "candidate": 533040,
+        "candidate_minus_control": -56788,
+        "percent_change": -9.627891520917963
+      }
+    },
+    "start_load_average": {
+      "control": [
+        1.505859375,
+        1.216796875,
+        0.6689453125
+      ],
+      "candidate": [
+        1.91064453125,
+        1.24560546875,
+        0.6552734375
+      ]
+    },
+    "start_memory_available_kib": {
+      "control": 8443656,
+      "candidate": 8286512
+    }
+  }
+]

@@ -1,0 +1,40 @@
+✔ unchanged full/summary JSON semantics: ordinary (6.671784ms)
+✔ unchanged full/summary JSON semantics: zero_rate (1.272359ms)
+✔ unchanged full/summary JSON semantics: null_rates (1.521826ms)
+✔ unchanged full/summary JSON semantics: missing_rate (1.439461ms)
+✔ unchanged full/summary JSON semantics: empty_profiles (1.30546ms)
+✔ unchanged full/summary JSON semantics: absent_geometry (0.334334ms)
+✔ unchanged full/summary JSON semantics: short_geometry (0.293563ms)
+✔ unchanged full/summary JSON semantics: empty_segments (0.266121ms)
+✔ unchanged full/summary JSON semantics: route_expired (1.261443ms)
+✔ unchanged full/summary JSON semantics: segment_expired (1.651802ms)
+✔ unchanged full/summary JSON semantics: feed_expired (1.222815ms)
+✔ unchanged full/summary JSON semantics: boundary_equal (0.886698ms)
+✔ unchanged full/summary JSON semantics: review_expired (0.990334ms)
+✔ unchanged full/summary JSON semantics: checked_refresh (1.002001ms)
+✔ unchanged full/summary JSON semantics: repeated_route (7.436409ms)
+✔ unchanged full/summary JSON semantics: invalid_colour (1.059508ms)
+✔ unchanged full/summary JSON semantics: fallback_name (1.525762ms)
+✔ full rendering and summary type 0 (0.63622ms)
+✔ full rendering and summary type 2 (0.687507ms)
+✔ full rendering and summary type 5 (0.471661ms)
+✔ full rendering and summary type 7 (0.431791ms)
+✔ full rendering and summary type 12 (0.459884ms)
+✔ full rendering and summary type 405 (0.524291ms)
+✔ full rendering and summary type 1400 (0.491792ms)
+✔ same validation error: missing_route (0.3713ms)
+✔ same validation error: missing_agency (0.299221ms)
+✔ same validation error: null_segment_profiles (0.386793ms)
+✔ same validation error: late_null_profile (0.2982ms)
+✔ same validation error: null_feed_profiles (0.246983ms)
+✔ same validation error: missing_window_start (0.474105ms)
+✔ same validation error: missing_window_end (0.369368ms)
+✔ empty feed collection unchanged (0.101584ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 150.438141
