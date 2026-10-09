@@ -148,6 +148,10 @@ body[data-ui="watch"] #map-frame {inset:0;border-radius:0}
 .toolbar .pwa-install-button{display:flex;align-items:center;justify-content:center;gap:5px;min-width:66px;min-height:40px;font-weight:650}
 .pwa-install-button svg{width:16px;height:16px;flex-shrink:0}
 #pwa-install{max-width:470px;overscroll-behavior:contain}
+/* Unsupported dialog elements have no browser-supplied hiding or top layer. */
+dialog:not([open]){display:none}
+#pwa-install-backdrop{position:fixed;inset:0;z-index:1000;background:#173e4759;touch-action:none;overscroll-behavior:none}
+#pwa-install.pwa-install-fallback[open]{display:block;position:fixed;z-index:1001;left:50%;top:50%;right:auto;bottom:auto;margin:0;transform:translate(-50%,-50%);width:calc(100vw - 28px);max-height:calc(100vh - 28px);max-height:calc(100dvh - 28px);overflow:auto}
 #pwa-install h2{padding-right:20px}
 #pwa-install .help-list{padding-left:22px}
 #pwa-install .help-list li+li{margin-top:10px}

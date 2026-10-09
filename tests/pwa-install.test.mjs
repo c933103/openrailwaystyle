@@ -5,6 +5,7 @@ import {JSDOM} from 'jsdom';
 import {installPwaInstall} from '../styles/map-controls.mjs';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
+const css = await readFile(new URL('../styles/app.css', import.meta.url), 'utf8');
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 function start({userAgent = 'Mozilla/5.0 Chrome/140.0.0.0 Safari/537.36', platform = 'Linux x86_64', maxTouchPoints = 0, standalone = false, displayMode = false, watch = false, noNativeDialog = false} = {}) {
   const dom = new JSDOM(html, {url: 'https://atlas.test/openrailwaystyle/#7/30.6/114.3'});
@@ -19,6 +20,10 @@ function start({userAgent = 'Mozilla/5.0 Chrome/140.0.0.0 Safari/537.36', platfo
     // reflected open property and no modal/close methods. jsdom otherwise
     // reflects open even though it has no showModal(), hiding this failure.
     for (const property of ['open', 'showModal', 'close']) delete window.HTMLDialogElement.prototype[property];
+    delete window.HTMLElement.prototype.inert;
+    const style = document.createElement('style');
+    style.textContent = 'dialog{display:block;position:static;inset:auto;margin:0}\n' + css;
+    document.head.append(style);
   }
   const controls = installPwaInstall({window, document});
   const byId = id => document.getElementById(id);
@@ -203,19 +208,36 @@ test('clicking Install restores focus to its invoking button even when the click
   } finally { s.cleanup(); }
 });
 
-test('a dialog without native open reflection closes, restores inert state and returns focus', () => {
+test('a dialog without native dialog or inert APIs closes and restores background state and focus', () => {
   const s = start({noNativeDialog: true});
   try {
     const opener = s.byId('pwa-install-open'), dialog = s.byId('pwa-install');
     const previous = s.byId('share'), close = s.byId('pwa-install-close');
     assert.equal('open' in dialog, false, 'the fallback must not rely on jsdom’s native open reflection');
     assert.equal(typeof dialog.showModal, 'undefined');
+    assert.equal('inert' in s.window.HTMLElement.prototype, false);
+    assert.equal(s.window.getComputedStyle(dialog).display, 'none', 'closed content is hidden without native dialog styling');
     s.byId('map-frame').inert = true;
+    s.byId('map-frame').setAttribute('aria-hidden', 'false');
+    s.byId('map-frame').style.setProperty('pointer-events', 'auto', 'important');
     s.document.querySelector('.panel').inert = false;
-    const originalInert = [...s.document.body.children].filter(element => element !== dialog).map(element => [element, element.inert]);
+    s.document.body.style.setProperty('overflow', 'scroll', 'important');
+    const original = [...s.document.body.children].filter(element => element !== dialog)
+      .map(element => ({element, inert: element.inert, ariaHidden: element.getAttribute('aria-hidden'),
+        pointerEvents: element.style.getPropertyValue('pointer-events'), priority: element.style.getPropertyPriority('pointer-events')}));
     const checkRestored = () => {
       assert.equal(dialog.hasAttribute('open'), false, 'fallback close removes the visible open state');
-      for (const [element, inert] of originalInert) assert.equal(element.inert, inert, 'restore each element’s previous inert state');
+      assert.equal(s.window.getComputedStyle(dialog).display, 'none');
+      assert.equal(s.byId('pwa-install-backdrop'), null);
+      assert.equal(dialog.hasAttribute('role'), false);
+      assert.equal(s.document.body.style.getPropertyValue('overflow'), 'scroll');
+      assert.equal(s.document.body.style.getPropertyPriority('overflow'), 'important');
+      for (const {element, inert, ariaHidden, pointerEvents, priority} of original) {
+        assert.equal(element.inert, inert, 'preserve each element’s prior inert state');
+        assert.equal(element.getAttribute('aria-hidden'), ariaHidden, 'restore existing and absent accessibility attributes exactly');
+        assert.equal(element.style.getPropertyValue('pointer-events'), pointerEvents);
+        assert.equal(element.style.getPropertyPriority('pointer-events'), priority);
+      }
       assert.equal(s.document.activeElement, opener);
     };
     for (const dismiss of [
@@ -228,11 +250,44 @@ test('a dialog without native open reflection closes, restores inert state and r
       opener.click();
       assert.equal(dialog.hasAttribute('open'), true);
       assert.equal(dialog.open, undefined);
-      for (const [element] of originalInert) assert.equal(element.inert, true, 'fallback makes the background inert');
+      assert.equal(dialog.getAttribute('role'), 'dialog');
+      assert.ok(s.byId('pwa-install-backdrop'));
+      for (const {element, inert} of original) {
+        assert.equal(element.getAttribute('aria-hidden'), 'true');
+        assert.equal(element.style.getPropertyValue('pointer-events'), 'none');
+        assert.equal(element.inert, inert, 'interaction blocking must not depend on inert expandos');
+      }
       opener.click(); // Reopening must not overwrite the saved inert states.
       dismiss();
       checkRestored();
     }
+  } finally { s.cleanup(); }
+});
+
+test('fallback blocks background activation and redirects outside focus without inert', () => {
+  const s = start({noNativeDialog: true});
+  try {
+    const previous = s.byId('share'), close = s.byId('pwa-install-close'), events = [];
+    for (const type of ['click', 'pointerdown', 'touchstart', 'keydown', 'focus']) previous.addEventListener(type, () => events.push(type));
+    s.open();
+    previous.click();
+    for (const type of ['pointerdown', 'touchstart', 'keydown']) {
+      const event = new s.window.Event(type, {bubbles: true, cancelable: true});
+      previous.dispatchEvent(event);
+      assert.equal(event.defaultPrevented, true, `${type} cannot activate the background`);
+    }
+    previous.focus();
+    assert.equal(s.document.activeElement, close, 'programmatic outside focus returns inside the modal');
+    assert.deepEqual(events, [], 'background handlers are not activated');
+    const tab = new s.window.KeyboardEvent('keydown', {key: 'Tab', bubbles: true, cancelable: true});
+    close.dispatchEvent(tab);
+    assert.equal(tab.defaultPrevented, true);
+    assert.equal(s.document.activeElement, close);
+    close.click();
+    previous.click();
+    previous.focus();
+    assert.deepEqual(events, ['click', 'focus'], 'ordinary background controls work again after close');
+    assert.equal(s.document.activeElement, previous);
   } finally { s.cleanup(); }
 });
 
