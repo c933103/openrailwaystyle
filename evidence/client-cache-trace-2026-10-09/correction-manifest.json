@@ -1,0 +1,30 @@
+{
+  "description": "favicon-only correction, strict guard retained; historical run archive still pending",
+  "files": [
+    {
+      "path": "RUN-STATUS.md",
+      "bytes": 1565,
+      "sha256": "fd9e051dd999132db10d43d29713bc6fbd40881c33b63545a85a804259861e10"
+    },
+    {
+      "path": "first-run-status.json",
+      "bytes": 2069,
+      "sha256": "658c85fdfa9aebdb3edd591af7f1429d30b35bc08ba1ba0616ffa682bf1cd266"
+    },
+    {
+      "path": "fixture-server.mjs",
+      "bytes": 7006,
+      "sha256": "b1ac42661e379e686cba4ccba2269fae9be73dfd8025802af9721e56ecc14820"
+    },
+    {
+      "path": "transport-v2.tap",
+      "bytes": 4192,
+      "sha256": "0072bf186eb0246d853e39682cd02eb381b47c03dabc19a5136af1762544abba"
+    },
+    {
+      "path": "transport.test.mjs",
+      "bytes": 5908,
+      "sha256": "e7325ab78b3d6bbf720725b3c63917060dd7e9a1a572c6154d6328c648bf68ba"
+    }
+  ]
+}

@@ -1,0 +1,117 @@
+(node:10) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node22 --trace-warnings ...` to show where the warning was created)
+TAP version 13
+# (node:17) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+# (Use `node22 --trace-warnings ...` to show where the warning was created)
+# Subtest: fixture coordinates/properties are exactly the accepted production-browser fixture
+ok 1 - fixture coordinates/properties are exactly the accepted production-browser fixture
+  ---
+  duration_ms: 4.624566
+  type: 'test'
+  ...
+# Subtest: route-free loopback transport preserves cache, bytes, range and fail-closed contracts
+    # Subtest: all three origins are distinct loopback HTTP endpoints
+    ok 1 - all three origins are distinct loopback HTTP endpoints
+      ---
+      duration_ms: 0.226672
+      type: 'test'
+      ...
+    # Subtest: control document declares a local data favicon before navigation
+    ok 2 - control document declares a local data favicon before navigation
+      ---
+      duration_ms: 9.594323
+      type: 'test'
+      ...
+    # Subtest: fresh cache control + conditional ETag returns 304 without a body
+    ok 3 - fresh cache control + conditional ETag returns 304 without a body
+      ---
+      duration_ms: 2.250295
+      type: 'test'
+      ...
+    # Subtest: stale-cache control requires revalidation
+    ok 4 - stale-cache control requires revalidation
+      ---
+      duration_ms: 1.629709
+      type: 'test'
+      ...
+    # Subtest: root and project documents serve the same current HTML with no-store
+    ok 5 - root and project documents serve the same current HTML with no-store
+      ---
+      duration_ms: 5.331131
+      type: 'test'
+      ...
+    # Subtest: production vendor renderer bytes remain byte-exact
+    ok 6 - production vendor renderer bytes remain byte-exact
+      ---
+      duration_ms: 13.001853
+      type: 'test'
+      ...
+    # Subtest: only declared provider origins relocate; provenance records original/served hashes
+    ok 7 - only declared provider origins relocate; provenance records original/served hashes
+      ---
+      duration_ms: 48.499323
+      type: 'test'
+      ...
+    # Subtest: CSP allows only the synthetic loopback origins for connect
+    ok 8 - CSP allows only the synthetic loopback origins for connect
+      ---
+      duration_ms: 3.401681
+      type: 'test'
+      ...
+    # Subtest: PMTiles response and range bytes match accepted fixture exactly
+    ok 9 - PMTiles response and range bytes match accepted fixture exactly
+      ---
+      duration_ms: 3.52642
+      type: 'test'
+      ...
+    # Subtest: known empty tiles are successful exact empty bodies
+    ok 10 - known empty tiles are successful exact empty bodies
+      ---
+      duration_ms: 1.661867
+      type: 'test'
+      ...
+    # Subtest: known nonempty fixture tile contains actual encoded bytes
+    ok 11 - known nonempty fixture tile contains actual encoded bytes
+      ---
+      duration_ms: 2.407071
+      type: 'test'
+      ...
+    # Subtest: unknown origin path and forbidden metadata fail instead of fake success
+    ok 12 - unknown origin path and forbidden metadata fail instead of fake success
+      ---
+      duration_ms: 2.02868
+      type: 'test'
+      ...
+    # Subtest: HEAD has no transmitted entity and preserves entity length
+    ok 13 - HEAD has no transmitted entity and preserves entity length
+      ---
+      duration_ms: 1.331739
+      type: 'test'
+      ...
+    # Subtest: deny proxy rejects HTTP and CONNECT without forwarding
+    ok 14 - deny proxy rejects HTTP and CONNECT without forwarding
+      ---
+      duration_ms: 2.434512
+      type: 'test'
+      ...
+    # Subtest: ledger retains status, body size and completed HTTP lifecycle
+    ok 15 - ledger retains status, body size and completed HTTP lifecycle
+      ---
+      duration_ms: 0.466224
+      type: 'test'
+      ...
+    1..15
+ok 2 - route-free loopback transport preserves cache, bytes, range and fail-closed contracts
+  ---
+  duration_ms: 108.100729
+  type: 'test'
+  ...
+1..2
+# tests 17
+# suites 0
+# pass 17
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 203.523144

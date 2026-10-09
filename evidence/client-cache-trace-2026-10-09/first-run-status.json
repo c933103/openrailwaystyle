@@ -1,0 +1,37 @@
+{
+  "status": "first-run-failed-final-control-guard; favicon-only correction prepared",
+  "runId": 37906825692,
+  "workflowHead": "a80b53a0c36e4ed6d56e262e5b2810b0b280ca6a",
+  "sourceHead": "2875a0744912633f35cd6faba25e3260dae09d89",
+  "sampleFiles": 6,
+  "applicationPageErrors": 0,
+  "applicationConsoleErrors": 0,
+  "renderedGeometryGate": "passed in each sample",
+  "browserCacheControl": "passed: cacheable repeat avoided wire; stale repeat returned conditional 304",
+  "finalGuardFailure": "Only control-page GET /favicon.ico returned500 because no file exists. Final unknown-request assertion correctly failed.",
+  "correction": "Serve control HTML with an explicit data favicon. Add a regression requiring it. Keep unknown-request assertion unchanged.",
+  "correctedLocalTests": {
+    "passed": 17,
+    "failed": 0
+  },
+  "artifact": {
+    "id": 11604937383,
+    "url": "https://github.com/c933103/openrailwaystyle/actions/runs/37906825692/artifacts/11604937383",
+    "bytes": 2058572,
+    "sha256": "a29af124673c985b705fc6c7f23e4a8dce27628ae27289bc5820321494cd9ae2",
+    "localBytesMatch": true,
+    "memberFiles": 56,
+    "expiresAt": "2026-11-08T08:46:22Z",
+    "durableRepositoryArchive": "not complete: original raw ZIP upload remains pending/unknown; no alternate upload attempted"
+  },
+  "performanceAcceptance": "provisional only; failed-run samples are not accepted final baseline",
+  "readinessContract": "Map-ready + map.loaded and areTilesLoaded + rendered fixture line + fonts ready + two rAF callbacks. No fixed sleep before usable. Playwright waitForFunction uses rAF polling; selector polling and tool round trips add overhead. Pan requires real idle; 30s timer only rejects failures.",
+  "remainingLimits": [
+    "headless desktop SwiftShader with2CPU quota, not phone hardware",
+    "sparse synthetic geometry and empty basemap",
+    "instrumentation overhead",
+    "cache settings synthetic, not real provider policy",
+    "warm navigation also reuses browser/OS state",
+    "100ms heap sampling excludes worker/GPU and can miss peaks"
+  ]
+}

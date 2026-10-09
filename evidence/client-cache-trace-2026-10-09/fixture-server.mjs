@@ -26,7 +26,8 @@ export async function serveFixture({root=resolve('source/styles')}={}){
   let status=200,body=Buffer.alloc(0),headers={},cache='public, max-age=3600';
   try{
    assert.ok(['GET','HEAD'].includes(req.method),'Unsupported fixture method');
-   if(path.startsWith('/__controls/')){body=Buffer.from('cache-transport-proof-v1');headers['content-type']='text/plain';if(path.endsWith('/revalidate'))cache='public, max-age=0, must-revalidate';}
+   if(path==='/__controls/page'){body=Buffer.from('<!doctype html><link rel="icon" href="data:,"><title>Cache controls</title>');headers['content-type']='text/html';cache='no-store';}
+   else if(path.startsWith('/__controls/')){body=Buffer.from('cache-transport-proof-v1');headers['content-type']='text/plain';if(path.endsWith('/revalidate'))cache='public, max-age=0, must-revalidate';}
    else if(kind==='https://openrailwaymap.app'){
     assert.ok(known.has(path.split('/')[1]),'Unknown ORM endpoint');const tile=ormVectorFixture(path,indexes);assert.ok(tile,'Known catalogue sources must use direct XYZ, not metadata');body=tile.body;headers['content-type']=tile.contentType;
    }else if(kind==='https://tuiles.enliberte.fr'){
