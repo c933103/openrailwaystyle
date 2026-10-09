@@ -277,3 +277,23 @@ test('crosswalk alternatives belonging to a different feed or unserved station r
     assert.equal(status(input), 'verified');
   }
 });
+
+test('explicitly excluded candidates need no match-only schema or station crosswalk', () => {
+  for (const excluded of [{eligibility: 'excluded'}, {eligibility: 'excluded', route_bindings: 'irrelevant-invalid'}]) {
+    const input = fixture();
+    input.candidates.push(excluded);
+    assert.equal(status(input), 'verified');
+    input.candidates = [excluded];
+    delete input.crosswalk;
+    assert.equal(status(input), 'no_eligible_service');
+  }
+  const empty = fixture(); empty.candidates = []; delete empty.crosswalk;
+  assert.equal(status(empty), 'no_eligible_service');
+});
+
+test('unknown eligibility and incomplete candidate coverage are not treated as exclusion', () => {
+  const input = fixture(); input.candidates.push({eligibility: 'unknown'});
+  assert.equal(status(input), 'missing_evidence');
+  input.candidates = [{eligibility: 'excluded'}]; input.context.candidate_inventory = 'partial';
+  assert.equal(status(input), 'missing_evidence');
+});

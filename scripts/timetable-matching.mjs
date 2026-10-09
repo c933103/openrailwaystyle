@@ -111,7 +111,9 @@ export function matchTimetablePattern(input = {}) {
   }
   if (!observations.some(row => row.calendar_state === 'current' && Number.isFinite(row.valid_until) && now <= row.valid_until)) return result(observations.every(row => row.calendar_state === 'expired' || now > row.valid_until) ? 'stale' : 'missing_evidence', 'no_current_observations');
   if (!['0', '1'].includes(pattern.direction_id)) return result('missing_evidence', 'missing_direction');
-  if (!array(candidates, 256) || !array(crosswalk, 1024)) return result('missing_evidence', 'candidate_or_crosswalk_limit');
+  if (!array(candidates, 256)) return result('missing_evidence', 'candidate_or_crosswalk_limit');
+  if (candidates.every(candidate => candidate?.eligibility === 'excluded')) return result('no_eligible_service', 'no_eligible_identity_in_candidates');
+  if (!array(crosswalk, 1024)) return result('missing_evidence', 'candidate_or_crosswalk_limit');
   const bound = row => row && row.feed_id === source.feed_id && row.source_sha256 === source.sha256;
   if (pattern.calls.some(call => ['2', '3'].includes(call.pickup_type) || ['2', '3'].includes(call.drop_off_type))) return result('missing_evidence', 'conditional_stop_service');
   const served = pattern.calls.filter(call => call.pickup_type !== '1' || call.drop_off_type !== '1');
@@ -130,6 +132,7 @@ export function matchTimetablePattern(input = {}) {
   const blockers = [];
   let eligible = 0;
   for (const candidate of candidates) {
+    if (candidate?.eligibility === 'excluded') continue;
     if (!candidate || !array(candidate.route_bindings, 32)) { blockers.push(['missing_evidence', 'invalid_candidate']); continue; }
     const previous = candidate.route_bindings.some(row => row && row.feed_id === source.feed_id && row.route_id === pattern.source_route_id && row.source_sha256 !== source.sha256);
     if (previous && candidate.eligibility !== 'excluded') { blockers.push(['stale', 'route_binding_source_mismatch']); continue; }
@@ -140,7 +143,6 @@ export function matchTimetablePattern(input = {}) {
     const fallback = bound(candidate.operator_binding) && candidate.operator_binding.agency_id === pattern.agency_id &&
       id(pattern.route_ref) && candidate.osm?.tags?.ref === pattern.route_ref;
     if (!exact.length && !fallback) continue;
-    if (candidate.eligibility === 'excluded') continue;
     if (candidate.eligibility !== 'eligible') { blockers.push(['missing_evidence', 'unverified_eligibility']); continue; }
     eligible++;
     if (candidate.status === 'conflict' || exact.some(row => row.status === 'conflict')) { blockers.push(['conflicting', 'service_identity_conflict']); continue; }
