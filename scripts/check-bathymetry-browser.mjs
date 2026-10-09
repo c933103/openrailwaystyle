@@ -9,9 +9,7 @@ const base = (process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?
 const app = await readFile(new URL('../styles/app.mjs',import.meta.url),'utf8');
 const library = new URL(app.match(/loadScript\(new URL\('([^']+maplibre-gl[^']+\.js)'/)[1], base).href;
 const deadline=setTimeout(()=>{console.error('Bathymetry validation exceeded five minutes');process.exit(1);},300000);deadline.unref();
-const proxyURL=process.env.HTTPS_PROXY || process.env.https_proxy;
-const proxy=proxyURL ? {server:proxyURL,bypass:'localhost,127.0.0.1'} : undefined;
-const browser = await launchBrowser({headless:true,proxy,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+const browser = await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page = await browser.newPage({viewport:{width:1365,height:900},deviceScaleFactor:1});
 const errors = [];
 page.on('pageerror',error=>errors.push(error.message));

@@ -161,6 +161,21 @@ checks use the same synthetic railway fixture against the published page. They
 test rendering integration, **not real-world railway geometry or live tile
 availability**, which must be assessed separately.
 
+Service-worker installation/upgrade tests in `tests/sw-install.test.mjs` and
+`tests/startup.test.mjs` execute the actual old/new worker sources with synthetic
+fetch/cache implementations. The browser matrix has always blocked registered
+service workers; its Cache Storage/Web Crypto upgrade checks and PWA guidance
+checks retain that scope. Dedicated map workers run normally under the guarded
+browser context, with an explicit worker-egress regression. This is not a claim
+of native browser service-worker network-interception coverage.
+
+The matrix's Node preparation reads local snapshots/fixtures. Playwright's
+Node-side route fetches share the same pre-request guard. Outside that matrix,
+the intentionally live single station-search probe and actual deployed-byte
+verification reject redirects before following them. Package installation,
+GitHub snapshot reads and first-party deployment reads remain real network work;
+the whole deployment workflow is not an offline sandbox.
+
 The broader geographic regression tests previously run in CI (Japan–Korea
 lines, worldwide layer and station density, real context features and
 infrastructure) are still available, but now require independently hosted

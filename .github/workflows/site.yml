@@ -379,7 +379,7 @@ jobs:
             for(const encoding of ['identity','gzip, deflate, br, zstd, identity']) {
               for(let attempt=0;attempt<12;attempt++) {
                 try {
-                  const response=await fetch(base+key+'.pbf.gz',{headers:{'Accept-Encoding':encoding},signal:AbortSignal.timeout(20000)});
+                  const response=await fetch(base+key+'.pbf.gz',{redirect:'error',headers:{'Accept-Encoding':encoding},signal:AbortSignal.timeout(20000)});
                   assert.equal(response.status,200);
                   assert.deepEqual(decode(Buffer.from(await response.arrayBuffer())),expected);
                   console.log('PASS: exact deployed vector tile',key,encoding);
