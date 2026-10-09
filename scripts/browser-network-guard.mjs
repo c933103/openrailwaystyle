@@ -2,6 +2,12 @@
 // URL, but can never send an unapproved provider request via continue/fetch.
 // Only local HTTP and the explicitly selected first-party deployment are read.
 import {isLoopbackHttp} from './browser-policy.mjs';
+import {setTimeout as delay} from 'node:timers/promises';
+
+// Playwright 1.56.1 serializes errors without Node's `code`. Match only its
+// exact reset headline, never an HTTP response body or the appended call log.
+const transportReset = error => error?.code === 'ECONNRESET' ||
+  (error?.name === 'Error' && /^route\.fetch: (?:socket hang up|read ECONNRESET)$/.test(error.message?.split('\n', 1)[0]));
 
 export function browserNetworkAllowed(value, bases = []) {
   let url;
@@ -21,7 +27,7 @@ export function firstPartyBases(env = process.env) {
 // Redirects are rejected, not followed by either Playwright or Chromium. A
 // route is only consulted for a redirect chain's first URL; checking Location
 // after an ordinary continue() would therefore already be too late.
-export async function guardBrowserNetwork(context, {bases = firstPartyBases(), blocked = []} = {}) {
+export async function guardBrowserNetwork(context, {bases = firstPartyBases(), blocked = [], warn = console.warn} = {}) {
   const remember = value => {
     const url = new URL(value);
     blocked.push(url.origin + url.pathname); // Never log query strings/credentials.
@@ -34,6 +40,32 @@ export async function guardBrowserNetwork(context, {bases = firstPartyBases(), b
       throw new Error('Browser test server redirected; refusing unguarded redirect egress');
     }
     return response;
+  };
+  const fetch = async (route, options, target) => {
+    const request = route.request(), method = (options.method || request.method?.() || '').toUpperCase();
+    // Only bodyless, idempotent local reads may be repeated. Pin the checked
+    // URL and disable Playwright's own retries so callers cannot multiply this
+    // two-attempt budget or retry a deployment/provider request.
+    const retry = isLoopbackHttp(target) && ['GET', 'HEAD'].includes(method) &&
+      options.postData === undefined && !request.postDataBuffer?.();
+    const transport = {...options, url: target, maxRedirects: 0, maxRetries: 0};
+    const label = method + ' ' + new URL(target).origin + new URL(target).pathname;
+    for (let attempt = 1; ; attempt++) {
+      if (!browserNetworkAllowed(target, bases)) throw new Error('Browser test attempted a non-fixture provider fetch');
+      try {
+        const response = await route.fetch(transport);
+        if (attempt > 1) warn(`Loopback browser request returned on attempt ${attempt}/2: ${label}`);
+        return response;
+      } catch (error) {
+        if (!retry || !transportReset(error)) throw error;
+        if (attempt === 2) {
+          warn(`Loopback browser request exhausted 2/2 attempts after ECONNRESET: ${label}`);
+          throw error;
+        }
+        warn(`Loopback browser request ECONNRESET on attempt 1/2; retrying 2/2: ${label}`);
+        await delay(250);
+      }
+    }
   };
   const protect = route => new Proxy(route, {get(original, property) {
     if (property === 'fallback') return async (options = {}) => {
@@ -48,13 +80,13 @@ export async function guardBrowserNetwork(context, {bases = firstPartyBases(), b
         remember(target);
         throw new Error('Browser test attempted a non-fixture provider fetch');
       }
-      return responseSafe(await original.fetch({...options, maxRedirects: 0}), target);
+      return responseSafe(await fetch(original, options, target), target);
     };
     if (property === 'continue') return async (options = {}) => {
       const target = options.url || original.request().url();
       if (!browserNetworkAllowed(target, bases)) return abort(original, target);
       try {
-        const response = await responseSafe(await original.fetch({...options, maxRedirects: 0}), target);
+        const response = await responseSafe(await fetch(original, options, target), target);
         try {
           // APIResponse.body() is decoded. Replaying compression/length headers
           // would misdescribe the actual fetched bytes, especially on Pages.

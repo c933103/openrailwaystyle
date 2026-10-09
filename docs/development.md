@@ -141,6 +141,10 @@ unmocked network requests before egress, including later fixture handlers
 that try `route.continue()` or `route.fetch()`. Service workers and WebSockets
 are blocked; HTTP redirects are rejected rather than followed. Only loopback
 HTTP and the explicitly selected first-party deployment path may be fetched.
+Bodyless loopback GET/HEAD reads retry one exact transport reset after 250 ms,
+with both attempts recorded in the check output. Exhaustion still fails the
+request; HTTP errors, redirects, timeouts, closed contexts and deployment reads
+are never retried. Every successful read still supplies actual server bytes.
 The old external tile cache is not used by the harness or CI:
 
 ```sh

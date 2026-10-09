@@ -60,7 +60,7 @@ test('rewriting an allowed request to an external URL cannot send it out',async(
 test('first-party content remains fetched, with redirects disabled before transport',async()=>{
   const {context,blocked}=await harness(),request=route('https://deployed.example/atlas/vendor/library.js');
   await context.routes[0].handler(request.value);
-  assert.deepEqual(request.calls.fetch,[{maxRedirects:0}]);
+  assert.deepEqual(request.calls.fetch,[{url:'https://deployed.example/atlas/vendor/library.js',maxRedirects:0,maxRetries:0}]);
   assert.deepEqual(request.calls.fulfill[0],{status:200,headers:{'content-type':'text/javascript'},body:Buffer.from('actual deployed bytes')});
   assert.equal(request.calls.continue,0);assert.deepEqual(blocked,[]);
 });
