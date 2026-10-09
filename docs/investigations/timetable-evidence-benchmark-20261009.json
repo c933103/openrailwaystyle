@@ -1,0 +1,196 @@
+{
+  "schema": 1,
+  "recorded_date": "2026-10-09",
+  "base_commit": "181bc2cd0ee25b32e043101804210e0cfb0cab1e",
+  "base_tree": "379321470b371890cf4d781f6fd18d241a82c047",
+  "scope": "Controlled synthetic offline fixtures; no live providers or production resource claim. Linux peak RSS is KiB; output equality excludes the new optional sidecar only.",
+  "source_sha256": {
+    "scripts/gtfs-frequency.py": "0ec3e6171596fa2314bb656147e75c579ac4682f77caa12e4aa19291ef00e0d7",
+    "scripts/timetable_evidence.py": "0b4960f10192bac5112008175c501971adca59d0f2e1bfc6ff7e24180ace6452",
+    "scripts/benchmark-timetable-evidence.py": "00228dc8c7af17b65d94250820e4b0e9231e6139dd610dc2ff3c121c8844aeed"
+  },
+  "cohorts": [
+    {
+      "synthetic": true,
+      "trips": 10000,
+      "calls": 24,
+      "stop_rows": 240000,
+      "unique_patterns": false,
+      "profiles": 28,
+      "compressed_input_bytes": 619734,
+      "python": "3.12.14",
+      "results": [
+        {
+          "repeat": 0,
+          "mode": "baseline",
+          "capture": false,
+          "seconds": 10.07,
+          "peak_rss_kib": 111536,
+          "compiled_sha256": "1d81590baaab22e6b0b07e4c10324effbc9d3990aebc72c6bcc19928f10bcc1b",
+          "evidence_bytes": 0,
+          "evidence_status": "disabled",
+          "evidence_reasons": [],
+          "patterns": 0,
+          "observations": 0
+        },
+        {
+          "repeat": 0,
+          "mode": "disabled",
+          "capture": false,
+          "seconds": 9.935,
+          "peak_rss_kib": 111744,
+          "compiled_sha256": "1d81590baaab22e6b0b07e4c10324effbc9d3990aebc72c6bcc19928f10bcc1b",
+          "evidence_bytes": 0,
+          "evidence_status": "disabled",
+          "evidence_reasons": [],
+          "patterns": 0,
+          "observations": 0
+        },
+        {
+          "repeat": 0,
+          "mode": "enabled",
+          "capture": true,
+          "seconds": 10.867,
+          "peak_rss_kib": 140044,
+          "compiled_sha256": "1d81590baaab22e6b0b07e4c10324effbc9d3990aebc72c6bcc19928f10bcc1b",
+          "evidence_bytes": 5015157,
+          "evidence_status": "captured",
+          "evidence_reasons": [],
+          "patterns": 2,
+          "observations": 10000
+        },
+        {
+          "repeat": 1,
+          "mode": "baseline",
+          "capture": false,
+          "seconds": 10.388,
+          "peak_rss_kib": 111696,
+          "compiled_sha256": "1d81590baaab22e6b0b07e4c10324effbc9d3990aebc72c6bcc19928f10bcc1b",
+          "evidence_bytes": 0,
+          "evidence_status": "disabled",
+          "evidence_reasons": [],
+          "patterns": 0,
+          "observations": 0
+        },
+        {
+          "repeat": 1,
+          "mode": "disabled",
+          "capture": false,
+          "seconds": 11.278,
+          "peak_rss_kib": 111616,
+          "compiled_sha256": "1d81590baaab22e6b0b07e4c10324effbc9d3990aebc72c6bcc19928f10bcc1b",
+          "evidence_bytes": 0,
+          "evidence_status": "disabled",
+          "evidence_reasons": [],
+          "patterns": 0,
+          "observations": 0
+        },
+        {
+          "repeat": 1,
+          "mode": "enabled",
+          "capture": true,
+          "seconds": 10.873,
+          "peak_rss_kib": 140040,
+          "compiled_sha256": "1d81590baaab22e6b0b07e4c10324effbc9d3990aebc72c6bcc19928f10bcc1b",
+          "evidence_bytes": 5015157,
+          "evidence_status": "captured",
+          "evidence_reasons": [],
+          "patterns": 2,
+          "observations": 10000
+        },
+        {
+          "repeat": 2,
+          "mode": "baseline",
+          "capture": false,
+          "seconds": 9.904,
+          "peak_rss_kib": 111576,
+          "compiled_sha256": "1d81590baaab22e6b0b07e4c10324effbc9d3990aebc72c6bcc19928f10bcc1b",
+          "evidence_bytes": 0,
+          "evidence_status": "disabled",
+          "evidence_reasons": [],
+          "patterns": 0,
+          "observations": 0
+        },
+        {
+          "repeat": 2,
+          "mode": "disabled",
+          "capture": false,
+          "seconds": 9.936,
+          "peak_rss_kib": 111744,
+          "compiled_sha256": "1d81590baaab22e6b0b07e4c10324effbc9d3990aebc72c6bcc19928f10bcc1b",
+          "evidence_bytes": 0,
+          "evidence_status": "disabled",
+          "evidence_reasons": [],
+          "patterns": 0,
+          "observations": 0
+        },
+        {
+          "repeat": 2,
+          "mode": "enabled",
+          "capture": true,
+          "seconds": 10.538,
+          "peak_rss_kib": 139924,
+          "compiled_sha256": "1d81590baaab22e6b0b07e4c10324effbc9d3990aebc72c6bcc19928f10bcc1b",
+          "evidence_bytes": 5015157,
+          "evidence_status": "captured",
+          "evidence_reasons": [],
+          "patterns": 2,
+          "observations": 10000
+        }
+      ]
+    },
+    {
+      "synthetic": true,
+      "trips": 12000,
+      "calls": 24,
+      "stop_rows": 288000,
+      "unique_patterns": true,
+      "profiles": 28,
+      "compressed_input_bytes": 780558,
+      "python": "3.12.14",
+      "results": [
+        {
+          "repeat": 0,
+          "mode": "baseline",
+          "capture": false,
+          "seconds": 11.833,
+          "peak_rss_kib": 132752,
+          "compiled_sha256": "86b5e048e3cf4f0b6fae74d87c97af3b8f20dabcbbc4939d89fb11398536fdfb",
+          "evidence_bytes": 0,
+          "evidence_status": "disabled",
+          "evidence_reasons": [],
+          "patterns": 0,
+          "observations": 0
+        },
+        {
+          "repeat": 0,
+          "mode": "disabled",
+          "capture": false,
+          "seconds": 11.967,
+          "peak_rss_kib": 132812,
+          "compiled_sha256": "86b5e048e3cf4f0b6fae74d87c97af3b8f20dabcbbc4939d89fb11398536fdfb",
+          "evidence_bytes": 0,
+          "evidence_status": "disabled",
+          "evidence_reasons": [],
+          "patterns": 0,
+          "observations": 0
+        },
+        {
+          "repeat": 0,
+          "mode": "enabled",
+          "capture": true,
+          "seconds": 12.286,
+          "peak_rss_kib": 178552,
+          "compiled_sha256": "86b5e048e3cf4f0b6fae74d87c97af3b8f20dabcbbc4939d89fb11398536fdfb",
+          "evidence_bytes": 283,
+          "evidence_status": "incomplete",
+          "evidence_reasons": [
+            "byte_limit"
+          ],
+          "patterns": 0,
+          "observations": 0
+        }
+      ]
+    }
+  ]
+}

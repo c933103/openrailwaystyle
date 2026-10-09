@@ -318,3 +318,11 @@ with published headways and writes the manifest (including the covered frequency
 periods) and credits; the snapshot's feeds add no lines. `npm run build` and
 `npm test` validate the app. `--fixtures` is reserved for the browser regression
 check that timetable fixtures draw nothing.
+
+## Offline matching prerequisite
+
+The [timetable identity evidence and matching contract](timetable-matching-contract.md)
+provides bounded, opt-in capture and a pure fixture-tested decision contract. It
+is not enabled in production and does not apply timetable frequencies to OSM or
+change route geometry. Compiled or geometry-bearing feed counts are not verified
+OSM-match counts.

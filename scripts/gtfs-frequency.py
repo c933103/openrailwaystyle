@@ -109,8 +109,26 @@ def local_boundary(date, value, timezone):
     return candidates.pop()
 
 
-def compile_feed(path, config, date, geometry=False):
+def compile_feed(path, config, date, geometry=False, matching_evidence=False):
     date = dt.date.fromisoformat(date)
+    # Explicit offline opt-in, never enabled by provider/catalogue metadata.
+    evidence_module = None
+    duplicate_ids = False
+    if matching_evidence:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("timetable_evidence", Path(__file__).with_name("timetable_evidence.py"))
+        evidence_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(evidence_module)
+
+    def keyed(rows, key):
+        nonlocal duplicate_ids
+        out = {}
+        for row in rows:
+            ident = key(row) if callable(key) else row[key]
+            if matching_evidence and ident in out:
+                duplicate_ids = True
+            out[ident] = row
+        return out
     z = zipfile.ZipFile(path)
     if sum(info.file_size for info in z.infolist()) > MAX_EXPANDED_BYTES:
         z.close()
@@ -122,13 +140,13 @@ def compile_feed(path, config, date, geometry=False):
         lo, hi = feed[0].get("feed_start_date"), feed[0].get("feed_end_date")
         if lo and date.strftime("%Y%m%d") < lo:
             raise ValueError("Selected date is outside the feed's validity")
-    agencies = {r.get("agency_id") or "single-agency": r for r in read(z, "agency.txt")}
+    agencies = keyed(read(z, "agency.txt"), lambda r: r.get("agency_id") or "single-agency")
     if not agencies:
         raise ValueError("Missing agency metadata")
-    routes = {r["route_id"]: r for r in read(z, "routes.txt") if rail_type(r["route_type"])}
-    trips = {r["trip_id"]: r for r in read(z, "trips.txt") if r["route_id"] in routes}
-    stops = {r["stop_id"]: r for r in read(z, "stops.txt")}
-    calendar = {r["service_id"]: r for r in read(z, "calendar.txt")}
+    routes = keyed((r for r in read(z, "routes.txt") if rail_type(r["route_type"])), "route_id")
+    trips = keyed((r for r in read(z, "trips.txt") if r["route_id"] in routes), "trip_id")
+    stops = keyed(read(z, "stops.txt"), "stop_id")
+    calendar = keyed(read(z, "calendar.txt"), "service_id")
     exceptions = list(read(z, "calendar_dates.txt"))
     if not calendar and not exceptions:
         raise ValueError("No service calendar")
@@ -211,6 +229,7 @@ def compile_feed(path, config, date, geometry=False):
         raise ValueError('Selected date is before every retained rail service calendar start')
     if all(trip['_calendar_expired'] or trip['_calendar_future'] for trip in trips.values()):
         raise ValueError('Selected date is outside every retained rail service calendar')
+    matching_identity = evidence_module.capture_identity(routes, trips) if evidence_module else None
     if config.get('canonical_routes'):
         routes = canonical_routes(routes, trips, times, stops)
     service_days = [date-dt.timedelta(days=i) for i in range(prior_days+1)]
@@ -381,6 +400,8 @@ def compile_feed(path, config, date, geometry=False):
             "agencies": list(agencies.values()), "routes": [routes[key] for key in sorted(routes)],
             "stops": [] if geometry else [{"id": key, "name": stops[key]["stop_name"], "lat": float(stops[key]["stop_lat"]), "lon": float(stops[key]["stop_lon"])} for key in sorted({s for row in output for s in row["stops"]})],
             "segments": output}
+    if evidence_module:
+        result['matching_evidence'] = evidence_module.build_evidence(source, matching_identity, trips, times, stops, frequencies, active, agencies, seconds, duplicate_ids)
     if geometry and getattr(paths, 'rail_patterns', {}):
         source['geometry_license'] = 'ODbL-1.0'
         source['geometry_attribution'] = '© OpenStreetMap contributors; matched against an already published branch/metro railway snapshot'
@@ -402,8 +423,9 @@ def main():
     parser.add_argument("--date", required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--geometry", action="store_true", help="Map profiles along supplied rail shapes")
+    parser.add_argument("--matching-evidence", action="store_true", help="Retain bounded identity evidence for offline matching review; does not apply profiles")
     args = parser.parse_args()
-    result = compile_feed(args.zip, json.loads(args.config.read_text()), args.date, geometry=args.geometry)
+    result = compile_feed(args.zip, json.loads(args.config.read_text()), args.date, geometry=args.geometry, matching_evidence=args.matching_evidence)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
     print(f"Compiled {len(result['routes'])} rail routes and {len(result['segments'])} profiles for {args.date}; geometry: {result['source']['geometry']}.")
