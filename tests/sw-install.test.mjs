@@ -23,7 +23,7 @@ const patchedMapLibre=Buffer.from(await backportMapLibre524(
 // at headers, but its slot is only released when the response body is consumed.
 // highWaterMark:0 makes this distinction explicit instead of eagerly buffering
 // every mock response (which would hide the installation deadlock).
-function startWorker({version = 'new', fail = '', stores = new Map(), code = source, rejectExternal = false, noLegacyCrypto = false} = {}) {
+function startWorker({version = 'new', fail = '', stores = new Map(), code = source, rejectExternal = false, noLegacyCrypto = false, assetBodies = new Map()} = {}) {
   const handlers = new Map(), queue = [], writes = [], requests = [];
   const counts = {active: 0, peak: 0, started: 0, finished: 0};
   let offline = false, skipped = false, claimed = false;
@@ -65,7 +65,7 @@ function startWorker({version = 'new', fail = '', stores = new Map(), code = sou
     const legacy=new URL(url).pathname.endsWith('/vendor/maplibre-gl-5.24.0-atlas.1.js')
       ? {body:patchedMapLibre,type:'application/javascript'} : legacyDistributions.get(url) ?? (new URL(url).pathname.endsWith('/vendor/maplibre-gl-5.24.0.js')
       ? legacyDistributions.get('https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js') : null);
-    const body = page ? `<script type="module" src="app.mjs?v=${version}"></script>` : legacy?.body??`${version}: ${url}`;
+    const body = page ? `<script type="module" src="app.mjs?v=${version}"></script>` : assetBodies.get(new URL(url).pathname)??legacy?.body??`${version}: ${url}`;
     let consumed = false;
     return new Response(new ReadableStream({
       pull(controller) {
@@ -161,6 +161,35 @@ test('a complete replacement keeps the previous version and revised icons availa
   assert.match(await (await next.request('atlas-icon-512.png?rev=changed')).text(), /^new:/);
   const versions = await next.stores.get(`atlas-shell-${generation}`).get(`${scope}__versions`).clone().json();
   assert.deepEqual(versions, ['new', 'old']);
+});
+
+test('the current departure release refreshes cached code while previous tabs retain their version', async () => {
+  const previousVersion = '20261009-ios-install-5';
+  const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
+  const currentVersion = page.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
+  assert.ok(currentVersion, 'the actual page declares its asset version');
+  const path = new URL('departures.mjs', scope).pathname;
+  const previousBytes = 'export const departureRelease = "before-correction";';
+  const currentBytes = readFileSync(new URL('../styles/departures.mjs', import.meta.url), 'utf8');
+  const old = startWorker({version: previousVersion, assetBodies: new Map([[path, previousBytes]])});
+  await bounded(old.lifecycle('install'));
+  await old.lifecycle('activate');
+  assert.equal(await (await old.request(`departures.mjs?v=${previousVersion}`)).text(), previousBytes);
+
+  // The worker source and cache generation stay unchanged. Only the deployed
+  // page and assets change, as on a normal visit after this release.
+  const next = startWorker({version: currentVersion, stores: old.stores,
+    assetBodies: new Map([[path, currentBytes]])});
+  await bounded(next.request('./', true));
+  assert.ok(await (await next.request(`departures.mjs?v=${currentVersion}`)).text() === currentBytes,
+    'the current page must receive the corrected departure bytes, not the previous saved version');
+  assert.equal(next.requests.filter(url => new URL(url).pathname === path).length, 1,
+    'the new complete shell fetches departure code once');
+  next.setOffline();
+  assert.equal(await (await next.request(`departures.mjs?v=${previousVersion}`)).text(), previousBytes,
+    'an older tab keeps its own module after the new shell is saved');
+  assert.ok(await (await next.request(`departures.mjs?v=${currentVersion}`)).text() === currentBytes,
+    'the corrected module remains available offline');
 });
 
 test('first-party libraries install together and remain available offline with every external origin blocked', async () => {
