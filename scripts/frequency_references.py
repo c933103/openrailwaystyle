@@ -28,6 +28,108 @@ METADATA_REASONS = {'', 'not_supplied', 'metadata_unavailable', 'metadata_file_l
     'metadata_record_limit', 'metadata_invalid_record', 'metadata_record_byte_limit', 'metadata_invalid_or_unreadable'}
 
 
+_METADATA_SCHEMA = json.loads(Path(__file__).with_name('frequency-reference-schema.json').read_text())
+
+
+def metadata_shape_valid(value):
+    """Shared allowlist; no unrecognized nested values reach public evidence."""
+    budget = [_METADATA_SCHEMA['node_limit'], _METADATA_SCHEMA['character_limit']]
+    def check(value, spec, depth=0):
+        budget[0] -= 1
+        if budget[0] < 0 or depth > _METADATA_SCHEMA['depth_limit']:
+            return False
+        if 'ref' in spec:
+            spec = _METADATA_SCHEMA['shapes'][spec['ref']]
+        if value is None and spec.get('nullable'):
+            return True
+        kind = spec['kind']
+        if kind == 'string':
+            if not isinstance(value, str) or not spec['min'] <= len(value) <= spec['max']:
+                return False
+            units = len(value.encode('utf-16-le', errors='surrogatepass')) // 2
+            if units > spec['max']: return False
+            budget[1] -= units
+            return (budget[1] >= 0 and (not spec.get('pattern') or re.fullmatch(spec['pattern'], value) is not None)
+                and (spec.get('format') != 'url' or bool(_url(value))))
+        if kind == 'boolean': return type(value) is bool
+        if kind == 'integer': return type(value) is int and value == spec['value']
+        if kind == 'enum': return isinstance(value, str) and value in spec['values']
+        if kind == 'array':
+            return isinstance(value, list) and len(value) <= spec['max'] and all(check(item, spec['item'], depth+1) for item in value)
+        if not isinstance(value, dict) or len(value) > 2*len(spec['fields']): return False
+        if any(key not in value for key in spec['required']): return False
+        for key, item in value.items():
+            field = spec['fields'].get(key)
+            # Publication adds original-URL fingerprints. Accept only hashes of
+            # known string fields, preserving one-way redaction idempotence.
+            if field is None and isinstance(key, str) and key.endswith('_sha256'):
+                base = spec['fields'].get(key[:-7], {})
+                if base.get('kind') == 'string': field = {'kind':'string','min':64,'max':64,'pattern':'[a-f0-9]{64}'}
+            if field is None or not check(item, field, depth+1): return False
+        return True
+    try:
+        return check(value, _METADATA_SCHEMA['shapes']['root'])
+    except (TypeError, ValueError, RecursionError):
+        return False
+
+
+def project_metadata(value):
+    if metadata_shape_valid(value):
+        return value
+    # Retain only complete safe subrecords. Never serialize/hash invalid bytes,
+    # echo unknown keys, or infer acquisition permission from a repaired graph.
+    missing = object()
+    budget = [_METADATA_SCHEMA['node_limit'], _METADATA_SCHEMA['character_limit']]
+    def project(value, spec, depth=0):
+        budget[0] -= 1
+        if budget[0] < 0 or depth > _METADATA_SCHEMA['depth_limit']: return missing
+        if 'ref' in spec: spec = _METADATA_SCHEMA['shapes'][spec['ref']]
+        if value is None and spec.get('nullable'): return None
+        kind = spec['kind']
+        if kind == 'object':
+            if not isinstance(value, dict): return missing
+            result = {}
+            for key, field in spec['fields'].items():
+                if key in value:
+                    item = project(value[key], field, depth+1)
+                    if item is not missing: result[key] = item
+                hash_key = key + '_sha256'
+                if field.get('kind') == 'string' and hash_key not in spec['fields'] and hash_key in value:
+                    item = project(value[hash_key], {'kind':'string','min':64,'max':64,'pattern':'[a-f0-9]{64}'}, depth+1)
+                    if item is not missing: result[hash_key] = item
+            return result if all(key in result for key in spec['required']) else missing
+        if kind == 'array':
+            if not isinstance(value, list): return missing
+            result = []
+            for item in value[:spec['max']]:
+                item = project(item, spec['item'], depth+1)
+                if item is not missing: result.append(item)
+            return result
+        if kind == 'string':
+            if not isinstance(value, str) or len(value) > spec['max']: return missing
+            units = len(value.encode('utf-16-le', errors='surrogatepass')) // 2
+            if units > spec['max']: return missing
+            budget[1] -= units
+            valid = (spec['min'] <= len(value) <= spec['max'] and budget[1] >= 0
+                and (not spec.get('pattern') or re.fullmatch(spec['pattern'], value) is not None)
+                and (spec.get('format') != 'url' or bool(_url(value))))
+        elif kind == 'boolean': valid = type(value) is bool
+        elif kind == 'integer': valid = type(value) is int and value == spec['value']
+        else: valid = isinstance(value, str) and value in spec['values']
+        return value if valid else missing
+    try:
+        safe = project(value, _METADATA_SCHEMA['shapes']['root'])
+    except (TypeError, ValueError, RecursionError):
+        safe = missing
+    hold = deepcopy(_METADATA_SCHEMA['invalid'])
+    if isinstance(safe, dict):
+        # Preserve specs and individually projected provenance; invalidate every
+        # acquisition-affecting top-level selection and basis.
+        hold = {**safe, **{key: item for key, item in hold.items()
+                         if key not in ('specs', 'declarations', 'ordinary_static_declarations')}}
+    return hold
+
+
 def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False,
                                     separators=(',', ':')).encode()).hexdigest()
@@ -472,7 +574,7 @@ def resolution_state(row):
     value = row.get('source_resolution')
     if value is None:
         return None
-    if not isinstance(value, dict) or value.get('schema') != 1:
+    if not metadata_shape_valid(value):
         return 'invalid'
     state = value.get('state')
     if state not in ('schedule', 'non_timetable_format', 'unresolved', 'ambiguous'):

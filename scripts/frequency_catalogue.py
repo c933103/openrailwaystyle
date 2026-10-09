@@ -75,6 +75,8 @@ def prepare_catalogue_row(row):
     No unsigned URL is invented by removing a signature. A future source-specific
     review may replace the input with an independently declared public endpoint.
     """
+    if 'source_resolution' in row:
+        row = {**row, 'source_resolution': references.project_metadata(row['source_resolution'])}
     lineage = row.get('lineage') if isinstance(row.get('lineage'), list) else []
     acquisition_items = [row]+[item for item in lineage if isinstance(item, dict)]
     current_pairs = {(item.get('source'), item.get('source_sha256')) for item in acquisition_items

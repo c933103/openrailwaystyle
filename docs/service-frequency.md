@@ -553,3 +553,26 @@ independent published processed proof and verified public originals remain usabl
 Non-companion reference conflicts retain strict ambiguity precedence; a missing
 reference with independent public proof or a held/conflicting RT companion does
 not erase that independently usable primary.
+
+Reference evidence also uses one bounded allowlist shared by the Python catalogue
+and compiler and the JavaScript assembler (`frequency-reference-schema.json`).
+Ordinary static proof requires its source type, GTFS spec, URL and fingerprint,
+explicit Boolean skip state, and complete definition URL/pointer/digest. Missing
+or malformed proof cannot authorize an original or processed acquisition.
+
+At staging and publication boundaries, invalid reference graphs are projected onto
+known fields. Complete safe declaration provenance and authorization type/parameter
+name/info URL remain available; unsupported nested fields are discarded. Repaired
+graphs are explicitly unresolved, with selection, alias and processed proof
+cleared. Existing URL redaction and original-source fingerprints still apply,
+including authorization documentation URLs. The same projection covers every
+outcome, compiled source attribution, and staged shard inventory copies as well
+as the merged inventory/manifest. It does not rewrite internal compiled timetable
+payloads or historical archives. Valid legacy rows without reference metadata keep
+their existing behavior.
+
+Controlled cross-language fixtures exercise malformed ordinary proof, nested
+unknown fields, held outcomes, staged copies, URL redaction and idempotence. The
+5,489-row pinned replay and its full candidate/discovery ledger remain byte-identical
+to the access-proof checkpoint above. This is offline validation, with no new
+provider request or production availability/coverage claim.

@@ -6,6 +6,8 @@ on:
       - scripts/global-service-frequency.py
       - scripts/frequency_catalogue.py
       - scripts/frequency_references.py
+      - scripts/frequency-reference-schema.json
+      - scripts/frequency-reference-metadata.mjs
       - scripts/frequency_retry.py
       - scripts/gtfs-frequency.py
       - scripts/gtfs-shapes.py
@@ -41,6 +43,8 @@ on:
       - scripts/global-service-frequency.py
       - scripts/frequency_catalogue.py
       - scripts/frequency_references.py
+      - scripts/frequency-reference-schema.json
+      - scripts/frequency-reference-metadata.mjs
       - scripts/frequency_retry.py
       - scripts/gtfs-frequency.py
       - scripts/gtfs-shapes.py

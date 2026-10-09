@@ -8,6 +8,7 @@ import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
 import {timetableFeatures} from './gtfs-service.mjs';
 import {readFrequencyFeed} from './read-frequency-feed.mjs';
+import {projectReferenceMetadata} from './frequency-reference-metadata.mjs';
 // Publication-only display URLs. Acquisition/cache identities and inputs stay
 // unchanged. The sibling <field>_sha256 is SHA-256 of the exact original UTF-8
 // URL, not the redacted display or a canonicalized endpoint. This is an audit
@@ -42,6 +43,7 @@ export function publishedMetadata(value){
   // Unusual URL-keyed audit maps must not collapse two raw identities onto
   // the same redacted key. Ordinary schema and accounting keys are unchanged.
   const publicKey=key=>{const redacted=redactText(key);return redacted===key?key:`[sha256:${urlFingerprint(key)}] ${redacted}`;};
+  value=Object.fromEntries(Object.entries(value).map(([key,item])=>[key,key==='source_resolution'?projectReferenceMetadata(item):item]));
   const result=Object.fromEntries(Object.entries(value).map(([key,item])=>[publicKey(key),publishedMetadata(item)]));
   for(const [key,item] of Object.entries(value)){
     if(typeof item==='string'&&urlStart.test(item)){
@@ -120,7 +122,11 @@ export async function pruneFrequencyOutputs(directory,entries){
 }
 export async function assemble(directory){
   const names=(await readdir(directory)).filter(n=>/^inventory-\d+\.json$/.test(n));
-  const inventory=mergeInventories(await Promise.all(names.map(async name=>JSON.parse(await readFile(join(directory,name),'utf8')))));
+  const shards=await Promise.all(names.map(async name=>JSON.parse(await readFile(join(directory,name),'utf8'))));
+  const inventory=mergeInventories(shards);
+  // Snapshot artifacts include staged shard copies as well as inventory.json.
+  // Apply the same publication boundary to every copy, including held rows.
+  await Promise.all(names.map((name,i)=>writeFile(join(directory,name),JSON.stringify(publishedMetadata(shards[i]))+'\n')));
   await pruneFrequencyOutputs(directory,inventory.entries);
   const tileRoot=join(directory,'tiles');await rm(tileRoot,{recursive:true,force:true});await mkdir(tileRoot,{recursive:true});
   const summary=[];

@@ -318,6 +318,67 @@ class GlobalFrequency(unittest.TestCase):
         row['lineage'][-1]['source_sha256'] = __import__('hashlib').sha256(row['source'].encode()).hexdigest()
         self.assertEqual(pipeline.source_candidates(pipeline.discover([row], {})[0]), [processed, url])
 
+    def projection_fixture(self):
+        ordinary = ('xx', {'name': 'rail', 'type': 'http', 'url': 'https://public.test/static'}, 'https://github.test/pin/xx.json')
+        rt = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'rt'}, 'https://github.test/pin/xx.json')
+        index = {'state': 'available', 'by_id': {'rt': [{'feed': {'id': 'rt', 'spec': 'gtfs-rt',
+            'authorization': {'type': 'header', 'param_name': 'Authorization', 'info_url': 'https://provider.test/docs'},
+            'urls': {'realtime_trip_updates': 'https://private.test/rt'}},
+            'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+        return pipeline.registry.build_catalogue([], [ordinary, rt], [], 'b'*40, index)[0][0]
+
+    def test_complete_ordinary_schema_before_public_proof(self):
+        import copy
+        baseline = self.projection_fixture()
+        mutations = [(field, None, True) for field in ['type', 'spec', 'url', 'url_sha256', 'access_state', 'upstream_skip', 'definition']]
+        mutations += [('definition', {key: value for key, value in baseline['source_resolution']['ordinary_static_declarations'][0]['definition'].items() if key != missing}, False) for missing in ['url', 'pointer', 'sha256']]
+        mutations += [('definition', [], False), ('definition', {'url': 17, 'pointer': {}, 'sha256': None}, False),
+                      ('url_sha256', 'invalid', False), ('upstream_skip', 'not-a-bool', False), ('type', [], False)]
+        for field, value, remove in mutations:
+            with self.subTest(field=field, remove=remove):
+                row = copy.deepcopy(baseline); ordinary = row['source_resolution']['ordinary_static_declarations'][0]
+                if remove: ordinary.pop(field)
+                else: ordinary[field] = value
+                row['source_resolution']['processed_filename'] = None
+                entry = pipeline.discover([row], {})[0]
+                self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
+                self.assertEqual(pipeline.source_candidates(entry), [])
+        self.assertEqual(pipeline.source_candidates(pipeline.discover([baseline], {})[0]),
+            [pipeline.PROCESSED+'xx_rail.gtfs.zip', 'https://public.test/static'])
+
+    def test_unprojected_reference_payloads_never_enter_staged_or_published_metadata(self):
+        import copy
+        marker = 'synthetic-reference-projection-marker'
+        paths = [('declarations', 0, 'resolution', 'endpoints', 0, 'authorization', 'value'),
+                 ('declarations', 0, 'resolution', 'endpoints', 0, 'authorization', 'headers'),
+                 ('declarations', 0, 'api-key'), ('declarations', 0, 'definition', 'headers'),
+                 ('credentials',), ('ordinary_static_declarations', 0, 'authorization')]
+        baseline = self.projection_fixture()
+        for path in paths:
+            with self.subTest(path=path):
+                row = copy.deepcopy(baseline); target = row['source_resolution']
+                for key in path[:-1]: target = target[key]
+                target[path[-1]] = {'synthetic_marker': marker}
+                entry = pipeline.discover([row], {})[0]
+                self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
+                self.assertNotIn(marker, json.dumps(entry), 'staging must not retain unsupported values even when held')
+                for status in ['pending', 'retry_pending', 'excluded', 'non_timetable', 'compiled']:
+                    published = pipeline.published_metadata({'status': status, 'catalogue': row})
+                    self.assertNotIn(marker, json.dumps(published))
+                    self.assertEqual(published['catalogue']['source_resolution']['reason'], 'invalid_reference_metadata')
+                    self.assertEqual(pipeline.published_metadata(published), published)
+        for metadata in [None, [], {**baseline['source_resolution'], 'declarations': baseline['source_resolution']['declarations'] * 65},
+                         {**baseline['source_resolution'], 'reason': '😀' * 80}]:
+            projected = pipeline.registry.references.project_metadata(metadata)
+            self.assertEqual(projected['state'], 'unresolved')
+            self.assertTrue(pipeline.registry.references.metadata_shape_valid(projected))
+            self.assertEqual(pipeline.registry.references.project_metadata(projected), projected)
+        safe = pipeline.published_metadata({'catalogue': baseline})
+        auth = safe['catalogue']['source_resolution']['declarations'][0]['resolution']['endpoints'][0]['authorization']
+        self.assertEqual(auth['parameter_name'], 'Authorization')
+        self.assertEqual(auth['info_url'], 'https://provider.test/docs')
+        self.assertEqual(pipeline.published_metadata(safe), safe)
+
     def test_retry_after_receipts_survive_two_runs_without_early_requests(self):
         from email.utils import formatdate
         from urllib.error import HTTPError

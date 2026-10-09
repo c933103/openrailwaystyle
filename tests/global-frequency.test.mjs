@@ -110,7 +110,7 @@ test('publication URL redaction handles encoded credentials, diagnostics and mal
   assert.equal(redactedSourceUrl('https%3A%2F%2Ffeeds.example.test%2Fgtfs%3Fkey%3Dfixture-token%ZZ'),'[invalid source URL]');
 });
 
-test('aggregate publication scans exclude synthetic URL secrets and retain accounting and raw files',async()=>{
+test('aggregate publication scans exclude synthetic URL secrets and retain accounting and compiled payloads',async()=>{
   const {readFile}=await import('node:fs/promises'),{gzipSync}=await import('node:zlib'),{createHash}=await import('node:crypto');
   const root=await mkdtemp(join(tmpdir(),'atlas-publication-redaction-'));
   const urls=['first','second'].map(which=>`https://fixture-user:fixture-pass@feeds.example.test/gtfs.zip?api_key=fixture-${which}#fixture-fragment`);
@@ -140,7 +140,9 @@ test('aggregate publication scans exclude synthetic URL secrets and retain accou
       assert.equal(inventory.entries.find(e=>e.id===`feed-${i}`).source_sha256,expected);
       assert.deepEqual(await readFile(join(root,entries[i].output)),rawFeeds[i],'raw internal feed identity/profile payload stays unchanged');
     }
-    assert.equal(await readFile(join(root,'inventory-0.json'),'utf8'),shard,'raw shard file stays unchanged');
+    const staged=JSON.parse(await readFile(join(root,'inventory-0.json'),'utf8'));
+    assert.equal(staged.entries.length,3);
+    assert.deepEqual(staged.entries.toSorted((a,b)=>a.id.localeCompare(b.id)),inventory.entries,'staged shard copies receive the same publication projection');
   }finally{console.log=originalLog;await rm(root,{recursive:true,force:true});}
 });
 
@@ -168,7 +170,7 @@ test('assembly rejects missing or inconsistent composite provenance without inve
 test('format and alias outcomes retain identity accounting without duplicate contributions',()=>{
   const hash='a'.repeat(64),base={schema:3,shards:2,catalogue_url:null,catalogue_sha256:'fixture',catalogue_entries:3,service_date:'2026-10-05'};
   const owner={id:'owner',status:'no_rail',catalogue:{delivery:'direct',source:'https://provider.test/feed',source_sha256:hash}};
-  const alias={id:'alias',status:'source_alias',reason_code:'duplicate_static_source',catalogue:{source:owner.catalogue.source,source_sha256:hash,source_resolution:{schema:1,state:'schedule',processed_filename:null,acquisition_alias_of:'owner',alias_source_sha256:hash}}};
+  const alias={id:'alias',status:'source_alias',reason_code:'duplicate_static_source',catalogue:{source:owner.catalogue.source,source_sha256:hash,source_resolution:{schema:1,state:'schedule',specs:['gtfs'],declarations:[],processed_filename:null,acquisition_alias_of:'owner',alias_source_sha256:hash}}};
   const bikes={id:'bikes',status:'non_timetable',reason_code:'non_timetable_format'};
   const merged=mergeInventories([{...base,shard:0,entries:[owner,bikes]},{...base,shard:1,entries:[alias]}]);
   assert.deepEqual(merged.counts,{source_alias:1,non_timetable:1,no_rail:1});
@@ -197,7 +199,7 @@ test('assembled format-aware inventories keep alias provenance and emit one cano
   try{
     await mkdir(join(root,'feeds'));await writeFile(join(root,'feeds/owner.json.gz'),gzipSync(JSON.stringify(feed)));
     const owner={id:'owner',country:'XX',status:'compiled',output:'feeds/owner.json.gz',sha256:'fixture-content',catalogue:{delivery:'direct',source:'https://provider.test/static',source_sha256:hash}};
-    const alias={id:'alias',country:'XX',status:'source_alias',reason_code:'duplicate_static_source',catalogue:{source:owner.catalogue.source,source_sha256:hash,source_resolution:{schema:1,state:'schedule',processed_filename:null,acquisition_alias_of:'owner',alias_source_sha256:hash}}};
+    const alias={id:'alias',country:'XX',status:'source_alias',reason_code:'duplicate_static_source',catalogue:{source:owner.catalogue.source,source_sha256:hash,source_resolution:{schema:1,state:'schedule',specs:['gtfs'],declarations:[],processed_filename:null,acquisition_alias_of:'owner',alias_source_sha256:hash}}};
     const bikes={id:'bikes',country:'XX',status:'non_timetable',reason_code:'non_timetable_format'};
     const base={schema:3,shards:2,catalogue_url:null,catalogue_sha256:'fixture',catalogue_entries:3,service_date:'2026-10-05'};
     await writeFile(join(root,'inventory-0.json'),JSON.stringify({...base,shard:0,entries:[owner,bikes]}));
@@ -208,5 +210,95 @@ test('assembled format-aware inventories keep alias provenance and emit one cano
     const inventory=JSON.parse(await readFile(join(root,'inventory.json'),'utf8'));
     assert.equal(inventory.entries.length,3);assert.equal(inventory.entries.find(e=>e.id==='alias').status,'source_alias');
     assert.deepEqual(await readdir(join(root,'feeds')),['owner.json.gz']);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+function referencePublicationFixtures(){
+  const run=spawnSync('python3',['-c',String.raw`
+import sys,json,copy
+sys.path.insert(0,'tests')
+import global_frequency_test as test
+p=test.pipeline
+baseline=test.GlobalFrequency().projection_fixture()
+baseline['source_resolution']['declarations'][0]['licence']={'spdx_identifier':'CC0-1.0','url':'https://provider.test/licence'}
+baseline['source_resolution']['declarations'][0]['resolution']['endpoints'][0]['authorization']['info_url']='https://provider.test/docs?key=synthetic-query-marker'
+paths=[['credentials'],['ordinary_static_declarations',0,'authorization'],['declarations',0,'api-key'],
+ ['declarations',0,'definition','headers'],['declarations',0,'licence','credentials'],
+ ['declarations',0,'resolution','credentials'],['declarations',0,'resolution','endpoints',0,'credentials'],
+ ['declarations',0,'resolution','endpoints',0,'authorization','value'],
+ ['declarations',0,'resolution','endpoints',0,'authorization','headers']]
+cases=[]
+for path in paths:
+ row=copy.deepcopy(baseline); target=row['source_resolution']
+ for key in path[:-1]: target=target[key]
+ target[path[-1]]={'synthetic_marker':'synthetic-extra-marker'}
+ prepared=p.registry.prepare_catalogue_row(row)
+ cases.append({'path':path,'row':row,'prepared':p.published_metadata(prepared),
+  'published':p.published_metadata(row)})
+print(json.dumps({'baseline':baseline,'cases':cases,'baseline_published':p.published_metadata(baseline)}))
+`],{encoding:'utf8'});
+  assert.equal(run.status,0,run.stderr);
+  return JSON.parse(run.stdout);
+}
+
+test('shared reference projection agrees across staging and both publication languages',async()=>{
+  const {publishedMetadata}=await import('../scripts/assemble-global-frequency.mjs');
+  const {referenceMetadataValid,projectReferenceMetadata}=await import('../scripts/frequency-reference-metadata.mjs');
+  const {baseline,cases,baseline_published}=referencePublicationFixtures();
+  assert.equal(referenceMetadataValid(baseline.source_resolution),true);
+  assert.deepEqual(publishedMetadata(baseline),baseline_published);
+  for(const {path,row,prepared,published} of cases){
+    assert.equal(referenceMetadataValid(row.source_resolution),false,path.join('.'));
+    for(const status of ['pending','retry_pending','excluded','non_timetable','compiled','no_rail']){
+      const input={status,catalogue:row,source:{catalogue_attribution:row}};
+      const output=publishedMetadata(input);
+      assert.deepEqual(output.catalogue,published,path.join('.'));
+      assert.deepEqual(output.source.catalogue_attribution,published);
+      assert.deepEqual(prepared.source_resolution,published.source_resolution);
+      assert.deepEqual(publishedMetadata(output),output);
+      assert.doesNotMatch(JSON.stringify(output),/synthetic-extra-marker|synthetic-query-marker/);
+      const metadata=output.catalogue.source_resolution;
+      assert.equal(metadata.state,'unresolved');assert.equal(metadata.processed_filename,null);
+      assert.equal(metadata.acquisition_alias_of,null);assert.equal(metadata.selected_static_declaration,null);
+      const declaration=metadata.declarations[0],auth=declaration.resolution.endpoints[0].authorization;
+      assert.equal(declaration.reference_id,'rt');assert.match(declaration.definition.sha256,/^[a-f0-9]{64}$/);
+      assert.equal(auth.parameter_name,'Authorization');
+      assert.equal(auth.info_url,'https://provider.test/docs?key=%5Bredacted%5D');
+      assert.equal(referenceMetadataValid(metadata),true,'projected evidence stays structurally valid');
+    }
+  }
+  for(const metadata of [null,[],{...baseline.source_resolution,declarations:Array(65).fill(baseline.source_resolution.declarations[0])},
+      {...baseline.source_resolution,reason:'x'.repeat(81)}, {...baseline.source_resolution,reason:'😀'.repeat(80)}]){
+    const projected=projectReferenceMetadata(metadata);
+    assert.equal(projected.state,'unresolved');assert.equal(referenceMetadataValid(projected),true);
+    assert.deepEqual(projectReferenceMetadata(projected),projected);
+  }
+});
+
+test('assembly projects incoming held shard copies and compiled attribution before publication',async()=>{
+  const {gzipSync}=await import('node:zlib'),{readFile}=await import('node:fs/promises');
+  const {publishedMetadata}=await import('../scripts/assemble-global-frequency.mjs');
+  const {cases}=referencePublicationFixtures(),row=cases[0].row;
+  const root=await mkdtemp(join(tmpdir(),'atlas-reference-projection-'));
+  const source={id:'rail',sha256:'fixture',service_date:'2026-10-05',checked:'2026-10-04',name:'Rail',feed_info:{},valid_until:1900000000,catalogue_attribution:row};
+  const feed={schema:1,source,agencies:[{agency_id:'a',agency_name:'Rail',agency_timezone:'UTC'}],routes:[{route_id:'r',route_type:'2'}],profiles:{h01:{start:'01:00:00',end:'02:00:00'}},segments:[{route_id:'r',agency_id:'a',geometry:[[0,0],[1,1]],profiles:{h01:{display_tph:2,forward_tph:2,backward_tph:2,quality:'scheduled'}}}]};
+  try{
+    await mkdir(join(root,'feeds'));const raw=gzipSync(JSON.stringify(feed));
+    await writeFile(join(root,'feeds/rail.json.gz'),raw);
+    const entries=[{id:'rail',country:'XX',status:'compiled',sha256:'fixture',output:'feeds/rail.json.gz',catalogue:row},
+      ...['retry_pending','excluded','non_timetable','no_rail'].map(status=>({id:status,status,catalogue:row}))];
+    const shard={schema:3,shards:1,shard:0,catalogue_sha256:'fixture',catalogue_entries:entries.length,service_date:'2026-10-05',entries};
+    await writeFile(join(root,'inventory-0.json'),JSON.stringify(shard));
+    const manifest=await assemble(root);
+    for(const name of ['inventory-0.json','inventory.json','manifest.json']){
+      const output=JSON.parse(await readFile(join(root,name),'utf8'));
+      assert.doesNotMatch(JSON.stringify(output),/synthetic-extra-marker|synthetic-query-marker/,name);
+      assert.deepEqual(publishedMetadata(output),output,name+' remains idempotent');
+    }
+    const staged=JSON.parse(await readFile(join(root,'inventory-0.json'),'utf8'));
+    assert.deepEqual(staged,publishedMetadata(shard));
+    assert.equal(manifest.feeds[0].source.catalogue_attribution.source_resolution.reason,'invalid_reference_metadata');
+    assert.deepEqual(await readFile(join(root,'feeds/rail.json.gz')),raw,'internal compiled payload remains unchanged');
+    assert.equal(manifest.counts.compiled,1);assert.equal(manifest.counts.retry_pending,1);
   }finally{await rm(root,{recursive:true,force:true});}
 });

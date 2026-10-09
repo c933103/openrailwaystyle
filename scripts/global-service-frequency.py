@@ -547,6 +547,7 @@ def published_metadata(value):
     def public_key(key):
         display = redacted_diagnostic(key)
         return key if display == key else '[sha256:'+source_url_fingerprint(key)+'] '+display
+    value = {key: registry.references.project_metadata(item) if key == 'source_resolution' else item for key, item in value.items()}
     result = {public_key(key): published_metadata(item) for key, item in value.items()}
     for key, item in value.items():
         hash_key = public_key(key)+'_sha256'
@@ -1001,7 +1002,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     signature=hashlib.sha256(json.dumps({'catalogue':row,'profiles':profiles,'denied_source_urls':entry.get('denied_source_urls', []),
         'graph':file_hash(str(graph)) if graph else None,
-        'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['global-service-frequency.py','frequency_catalogue.py','frequency_references.py','gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()
+        'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['global-service-frequency.py','frequency_catalogue.py','frequency_references.py','frequency-reference-schema.json','gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()
     destination = output/'feeds'/(ident+'.json.gz')
     if destination.exists():
         with gzip.open(destination, 'rt') as file:
