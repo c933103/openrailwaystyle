@@ -17,11 +17,15 @@ for(const [offset,value] of [[102,-180],[106,-85],[110,180],[114,85]])header.wri
 export const emptyPmtiles = Buffer.concat([header,directory,metadata,tile]);
 
 export function pmtilesFixtureResponse(range) {
-  const headers={'accept-ranges':'bytes',etag:'"atlas-empty-pmtiles-v1"','content-type':'application/vnd.pmtiles'};
-  if (!range) return {status:200,headers:{...headers,'content-length':String(emptyPmtiles.length)},body:emptyPmtiles};
+  return pmtilesBytesResponse(emptyPmtiles, range, 'atlas-empty-pmtiles-v1');
+}
+
+export function pmtilesBytesResponse(bytes, range, etag) {
+  const headers={'accept-ranges':'bytes',etag:JSON.stringify(etag),'content-type':'application/vnd.pmtiles'};
+  if (!range) return {status:200,headers:{...headers,'content-length':String(bytes.length)},body:bytes};
   const match=/^bytes=(\d+)-(\d*)$/.exec(range);
-  const start=Number(match?.[1]),end=Math.min(match?.[2]?Number(match[2]):emptyPmtiles.length-1,emptyPmtiles.length-1);
-  if (!match || !Number.isSafeInteger(start) || start>end) return {status:416,headers:{...headers,'content-range':`bytes */${emptyPmtiles.length}`},body:''};
-  const body=emptyPmtiles.subarray(start,end+1);
-  return {status:206,headers:{...headers,'content-range':`bytes ${start}-${end}/${emptyPmtiles.length}`,'content-length':String(body.length)},body};
+  const start=Number(match?.[1]),end=Math.min(match?.[2]?Number(match[2]):bytes.length-1,bytes.length-1);
+  if (!match || !Number.isSafeInteger(start) || start>end) return {status:416,headers:{...headers,'content-range':`bytes */${bytes.length}`},body:''};
+  const body=bytes.subarray(start,end+1);
+  return {status:206,headers:{...headers,'content-range':`bytes ${start}-${end}/${bytes.length}`,'content-length':String(body.length)},body};
 }

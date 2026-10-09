@@ -1,3 +1,4 @@
+import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {launchBrowser} from './browser.mjs';
 import {ormVectorFixture} from './orm-vector-fixture.mjs';
 import {readFile,mkdir} from 'node:fs/promises';
@@ -21,6 +22,7 @@ const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader'
 await mkdir('browser-review',{recursive:true});
 try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  const page=await browser.newPage({viewport:{width,height},hasTouch:kind==='mobile',deviceScaleFactor:kind==='mobile'?2:1,serviceWorkers:'block'}),errors=[],requests=[];
+ await installEmptyMapProviders(page.context(),base,{firstParty:'network'});
  // Deterministic installed fonts: every Chinese candidate name is a stand-in
  // built from the packaged font, partial as on Windows (Microsoft JhengHei
  // has no Simplified forms; neither has Extension B). Page fonts take

@@ -131,9 +131,13 @@ The reproducibility check expects an up-to-date committed style; while developin
 a style change, inspect and include the generated diff before expecting it to pass.
 
 For rendering changes, run fixture-safe browser checks against the
-locally served site. CI uses the same synthetic OpenRailwayMap railway-tile
-fixtures and the real MapLibre renderer; it does not automatically download
-map tiles from the public `openrailwaymap.app` provider:
+locally served site. CI uses synthetic responses for every external map
+provider and the real MapLibre renderer. The shared browser harness blocks
+unmocked network requests before egress, including later fixture handlers
+that try `route.continue()` or `route.fetch()`. Service workers and WebSockets
+are blocked; HTTP redirects are rejected rather than followed. Only loopback
+HTTP and the explicitly selected first-party deployment path may be fetched.
+The old external tile cache is not used by the harness or CI:
 
 ```sh
 npx playwright install --with-deps chromium
@@ -147,7 +151,12 @@ node scripts/check-globe-browser.mjs
 
 The fixture test verifies actual railway-line rendering near Wuhan at zoom
 levels 6 and 7 with **synthetic**, provider-shaped vector tiles. Platform,
-signal and power tests also use generated geometry. Post-deployment Chromium
+signal and power tests also use generated geometry. Bathymetry uses a generated
+PMTiles ocean/island mask and a Terrarium shallow-shelf/deep-basin PNG, exercising
+the real archive client, DEM worker and depth worker. Latin labels use a local
+DejaVu fixture; the packaged CJK fonts are still tested as real first-party bytes.
+World-frequency tests retain the assembled OSM service data and only replace
+external providers, so the Hong Kong positive rendering assertion remains intact. Post-deployment Chromium
 checks use the same synthetic railway fixture against the published page. They
 test rendering integration, **not real-world railway geometry or live tile
 availability**, which must be assessed separately.
@@ -159,7 +168,9 @@ OpenRailwayMap-compatible data. Set
 `ATLAS_TEST_ORM_URL=http://127.0.0.1:4174/` (your own server) before
 invoking `check-map-browser.mjs`, `check-major-stations-browser.mjs`,
 `check-context-browser.mjs` or `check-planning-browser.mjs`. They are
-**not** a substitute for the fixture-safe public CI checks. Screenshots are
+**not** a substitute for the fixture-safe public CI checks. Other external
+providers remain blocked in these audits too; supply local fixture routes for
+any additional data they need. No option re-enables public provider egress. Screenshots are
 written to `browser-review/`. For the published provider conditions and
 remaining uncertainties see [external services](external-services.md).
 

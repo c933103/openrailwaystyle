@@ -20,6 +20,8 @@ export async function rendererFixture(base = 'http://127.0.0.1:4173/') {
 }
 
 // Real MapLibre rendering with empty external providers for layout/gesture tests.
+const latinGlyphs = readFile(new URL('../tests/fixtures/browser-glyphs/0-255.pbf', import.meta.url));
+
 export async function installEmptyMapProviders(context, base, {firstParty = 'fixture', rendererAssets} = {}) {
   if (!['fixture', 'network'].includes(firstParty)) throw new Error(`Unknown first-party fixture mode: ${firstParty}`);
   const style = firstParty === 'fixture' ? JSON.parse(await readFile('styles/world.style.json','utf8')) : null;
@@ -44,6 +46,7 @@ export async function installEmptyMapProviders(context, base, {firstParty = 'fix
     }
     if(path.endsWith('.pmtiles'))return route.fulfill(pmtilesFixtureResponse(route.request().headers().range));
     if(/\.(png|jpg|jpeg)$/.test(path))return route.fulfill({contentType:'image/png',body:png});
+    if(path.includes('/fonts/'))return route.fulfill({contentType:'application/x-protobuf',body:await latinGlyphs});
     if(/\/\d+\/\d+\/\d+(?:\.pbf)?$|\/fonts\//.test(path))return route.fulfill({contentType:'application/x-protobuf',body:Buffer.alloc(0)});
     return route.fulfill({json:{tilejson:'3.0.0',minzoom:0,maxzoom:16,tiles:['https://fixture.invalid/{z}/{x}/{y}']}});
   });

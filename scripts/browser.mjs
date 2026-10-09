@@ -5,12 +5,11 @@
 // closing it only disconnects. A check with options a shared browser cannot
 // take (a proxy, another executable) starts its own.
 //
-// BROWSER_TILE_CACHE may cache other external providers, but NEVER the public
-// openrailwaymap.app service. Browser automation must not download its map tiles.
-// Every browser context blocks that service unless the test explicitly supplies
-// synthetic fixtures or a self-hosted, loopback-only OpenRailwayMap instance.
-// Tests' fixture routes take precedence over these defaults.
-import {chromium} from 'playwright';
+// All external providers require explicit fixtures. The shared transport guard
+// rejects unmocked requests and redirects before egress, including attempts made
+// by later route handlers. First-party deployment assets remain actual HTTP reads.
+import {chromium, webkit} from 'playwright';
+import {guardBrowserNetwork} from './browser-network-guard.mjs';
 import {createHash} from 'node:crypto';
 import {mkdir, readFile, rename, rm, writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
@@ -28,22 +27,26 @@ const CACHED_STATUS = new Set([200, 204, 206]);
 // decoded body Playwright hands over.
 const DROPPED_HEADERS = new Set(['content-encoding', 'content-length', 'transfer-encoding', 'connection', 'set-cookie']);
 
-// A provider can occasionally answer a tile URL with HTTP 200 but a text
-// error body. Replaying that as a vector tile poisons every browser check for
-// TILE_CACHE_DAYS. The shared validator enforces the provider's MVT contract.
-export async function launchBrowser(options = {}) {
+export async function launchBrowser({engine = 'chromium', ...options} = {}) {
+  if (!['chromium', 'webkit'].includes(engine)) throw new Error('Unknown test browser engine');
   const shared = process.env.BROWSER_WS_ENDPOINT;
-  const browser = shared && !options.proxy && !options.executablePath
+  const browser = shared && engine === 'chromium' && !options.proxy && !options.executablePath
     ? await chromium.connect(shared)
+    : engine === 'webkit' ? await webkit.launch({headless: true, ...options})
     : await chromium.launch({headless: true, ...options, args: [...new Set([...BROWSER_ARGS, ...(options.args || [])])]});
-  const cache = process.env.BROWSER_TILE_CACHE;
+  const blocked = [];
+  const close = browser.close.bind(browser);
+  browser.close = async (...args) => {
+    await close(...args);
+    if (blocked.length) throw new Error('Unmocked browser network requests were blocked: ' + [...new Set(blocked)].join(', '));
+  };
   const newContext = browser.newContext.bind(browser);
   // Browser.newPage() creates its context through this method too. Service
   // workers can bypass Playwright routing, so disable them for browser tests.
   browser.newContext = async (options = {}) => {
     const context = await newContext({...options, serviceWorkers: 'block'});
-    await isolatePublicOrm(context);
-    if (cache) await cacheOtherOrigins(context, cache);
+    await guardBrowserNetwork(context, {blocked});
+    await isolatePublicOrm(context, {onBlocked: url => {const value = new URL(url);blocked.push(value.origin + value.pathname);}});
     return context;
   };
   return browser;
@@ -54,7 +57,7 @@ export {fetchLoopbackNoRedirect, isLoopbackHttp, isPublicOrm, localOrmAuditTarge
 
 // Installed BEFORE optional generic caching. A later explicit test fixture
 // route can fulfill requests without contacting the public provider.
-export async function isolatePublicOrm(context, {mirror = process.env.ATLAS_TEST_ORM_URL, warn = console.warn} = {}) {
+export async function isolatePublicOrm(context, {mirror = process.env.ATLAS_TEST_ORM_URL, warn = console.warn, onBlocked = () => {}} = {}) {
   // Validate the configured local destination even before requests arrive.
   if (mirror) localOrmTarget('https://openrailwaymap.app/', mirror);
   // A local TileJSON response may advertise any supported loopback host/port.
@@ -70,6 +73,7 @@ export async function isolatePublicOrm(context, {mirror = process.env.ATLAS_TEST
       ? localOrmTarget(original, mirror)
       : localOrmAuditTarget(original, mirror);
     if (!local) {
+      onBlocked(original);
       warn('Blocked automated OpenRailwayMap request (no fixture/local instance): ' + original);
       return route.abort('blockedbyclient');
     }
@@ -93,6 +97,9 @@ const local = url => {
 // One entry per URL and byte range.
 export const cacheKey = (url, range = '') => createHash('sha256').update(`${url}\n${range}`).digest('hex');
 
+// Legacy cache utility retained for cache-format regression tests. The browser
+// harness never installs it; installing it on a guarded context still cannot
+// send a provider miss out through its wrapped route.continue().
 export async function cacheOtherOrigins(context, directory, {now = Date.now, maxAge = TILE_CACHE_DAYS * 86400000} = {}) {
   await mkdir(directory, {recursive: true});
   // A check may close its page or context while a request is still on its
