@@ -17,6 +17,8 @@ LIMITS = {
     'frequency_intervals': 128,
     'service_days': 367,
     'string_bytes': 1024,
+    'source_ids': 100000,
+    'source_id_bytes': 4 * 1024 * 1024,
 }
 
 
@@ -54,11 +56,11 @@ def capture_identity(routes, trips):
 
 
 def build_evidence(source, identity, trips, times, stops, frequencies, active,
-                   agencies, seconds, duplicate_ids=False):
+                   agencies, seconds, identity_audit_reason=None):
+    if identity_audit_reason:
+        return unavailable(identity_audit_reason)
     if identity is None:
         return unavailable('identity_record_limit')
-    if duplicate_ids:
-        return unavailable('duplicate_source_id')
     original_routes, route_ids = identity
     patterns, observations, retained_stops = {}, [], {}
     # Reserve envelope space before adding records, including their commas.

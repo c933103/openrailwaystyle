@@ -118,7 +118,7 @@ class TimetableEvidence(unittest.TestCase):
 
     def test_hard_limits_discard_all_partial_evidence_without_affecting_compilation(self):
         path = self.fixture.shape_feed()
-        for key, value in [('bytes', 4200), ('patterns', 1), ('observations', 1), ('stops', 1), ('pattern_stops', 2), ('routes', 0), ('service_days', 0), ('string_bytes', 2)]:
+        for key, value in [('bytes', 4200), ('patterns', 1), ('observations', 1), ('stops', 1), ('pattern_stops', 2), ('routes', 0), ('service_days', 0), ('string_bytes', 2), ('source_ids', 1), ('source_id_bytes', 1)]:
             # The compiler loads a fresh module, so inject the limit in its loader.
             original = importlib.util.module_from_spec
             def limited(spec):
@@ -136,6 +136,28 @@ class TimetableEvidence(unittest.TestCase):
                 self.assertEqual(sidecar['patterns'], [])
                 self.assertEqual(sidecar['observations'], [])
                 self.assertEqual(sidecar['stops'], [])
+
+    def test_duplicate_ids_crossing_rail_filters_withhold_only_the_sidecar(self):
+        for kind in ['route', 'trip']:
+            for reverse in [False, True]:
+                with self.subTest(kind=kind, reverse=reverse):
+                    patterns = {'t': [('A', '08:00:00'), ('B', '08:10:00')]}
+                    path = self.fixture.feed(patterns, patterns)
+                    if kind == 'route':
+                        rows = [b'R,1,A,R', b'R,3,A,Bus']
+                        if reverse:
+                            rows.reverse()
+                        self.rewrite(path, lambda _: {'routes.txt': b'route_id,route_type,agency_id,route_short_name\n' + b'\n'.join(rows) + b'\n'})
+                    else:
+                        rows = [b't,R,W', b't,BUS,W']
+                        if reverse:
+                            rows.reverse()
+                        self.rewrite(path, lambda files: {'routes.txt': files['routes.txt'] + b'BUS,3,A,Bus\n', 'trips.txt': b'trip_id,route_id,service_id\n' + b'\n'.join(rows) + b'\n'})
+                    sidecar, baseline = self.compile(path)
+                    self.assertTrue(baseline['segments'])
+                    self.assertEqual(sidecar['status'], 'incomplete')
+                    self.assertEqual(sidecar['reasons'], ['duplicate_source_id'])
+                    self.assertEqual(sidecar['observations'], [])
 
     def test_catalogue_config_cannot_enable_evidence_capture(self):
         path = self.fixture.shape_feed()

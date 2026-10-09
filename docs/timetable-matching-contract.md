@@ -88,12 +88,16 @@ and per-trip-row budgets:
 - 50,000 retained stop/platform/parent records
 - 512 calls per pattern; 128 frequency intervals per observation
 - 367 candidate service days; 1,024 UTF-8 bytes per retained string
+- Feed-wide source-ID audit per table: 100,000 IDs and 4 MiB of ID bytes,
+  checked before rail filtering. Hitting this audit cap withholds evidence only.
 
 Exceeding a limit or finding incomplete identity evidence discards **all** partial
 sidecar arrays and records `incomplete`. It does not silently truncate a pattern,
 assert zero service, accept a partial matching inventory or fail a previously
 valid legacy compile. Duplicate route/trip/stop/agency/calendar IDs are likewise
-incomplete. These bounds deliberately withhold very large/complex feeds until an
+incomplete, including rail/bus collisions in either source-row order. Once an
+audit is incomplete, its state is released and the legacy filtered compile
+continues unchanged. These bounds deliberately withhold very large/complex feeds until an
 appropriate partitioned evidence format is designed. They do not claim that such
 feeds have no railway service. Collector memory is bounded by record and byte
 caps plus one bounded record; it reuses the compiler's already retained input

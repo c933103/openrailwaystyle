@@ -114,21 +114,40 @@ def compile_feed(path, config, date, geometry=False, matching_evidence=False):
     date = dt.date.fromisoformat(date)
     # Explicit offline opt-in, never enabled by provider/catalogue metadata.
     evidence_module = None
-    duplicate_ids = False
+    identity_audit_reason = None
     if matching_evidence:
         import importlib.util
         spec = importlib.util.spec_from_file_location("timetable_evidence", Path(__file__).with_name("timetable_evidence.py"))
         evidence_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(evidence_module)
 
-    def keyed(rows, key):
-        nonlocal duplicate_ids
-        out = {}
+    def keyed(rows, key, keep=lambda row: True):
+        nonlocal identity_audit_reason
+        out, seen, retained_bytes = {}, set(), 0
         for row in rows:
-            ident = key(row) if callable(key) else row[key]
-            if matching_evidence and ident in out:
-                duplicate_ids = True
-            out[ident] = row
+            # Audit feed-wide identity before filtering, with independent bounds.
+            # Once incomplete, drop audit state and preserve the legacy compile.
+            if evidence_module and identity_audit_reason is None:
+                ident = key(row) if callable(key) else row.get(key)
+                limits = evidence_module.LIMITS
+                if not isinstance(ident, str) or not ident or len(ident) > limits['string_bytes']:
+                    identity_audit_reason = 'invalid_source_id'
+                elif ident in seen:
+                    identity_audit_reason = 'duplicate_source_id'
+                else:
+                    size = len(ident.encode('utf-8'))
+                    if size > limits['string_bytes'] or len(seen) >= limits['source_ids'] or retained_bytes + size > limits['source_id_bytes']:
+                        identity_audit_reason = 'source_id_audit_limit'
+                    else:
+                        seen.add(ident)
+                        retained_bytes += size
+                if identity_audit_reason:
+                    seen.clear()
+            # Keep the pre-existing filter-before-key behavior, including for
+            # irrelevant malformed rows, regardless of evidence availability.
+            if keep(row):
+                ident = key(row) if callable(key) else row[key]
+                out[ident] = row
         return out
     z = zipfile.ZipFile(path)
     if sum(info.file_size for info in z.infolist()) > MAX_EXPANDED_BYTES:
@@ -144,8 +163,8 @@ def compile_feed(path, config, date, geometry=False, matching_evidence=False):
     agencies = keyed(read(z, "agency.txt"), lambda r: r.get("agency_id") or "single-agency")
     if not agencies:
         raise ValueError("Missing agency metadata")
-    routes = keyed((r for r in read(z, "routes.txt") if rail_type(r["route_type"])), "route_id")
-    trips = keyed((r for r in read(z, "trips.txt") if r["route_id"] in routes), "trip_id")
+    routes = keyed(read(z, "routes.txt"), "route_id", lambda r: rail_type(r["route_type"]))
+    trips = keyed(read(z, "trips.txt"), "trip_id", lambda r: r["route_id"] in routes)
     stops = keyed(read(z, "stops.txt"), "stop_id")
     calendar = keyed(read(z, "calendar.txt"), "service_id")
     exceptions = list(read(z, "calendar_dates.txt"))
@@ -230,7 +249,7 @@ def compile_feed(path, config, date, geometry=False, matching_evidence=False):
         raise ValueError('Selected date is before every retained rail service calendar start')
     if all(trip['_calendar_expired'] or trip['_calendar_future'] for trip in trips.values()):
         raise ValueError('Selected date is outside every retained rail service calendar')
-    matching_identity = evidence_module.capture_identity(routes, trips) if evidence_module else None
+    matching_identity = evidence_module.capture_identity(routes, trips) if evidence_module and identity_audit_reason is None else None
     if config.get('canonical_routes'):
         routes = canonical_routes(routes, trips, times, stops)
     service_days = [date-dt.timedelta(days=i) for i in range(prior_days+1)]
@@ -402,7 +421,7 @@ def compile_feed(path, config, date, geometry=False, matching_evidence=False):
             "stops": [] if geometry else [{"id": key, "name": stops[key]["stop_name"], "lat": float(stops[key]["stop_lat"]), "lon": float(stops[key]["stop_lon"])} for key in sorted({s for row in output for s in row["stops"]})],
             "segments": output}
     if evidence_module:
-        result['matching_evidence'] = evidence_module.build_evidence(source, matching_identity, trips, times, stops, frequencies, active, agencies, seconds, duplicate_ids)
+        result['matching_evidence'] = evidence_module.build_evidence(source, matching_identity, trips, times, stops, frequencies, active, agencies, seconds, identity_audit_reason)
     if geometry and getattr(paths, 'rail_patterns', {}):
         source['geometry_license'] = 'ODbL-1.0'
         source['geometry_attribution'] = '© OpenStreetMap contributors; matched against an already published branch/metro railway snapshot'
