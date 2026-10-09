@@ -1,7 +1,11 @@
 import csv
+import gzip
 import importlib.util
 import io
 import json
+import socket
+import struct
+import sys
 from pathlib import Path
 import tempfile
 import threading
@@ -18,6 +22,14 @@ class GlobalFrequency(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name)
+        self.fixture_ports = set()
+        def fixture_addresses(host, port):
+            # Only this test instance's registered servers can use real sockets.
+            # Catalogue values cannot enable fixture access in production.
+            if host != '127.0.0.1' or port not in self.fixture_ports:
+                raise AssertionError('Unexpected network destination in offline fixture')
+            return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, (host, port))]
+        self.enterContext(patch.object(pipeline, 'resolve_public_addresses', side_effect=fixture_addresses))
 
     def test_discovery_covers_non_latin_names_licences_and_exclusions_without_city_choices(self):
         countries=['DE','JP','BR','EG','NZ','CA','CN','RU','IR','KP']
@@ -25,23 +37,864 @@ class GlobalFrequency(unittest.TestCase):
         rows.append({'filename':'unknown.gtfs.zip','source':'https://example.org/u.zip','country_code':'US'})
         result=pipeline.discover(rows,{})
         self.assertEqual(len(result),len(rows))
-        self.assertEqual({r['country'] for r in result if r['status']=='pending'},set(countries)-pipeline.EXCLUDED)
+        self.assertEqual({r['country'] for r in result if r['status']=='pending'},(set(countries)-pipeline.EXCLUDED)|{'US'})
         self.assertEqual(len({r['id'] for r in result}),len(rows))
         self.assertTrue(all('/' not in r['id'] for r in result))
-        self.assertTrue(next(r for r in result if r['country']=='US')['reason'].startswith('redistribution'))
+        us = next(r for r in result if r['country']=='US')
+        self.assertEqual(us['status'], 'pending', 'absence of licence metadata is not a prohibition')
+        self.assertEqual(us['terms']['state'], 'not_provided')
+
+    def test_source_terms_eligibility_missing_url_only_permitted_denied_and_conflict(self):
+        root={'country_code':'BE','source':'https://example.org/feed.zip'}
+        cases=[
+            ('missing', {}, 'pending', 'not_provided'),
+            ('url-only', {'license_url':'https://example.org/terms'}, 'pending', 'linked'),
+            ('unknown-spdx', {'spdx_license_identifier':'LicenseRef-New-Operator'}, 'pending', 'identified'),
+            ('permitted', {'spdx_license_identifier':'CC-BY-4.0'}, 'pending', 'identified'),
+            ('no-derivatives', {'spdx_license_identifier':'CC-BY-ND-4.0'}, 'pending', 'identified'),
+            ('derivative-dataset-forbidden', {'create_derived_product':False}, 'pending', 'not_provided'),
+            ('noncommercial-unresolved', {'spdx_license_identifier':'CC-BY-NC-4.0'}, 'pending', 'identified')
+        ]
+        rows=[{**root, **fields, 'filename': name+'.gtfs.zip'} for name,fields,_,_ in cases]
+        output={x['id']:x for x in pipeline.discover(rows,{})}
+        for name,_,status,rights_state in cases:
+            with self.subTest(case=name):
+                self.assertEqual(output[name]['status'],status)
+                self.assertEqual(output[name]['terms']['state'],rights_state)
+        self.assertEqual(output['url-only']['terms']['terms_urls'],['https://example.org/terms'])
+        self.assertEqual(output['no-derivatives']['reason_code'],'')
+        self.assertFalse(output['no-derivatives']['terms']['prohibitions'])
+        # An explicit, source-bound reviewed term can prohibit; another URL cannot
+        # accidentally inherit it through a shared filename.
+        rule={'sources':{'permitted.gtfs.zip':{
+            'expected_source':'https://example.org/feed.zip',
+            'license_url':'https://example.org/reviewed-terms',
+            'prohibit_frequency_use':True}}}
+        result=pipeline.discover([rows[3]],rule)[0]
+        self.assertEqual(result['status'],'excluded')
+        self.assertIn('end-user timetable-frequency use',result['reason'])
+        other=pipeline.discover([{**rows[3],'source':'https://another.example/feed.zip'}],rule)[0]
+        self.assertEqual(other['status'],'pending')
+        # Catalogue conflicts are visible, not interpreted as a permission
+        # ban when neither one actually prohibits the derived-frequency use.
+        conflicting={**root,'filename':'conflict.gtfs.zip','rights_evidence':[
+            {'origin':'a','spdx':'CC-BY-4.0'},
+            {'origin':'b','spdx':'CC0-1.0'}]}
+        outcome=pipeline.discover([conflicting],{})[0]
+        self.assertEqual(outcome['status'],'pending')
+        self.assertTrue(outcome['terms']['conflicting_spdx'])
+
+    def test_missing_direct_url_is_processing_failure_not_licence_exclusion(self):
+        feed={'filename':'mdb_123.gtfs.zip','delivery':'direct','country_code':'CA',
+              'human_name':'Missing download','source':'','rights_evidence':[]}
+        item=pipeline.discover([feed],{})[0]
+        self.assertEqual(item['status'],'retry_pending')
+        self.assertTrue(item['retry_eligible'])
+        self.assertEqual(item['reason_code'],'missing_source_url')
+
+    def test_signed_access_records_remain_pending_and_never_become_acquisition_candidates(self):
+        signed='https://fixture.blob.core.windows.net/feed.zip?sv=fixture-version&se=fixture-expiry&sp=rl&sr=c&sig=fixture-signature'
+        rows=[{'filename':'nz_signed.gtfs.zip','source':signed,'country_code':'NZ','delivery':'direct'},
+              {'filename':'nz_public.gtfs.zip','source':'https://operator.example/feed.zip?rid=public-selector','country_code':'NZ','delivery':'direct'}]
+        discovered=pipeline.discover(rows,{})
+        signed_entry=next(item for item in discovered if item['id']=='nz_signed')
+        self.assertEqual(signed_entry['status'],'retry_pending')
+        self.assertEqual(signed_entry['reason_code'],'source_access_review')
+        self.assertTrue(signed_entry['retry_eligible'])
+        self.assertFalse(signed_entry['terms']['prohibitions'])
+        self.assertEqual(pipeline.source_candidates(signed_entry),[])
+        self.assertEqual(pipeline.source_candidates({'catalogue':rows[0],'processed_url':signed}),[],'legacy raw catalogue cannot bypass the acquisition pause')
+        public_entry=next(item for item in discovered if item['id']=='nz_public')
+        self.assertEqual(public_entry['status'],'pending')
+        self.assertEqual(pipeline.source_candidates(public_entry),[rows[1]['source']])
+        with patch.object(pipeline,'resolve_public_addresses') as resolve:
+            with self.assertRaises(pipeline.UnsafeSourceURL):pipeline.get(signed)
+        resolve.assert_not_called()
+        self.assertNotIn('fixture-signature',json.dumps(discovered))
+
+    def test_untrusted_audit_hash_and_long_query_cannot_unpause_source_access(self):
+        sources=['https://fixture-user:fixture-password@operator.example/feed',
+            'https://fixture.blob.core.windows.net/feed?sig=fixture-signature&sv=x&se=y&sp=r&sr=b&'+'&'.join('p'+str(i)+'=v' for i in range(130))]
+        for source in sources:
+            entry=pipeline.discover([{'filename':'test.gtfs.zip','source':source,'source_sha256':'a'*64,
+                                      'country_code':'NZ','delivery':'direct','lineage':None,'access_review':[None]}],{})[0]
+            self.assertEqual(entry['status'],'retry_pending')
+            self.assertEqual(entry['reason_code'],'source_access_review')
+            self.assertEqual(pipeline.source_candidates(entry),[])
+            with self.assertRaises(pipeline.UnsafeSourceURL):pipeline.parse_acquisition_url(source)
+        invalid=pipeline.discover([{'filename':'bad.gtfs.zip','source':{},'lineage':3,'delivery':'direct'}, {'filename':None}],{})
+        self.assertEqual(len(invalid),1)
+        self.assertEqual(invalid[0]['reason_code'],'missing_source_url')
+
+    def test_source_failure_evidence_redacts_credentials_query_values_and_fragments(self):
+        from urllib.error import HTTPError
+        from urllib.parse import parse_qsl,urlparse
+        target='https://fixture-user:fixture-password@operator.example/feed.zip?api_key=fixture-key&mode=fixture-mode#fixture-fragment'
+        error=HTTPError(target,503,'Failure echoed '+target,{},io.BytesIO())
+        attempt=pipeline.source_attempt(target,error)
+        url=urlparse(attempt['url'])
+        self.assertEqual(url.hostname,'operator.example')
+        self.assertEqual(url.path,'/feed.zip')
+        self.assertIsNone(url.username)
+        self.assertEqual(parse_qsl(url.query),[('api_key','[redacted]'),('mode','[redacted]')])
+        self.assertEqual(url.fragment,'')
+        failure=pipeline.SourceRetrievalError([attempt],unsafe_urls=[target])
+        evidence=json.dumps(failure.attempts)+str(failure)
+        for value in ['fixture-user','fixture-password','fixture-key','fixture-mode','fixture-fragment']:
+            self.assertNotIn(value,evidence)
+        self.assertEqual(failure._unsafe_urls,{target},'raw identity stays in memory only for cache rejection')
+        self.assertEqual(attempt['message'],'HTTP 503')
+
+    def test_redacted_query_urls_keep_distinct_cache_identities_and_migrate_legacy_metadata(self):
+        base,held=self.server(self.archive())
+        first_url,second_url=base+'?feed=fixture-first',base+'?feed=fixture-second'
+        cache,output=self.root/'query-cache',self.root/'query-output';cache.mkdir()
+        def entry(url):
+            value=pipeline.discover([{'filename':'ca_query.gtfs.zip','source':url,
+                                     'country_code':'CA','delivery':'direct'}],{})[0]
+            return value
+        result=pipeline.compile_entry(entry(first_url),cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(result['status'],'compiled')
+        meta_path=cache/'ca_query.meta.json';meta=json.loads(meta_path.read_text())
+        self.assertNotIn('fixture-first',meta_path.read_text())
+        self.assertEqual(meta['download_url_sha256'],pipeline.source_url_fingerprint(first_url))
+        self.assertEqual(pipeline.redacted_source_url(first_url),pipeline.redacted_source_url(second_url))
+        self.assertNotEqual(pipeline.source_url_fingerprint(first_url),pipeline.source_url_fingerprint(second_url))
+        self.assertTrue(pipeline.valid_cached_archive(cache/'ca_query.zip',meta,[first_url]))
+        self.assertFalse(pipeline.valid_cached_archive(cache/'ca_query.zip',meta,[second_url]))
+        # Legacy private cache identity is accepted only against the same full
+        # current URL, and rewritten without its query value after revalidation.
+        meta['download_url']=first_url;meta.pop('download_url_sha256');meta_path.write_text(json.dumps(meta))
+        same=pipeline.compile_entry(entry(first_url),cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(same['status'],'compiled')
+        self.assertNotIn('fixture-first',meta_path.read_text())
+        self.assertEqual(same['source']['download_url_sha256'],pipeline.source_url_fingerprint(first_url))
+        # A different query with the same path must not reuse the old validator.
+        before=len(held['conditional_requests']);held['data']=self.archive(rail=False)
+        changed=pipeline.compile_entry(entry(second_url),cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(changed['status'],'no_rail')
+        self.assertTrue(all(value==(None,None) for value in held['conditional_requests'][before:]))
+        self.assertEqual(json.loads(meta_path.read_text())['download_url_sha256'],pipeline.source_url_fingerprint(second_url))
+
+    def test_compiled_shard_and_diagnostic_metadata_excludes_synthetic_url_values(self):
+        from contextlib import redirect_stdout
+        from urllib.parse import quote
+        target='https://fixture-user:fixture-password@operator.example/feed.zip?api_key=fixture-key#fixture-fragment'
+        other=target.replace('fixture-key','fixture-other')
+        raw={'source':target,'lineage':[{'source':other}], 'urls':[target,other],
+             'error':'Failure at '+quote(target,safe=''),target:'first',other:'second'}
+        redacted=pipeline.published_metadata(raw)
+        self.assertEqual(redacted['source_sha256'],pipeline.source_url_fingerprint(target))
+        self.assertEqual(redacted['lineage'][0]['source_sha256'],pipeline.source_url_fingerprint(other))
+        self.assertEqual(redacted['urls_sha256'],[pipeline.source_url_fingerprint(target),pipeline.source_url_fingerprint(other)])
+        self.assertEqual(pipeline.published_metadata(redacted),redacted)
+        self.assertEqual(raw['source'],target,'diagnostic copy does not mutate operational input')
+        self.assertEqual(len(redacted),len(raw)+2,'distinct URL keys are preserved')
+        identity='https://ids.example/route?variant=synthetic-route-id'
+        metadata_feed=self.root/'metadata.json.gz'
+        pipeline.write_feed(metadata_feed,{'source':raw,'agencies':[{'agency_id':identity,'agency_url':target}],
+                            'routes':[{'route_id':identity,'route_url':target}],
+                            'segments':[{'route_id':identity}]})
+        metadata=json.loads(gzip.decompress(metadata_feed.read_bytes()))
+        self.assertEqual(metadata['routes'][0]['route_id'],identity,'matching IDs are not display URL metadata')
+        self.assertEqual(metadata['agencies'][0]['agency_id'],identity)
+        self.assertEqual(metadata['segments'][0]['route_id'],identity)
+        self.assertEqual(metadata['routes'][0]['route_url_sha256'],pipeline.source_url_fingerprint(target))
+        base,_=self.server(self.archive())
+        source=base+'?feed=fixture-download'
+        row={'filename':'ca_diagnostic.gtfs.zip','source':source,'country_code':'CA','delivery':'direct',
+             'lineage':[{'source':target.replace('fixture-user:fixture-password@','')}], 'publisher':{'url':target}}
+        entry=pipeline.discover([row],{})[0]
+        cache,output=self.root/'diagnostic-cache',self.root/'diagnostic-output';cache.mkdir()
+        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        compiled=gzip.decompress((output/'feeds/ca_diagnostic.json.gz').read_bytes()).decode()
+        catalogue=self.root/'diagnostic-catalogue.json';catalogue.write_text(json.dumps([row]))
+        logs=io.StringIO()
+        argv=['global-service-frequency.py','--catalogue',str(catalogue),'--cache',str(cache),
+              '--output',str(output),'--date','2026-10-05']
+        with patch.object(sys,'argv',argv),patch.object(pipeline,'compile_entry_isolated',return_value=result),redirect_stdout(logs):
+            pipeline.main()
+        shard=(output/'inventory-0.json').read_text()
+        evidence=compiled+shard+logs.getvalue()+json.dumps(redacted)
+        for value in ['fixture-user','fixture-password','fixture-key','fixture-other','fixture-fragment','fixture-download']:
+            self.assertNotIn(value,evidence)
+        self.assertEqual(json.loads(shard)['entries'][0]['catalogue']['source_sha256'],pipeline.source_url_fingerprint(source))
+        self.assertIn('fixture-download',catalogue.read_text(),'operational pinned catalogue retains its retrieval input')
+
+    def test_exact_source_prohibition_covers_catalogue_alias_and_its_processed_copy(self):
+        rules={'sources':{'original.gtfs.zip':{
+            'expected_source':'https://reviewed.example/rail.zip',
+            'prohibit_frequency_use':True,'license_url':'https://reviewed.example/terms'}}}
+        for source in ['https://reviewed.example/rail.zip',
+                       'https://REVIEWED.example:443/rail.zip#catalogue-fragment']:
+            with self.subTest(source=source):
+                entry=pipeline.discover([{'filename':'new-alias.gtfs.zip',
+                                         'source':source,'country_code':'CA'}],rules)[0]
+                self.assertEqual(entry['status'],'excluded')
+                self.assertEqual(entry['reason_code'],'source_terms_prohibit_derived_use')
+                self.assertEqual(pipeline.source_candidates(entry),[])
+        other=pipeline.discover([{'filename':'new-alias.gtfs.zip',
+                                  'source':'https://reviewed.example/different.zip','country_code':'CA'}],rules)[0]
+        self.assertEqual(other['status'],'pending')
+        self.assertEqual(len(pipeline.source_candidates(other)),2)
+
+    def test_processing_failures_keep_distinct_codes_and_stages(self):
+        observed = [
+            (RuntimeError('HTTPError: HTTP Error 404: Not Found'), 'source_http_404', 'retrieval'),
+            (RuntimeError('HTTPError: HTTP Error 403: Forbidden'), 'source_access_denied', 'retrieval'),
+            (RuntimeError('ValueError: GTFS table stop_times.txt exceeds row budget'), 'table_row_limit', 'parsing'),
+            (RuntimeError('ValueError: GTFS table stop_times.txt exceeds expanded byte budget'), 'byte_limit', 'parsing'),
+            (RuntimeError('MemoryError: '), 'memory_limit', 'resources'),
+            (RuntimeError('ValueError: Selected date is beyond the declared service calendar horizon'),
+             'calendar_horizon', 'calendar'),
+            (RuntimeError("ValueError: Selected date is outside the feed's validity (beyond the service calendar horizon)"),
+             'calendar_horizon', 'calendar'),
+            (ValueError('Malformed route reference'), 'compile_error', 'compilation'),
+        ]
+        for exception, code, stage in observed:
+            with self.subTest(code=code, exception=str(exception)):
+                self.assertEqual(pipeline.classify_failure(exception), (code, stage))
+
+    def test_processed_404_recovers_from_original_without_excluding_rail(self):
+        original, held = self.server(self.archive())
+        row={'filename':'jp_rail.gtfs.zip','source':original,'country_code':'JP',
+             'spdx_license_identifier':'CC-BY-ND-4.0',
+             'lineage':[{'catalogue':'transitous-feeds','source':original}]}
+        entry=pipeline.discover([row],{})[0]
+        self.assertEqual(entry['status'],'pending')
+        processed=entry['processed_url']
+        real_get=pipeline.get
+        def broken_processed(url, headers=None, **kwargs):
+            if url == processed:
+                from urllib.error import HTTPError
+                raise HTTPError(url, 404, 'Not Found', {}, io.BytesIO())
+            return real_get(url,headers, **kwargs)
+        cache,output=self.root/'fallback-cache',self.root/'fallback-output'
+        cache.mkdir()
+        with patch.object(pipeline,'get',side_effect=broken_processed):
+            result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(result['status'],'compiled')
+        self.assertEqual(result['source']['download_url'],original)
+        self.assertEqual(result['source']['recovered_source_errors'][0]['code'],'http_404')
+        self.assertTrue(held['requests'], 'the actual original GTFS was downloaded')
+        # The successful source is revalidated, not the previously broken proxy.
+        with patch.object(pipeline,'get',side_effect=broken_processed):
+            same=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(same['status'],'compiled')
+        self.assertEqual(same['source']['retrieved'],result['source']['retrieved'])
+
+    def test_malformed_routes_metadata_falls_back_for_whole_and_ranged_archives(self):
+        valid=self.archive()
+        for ranges in [False,True]:
+            for name,table in [('missing-table',None),('missing-column',b'route_id,route_short_name\nr,R\n'),
+                               ('missing-value',b'route_id,route_type\nr\n'),
+                               ('later-missing-value',b'route_id,route_type\nr,2\ns\n'),
+                               ('later-invalid-value',b'route_id,route_type\nr,2\ns,invalid\n'),
+                               ('later-missing-id',b'route_id,route_type\nr,2\n,3\n')]:
+                with self.subTest(ranges=ranges,malformation=name):
+                    data=io.BytesIO()
+                    with zipfile.ZipFile(io.BytesIO(valid)) as old,zipfile.ZipFile(data,'w') as archive:
+                        for item in old.infolist():
+                            if item.filename!='routes.txt':archive.writestr(item,old.read(item.filename))
+                        if table is not None:archive.writestr('routes.txt',table)
+                    broken,held=self.server(data.getvalue(),ranges=ranges)
+                    fallback,_=self.server(valid)
+                    entry=pipeline.discover([{'filename':'fallback.gtfs.zip','source':fallback,'country_code':'CA'}],{})[0]
+                    entry['processed_url']=broken
+                    cache=self.root/f'cache-{ranges}-{name}';cache.mkdir()
+                    result=pipeline.compile_entry(entry,cache,self.root/f'output-{ranges}-{name}',
+                                                  '2026-10-05',None,1_000_000,pipeline.PROFILES)
+                    self.assertEqual(result['status'],'compiled')
+                    self.assertEqual(result['source']['download_url_sha256'],pipeline.source_url_fingerprint(fallback))
+                    self.assertEqual(result['source']['recovered_source_errors'][0]['code'],'invalid_feed_or_budget')
+                    self.assertTrue(held['requests'])
+                    direct=pipeline.discover([{'filename':'broken.gtfs.zip','source':broken,'country_code':'CA','delivery':'direct'}],{})[0]
+                    with self.assertRaises(pipeline.SourceRetrievalError) as error:
+                        pipeline.fetch_alternative(direct,cache/'broken.zip',1_000_000)
+                    self.assertEqual(error.exception.attempts[0]['code'],'invalid_feed_or_budget')
+                    self.assertFalse((cache/'broken.zip').exists(),'unusable metadata is not a successful no-rail cache')
+
+    def routes_archive(self, table):
+        data=io.BytesIO()
+        with zipfile.ZipFile(io.BytesIO(self.archive())) as old,zipfile.ZipFile(data,'w') as archive:
+            for item in old.infolist():
+                archive.writestr(item,table if item.filename=='routes.txt' else old.read(item.filename))
+        return data.getvalue()
+
+    def test_conditional_malformed_routes_keep_good_cache_and_try_fallback(self):
+        malformed=self.routes_archive(b'route_id,route_type\nr,2\ns,invalid\n')
+        for fallback_available in [True,False]:
+            with self.subTest(fallback_available=fallback_available):
+                processed,held=self.server(self.archive())
+                original,_=self.server(self.archive())
+                entry=pipeline.discover([{'filename':'refresh.gtfs.zip','source':original if fallback_available else processed,
+                                         'country_code':'CA'}],{})[0]
+                entry['processed_url']=processed
+                cache=self.root/f'refresh-{fallback_available}';cache.mkdir()
+                output=self.root/f'refresh-output-{fallback_available}'
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                archive=cache/'refresh.zip';old=archive.read_bytes()
+                meta_path=cache/'refresh.meta.json';meta=json.loads(meta_path.read_text())
+                yesterday=(pipeline.dt.datetime.now(pipeline.dt.timezone.utc).date()-pipeline.dt.timedelta(days=1)).isoformat()
+                meta['retrieved']=meta['checked']=yesterday;meta_path.write_text(json.dumps(meta))
+                destination=output/'feeds/refresh.json.gz'
+                with gzip.open(destination,'rt') as file:previous=json.load(file)
+                previous['source']['retrieved']=previous['source']['checked']=yesterday
+                pipeline.write_feed(destination,previous)
+                held['data']=malformed;held['etag']='"two"'
+                result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                self.assertEqual(result['status'],'compiled')
+                self.assertEqual(archive.read_bytes(),old,'invalid refresh never replaces the last good archive')
+                self.assertEqual(result['source']['recovered_source_errors'][0]['code'],'invalid_feed_or_budget')
+                if fallback_available:
+                    self.assertEqual(result['source']['download_url_sha256'],pipeline.source_url_fingerprint(original))
+                    self.assertFalse(result['source']['offline_cached'])
+                else:
+                    self.assertTrue(result['source']['offline_cached'])
+                    self.assertEqual(result['source']['retrieved'],yesterday)
+                    self.assertEqual(result['source']['checked'],yesterday)
+                    # Once that last valid cache expires the source is still a
+                    # retriable failure, never a successful no-rail outcome.
+                    meta=json.loads(meta_path.read_text());meta['checked']='2020-01-01'
+                    meta_path.write_text(json.dumps(meta))
+                    with self.assertRaises(pipeline.SourceRetrievalError) as error:
+                        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                    self.assertIn('invalid_feed_or_budget',{x['code'] for x in error.exception.attempts})
+                    self.assertEqual(archive.read_bytes(),old)
+
+    def test_bad_cached_metadata_on_304_uses_alternative_or_remains_failure(self):
+        malformed=self.routes_archive(b'route_id,route_type\nr,2\ns,invalid\n')
+        for fallback_available in [True,False]:
+            with self.subTest(fallback_available=fallback_available):
+                processed,held=self.server(self.archive())
+                original,_=self.server(self.archive())
+                entry=pipeline.discover([{'filename':'cached.gtfs.zip','source':original if fallback_available else processed,
+                                         'country_code':'CA'}],{})[0]
+                entry['processed_url']=processed
+                cache=self.root/f'cached-{fallback_available}';cache.mkdir()
+                output=self.root/f'cached-output-{fallback_available}'
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                path=cache/'cached.zip';path.write_bytes(malformed)
+                meta=json.loads((cache/'cached.meta.json').read_text())
+                self.assertFalse(pipeline.valid_cached_archive(path,meta,pipeline.source_candidates(entry)))
+                if fallback_available:
+                    result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                    self.assertEqual(result['status'],'compiled')
+                    self.assertEqual(result['source']['download_url_sha256'],pipeline.source_url_fingerprint(original))
+                    self.assertEqual(result['source']['recovered_source_errors'][0]['code'],'invalid_feed_or_budget')
+                else:
+                    with self.assertRaises(pipeline.SourceRetrievalError):
+                        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                    self.assertEqual(json.loads((cache/'cached.meta.json').read_text()),meta)
+                self.assertIn(('"one"',None),held['conditional_requests'])
+
+    def test_full_download_routes_are_revalidated_after_range_preflight(self):
+        valid=self.archive()
+        malformed=self.routes_archive(b'route_id,route_type\nr,2\ns,invalid\n')
+        entry=pipeline.discover([{'filename':'revision.gtfs.zip','source':'https://fixture.example/feed.zip',
+                                 'country_code':'CA','delivery':'direct'}],{})[0]
+        class ChangedRemote:
+            etag='"one"';last_modified=None;full=malformed
+            def __init__(self,*args,**kwargs):pass
+            def table(self,name):
+                with zipfile.ZipFile(io.BytesIO(valid)) as archive:return archive.read(name)
+            def download(self):return self.full
+        path=self.root/'changed.zip'
+        with patch.object(pipeline,'RemoteZip',ChangedRemote):
+            with self.assertRaises(pipeline.SourceRetrievalError):
+                pipeline.fetch_alternative(entry,path,1_000_000)
+        self.assertFalse(path.exists())
+
+    def undecodable_archive(self, kind):
+        data=bytearray(self.archive())
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            info=archive.getinfo('routes.txt');local=info.header_offset
+        central=0
+        while True:
+            central=data.index(b'PK\x01\x02',central)
+            name_len=struct.unpack_from('<H',data,central+28)[0]
+            if data[central+46:central+46+name_len]==b'routes.txt':break
+            central+=46+name_len
+        if kind=='encrypted':
+            for offset in [local+6,central+8]:
+                flags=struct.unpack_from('<H',data,offset)[0]
+                struct.pack_into('<H',data,offset,flags|1)
+        elif kind=='unsupported':
+            for offset in [local+8,central+10]:struct.pack_into('<H',data,offset,99)
+        else:
+            name_len,extra_len=struct.unpack_from('<HH',data,local+26)
+            data[local+30+name_len+extra_len]=7  # Invalid deflate block type.
+        return bytes(data)
+
+    def test_zip_metadata_decode_failures_reach_fallback_without_replacing_cache(self):
+        for kind in ['encrypted','unsupported','deflate']:
+            malformed=self.undecodable_archive(kind)
+            for mode in ['whole','ranged','conditional']:
+                with self.subTest(kind=kind,mode=mode):
+                    processed,held=self.server(self.archive() if mode=='conditional' else malformed,ranges=mode!='whole')
+                    original,_=self.server(self.archive())
+                    entry=pipeline.discover([{'filename':'decode.gtfs.zip','source':original,'country_code':'CA'}],{})[0]
+                    entry['processed_url']=processed
+                    cache=self.root/f'decode-{kind}-{mode}';cache.mkdir()
+                    output=self.root/f'decode-out-{kind}-{mode}'
+                    if mode=='conditional':
+                        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                        old=(cache/'decode.zip').read_bytes()
+                        held['data']=malformed;held['etag']='"two"'
+                    result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                    self.assertEqual(result['status'],'compiled')
+                    self.assertEqual(result['source']['download_url_sha256'],pipeline.source_url_fingerprint(original))
+                    self.assertEqual(result['source']['recovered_source_errors'][0]['code'],'invalid_feed_or_budget')
+                    if mode=='conditional':self.assertEqual((cache/'decode.zip').read_bytes(),old)
+                    direct=pipeline.discover([{'filename':'bad.gtfs.zip','source':processed,'country_code':'CA','delivery':'direct'}],{})[0]
+                    with self.assertRaises(pipeline.SourceRetrievalError):
+                        pipeline.fetch_alternative(direct,cache/'bad.zip',1_000_000)
+                    self.assertFalse((cache/'bad.zip').exists())
+
+    def test_inconsistent_range_zip_directories_fall_back_or_remain_retriable(self):
+        for kind in ['excess-record-count','short-directory-header','truncated-record-fields']:
+            with self.subTest(kind=kind):
+                data=bytearray(self.archive());end=data.rfind(b'PK\x05\x06')
+                if kind=='excess-record-count':
+                    struct.pack_into('<HH',data,end+8,100,100)
+                elif kind=='short-directory-header':
+                    struct.pack_into('<I',data,end+12,1)
+                else:
+                    central=struct.unpack_from('<I',data,end+16)[0]
+                    struct.pack_into('<H',data,central+28,65535)
+                processed,held=self.server(bytes(data))
+                original,_=self.server(self.archive())
+                entry=pipeline.discover([{'filename':'directory.gtfs.zip','source':original,'country_code':'CA'}],{})[0]
+                entry['processed_url']=processed
+                cache=self.root/kind;cache.mkdir()
+                result=pipeline.compile_entry(entry,cache,self.root/(kind+'-output'),'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                self.assertEqual(result['status'],'compiled')
+                self.assertEqual(result['source']['download_url_sha256'],pipeline.source_url_fingerprint(original))
+                self.assertEqual(result['source']['recovered_source_errors'][0]['code'],'invalid_feed_or_budget')
+                direct=pipeline.discover([{'filename':'broken.gtfs.zip','source':processed,'country_code':'CA','delivery':'direct'}],{})[0]
+                with self.assertRaises(pipeline.SourceRetrievalError) as error:
+                    pipeline.fetch_alternative(direct,cache/'broken.zip',1_000_000)
+                self.assertEqual(error.exception.attempts[0]['code'],'invalid_feed_or_budget')
+                self.assertFalse((cache/'broken.zip').exists())
+                self.assertTrue(all(held['requests']),'malformed ranged directory never triggers a full bad download')
+
+    def test_bounded_zip_header_corruption_matrix_preserves_fallback_and_cache(self):
+        for kind in ['truncated-file','central-signature','local-signature','local-name-overflow','bad-crc','unsupported-version']:
+            data=bytearray(self.archive());end=data.rfind(b'PK\x05\x06')
+            central=struct.unpack_from('<I',data,end+16)[0]
+            with zipfile.ZipFile(io.BytesIO(data)) as archive:local=archive.getinfo('routes.txt').header_offset
+            if kind=='truncated-file':data=data[:-1000]
+            elif kind=='central-signature':data[central:central+4]=b'BAD!'
+            elif kind=='local-signature':data[local:local+4]=b'BAD!'
+            elif kind=='local-name-overflow':struct.pack_into('<H',data,local+26,65535)
+            elif kind=='bad-crc':
+                while True:
+                    name_len=struct.unpack_from('<H',data,central+28)[0]
+                    if data[central+46:central+46+name_len]==b'routes.txt':break
+                    central=data.index(b'PK\x01\x02',central+46+name_len)
+                crc=struct.unpack_from('<I',data,central+16)[0]
+                struct.pack_into('<I',data,central+16,crc^0xffffffff)
+            else:struct.pack_into('<H',data,central+6,99)
+            malformed=bytes(data)
+            for mode in ['whole','ranged','conditional']:
+                with self.subTest(kind=kind,mode=mode):
+                    processed,held=self.server(self.archive() if mode=='conditional' else malformed,ranges=mode!='whole')
+                    original,_=self.server(self.archive())
+                    entry=pipeline.discover([{'filename':'matrix.gtfs.zip','source':original,'country_code':'CA'}],{})[0]
+                    entry['processed_url']=processed
+                    cache=self.root/f'matrix-{kind}-{mode}';cache.mkdir()
+                    output=self.root/f'matrix-out-{kind}-{mode}'
+                    if mode=='conditional':
+                        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                        old=(cache/'matrix.zip').read_bytes()
+                        held['data']=malformed;held['etag']='"two"'
+                    result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+                    self.assertEqual(result['status'],'compiled')
+                    self.assertEqual(result['source']['download_url_sha256'],pipeline.source_url_fingerprint(original))
+                    self.assertEqual(result['source']['recovered_source_errors'][0]['code'],'invalid_feed_or_budget')
+                    if mode=='conditional':self.assertEqual((cache/'matrix.zip').read_bytes(),old)
+                    direct=pipeline.discover([{'filename':'bad.gtfs.zip','source':processed,'country_code':'CA','delivery':'direct'}],{})[0]
+                    with self.assertRaises(pipeline.SourceRetrievalError):
+                        pipeline.fetch_alternative(direct,cache/'bad.zip',1_000_000)
+                    self.assertFalse((cache/'bad.zip').exists())
+
+    def test_zip_decoder_boundaries_preserve_programmer_and_control_flow_errors(self):
+        from types import SimpleNamespace
+        archive=SimpleNamespace(getinfo=lambda name:SimpleNamespace(file_size=10,flag_bits=0))
+        errors=[zipfile.BadZipFile('bad'),EOFError('truncated'),struct.error('short'),
+                NotImplementedError('unsupported codec'),pipeline.zlib.error('bad deflate')]
+        if pipeline.lzma:errors.append(pipeline.lzma.LZMAError('bad lzma'))
+        for error in errors:
+            with self.subTest(error=type(error).__name__):
+                with patch.object(pipeline.zipfile,'ZipFile',side_effect=error):
+                    with self.assertRaises(ValueError):pipeline.source_archive(io.BytesIO())
+                archive.read=lambda info,error=error:(_ for _ in ()).throw(error)
+                with self.assertRaises(ValueError):pipeline.archive_metadata(archive,'routes.txt')
+        for error in [TypeError('programmer'),AssertionError('invariant'),RuntimeError('programmer'),
+                      MemoryError('budget'),KeyboardInterrupt(),SystemExit(1)]:
+            with self.subTest(preserved=type(error).__name__):
+                with patch.object(pipeline.zipfile,'ZipFile',side_effect=error):
+                    with self.assertRaises(type(error)) as caught:pipeline.source_archive(io.BytesIO())
+                    self.assertIs(caught.exception,error)
+                archive.read=lambda info,error=error:(_ for _ in ()).throw(error)
+                with self.assertRaises(type(error)) as caught:pipeline.archive_metadata(archive,'routes.txt')
+                self.assertIs(caught.exception,error)
+        for codec in ['zlib','bz2','lzma']:
+            archive.read=lambda info:(_ for _ in ()).throw(RuntimeError(f'Compression requires the (missing) {codec} module'))
+            with self.assertRaises(ValueError):pipeline.archive_metadata(archive,'routes.txt')
+        for size in range(30):
+            with self.assertRaises(ValueError):pipeline.unpack_zip_metadata('<4s5H3I2H',b'X'*size)
+        for size in range(46):
+            with self.assertRaises(ValueError):pipeline.unpack_zip_metadata('<4s6H3I5H2I',b'X'*size)
+
+    def test_lineage_fallback_enforces_domains_and_exact_source_review_before_fetch(self):
+        from urllib.error import HTTPError
+        allowed, held = self.server(self.archive())
+        denied = 'https://reviewed.example/rail.zip'
+        row = {'filename': 'jp_rail.gtfs.zip', 'source': 'https://operator.example/old.zip',
+               'country_code': 'JP', 'lineage': [
+                   {'source': 'https://publisher.ru/rail.zip'},
+                   {'source': 'https://PUBLISHER.RU./rail.zip'},
+                   {'source': denied}, {'source': denied + '#fragment'},
+                   {'source': 'https://REVIEWED.example:443/rail.zip'},
+                   {'source': allowed}]}
+        # The reviewed original has changed in the primary row, but still appears
+        # in lineage; its exact-source prohibition still applies to acquisition.
+        rules = {'sources': {'jp_rail.gtfs.zip': {'expected_source': denied,
+                  'prohibit_frequency_use': True, 'license_url': 'https://reviewed.example/terms'}}}
+        entry = pipeline.discover([row], rules)[0]
+        self.assertEqual(entry['status'], 'pending')
+        self.assertEqual(pipeline.source_candidates(entry), [entry['processed_url'], row['source'], allowed])
+        entry = json.loads(json.dumps(entry))  # The worker receives the same rules.
+        seen = []
+        real_get = pipeline.get
+        def fetch(url, headers=None, **kwargs):
+            seen.append(url)
+            if url != allowed:
+                raise HTTPError(url, 404, 'Missing fixture', {}, io.BytesIO())
+            return real_get(url, headers, **kwargs)
+        cache, output = self.root/'policy-cache', self.root/'policy-output'
+        cache.mkdir()
+        with patch.object(pipeline, 'get', side_effect=fetch):
+            result = pipeline.compile_entry(entry, cache, output, '2026-10-05', None,
+                                            1_000_000, pipeline.PROFILES)
+        self.assertEqual(result['status'], 'compiled')
+        self.assertEqual(result['source']['download_url'], allowed)
+        self.assertEqual(set(seen), {entry['processed_url'], row['source'], allowed})
+        self.assertTrue(held['requests'])
+        self.assertEqual(len(result['source']['recovered_source_errors']), 2)
+
+    def test_source_rules_are_exact_and_unknown_rights_remain_eligible(self):
+        rule = {'sources': {'other.gtfs.zip': {'expected_source': 'https://reviewed.example/rail.zip',
+                'prohibit_frequency_use': True, 'terms_url': 'https://reviewed.example/terms'},
+                'blocked.gtfs.zip': {'expected_source': 'https://publisher.ru/rail.zip',
+                'prohibit_frequency_use': True, 'license_url': 'https://publisher.ru/terms'}}}
+        row = {'filename': 'rail.gtfs.zip', 'source': 'https://unreviewed.example/rail.zip',
+               'country_code': 'JP', 'lineage': [{'source': 'https://reviewed.example/rail.zip'},
+                                               {'source': 'https://reviewed.example/different.zip'}]}
+        entry = pipeline.discover([row], rule)[0]
+        self.assertEqual(entry['terms']['state'], 'not_provided')
+        self.assertEqual(entry['status'], 'pending')
+        self.assertEqual(pipeline.source_candidates(entry), [entry['processed_url'], row['source'],
+                                                             'https://reviewed.example/different.zip'])
+        entry['catalogue']['country_code'] = 'RU'
+        self.assertEqual(pipeline.source_candidates(entry), [])
+
+    def test_new_source_rule_prevents_conditional_or_offline_cache_reuse(self):
+        from urllib.error import HTTPError
+        url, held = self.server(self.archive())
+        row = {'filename': 'rail.gtfs.zip', 'source': 'https://operator.example/rail.zip',
+               'country_code': 'JP', 'lineage': [{'source': url}]}
+        entry = pipeline.discover([row], {})[0]
+        entry['processed_url'] = url
+        cache, output = self.root/'rule-cache', self.root/'rule-output'
+        cache.mkdir()
+        pipeline.compile_entry(entry, cache, output, '2026-10-05', None, 1_000_000, pipeline.PROFILES)
+        entry['denied_source_urls'] = [url]
+        seen = []
+        def unavailable(target, headers=None, **kwargs):
+            seen.append(target)
+            raise HTTPError(target, 404, 'Missing fixture', {}, io.BytesIO())
+        with patch.object(pipeline, 'get', side_effect=unavailable), \
+             self.assertRaises(pipeline.SourceRetrievalError):
+            pipeline.compile_entry(entry, cache, output, '2026-10-05', None, 1_000_000, pipeline.PROFILES)
+        self.assertEqual(seen, [row['source']])
+
+    def test_unsafe_refresh_target_does_not_become_an_offline_cache_success(self):
+        url, held = self.server(self.archive())
+        entry = pipeline.discover([{'filename': 'rail.gtfs.zip', 'source': url, 'country_code': 'JP'}], {})[0]
+        entry['processed_url'] = url
+        cache, output = self.root/'target-cache', self.root/'target-output'
+        cache.mkdir()
+        pipeline.compile_entry(entry, cache, output, '2026-10-05', None, 1_000_000, pipeline.PROFILES)
+        with patch.object(pipeline, 'get', side_effect=pipeline.UnsafeSourceURL('Non-public acquisition address')), \
+             self.assertRaises(pipeline.SourceRetrievalError) as caught:
+            pipeline.compile_entry(entry, cache, output, '2026-10-05', None, 1_000_000, pipeline.PROFILES)
+        self.assertEqual(caught.exception.attempts[0]['code'], 'unsafe_source_url')
+        self.assertEqual(pipeline.classify_failure(caught.exception), ('source_retrieval_error', 'retrieval'))
+
+    def test_all_source_404s_are_recoverable_with_inspectable_attempts(self):
+        from urllib.error import HTTPError
+        row={'filename':'jp_rail.gtfs.zip','source':'https://operator.example/rail.zip','country_code':'JP'}
+        entry=pipeline.discover([row],{})[0]
+        cache,output=self.root/'missing-cache',self.root/'missing-output'
+        cache.mkdir()
+        def only_404(url, headers=None, **kwargs):
+            raise HTTPError(url,404,'Not Found',{},io.BytesIO())
+        with patch.object(pipeline,'get',side_effect=only_404):
+            with self.assertRaises(pipeline.SourceRetrievalError) as context:
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(len(context.exception.attempts),2)
+        self.assertEqual({x['code'] for x in context.exception.attempts},{'http_404'})
+        self.assertEqual(pipeline.classify_failure(context.exception),('source_http_404','retrieval'))
+        self.assertFalse((cache/'jp_rail.zip').exists())
+
+    def test_bad_conditional_refresh_keeps_last_good_zip_until_alternative_succeeds(self):
+        original, _ = self.server(self.archive())
+        row={'filename':'de_rail.gtfs.zip','source':original,'country_code':'DE'}
+        entry=pipeline.discover([row],{})[0]
+        # First successful version fetched through the processed endpoint.
+        entry['processed_url']=original
+        cache,output=self.root/'bad-cache',self.root/'bad-output'
+        cache.mkdir()
+        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        old=(cache/'de_rail.zip').read_bytes()
+        # Conditional 200 responds with broken, non-ZIP bytes. Fall back
+        # on the original URL rather than overwriting the good cached ZIP.
+        entry['processed_url']='https://broken.example/process.zip'
+        meta=json.loads((cache/'de_rail.meta.json').read_text())
+        meta['download_url']=entry['processed_url']
+        (cache/'de_rail.meta.json').write_text(json.dumps(meta))
+        real_get=pipeline.get
+        def broken(url, headers=None, **kwargs):
+            if url==entry['processed_url']:
+                from email.message import Message
+                class Response(io.BytesIO):
+                    status=200
+                    headers={'Content-Length':'10','ETag':'"new"'}
+                    def __enter__(self): return self
+                    def __exit__(self,*_): self.close()
+                return Response(b'not-a-zip')
+            return real_get(url,headers, **kwargs)
+        with patch.object(pipeline,'get',side_effect=broken):
+            result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(result['status'],'compiled')
+        self.assertEqual((cache/'de_rail.zip').read_bytes(),old)
+        self.assertEqual(result['source']['download_url'],original)
+
+    def test_recent_cached_rail_is_retained_during_outage_without_false_refresh(self):
+        from urllib.error import HTTPError
+        original,_=self.server(self.archive())
+        entry=pipeline.discover([{'filename':'jp_cache.gtfs.zip','source':original,
+                                  'country_code':'JP'}],{})[0]
+        entry['processed_url']=original
+        cache,output=self.root/'offline-cache',self.root/'offline-output'
+        cache.mkdir()
+        good=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(good['status'],'compiled')
+        old_retrieved=good['source']['retrieved']
+        old_checked=good['source']['checked']
+
+        def offline(url,headers=None, **kwargs):
+            raise HTTPError(url,503,'Service unavailable',{'Retry-After':'120'},io.BytesIO())
+        with patch.object(pipeline,'get',side_effect=offline):
+            stale=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(stale['status'],'compiled', 'local data may continue within prior validity')
+        self.assertTrue(stale['source']['offline_cached'])
+        self.assertEqual(stale['source']['retrieved'],old_retrieved)
+        self.assertEqual(stale['source']['checked'],old_checked,
+                         'an inaccessible publisher has not confirmed freshness')
+        self.assertTrue(stale['source']['recovered_source_errors'])
+
+        restored=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(restored['status'],'compiled')
+        self.assertFalse(restored['source']['offline_cached'],
+                         '304 confirms the cached revision is accessible again')
+        self.assertEqual(restored['source']['recovered_source_errors'],[])
+
+    def test_expired_or_mismatched_source_cache_does_not_mask_outage(self):
+        from urllib.error import HTTPError
+        original,_=self.server(self.archive())
+        entry=pipeline.discover([{'filename':'jp_old.gtfs.zip','source':original,'country_code':'JP'}],{})[0]
+        entry['processed_url']=original
+        cache,output=self.root/'expired-cache',self.root/'expired-output'
+        cache.mkdir()
+        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        meta_file=cache/'jp_old.meta.json'
+        meta=json.loads(meta_file.read_text())
+        def unavailable(url,headers=None, **kwargs):
+            raise HTTPError(url,404,'Gone',{},io.BytesIO())
+        meta['checked']='2020-01-01'
+        meta_file.write_text(json.dumps(meta))
+        with patch.object(pipeline,'get',side_effect=unavailable):
+            with self.assertRaises(pipeline.SourceRetrievalError):
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        meta['checked']=old_date=__import__('datetime').date.today().isoformat()
+        meta['download_url']='https://different.example/previous-source.zip'
+        meta.pop('download_url_sha256',None)  # exercise legacy full-URL mismatch
+        meta_file.write_text(json.dumps(meta))
+        with patch.object(pipeline,'get',side_effect=unavailable):
+            with self.assertRaises(pipeline.SourceRetrievalError):
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+
+    def test_bounded_retries_respect_publisher_backoff_and_do_not_repeat_404(self):
+        from urllib.error import HTTPError
+        attempts=[]
+        def transient(request, timeout=45, **kwargs):
+            attempts.append(request.full_url)
+            if len(attempts)<3:
+                code=429 if len(attempts)==1 else 503
+                raise HTTPError(request.full_url,code,'Temporary',{'Retry-After':'0'},io.BytesIO())
+            return io.BytesIO(b'ok')
+        with patch.object(pipeline,'urlopen',side_effect=transient), patch.object(pipeline.time,'sleep') as sleep:
+            with pipeline.get('https://example.net/rail.zip') as response:
+                self.assertEqual(response.read(),b'ok')
+        self.assertEqual(len(attempts),3)
+        self.assertEqual(sleep.call_count,2)
+
+        def permanent(request, timeout=45, **kwargs):
+            attempts.append(request.full_url)
+            raise HTTPError(request.full_url,404,'Not Found',{},io.BytesIO())
+        attempts.clear()
+        with patch.object(pipeline,'urlopen',side_effect=permanent), patch.object(pipeline.time,'sleep') as sleep:
+            with self.assertRaises(HTTPError):
+                pipeline.get('https://example.net/missing.zip')
+        self.assertEqual(len(attempts),1,'retry the alternate feed, not the dead 404 itself')
+        sleep.assert_not_called()
+
+        def delayed(request, timeout=45, **kwargs):
+            raise HTTPError(request.full_url,429,'Rate Limited',{'Retry-After':'120'},io.BytesIO())
+        with patch.object(pipeline,'urlopen',side_effect=delayed), patch.object(pipeline.time,'sleep') as sleep:
+            with self.assertRaises(HTTPError):
+                pipeline.get('https://example.net/rate-limited.zip')
+        sleep.assert_not_called()
+
+    def test_compile_failure_remains_retry_pending_in_durable_inventory(self):
+        catalogue=self.root/'input.json';catalogue.write_text(json.dumps([
+            {'filename':'jp_rail.gtfs.zip','country_code':'JP',
+             'source':'https://operator.example/rail.zip'}]))
+        cache,output=self.root/'main-cache',self.root/'main-out'
+        errors=[{'url':'https://api.transitous.org/gtfs/jp_rail.gtfs.zip',
+                 'code':'http_404','message':'Not found'},
+                {'url':'https://operator.example/rail.zip','code':'http_404',
+                 'message':'Not found'}]
+        from unittest.mock import patch as mock_patch
+        with mock_patch('sys.argv',['global-service-frequency.py','--catalogue',str(catalogue),
+                                    '--cache',str(cache),'--output',str(output),'--date','2026-10-05']), \
+             mock_patch.object(pipeline,'compile_entry_isolated',side_effect=pipeline.SourceRetrievalError(errors)):
+            pipeline.main()
+        inventory=json.loads((output/'inventory-0.json').read_text())
+        self.assertEqual(inventory['counts'],{'retry_pending':1})
+        record=inventory['entries'][0]
+        self.assertTrue(record['retry_eligible'])
+        self.assertEqual(record['reason_code'],'source_http_404')
+        self.assertEqual(len(record['source_attempts']),2)
+        self.assertEqual(record['next_action'],'repair_or_find_feed_url')
+
+    def test_retry_after_parses_seconds_dates_past_and_invalid_values(self):
+        from email.utils import formatdate
+        now = 1791536400.0
+        cases = [('0', 0), (' 8 ', 8), ('120', 120),
+                 (formatdate(now + 5, usegmt=True), 5),
+                 (formatdate(now + 3600, usegmt=True), 3600),
+                 (formatdate(now - 10, usegmt=True), 0),
+                 (None, None), ('', None), ('later', None), ('-1', None), ('1.5', None)]
+        for value, expected in cases:
+            with self.subTest(value=value):
+                self.assertEqual(pipeline.retry_after_delay(value, now), expected)
+
+    def test_short_retry_after_date_waits_until_the_publisher_deadline(self):
+        from email.utils import formatdate
+        from urllib.error import HTTPError
+        clock=[1791536400.0]
+        deadline=clock[0]+5
+        requests=[]
+        def upstream(request,timeout=45, **kwargs):
+            requests.append(clock[0])
+            if len(requests)==1:
+                raise HTTPError(request.full_url,503,'Unavailable',
+                                {'Retry-After':formatdate(deadline,usegmt=True)},io.BytesIO())
+            return io.BytesIO(b'ok')
+        def advance(delay):
+            clock[0]+=delay
+        with patch.object(pipeline,'urlopen',side_effect=upstream), \
+             patch.object(pipeline.time,'time',side_effect=lambda:clock[0]), \
+             patch.object(pipeline.time,'sleep',side_effect=advance) as sleep:
+            with pipeline.get('https://operator.example/rail.zip') as response:
+                self.assertEqual(response.read(),b'ok')
+        self.assertEqual(requests,[deadline-5,deadline])
+        sleep.assert_called_once_with(5.0)
+
+    def test_retry_after_dates_bound_requests_and_preserve_retry_pending_inventory(self):
+        from email.utils import formatdate
+        from urllib.error import HTTPError
+        now = 1791536400.0
+        for header, sleeps, count in [
+                ('120', [], 1), (formatdate(now + 3600, usegmt=True), [], 1),
+                (formatdate(now + 5, usegmt=True), [5.0, 5.0], 3),
+                (formatdate(now - 5, usegmt=True), [0.0, 0.0], 3),
+                ('invalid', [1.0, 2.0], 3)]:
+            with self.subTest(header=header):
+                def unavailable(request, timeout=45, **kwargs):
+                    raise HTTPError(request.full_url,503,'Unavailable',{'Retry-After':header},io.BytesIO())
+                with patch.object(pipeline,'urlopen',side_effect=unavailable) as request, \
+                     patch.object(pipeline.time,'time',return_value=now), \
+                     patch.object(pipeline.time,'sleep') as sleep:
+                    with self.assertRaises(HTTPError) as caught:
+                        pipeline.get('https://operator.example/rail.zip')
+                self.assertEqual(request.call_count,count)
+                self.assertEqual([x.args[0] for x in sleep.call_args_list],sleeps)
+                caught.exception.close()
+        catalogue=self.root/'delayed-catalogue.json'
+        catalogue.write_text(json.dumps([{'filename':'delayed.gtfs.zip','country_code':'CA',
+                                         'delivery':'direct','source':'https://operator.example/rail.zip'}]))
+        cache,output=self.root/'delay-cache',self.root/'delay-output'
+        def deferred(entry,*args):
+            try:
+                pipeline.get(entry['processed_url'])
+            except HTTPError as error:
+                raise pipeline.SourceRetrievalError([pipeline.source_attempt(entry['processed_url'],error)])
+        def long_delay(request,timeout=45, **kwargs):
+            raise HTTPError(request.full_url,429,'Rate Limited',
+                            {'Retry-After':formatdate(now+3600,usegmt=True)},io.BytesIO())
+        with patch('sys.argv',['global-service-frequency.py','--catalogue',str(catalogue),
+                              '--cache',str(cache),'--output',str(output),'--date','2026-10-05']), \
+             patch.object(pipeline,'compile_entry_isolated',side_effect=deferred), \
+             patch.object(pipeline,'urlopen',side_effect=long_delay) as request, \
+             patch.object(pipeline.time,'time',return_value=now), \
+             patch.object(pipeline.time,'sleep') as sleep:
+            pipeline.main()
+        record=json.loads((output/'inventory-0.json').read_text())['entries'][0]
+        self.assertEqual(request.call_count,1)
+        sleep.assert_not_called()
+        self.assertEqual(record['status'],'retry_pending')
+        self.assertTrue(record['retry_eligible'])
+        self.assertEqual(record['source_attempts'][0]['code'],'http_429')
 
     def archive(self,rail=True):
         data=io.BytesIO()
         with zipfile.ZipFile(data,'w',compression=zipfile.ZIP_DEFLATED) as z:
-            z.writestr('routes.txt','route_id,route_type,agency_id,route_short_name\nr,2,a,R\n' if rail else 'route_id,route_type\nb,3\n')
-            z.writestr('agency.txt','agency_id,agency_name,agency_timezone\na,National Rail,Etc/UTC\n')
-            z.writestr('feed_info.txt','feed_start_date,feed_end_date\n20260101,20261231\n')
-            z.writestr('stops.txt','stop_id,stop_name,stop_lat,stop_lon\nA,A,30,31\nB,B,30.01,31\n')
-            z.writestr('trips.txt','trip_id,route_id,service_id\nt,r,w\n')
-            z.writestr('stop_times.txt','trip_id,stop_sequence,stop_id,departure_time\nt,1,A,08:00:00\nt,2,B,08:10:00\n')
-            z.writestr('calendar.txt','service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\nw,1,1,1,1,1,1,1,20260101,20261231\n')
-            z.writestr('unused-padding.bin',bytes(range(256))*2000)
+            def write(name,value):
+                info=zipfile.ZipInfo(name,(2026,1,1,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED
+                z.writestr(info,value)
+            write('routes.txt','route_id,route_type,agency_id,route_short_name\nr,2,a,R\n' if rail else 'route_id,route_type\nb,3\n')
+            write('agency.txt','agency_id,agency_name,agency_timezone\na,National Rail,Etc/UTC\n')
+            write('feed_info.txt','feed_start_date,feed_end_date\n20260101,20261231\n')
+            write('stops.txt','stop_id,stop_name,stop_lat,stop_lon\nA,A,30,31\nB,B,30.01,31\n')
+            write('trips.txt','trip_id,route_id,service_id\nt,r,w\n')
+            write('stop_times.txt','trip_id,stop_sequence,stop_id,departure_time\nt,1,A,08:00:00\nt,2,B,08:10:00\n')
+            write('calendar.txt','service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\nw,1,1,1,1,1,1,1,20260101,20261231\n')
+            write('unused-padding.bin',bytes(range(256))*2000)
         return data.getvalue()
+
+    def test_fixture_archive_bytes_do_not_depend_on_wall_clock(self):
+        with patch('zipfile.time.localtime',return_value=(2026,1,1,0,0,0,0,1,0)):
+            first=self.archive()
+        with patch('zipfile.time.localtime',return_value=(2026,10,9,11,0,2,4,282,0)):
+            second=self.archive()
+        self.assertEqual(first,second)
+        with zipfile.ZipFile(io.BytesIO(first)) as archive:
+            self.assertTrue(all(info.date_time==(2026,1,1,0,0,0) for info in archive.infolist()))
 
     def server(self,data,ranges=True,change=False,last_modified=False):
         held={'requests':[],'conditional_requests':[],'range_validators':[],'etag':None if last_modified else '"one"','last_modified':'Mon, 01 Jun 2026 00:00:00 GMT' if last_modified else None,'data':data}
@@ -67,6 +920,7 @@ class GlobalFrequency(unittest.TestCase):
             def log_message(self,*args):pass
         server=ThreadingHTTPServer(('127.0.0.1',0),Handler);thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         self.addCleanup(server.server_close);self.addCleanup(server.shutdown)
+        self.fixture_ports.add(server.server_port)
         return 'http://127.0.0.1:'+str(server.server_port)+'/feed.zip',held
 
     def test_range_inspection_full_fallback_and_revision_changes(self):
@@ -119,6 +973,39 @@ class GlobalFrequency(unittest.TestCase):
         # The fallback retains the same byte budget as a range-capable feed.
         with self.assertRaisesRegex(ValueError,'budget'):
             pipeline.RemoteZip(url,100)
+
+    def test_bus_only_fallback_invalidates_old_rail_cache_before_a_later_outage(self):
+        from urllib.error import HTTPError
+        processed,_=self.server(self.archive())
+        original,_=self.server(self.archive(rail=False))
+        entry=pipeline.discover([{'filename':'ca_changed.gtfs.zip','source':original,
+                                 'country_code':'CA'}],{})[0]
+        entry['processed_url']=processed
+        cache,output=self.root/'changed-cache',self.root/'changed-output';cache.mkdir()
+        first=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(first['status'],'compiled')
+        archive=cache/'ca_changed.zip';old=archive.read_bytes()
+        real_get=pipeline.get
+        def missing_processed(url,headers=None,*,policy=None):
+            if url==processed:raise HTTPError(url,404,'Gone',{},io.BytesIO())
+            return real_get(url,headers,policy=policy)
+        with patch.object(pipeline,'get',side_effect=missing_processed):
+            current=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(current['status'],'no_rail')
+        self.assertFalse(archive.exists())
+        self.assertFalse((output/'feeds/ca_changed.json.gz').exists())
+        meta=json.loads((cache/'ca_changed.meta.json').read_text())
+        self.assertTrue(meta['no_rail'])
+        self.assertEqual(meta['download_url'],original)
+        # Also cover an orphaned old ZIP: a persisted no-rail fact prevents
+        # offline reuse even if the prior cache deletion was interrupted.
+        archive.write_bytes(old)
+        self.assertFalse(pipeline.valid_cached_archive(archive,meta,pipeline.source_candidates(entry)))
+        def unavailable(url,headers=None,*,policy=None):raise HTTPError(url,503,'Unavailable',{},io.BytesIO())
+        with patch.object(pipeline,'get',side_effect=unavailable):
+            with self.assertRaises(pipeline.SourceRetrievalError):
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertFalse((output/'feeds/ca_changed.json.gz').exists())
 
     def test_changed_cached_rail_archive_is_reclassified_when_bus_only(self):
         cache,output=self.root/'cache',self.root/'out';cache.mkdir()
@@ -199,6 +1086,225 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual(feed['unmapped_segments'][0]['profiles']['am']['display_tph'],.5)
         self.assertIn('time budget',feed['source']['geometry_audit']['reason'])
         self.assertEqual(len(feed['unmapped_stops']),2)
+
+
+class PublicAcquisition(unittest.TestCase):
+    """Run the real HTTP client against fake sockets; there is no real egress."""
+    def setUp(self):
+        self.responses = []
+        self.sockets = []
+        self.dns_calls = []
+        owner = self
+        class FakeSocket:
+            def __init__(self, *args):
+                self.sent = b''
+                self.closed = False
+                owner.sockets.append(self)
+            def settimeout(self, value): self.timeout = value
+            def setsockopt(self, *args): pass
+            def connect(self, address): self.address = address
+            def getpeername(self): return self.address
+            def sendall(self, value): self.sent += value
+            def makefile(self, *args):
+                if not owner.responses:
+                    raise AssertionError('Unexpected HTTP request')
+                return io.BytesIO(owner.responses.pop(0))
+            def close(self): self.closed = True
+        self.socket_type = FakeSocket
+        self.socket_factory = self.enterContext(patch.object(pipeline.socket, 'socket', side_effect=FakeSocket))
+        self.resolver = self.enterContext(patch.object(pipeline.socket, 'getaddrinfo', side_effect=self.public_dns))
+        self.sleep = self.enterContext(patch.object(pipeline.time, 'sleep'))
+
+    def public_dns(self, host, port, **kwargs):
+        self.dns_calls.append((host, port))
+        return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, '', ('93.184.216.34', port))]
+
+    def response(self, code=200, headers=None, data=b'feed'):
+        fields = {'Content-Length': str(len(data)), **(headers or {})}
+        self.responses.append((f'HTTP/1.1 {code} Fixture\r\n' +
+                               ''.join(f'{key}: {value}\r\n' for key, value in fields.items()) +
+                               '\r\n').encode() + data)
+
+    def test_literal_special_use_targets_are_blocked_before_dns_or_connect(self):
+        addresses = ['0.0.0.0', '10.0.0.1', '100.64.0.1', '127.0.0.1',
+                     '169.254.169.254', '172.16.0.1', '192.168.1.1', '192.0.0.8',
+                     '192.0.2.1', '192.88.99.1', '198.18.0.1', '224.0.0.1', '255.255.255.255',
+                     '[::]', '[::1]', '[fc00::1]', '[fe80::1]', '[fec0::1]', '[ff02::1]',
+                     '[::ffff:127.0.0.1]', '[::ffff:8.8.8.8]', '[64:ff9b::a00:1]',
+                     '[2002:7f00:1::]', '[2001::1]', '[2001:20::1]', '[2001:db8::1]', '[3fff::1]']
+        for address in addresses:
+            with self.subTest(address=address), self.assertRaises(pipeline.UnsafeSourceURL):
+                pipeline.get('http://' + address + '/feed.zip')
+        self.resolver.assert_not_called()
+        self.socket_factory.assert_not_called()
+        self.sleep.assert_not_called()
+
+    def test_non_http_credentials_malformed_urls_and_policy_domains_never_resolve(self):
+        urls = ['file:///tmp/feed.zip', 'ftp://operator.example/feed.zip', 'http:///feed.zip',
+                'http://name:password@operator.example/feed.zip', 'http://operator.example:0/x',
+                'http://operator.example:65536/x', 'http://operator.example:/x',
+                'http://[fe80::1%25eth0]/x', 'http://operator.example\\@127.0.0.1/x',
+                'http://operator.example/\nfeed.zip', ' http://operator.example/feed.zip',
+                'http://operator.example/ feed.zip', 'https://publisher.ru/feed.zip',
+                'https://PUBLISHER.RU./feed.zip', 'https://publisher.ＲＵ/feed.zip']
+        for url in urls:
+            with self.subTest(url=url), self.assertRaises(ValueError):
+                pipeline.get(url)
+        self.resolver.assert_not_called()
+        self.socket_factory.assert_not_called()
+
+    def test_dns_private_mixed_empty_and_legacy_numeric_targets_are_blocked(self):
+        for host, addresses in [('private.example', ['10.1.2.3']),
+                                ('mixed.example', ['93.184.216.34', '127.0.0.1']),
+                                ('ipv6.example', ['fe80::1']), ('empty.example', []),
+                                ('2130706433', ['127.0.0.1']), ('127.1', ['127.0.0.1']),
+                                ('0x7f000001', ['127.0.0.1'])]:
+            answers = [(socket.AF_INET6 if ':' in value else socket.AF_INET,
+                        socket.SOCK_STREAM, socket.IPPROTO_TCP, '', (value, 80)) for value in addresses]
+            with self.subTest(host=host), patch.object(pipeline.socket, 'getaddrinfo', return_value=answers), \
+                 self.assertRaises(pipeline.UnsafeSourceURL):
+                pipeline.get('http://' + host + '/feed.zip')
+        self.socket_factory.assert_not_called()
+        self.sleep.assert_not_called()
+
+    def test_http_dns_is_pinned_and_original_host_range_and_conditions_survive(self):
+        self.response(206, {'Content-Range': 'bytes 0-3/4', 'ETag': '"one"'})
+        answers = self.public_dns('operator.example', 80)
+        # A second resolution would rebind to loopback. The transport must not do it.
+        self.resolver.side_effect = [answers, [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP,
+                                               '', ('127.0.0.1', 80))]]
+        with patch.dict('os.environ', {'http_proxy': 'http://127.0.0.1:1', 'HTTP_PROXY': 'http://127.0.0.1:1'}):
+            with pipeline.get('http://operator.example/feed.zip?version=1',
+                              {'Range': 'bytes=0-3', 'If-Range': '"one"', 'If-None-Match': '"old"'}) as response:
+                self.assertEqual(response.status, 206)
+                self.assertEqual(response.read(), b'feed')
+        self.assertEqual(self.resolver.call_count, 1)
+        self.assertEqual(self.sockets[0].address, ('93.184.216.34', 80))
+        sent = self.sockets[0].sent.lower()
+        for field in [b'get /feed.zip?version=1 http/1.1', b'host: operator.example',
+                      b'range: bytes=0-3', b'if-range: "one"', b'if-none-match: "old"']:
+            self.assertIn(field, sent)
+        self.assertTrue(self.sockets[0].closed)
+
+    def test_https_keeps_certificate_verification_and_original_sni_on_pinned_socket(self):
+        import ssl
+        self.response()
+        context = ssl.create_default_context()
+        seen = []
+        def wrap(sock, server_hostname):
+            self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+            self.assertTrue(context.check_hostname)
+            seen.append((sock.address, server_hostname))
+            return sock
+        with patch.object(context, 'wrap_socket', side_effect=wrap), \
+             patch.object(pipeline.http.client.ssl, '_create_default_https_context', return_value=context):
+            with pipeline.get('https://operator.example/feed.zip') as response:
+                self.assertEqual(response.read(), b'feed')
+        self.assertEqual(seen, [(('93.184.216.34', 443), 'operator.example')])
+        self.assertEqual(self.resolver.call_count, 1)
+
+    def test_peer_mismatch_is_rejected_before_request_bytes(self):
+        with patch.object(self.socket_type, 'getpeername', return_value=('127.0.0.1', 80)), \
+             self.assertRaises(pipeline.UnsafeSourceURL):
+            pipeline.get('http://operator.example/feed.zip')
+        self.assertEqual(len(self.sockets), 1)
+        self.assertEqual(self.sockets[0].sent, b'')
+        self.assertTrue(self.sockets[0].closed)
+        self.sleep.assert_not_called()
+
+    def test_every_redirect_hop_is_validated_before_destination_connect(self):
+        for destination in ['http://127.0.0.1/feed.zip', 'http://169.254.169.254/feed.zip',
+                            'http://[::1]/feed.zip', 'file:///tmp/feed.zip',
+                            'http://user:password@operator.example/feed.zip',
+                            'http://publisher.ru/feed.zip', 'http://denied.example/feed.zip']:
+            self.sockets.clear()
+            self.response(302, {'Location': destination})
+            def policy(url):
+                pipeline.source_policy({'denied_source_urls': ['http://denied.example/feed.zip']}, url)
+            with self.subTest(destination=destination), self.assertRaises(ValueError):
+                pipeline.get('http://operator.example/feed.zip', policy=policy)
+            self.assertEqual(len(self.sockets), 1)
+            self.assertTrue(self.sockets[0].closed)
+        self.sleep.assert_not_called()
+
+    def test_redirect_dns_rebinding_and_mixed_answers_never_create_second_socket(self):
+        self.response(302, {'Location': '/new.zip'})
+        self.resolver.side_effect = [self.public_dns('operator.example', 80),
+                                    [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP,
+                                      '', ('10.0.0.1', 80))]]
+        with self.assertRaises(pipeline.UnsafeSourceURL):
+            pipeline.get('http://operator.example/feed.zip')
+        self.assertEqual(self.resolver.call_count, 2)
+        self.assertEqual(len(self.sockets), 1)
+        self.assertTrue(self.sockets[0].closed)
+
+    def test_public_redirect_chain_preserves_range_conditions_but_not_cross_host_auth(self):
+        self.response(302, {'Location': '/next.zip'})
+        self.response(307, {'Location': 'http://cdn.example/feed.zip'})
+        self.response(206, {'Content-Range': 'bytes 0-3/4'})
+        visited = []
+        with pipeline.get('http://operator.example/feed.zip',
+                          {'Range': 'bytes=0-3', 'If-Range': '"one"', 'Authorization': 'fixture',
+                           'Cookie': 'fixture', 'Host': 'override.example'}, policy=visited.append) as response:
+            self.assertEqual(response.read(), b'feed')
+            self.assertEqual(response.url, 'http://cdn.example/feed.zip')
+        self.assertEqual(visited, ['http://operator.example/feed.zip', 'http://operator.example/next.zip',
+                                   'http://cdn.example/feed.zip'])
+        self.assertEqual([host for host, _ in self.dns_calls], ['operator.example', 'operator.example', 'cdn.example'])
+        for sock in self.sockets:
+            self.assertIn(b'Range: bytes=0-3'.lower(), sock.sent.lower())
+            self.assertIn(b'If-range: "one"'.lower(), sock.sent.lower())
+            self.assertTrue(sock.closed)
+        self.assertIn(b'Host: cdn.example', self.sockets[-1].sent)
+        self.assertNotIn(b'override.example', self.sockets[-1].sent)
+        self.assertNotIn(b'authorization:', self.sockets[-1].sent.lower())
+        self.assertNotIn(b'cookie:', self.sockets[-1].sent.lower())
+
+    def test_redirect_loop_limit_and_https_downgrade_are_bounded(self):
+        for _ in range(6):
+            self.response(302, {'Location': '/feed.zip'})
+        with self.assertRaisesRegex(pipeline.UnsafeSourceURL, 'redirects'):
+            pipeline.get('http://operator.example/feed.zip')
+        self.assertEqual(len(self.sockets), 6)
+        self.assertTrue(all(sock.closed for sock in self.sockets))
+        self.sleep.assert_not_called()
+        self.response(302, {'Location': 'http://cdn.example/feed.zip'})
+        # HTTPS factory is substituted only for this no-network redirect test.
+        with patch.object(pipeline.http.client, 'HTTPSConnection', pipeline.http.client.HTTPConnection), \
+             self.assertRaisesRegex(pipeline.UnsafeSourceURL, 'downgrades'):
+            pipeline.get('https://operator.example/feed.zip')
+        self.assertEqual(len(self.sockets), 7)
+
+    def test_304_errors_close_connections_and_non_public_attempts_are_structured(self):
+        from urllib.error import HTTPError
+        self.response(304, {'ETag': '"one"'}, b'')
+        with self.assertRaises(HTTPError) as caught:
+            pipeline.get('http://operator.example/feed.zip', {'If-None-Match': '"one"'})
+        self.assertEqual(caught.exception.code, 304)
+        caught.exception.close()
+        self.assertTrue(self.sockets[0].closed)
+        error = pipeline.UnsafeSourceURL('Non-public acquisition address')
+        attempt = pipeline.source_attempt('http://127.0.0.1/feed.zip', error)
+        self.assertEqual(attempt['code'], 'unsafe_source_url')
+        self.assertEqual(pipeline.classify_failure(pipeline.SourceRetrievalError([attempt])),
+                         ('source_retrieval_error', 'retrieval'))
+
+    def test_eligible_literals_and_ipv6_dns_answers_do_not_require_second_resolution(self):
+        for host, expected in [('93.184.216.34', ('93.184.216.34', 80)),
+                               ('[2606:4700:4700::1111]', ('2606:4700:4700::1111', 80, 0, 0))]:
+            self.response()
+            with pipeline.get('http://' + host + '/feed.zip') as response:
+                self.assertEqual(response.read(), b'feed')
+            self.assertEqual(self.sockets[-1].address, expected)
+        self.resolver.assert_not_called()
+        answer = [(socket.AF_INET6, socket.SOCK_STREAM, socket.IPPROTO_TCP, '',
+                   ('2606:4700:4700::1111', 80, 0, 0))]
+        self.response()
+        with patch.object(pipeline.socket, 'getaddrinfo', return_value=answer) as dns:
+            with pipeline.get('http://ipv6.example/feed.zip') as response:
+                self.assertEqual(response.read(), b'feed')
+            dns.assert_called_once()
+        self.assertEqual(self.sockets[-1].address, answer[0][-1])
 
 
 if __name__=='__main__':unittest.main()

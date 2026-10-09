@@ -79,8 +79,12 @@ jobs:
       - name: Check JavaScript syntax
         run: node --check styles/app.mjs
       - name: Check public station search and CORS
+        if: github.event_name != 'pull_request'
         continue-on-error: true
         run: node scripts/check-search-api.mjs
+      - name: Check station search and CORS with offline PR fixtures
+        if: github.event_name == 'pull_request'
+        run: node --test tests/search-api.test.mjs
       - name: Wait for initial snapshot build
         run: |
           for attempt in $(seq 1 40); do

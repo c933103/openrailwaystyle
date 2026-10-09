@@ -8,39 +8,50 @@ download. Raw ZIPs are a cache, not site assets. No Overpass requests are made.
 """
 import argparse
 from collections import Counter
+import csv
 import datetime as dt
+from email.utils import parsedate_to_datetime
 import gzip
 import hashlib
 import importlib.util
 import io
+import http.client
+import ipaddress
 import json
 from functools import lru_cache
 from pathlib import Path
 import re
 import signal
+import socket
 import struct
 import subprocess
 import sys
 import tempfile
-from urllib.error import HTTPError
-from urllib.parse import quote, urlparse
-from urllib.request import Request, urlopen
+import time
+from urllib.error import HTTPError, URLError
+from urllib.parse import parse_qsl, quote, unquote, urlencode, urljoin, urlparse, urlunparse
+from urllib.request import Request
 import zipfile
+import zlib
+try:
+    import lzma
+except ImportError:  # zipfile also supports builds without optional codecs.
+    lzma = None
+
+ZIP_METADATA_ERRORS = (zipfile.BadZipFile, struct.error, EOFError, NotImplementedError, zlib.error) + ((lzma.LZMAError,) if lzma else ())
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOGUE = 'https://raw.githubusercontent.com/public-transport/transitous/main/website/data/license.json'
 PROCESSED = 'https://api.transitous.org/gtfs/'
-# These data licences permit redistribution of derived data. Other entries
-# remain in the inventory, with a reason; the licence is never inferred from
-# the fact that a download is public. URL-only licences need an explicit rule.
-LICENSES = {'CC0-1.0', 'CC-BY-1.0', 'CC-BY-2.5', 'CC-BY-3.0', 'CC-BY-4.0',
-            'CC-BY-SA-4.0', 'ODbL-1.0', 'ODC-By-1.0', 'OGL-UK-3.0',
-            'etalab-2.0', 'NLOD-1.0', 'MIT', 'LicenseRef-MTA-Data', 'LicenseRef-MassDOT-Developers'}
+# SPDX licence labels are provenance, not a gate for normal end-user timetable analysis.
 EXCLUDED = {'CN', 'RU', 'IR', 'KP'}
 PROFILES = json.loads((ROOT/'styles/data-src/frequency-source-rules.json').read_text())['profiles']
 spec = importlib.util.spec_from_file_location('gtfs_frequency', ROOT/'scripts/gtfs-frequency.py')
 compiler = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(compiler)
+catalogue_spec = importlib.util.spec_from_file_location('frequency_catalogue', ROOT/'scripts/frequency_catalogue.py')
+registry = importlib.util.module_from_spec(catalogue_spec)
+catalogue_spec.loader.exec_module(registry)
 
 
 def atomic_json(path, value):
@@ -52,7 +63,7 @@ def atomic_json(path, value):
 
 def source_id(row):
     name = row.get('filename', '')
-    if not name.endswith('.gtfs.zip') or '/' in name or '\\' in name or '\0' in name:
+    if not isinstance(name, str) or not name.endswith('.gtfs.zip') or '/' in name or '\\' in name or '\0' in name:
         raise ValueError('Not a safe GTFS filename')
     ident = name[:-9]
     if re.fullmatch(r'[A-Za-z0-9_.-]+', ident):
@@ -66,21 +77,50 @@ def source_id(row):
 def blocked(row):
     if row.get('country_code') in EXCLUDED:
         return 'excluded provider jurisdiction'
-    for value in [row.get('source', ''), row.get('publisher', {}).get('url', '')]:
-        host = (urlparse(value).hostname or '').lower()
-        if any(host.endswith('.'+code.lower()) for code in EXCLUDED):
+    publisher = row.get('publisher') or {}
+    for value in [row.get('source') or '', publisher.get('url', '') if isinstance(publisher, dict) else '']:
+        if not isinstance(value, str):
+            continue
+        try:
+            host = (urlparse(value).hostname or '').encode('idna').decode('ascii').rstrip('.').lower()
+        except (ValueError, UnicodeError):
+            continue
+        if any(host == code.lower() or host.endswith('.'+code.lower()) for code in EXCLUDED):
             return 'excluded provider domain'
     return None
 
 
 def discover(rows, rules):
-    """Stable IDs and all outcomes; rules add licences, never select cities."""
+    """Inventory each normalized feed; unknown catalogue rights are not denials."""
     out, seen = [], set()
+    # Rules belong to the trusted local configuration, never catalogue lineage.
+    # Index by exact source URL so a reconciled alias cannot evade its review.
+    denied_sources = set()
+    reviewed_denials = {}
+    for rule in rules.get('sources', {}).values():
+        evidence = registry.licence_evidence(rule, 'source-specific-reviewed-rule',
+                                             'styles/data-src/frequency-source-rules.json')
+        if (rule.get('expected_source') and evidence
+                and registry.usage_rights({'rights_evidence': [evidence]})['prohibitions']):
+            denied_sources.add(rule['expected_source'])
+            reviewed_denials.setdefault(acquisition_url_key(rule['expected_source']), []).append(evidence)
+    denied_sources = sorted(denied_sources)
     for original in rows:
-        row = dict(original)
+        row = registry.prepare_catalogue_row(original)
         rule = rules.get('sources', {}).get(row.get('filename'), {})
         if rule and rule.get('expected_source') == row.get('source'):
-            row.update({key: value for key,value in rule.items() if key!='expected_source'})
+            row.update({key: value for key, value in rule.items() if key != 'expected_source'})
+            evidence = registry.licence_evidence(rule, 'source-specific-reviewed-rule',
+                                                  'styles/data-src/frequency-source-rules.json')
+            if evidence:
+                row['rights_evidence'] = list(row.get('rights_evidence') or []) + [evidence]
+        # The same source may have another catalogue filename. A known ban on
+        # that primary source also covers its processed copy, not just the
+        # direct endpoint removed from the fallback candidate list.
+        if isinstance(row.get('source'), str):
+            for evidence in reviewed_denials.get(acquisition_url_key(row['source']), []):
+                if evidence not in (row.get('rights_evidence') or []):
+                    row['rights_evidence'] = list(row.get('rights_evidence') or []) + [evidence]
         try:
             ident = source_id(row)
         except ValueError:
@@ -88,19 +128,523 @@ def discover(rows, rules):
         if ident in seen:
             raise ValueError('Duplicate catalogue ID '+ident)
         seen.add(ident)
-        reason = blocked(row)
-        if not reason and row.get('spdx_license_identifier') not in LICENSES:
-            reason = 'redistribution licence needs review'
-        out.append({'id': ident, 'status': 'excluded' if reason else 'pending',
-                    'reason': reason or '', 'country': row.get('country_code', ''),
+        rights = registry.usage_rights(row)
+        policy_reason = blocked(row)
+        if row.get('access_review'):
+            status, reason_code = 'retry_pending', 'source_access_review'
+            reason = 'Source access material requires review; acquisition paused'
+        elif policy_reason:
+            status, reason, reason_code = 'excluded', policy_reason, 'provider_policy'
+        elif rights['prohibitions']:
+            status, reason_code = 'excluded', 'source_terms_prohibit_derived_use'
+            reason = '; '.join(item['basis'] for item in rights['prohibitions'])
+        elif row.get('delivery') == 'direct' and (not isinstance(row.get('source'), str) or not row.get('source')):
+            status, reason, reason_code = 'retry_pending', 'Original GTFS URL unresolved', 'missing_source_url'
+        else:
+            status, reason, reason_code = 'pending', '', ''
+        out.append({'id': ident, 'status': status, 'reason': reason,
+                    'reason_code': reason_code, 'retry_eligible': status == 'retry_pending',
+                    'failure_stage': 'discovery' if reason_code in ('missing_source_url', 'source_access_review') else '',
+                    'next_action': 'review_source_access_or_declared_public_alternative' if reason_code == 'source_access_review' else '',
+                    'terms': rights, 'denied_source_urls': denied_sources,
+                    'country': row.get('country_code', ''),
                     'name': row.get('human_name', ident), 'catalogue': row,
-                    'processed_url': PROCESSED+quote(row['filename'])})
+                    'processed_url': (row.get('source', '') if row.get('delivery') == 'direct'
+                                      else PROCESSED+quote(row['filename']))})
     return sorted(out, key=lambda x: x['id'])
 
 
-def get(url, headers=None):
+RETRYABLE_HTTP = {408, 425, 429, 500, 502, 503, 504}
+
+
+def retry_after_delay(value, now=None):
+    """Decode either HTTP Retry-After form; malformed values use normal backoff."""
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    if re.fullmatch(r'[0-9]+', value):
+        return int(value)
+    try:
+        deadline = parsedate_to_datetime(value)
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=dt.timezone.utc)
+        return max(0.0, deadline.timestamp() - (time.time() if now is None else now))
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+class UnsafeSourceURL(ValueError):
+    """An acquisition target does not meet the public HTTP(S) boundary."""
+
+
+class SourcePolicyError(ValueError):
+    """A particular endpoint is prohibited by an existing source rule."""
+
+
+def source_policy(entry, url):
+    if blocked({'source': url}):
+        raise SourcePolicyError('excluded provider domain')
+    key = acquisition_url_key(url)
+    if any(key == acquisition_url_key(denied) for denied in entry.get('denied_source_urls', [])):
+        raise SourcePolicyError('source terms explicitly forbid end-user timetable-frequency use')
+
+
+def parse_acquisition_url(url):
+    """Reject ambiguous authorities before DNS, connection or redirect handling."""
+    if not isinstance(url, str) or any(ord(c) < 33 or ord(c) == 127 for c in url) or '\\' in url:
+        raise UnsafeSourceURL('Invalid acquisition URL')
+    if registry.access_review_url(url):
+        raise UnsafeSourceURL('Acquisition URL requires access review')
+    try:
+        parsed = urlparse(url)
+        if (parsed.scheme not in ('http', 'https') or not parsed.hostname
+                or parsed.username is not None or parsed.password is not None
+                or '%' in parsed.hostname):
+            raise ValueError()
+        host = parsed.hostname.encode('idna').decode('ascii').rstrip('.').lower()
+        port = parsed.port if parsed.port is not None else (443 if parsed.scheme == 'https' else 80)
+        if not host or not 1 <= port <= 65535 or parsed.netloc.endswith(':'):
+            raise ValueError()
+    except (ValueError, UnicodeError):
+        raise UnsafeSourceURL('Expected a public HTTP(S) URL without credentials') from None
+    if blocked({'source': url}):
+        raise SourcePolicyError('excluded provider domain')
+    return parsed, host, port
+
+
+def acquisition_url_key(url):
+    """Compare an exact HTTP resource without fragment/authority spelling aliases."""
+    try:
+        parsed, host, port = parse_acquisition_url(url)
+    except ValueError:
+        return ('invalid', url)
+    return parsed.scheme, host, port, parsed.path or '/', parsed.params, parsed.query
+
+
+def public_address(value):
+    """Fail closed on special-use and address-translation destinations."""
+    try:
+        address = ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    if (not address.is_global or address.is_multicast or address.is_reserved
+            or address.is_unspecified or address.is_loopback or address.is_link_local):
+        return False
+    if isinstance(address, ipaddress.IPv6Address):
+        if (address not in ipaddress.ip_network('2000::/3')
+                or address in ipaddress.ip_network('2001::/23')
+                or address in ipaddress.ip_network('3fff::/20')
+                or address.ipv4_mapped or address.sixtofour or address.teredo
+                or address.is_site_local
+                or address in ipaddress.ip_network('64:ff9b::/96')
+                or address in ipaddress.ip_network('64:ff9b:1::/48')):
+            return False
+    # Keep the boundary conservative on older Python special-use registries.
+    elif address in ipaddress.ip_network('192.0.0.0/24') or address in ipaddress.ip_network('192.88.99.0/24'):
+        return False
+    return True
+
+
+def resolve_public_addresses(host, port):
+    """Resolve once and reject the whole answer if any destination is non-public.
+
+    Tests may inject a resolver restricted to their own loopback fixture ports.
+    No catalogue field, CLI option or environment setting enables that seam.
+    """
+    try:
+        literal = ipaddress.ip_address(host)
+    except ValueError:
+        literal = None
+    if literal is not None:
+        if not public_address(host):
+            raise UnsafeSourceURL('Non-public acquisition address')
+        family = socket.AF_INET6 if literal.version == 6 else socket.AF_INET
+        answers = [(family, socket.SOCK_STREAM, socket.IPPROTO_TCP, '',
+                    (host, port, 0, 0) if literal.version == 6 else (host, port))]
+    else:
+        try:
+            answers = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
+        except OSError as error:
+            raise URLError(error) from error
+    if not answers or any(family not in (socket.AF_INET, socket.AF_INET6)
+                          or not public_address(address[0])
+                          for family, _, _, _, address in answers):
+        raise UnsafeSourceURL('DNS includes a non-public acquisition address')
+    return list(dict.fromkeys((family, kind, protocol, address)
+                             for family, kind, protocol, _, address in answers))
+
+
+def connect_pinned(addresses, timeout):
+    """Connect numeric sockaddrs directly: never let HTTP/TLS resolve again."""
+    last_error = None
+    for family, kind, protocol, address in addresses:
+        sock = socket.socket(family, kind, protocol)
+        try:
+            sock.settimeout(timeout)
+            sock.connect(address)
+            if ipaddress.ip_address(sock.getpeername()[0]) != ipaddress.ip_address(address[0]):
+                raise UnsafeSourceURL('Connected peer differs from the validated destination')
+            return sock
+        except (OSError, ValueError) as error:
+            sock.close()
+            if isinstance(error, UnsafeSourceURL):
+                raise
+            last_error = error
+    raise URLError(last_error or 'No acquisition addresses')
+
+
+class AcquiredResponse:
+    """Own both the HTTP response and connection, including errors/range exits."""
+    def __init__(self, response, connection, url):
+        self.response, self.connection, self.url = response, connection, url
+
+    def __getattr__(self, name):
+        return getattr(self.response, name)
+
+    def close(self):
+        try:
+            self.response.close()
+        finally:
+            self.connection.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
+
+
+def urlopen(request, timeout=45, *, policy=None):
+    """Public-only HTTP transport with pinned DNS, TLS identity and checked hops.
+
+    Ignore environment proxies and implicit urllib auth/redirect handlers.
+    HTTPS still verifies certificates/SNI against the original hostname.
+    """
+    url, headers = request.full_url, dict(request.header_items())
+    for hop in range(6):
+        parsed, host, port = parse_acquisition_url(url)
+        if policy:
+            policy(url)
+        addresses = resolve_public_addresses(host, port)
+        connection_type = http.client.HTTPSConnection if parsed.scheme == 'https' else http.client.HTTPConnection
+        connection = connection_type(host, port, timeout=timeout)
+        connection._create_connection = lambda *args, **kwargs: connect_pinned(addresses, timeout)
+        # Host is generated by http.client from the validated authority.
+        headers = {key: value for key, value in headers.items() if key.lower() not in ('host', 'proxy-authorization')}
+        try:
+            path = parsed.path or '/'
+            if parsed.params:
+                path += ';' + parsed.params
+            if parsed.query:
+                path += '?' + parsed.query
+            connection.request('GET', path, headers={**headers, 'Connection': 'close'})
+            response = AcquiredResponse(connection.getresponse(), connection, url)
+        except Exception:
+            connection.close()
+            raise
+        if response.status in (301, 302, 303, 307, 308):
+            location = response.headers.get('Location')
+            response.close()
+            if not location or hop == 5:
+                raise UnsafeSourceURL('Missing or excessive acquisition redirects')
+            # Validate raw Location before urljoin can discard control characters.
+            if any(ord(c) < 33 or ord(c) == 127 for c in location) or '\\' in location:
+                raise UnsafeSourceURL('Invalid acquisition redirect')
+            destination = urljoin(url, location)
+            next_parsed, next_host, next_port = parse_acquisition_url(destination)
+            if parsed.scheme == 'https' and next_parsed.scheme != 'https':
+                raise UnsafeSourceURL('Acquisition redirect downgrades HTTPS')
+            if (parsed.scheme, host, port) != (next_parsed.scheme, next_host, next_port):
+                headers = {key: value for key, value in headers.items()
+                           if key.lower() not in ('authorization', 'cookie')}
+            url = destination
+            continue
+        if not 200 <= response.status < 300:
+            raise HTTPError(url, response.status, response.reason, response.headers, response)
+        return response
+
+
+def get(url, headers=None, *, policy=None):
+    """Bounded retry for transport outages; never loop on permanent HTTP 404."""
+    parse_acquisition_url(url)
     request = Request(url, headers={'User-Agent': 'RailwayAtlas-frequency/1.0 (+https://github.com/c933103/openrailwaystyle)', **(headers or {})})
-    return urlopen(request, timeout=45)
+    for attempt in range(3):
+        try:
+            return urlopen(request, timeout=45, policy=policy)
+        except HTTPError as error:
+            if error.code not in RETRYABLE_HTTP or attempt == 2:
+                raise
+            delay = retry_after_delay(error.headers.get('Retry-After')) if error.headers else None
+            if delay is not None and delay > 8:
+                # Respect a publisher's longer retry window: the next
+                # scheduled workflow can retry instead of hammering it now.
+                raise
+            error.close()
+            time.sleep(float(2 ** attempt) if delay is None else delay)
+        except (URLError, TimeoutError, ConnectionError, http.client.HTTPException):
+            if attempt == 2:
+                raise
+            time.sleep(float(2 ** attempt))
+
+
+def source_candidates(entry):
+    """Distinct public source endpoints, processed first, originals as fallback."""
+    row = entry.get('catalogue') or {}
+    lineage = row.get('lineage') if isinstance(row.get('lineage'), list) else []
+    if row.get('access_review') or any(registry.access_review_url(url) for url in
+            [row.get('source'), entry.get('processed_url')]+[x.get('source') for x in lineage if isinstance(x, dict)]):
+        return []
+    if blocked(row) or (entry.get('terms') or registry.usage_rights(row))['prohibitions']:
+        return []
+    values = [entry.get('processed_url'), row.get('source')]
+    values.extend(x.get('source') for x in lineage if isinstance(x, dict))
+    urls, seen = [], set()
+    for url in values:
+        if not isinstance(url, str) or url in seen:
+            continue
+        try:
+            parse_acquisition_url(url)
+            source_policy(entry, url)
+        except ValueError:
+            continue
+        seen.add(url)
+        urls.append(url)
+    return urls[:8]
+
+
+def redacted_source_url(url):
+    """Retain endpoint/parameter context without credentials or query values."""
+    if not url:
+        return ''
+    try:
+        url = url.replace('\\/', '/')
+        if re.match(r'^https?%3a', url, re.I):
+            url = unquote(url, errors='strict')
+        if re.search(r'[\x00-\x20\x7f]', url):
+            return '[invalid source URL]'
+        parsed = urlparse(url)
+        host = parsed.hostname or ''
+        if not host:
+            return '[invalid source URL]'
+        authority = '['+host+']' if ':' in host else host
+        if parsed.port is not None:
+            authority += ':'+str(parsed.port)
+        parameters = parse_qsl(parsed.query, keep_blank_values=True, max_num_fields=128)
+        query = urlencode([(key if re.fullmatch(r'[A-Za-z0-9_.-]{1,80}', key) else 'parameter',
+                            '[redacted]') for key, _ in parameters])
+        return urlunparse((parsed.scheme, authority, parsed.path, parsed.params, query, ''))
+    except (AttributeError, TypeError, ValueError):
+        return '[invalid source URL]'
+
+
+URL_START = re.compile(r'^(?:[a-z][a-z0-9+.-]*:(?:/|\\/){1,2}|https?%3a(?:%2f){1,2}|//)', re.I)
+URL_IN_TEXT = re.compile(r'''(?:[a-z][a-z0-9+.-]*:(?:/|\\/){1,2}|https?%3a(?:%2f){1,2}|//)[^\s<>"'`]+''', re.I)
+
+
+def redacted_diagnostic(value):
+    if URL_START.match(value):
+        return redacted_source_url(value)
+    return URL_IN_TEXT.sub(lambda match: redacted_source_url(match[0]), value)
+
+
+def published_metadata(value):
+    """Redact diagnostic copies; never use display URLs as acquisition inputs."""
+    if isinstance(value, str):
+        return redacted_diagnostic(value)
+    if isinstance(value, list):
+        return [published_metadata(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    def public_key(key):
+        display = redacted_diagnostic(key)
+        return key if display == key else '[sha256:'+source_url_fingerprint(key)+'] '+display
+    result = {public_key(key): published_metadata(item) for key, item in value.items()}
+    for key, item in value.items():
+        hash_key = public_key(key)+'_sha256'
+        if isinstance(item, str) and URL_START.match(item):
+            if not re.fullmatch(r'[a-f0-9]{64}', str(result.get(hash_key, ''))):
+                result[hash_key] = source_url_fingerprint(item)
+        elif isinstance(item, list) and any(isinstance(x, str) and URL_START.match(x) for x in item):
+            if not isinstance(result.get(hash_key), list):
+                result[hash_key] = [source_url_fingerprint(x) if isinstance(x, str) and URL_START.match(x) else None for x in item]
+    return result
+
+
+def source_url_fingerprint(url):
+    """Full-URL identity only, not encryption or an authorization credential."""
+    return hashlib.sha256(url.encode('utf-8')).hexdigest()
+
+
+def cached_source_url(meta, candidates, default=None):
+    """Match operational inputs by full identity, never by a redacted display."""
+    fingerprint = meta.get('download_url_sha256')
+    if fingerprint:
+        return next((url for url in candidates if source_url_fingerprint(url) == fingerprint), None)
+    # One-way compatibility with earlier private cache records. A successful
+    # use rewrites this raw legacy URL as a fingerprint plus redacted display.
+    legacy = meta.get('download_url') or default
+    return legacy if legacy in candidates else None
+
+
+class SourceRetrievalError(RuntimeError):
+    """Unresolved transport/feed failure after attempting available source links."""
+    def __init__(self, attempts, unsafe_urls=()):
+        self.attempts = attempts
+        # Raw identities only decide whether an in-memory cache may be used.
+        # They are not included in the message, JSON response or source audit.
+        self._unsafe_urls = set(unsafe_urls)
+        summary = '; '.join(x['code'] + ' @ ' + x['url'] for x in attempts)
+        super().__init__('Source endpoints unavailable or unusable: ' + summary[:1900])
+
+
+def source_attempt(url, error):
+    """Structured evidence of a particular endpoint failing, not feed exclusion."""
+    code = 'other_source_error'
+    if isinstance(error, SourcePolicyError):
+        code = 'source_policy'
+    elif isinstance(error, UnsafeSourceURL):
+        code = 'unsafe_source_url'
+    elif isinstance(error, HTTPError):
+        code = 'http_' + str(error.code)
+        error.close()
+    elif isinstance(error, (URLError, TimeoutError, ConnectionError, http.client.HTTPException)):
+        code = 'connection_error'
+    elif isinstance(error, zipfile.BadZipFile):
+        code = 'invalid_zip'
+    elif isinstance(error, ValueError):
+        code = 'invalid_feed_or_budget'
+    # HTTP reason lines and transport exception text are upstream-controlled
+    # and can echo access-like query values. Keep only a bounded category.
+    message = ('HTTP '+str(error.code) if isinstance(error, HTTPError)
+               else type(error).__name__+': source acquisition failed')
+    return {'url': redacted_source_url(url), 'url_sha256': source_url_fingerprint(url),
+            'code': code, 'message': message}
+
+
+def routes_have_rail(data):
+    """Validate every route before choosing a source or retiring rail coverage.
+
+    A rail row is not permission to short-circuit validation of later rows.
+    Malformed metadata stays a retriable source failure, including on refresh.
+    """
+    try:
+        routes = csv.DictReader(io.StringIO(data.decode('utf-8-sig')), strict=True)
+        if not {'route_id', 'route_type'}.issubset(routes.fieldnames or []):
+            raise ValueError('Missing routes.txt route_id or route_type column')
+        has_rail = False
+        for number, row in enumerate(routes, 1):
+            if number > compiler.MAX_TABLE_ROWS:
+                raise ValueError('Routes metadata exceeds row budget')
+            if not (row.get('route_id') or '').strip():
+                raise ValueError('Missing routes.txt route_id value')
+            rail = compiler.rail_type(row.get('route_type') or '')
+            has_rail = has_rail or rail
+        return has_rail
+    except csv.Error:
+        raise ValueError('Invalid routes.txt CSV metadata') from None
+
+
+def unpack_zip_metadata(layout, data):
+    try:
+        return struct.unpack(layout, data)
+    except struct.error:
+        raise ValueError('Truncated ZIP metadata structure') from None
+
+
+def source_archive(source):
+    """Convert malformed/unsupported archive headers, not arbitrary failures."""
+    try:
+        return zipfile.ZipFile(source)
+    except ZIP_METADATA_ERRORS:
+        raise ValueError('Unreadable ZIP directory') from None
+
+
+def archive_metadata(archive, name):
+    """Normalize only ZIP-member decoding failures into source failures."""
+    try:
+        info = archive.getinfo(name)
+    except KeyError:
+        raise ValueError('Missing '+name) from None
+    if info.file_size > 128_000_000:
+        raise ValueError('Metadata table exceeds budget')
+    if info.flag_bits & 1:
+        raise ValueError('Encrypted ZIP metadata')
+    try:
+        return archive.read(info)
+    except ZIP_METADATA_ERRORS:
+        raise ValueError('Unreadable ZIP metadata') from None
+    except RuntimeError as error:
+        # zipfile reports unavailable optional codecs as RuntimeError. Do not
+        # turn unrelated programmer/control-flow failures into feed failures.
+        if re.fullmatch(r'Compression requires the \(missing\) (?:zlib|bz2|lzma) module', str(error)):
+            raise ValueError('Unavailable ZIP metadata codec') from None
+        raise
+
+
+def archive_has_rail(archive):
+    """Use the same bounded metadata validation for full and cached ZIPs."""
+    return routes_have_rail(archive_metadata(archive, 'routes.txt'))
+
+
+def valid_cached_archive(path, meta, candidates, max_age_days=30):
+    """Use last successfully fetched source while temporarily offline.
+
+    Do not allow a failed refresh to extend source verification. Service dates
+    are still checked by the ordinary compiler, not presumed from ZIP age.
+    """
+    checked = meta.get('checked') or meta.get('retrieved')
+    if (meta.get('no_rail') or not checked or not path.is_file()
+            or cached_source_url(meta, candidates) is None):
+        return False
+    try:
+        last_success = dt.date.fromisoformat(checked)
+        delta = (dt.datetime.now(dt.timezone.utc).date() - last_success).days
+        if delta < 0 or delta > max_age_days:
+            return False
+        with source_archive(path) as archive:
+            return archive_has_rail(archive)
+    except (ValueError, OSError, zipfile.BadZipFile):
+        return False
+
+
+def fetch_alternative(entry, path, max_bytes, skip=()):
+    """Fallback to another real published schedule, without inventing data.
+
+    Cache writes only after a valid ZIP has been downloaded. Each upstream
+    failure stays attached to the resulting source entry for investigation.
+    """
+    attempts, unsafe_urls = [], set()
+    for url in source_candidates(entry):
+        if url in skip:
+            continue
+        try:
+            remote = RemoteZip(url, max_bytes, policy=lambda target: source_policy(entry, target))
+            # Keep the cheap preflight: bus-only GTFS must not download its
+            # entire stop_times/shapes archive or consume a compile slot.
+            if not routes_have_rail(remote.table('routes.txt')):
+                return {
+                    'no_rail': True, 'download_url': redacted_source_url(url),
+                    'download_url_sha256': source_url_fingerprint(url),
+                    'etag': remote.etag, 'last_modified': remote.last_modified,
+                    'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()
+                }, attempts
+            with source_archive(io.BytesIO(remote.download())) as archive:
+                if not archive_has_rail(archive):
+                    raise ValueError('Rail metadata changed during full download')
+            data = remote.full
+            temporary = path.with_suffix('.download.tmp')
+            temporary.write_bytes(data)
+            temporary.replace(path)
+            return {
+                'etag': remote.etag, 'last_modified': remote.last_modified,
+                'download_url': redacted_source_url(url), 'download_url_sha256': source_url_fingerprint(url),
+                'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()
+            }, attempts
+        except (HTTPError, URLError, TimeoutError, ConnectionError, OSError, ValueError, zipfile.BadZipFile, http.client.HTTPException) as error:
+            if isinstance(error, (SourcePolicyError, UnsafeSourceURL)):
+                unsafe_urls.add(url)
+            attempts.append(source_attempt(url, error))
+    raise SourceRetrievalError(attempts or [{'url': '', 'code': 'missing_source_url', 'message': 'No suitable published GTFS source URL'}], unsafe_urls)
 
 
 class RemoteZip:
@@ -110,10 +654,10 @@ class RemoteZip:
     identity validator prevents joining byte ranges from different revisions.
     ZIP64 is supported by the full-download fallback, not guessed offsets.
     """
-    def __init__(self, url, max_bytes):
-        self.url, self.max_bytes = url, max_bytes
+    def __init__(self, url, max_bytes, *, policy=None):
+        self.url, self.max_bytes, self.policy = url, max_bytes, policy
         self.full, self.identity = None, None
-        with get(url, {'Range': 'bytes=-65557'}) as response:
+        with get(url, {'Range': 'bytes=-65557'}, policy=self.policy) as response:
             self.etag=response.headers.get('ETag')
             self.last_modified=response.headers.get('Last-Modified')
             self.identity = self.etag or self.last_modified
@@ -140,18 +684,24 @@ class RemoteZip:
         index = tail.rfind(b'PK\x05\x06')
         if index < 0 or len(tail) < index+22:
             raise ValueError('Missing ZIP directory')
-        _, disk, start_disk, _, count, length, start, comment = struct.unpack('<4s4H2IH', tail[index:index+22])
+        _, disk, start_disk, _, count, length, start, comment = unpack_zip_metadata('<4s4H2IH', tail[index:index+22])
         if disk or start_disk or index+22+comment != len(tail) or count == 65535 or start == 0xffffffff:
             self.directory = None
             return
+        if start+length > offset+index:
+            raise ValueError('ZIP directory exceeds archive bounds')
         directory = tail[start-offset:start-offset+length] if start >= offset else self.range(start, start+length-1)
+        if len(directory) != length:
+            raise ValueError('Truncated ZIP directory')
         self.directory = {}
         position = 0
         for _ in range(count):
-            values = struct.unpack('<4s6H3I5H2I', directory[position:position+46])
+            values = unpack_zip_metadata('<4s6H3I5H2I', directory[position:position+46])
             if values[0] != b'PK\x01\x02':
                 raise ValueError('Invalid ZIP directory record')
             _, _, _, flags, method, _, _, _, compressed, uncompressed, name_len, extra_len, comment_len, _, _, _, location = values
+            if position+46+name_len+extra_len+comment_len > len(directory):
+                raise ValueError('Truncated ZIP directory fields')
             name = directory[position+46:position+46+name_len].decode('utf-8' if flags & 2048 else 'cp437')
             self.directory[name] = (location, compressed, uncompressed)
             position += 46+name_len+extra_len+comment_len
@@ -168,7 +718,7 @@ class RemoteZip:
         headers = {'Range': f'bytes={begin}-{end}'}
         if self.range_validator:
             headers['If-Range'] = self.range_validator
-        with get(self.url, headers) as response:
+        with get(self.url, headers, policy=self.policy) as response:
             if response.status != 206:
                 raise ValueError('Feed changed during range reads, or ranges unavailable')
             identity = response.headers.get('ETag') or response.headers.get('Last-Modified')
@@ -183,10 +733,8 @@ class RemoteZip:
 
     def table(self, name):
         if self.full is not None:
-            with zipfile.ZipFile(io.BytesIO(self.full)) as archive:
-                if archive.getinfo(name).file_size > 128_000_000:
-                    raise ValueError('Metadata table exceeds budget')
-                return archive.read(name)
+            with source_archive(io.BytesIO(self.full)) as archive:
+                return archive_metadata(archive, name)
         if self.directory is None:
             self.download()
             return self.table(name)
@@ -196,7 +744,7 @@ class RemoteZip:
         if length > 32_000_000 or expanded > 128_000_000:
             raise ValueError('Metadata table exceeds budget')
         header = self.range(start, start+29)
-        fields = struct.unpack('<4s5H3I2H', header)
+        fields = unpack_zip_metadata('<4s5H3I2H', header)
         if fields[0] != b'PK\x03\x04':
             raise ValueError('Invalid ZIP local header')
         flags, method, name_len, extra_len = fields[2], fields[3], fields[-2], fields[-1]
@@ -204,9 +752,11 @@ class RemoteZip:
             raise ValueError('Encrypted feed')
         data = self.range(start+30+name_len+extra_len, start+30+name_len+extra_len+length-1)
         if method == 8:
-            import zlib
             inflater = zlib.decompressobj(-15)
-            data = inflater.decompress(data, expanded+1)
+            try:
+                data = inflater.decompress(data, expanded+1)
+            except zlib.error:
+                raise ValueError('Unreadable ZIP metadata') from None
             if inflater.unconsumed_tail or not inflater.eof:
                 raise ValueError('Metadata expansion exceeds declared budget')
         elif method != 0:
@@ -217,7 +767,7 @@ class RemoteZip:
 
     def download(self):
         if self.full is None:
-            with get(self.url) as response:
+            with get(self.url, policy=self.policy) as response:
                 identity = response.headers.get('ETag') or response.headers.get('Last-Modified')
                 if self.identity and identity != self.identity:
                     raise ValueError('Feed changed during full download')
@@ -228,6 +778,13 @@ class RemoteZip:
 
 
 def write_feed(path, value):
+    # Redact provenance and GTFS URL columns, not matching identifiers that
+    # happen to resemble URLs. Avoid a second copy or walk of geometry/profiles.
+    value = {**value, 'source': published_metadata(value['source'])}
+    for table in ('agencies', 'routes'):
+        if table in value:
+            value[table] = [{**row, **published_metadata({key: item for key, item in row.items()
+                            if key == 'url' or key.endswith('_url')})} for row in value[table]]
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix('.tmp')
     with temporary.open('wb') as raw:
@@ -247,66 +804,129 @@ def file_hash(path):
 
 
 def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_seconds=600):
-    import csv
     ident, row = entry['id'], entry['catalogue']
     path, meta_path = cache/(ident+'.zip'), cache/(ident+'.meta.json')
-    # Download with conditional revalidation. A cached successful ZIP is still
-    # used only after a successful response/304, never after a failed refresh.
+    # 304 from the same successful source may reuse cache. A 404 or transient
+    # outage MUST fall through to other known originals, not reject the feed.
     meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
     headers = {'If-None-Match': meta['etag']} if meta.get('etag') else {'If-Modified-Since':meta['last_modified']} if meta.get('last_modified') else {}
-    fresh = False
-    if path.exists() and headers:
+    fresh, attempted, attempts, unsafe_urls = False, set(), [], set()
+    cached_url = cached_source_url(meta, source_candidates(entry), entry.get('processed_url'))
+    if cached_url:
+        meta['download_url'] = redacted_source_url(cached_url)
+        meta['download_url_sha256'] = source_url_fingerprint(cached_url)
+    if path.exists() and headers and cached_url in source_candidates(entry):
         try:
-            with get(entry['processed_url'], headers) as response:
+            with get(cached_url, headers, policy=lambda target: source_policy(entry, target)) as response:
                 data = RemoteZip.read_bounded(type('Budget', (), {'max_bytes': max_bytes})(), response)
-                path.write_bytes(data)
-                del data
-                meta = {'etag': response.headers.get('ETag'), 'last_modified':response.headers.get('Last-Modified'), 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
+                # Never replace a previously usable ZIP with an error page or
+                # malformed archive returned as HTTP 200.
+                with source_archive(io.BytesIO(data)) as archive:
+                    archive_has_rail(archive)
+                temporary = path.with_suffix('.download.tmp')
+                temporary.write_bytes(data)
+                temporary.replace(path)
+                meta = {'etag': response.headers.get('ETag'), 'last_modified':response.headers.get('Last-Modified'),
+                        'download_url': redacted_source_url(cached_url),
+                        'download_url_sha256': source_url_fingerprint(cached_url),
+                        'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
                 fresh = True
         except HTTPError as error:
-            try:
-                if error.code != 304:
-                    raise
-                fresh = True  # content remains the exact successful revision.
-            finally:
+            if error.code == 304:
                 error.close()
+                try:
+                    # A validator confirms origin identity, not that an older
+                    # local cache passed today's complete metadata checks.
+                    if not meta.get('no_rail'):
+                        with source_archive(path) as archive:
+                            archive_has_rail(archive)
+                    meta['download_url'] = redacted_source_url(cached_url)
+                    meta['download_url_sha256'] = source_url_fingerprint(cached_url)
+                    meta.pop('offline_cached', None)
+                    meta.pop('recovered_source_errors', None)
+                    fresh = True
+                except (OSError, ValueError, zipfile.BadZipFile) as invalid:
+                    attempted.add(cached_url)
+                    attempts.append(source_attempt(cached_url, invalid))
+            else:
+                attempted.add(cached_url)
+                attempts.append(source_attempt(cached_url, error))
+        except (URLError, TimeoutError, ConnectionError, OSError, ValueError, zipfile.BadZipFile, http.client.HTTPException) as error:
+            attempted.add(cached_url)
+            if isinstance(error, (SourcePolicyError, UnsafeSourceURL)):
+                unsafe_urls.add(cached_url)
+            attempts.append(source_attempt(cached_url, error))
     if not fresh:
-        remote = RemoteZip(entry['processed_url'], max_bytes)
-        rail = [r for r in csv.DictReader(io.StringIO(remote.table('routes.txt').decode('utf-8-sig'))) if compiler.rail_type(r['route_type'])]
-        if not rail:
-            (output/'feeds'/(ident+'.json.gz')).unlink(missing_ok=True)
-            return {**entry, 'status': 'no_rail', 'rail_routes': 0}
-        path.write_bytes(remote.download())
-        meta = {'etag': remote.etag, 'last_modified':remote.last_modified, 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
-        del remote
+        try:
+            meta, more_attempts = fetch_alternative(entry, path, max_bytes, skip=attempted)
+            attempts.extend(more_attempts)
+        except SourceRetrievalError as error:
+            attempts.extend(error.attempts)
+            unsafe_urls.update(error._unsafe_urls)
+            safe_cache_urls = [url for url in source_candidates(entry) if url not in unsafe_urls]
+            if valid_cached_archive(path, meta, safe_cache_urls):
+                # Continue compiling using the last successfully retrieved
+                # ZIP. Never advance its 'checked' or 'retrieved' timestamps.
+                meta['offline_cached'] = True
+                meta['recovered_source_errors'] = attempts
+                fresh = True
+            else:
+                raise SourceRetrievalError(attempts, unsafe_urls) from error
+    if attempts:
+        meta['recovered_source_errors'] = attempts
+    if meta.get('no_rail'):
+        # A successful newer bus-only source supersedes any previous rail
+        # archive. Persist that fact before removing the old cache, so even
+        # an interrupted deletion cannot resurrect it during a later outage.
+        meta['checked'] = dt.datetime.now(dt.timezone.utc).date().isoformat()
+        atomic_json(meta_path, meta)
+        path.unlink(missing_ok=True)
+        (output/'feeds'/(ident+'.json.gz')).unlink(missing_ok=True)
+        return {**entry, 'status': 'no_rail', 'rail_routes': 0}
     # Reinspect changed conditional 200 responses and cached 304 revisions.
-    with zipfile.ZipFile(path) as archive:
-        has_rail=any(compiler.rail_type(r['route_type']) for r in compiler.read(archive,'routes.txt'))
-    meta['checked'] = dt.datetime.now(dt.timezone.utc).date().isoformat()
+    with source_archive(path) as archive:
+        has_rail=archive_has_rail(archive)
+    if not meta.get('offline_cached'):
+        meta['checked'] = dt.datetime.now(dt.timezone.utc).date().isoformat()
     atomic_json(meta_path, meta)
     if not has_rail:
         (output/'feeds'/(ident+'.json.gz')).unlink(missing_ok=True)
         return {**entry, 'status': 'no_rail', 'rail_routes': 0}
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    signature=hashlib.sha256(json.dumps({'catalogue':row,'profiles':profiles,
+    signature=hashlib.sha256(json.dumps({'catalogue':row,'profiles':profiles,'denied_source_urls':entry.get('denied_source_urls', []),
         'graph':file_hash(str(graph)) if graph else None,
-        'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['global-service-frequency.py','gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()
+        'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['global-service-frequency.py','frequency_catalogue.py','gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()
     destination = output/'feeds'/(ident+'.json.gz')
     if destination.exists():
         with gzip.open(destination, 'rt') as file:
             previous = json.load(file)
         if previous['source']['sha256'] == digest and previous['source']['service_date'] == date and previous['source'].get('input_signature') == signature:
+            previous['source'] = published_metadata(previous['source'])
             previous['source']['checked'] = meta['checked']
+            previous['source']['download_url'] = meta['download_url']
+            previous['source']['download_url_sha256'] = meta['download_url_sha256']
+            previous['source']['offline_cached'] = bool(meta.get('offline_cached'))
+            previous['source']['recovered_source_errors'] = meta.get('recovered_source_errors', [])
             write_feed(destination, previous)
             return {**entry, 'status': 'compiled', 'output': 'feeds/'+destination.name, 'sha256': digest,
                     'rail_routes': len(previous['routes']), 'mapped_segments': len(previous['segments']),
                     'unmapped_segments': len(previous.get('unmapped_segments', [])), 'source': previous['source']}
         del previous  # stale national output must not coexist with recompilation.
-    config = {'source': {'id': ident, 'name': entry['name'], 'url': row['source'],
-               'processed_url': entry['processed_url'], 'catalogue_url': CATALOGUE,
-               'license': row['spdx_license_identifier'],
-               'terms_url': row.get('license_url') or f"https://spdx.org/licenses/{row['spdx_license_identifier']}.html",
-               'attribution': row.get('attribution_text') or row.get('publisher', {}).get('name') or entry['name'],
+    publisher = row.get('publisher') if isinstance(row.get('publisher'), dict) else {}
+    rights = entry.get('terms') or registry.usage_rights(row)
+    spdx = row.get('spdx_license_identifier') or (rights['spdx_identifiers'][0] if len(rights['spdx_identifiers']) == 1 else '')
+    terms_url = row.get('license_url') or (rights['terms_urls'][0] if rights['terms_urls'] else '')
+    if not terms_url and spdx and spdx.startswith(('CC-', 'MIT', 'ODbL-', 'OGL-')):
+        terms_url = 'https://spdx.org/licenses/'+quote(spdx)+'.html'
+    config = {'source': {'id': ident, 'name': entry['name'], 'url': row.get('source') or entry['processed_url'],
+               'processed_url': entry['processed_url'], 'catalogue_url': row.get('catalogue_url') or CATALOGUE,
+               'license': spdx, 'terms_url': terms_url, 'rights': rights,
+               'catalogue_lineage': row.get('lineage', []),
+               'download_url': meta.get('download_url') or redacted_source_url(entry.get('processed_url')),
+               'download_url_sha256': meta.get('download_url_sha256'),
+               'recovered_source_errors': meta.get('recovered_source_errors', []),
+               'offline_cached': bool(meta.get('offline_cached')),
+               'attribution': row.get('attribution_text') or publisher.get('name') or entry['name'],
                'catalogue_attribution': row, 'retrieved': meta['retrieved'], 'checked': meta['checked'],
                'rail_graph_sha256': file_hash(str(graph)) if graph else None,
                'country': entry['country'], 'region': row.get('country_name', entry['country']),
@@ -335,6 +955,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
         signal.alarm(0); signal.signal(signal.SIGALRM, previous_handler)
     source = result['source']
     source['attribution'] = '; '.join(dict.fromkeys([source['attribution']]+[a['agency_name'] for a in result['agencies']]+[a.get('organization_name','') for a in source['feed_attributions']]))
+    source = result['source'] = published_metadata(source)
     write_feed(destination, result)
     return {**entry, 'status': 'compiled', 'output': 'feeds/'+destination.name, 'sha256': digest,
             'rail_routes': len(result['routes']), 'mapped_segments': len(result['segments']),
@@ -354,11 +975,13 @@ def compile_entry_isolated(entry, cache, output, date, graph, max_bytes, profile
                                stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,text=True,
                                timeout=2*max_seconds+300)
         if not response.exists():
-            raise RuntimeError(f"Feed compiler exited {process.returncode}: {process.stderr[-2000:]}")
+            raise RuntimeError(f"Feed compiler exited {process.returncode}: {redacted_diagnostic(process.stderr)[-2000:]}")
         if response.stat().st_size > 8_000_000:
             raise ValueError('Feed audit metadata exceeds byte budget')
         result=json.loads(response.read_text())
         if process.returncode or 'error' in result:
+            if 'source_attempts' in result:
+                raise SourceRetrievalError(result['source_attempts'])
             raise RuntimeError(result.get('error') or f'Feed compiler exited {process.returncode}')
         return result['entry']
 
@@ -373,16 +996,76 @@ def compile_one(request, response):
     if payload['graph']:
         payload['graph']=Path(payload['graph'])
     try:
-        atomic_json(Path(response),{'entry':compile_entry(**payload)})
+        atomic_json(Path(response),{'entry':published_metadata(compile_entry(**payload))})
+    except SourceRetrievalError as error:
+        atomic_json(Path(response),{'error':str(error)[:2000], 'source_attempts':error.attempts})
+        return 1
     except Exception as error:
-        atomic_json(Path(response),{'error':f'{type(error).__name__}: {str(error)[:2000]}'})
+        atomic_json(Path(response),{'error':redacted_diagnostic(f'{type(error).__name__}: {error}')[:2000]})
         return 1
     return 0
+
+
+def classify_failure(error):
+    """Annotate the unresolved failure; it remains eligible for future attempts."""
+    if isinstance(error, SourceRetrievalError):
+        codes = {x['code'] for x in error.attempts}
+        if codes == {'http_404'}:
+            return 'source_http_404', 'retrieval'
+        if codes <= {'http_403', 'http_401'}:
+            return 'source_access_denied', 'retrieval'
+        if codes == {'missing_source_url'}:
+            return 'missing_source_url', 'discovery'
+        return 'source_retrieval_error', 'retrieval'
+    reason = f'{type(error).__name__}: {error}'
+    message = reason.lower()
+    if 'http error 404' in message or 'http 404' in message:
+        return 'source_http_404', 'retrieval'
+    if any(s in message for s in ('http error 403', 'http error 401', 'unauthorized', 'forbidden')):
+        return 'source_access_denied', 'retrieval'
+    if any(s in message for s in ('http error', 'urlerror', 'timed out', 'connection', 'invalid http range', 'truncated range', 'feed changed during')):
+        return 'source_retrieval_error', 'retrieval'
+    if 'calendar horizon' in message or "feed's validity" in message or 'service calendar' in message:
+        return 'calendar_horizon', 'calendar'
+    if 'memoryerror' in message or 'memory budget' in message:
+        return 'memory_limit', 'resources'
+    if 'time budget' in message or 'timeoutexpired' in message:
+        return 'time_limit', 'resources'
+    if 'row budget' in message:
+        return 'table_row_limit', 'parsing'
+    if 'byte budget' in message or 'exceeds download byte' in message:
+        return 'byte_limit', 'parsing'
+    if any(s in message for s in ('zip', 'missing routes.txt', 'missing table')):
+        return 'invalid_archive_or_gtfs', 'parsing'
+    return 'compile_error', 'compilation'
+
+
+def catalogue_provenance(report_path, catalogue_hash, catalogue_entries, local):
+    """Bind reconciled provenance to these exact input bytes, never guess it."""
+    if report_path is None:
+        return {'schema': 1, 'kind': 'local-unverified' if local else 'transitous-licences',
+                'sources': [] if local else [CATALOGUE]}
+    report = json.loads(report_path.read_text())
+    if (not isinstance(report, dict) or report.get('schema') != 2
+            or report.get('catalogue_sha256') != catalogue_hash
+            or not isinstance(report.get('counts'), dict)
+            or report['counts'].get('merged_entries') != catalogue_entries):
+        raise ValueError('Catalogue report does not match the input catalogue')
+    sources = registry.catalogue_sources(report.get('transitous_ref'))
+    hashes = report.get('input_sha256')
+    if (report.get('sources') != sources or not isinstance(hashes, dict)
+            or any(not isinstance(hashes.get(key), str) or not re.fullmatch(r'[a-f0-9]{64}', hashes[key])
+                   for key in ('transitous_licences', 'transitous_feeds', 'mobility_csv'))):
+        raise ValueError('Catalogue report is missing pinned input identities')
+    # Copy only the public provenance schema, not arbitrary report metadata.
+    return {'schema': 1, 'kind': 'reconciled', 'transitous_ref': report['transitous_ref'],
+            'sources': sources, 'input_sha256': {key: hashes[key] for key in ('transitous_licences', 'transitous_feeds', 'mobility_csv')}}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--catalogue', help='Local catalogue for offline reproduction; default downloads worldwide registry')
+    parser.add_argument('--catalogue-report', type=Path, help='Matching reconciliation report with pinned upstream identities')
     parser.add_argument('--rules', type=Path, default=ROOT/'styles/data-src/frequency-source-rules.json')
     parser.add_argument('--cache', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
@@ -397,19 +1080,25 @@ def main():
     args = parser.parse_args()
     if not 0 <= args.shard < args.shards or args.max_feed_bytes <= 0 or args.max_compile_seconds <= 0 or args.max_compile_memory_bytes <= 0:
         parser.error('Invalid shard or byte budget')
+    if args.catalogue_report and not args.catalogue:
+        parser.error('--catalogue-report requires --catalogue')
     dt.date.fromisoformat(args.date)
     args.cache.mkdir(parents=True, exist_ok=True)
     data = Path(args.catalogue).read_bytes() if args.catalogue else get(CATALOGUE).read()
     catalogue_hash = hashlib.sha256(data).hexdigest()
     rules = json.loads(args.rules.read_text())
     entries = discover(json.loads(data), rules)
+    provenance = catalogue_provenance(args.catalogue_report, catalogue_hash, len(entries), bool(args.catalogue))
     previous_path = args.output/f'inventory-{args.shard}.json'
     outcomes = []
     def save():
-        atomic_json(previous_path, {'schema': 2, 'catalogue_url': CATALOGUE, 'catalogue_sha256': catalogue_hash,
+        atomic_json(previous_path, {'schema': 2, 'catalogue_url': None if args.catalogue else CATALOGUE, 'catalogue_sha256': catalogue_hash,
+            'catalogue_provenance': published_metadata(provenance),
             'catalogue_entries': len(entries), 'service_date': args.date, 'shard': args.shard, 'shards': args.shards,
             'scope': 'Every GTFS feed in the worldwide catalogue; no city allow-list',
-            'counts': dict(Counter(x['status'] for x in outcomes)), 'entries': outcomes})
+            'counts': dict(Counter(x['status'] for x in outcomes)),
+            'reason_codes': dict(Counter(x.get('reason_code') or 'none' for x in outcomes)),
+            'entries': published_metadata(outcomes)})
     for entry in entries:
         if int(hashlib.sha256(entry['id'].encode()).hexdigest(), 16) % args.shards != args.shard:
             continue
@@ -417,11 +1106,25 @@ def main():
             try:
                 entry = compile_entry_isolated(entry, args.cache, args.output, args.date, args.rail_graph, args.max_feed_bytes, rules.get('profiles', PROFILES), args.max_compile_seconds, args.max_compile_memory_bytes)
             except Exception as error:
-                entry = {**entry, 'status': 'failed', 'reason': f'{type(error).__name__}: {error}'}
+                code, stage = classify_failure(error)
+                entry = {**entry, 'status': 'retry_pending', 'reason': redacted_diagnostic(f'{type(error).__name__}: {error}'),
+                         'reason_code': code, 'failure_stage': stage, 'retry_eligible': True,
+                         'next_action': ('repair_or_find_feed_url' if code in ('source_http_404', 'missing_source_url')
+                                         else 'retry_source_or_repair_compiler'),
+                         'source_attempts': error.attempts if isinstance(error, SourceRetrievalError) else []}
         outcomes.append(entry)
-        save()  # durable after every feed, even if a job times out later.
-        print(entry['id'], entry['status'], entry.get('rail_routes', ''), entry.get('mapped_segments', ''), entry.get('reason', ''), flush=True)
-    print(json.dumps({'catalogue_entries': len(entries), 'shard_outcomes': len(outcomes), 'counts': dict(Counter(x['status'] for x in outcomes))}), flush=True)
+        # Inventory-only is read-only: write once rather than serializing the
+        # growing worldwide inventory N times (quadratic work at global scale).
+        # Compiling shards still checkpoint after each feed for resumability.
+        if not args.inventory_only:
+            save()
+            print(entry['id'], entry['status'], entry.get('rail_routes', ''),
+                  entry.get('mapped_segments', ''), redacted_diagnostic(entry.get('reason', '')), flush=True)
+    if args.inventory_only:
+        save()
+    print(json.dumps({'catalogue_entries': len(entries), 'shard_outcomes': len(outcomes),
+                      'counts': dict(Counter(x['status'] for x in outcomes)),
+                      'reason_codes': dict(Counter(x.get('reason_code') or 'none' for x in outcomes))}), flush=True)
 
 
 if __name__ == '__main__':

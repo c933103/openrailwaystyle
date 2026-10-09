@@ -10,6 +10,42 @@ const job=name=>{
   assert.ok(match,`Missing ${name} job`);
   return match[1];
 };
+const globalFixtures=await readFile(new URL('./global-frequency.test.mjs',import.meta.url),'utf8');
+
+test('reconciled catalogue fixtures run inside the isolated PR test process',()=>{
+  assert.match(job('validate-pr'),/tests\/global-frequency\.test\.mjs/);
+  assert.match(globalFixtures,/'python3',\['-m','unittest','discover','-s','tests','-p','frequency_catalogue_test\.py'\]/);
+  const push=workflow.split('  push:\n')[1].split('  workflow_dispatch:')[0];
+  const pr=workflow.split('  pull_request:\n')[1].split('permissions:')[0];
+  for(const trigger of [push,pr])assert.ok(trigger.includes('scripts/frequency_catalogue.py'));
+  assert.ok(pr.includes("'tests/*frequency*'"));
+  assert.ok(pr.includes('docs/service-frequency.md'));
+  assert.doesNotMatch(push,/tests\//,'fixture-only changes do not start production acquisition');
+});
+
+test('production consumes the same normalized catalogue and publishes no per-feed copies',()=>{
+  assert.match(job('catalogue'),/--output catalogue\/catalogue\.json/);
+  for(const name of ['catalogue','compile']){
+    assert.match(job(name),/--catalogue catalogue\/catalogue\.json/);
+    assert.match(job(name),/--catalogue-report catalogue\/catalogue-report\.json/);
+  }
+  assert.match(globalFixtures,/frequency_provenance_test\.py/);
+  assert.match(job('publish'),/tar -czf frequency-snapshot\.tar\.gz -C frequency-output manifest\.json inventory\.json tiles/);
+  assert.doesNotMatch(job('publish'),/tar .*\bfeeds\b/);
+});
+
+test('catalogue acquisition has explicit time ceilings and fails closed before publication',()=>{
+  const catalogue=job('catalogue');
+  assert.match(catalogue,/timeout-minutes: 30/);
+  assert.match(catalogue,/timeout --signal=TERM --kill-after=30s 600 git clone/);
+  assert.match(catalogue,/timeout --signal=TERM --kill-after=30s 600 git -C catalogue\/transitous sparse-checkout/);
+  assert.match(catalogue,/curl --fail --retry 3 --retry-all-errors --retry-max-time 900 --location --max-time 300/);
+  assert.doesNotMatch(catalogue,/continue-on-error|\|\| true/);
+  for(const name of ['compile','assemble','publish'])assert.doesNotMatch(job(name).split('    steps:')[0],/always\(/);
+  assert.match(job('compile'),/needs: catalogue/);
+  assert.match(job('assemble'),/needs: \[catalogue, compile\]/);
+  assert.match(job('publish'),/needs: assemble/);
+});
 
 test('PR frequency validation executes immutable PR head without retained credentials',()=>{
   const validate=job('validate-pr');

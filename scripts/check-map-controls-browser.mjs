@@ -7,6 +7,7 @@ import {readFile, mkdir, writeFile} from 'node:fs/promises';
 import {waitUntil} from './wait-until.mjs';
 import {clickVisibleControl} from './click-visible-control.mjs';
 import {rendererFixture} from './browser-renderer-fixture.mjs';
+import {readMapRenderState} from './map-render-state.mjs';
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const style=JSON.parse(await readFile('styles/world.style.json','utf8'));
 style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
@@ -174,10 +175,10 @@ try{
   console.error('UI_PENDING_REQUESTS',JSON.stringify([...pending].map(r=>r.url())));
   console.error('UI_REQUEST_FAILURES',JSON.stringify(requestFailures));
   console.error('UI_FIXTURE_TILES',JSON.stringify(fixtureTiles));
-  console.error('UI_SOURCE_STATE',JSON.stringify(await page.evaluate(async()=>{
-    const {map}=await import(document.querySelector('script[type="module"]').src);
-    return {loaded:map.loaded(),tilesLoaded:map.areTilesLoaded(),moving:map.isMoving(),zoom:map.getZoom(),sources:Object.fromEntries(Object.entries(map.style.sourceCaches).map(([id,source])=>[id,{loaded:source.loaded(),tiles:Object.values(source._tiles).reduce((counts,tile)=>(counts[tile.state]=(counts[tile.state]||0)+1,counts),{})}]))};
-  }).catch(()=>null)));
+  const sourceState=await readMapRenderState(page);
+  console.error('UI_SOURCE_STATE',JSON.stringify(sourceState));
+  await mkdir('browser-review',{recursive:true});
+  await writeFile('browser-review/map-controls-source-state.json',JSON.stringify(sourceState,null,2));
   console.error('UI_GEOMETRY',JSON.stringify(await geometry().catch(()=>null)));
   await mkdir('browser-review',{recursive:true});await page.screenshot({path:'browser-review/map-controls-failure.png',timeout:5000}).catch(()=>{});throw error;
 } finally{
