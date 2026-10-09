@@ -1,0 +1,12 @@
+{
+  "pr_head": "a313a22babd444ec93069234ca769f438b083ffc",
+  "site_run": 37897297312,
+  "job": 113712464511,
+  "failure": "page.waitForFunction Timeout30000ms at scripts/check-platform-stations-browser.mjs:105",
+  "observations": "Desktop and mobile station geometry assertions passed; mobile packaged Atlas CJK SC font/glyph-manager readiness timed out. Cause not established.",
+  "artifact_id": 11601292244,
+  "artifact_zip_sha256": "93d7b99c5f424f9d6f053342c0556e21ec2d997119516d8bd99486ef8a99ac35",
+  "artifact_materialization": "Archive materialization returned HTTP403; screenshot pixels were not inspected.",
+  "raw_job_log_retained": true,
+  "artifact_digest_source": "Reported by the GitHub Actions upload log; archive bytes could not be locally materialized or verified."
+}

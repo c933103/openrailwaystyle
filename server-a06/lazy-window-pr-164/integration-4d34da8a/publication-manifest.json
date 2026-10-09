@@ -1,0 +1,61 @@
+{
+  "scope": "PR164 integration-head correctness and retained earlier failure; no new performance samples",
+  "files_excluding_self": 11,
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 2051,
+      "sha256": "15f438da3fca36479889bfbba5ad2b281774e0bff00d3a283bb28bc573f293bc"
+    },
+    {
+      "path": "assembly.stderr.log",
+      "bytes": 174,
+      "sha256": "357d92a12b89b0b80a0734e8b5802fc8f95280beb9778c6110550b880f7b5e12"
+    },
+    {
+      "path": "assembly.stdout.log",
+      "bytes": 5355,
+      "sha256": "989dbd54ac63c6ebf13caa8bcd563c442a50f8708f2a31de757af8b81f82e0f3"
+    },
+    {
+      "path": "check_frozen_outputs.py",
+      "bytes": 2172,
+      "sha256": "7ef56c5af15bef87393e3636eefd9529a1a3b5ca47c3e673f1f91e73cbcc47b0"
+    },
+    {
+      "path": "combined-tree-verification.json",
+      "bytes": 126,
+      "sha256": "e1628190c82b518d321af0fb9563b0d3519419e7bed5f708ce4cb48169c060e9"
+    },
+    {
+      "path": "correctness-receipt.json",
+      "bytes": 711,
+      "sha256": "dc9eff5ac72577a43fc243df553b29f7af6ac5c09c2ac903025d7cb18a99d1f8"
+    },
+    {
+      "path": "failure-receipt.json",
+      "bytes": 784,
+      "sha256": "d8aed3265e046577ab228940c13af06df8f6e11eaa87c7631d2ffade303abc5b"
+    },
+    {
+      "path": "output-comparison.json",
+      "bytes": 72,
+      "sha256": "f4ddf84c824cc41c55b01b50c77981aefc629b58aabc045748d9738e8511b94e"
+    },
+    {
+      "path": "output-identity.json",
+      "bytes": 24888,
+      "sha256": "5301d4c523555697f9528800c83930a8489d4e557b7bee48fddb03c8129b3139"
+    },
+    {
+      "path": "platform-failure.raw.log",
+      "bytes": 44966,
+      "sha256": "b7111459655e1d134a6a605127de3f2853b3c69a882ac8806bb71c6808402926"
+    },
+    {
+      "path": "safety-scan.json",
+      "bytes": 2504,
+      "sha256": "0a4f4fe06f5886bbb489129bbfa6e170ec70446e68795aa293994e0b20e79e0b"
+    }
+  ]
+}
