@@ -1,0 +1,61 @@
+name: Measure cache-enabled client fixture
+on:
+  push:
+    branches: [evidence/client-cache-trace-20261009]
+    paths:
+      - .github/workflows/client-cache-trace.yml
+      - evidence/client-cache-trace-2026-10-09/**
+permissions:
+  contents: read
+concurrency:
+  group: client-cache-trace-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.23.3'
+      - name: Prepare exact pinned source and measurement kit
+        run: |
+          mkdir -p "$RUNNER_TEMP/atlas-trace/source" "$RUNNER_TEMP/atlas-trace/evidence"
+          git archive 2875a0744912633f35cd6faba25e3260dae09d89 | tar -x -C "$RUNNER_TEMP/atlas-trace/source"
+          cp evidence/client-cache-trace-2026-10-09/{trace.mjs,fixture-server.mjs,transport.test.mjs} "$RUNNER_TEMP/atlas-trace/"
+          cd "$RUNNER_TEMP/atlas-trace/source"
+          npm ci --ignore-scripts --no-audit --no-fund
+          # These two build scripts read source/node_modules and write local styles only.
+          # No provider acquisition, snapshot checkout, search API or deployment step.
+          GITHUB_SHA=2875a0744912633f35cd6faba25e3260dae09d89 GITHUB_REPOSITORY=c933103/openrailwaystyle npm run build
+          cd ..
+          ln -s source/node_modules node_modules
+          cp "$(command -v node)" node
+          docker pull mcr.microsoft.com/playwright:v1.56.1-noble
+          docker image inspect mcr.microsoft.com/playwright:v1.56.1-noble --format '{{json .RepoDigests}}' > evidence/runner-image-digests.json
+          image=$(docker image inspect mcr.microsoft.com/playwright:v1.56.1-noble --format '{{index .RepoDigests 0}}')
+          [[ "$image" =~ ^mcr.microsoft.com/playwright@sha256:[a-f0-9]{64}$ ]]
+          printf '%s\n' "$image" > evidence/runner-image.txt
+          sha256sum node source/package-lock.json > evidence/runner-input-hashes.txt
+          printf 'workflow_head=%s\nsource_head=%s\n' "$GITHUB_SHA" 2875a0744912633f35cd6faba25e3260dae09d89 > evidence/runner-identity.txt
+          uname -a > evidence/runner-uname.txt
+          ./node --version > evidence/runner-node-version.txt
+      - name: Run cache controls and six fixture samples with external networking disabled
+        run: |
+          docker run --rm --network none --cpus=2 --memory=4g --pids-limit=512 --shm-size=1g \
+            -v "$RUNNER_TEMP/atlas-trace:/work" -w /work \
+            -e OUT=/work/evidence -e PAIRS=3 \
+            "$(cat "$RUNNER_TEMP/atlas-trace/evidence/runner-image.txt")" \
+            bash -euc './node --test transport.test.mjs > evidence/transport.tap; ./node trace.mjs > evidence/trace.log 2>&1'
+      - name: Retain all measurement output, including failed attempts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: atlas-client-cache-trace-${{ github.sha }}
+          path: ${{ runner.temp }}/atlas-trace/evidence/
+          if-no-files-found: error
+          retention-days: 30
