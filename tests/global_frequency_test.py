@@ -797,6 +797,112 @@ class GlobalFrequency(unittest.TestCase):
                         self.assertEqual(meta_path.read_bytes(),before_meta)
                 self.assertEqual((cache/'xx_rail.zip').read_bytes(),before_archive)
 
+    def test_reference_host_admission_preserves_supported_keys_and_legacy_transport(self):
+        refs=pipeline.registry.references
+        vectors=json.loads((Path(__file__).parent/'fixtures/service-frequency/resource-syntax-v2.json').read_text())['host_admission']
+        for url in vectors['supported']:
+            self.assertTrue(refs.reference_url_valid(url));self.assertTrue(refs.resource_host_supported(url))
+            key=refs.legacy_resource_key(url);host=key[1]
+            if ':' in host:host=pipeline.ipaddress.IPv6Address(host).compressed
+            self.assertEqual(refs.resource_key(url),(key[0],host,key[2],key[3],key[5]))
+        for url in vectors['unsupported']:
+            self.assertFalse(refs.reference_url_valid(url));self.assertFalse(refs.resource_host_supported(url));self.assertIsNone(refs.resource_key(url))
+        for host in ['001.002.003.004','01.02.03.04','0x01020304','16909060','1.2.772','００１.００２.００３.００４']:
+            url='http://'+host+'/feed'
+            parsed,effective,port=pipeline.parse_acquisition_url(url)
+            self.assertEqual(effective,host.encode('idna').decode('ascii'))
+            self.assertEqual(pipeline.acquisition_url_key(url),refs.legacy_resource_key(url))
+            pipeline.source_policy({'catalogue':{}},url)  # Legacy admission is unchanged.
+        # Syntax admission does not override the global public-address boundary.
+        self.assertFalse(pipeline.public_address('127.0.0.1'))
+
+    def test_reference_numeric_redirects_stop_before_dns_and_keep_public_fallback(self):
+        unsupported=['001.002.003.004','0x01020304','16909060','1.2.772','００１.００２.００３.００４']
+        for host in unsupported:
+            entry=self.reference_lifecycle_entry('https://public.test/feed')
+            with patch.object(pipeline,'resolve_public_addresses') as dns:
+                with self.assertRaises(pipeline.UnsafeSourceURL):pipeline.get('http://'+host+'/feed',policy=lambda url:pipeline.source_policy(entry,url))
+                dns.assert_not_called()
+        for phase in ['initial','range','full','conditional','fallback']:
+            a,ah=self.server(self.archive());c,ch=self.server(self.archive());entry=self.reference_lifecycle_entry(a,'http://1.2.3.4/feed')
+            target='http://001.002.003.004/feed'
+            if phase in ('initial','fallback'):
+                ah['redirect']=target
+                if phase=='fallback':entry['catalogue']['lineage'].append({'catalogue':'mobility-database','id':'fallback','url':pipeline.registry.MOBILITY_CSV,'source':c,'status':'','authentication_type':'0'})
+            elif phase in ('range','full'):
+                checked=pipeline.CheckedRequests(entry,a);remote=pipeline.RemoteZip(a,1000000,policy=checked.policy,checked_requests=checked);ah['redirect']=target
+            else:
+                cache=self.root/'numeric-conditional';cache.mkdir();output=cache/'out'
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES);ah['redirect']=target
+            with patch.object(pipeline,'resolve_public_addresses',wraps=pipeline.resolve_public_addresses) as dns:
+                if phase=='fallback':
+                    meta,attempts=pipeline.fetch_alternative(entry,self.root/'numeric-fallback.zip',1000000)
+                    self.assertEqual(meta['download_url_sha256'],pipeline.source_url_fingerprint(c));self.assertTrue(ch['requests'])
+                    self.assertEqual(attempts[0]['code'],'unsafe_source_url')
+                elif phase=='initial':
+                    with self.assertRaises(pipeline.SourceRetrievalError):pipeline.fetch_alternative(entry,self.root/'numeric-blocked.zip',1000000)
+                elif phase in ('range','full'):
+                    with self.assertRaises(pipeline.UnsafeSourceURL):remote.range(0,1) if phase=='range' else remote.download()
+                else:
+                    with self.assertRaises(pipeline.SourceRetrievalError):pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                self.assertTrue(all(call.args[0]=='127.0.0.1' for call in dns.call_args_list))
+
+    def test_historical_numeric_host_receipts_cannot_regain_cache_authority(self):
+        import copy
+        from urllib.error import URLError
+        def prior_receipt(urls,data,version):
+            def old_hash(url):
+                key=pipeline.registry.references.legacy_resource_key(url)
+                # These controlled prior URLs use plain /feed paths and query
+                # values; the frozen v2 key only removed the empty params slot.
+                return pipeline.registry.references.digest(key if version==1 else key[:4]+(key[5],))
+            endpoints=[{'url':pipeline.redacted_source_url(url),'url_sha256':pipeline.source_url_fingerprint(url),
+                'resource_sha256':old_hash(url),'visible_resource_sha256':old_hash(pipeline.redacted_source_url(url))} for url in urls]
+            return {'schema':version,**({'resource_normalization':'http-resource-syntax-v2'} if version==2 else {}),
+                'candidate_sha256':pipeline.source_url_fingerprint(urls[0]),'terminal_resource_sha256':old_hash(urls[-1]),
+                'artifact_kind':'archive','artifact_sha256':pipeline.hashlib.sha256(data).hexdigest(),'endpoints':endpoints}
+        for version in [1,2]:
+            for position in ['candidate','intermediate','terminal']:
+                a,ah=self.server(self.archive());entry=self.reference_lifecycle_entry(a)
+                cache=self.root/f'numeric-cache-{version}-{position}';cache.mkdir();output=cache/'out'
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                path=cache/'xx_rail.zip';meta_path=cache/'xx_rail.meta.json';data=path.read_bytes();meta=json.loads(meta_path.read_text())
+                bad='http://001.002.003.004/feed?selector=synthetic-value'
+                urls=[bad,a] if position=='candidate' else [a,bad,a] if position=='intermediate' else [a,bad]
+                # Deduplicate a repeated candidate/terminal just as the producer.
+                receipt=prior_receipt(urls,data,version);receipt['endpoints']=list({x['url_sha256']:x for x in receipt['endpoints']}.values())
+                self.assertFalse(pipeline.request_receipt_valid(receipt,urls[0]))
+                meta['request_provenance']=receipt;meta['download_url']=pipeline.redacted_source_url(urls[0]);meta['download_url_sha256']=pipeline.source_url_fingerprint(urls[0]);meta_path.write_text(json.dumps(meta));before=meta_path.read_bytes()
+                self.assertEqual(pipeline.reference_cache_state(entry,meta,path,urls[0]),'invalid')
+                with patch.object(pipeline,'get',side_effect=URLError('offline fixture')):
+                    with self.assertRaises(pipeline.SourceRetrievalError) as failed:pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                self.assertEqual(pipeline.classify_failure(failed.exception)[0],'unresolved_source_cache_identity')
+                self.assertEqual(path.read_bytes(),data);self.assertEqual(meta_path.read_bytes(),before)
+                if position=='candidate':
+                    evidence=next(x for x in failed.exception.attempts if x['code']=='source_cache_identity_unresolved')
+                    self.assertEqual(evidence['url'],'');self.assertNotIn('url_sha256',evidence)
+                    result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                    self.assertEqual(result['status'],'compiled')
+                    current=json.loads(meta_path.read_text())
+                    self.assertEqual(current['download_url_sha256'],pipeline.source_url_fingerprint(a))
+                    self.assertTrue(pipeline.request_receipt_valid(current['request_provenance'],a))
+
+    def test_unmatched_receipt_diagnosis_does_not_change_legacy_outage(self):
+        from urllib.error import URLError
+        url,_=self.server(self.archive())
+        entry=pipeline.discover([{'filename':'xx_rail.gtfs.zip','source':url,'delivery':'direct'}],{})[0]
+        cache=self.root/'legacy-unmatched-receipt';cache.mkdir();output=cache/'out'
+        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        meta_path=cache/'xx_rail.meta.json';meta=json.loads(meta_path.read_text());archive=(cache/'xx_rail.zip').read_bytes()
+        historical='http://001.002.003.004/feed'
+        meta.update(download_url=historical,download_url_sha256=pipeline.source_url_fingerprint(historical),request_provenance={'schema':2})
+        meta_path.write_text(json.dumps(meta));before=meta_path.read_bytes()
+        with patch.object(pipeline,'get',side_effect=URLError('offline fixture')):
+            with self.assertRaises(pipeline.SourceRetrievalError) as failed:pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        self.assertEqual(pipeline.classify_failure(failed.exception)[0],'source_retrieval_error')
+        self.assertEqual({x['code'] for x in failed.exception.attempts},{'connection_error'})
+        self.assertEqual(meta_path.read_bytes(),before);self.assertEqual((cache/'xx_rail.zip').read_bytes(),archive)
+
     def test_retry_after_receipts_survive_two_runs_without_early_requests(self):
         from email.utils import formatdate
         from urllib.error import HTTPError

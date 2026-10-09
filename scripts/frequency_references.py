@@ -278,6 +278,14 @@ def reference_url_valid(value):
     host, port = match.groups()
     if port is not None and int(port) > grammar['max_port']:
         return False
+    return reference_host_valid(host)
+
+
+def reference_host_valid(host):
+    """Supported literal/DNS syntax only; never interpret numeric aliases."""
+    grammar = _METADATA_SCHEMA['url_grammar']
+    if not isinstance(host, str) or not host.isascii() or host.endswith('..'):
+        return False
     if host.startswith('['):
         try:
             return ipaddress.ip_address(host[1:-1]).version == 6
@@ -475,6 +483,15 @@ def legacy_resource_key(value):
         return None
 
 
+def resource_host_supported(value):
+    """Admit original and effective host spelling without DNS or byte rewriting."""
+    legacy = legacy_resource_key(value)
+    if legacy is None: return False
+    original = urlparse(value).hostname
+    return all(reference_host_valid('[' + host + ']' if ':' in host else host)
+               for host in (original, legacy[1]))
+
+
 RESOURCE_NORMALIZATION = 'http-resource-syntax-v2'
 _UNRESERVED = frozenset('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~')
 
@@ -504,7 +521,7 @@ def resource_key(value):
     legacy = legacy_resource_key(value)
     # A stray '%' must not combine with a decoded hex character into a new
     # escape. Unsupported syntax gets no current-version resource identity.
-    if legacy is None or re.search(r'%(?![a-fA-F0-9]{2})', value): return None
+    if legacy is None or not resource_host_supported(value) or re.search(r'%(?![a-fA-F0-9]{2})', value): return None
     scheme, host, port, path, params, query = legacy
     if ':' in host:
         try: host = ipaddress.IPv6Address(host).compressed

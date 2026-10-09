@@ -693,6 +693,8 @@ class CheckedRequests:
 
 def request_receipt_valid(value, candidate):
     fields = {'schema','candidate_sha256','terminal_resource_sha256','artifact_kind','artifact_sha256','endpoints'}
+    # Historical hashes do not grant authority to an unsupported host spelling.
+    if not registry.references.resource_host_supported(candidate): return False
     if not isinstance(value,dict) or type(value.get('schema')) is not int or value['schema'] not in (1,2): return False
     legacy = value['schema'] == 1
     if not legacy:
@@ -709,6 +711,7 @@ def request_receipt_valid(value, candidate):
     for item in value['endpoints']:
         if (not isinstance(item,dict) or set(item)!=endpoint_fields or not isinstance(item['url'],str)
                 or not 0 < len(item['url']) <= 4096 or item['url']!=redacted_source_url(item['url'])
+                or not registry.references.resource_host_supported(item['url'])
                 or any(not is_hash(item[key]) for key in endpoint_fields-{'url'})): return False
         try:
             if item['visible_resource_sha256']!=request_resource_hash(item['url'],legacy=legacy): return False
@@ -1110,6 +1113,11 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
     if invalid_cache_metadata and path.exists() and not cached_url:
         candidates = source_candidates(entry,publication_context)
         attempts.append(source_attempt(candidates[0] if candidates else '',CacheIdentityUnresolved()))
+    elif reference_state is not None and path.exists() and not cached_url and 'request_provenance' in meta:
+        # No original URL can be reconstructed from a historical display. Keep
+        # diagnosis explicit without fabricating a request or its fingerprint.
+        attempts.append({'url':'','code':'source_cache_identity_unresolved',
+            'message':'Cached source no longer matches supported current candidates; reuse paused'})
     if path.exists() and cached_url and not cache_eligible:
         attempts.append(source_attempt(cached_url,CacheAccessHold() if cache_state=='held' else CacheIdentityUnresolved()))
     checked = CheckedRequests(entry,cached_url,meta['request_provenance']['terminal_resource_sha256']) if cache_state=='verified' else None

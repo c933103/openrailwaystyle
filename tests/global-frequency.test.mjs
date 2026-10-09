@@ -435,7 +435,7 @@ test('versioned resource syntax has exact Python JavaScript fixture parity',asyn
   const vectors=JSON.parse(await readFile(new URL('./fixtures/service-frequency/resource-syntax-v2.json',import.meta.url),'utf8'));
   assert.equal(resourceNormalization,vectors.normalization);
   for(const {url,key} of vectors.canonical)assert.deepEqual(referenceResourceKey(url),key);
-  const urls=[...vectors.canonical.map(x=>x.url),...vectors.pairs.flatMap(x=>[x.a,x.b]),...vectors.invalid];
+  const urls=[...vectors.canonical.map(x=>x.url),...vectors.pairs.flatMap(x=>[x.a,x.b]),...vectors.invalid,...vectors.host_admission.supported];
   const python=spawnSync('python3',['-c',"import json,sys;sys.path.insert(0,'scripts');import frequency_references as r;print(json.dumps([r.resource_key(x) for x in json.load(sys.stdin)]))"],{input:JSON.stringify(urls),encoding:'utf8'});
   assert.equal(python.status,0,python.stderr);assert.deepEqual(urls.map(referenceResourceKey),JSON.parse(python.stdout));
   for(const {a,b,equal} of vectors.pairs){assert.equal(JSON.stringify(referenceResourceKey(a))===JSON.stringify(referenceResourceKey(b)),equal);assert.notEqual(sourceHash(a),sourceHash(b));}
@@ -444,6 +444,27 @@ test('versioned resource syntax has exact Python JavaScript fixture parity',asyn
   const raw='https://public.test/a%2fb?region=synthetic-value',display=referenceDisplayUrl(raw);
   referenceResourceKey(raw);assert.equal(raw,'https://public.test/a%2fb?region=synthetic-value');
   assert.equal(referenceDisplayUrl(raw),display);assert.match(display,/a%2fb/);
+});
+
+test('noncanonical numeric hosts cannot become published static aliases',async()=>{
+  const {publishedMetadata}=await import('../scripts/assemble-global-frequency.mjs');
+  const {referenceUrlValid}=await import('../scripts/frequency-reference-metadata.mjs');
+  const vectors=JSON.parse(await readFile(new URL('./fixtures/service-frequency/resource-syntax-v2.json',import.meta.url),'utf8')).host_admission;
+  const base={schema:3,shards:1,shard:0,catalogue_entries:2,catalogue_sha256:'fixture'};
+  for(const url of [...vectors.unsupported,...vectors.supported]){
+    const valid=vectors.supported.includes(url),hash=sourceHash(url);
+    assert.equal(referenceUrlValid(url),valid);
+    const owner={id:'owner',status:'no_rail',catalogue:{delivery:'direct',source:url,source_sha256:hash}};
+    const alias={id:'alias',status:'source_alias',catalogue:{source:url,source_sha256:hash,source_resolution:aliasProof(url,hash)}};
+    for(const entries of [[owner,alias],publishedMetadata([owner,alias])]){
+      const merge=()=>mergeInventories([{...base,entries}]);
+      // Existing legacy publication may compress an expanded IPv6 display.
+      // Preserve its conservative retained-hash rejection in this bounded fix.
+      const ownerDisplayChanged=entries[0].catalogue.source!==url;
+      if(valid&&!ownerDisplayChanged){assert.doesNotThrow(merge,url);assert.equal(merge().entries.find(x=>x.id==='alias').status,'source_alias');}
+      else assert.throws(merge,/Invalid static source alias/);
+    }
+  }
 });
 
 test('resource syntax applies to published alias holds without replacing original identity',async()=>{

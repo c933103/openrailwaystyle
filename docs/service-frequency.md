@@ -764,3 +764,23 @@ leaves the archive and historical receipt intact.
 The old lexical key also remains explicitly in existing global reviewed-terms
 matching. This preserves legacy owner policy rather than silently broadening
 those matches as part of reference identity normalization.
+
+Reference resource admission also applies the existing catalogue host grammar
+to both the original ASCII hostname and the effective resolver hostname, before
+DNS/connect. Numeric-looking hosts must be canonical four-octet IPv4 literals;
+padded, octal, hexadecimal, short, integer and numeric trailing-dot spellings are
+unsupported. Fullwidth numeric IDNA aliases are rejected rather than translated
+into an authorized endpoint. Canonical IPv4, valid bracketed IPv6 and supported
+DNS names remain available, including numeric prefixes such as `123.example.test`.
+No DNS-based equivalence or address reinterpretation establishes access.
+
+Candidate and every checked endpoint must pass that admission in both schema-1
+and schema-2 reference receipts, before their version-qualified hash validation.
+Unsupported-host historical receipts remain unresolved even without another
+declared hold, rather than gaining public-offline authority. Existing supported
+v2 keys and schema markers are unchanged. A historical candidate that no longer
+matches supported current candidates records explicit cache-identity uncertainty
+without reconstructing a raw URL or fingerprint from its display. Supported
+public fallback remains usable; unsuccessful reuse preserves old archive/receipt
+bytes. Global legacy/direct-owner transport and reviewed-terms matching are
+unchanged by this reference-only admission correction.
