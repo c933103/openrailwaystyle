@@ -1,28 +1,29 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261009-first-party-libraries';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261009-first-party-libraries';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261009-first-party-libraries';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261009-first-party-libraries';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261009-first-party-libraries';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261009-first-party-libraries';
+import {installControlLayout, rememberAttribution, installPwaInstall} from './map-controls.mjs?v=20261009-ios-install';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261009-ios-install';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261009-ios-install';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261009-ios-install';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261009-ios-install';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261009-ios-install';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261009-first-party-libraries';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261009-first-party-libraries';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261009-first-party-libraries';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261009-first-party-libraries';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261009-first-party-libraries';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261009-first-party-libraries';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261009-first-party-libraries';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261009-first-party-libraries';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261009-first-party-libraries';
-import { installWatchGesture } from './watch-map.mjs?v=20261009-first-party-libraries';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261009-first-party-libraries';
-import { createBundleReader } from './tile-bundles.mjs?v=20261009-first-party-libraries';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261009-ios-install';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261009-ios-install';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261009-ios-install';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261009-ios-install';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261009-ios-install';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261009-ios-install';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261009-ios-install';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261009-ios-install';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261009-ios-install';
+import { installWatchGesture } from './watch-map.mjs?v=20261009-ios-install';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261009-ios-install';
+import { createBundleReader } from './tile-bundles.mjs?v=20261009-ios-install';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
 // label code load in the background (index.html reports a failure to load
 // this module itself).
 document.body.dataset.appStarted = 'true';
+installPwaInstall({window, document});
 // Installable as an app (manifest.webmanifest); the service worker keeps the
 // app's own files for opening without a connection.
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register(new URL('sw.js', import.meta.url)).catch(() => {});
@@ -52,7 +53,7 @@ let platformLengths,frequencyExpiry;
 let powerFacilities;
 let railRecovery, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261009-first-party-libraries';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261009-ios-install';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only the old CDN copies may be
 // available offline. Read those exact saved responses without contacting the

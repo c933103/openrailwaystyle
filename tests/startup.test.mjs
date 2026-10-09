@@ -281,6 +281,23 @@ test('legacy startup recovery ignores unrelated caches and non-JavaScript saved 
     assert.ok(requested.length>0);
   } finally {result.dom.window.close();}
 });
+test('installation help works before renderer libraries load and after WebGL initialization fails', async t => {
+  for (const options of [{delayLibraries: true}, {failWebGL: true}]) await t.test(JSON.stringify(options), async () => {
+    const {dom, window, maps} = await start(options);
+    try {
+      const get = id => window.document.getElementById(id);
+      assert.equal(maps.length, 0, 'the renderer is unavailable in both cases');
+      assert.equal(get('pwa-install-open').hidden, false);
+      get('pwa-install-open').focus();
+      get('pwa-install-open').click();
+      assert.equal(get('pwa-install').open, true);
+      assert.equal(get('pwa-install-generic').hidden, false);
+      get('pwa-install-close').click();
+      assert.equal(get('pwa-install').open, false);
+      assert.equal(window.document.activeElement, get('pwa-install-open'));
+    } finally { dom.window.close(); }
+  });
+});
 test('a complete installed Chinese font is used without any download',async()=>{
  const {dom,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true,installedFonts:{'Noto Sans CJK TC':ALL_PROBES}});
  try{
