@@ -16,7 +16,21 @@ try {
       const page = await context.newPage(), base = server.origin + '/atlas-project/';
       const errors=[],requests=[];
       page.on('pageerror', error=>errors.push(error.message));
+      // WebKit routes the renderer's Blob worker reads through Playwright.
+      // Replay the real Blob bytes, not the empty provider's JSON fallback.
+      await context.addInitScript(()=>{
+        window.__atlasFixtureBlobs=new Map();
+        const create=URL.createObjectURL.bind(URL);
+        URL.createObjectURL=blob=>{
+          const url=create(blob);window.__atlasFixtureBlobs.set(url,blob);return url;
+        };
+      });
       await installEmptyMapProviders(context, base, {firstParty:'network'});
+      await context.route(`blob:${server.origin}/**`,async route=>{
+        const body=await page.evaluate(async url=>window.__atlasFixtureBlobs.get(url)?.text()??null,route.request().url());
+        assert.notEqual(body,null,'the renderer worker must be an actual recorded Blob');
+        await route.fulfill({body,contentType:'text/javascript'});
+      });
       const at = new Date(Date.now()+600_000).toISOString();
       const stop=(name,stopId,extra={})=>({name,stopId,lat:35.7,lon:139.77,tz:'Asia/Tokyo',arrival:at,departure:at,...extra});
       const timetable = {legs:[{mode:'SUBWAY',realTime:false,from:stop('渋谷 Shibuya','origin'),
