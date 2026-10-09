@@ -1,0 +1,121 @@
+{
+  "passed": true,
+  "requests": [
+    {
+      "id": 1,
+      "sample": "control",
+      "phase": "cache-controls",
+      "epoch": 0,
+      "origin": "first-party",
+      "path": "/__controls/page",
+      "method": "GET",
+      "range": null,
+      "ifNoneMatch": null,
+      "startMs": 428.384278,
+      "status": 200,
+      "bodyBytes": 75,
+      "entityBytes": 75,
+      "bodySha256": "da1761bdf1815d1b924194283e1cec6e516688702c91750fe4073267445fafef",
+      "cacheControl": "no-store",
+      "etag": "\"da1761bdf1815d1b924194283e1cec6e516688702c91750fe4073267445fafef\"",
+      "finishMs": 429.671012,
+      "elapsedMs": 1.286734000000024,
+      "finished": true,
+      "closeMs": 429.771774,
+      "prematureClose": false
+    },
+    {
+      "id": 2,
+      "sample": "control",
+      "phase": "cache-controls",
+      "epoch": 0,
+      "origin": "first-party",
+      "path": "/__controls/cached",
+      "method": "GET",
+      "range": null,
+      "ifNoneMatch": null,
+      "startMs": 451.103986,
+      "status": 200,
+      "bodyBytes": 24,
+      "entityBytes": 24,
+      "bodySha256": "5117c9a5104adb06bab99fde4740e6b9d735f4dcffd361522a3f7cf84aaa707f",
+      "cacheControl": "public, max-age=3600",
+      "etag": "\"5117c9a5104adb06bab99fde4740e6b9d735f4dcffd361522a3f7cf84aaa707f\"",
+      "finishMs": 451.587577,
+      "elapsedMs": 0.4835909999999899,
+      "finished": true,
+      "closeMs": 451.61592,
+      "prematureClose": false
+    },
+    {
+      "id": 3,
+      "sample": "control",
+      "phase": "cache-controls",
+      "epoch": 0,
+      "origin": "first-party",
+      "path": "/__controls/revalidate",
+      "method": "GET",
+      "range": null,
+      "ifNoneMatch": null,
+      "startMs": 463.99566,
+      "status": 200,
+      "bodyBytes": 24,
+      "entityBytes": 24,
+      "bodySha256": "5117c9a5104adb06bab99fde4740e6b9d735f4dcffd361522a3f7cf84aaa707f",
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "etag": "\"5117c9a5104adb06bab99fde4740e6b9d735f4dcffd361522a3f7cf84aaa707f\"",
+      "finishMs": 464.836431,
+      "elapsedMs": 0.8407710000000179,
+      "finished": true,
+      "closeMs": 464.853887,
+      "prematureClose": false
+    },
+    {
+      "id": 4,
+      "sample": "control",
+      "phase": "cache-controls",
+      "epoch": 0,
+      "origin": "first-party",
+      "path": "/__controls/revalidate",
+      "method": "GET",
+      "range": null,
+      "ifNoneMatch": "\"5117c9a5104adb06bab99fde4740e6b9d735f4dcffd361522a3f7cf84aaa707f\"",
+      "startMs": 467.808496,
+      "status": 304,
+      "bodyBytes": 0,
+      "entityBytes": 0,
+      "bodySha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "etag": "\"5117c9a5104adb06bab99fde4740e6b9d735f4dcffd361522a3f7cf84aaa707f\"",
+      "finishMs": 468.105965,
+      "elapsedMs": 0.29746900000003507,
+      "finished": true,
+      "closeMs": 468.126737,
+      "prematureClose": false
+    }
+  ],
+  "routeInterception": false,
+  "deniedSummary": [
+    {
+      "method": "CONNECT",
+      "host": "redirector.gvt1.com",
+      "count": 1
+    },
+    {
+      "method": "CONNECT",
+      "host": "www.google.com",
+      "count": 2
+    },
+    {
+      "method": "GET",
+      "host": "clients2.google.com",
+      "count": 1
+    }
+  ],
+  "sourceFile": {
+    "path": "transport-controls.json",
+    "bytes": 3884,
+    "sha256": "31d40a67ae75b24cdacbbfc53bb2e65451ee533a4bc6f803a04580e20e950644"
+  },
+  "derivation": "All cache-request controls preserved; denied browser background requests summarized by host/method and query strings excluded."
+}

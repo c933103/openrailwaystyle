@@ -1,0 +1,4 @@
+{
+  "findings": [],
+  "scope": "No credentials, signed download URLs, browser background query nonces, original archives or unrelated private data. This is synthetic measurement evidence, not a security allegation."
+}

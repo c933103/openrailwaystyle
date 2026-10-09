@@ -1,0 +1,35 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "check": "source/sample/phase/error/memory/CPU/PID/byte/origin/cache invariants",
+      "passed": true
+    },
+    {
+      "check": "actual browser cacheable-repeat and stale-ETag controls",
+      "passed": true
+    },
+    {
+      "check": "reject missing sample",
+      "passed": true
+    },
+    {
+      "check": "reject wrong source",
+      "passed": true
+    },
+    {
+      "check": "reject wrong byte sum",
+      "passed": true
+    },
+    {
+      "check": "reject hidden page error",
+      "passed": true
+    },
+    {
+      "check": "reject missing HTTP cache signal",
+      "passed": true
+    }
+  ],
+  "count": 7,
+  "scope": "Derived-evidence consistency and five adversarial controls; not additional browser or application tests."
+}

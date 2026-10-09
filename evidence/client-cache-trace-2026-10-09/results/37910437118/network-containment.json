@@ -1,0 +1,33 @@
+{
+  "externalDelivery": "Disabled by Docker --network none; deny-only proxy additionally rejected browser background attempts.",
+  "blockedAttempts": 44,
+  "byHostMethod": [
+    {
+      "method": "CONNECT",
+      "host": "android.clients.google.com",
+      "count": 3
+    },
+    {
+      "method": "CONNECT",
+      "host": "content-autofill.googleapis.com",
+      "count": 24
+    },
+    {
+      "method": "CONNECT",
+      "host": "redirector.gvt1.com",
+      "count": 4
+    },
+    {
+      "method": "CONNECT",
+      "host": "www.google.com",
+      "count": 9
+    },
+    {
+      "method": "GET",
+      "host": "clients2.google.com",
+      "count": 4
+    }
+  ],
+  "providerRequests": "All app requests observed in the fixture/server ledger remain loopback. Known provider origins are synthetic labels, not actual contacted hosts.",
+  "queryStrings": "Omitted from this derived receipt; not needed to establish containment."
+}

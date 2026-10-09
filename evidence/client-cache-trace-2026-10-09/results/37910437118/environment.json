@@ -1,0 +1,76 @@
+{
+  "created": "2026-10-09T09:20:17.950Z",
+  "browserVersion": "141.0.7390.37",
+  "node": "v22.23.3",
+  "chromiumExecutable": "/ms-playwright/chromium-1194/chrome-linux/chrome",
+  "chromiumExecutableSha256": "85918a9937192b78da8edb51c38a7af4920ac6bd9ba19939ecb0bb724d5a1a95",
+  "playwrightVersion": "1.56.1",
+  "platform": "linux",
+  "arch": "x64",
+  "release": "6.17.0-1022-azure",
+  "cpu": "AMD EPYC 9V45 96-Core Processor",
+  "logicalCpus": 4,
+  "totalMemory": 16766414848,
+  "loadavg": [
+    3.24,
+    1.03,
+    0.36
+  ],
+  "options": {
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "deviceScaleFactor": 1,
+    "isMobile": false,
+    "hasTouch": false,
+    "serviceWorkers": "block",
+    "locale": "en-US",
+    "timezoneId": "UTC"
+  },
+  "args": [
+    "--use-angle=swiftshader",
+    "--enable-unsafe-swiftshader",
+    "--enable-webgl",
+    "--ignore-gpu-blocklist",
+    "--proxy-server=http://127.0.0.1:46185",
+    "--proxy-bypass-list=127.0.0.1;localhost",
+    "--disable-background-networking"
+  ],
+  "origins": {
+    "https://openrailwaymap.app": "http://127.0.0.1:37043",
+    "https://tuiles.enliberte.fr": "http://127.0.0.1:37209",
+    "first-party": "http://127.0.0.1:41259"
+  },
+  "network": "Loopback HTTP/1.1, no network/CPU throttle, Cache-Control max-age=3600 for synthetic data/assets. No live provider connection. Each original provider origin mapped to a separate loopback port. No Playwright route or CDP Fetch interception.",
+  "fixture": {
+    "type": "Feature",
+    "properties": {
+      "id": "fixture-wuhan-mainline",
+      "feature": "rail",
+      "railway": "rail",
+      "state": "present",
+      "usage": "main",
+      "service": "",
+      "maxspeed": 250,
+      "gaugeint0": 1435
+    },
+    "geometry": {
+      "type": "LineString",
+      "coordinates": [
+        [
+          113.8,
+          30.42
+        ],
+        [
+          114.35,
+          30.58
+        ],
+        [
+          114.92,
+          30.65
+        ]
+      ]
+    }
+  }
+}

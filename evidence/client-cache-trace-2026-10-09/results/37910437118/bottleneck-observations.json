@@ -1,0 +1,240 @@
+{
+  "samples": [
+    {
+      "sample": "p1-cold",
+      "mapReadyMs": 828.3999999999942,
+      "usableMs": 3030.5,
+      "lastStartupResourceEndMs": 2231.199999999997,
+      "gpuProcessCpuS": 4.65,
+      "stableProcessCpuS": 6.2700000000000005,
+      "gpuShareOfStableProcessCpu": 0.7416267942583732,
+      "processIdsAdded": [],
+      "processIdsLost": [],
+      "shaderProgramConstructorSampledElapsedMs": 1046.857,
+      "totalProfilerSampledElapsedMs": 3247.656,
+      "observedCdpOutstandingPeakByOrigin": {
+        "atlas.fixture": 18,
+        "data": 1,
+        "blob": 1,
+        "tuiles.enliberte.fr": 1,
+        "openrailwaymap.app": 4
+      },
+      "requestsWithoutCdpTerminalEvents": [
+        {
+          "origin": "atlas.fixture",
+          "url": "http://atlas.fixture/atlas-project/vendor/dem-worker.js?v=20261009-maplibre-attribution-1"
+        },
+        {
+          "origin": "atlas.fixture",
+          "url": "http://atlas.fixture/atlas-project/vendor/depth-worker.js?v=20261009-maplibre-attribution-1"
+        },
+        {
+          "origin": "blob",
+          "url": "blob:http://127.0.0.1:41259/5f2845e1-6400-4065-a545-c3964e15074b"
+        },
+        {
+          "origin": "atlas.fixture",
+          "url": "http://atlas.fixture/atlas-project/vendor/track-worker.js?v=20261009-maplibre-attribution-1"
+        }
+      ],
+      "lastServerResponseIsNotLastDisplay": "CPU/renderer work and readiness-poll/instrumentation overhead remain after HTTP response completion"
+    },
+    {
+      "sample": "p1-warm",
+      "mapReadyMs": 678.2000000000116,
+      "usableMs": 3261.4000000000087,
+      "lastStartupResourceEndMs": 2091.600000000006,
+      "gpuProcessCpuS": 5.019999999999998,
+      "stableProcessCpuS": 6.789999999999998,
+      "gpuShareOfStableProcessCpu": 0.7393225331369659,
+      "processIdsAdded": [],
+      "processIdsLost": [],
+      "shaderProgramConstructorSampledElapsedMs": 163.529,
+      "totalProfilerSampledElapsedMs": 3465.561,
+      "observedCdpOutstandingPeakByOrigin": {
+        "atlas.fixture": 18,
+        "data": 1,
+        "blob": 1,
+        "tuiles.enliberte.fr": 1,
+        "openrailwaymap.app": 4
+      },
+      "requestsWithoutCdpTerminalEvents": [
+        {
+          "origin": "atlas.fixture",
+          "url": "http://atlas.fixture/atlas-project/vendor/dem-worker.js?v=20261009-maplibre-attribution-1"
+        },
+        {
+          "origin": "atlas.fixture",
+          "url": "http://atlas.fixture/atlas-project/vendor/depth-worker.js?v=20261009-maplibre-attribution-1"
+        },
+        {
+          "origin": "blob",
+          "url": "blob:http://127.0.0.1:41259/6aadb04d-bbd8-4f64-82e3-2f60fa9818fa"
+        },
+        {
+          "origin": "atlas.fixture",
+          "url": "http://atlas.fixture/atlas-project/vendor/track-worker.js?v=20261009-maplibre-attribution-1"
+        }
+      ],
+      "lastServerResponseIsNotLastDisplay": "CPU/renderer work and readiness-poll/instrumentation overhead remain after HTTP response completion"
+    },
+    {
+      "sample": "p2-cold",
+      "mapReadyMs": 847.8999999999942,
+      "usableMs": 3244.300000000003,
+      "lastStartupResourceEndMs": 2354.5,
+      "gpuProcessCpuS": 4.989999999999999,
+      "stableProcessCpuS": 6.719999999999999,
+      "gpuShareOfStableProcessCpu": 0.7425595238095238,
+      "processIdsAdded": [],
+      "processIdsLost": [],
+      "shaderProgramConstructorSampledElapsedMs": 1186.793,
+      "totalProfilerSampledElapsedMs": 3448.614,
+      "observedCdpOutstandingPeakByOrigin": {
+        "atlas.fixture": 18,
+        "data": 1,
+        "blob": 1,
+        "tuiles.enliberte.fr": 1,
+        "openrailwaymap.app": 4
+      },
+      "requestsWithoutCdpTerminalEvents": [
+        {
+          "origin": "atlas.fixture",
+          "url": "http://atlas.fixture/atlas-project/vendor/dem-worker.js?v=20261009-maplibre-attribution-1"
+        },
+        {
+          "origin": "atlas.fixture",
+          "url": "http://atlas.fixture/atlas-project/vendor/depth-worker.js?v=20261009-maplibre-attribution-1"
+        },
+        {
+          "origin": "blob",
+          "url": "blob:http://127.0.0.1:41259/75708e04-5ac5-4690-8695-1d7d393b3e6c"
+        },
+        {
+          "origin": "atlas.fixture",
+          "url": "http://atlas.fixture/atlas-project/vendor/track-worker.js?v=20261009-maplibre-attribution-1"
+        }
+      ],
+      "lastServerResponseIsNotLastDisplay": "CPU/renderer work and readiness-poll/instrumentation overhead remain after HTTP response completion"
+    },
+    {
+      "sample": "p2-warm",
+      "mapReadyMs": 672,
+      "usableMs": 3109,
+      "lastStartupResourceEndMs": 2174.300000000003,
+      "gpuProcessCpuS": 4.879999999999999,
+      "stableProcessCpuS": 6.549999999999999,
+      "gpuShareOfStableProcessCpu": 0.7450381679389313,
+      "processIdsAdded": [],
+      "processIdsLost": [],
+      "shaderProgramConstructorSampledElapsedMs": 755.436,
+      "totalProfilerSampledElapsedMs": 3300.596,
+      "observedCdpOutstandingPeakByOrigin": {
+        "atlas.fixture": 18,
+        "data": 1,
+        "blob": 1,
+        "tuiles.enliberte.fr": 1,
+        "openrailwaymap.app": 4
+      },
+      "requestsWithoutCdpTerminalEvents": [
+        {
+          "origin": "atlas.fixture",
+          "url": "http://atlas.fixture/atlas-project/vendor/dem-worker.js?v=20261009-maplibre-attribution-1"
+        },
+        {
+          "origin": "atlas.fixture",
+          "url": "http://atlas.fixture/atlas-project/vendor/depth-worker.js?v=20261009-maplibre-attribution-1"
+        },
+        {
+          "origin": "blob",
+          "url": "blob:http://127.0.0.1:41259/302012bf-5fdf-4e4f-85eb-38236c532ac9"
+        },
+        {
+          "origin": "atlas.fixture",
+          "url": "http://atlas.fixture/atlas-project/vendor/track-worker.js?v=20261009-maplibre-attribution-1"
+        }
+      ],
+      "lastServerResponseIsNotLastDisplay": "CPU/renderer work and readiness-poll/instrumentation overhead remain after HTTP response completion"
+    },
+    {
+      "sample": "p3-cold",
+      "mapReadyMs": 846.9000000000087,
+      "usableMs": 3209.800000000003,
+      "lastStartupResourceEndMs": 2224.100000000006,
+      "gpuProcessCpuS": 4.989999999999999,
+      "stableProcessCpuS": 6.629999999999999,
+      "gpuShareOfStableProcessCpu": 0.7526395173453997,
+      "processIdsAdded": [],
+      "processIdsLost": [],
+      "shaderProgramConstructorSampledElapsedMs": 1114.568,
+      "totalProfilerSampledElapsedMs": 3421.49,
+      "observedCdpOutstandingPeakByOrigin": {
+        "atlas.fixture": 18,
+        "data": 1,
+        "blob": 1,
+        "tuiles.enliberte.fr": 1,
+        "openrailwaymap.app": 4
+      },
+      "requestsWithoutCdpTerminalEvents": [
+        {
+          "origin": "atlas.fixture",
+          "url": "http://atlas.fixture/atlas-project/vendor/dem-worker.js?v=20261009-maplibre-attribution-1"
+        },
+        {
+          "origin": "atlas.fixture",
+          "url": "http://atlas.fixture/atlas-project/vendor/depth-worker.js?v=20261009-maplibre-attribution-1"
+        },
+        {
+          "origin": "blob",
+          "url": "blob:http://127.0.0.1:41259/13ce745d-f9f1-4da4-af1d-60d910e8598b"
+        },
+        {
+          "origin": "atlas.fixture",
+          "url": "http://atlas.fixture/atlas-project/vendor/track-worker.js?v=20261009-maplibre-attribution-1"
+        }
+      ],
+      "lastServerResponseIsNotLastDisplay": "CPU/renderer work and readiness-poll/instrumentation overhead remain after HTTP response completion"
+    },
+    {
+      "sample": "p3-warm",
+      "mapReadyMs": 644.2999999999884,
+      "usableMs": 2899.699999999997,
+      "lastStartupResourceEndMs": 1869.2999999999884,
+      "gpuProcessCpuS": 4.529999999999999,
+      "stableProcessCpuS": 6.1899999999999995,
+      "gpuShareOfStableProcessCpu": 0.7318255250403877,
+      "processIdsAdded": [],
+      "processIdsLost": [],
+      "shaderProgramConstructorSampledElapsedMs": 34.108,
+      "totalProfilerSampledElapsedMs": 3106.788,
+      "observedCdpOutstandingPeakByOrigin": {
+        "atlas.fixture": 18,
+        "data": 1,
+        "blob": 1,
+        "tuiles.enliberte.fr": 1,
+        "openrailwaymap.app": 4
+      },
+      "requestsWithoutCdpTerminalEvents": [
+        {
+          "origin": "atlas.fixture",
+          "url": "http://atlas.fixture/atlas-project/vendor/dem-worker.js?v=20261009-maplibre-attribution-1"
+        },
+        {
+          "origin": "atlas.fixture",
+          "url": "http://atlas.fixture/atlas-project/vendor/depth-worker.js?v=20261009-maplibre-attribution-1"
+        },
+        {
+          "origin": "blob",
+          "url": "blob:http://127.0.0.1:41259/cfb48251-707c-4a5a-8b88-7469fa671f82"
+        },
+        {
+          "origin": "atlas.fixture",
+          "url": "http://atlas.fixture/atlas-project/vendor/track-worker.js?v=20261009-maplibre-attribution-1"
+        }
+      ],
+      "lastServerResponseIsNotLastDisplay": "CPU/renderer work and readiness-poll/instrumentation overhead remain after HTTP response completion"
+    }
+  ],
+  "qualification": "Shader stack sample intervals are sampled elapsed time, not CPU counters; GPU-process CPU is software rendering under a two-vCPU quota, not physical-GPU utilization. No imposed fixed startup delay; added two-rAF readiness contribution is not isolated.",
+  "programSource": "maplibre-gl-5.24.0-atlas.1.js line46, Ui constructor at column323312: createProgram, compileShader and linkProgram."
+}

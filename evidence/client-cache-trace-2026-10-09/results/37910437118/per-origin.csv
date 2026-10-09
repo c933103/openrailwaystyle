@@ -1,0 +1,43 @@
+sample,phase,origin,wireRequests,wirePayloadBytes,statusCounts,wirePeakConcurrency,repeatedWireKeyExcess,conditionalRequests,prematureCloses,cdpRequestStarts,cdpCacheSignals,cdpEncodedResponseBytesKnown,cdpDecodedChunkBytes,cdpFailures,cdpMissingTerminalEvents,finishedInLaterCameraEpoch
+p1-cold,startup,first-party,39,4032425,"{""200"": 39}",6,0,0,0,39,0,3968277,3937367,0,3,0
+p1-cold,startup,https://openrailwaymap.app,88,1550,"{""200"": 88}",1,0,0,0,88,0,77510,1550,0,0,0
+p1-cold,startup,https://tuiles.enliberte.fr,2,116054,"{""200"": 1, ""206"": 1}",1,0,0,0,2,0,117813,116054,0,0,0
+p1-cold,first-pan,first-party,0,0,{},0,0,0,0,1,1,0,1036,0,0,0
+p1-cold,first-pan,https://openrailwaymap.app,16,193,"{""200"": 16}",1,0,0,0,16,0,14003,193,0,0,0
+p1-cold,reset,first-party,0,0,{},0,0,0,0,1,1,0,1036,0,0,0
+p1-cold,cached-pan,first-party,0,0,{},0,0,0,0,1,1,0,1036,0,0,0
+p1-warm,startup,first-party,1,44519,"{""200"": 1}",1,0,0,0,39,35,45361,3937367,0,3,0
+p1-warm,startup,https://openrailwaymap.app,0,0,{},0,0,0,0,88,88,0,1550,0,0,0
+p1-warm,startup,https://tuiles.enliberte.fr,0,0,{},0,0,0,0,2,2,0,116054,0,0,0
+p1-warm,first-pan,first-party,0,0,{},0,0,0,0,1,1,0,1036,0,0,0
+p1-warm,first-pan,https://openrailwaymap.app,0,0,{},0,0,0,0,16,16,0,193,0,0,0
+p1-warm,reset,first-party,0,0,{},0,0,0,0,1,1,0,1036,0,0,0
+p1-warm,cached-pan,first-party,0,0,{},0,0,0,0,1,1,0,1036,0,0,0
+p2-cold,startup,first-party,39,4032425,"{""200"": 39}",6,0,0,0,39,0,3968277,3937367,0,3,0
+p2-cold,startup,https://openrailwaymap.app,88,1550,"{""200"": 88}",1,0,0,0,88,0,77510,1550,0,0,0
+p2-cold,startup,https://tuiles.enliberte.fr,2,116054,"{""200"": 1, ""206"": 1}",1,0,0,0,2,0,117813,116054,0,0,0
+p2-cold,first-pan,first-party,0,0,{},0,0,0,0,1,1,0,1036,0,0,0
+p2-cold,first-pan,https://openrailwaymap.app,16,193,"{""200"": 16}",1,0,0,0,16,0,14003,193,0,0,0
+p2-cold,reset,first-party,0,0,{},0,0,0,0,1,1,0,1036,0,0,0
+p2-cold,cached-pan,first-party,0,0,{},0,0,0,0,1,1,0,1036,0,0,0
+p2-warm,startup,first-party,1,44519,"{""200"": 1}",1,0,0,0,39,35,45361,3937367,0,3,0
+p2-warm,startup,https://openrailwaymap.app,0,0,{},0,0,0,0,88,88,0,1550,0,0,0
+p2-warm,startup,https://tuiles.enliberte.fr,0,0,{},0,0,0,0,2,2,0,116054,0,0,0
+p2-warm,first-pan,first-party,0,0,{},0,0,0,0,1,1,0,1036,0,0,0
+p2-warm,first-pan,https://openrailwaymap.app,0,0,{},0,0,0,0,16,16,0,193,0,0,0
+p2-warm,reset,first-party,0,0,{},0,0,0,0,1,1,0,1036,0,0,0
+p2-warm,cached-pan,first-party,0,0,{},0,0,0,0,1,1,0,1036,0,0,0
+p3-cold,startup,first-party,39,4032425,"{""200"": 39}",6,0,0,0,39,0,3968277,3937367,0,3,0
+p3-cold,startup,https://openrailwaymap.app,88,1550,"{""200"": 88}",1,0,0,0,88,0,77510,1550,0,0,0
+p3-cold,startup,https://tuiles.enliberte.fr,2,116054,"{""200"": 1, ""206"": 1}",1,0,0,0,2,0,117813,116054,0,0,0
+p3-cold,first-pan,first-party,0,0,{},0,0,0,0,1,1,0,1036,0,0,0
+p3-cold,first-pan,https://openrailwaymap.app,16,193,"{""200"": 16}",1,0,0,0,16,0,14003,193,0,0,0
+p3-cold,reset,first-party,0,0,{},0,0,0,0,1,1,0,1036,0,0,0
+p3-cold,cached-pan,first-party,0,0,{},0,0,0,0,1,1,0,1036,0,0,0
+p3-warm,startup,first-party,1,44519,"{""200"": 1}",1,0,0,0,39,35,45361,3937367,0,3,0
+p3-warm,startup,https://openrailwaymap.app,0,0,{},0,0,0,0,88,88,0,1550,0,0,0
+p3-warm,startup,https://tuiles.enliberte.fr,0,0,{},0,0,0,0,2,2,0,116054,0,0,0
+p3-warm,first-pan,first-party,0,0,{},0,0,0,0,1,1,0,1036,0,0,0
+p3-warm,first-pan,https://openrailwaymap.app,0,0,{},0,0,0,0,16,16,0,193,0,0,0
+p3-warm,reset,first-party,0,0,{},0,0,0,0,1,1,0,1036,0,0,0
+p3-warm,cached-pan,first-party,0,0,{},0,0,0,0,1,1,0,1036,0,0,0
