@@ -52,24 +52,25 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: worldwide-frequency-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}
-  # Supersede stale fixture checks; preserve costly production scans and caches.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: worldwide-frequency-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.event_name == 'push' && format('push-{0}', github.ref) || github.ref }}
+  # Offline pushes/PRs cannot replace or cancel a queued production refresh.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
 jobs:
+  # Retain the existing check name; relevant main pushes validate offline too.
   validate-pr:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Validate PR code with frequency fixtures and loopback-only networking
+      - name: Validate code with frequency fixtures and loopback-only networking
         run: |
           # Only this child process loses external networking. Loopback serves
           # the real range/conditional-download fixtures; no provider is queried.
@@ -89,7 +90,7 @@ jobs:
               tests/service-frequency-workflow.test.mjs
           ' _ "$(id -u)" "$(id -g)" "$(command -v node)"
   catalogue:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -144,7 +145,7 @@ jobs:
             catalogue/inventory-0.json
           retention-days: 14
   compile:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: catalogue
     strategy:
       fail-fast: false
@@ -184,7 +185,7 @@ jobs:
           path: frequency-output/
           retention-days: 14
   assemble:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: [catalogue, compile]
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -208,7 +209,7 @@ jobs:
           retention-days: 14
   publish:
     needs: assemble
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
       contents: write
