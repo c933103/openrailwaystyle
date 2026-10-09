@@ -161,6 +161,7 @@ def build_evidence(source, identity, trips, times, stops, frequencies, active,
                            'valid_until': trip['_calendar_until'],
                            'calendar_state': 'expired' if trip['_calendar_expired'] else 'future' if trip['_calendar_future'] else 'current',
                            'active_service_dates': dates, 'departures': departures, 'frequencies': frequency_rows}
+            observation['fingerprint'] = fingerprint([feed_id, digest, source['service_date'], observation])
             retain(observations, None, observation, 'observations')
         result = {'schema': 1, 'status': 'captured', 'reasons': [], 'limits': dict(LIMITS),
                   'source': {'feed_id': feed_id, 'sha256': digest, 'service_date': source['service_date'],

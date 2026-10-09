@@ -3,7 +3,9 @@
 import {createHash} from 'node:crypto';
 
 const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
-const hash = value => createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
+const canonicalText = value => JSON.stringify(canonical(value));
+const hashText = text => createHash('sha256').update(text).digest('hex');
+const hash = value => hashText(canonicalText(value));
 const id = value => typeof value === 'string' && value.length > 0 && value.length <= 1024 && Buffer.byteLength(value) <= 1024;
 const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const instant = value => typeof value === 'string' && value.length <= 40 && /^\d{4}-\d\d-\d\dT/.test(value) && Number.isFinite(Date.parse(value));
@@ -36,6 +38,8 @@ function capturedTags(tags) {
 }
 const patternFields = ['id', 'source_route_id', 'compiled_route_id', 'agency_id', 'route_ref', 'direction_id', 'shape_id', 'calls'];
 const callFields = ['stop_id', 'station_id', 'pickup_type', 'drop_off_type'];
+const observationFields = ['id', 'trip_id', 'service_id', 'pattern_id', 'timezone', 'valid_until', 'calendar_state', 'active_service_dates', 'departures', 'frequencies', 'fingerprint'];
+const offset = value => Number.isSafeInteger(value) && value >= 0 && value <= 366 * 86400;
 const osmFields = ['schema', 'status', 'reasons', 'relation_id', 'version', 'timestamp', 'snapshot', 'tags', 'served_members', 'track_members', 'fingerprint'];
 
 // Preserve OSM tags and served-member order before a display view discards
@@ -89,6 +93,22 @@ export function matchTimetablePattern(input = {}) {
   if (!digest(pattern.id) || hash([source.feed_id, source.sha256, definition]) !== pattern.id) return result('conflicting', 'pattern_fingerprint_mismatch');
   const observations = evidence.observations.filter(row => row?.pattern_id === pattern_id);
   if (!observations.length) return result('missing_evidence', 'missing_observations');
+  let observationBytes = 0;
+  const observationIds = new Set();
+  for (const observation of observations) {
+    if (!record(observation, observationFields) || !digest(observation.id) || !id(observation.trip_id) || !id(observation.service_id) ||
+        !id(observation.timezone) || !Number.isFinite(observation.valid_until) || !['current', 'future', 'expired'].includes(observation.calendar_state) ||
+        !array(observation.active_service_dates, 367) || observation.active_service_dates.some(day => typeof day !== 'string' || !/^\d{4}-\d\d-\d\d$/.test(day)) ||
+        !array(observation.departures, 512) || observation.departures.length !== pattern.calls.length || observation.departures.some(value => value !== null && !offset(value)) ||
+        !array(observation.frequencies, 128) || observation.frequencies.some(row => !record(row, ['start', 'end', 'headway_secs', 'exact_times']) || !offset(row.start) || !offset(row.end) || row.end <= row.start || !positive(row.headway_secs) || !['0', '1'].includes(row.exact_times)) ||
+        !digest(observation.fingerprint)) return result('missing_evidence', 'invalid_observation_schema');
+    const {fingerprint, ...definition} = observation;
+    const encoded = canonicalText([source.feed_id, source.sha256, source.service_date, definition]);
+    observationBytes += Buffer.byteLength(encoded);
+    if (observationBytes > 16 * 1024 * 1024) return result('missing_evidence', 'observation_work_limit');
+    if (observationIds.has(observation.id) || observation.id !== hash([source.feed_id, source.sha256, observation.trip_id]) || hashText(encoded) !== fingerprint) return result('conflicting', 'observation_fingerprint_mismatch');
+    observationIds.add(observation.id);
+  }
   if (!observations.some(row => row.calendar_state === 'current' && Number.isFinite(row.valid_until) && now <= row.valid_until)) return result(observations.every(row => row.calendar_state === 'expired' || now > row.valid_until) ? 'stale' : 'missing_evidence', 'no_current_observations');
   if (!['0', '1'].includes(pattern.direction_id)) return result('missing_evidence', 'missing_direction');
   if (!array(candidates, 256) || !array(crosswalk, 1024)) return result('missing_evidence', 'candidate_or_crosswalk_limit');

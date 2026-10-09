@@ -53,6 +53,11 @@ identity uses the configured feed ID and exact ZIP SHA-256, not a public URL.
   link, timezone, validity, current/future/expired state, applicable service dates,
   ordered departure offsets and unexpanded frequency intervals with `exact_times`.
   Blank time remains `null`; a departure beyond 24:00 retains the full offset.
+  Each complete observation also has a content fingerprint binding its pattern,
+  calendar state and validity to the exact feed revision and reference date.
+  The matcher validates the bounded observation schema and this binding before
+  using current-service evidence. Hashes guarantee consistency, not independent
+  proof of source truth or a signature from the provider.
 - `stops`: deduplicated actually referenced stops/platforms and parents, with
   names and coordinates as source evidence. Names/coordinates do not establish
   station equality. This is separate from the old segment `stops` field, which
@@ -138,7 +143,7 @@ The candidate search is bounded to 256 candidates, 1,024 crosswalk rows, 32 rout
 bindings and 128 variants per candidate, plus 100,000 total inspected OSM/variant
 references. OSM capture itself is bounded to 10,000 members, 512 served members
 and 32 identity tags, scanning at most 256 raw tag keys before withholding
-capture. Pattern, call, source-envelope and captured-OSM records have explicit
+capture. Pattern, call, observation, source-envelope and captured-OSM records have explicit
 bounded field whitelists before canonical hashing; nested/oversized values or
 unsupported extra fields are rejected rather than recursively traversed or
 copied to results. Resource-limit outcomes remain `missing_evidence`.

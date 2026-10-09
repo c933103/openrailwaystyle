@@ -8,19 +8,26 @@ const canonical = value => Array.isArray(value) ? value.map(canonical) : value &
 const hash = value => createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
 const snapshot = '2026-10-05T00:00:00Z', sha = 'a'.repeat(64);
 const relation = (changes = {}) => ({type: 'relation', id: 1, version: 2, timestamp: '2026-10-01T00:00:00Z', tags: {route: 'train', ref: 'R', operator: 'Example', 'gtfs:route_id': 'R'}, members: [{type: 'node', ref: 1, role: 'stop'}, {type: 'way', ref: 100, role: ''}, {type: 'node', ref: 2, role: 'stop'}], ...changes});
+function sealObservations(input) {
+  for (const observation of input.evidence.observations) {
+    const {fingerprint, ...definition} = observation;
+    observation.fingerprint = hash([input.evidence.source.feed_id, input.evidence.source.sha256, input.evidence.source.service_date, definition]);
+  }
+  return input;
+}
 function fixture() {
   const pattern = {source_route_id: 'R', compiled_route_id: 'R', agency_id: 'A', route_ref: 'R', direction_id: '0', shape_id: null, calls: ['a', 'b'].map(station_id => ({stop_id: station_id, station_id, pickup_type: '0', drop_off_type: '0'}))};
   pattern.id = hash(['feed', sha, pattern]);
   const source = {feed_id: 'feed', sha256: sha, service_date: '2026-10-05', valid_until: 2000000000};
   const bound = {feed_id: 'feed', source_sha256: sha, status: 'verified'};
-  return {
-    evidence: {schema: 1, status: 'captured', source, patterns: [pattern], observations: [{pattern_id: pattern.id, calendar_state: 'current', valid_until: 2000000000}], stops: []},
+  return sealObservations({
+    evidence: {schema: 1, status: 'captured', source, patterns: [pattern], observations: [{id: hash(['feed', sha, 'trip']), trip_id: 'trip', service_id: 'W', pattern_id: pattern.id, timezone: 'Europe/Helsinki', calendar_state: 'current', valid_until: 2000000000, active_service_dates: ['2026-10-05'], departures: [28800, 29400], frequencies: []}], stops: []},
     pattern_id: pattern.id,
     context: {feed_id: 'feed', source_sha256: sha, service_date: source.service_date, osm_snapshot: snapshot, review_until: 2000000000, candidate_inventory: 'complete'},
     candidates: [{service_id: 'r1', status: 'verified', eligibility: 'eligible', osm: captureOsmServiceEvidence(relation(), snapshot), eligible_way_ids: [100], route_bindings: [{...bound, route_id: 'R'}], variants: [{id: 'outbound', status: 'verified', direction_id: '0', stations: ['node:1', 'node:2'], section_way_ids: [100]}]}],
     crosswalk: ['a', 'b'].map((station_id, i) => ({...bound, station_id, osm_station_id: `node:${i + 1}`, osm_snapshot: snapshot})),
     now: 1791158400,
-  };
+  });
 }
 const status = input => matchTimetablePattern(input).status;
 
@@ -79,7 +86,7 @@ test('missing, future and expired evidence are never converted into a zero-frequ
     [x => { x.candidates[0].route_bindings[0].source_sha256 = 'b'.repeat(64); }, 'stale'],
     [x => { x.crosswalk[0].osm_snapshot = '2026-10-04T00:00:00Z'; }, 'stale'],
   ];
-  for (const [mutate, expected] of cases) { const input = fixture(); mutate(input); const output = matchTimetablePattern(input); assert.equal(output.status, expected); assert.equal(output.frequency_status, 'not_evaluated'); assert.equal(output.profiles, undefined); }
+  for (const [mutate, expected] of cases) { const input = fixture(); mutate(input); sealObservations(input); const output = matchTimetablePattern(input); assert.equal(output.status, expected); assert.equal(output.frequency_status, 'not_evaluated'); assert.equal(output.profiles, undefined); }
 });
 test('branches, opposing directions, express, short-working and loops require explicit ordered variants', () => {
   for (const stations of [['node:2', 'node:1'], ['node:1'], ['node:1', 'node:3'], ['node:1', 'node:2', 'node:1']]) {
@@ -141,7 +148,8 @@ test('total candidate work is capped before producing a match or copying section
 test('non-served timepoints cannot supply stop evidence and conditional calls remain explicit', () => {
   const input = fixture(), pattern = input.evidence.patterns[0];
   pattern.calls.splice(1, 0, {stop_id: 'pass', station_id: 'pass', pickup_type: '1', drop_off_type: '1'});
-  const update = () => { const {id, ...definition} = pattern; pattern.id = hash(['feed', sha, definition]); input.pattern_id = pattern.id; input.evidence.observations[0].pattern_id = pattern.id; };
+  input.evidence.observations[0].departures = [28800, 29100, 29400];
+  const update = () => { const {id, ...definition} = pattern; pattern.id = hash(['feed', sha, definition]); input.pattern_id = pattern.id; input.evidence.observations[0].pattern_id = pattern.id; sealObservations(input); };
   update(); assert.equal(status(input), 'verified');
   pattern.calls[1].pickup_type = '2'; update(); assert.equal(status(input), 'missing_evidence');
 });
@@ -160,7 +168,7 @@ test('reviewed branch, express, short-working, loop and reverse variants keep on
     pattern.calls = selected.stations.map(station => ({stop_id: station, station_id: station, pickup_type: '0', drop_off_type: '0'}));
     pattern.direction_id = selected.direction_id;
     const {id, ...definition} = pattern;
-    pattern.id = hash(['feed', sha, definition]); input.pattern_id = pattern.id; input.evidence.observations[0].pattern_id = pattern.id;
+    pattern.id = hash(['feed', sha, definition]); input.pattern_id = pattern.id; input.evidence.observations[0].pattern_id = pattern.id; input.evidence.observations[0].departures = pattern.calls.map((_, i) => 28800 + i * 600); sealObservations(input);
     input.candidates[0].osm = captureOsmServiceEvidence(relation({members: [
       ...[1, 2, 3, 4].map(ref => ({type: 'node', ref, role: 'stop'})),
       ...[100, 101, 102].map(ref => ({type: 'way', ref, role: ''})),
@@ -202,4 +210,32 @@ test('OSM capture bounds raw tag scanning before materializing selected entries'
   assert.deepEqual(captureOsmServiceEvidence(raw, snapshot).reasons, ['raw_tag_limit_or_invalid']);
   raw.tags = {operator: {nested: {value: 'not a tag string'}}};
   assert.equal(captureOsmServiceEvidence(raw, snapshot).status, 'incomplete');
+});
+
+test('a current observation cannot be relinked to revive an expired pattern', () => {
+  const input = fixture(), expired = input.evidence.patterns[0];
+  input.evidence.observations[0].calendar_state = 'expired';
+  input.evidence.observations[0].valid_until = input.now - 1;
+  const current = {...structuredClone(expired), shape_id: 'current-branch'};
+  const {id, ...definition} = current; current.id = hash(['feed', sha, definition]);
+  input.evidence.patterns.push(current);
+  input.evidence.observations.push({...structuredClone(input.evidence.observations[0]), id: hash(['feed', sha, 'current']), trip_id: 'current', pattern_id: current.id, calendar_state: 'current', valid_until: 2000000000});
+  sealObservations(input);
+  assert.equal(status(input), 'stale');
+  input.evidence.observations[1].pattern_id = expired.id;
+  assert.equal(status(input), 'conflicting', 'relinking cannot revive the expired pattern');
+});
+
+test('observation calendar, source-trip identity and bounded complete schema are checked before use', () => {
+  for (const mutate of [
+    input => { input.evidence.observations[0].valid_until++; },
+    input => { input.evidence.observations[0].calendar_state = 'expired'; },
+    input => { input.evidence.observations[0].trip_id = 'different'; },
+  ]) { const input = fixture(); mutate(input); assert.equal(status(input), 'conflicting'); }
+  for (const mutate of [
+    input => { input.evidence.observations[0].extra = {nested: {value: 'unsupported'}}; },
+    input => { input.evidence.observations[0].departures = Array(513).fill(0); },
+    input => { input.evidence.observations[0].active_service_dates = Array(368).fill('2026-10-05'); },
+    input => { input.evidence.observations[0].timezone = {nested: 'unsupported'}; },
+  ]) { const input = fixture(); mutate(input); assert.equal(status(input), 'missing_evidence'); }
 });
