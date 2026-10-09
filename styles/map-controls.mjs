@@ -219,6 +219,22 @@ export function installPwaInstall({window = globalThis.window, document = window
     // the body. Transfer it first, without disturbing a user's later focus.
     if (nativeFocused && (nativeHidden || prompting) && !hidden && isOpen()) closeButton.focus();
     opener.hidden = hidden;
+    // Keep the toolbar action focusable while the browser prompt is pending.
+    // The click guard prevents another prompt or an accidental help dialog.
+    if (prompting) {
+      opener.setAttribute('aria-busy', 'true');
+      opener.setAttribute('aria-disabled', 'true');
+    } else {
+      opener.removeAttribute('aria-busy');
+      opener.removeAttribute('aria-disabled');
+    }
+    if (deferredPrompt || prompting) {
+      opener.removeAttribute('aria-haspopup');
+      opener.removeAttribute('aria-controls');
+    } else {
+      opener.setAttribute('aria-haspopup', 'dialog');
+      opener.setAttribute('aria-controls', dialog.id);
+    }
     ios.hidden = !iosInstructions;
     generic.hidden = iosInstructions;
     nativeButton.hidden = nativeHidden;
@@ -227,7 +243,7 @@ export function installPwaInstall({window = globalThis.window, document = window
     if (hidden) close();
   }
   function open() {
-    if (unavailable() || document.body.dataset.ui === 'watch' || isOpen()) return;
+    if (destroyed || unavailable() || document.body.dataset.ui === 'watch' || isOpen()) return;
     // WebKit pointer clicks need not focus buttons. Restore the invoking
     // control even when the previously focused control remains active.
     returnFocus = opener;
@@ -264,9 +280,11 @@ export function installPwaInstall({window = globalThis.window, document = window
     status.textContent = text;
     status.hidden = !text;
   };
-  async function requestInstall() {
-    if (!deferredPrompt || prompting || unavailable()) return;
+  async function requestInstall({direct = false} = {}) {
+    if (!deferredPrompt || prompting || destroyed || unavailable() || document.body.dataset.ui === 'watch') return;
     const prompt = deferredPrompt;
+    const initialFocus = document.activeElement, initialLocation = window.location.href;
+    let failed = false;
     // Each browser event is usable once, even if the prompt is dismissed or
     // fails. A later beforeinstallprompt event can offer a fresh attempt.
     deferredPrompt = null;
@@ -283,15 +301,29 @@ export function installPwaInstall({window = globalThis.window, document = window
           ? 'Installation dismissed. You can still use the browser menu instructions below.'
           : 'Finish any installation steps shown by your browser, or use the menu instructions below.');
     } catch {
+      failed = true;
       setStatus('Your browser could not open the installation prompt. Use the browser menu instructions below.');
     } finally {
       prompting = false;
       render();
+      // A failed direct prompt can fall back to instructions, but a delayed
+      // result must not interrupt another control or a changed map location.
+      const sameInteraction = direct && !destroyed && !unavailable() && document.body.dataset.ui !== 'watch'
+        && window.location.href === initialLocation
+        && [initialFocus, opener, document.body].includes(document.activeElement);
+      if (sameInteraction && !isOpen()) {
+        if (failed) open();
+        else if (document.activeElement === document.body) opener.focus();
+      }
     }
   }
-  listen(opener, 'click', open);
+  listen(opener, 'click', () => {
+    if (prompting || destroyed || unavailable() || document.body.dataset.ui === 'watch') return;
+    if (deferredPrompt) requestInstall({direct: true});
+    else open();
+  });
   listen(closeButton, 'click', close);
-  listen(nativeButton, 'click', requestInstall);
+  listen(nativeButton, 'click', () => requestInstall());
   listen(dialog, 'close', () => { if (!isOpen()) restoreFocus(); });
   listen(dialog, 'cancel', event => { event.preventDefault(); close(); });
   listen(dialog, 'keydown', event => {
