@@ -92,7 +92,11 @@ node scripts/serve.mjs
 ```
 
 Open [http://localhost:4173](http://localhost:4173). The local server serves
-`styles/`; production remains a static site without an application backend.
+`styles/` on loopback only; production remains a static site without an application
+backend. Directory URLs ending in `/` use `index.html`. Missing/unreadable files
+and non-file paths return 404. If a file read fails after a response starts, that
+response is closed and the preview remains available for subsequent requests.
+Byte-range responses for archive assets remain supported.
 
 ## Source layout and generated files
 
