@@ -3,6 +3,18 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 
+test('PR site validation executes offline search fixtures instead of the live provider probe',async()=>{
+  const workflow=await readFile(new URL('../.github/workflows/site.yml',import.meta.url),'utf8');
+  const steps=workflow.split(/^      - /m);
+  const live=steps.filter(step=>/run: node scripts\/check-search-api\.mjs/.test(step));
+  assert.equal(live.length,1,'retain exactly one live production probe');
+  assert.match(live[0],/^        if: github\.event_name != 'pull_request'$/m);
+  const fixtures=steps.filter(step=>/run: node --test tests\/search-api\.test\.mjs/.test(step));
+  assert.equal(fixtures.length,1);
+  assert.match(fixtures[0],/^        if: github\.event_name == 'pull_request'$/m);
+  assert.doesNotMatch(fixtures[0],/continue-on-error/,'fixture failures must fail PR validation');
+});
+
 test('the separate live station-search probe rejects redirects before following them',async()=>{
   const source=(await readFile(new URL('../scripts/check-search-api.mjs',import.meta.url),'utf8')).replace(/^import .*;$/m,'');
   const calls=[];

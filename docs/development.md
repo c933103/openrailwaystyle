@@ -175,7 +175,9 @@ of native browser service-worker network-interception coverage.
 
 The matrix's Node preparation reads local snapshots/fixtures. Playwright's
 Node-side route fetches share the same pre-request guard. Outside that matrix,
-the intentionally live single station-search probe and actual deployed-byte
+the single live station-search probe runs only on production events. Pull
+requests execute the actual checker with synthetic positive and negative
+fetch/CORS fixtures instead. The live probe and actual deployed-byte
 verification reject redirects before following them. Package installation,
 GitHub snapshot reads and first-party deployment reads remain real network work;
 the whole deployment workflow is not an offline sandbox.
