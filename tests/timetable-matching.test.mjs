@@ -256,7 +256,7 @@ test('a differently scoped operator assertion is not a stale same-feed alternati
   for (const change of [{feed_id: 'different-feed'}, {agency_id: 'different-agency'}]) {
     const input = fixture(), alternate = structuredClone(input.candidates[0]);
     alternate.route_bindings = [];
-    alternate.operator_binding = {feed_id: 'feed', agency_id: 'A', source_sha256: 'b'.repeat(64), status: 'verified', ...change};
+    alternate.operator_binding = {feed_id: 'feed', agency_id: 'A', source_sha256: change.feed_id === 'other' ? 'b'.repeat(64) : sha, status: 'verified', ...change};
     input.candidates.push(alternate);
     assert.equal(status(input), 'verified');
   }
@@ -273,7 +273,7 @@ test('stale same-feed station alternatives cannot be filtered out of a complete 
 test('crosswalk alternatives belonging to a different feed or unserved station remain separate', () => {
   for (const change of [{feed_id: 'other'}, {station_id: 'unserved'}]) {
     const input = fixture();
-    input.crosswalk.push({...input.crosswalk[0], source_sha256: 'b'.repeat(64), osm_station_id: 'node:99', ...change});
+    input.crosswalk.push({...input.crosswalk[0], osm_station_id: 'node:99', ...change});
     assert.equal(status(input), 'verified');
   }
 });
@@ -389,7 +389,7 @@ test('route and operator assertion matrix preserves blockers, exclusions and ord
     ['conflicting', {status: 'conflict'}, 'conflicting'],
     ['missing', {status: undefined}, 'missing_evidence'],
     ['unrelated', {feed_id: 'other'}, 'verified'],
-    ['absent', null, 'verified'],
+    ['absent', null, 'missing_evidence'],
   ];
   for (const kind of ['route', 'operator']) for (const [label, change, expected] of states) {
     for (const excluded of [false, true]) for (const reverse of [false, true]) {
@@ -487,7 +487,7 @@ test('only intact current nonmatching refs can exclude same-scope operator alter
 test('OSM work for same-operator alternatives is bounded even when every intact ref differs', () => {
   const input = fixture();
   const osm = captureOsmServiceEvidence(relation({tags: {...relation().tags, ref: 'Q'}, members: Array.from({length: 10000}, (_, i) => ({type: 'way', ref: i + 1, role: ''}))}), snapshot);
-  for (let i = 0; i < 11; i++) input.candidates.push({eligibility: 'eligible', route_bindings: [], operator_binding: {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: 'verified'}, osm});
+  for (let i = 0; i < 11; i++) input.candidates.push({...structuredClone(input.candidates[0]), route_bindings: [], operator_binding: {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: 'verified'}, osm});
   assert.deepEqual(matchTimetablePattern(input).reasons, ['candidate_work_limit']);
 });
 
@@ -571,5 +571,264 @@ test('current route, operator and station conflicts retain priority over grouped
     const output = matchTimetablePattern(input);
     assert.equal(output.status, 'conflicting', `${kind}/${reverse}`);
     assert.equal(output.frequency_status, 'not_evaluated');
+  }
+});
+
+test('recognizable current conflicts survive malformed neighboring binding records', () => {
+  for (const malformed of [null, {}]) for (const reverse of [false, true]) {
+    const input = fixture(), alternate = structuredClone(input.candidates[0]);
+    alternate.route_bindings[0].status = 'conflict'; alternate.route_bindings.push(malformed);
+    if (reverse) alternate.route_bindings.reverse();
+    input.candidates.push(alternate);
+    if (reverse) input.candidates.reverse();
+    assert.equal(status(input), 'conflicting');
+  }
+});
+
+test('recognizable scoped operator and station conflicts survive malformed inventory neighbors', () => {
+  for (const kind of ['operator', 'station', 'station identities']) for (const reverse of [false, true]) {
+    const input = fixture();
+    if (kind === 'operator') {
+      input.candidates[0].route_bindings.push(null);
+      input.candidates[0].operator_binding = {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: 'conflict'};
+      if (reverse) input.candidates[0].route_bindings.reverse();
+    } else {
+      if (kind === 'station') input.crosswalk[0].status = 'conflict';
+      else input.crosswalk.push({...input.crosswalk[0], osm_station_id: 'node:99'});
+      input.crosswalk.push(null);
+      if (reverse) input.crosswalk.reverse();
+    }
+    const output = matchTimetablePattern(input);
+    assert.equal(output.status, 'conflicting', `${kind}/${reverse}`);
+    assert.equal(output.frequency_status, 'not_evaluated');
+  }
+});
+
+test('an unresolved variant direction cannot disappear beside a verified variant', () => {
+  for (const direction of [undefined, null, '', 'both', 0]) for (const reverse of [false, true]) {
+    const input = fixture(), alternate = {...structuredClone(input.candidates[0].variants[0]), id: 'unresolved', direction_id: direction};
+    input.candidates[0].variants.push(alternate);
+    if (reverse) input.candidates[0].variants.reverse();
+    assert.equal(status(input), 'missing_evidence');
+  }
+});
+
+test('timezone-less snapshots are rejected identically across process timezones', () => {
+  const input = fixture(), localSnapshot = '2026-10-05T00:00:00';
+  input.context.osm_snapshot = localSnapshot;
+  input.candidates[0].osm = captureOsmServiceEvidence(relation(), localSnapshot);
+  input.crosswalk.forEach(row => { row.osm_snapshot = localSnapshot; });
+  const module = new URL('../scripts/timetable-matching.mjs', import.meta.url).href;
+  const code = `import {readFileSync} from 'node:fs'; import {matchTimetablePattern} from ${JSON.stringify(module)}; console.log(matchTimetablePattern(JSON.parse(readFileSync(0, 'utf8'))).status);`;
+  const outcomes = ['UTC', 'America/Los_Angeles'].map(TZ => {
+    const run = spawnSync(process.execPath, ['--input-type=module', '-e', code], {input: JSON.stringify(input), encoding: 'utf8', env: {...process.env, TZ}});
+    assert.equal(run.status, 0, run.stderr);
+    return run.stdout.trim();
+  });
+  assert.deepEqual(outcomes, ['missing_evidence', 'missing_evidence']);
+});
+
+function addOtherSourcePattern(input) {
+  const other = {...structuredClone(input.evidence.patterns[0]), shape_id: 'other-source-pattern'};
+  const {id, ...definition} = other;
+  other.id = hash([input.evidence.source.feed_id, input.evidence.source.sha256, definition]);
+  input.evidence.patterns.push(other);
+  input.evidence.observations.push({...structuredClone(input.evidence.observations[0]), id: hash(['feed', sha, 'other-trip']), trip_id: 'other-trip', pattern_id: other.id});
+  return sealObservations(input);
+}
+
+test('all source records pass schema and content checks before identity filtering', () => {
+  assert.equal(status(addOtherSourcePattern(fixture())), 'verified', 'valid unrelated source records remain usable');
+  for (const [mutate, expected] of [
+    [x => { x.evidence.patterns.push(null); }, 'missing_evidence'],
+    [x => { x.evidence.observations.push(null); }, 'missing_evidence'],
+    [x => { x.evidence.patterns[1].source_route_id = {}; }, 'missing_evidence'],
+    [x => { x.evidence.patterns[1].shape_id = 'tampered'; }, 'conflicting'],
+    [x => { x.evidence.observations[1].calendar_state = 'expired'; }, 'conflicting'],
+    [x => { x.evidence.observations[1].pattern_id = 'b'.repeat(64); }, 'missing_evidence'],
+    [x => { x.evidence.observations[1].active_service_dates = ['2026-02-30']; }, 'missing_evidence'],
+    [x => { x.evidence.observations.pop(); }, 'missing_evidence'],
+    [x => { x.pattern_id = 'x'.repeat(1000000); }, 'missing_evidence'],
+  ]) {
+    const input = addOtherSourcePattern(fixture()); mutate(input);
+    assert.equal(status(input), expected);
+  }
+});
+
+test('complete variant records precede direction and station relevance', () => {
+  const changes = [
+    [v => { delete v.id; }, 'missing_evidence'],
+    [v => { v.extra = 'unsupported'; }, 'missing_evidence'],
+    [v => { v.status = 'unknown'; }, 'missing_evidence'],
+    [v => { v.status = 'conflict'; }, 'conflicting'],
+    [v => { v.stations = [null, 'node:1']; }, 'missing_evidence'],
+    [v => { v.stations = ['node:99', 'node:1']; }, 'missing_evidence'],
+    [v => { v.section_way_ids = []; }, 'missing_evidence'],
+    [v => { v.section_way_ids = [101]; }, 'missing_evidence'],
+  ];
+  for (const direction of ['0', '1']) for (const reverse of [false, true]) {
+    const make = () => {
+      const input = fixture();
+      input.candidates[0].variants.push({...structuredClone(input.candidates[0].variants[0]), id: 'other', direction_id: direction, stations: ['node:2', 'node:1']});
+      return input;
+    };
+    assert.equal(status(make()), 'verified', `intact nonmatching pattern/direction ${direction}`);
+    for (const [mutate, expected] of changes) {
+      const input = make(); mutate(input.candidates[0].variants[1]);
+      if (reverse) input.candidates[0].variants.reverse();
+      assert.equal(status(input), expected, `${direction}/${reverse}`);
+    }
+  }
+});
+
+test('complete candidate schema and integrity precede unrelated identity filtering', () => {
+  for (const kind of ['other feed', 'other ref']) for (const reverse of [false, true]) {
+    const input = fixture(), other = structuredClone(input.candidates[0]);
+    if (kind === 'other feed') other.route_bindings[0].feed_id = 'other';
+    else {
+      other.route_bindings = [];
+      other.operator_binding = {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: 'verified'};
+      other.osm = captureOsmServiceEvidence(relation({tags: {...relation().tags, ref: 'Q'}}), snapshot);
+    }
+    input.candidates.push(other);
+    if (reverse) input.candidates.reverse();
+    assert.equal(status(input), 'verified');
+    other.variants[0].direction_id = null;
+    assert.equal(status(input), 'missing_evidence');
+    other.variants[0].direction_id = '0';
+    other.osm.tags.ref = 'unbound change';
+    assert.equal(status(input), 'conflicting');
+  }
+});
+
+test('full timestamp grammar rejects ambiguous, rollover and unsupported precision values', () => {
+  const valid = ['2026-10-05T00:00:00Z', '2026-10-05T00:00:00.1Z', '2026-10-05T00:00:00.123Z', '2026-10-05T01:00:00+01:00', '2026-10-04T17:00:00-07:00', '2024-02-29T00:00:00Z'];
+  const invalid = ['2026-10-05T00:00:00', '2026-10-05T00:00:00Z trailing', '2026-10-05T00:00Z', '2026-10-05 00:00:00Z', '2026-10-05T00:00:00.1234Z', '2026-10-05T00:00:00.123456Z', '2026-02-29T00:00:00Z', '2026-02-30T00:00:00Z', '1900-02-29T00:00:00Z', '2026-04-31T00:00:00Z', '2026-00-05T00:00:00Z', '2026-10-00T00:00:00Z', '2026-10-05T24:00:00Z', '2026-10-05T00:60:00Z', '2026-10-05T00:00:60Z', '2026-10-05T00:00:00+24:00', '2026-10-05T00:00:00+00:60'];
+  for (const value of valid) assert.equal(captureOsmServiceEvidence(relation({timestamp: value}), value).status, 'captured', value);
+  for (const value of invalid) {
+    assert.equal(captureOsmServiceEvidence(relation({timestamp: value}), value).status, 'incomplete', value);
+    const input = fixture(); input.context.osm_snapshot = value;
+    assert.equal(status(input), 'missing_evidence', value);
+  }
+});
+
+test('explicit timestamps have identical matching outcomes across process timezones', () => {
+  const module = new URL('../scripts/timetable-matching.mjs', import.meta.url).href;
+  const code = `import {readFileSync} from 'node:fs'; import {matchTimetablePattern} from ${JSON.stringify(module)}; console.log(matchTimetablePattern(JSON.parse(readFileSync(0, 'utf8'))).status);`;
+  for (const value of ['2026-10-05T00:00:00Z', '2026-10-05T00:00:00.123Z', '2026-10-05T01:00:00+01:00', '2026-10-04T17:00:00-07:00']) {
+    const input = fixture(); input.context.osm_snapshot = value; input.now++;
+    input.candidates[0].osm = captureOsmServiceEvidence(relation(), value);
+    input.crosswalk.forEach(row => { row.osm_snapshot = value; });
+    for (const TZ of ['UTC', 'America/Los_Angeles']) {
+      const run = spawnSync(process.execPath, ['--input-type=module', '-e', code], {input: JSON.stringify(input), encoding: 'utf8', env: {...process.env, TZ}});
+      assert.equal(run.status, 0, run.stderr);
+      assert.equal(run.stdout.trim(), 'verified', `${value}/${TZ}`);
+    }
+  }
+});
+
+test('all-record source hashing work is capped for patterns and observations', () => {
+  const patterns = fixture(), call = {stop_id: 's'.repeat(1024), station_id: 'p'.repeat(1024), pickup_type: '0', drop_off_type: '0'};
+  for (let i = 0; i < 17; i++) {
+    const definition = {...patterns.evidence.patterns[0], calls: Array(512).fill(call), shape_id: `large${i}`};
+    delete definition.id;
+    patterns.evidence.patterns.push({...definition, id: hash(['feed', sha, definition])});
+  }
+  assert.deepEqual(matchTimetablePattern(patterns).reasons, ['source_work_limit']);
+  const observations = fixture();
+  observations.evidence.observations = Array.from({length: 5000}, (_, i) => {
+    const trip_id = 't'.repeat(1000) + i;
+    return {...observations.evidence.observations[0], id: hash(['feed', sha, trip_id]), trip_id, service_id: 's'.repeat(1024), timezone: 'z'.repeat(1024)};
+  });
+  sealObservations(observations);
+  assert.deepEqual(matchTimetablePattern(observations).reasons, ['source_work_limit']);
+});
+
+test('independently validated fallback conflicts survive malformed variants or other candidates', () => {
+  for (const sameCandidate of [false, true]) for (const reverse of [false, true]) {
+    const input = fixture(), alternate = structuredClone(input.candidates[0]);
+    alternate.route_bindings = [];
+    alternate.operator_binding = {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: 'conflict'};
+    input.candidates.push(alternate);
+    if (sameCandidate) alternate.variants.push(null);
+    else input.candidates.push({eligibility: 'unknown'});
+    if (reverse) input.candidates.reverse();
+    assert.equal(status(input), 'conflicting');
+  }
+});
+
+test('unreviewed identity assertions cannot establish that a candidate is unrelated', () => {
+  for (const field of ['route', 'operator', 'candidate']) for (const reverse of [false, true]) {
+    const input = fixture(), other = structuredClone(input.candidates[0]);
+    if (field === 'operator') {
+      other.route_bindings = [];
+      other.operator_binding = {feed_id: 'other', source_sha256: sha, agency_id: 'A', status: 'unknown'};
+    } else {
+      other.route_bindings[0].feed_id = 'other';
+      if (field === 'route') other.route_bindings[0].status = 'unknown';
+      else other.status = 'unknown';
+    }
+    input.candidates.push(other);
+    if (reverse) input.candidates.reverse();
+    assert.equal(status(input), 'missing_evidence');
+  }
+});
+
+test('same-feed source pins precede route, agency and unserved-station irrelevance', () => {
+  for (const kind of ['route', 'operator', 'station']) for (const reverse of [false, true]) {
+    const input = fixture(); let assertion;
+    if (kind === 'station') {
+      assertion = {...input.crosswalk[0], station_id: 'unserved'};
+      input.crosswalk.push(assertion);
+    } else {
+      const other = structuredClone(input.candidates[0]);
+      if (kind === 'route') { other.route_bindings[0].route_id = 'other'; assertion = other.route_bindings[0]; }
+      else {
+        other.route_bindings = [];
+        assertion = other.operator_binding = {feed_id: 'feed', source_sha256: sha, agency_id: 'other', status: 'verified'};
+      }
+      input.candidates.push(other);
+    }
+    assert.equal(status(input), 'verified', 'current reviewed unrelated control');
+    assertion.source_sha256 = 'b'.repeat(64);
+    if (reverse) { input.candidates.reverse(); input.crosswalk.reverse(); }
+    assert.equal(status(input), 'stale', `${kind}/${reverse}`);
+  }
+});
+
+test('current fallback candidate and complete variant conflicts survive malformed variant neighbors', () => {
+  for (const field of ['candidate', 'variant']) for (const reverse of [false, true]) {
+    const input = fixture(), candidate = input.candidates[0];
+    candidate.route_bindings = [];
+    candidate.operator_binding = {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: 'verified'};
+    if (field === 'candidate') candidate.status = 'conflict';
+    else candidate.variants[0].status = 'conflict';
+    assert.equal(status(input), 'conflicting', 'complete conflict control');
+    candidate.variants.push(null);
+    if (reverse) candidate.variants.reverse();
+    assert.equal(status(input), 'conflicting', `${field}/${reverse}`);
+  }
+});
+
+test('crosswalk lookup keys separate unused mapping state from selected mapping proof', () => {
+  for (const [change, selectedStatus] of [
+    [{status: 'unknown'}, 'missing_evidence'],
+    [{status: 'conflict'}, 'conflicting'],
+    [{osm_snapshot: '2026-10-04T00:00:00Z'}, 'stale'],
+  ]) for (const selected of [false, true]) for (const reverse of [false, true]) {
+    const input = fixture();
+    input.crosswalk.push({...input.crosswalk[0], station_id: selected ? 'a' : 'unserved', ...change});
+    if (reverse) input.crosswalk.reverse();
+    const output = matchTimetablePattern(input);
+    assert.equal(output.status, selected ? selectedStatus : 'verified', `${JSON.stringify(change)}/selected=${selected}/reverse=${reverse}`);
+    assert.equal(output.frequency_status, 'not_evaluated');
+  }
+  for (const selected of [false, true]) for (const reverse of [false, true]) {
+    const input = fixture();
+    input.crosswalk.push({...input.crosswalk[0], station_id: selected ? 'a' : 'unserved', source_sha256: 'b'.repeat(64)});
+    if (reverse) input.crosswalk.reverse();
+    assert.equal(status(input), 'stale', 'same-feed source revision pins the lookup namespace before key selection');
+    input.crosswalk.find(row => row.source_sha256 !== sha).feed_id = 'other';
+    assert.equal(status(input), 'verified', 'a different feed has a separate lookup namespace');
   }
 });

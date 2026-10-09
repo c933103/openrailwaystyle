@@ -55,13 +55,17 @@ identity uses the configured feed ID and exact ZIP SHA-256, not a public URL.
   Blank time remains `null`; a departure beyond 24:00 retains the full offset.
   Each complete observation also has a content fingerprint binding its pattern,
   calendar state and validity to the exact feed revision and reference date.
-  The matcher validates the bounded observation schema and this binding before
+  The matcher validates every bounded pattern and observation, all pattern
+  references and content bindings before filtering for a requested pattern or
   using current-service evidence. Hashes guarantee consistency, not independent
   proof of source truth or a signature from the provider.
 - `stops`: deduplicated actually referenced stops/platforms and parents, with
   names and coordinates as source evidence. Names/coordinates do not establish
   station equality. This is separate from the old segment `stops` field, which
-  represents geometry endpoints in a shape build.
+  represents geometry endpoints in a shape build. The current matcher checks
+  the retained-stop array bound but does not read or validate these unused stop
+  metadata fields; matching station proof comes from ordered calls and the
+  separately reviewed crosswalk, never these names/coordinates.
 
 The original route association is saved before canonical route consolidation.
 Identical simultaneous trips with different `trip_id` remain separate
@@ -147,8 +151,13 @@ pattern and a short working need their own reviewed variants. This strict first
 contract does not yet implement general many-to-many service reconciliation.
 
 The candidate search is bounded to 256 candidates, 1,024 crosswalk rows, 32 route
-bindings and 128 variants per candidate, plus 100,000 total inspected OSM/variant
-references. OSM capture itself is bounded to 10,000 members, 512 served members
+bindings and 128 variants per candidate, plus 100,000 total inspected
+OSM/eligible-way/variant references. All source canonicalization/hash inputs
+share a 16 MiB work budget. Candidate/crosswalk canonicalization and OSM hashing
+share a separate 16 MiB work budget. These count repeated source pins as work,
+so the matcher can withhold a near-limit sidecar even when capture succeeded.
+Each check holds at most one schema-bounded record beyond its running byte cap;
+there is no unbounded recursive hashing or output copying. OSM capture itself is bounded to 10,000 members, 512 served members
 and 32 identity tags, scanning at most 256 raw tag keys before withholding
 capture. Pattern, call, observation, source-envelope and captured-OSM records have explicit
 bounded field whitelists before canonical hashing; nested/oversized values or
@@ -159,6 +168,63 @@ hashing, comparison or selection. Holes and inherited numeric slots cannot
 substitute for evidence; JSON nulls are accepted only where the field permits
 unknown values, such as a missing departure time. Resource-limit outcomes remain
 `missing_evidence`.
+
+### Validation order and supported instants
+
+Positive selection uses distinct phases: source/context validity, complete
+bounded record schemas, content integrity, relevance filtering, then blocker
+and ambiguity resolution. The deliberate exception is an explicit candidate
+`eligibility: "excluded"`, which needs no match-only fields. Unknown eligibility
+is not exclusion. A candidate with neither route nor operator identity blocks a
+positive result; absence of an operator on a sound exact route binding is fine.
+An unreviewed assertion cannot establish that a non-excluded candidate is
+unrelated. Same-feed source SHA pins are checked before route, agency or
+station IDs can be used to establish irrelevance; an older revision cannot
+prove that its differently labelled identity is unrelated to the current one.
+Well-formed reviewed current unrelated assertions and different-feed controls
+remain independent.
+
+| Record or selector | Prerequisite before exclusion/selection |
+| --- | --- |
+| Pattern `id` | Every pattern has the complete bounded schema, unique content-bound ID, and an observation. |
+| Observation `pattern_id` | Every observation has a valid referenced pattern, matching call count, unique trip identity and complete fingerprint. |
+| Pickup/drop-off | Every call is validated first; prohibited calls cannot prove a served stop and conditional calls remain unresolved. |
+| Candidate identity | Non-excluded candidate and binding records have complete bounded schemas; OSM declaration and variants are validated before any candidate is discarded. |
+| Operator/ref | Feed/agency assertion and intact current OSM declaration precede using a ref to establish irrelevance. |
+| Station crosswalk | Complete bounded rows and same-feed source pins precede lookup by station_id. Mapping status and OSM snapshot must be verified/current for every selected key; they do not establish the source lookup key itself. |
+| Variant direction/stations | Every variant has an explicit 0/1 direction, bounded ID/status, dense typed stations and positive section ways, with valid OSM/eligible membership. Reviewed opposite-direction and different-pattern variants can then be excluded. |
+| Uniqueness | Accumulated blockers are resolved before one match can be returned; input order never picks a winner. |
+
+The crosswalk has a specific lookup-key/mapping distinction. Feed ID, exact
+source SHA and `station_id` define the declared source-side lookup key; `status`,
+`osm_station_id` and `osm_snapshot` qualify its GTFS-to-OSM mapping. For a
+same-source key absent from the pattern's actually served calls, mapping
+uncertainty, conflict or an older OSM snapshot remains irrelevant and cannot
+change the selected station output. For a selected key, any such uncertainty
+withholds verification. Same-feed source mismatches still withhold before key
+lookup because source revisions can change the identifier namespace. A
+separate feed remains a separate namespace. This exception does not extend to
+route/operator candidate dismissal: unreviewed assertions cannot establish
+that a candidate service is unrelated. These are input-contract distinctions,
+not independent proof that supplied source keys or mappings are true.
+
+Individually complete current scoped conflicts are retained as negative
+diagnostics even beside malformed records. Partial or malformed inventories
+can never verify. This diagnostic priority is distinct from preventing false
+verification: `missing_evidence` and `stale` also withhold matching. Invalid
+context/source schemas and hard work limits may end validation before later
+identity diagnostics can be established.
+
+Supported instants have the complete form `YYYY-MM-DDTHH:MM:SS`, optionally
+followed by 1–3 fractional digits, and a required `Z` or signed `HH:MM` offset.
+The validator checks real Gregorian calendar dates, clock fields and offset
+ranges before parsing. Timezone-less values, rollover dates, `24:00`, leap
+seconds, trailing data and greater fractional precision are unsupported and
+withheld rather than normalized or truncated. Existing repository OSM producers
+in `service-relations.mjs` and `service-geometry.mjs` use `toISOString()` and
+therefore emit seconds or millisecond precision; GTFS evidence uses date strings
+and epoch seconds. Equivalent supported instants are deterministic across
+process timezones, while snapshot pins still require the exact supplied string.
 
 ### Outcomes
 
@@ -191,6 +257,7 @@ all matched branches. Unknown is not zero.
 node --test tests/timetable-matching.test.mjs
 python3 scripts/benchmark-timetable-evidence.py
 python3 scripts/benchmark-timetable-evidence.py --trips 12000 --unique-patterns
+node scripts/benchmark-timetable-matching.mjs
 npm test
 npm run build
 git diff --check
@@ -233,3 +300,23 @@ A separate 12,000-trip, 288,000-stop-row unique-pattern adversary reached the
 arrays. Its legacy output still matched both controls; enabled peak RSS was
 179,056 KiB. These observations support keeping capture explicitly opt-in and
 bounded; they do not justify enabling it across the production registry yet.
+
+
+### Separate matcher measurement
+
+The same report also records fresh, serial Node 22.23.3 matcher processes over a
+controlled 10,000-observation, 2-pattern, 5,825,261-byte sidecar produced from the
+240,000-stop-row/28-profile fixture. Across three repetitions, the valid identity
+case took a median 206.007 ms; an unbound alternative was withheld in 181.278 ms.
+Median peak process RSS was 116,832 and 116,548 KiB respectively. These elapsed
+times cover matching after parsing/preparation; RSS includes startup, parsing
+and fixture preparation and is not a matcher-only allocation measurement.
+
+The source-work adversary and candidate-reference adversary returned explicit
+work-limit outcomes in median 66.673 and 225.340 ms, with median peak process RSS
+122,064 and 117,672 KiB. The source adversary fails during all-pattern validation
+before reaching the ordinary observation scan, so its lower elapsed time is not
+a speed improvement. The script publishes only aggregate measurements and
+source hashes, never the temporary synthetic sidecar or ZIP. Compiler and
+matcher measurements are separate; neither establishes production coverage or
+worldwide resource savings.
