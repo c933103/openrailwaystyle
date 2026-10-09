@@ -6,6 +6,7 @@ import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import {readFile} from 'node:fs/promises';
 import {oceanFixtureArchive,oceanFixtureTile,depthFixturePng} from '../scripts/bathymetry-browser-fixture.mjs';
+import {repairPixels,referenceTile,terrarium} from '../styles/dem-repair.mjs';
 import {oceanPolygons,colourPixels,depthTile} from '../styles/bathymetry.mjs';
 
 test('synthetic PMTiles archive exercises the real client across the reviewed coasts and zooms',async()=>{
@@ -44,4 +45,23 @@ test('local glyph fixture has actual distinct platform numbers and consistent bi
   for(const glyph of glyphs)assert.equal(glyph.bitmap.length,(glyph.width+6)*(glyph.height+6));
   const digits=glyphs.filter(g=>g.id>=48&&g.id<=57);assert.equal(digits.length,10);
   assert.equal(new Set(digits.map(g=>Buffer.from(g.bitmap).toString('base64'))).size,10);
+});
+
+test('coarse DEM references preserve both fixture shelves and basins through real terrain repair',()=>{
+  const decode=png=>{
+    const pieces=[];let at=8;
+    while(at<png.length){const size=png.readUInt32BE(at);if(png.subarray(at+4,at+8).toString()==='IDAT')pieces.push(png.subarray(at+8,at+8+size));at+=12+size;}
+    const raw=inflateSync(Buffer.concat(pieces)),rgba=Buffer.alloc(256*256*4);
+    for(let y=0;y<256;y++)raw.copy(rgba,y*1024,y*1025+1,y*1025+1025);
+    return rgba;
+  };
+  for(const [z,x,y] of [[10,982,478],[10,837,479],[9,491,239],[9,418,239]]){
+    const ref=referenceTile(z,x,y),pixels=decode(depthFixturePng(z,x)),reference=decode(depthFixturePng(ref.z,ref.x));
+    repairPixels(pixels,256,z,x,y,reference);
+    const heights=Array.from({length:256*256},(_,i)=>terrarium(...pixels.subarray(i*4,i*4+3)));
+    const colours=colourPixels({width:256,height:256,data:heights},depthTile(z,x,y));
+    let shallow=0,deep=0;for(let i=0;i<colours.length;i+=4){if(colours[i]>150)shallow++;if(colours[i]<120)deep++;}
+    assert.ok(shallow>1000,`${z}/${x}/${y} keeps shallow shelf after repair`);
+    assert.ok(deep>1000,`${z}/${x}/${y} keeps deep basin after repair`);
+  }
 });

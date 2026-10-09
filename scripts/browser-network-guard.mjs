@@ -36,6 +36,12 @@ export async function guardBrowserNetwork(context, {bases = firstPartyBases(), b
     return response;
   };
   const protect = route => new Proxy(route, {get(original, property) {
+    if (property === 'fallback') return async (options = {}) => {
+      // Check explicit rewrites immediately rather than relying on a later
+      // Playwright handler to expose its accumulated fallback overrides.
+      if (options.url && !browserNetworkAllowed(options.url, bases)) return abort(original, options.url);
+      return original.fallback(options);
+    };
     if (property === 'fetch') return async (options = {}) => {
       const target = options.url || original.request().url();
       if (!browserNetworkAllowed(target, bases)) {

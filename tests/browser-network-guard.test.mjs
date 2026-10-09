@@ -107,3 +107,13 @@ test('a later WebSocket fixture cannot opt back into a server connection',async(
   assert.throws(()=>context.socket({url:()=> 'wss://provider.invalid/socket',close:()=>closed++,connectToServer:()=>assert.fail('must not connect')}),/may not connect WebSockets/);
   assert.equal(closed,1);assert.equal(blocked.length,1);
 });
+
+test('URL-rewriting fallback is blocked before a later route can see it',async()=>{
+  for(const scope of ['page','context']){
+    const {context,page,blocked}=await harness(),target=scope==='page'?page:context,request=route('https://deployed.example/atlas/rewrite');
+    await target.route('**/*',route=>route.fallback({url:'https://provider.invalid/fallback'}));
+    await target.routes.at(-1).handler(request.value);
+    assert.equal(request.calls.fallback,0);assert.equal(request.calls.fetch.length,0);assert.equal(request.calls.continue,0);
+    assert.deepEqual(request.calls.abort,['blockedbyclient']);assert.deepEqual(blocked,['https://provider.invalid/fallback']);
+  }
+});
