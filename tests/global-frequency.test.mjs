@@ -235,7 +235,17 @@ for path in paths:
  prepared=p.registry.prepare_catalogue_row(row)
  cases.append({'path':path,'row':row,'prepared':p.published_metadata(prepared),
   'published':p.published_metadata(row)})
-print(json.dumps({'baseline':baseline,'cases':cases,'baseline_published':p.published_metadata(baseline)}))
+lineage_cases=[]
+lineage_baseline=copy.deepcopy(baseline)
+test.add_published_lineage(lineage_baseline,'https://public.test/static')
+lineage_baseline['lineage'].append({'catalogue':'mobility-database','id':'known','url':p.registry.MOBILITY_CSV,'source':'https://public.test/static','status':'','authentication_type':'0'})
+for i in range(len(lineage_baseline['lineage'])):
+ for nested in [False,True]:
+  row=copy.deepcopy(lineage_baseline)
+  if nested: row['lineage'][i]['source']={'credentials':{'token':'synthetic-lineage-marker'}}
+  else: row['lineage'][i]['credentials']={'token':'synthetic-lineage-marker'}
+  lineage_cases.append({'row':row,'published':p.published_metadata(row),'prepared':p.published_metadata(p.registry.prepare_catalogue_row(row))})
+print(json.dumps({'baseline':baseline,'cases':cases,'baseline_published':p.published_metadata(baseline),'lineage_cases':lineage_cases}))
 `],{encoding:'utf8'});
   assert.equal(run.status,0,run.stderr);
   return JSON.parse(run.stdout);
@@ -279,6 +289,7 @@ test('assembly projects incoming held shard copies and compiled attribution befo
   const {gzipSync}=await import('node:zlib'),{readFile}=await import('node:fs/promises');
   const {publishedMetadata}=await import('../scripts/assemble-global-frequency.mjs');
   const {cases}=referencePublicationFixtures(),row=cases[0].row;
+  row.lineage[0].credentials={token:'synthetic-lineage-marker'};
   const root=await mkdtemp(join(tmpdir(),'atlas-reference-projection-'));
   const source={id:'rail',sha256:'fixture',service_date:'2026-10-05',checked:'2026-10-04',name:'Rail',feed_info:{},valid_until:1900000000,catalogue_attribution:row};
   const feed={schema:1,source,agencies:[{agency_id:'a',agency_name:'Rail',agency_timezone:'UTC'}],routes:[{route_id:'r',route_type:'2'}],profiles:{h01:{start:'01:00:00',end:'02:00:00'}},segments:[{route_id:'r',agency_id:'a',geometry:[[0,0],[1,1]],profiles:{h01:{display_tph:2,forward_tph:2,backward_tph:2,quality:'scheduled'}}}]};
@@ -292,7 +303,7 @@ test('assembly projects incoming held shard copies and compiled attribution befo
     const manifest=await assemble(root);
     for(const name of ['inventory-0.json','inventory.json','manifest.json']){
       const output=JSON.parse(await readFile(join(root,name),'utf8'));
-      assert.doesNotMatch(JSON.stringify(output),/synthetic-extra-marker|synthetic-query-marker/,name);
+      assert.doesNotMatch(JSON.stringify(output),/synthetic-extra-marker|synthetic-query-marker|synthetic-lineage-marker/,name);
       assert.deepEqual(publishedMetadata(output),output,name+' remains idempotent');
     }
     const staged=JSON.parse(await readFile(join(root,'inventory-0.json'),'utf8'));
@@ -301,4 +312,81 @@ test('assembly projects incoming held shard copies and compiled attribution befo
     assert.deepEqual(await readFile(join(root,'feeds/rail.json.gz')),raw,'internal compiled payload remains unchanged');
     assert.equal(manifest.counts.compiled,1);assert.equal(manifest.counts.retry_pending,1);
   }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('reference URL grammar is identical and publication-stable in both languages',async()=>{
+  const {referenceUrlValid,referenceMetadataValid}=await import('../scripts/frequency-reference-metadata.mjs');
+  const {publishedMetadata}=await import('../scripts/assemble-global-frequency.mjs');
+  const urls=[
+    ['https://provider.test/feed',true],['https://xn--a.test/feed',true],['HTTPS://PROVIDER.test/feed',true],['https://provider.test:443/feed',true],
+    ['http://provider.test:0/feed',true],['https://provider.test:65535/feed',true],['https://provider.test:65536/feed',false],
+    ['https://provider.test:99999/feed',false],['https://provider.test:invalid/feed',false],['https://provider.test:/feed',false],
+    ['http://exa mple.test/feed',false],['https://provider.test/space here',false],['https://provider.test/line\nfeed',false],
+    ['https://provider.test\\other/feed',false],['https://user:synthetic-pass@provider.test/feed?key=synthetic-query',true],
+    ['https://[2001:db8::1]:443/feed',true],['https://[::ffff:192.0.2.1]/feed',true],['https://[bad:ip]/feed',false],
+    ['https://provider.test./feed',true],['https://xn--bcher-kva.example/feed',true],['https://bücher.example/feed',false],
+    ['https://provider.test/%E8%BB%8C',true],['https://provider.test/軌',false],['https://provider.test/%ZZ',false],
+    ['http://192.0.2.1/feed',true],['http://127.1/feed',false],['http://0x7f000001/feed',false],['http://provider.123/feed',false],
+    ['https://provider.test/feed?'+Array(129).fill('k=v').join('&'),false],
+    ['https://provider.test/'+ 'a'.repeat(4074),true],['https://provider.test/'+ 'a'.repeat(4075),false],
+    ['https://provider.test/'+ 'a'.repeat(4052)+'?k=v',false]
+  ];
+  const run=spawnSync('python3',['-c',String.raw`
+import sys,json,copy
+sys.path.insert(0,'tests');import global_frequency_test as t
+p=t.pipeline;baseline=t.GlobalFrequency().projection_fixture();result=[]
+for url,_ in json.loads(sys.argv[1]):
+ row=copy.deepcopy(baseline);row['source_resolution']['declarations'][0]['resolution']['endpoints'][0]['authorization']['info_url']=url
+ published=p.published_metadata(row)
+ result.append({'valid':p.registry.references.reference_url_valid(url),'row':row,'state':published['source_resolution']['state'],
+ 'published':published,'idempotent':p.published_metadata(published)==published})
+print(json.dumps(result))
+`,JSON.stringify(urls)],{encoding:'utf8'});
+  assert.equal(run.status,0,run.stderr);const python=JSON.parse(run.stdout);
+  for(let i=0;i<urls.length;i++){
+    const [url,valid]=urls[i],fixture=python[i];
+    assert.equal(referenceUrlValid(url),valid,url);assert.equal(fixture.valid,valid,url);
+    assert.equal(referenceMetadataValid(fixture.row.source_resolution),valid,url);
+    const published=publishedMetadata(fixture.row);
+    assert.equal(published.source_resolution.state,fixture.state,url);
+    assert.deepEqual(published,fixture.published,url+' uses the same supported URI redaction');
+    assert.deepEqual(publishedMetadata(published),published,url);
+    assert.equal(fixture.idempotent,true,url);
+  }
+});
+
+test('reference lineage projection and alias reconciliation preserve complete owner links',async()=>{
+  const {projectReferenceRow}=await import('../scripts/frequency-reference-metadata.mjs');
+  const {publishedMetadata}=await import('../scripts/assemble-global-frequency.mjs');
+  const hash='a'.repeat(64),base={schema:3,shards:1,shard:0,catalogue_sha256:'fixture',catalogue_entries:2,service_date:'2026-10-05'};
+  const owner={id:'owner',status:'no_rail',catalogue:{delivery:'direct',source:'https://provider.test/feed',source_sha256:hash}};
+  const alias={id:'alias',status:'source_alias',catalogue:{source:owner.catalogue.source,source_sha256:hash,
+    source_resolution:{schema:1,state:'schedule',specs:['gtfs'],declarations:[],processed_filename:null,acquisition_alias_of:'owner',alias_source_sha256:hash}}};
+  const merge=(a=alias,o=owner)=>mergeInventories([{...base,entries:[o,a]}]);
+  assert.equal(publishedMetadata(merge()).entries.find(e=>e.id==='alias').catalogue.source_resolution.acquisition_alias_of,'owner');
+  for(const extra of [{unknown_extra:{credential:'synthetic-lineage-marker'}},{specs:['gbfs']}]){
+    const bad=structuredClone(alias);Object.assign(bad.catalogue.source_resolution,extra);
+    assert.throws(()=>merge(bad),/Invalid static source alias/);
+  }
+  const badOwner=structuredClone(owner);badOwner.catalogue.source_resolution={...alias.catalogue.source_resolution,acquisition_alias_of:null,unknown_extra:'synthetic-lineage-marker'};
+  assert.throws(()=>merge(alias,badOwner),/Invalid static source alias/);
+  const {baseline,lineage_cases}=referencePublicationFixtures();
+  for(const fixture of lineage_cases){
+    assert.deepEqual(publishedMetadata(fixture.row),fixture.published);
+    assert.deepEqual(fixture.prepared.source_resolution,fixture.published.source_resolution);
+    assert.deepEqual(fixture.prepared.lineage,fixture.published.lineage);
+    assert.deepEqual(publishedMetadata(fixture.published),fixture.published);
+  }
+  const licence={catalogue:'transitous-licence',id:baseline.filename,url:'https://github.com/public-transport/transitous/blob/'+ 'b'.repeat(40)+'/website/data/license.json',source:''};
+  baseline.catalogue_url=licence.url;baseline.lineage.push(licence);
+  for(const index of [0,baseline.lineage.length-1]){
+    const bad=structuredClone(baseline);bad.lineage[index].credentials={token:'synthetic-lineage-marker'};
+    const projected=projectReferenceRow(bad);assert.equal(projected.source_resolution.state,'unresolved');
+    assert.doesNotMatch(JSON.stringify(projected),/synthetic-lineage-marker/);
+    assert.deepEqual(projectReferenceRow(projected),projected);
+    const output=publishedMetadata({status:'compiled',catalogue:bad,source:{catalogue_attribution:bad}});
+    assert.doesNotMatch(JSON.stringify(output),/synthetic-lineage-marker/);assert.deepEqual(publishedMetadata(output),output);
+  }
+  const legacy={lineage:[{catalogue:'fixture',unknown_extra:'ordinary-fixture'}]};
+  assert.deepEqual(projectReferenceRow(legacy),legacy,'legacy non-reference rows keep their established behavior');
 });

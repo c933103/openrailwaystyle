@@ -576,3 +576,37 @@ unknown fields, held outcomes, staged copies, URL redaction and idempotence. The
 5,489-row pinned replay and its full candidate/discovery ledger remain byte-identical
 to the access-proof checkpoint above. This is offline validation, with no new
 provider request or production availability/coverage claim.
+
+Publication proof on a reference row must also be a complete normalized lineage
+record. Transitous records bind their filename, delivery and licence origin to
+the row; the origin must be the generated Transitous licence path at a full Git
+pin (or the legacy normalizer's explicit `main` origin). An empty original source
+can still establish a processed archive. Public original candidates instead need
+their own source URL. Mobility proof requires the complete generated record and
+exact export origin, including explicit authentication metadata. These checks
+establish internal identity consistency, not independent source authenticity or
+cryptographic proof of upstream inventory inclusion.
+
+The same bounded projection covers recognized lineage on reference rows, including
+Transitous feed definitions and resolved Transitland identities. Malformed lineage
+retains safe fields but puts the row on an explicit hold, so stripping an unknown
+field cannot manufacture acquisition proof. Rows without `source_resolution` keep
+their existing handling. Assembly reconciles projected alias and owner graphs
+before accepting a `source_alias`; an owner link that would disappear on publication
+is rejected instead of being counted as a usable alias.
+
+Both languages use the explicit URI grammar in the shared descriptor, rather than
+relying on differing permissive parser behavior: bounded ASCII HTTP(S) URIs,
+ordinary hostnames or punycode, canonical IPv4, bracketed IPv6 and ports 0–65535.
+Non-ASCII URL components require percent encoding; short/noncanonical numeric
+hosts, invalid escapes, whitespace, backslashes and out-of-range ports are held.
+The query count and the size of its redacted representation are bounded too.
+Unsupported metadata remains unresolved, never a rail/licence exclusion. The
+frozen 6,332 reference URL fields already fit this grammar, and the full catalogue
+and ledger remain unchanged in the controlled replay.
+For reference evidence and its recognized lineage only, publication also renders
+accepted URIs with the shared grammar. It removes userinfo, fragment and query
+values without invoking a second hostname parser. This preserves cross-language
+publication stability and original fingerprints; it is still syntactic metadata
+handling, with public-address/TLS/access checks enforced separately at acquisition.
+Legacy publication handling is unchanged.

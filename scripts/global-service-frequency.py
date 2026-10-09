@@ -536,19 +536,21 @@ def redacted_diagnostic(value):
     return URL_IN_TEXT.sub(lambda match: redacted_source_url(match[0]), value)
 
 
-def published_metadata(value):
+def published_metadata(value, reference_context=False):
     """Redact diagnostic copies; never use display URLs as acquisition inputs."""
     if isinstance(value, str):
-        return redacted_diagnostic(value)
+        return (registry.references.reference_display_url(value) if reference_context and registry.references.reference_url_valid(value)
+                else redacted_diagnostic(value))
     if isinstance(value, list):
-        return [published_metadata(item) for item in value]
+        return [published_metadata(item, reference_context) for item in value]
     if not isinstance(value, dict):
         return value
     def public_key(key):
         display = redacted_diagnostic(key)
         return key if display == key else '[sha256:'+source_url_fingerprint(key)+'] '+display
-    value = {key: registry.references.project_metadata(item) if key == 'source_resolution' else item for key, item in value.items()}
-    result = {public_key(key): published_metadata(item) for key, item in value.items()}
+    value = registry.references.project_row(value)
+    result = {public_key(key): published_metadata(item, reference_context or key == 'source_resolution'
+        or key == 'lineage' and 'source_resolution' in value) for key, item in value.items()}
     for key, item in value.items():
         hash_key = public_key(key)+'_sha256'
         if isinstance(item, str) and URL_START.match(item):

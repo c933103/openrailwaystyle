@@ -8,7 +8,7 @@ import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
 import {timetableFeatures} from './gtfs-service.mjs';
 import {readFrequencyFeed} from './read-frequency-feed.mjs';
-import {projectReferenceMetadata} from './frequency-reference-metadata.mjs';
+import {projectReferenceRow,referenceUrlValid,referenceDisplayUrl} from './frequency-reference-metadata.mjs';
 // Publication-only display URLs. Acquisition/cache identities and inputs stay
 // unchanged. The sibling <field>_sha256 is SHA-256 of the exact original UTF-8
 // URL, not the redacted display or a canonicalized endpoint. This is an audit
@@ -36,15 +36,15 @@ function redactText(value){
   if(urlStart.test(value))return redactedSourceUrl(value);
   return value.replace(urlInText,url=>redactedSourceUrl(url));
 }
-export function publishedMetadata(value){
-  if(typeof value==='string')return redactText(value);
-  if(Array.isArray(value))return value.map(publishedMetadata);
+export function publishedMetadata(value,referenceContext=false){
+  if(typeof value==='string')return referenceContext&&referenceUrlValid(value)?referenceDisplayUrl(value):redactText(value);
+  if(Array.isArray(value))return value.map(item=>publishedMetadata(item,referenceContext));
   if(!value||typeof value!=='object')return value;
   // Unusual URL-keyed audit maps must not collapse two raw identities onto
   // the same redacted key. Ordinary schema and accounting keys are unchanged.
   const publicKey=key=>{const redacted=redactText(key);return redacted===key?key:`[sha256:${urlFingerprint(key)}] ${redacted}`;};
-  value=Object.fromEntries(Object.entries(value).map(([key,item])=>[key,key==='source_resolution'?projectReferenceMetadata(item):item]));
-  const result=Object.fromEntries(Object.entries(value).map(([key,item])=>[publicKey(key),publishedMetadata(item)]));
+  value=projectReferenceRow(value);
+  const result=Object.fromEntries(Object.entries(value).map(([key,item])=>[publicKey(key),publishedMetadata(item,referenceContext||key==='source_resolution'||key==='lineage'&&Object.hasOwn(value,'source_resolution'))]));
   for(const [key,item] of Object.entries(value)){
     if(typeof item==='string'&&urlStart.test(item)){
       const hashKey=publicKey(key)+'_sha256';
@@ -90,14 +90,21 @@ export function mergeInventories(inventories){
     for(const field of ['schema','shards','catalogue_url','catalogue_sha256','catalogue_entries','service_date'])if(inventory[field]!==first[field])throw new Error(`Inconsistent inventory ${field}`);
     if(!isDeepStrictEqual(inventory.catalogue_provenance,first.catalogue_provenance))throw new Error('Inconsistent inventory catalogue_provenance');
     if(shards.has(inventory.shard))throw new Error('Duplicate shard');shards.add(inventory.shard);
-    for(const entry of inventory.entries){if(ids.has(entry.id))throw new Error('Duplicate feed');ids.add(entry.id);entries.push(entry);}
+    for(const raw of inventory.entries){
+      if(ids.has(raw.id))throw new Error('Duplicate feed');ids.add(raw.id);
+      // Reconcile the graph that can actually be published, never raw alias
+      // links whose owner/state would disappear at the projection boundary.
+      const entry=raw.catalogue&&Object.hasOwn(raw.catalogue,'source_resolution')?
+        {...raw,catalogue:projectReferenceRow(raw.catalogue)}:raw;
+      entries.push(entry);
+    }
   }
   if(shards.size!==first.shards||ids.size!==first.catalogue_entries)throw new Error('Incomplete worldwide scan; refusing to publish a partial shard collection');
   const byId=new Map(entries.map(entry=>[entry.id,entry]));
   for(const entry of entries){
     if(entry.status!=='source_alias')continue;
     const resolution=entry.catalogue?.source_resolution,target=byId.get(resolution?.acquisition_alias_of),targetResolution=target?.catalogue?.source_resolution;
-    if(resolution?.schema!==1||resolution.state!=='schedule'||!target||target.id===entry.id||target.status==='source_alias'||
+    if(resolution?.schema!==1||resolution.state!=='schedule'||!resolution.specs?.includes('gtfs')||!target||target.id===entry.id||target.status==='source_alias'||
         targetResolution?.acquisition_alias_of||target.catalogue?.delivery!=='direct'||!ownerMetadataCompatible(target.catalogue)||
         (targetResolution&&(targetResolution.schema!==1||targetResolution.state!=='schedule'||!targetResolution.specs?.includes('gtfs')))||
         target.catalogue?.access_review||resolution.processed_filename!=null||

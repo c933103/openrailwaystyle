@@ -7,10 +7,11 @@ rights, public-address validation and publication redaction remain downstream.
 from collections import Counter, defaultdict
 from copy import deepcopy
 import hashlib
+import ipaddress
 import json
 from pathlib import Path
 import re
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, parse_qsl
 
 MAX_FILES = 4096
 MAX_FILE_BYTES = 4 * 1024 * 1024
@@ -31,7 +32,7 @@ METADATA_REASONS = {'', 'not_supplied', 'metadata_unavailable', 'metadata_file_l
 _METADATA_SCHEMA = json.loads(Path(__file__).with_name('frequency-reference-schema.json').read_text())
 
 
-def metadata_shape_valid(value):
+def metadata_shape_valid(value, shape='root'):
     """Shared allowlist; no unrecognized nested values reach public evidence."""
     budget = [_METADATA_SCHEMA['node_limit'], _METADATA_SCHEMA['character_limit']]
     def check(value, spec, depth=0):
@@ -50,7 +51,8 @@ def metadata_shape_valid(value):
             if units > spec['max']: return False
             budget[1] -= units
             return (budget[1] >= 0 and (not spec.get('pattern') or re.fullmatch(spec['pattern'], value) is not None)
-                and (spec.get('format') != 'url' or bool(_url(value))))
+                and (spec.get('format') not in ('url', 'url_or_empty') or
+                     spec.get('format') == 'url_or_empty' and value == '' or bool(_url(value))))
         if kind == 'boolean': return type(value) is bool
         if kind == 'integer': return type(value) is int and value == spec['value']
         if kind == 'enum': return isinstance(value, str) and value in spec['values']
@@ -68,14 +70,12 @@ def metadata_shape_valid(value):
             if field is None or not check(item, field, depth+1): return False
         return True
     try:
-        return check(value, _METADATA_SCHEMA['shapes']['root'])
+        return check(value, _METADATA_SCHEMA['shapes'][shape])
     except (TypeError, ValueError, RecursionError):
         return False
 
 
-def project_metadata(value):
-    if metadata_shape_valid(value):
-        return value
+def _project_shape(value, shape='root'):
     # Retain only complete safe subrecords. Never serialize/hash invalid bytes,
     # echo unknown keys, or infer acquisition permission from a repaired graph.
     missing = object()
@@ -112,15 +112,20 @@ def project_metadata(value):
             budget[1] -= units
             valid = (spec['min'] <= len(value) <= spec['max'] and budget[1] >= 0
                 and (not spec.get('pattern') or re.fullmatch(spec['pattern'], value) is not None)
-                and (spec.get('format') != 'url' or bool(_url(value))))
+                and (spec.get('format') not in ('url', 'url_or_empty') or
+                     spec.get('format') == 'url_or_empty' and value == '' or bool(_url(value))))
         elif kind == 'boolean': valid = type(value) is bool
         elif kind == 'integer': valid = type(value) is int and value == spec['value']
         else: valid = isinstance(value, str) and value in spec['values']
         return value if valid else missing
     try:
-        safe = project(value, _METADATA_SCHEMA['shapes']['root'])
+        safe = project(value, _METADATA_SCHEMA['shapes'][shape])
     except (TypeError, ValueError, RecursionError):
         safe = missing
+    return safe if safe is not missing else None
+
+
+def hold_metadata(safe):
     hold = deepcopy(_METADATA_SCHEMA['invalid'])
     if isinstance(safe, dict):
         # Preserve specs and individually projected provenance; invalidate every
@@ -128,6 +133,46 @@ def project_metadata(value):
         hold = {**safe, **{key: item for key, item in hold.items()
                          if key not in ('specs', 'declarations', 'ordinary_static_declarations')}}
     return hold
+
+
+def project_metadata(value):
+    return value if metadata_shape_valid(value) else hold_metadata(_project_shape(value))
+
+
+def lineage_valid(row, item):
+    """Complete generated identity, not a cryptographic authenticity guarantee."""
+    if not isinstance(item, dict): return False
+    kind = item.get('catalogue')
+    shape = _METADATA_SCHEMA['lineage']['shapes'].get(kind) if isinstance(kind, str) else None
+    if not shape or not metadata_shape_valid(item, shape): return False
+    if kind == 'transitous-licence':
+        return (item['id'] == row.get('filename') and item['id'].endswith('.gtfs.zip')
+            and '/' not in item['id'] and '\\' not in item['id']
+            and row.get('delivery') == 'transitous' and item['url'] == row.get('catalogue_url')
+            and re.fullmatch(_METADATA_SCHEMA['lineage']['transitous_origin_pattern'], item['url']) is not None)
+    if kind == 'mobility-database':
+        return item['url'] == _METADATA_SCHEMA['lineage']['mobility_origin']
+    return True
+
+
+def project_row(row):
+    """Only new-schema reference rows cross the extended lineage boundary."""
+    if 'source_resolution' not in row: return row
+    metadata = project_metadata(row['source_resolution'])
+    result = {**row, 'source_resolution': metadata}
+    if 'lineage' not in row: return result
+    lineage = row['lineage']; maximum = _METADATA_SCHEMA['lineage']['max_records']
+    valid = isinstance(lineage, list) and len(lineage) <= maximum
+    safe = []
+    for item in lineage[:maximum] if isinstance(lineage, list) else []:
+        if lineage_valid(row, item): safe.append(item)
+        else:
+            valid = False
+            record = _project_shape(item, 'lineage_safe')
+            if record: safe.append(record)
+    result['lineage'] = safe
+    if not valid: result['source_resolution'] = hold_metadata(metadata)
+    return result
 
 
 def digest(value):
@@ -214,14 +259,61 @@ def read_transitland(directory, ref):
     return result
 
 
+def reference_url_valid(value):
+    """Explicit shared URI grammar, independent of permissive native parsers."""
+    grammar = _METADATA_SCHEMA['url_grammar']
+    if not isinstance(value, str) or not value.isascii() or len(value) > grammar['max_length']:
+        return False
+    match = re.fullmatch(grammar['pattern'], value, re.I)
+    if not match or re.search(r'%(?![a-fA-F0-9]{2})', value):
+        return False
+    # Bound the redacted representation too, so publication stays idempotent.
+    before_fragment = value.split('#', 1)[0]
+    if '?' in before_fragment:
+        base, query = before_fragment.split('?', 1)
+        pairs = query.split('&') if query else []
+        if (len(pairs) > grammar['max_query_fields'] or len(base) + 1 + sum(
+                max(len(pair.split('=', 1)[0]), 9) + 15 for pair in pairs) > grammar['max_length']):
+            return False
+    host, port = match.groups()
+    if port is not None and int(port) > grammar['max_port']:
+        return False
+    if host.startswith('['):
+        try:
+            return ipaddress.ip_address(host[1:-1]).version == 6
+        except ValueError:
+            return False
+    if len(host) > grammar['max_host_length']:
+        return False
+    labels = host.rstrip('.').split('.')
+    if any(not re.fullmatch(grammar['label_pattern'], label) for label in labels):
+        return False
+    if re.fullmatch(grammar['numeric_label_pattern'], labels[-1]):
+        try:
+            return ipaddress.ip_address(host).version == 4
+        except ValueError:
+            return False
+    return True
+
+
+def reference_display_url(value):
+    """Redact already supported URIs without a second host parser grammar."""
+    grammar = _METADATA_SCHEMA['url_grammar']
+    match = re.fullmatch(grammar['pattern'], value, re.I)
+    host, port = match.groups()
+    scheme, remainder = value.split('://', 1)
+    tail_at = min((remainder.find(char) for char in '/?#' if char in remainder), default=len(remainder))
+    tail = remainder[tail_at:].split('#', 1)[0]
+    path, _, query = tail.partition('?')
+    parameters = parse_qsl(query, keep_blank_values=True, max_num_fields=grammar['max_query_fields'])
+    public_query = '&'.join((key if re.fullmatch(r'[A-Za-z0-9_.-]{1,80}', key) else 'parameter')
+        + '=%5Bredacted%5D' for key, _ in parameters)
+    return (scheme.lower() + '://' + host.lower() + (':' + port if port is not None else '')
+        + (path or '/') + ('?' + public_query if public_query else ''))
+
+
 def _url(value):
-    if not text(value):
-        return ''
-    try:
-        p = urlsplit(value)
-        return value if p.scheme in ('http', 'https') and p.hostname else ''
-    except ValueError:
-        return ''
+    return value if reference_url_valid(value) else ''
 
 
 def _authorization(feed):
@@ -396,8 +488,8 @@ def evidenced_static_identities(row):
     urls.extend(item['url'] for item in evidence.get('ordinary_static_declarations', [])
         if item['access_state'] == 'public_declared')
     for item in row.get('lineage') or []:
-        if (item.get('catalogue') == 'transitous-licence' or item.get('catalogue') == 'mobility-database'
-                and public_authentication(item.get('authentication_type'))):
+        if (lineage_valid(row, item) and (item.get('catalogue') == 'transitous-licence' or item.get('catalogue') == 'mobility-database'
+                and public_authentication(item.get('authentication_type')))):
             urls.append(item.get('source'))
     return {hashlib.sha256(url.encode()).hexdigest() for url in urls if _url(url)} - withheld_static_identities(row)
 
@@ -416,8 +508,8 @@ def independent_static_evidence(row):
     lineage = row.get('lineage') if isinstance(row.get('lineage'), list) else []
     # Published GTFS establishes the public processed archive, not that an
     # authenticated original suddenly became public.
-    published = any(isinstance(item, dict) and item.get('catalogue') == 'transitous-licence' for item in lineage)
-    mobility = any(isinstance(item, dict) and item.get('catalogue') == 'mobility-database'
+    published = any(lineage_valid(row, item) and item.get('catalogue') == 'transitous-licence' for item in lineage)
+    mobility = any(lineage_valid(row, item) and item.get('catalogue') == 'mobility-database'
         and public_authentication(item.get('authentication_type')) and source_identities(item)
         and not source_identities(item) & withheld for item in lineage)
     ordinary = [item for item in evidence.get('ordinary_static_declarations', [])
@@ -638,7 +730,7 @@ def resolution_state(row):
                 for d in ordinary)):
         return 'invalid'
     lineage = row.get('lineage', [])
-    if not isinstance(lineage, list) or any(not isinstance(item, dict) for item in lineage):
+    if not isinstance(lineage, list) or len(lineage) > MAX_DECLARATIONS or any(not lineage_valid(row, item) for item in lineage):
         return 'invalid'
     processed = value.get('processed_filename')
     if processed is not None and (state != 'schedule' or processed != row.get('filename')):

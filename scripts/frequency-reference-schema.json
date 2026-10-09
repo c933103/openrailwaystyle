@@ -454,6 +454,210 @@
         "specs",
         "declarations"
       ]
+    },
+    "lineage_safe": {
+      "kind": "object",
+      "fields": {
+        "catalogue": {
+          "kind": "string",
+          "min": 1,
+          "max": 80
+        },
+        "id": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096
+        },
+        "url": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096,
+          "format": "url"
+        },
+        "source": {
+          "kind": "string",
+          "min": 0,
+          "max": 4096,
+          "format": "url_or_empty"
+        },
+        "mdb_id": {
+          "kind": "string",
+          "min": 0,
+          "max": 4096
+        },
+        "status": {
+          "kind": "string",
+          "min": 0,
+          "max": 80
+        },
+        "authentication_type": {
+          "kind": "string",
+          "min": 0,
+          "max": 80
+        }
+      },
+      "required": []
+    },
+    "lineage_licence": {
+      "kind": "object",
+      "fields": {
+        "catalogue": {
+          "kind": "enum",
+          "values": [
+            "transitous-licence"
+          ]
+        },
+        "id": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096
+        },
+        "url": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096,
+          "format": "url"
+        },
+        "source": {
+          "kind": "string",
+          "min": 0,
+          "max": 4096,
+          "format": "url_or_empty"
+        }
+      },
+      "required": [
+        "catalogue",
+        "id",
+        "url",
+        "source"
+      ]
+    },
+    "lineage_feeds": {
+      "kind": "object",
+      "fields": {
+        "catalogue": {
+          "kind": "enum",
+          "values": [
+            "transitous-feeds"
+          ]
+        },
+        "id": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096
+        },
+        "url": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096,
+          "format": "url"
+        },
+        "source": {
+          "kind": "string",
+          "min": 0,
+          "max": 4096,
+          "format": "url_or_empty"
+        },
+        "mdb_id": {
+          "kind": "string",
+          "min": 0,
+          "max": 4096
+        }
+      },
+      "required": [
+        "catalogue",
+        "id",
+        "url",
+        "source",
+        "mdb_id"
+      ]
+    },
+    "lineage_mobility": {
+      "kind": "object",
+      "fields": {
+        "catalogue": {
+          "kind": "enum",
+          "values": [
+            "mobility-database"
+          ]
+        },
+        "id": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096
+        },
+        "url": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096,
+          "format": "url"
+        },
+        "source": {
+          "kind": "string",
+          "min": 0,
+          "max": 4096,
+          "format": "url_or_empty"
+        },
+        "status": {
+          "kind": "string",
+          "min": 0,
+          "max": 80
+        },
+        "authentication_type": {
+          "kind": "string",
+          "min": 0,
+          "max": 80
+        }
+      },
+      "required": [
+        "catalogue",
+        "id",
+        "url",
+        "source",
+        "status",
+        "authentication_type"
+      ]
+    },
+    "lineage_atlas": {
+      "kind": "object",
+      "fields": {
+        "catalogue": {
+          "kind": "enum",
+          "values": [
+            "transitland-atlas"
+          ]
+        },
+        "id": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096
+        },
+        "url": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096,
+          "format": "url"
+        },
+        "source": {
+          "kind": "string",
+          "min": 0,
+          "max": 4096,
+          "format": "url_or_empty"
+        },
+        "source_sha256": {
+          "kind": "string",
+          "min": 64,
+          "max": 64,
+          "pattern": "[a-f0-9]{64}"
+        }
+      },
+      "required": [
+        "catalogue",
+        "id",
+        "url",
+        "source",
+        "source_sha256"
+      ]
     }
   },
   "invalid": {
@@ -468,5 +672,26 @@
     "declarations": [],
     "ordinary_static_declarations": [],
     "reason": "invalid_reference_metadata"
+  },
+  "url_grammar": {
+    "description": "Bounded ASCII HTTP(S) URIs. IDNs use punycode; non-ASCII components use percent encoding. DNS names, canonical IPv4 and bracketed IPv6 are supported; no DNS or network lookup.",
+    "pattern": "https?://(?:(?:[A-Za-z0-9._~!$&'()*+,;=:%-]+)@)?(\\[[0-9A-Fa-f:.]+\\]|[A-Za-z0-9_-]+(?:\\.[A-Za-z0-9_-]+)*\\.?)(?::([0-9]{1,5}))?(?:[/?#][A-Za-z0-9._~!$&'()*+,;=:@/?#%\\[\\]-]*)?",
+    "label_pattern": "[A-Za-z0-9_](?:[A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?",
+    "numeric_label_pattern": "(?:[0-9]+|0[xX][0-9A-Fa-f]+)",
+    "max_length": 4096,
+    "max_host_length": 253,
+    "max_port": 65535,
+    "max_query_fields": 128
+  },
+  "lineage": {
+    "shapes": {
+      "transitous-licence": "lineage_licence",
+      "transitous-feeds": "lineage_feeds",
+      "mobility-database": "lineage_mobility",
+      "transitland-atlas": "lineage_atlas"
+    },
+    "transitous_origin_pattern": "https://github\\.com/public-transport/transitous/blob/(?:[a-f0-9]{40}|main)/website/data/license\\.json",
+    "mobility_origin": "https://files.mobilitydatabase.org/feeds_v2.csv",
+    "max_records": 64
   }
 }

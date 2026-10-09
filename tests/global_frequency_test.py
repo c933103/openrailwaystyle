@@ -18,6 +18,12 @@ spec=importlib.util.spec_from_file_location('global_frequency',Path(__file__).pa
 pipeline=importlib.util.module_from_spec(spec);spec.loader.exec_module(pipeline)
 
 
+def add_published_lineage(row, source):
+    row['catalogue_url'] = pipeline.registry.catalogue_sources('b'*40)[0]
+    row.setdefault('lineage', []).append({'catalogue': 'transitous-licence', 'id': row['filename'],
+        'url': row['catalogue_url'], 'source': source})
+
+
 class GlobalFrequency(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
@@ -81,7 +87,7 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual(json.loads(assembly.stdout), {'compiled': 1, 'non_timetable': 1, 'source_alias': 1, 'retry_pending': 1})
 
     def test_malformed_resolution_and_alias_targets_fail_closed(self):
-        base = {'filename': 'x.gtfs.zip', 'source': 'https://operator.test/feed', 'delivery': 'direct', 'lineage': [{'catalogue': 'mobility-database', 'id': 'known', 'source': 'https://operator.test/feed'}]}
+        base = {'filename': 'x.gtfs.zip', 'source': 'https://operator.test/feed', 'delivery': 'direct', 'lineage': [{'catalogue': 'mobility-database', 'id': 'known', 'source': 'https://operator.test/feed', 'url': pipeline.registry.MOBILITY_CSV, 'status': '', 'authentication_type': ''}]}
         for value in [[], 'schedule', {'schema': 2}, {'schema': 1, 'state': 'schedule', 'specs': ['gbfs'], 'declarations': []}, {'schema': 1, 'state': 'non_timetable_format', 'specs': ['gtfs'], 'declarations': []},
                       {'schema': 1, 'state': 'schedule', 'specs': ['gtfs'], 'declarations': [], 'processed_filename': '../escape.zip'}]:
             with self.subTest(value=value):
@@ -213,7 +219,7 @@ class GlobalFrequency(unittest.TestCase):
                 with self.subTest(case=case, independently_published=independently_published):
                     row = copy.deepcopy(baseline)
                     if independently_published:
-                        row['lineage'].append({'catalogue': 'transitous-licence', 'source': url})
+                        add_published_lineage(row, url)
                     resolution = row['source_resolution']; other = copy.deepcopy(resolution['declarations'][0])
                     if case == 'different_id_same_url': other['id'] = 'b'*64
                     if case == 'different_options': other['definition']['sha256'] = 'b'*64
@@ -254,7 +260,7 @@ class GlobalFrequency(unittest.TestCase):
                 with self.subTest(case=case, published=published):
                     row = copy.deepcopy(baseline); resolution = row['source_resolution']; declaration = resolution['declarations'][0]
                     if published:
-                        row['lineage'].append({'catalogue': 'transitous-licence', 'source': url})
+                        add_published_lineage(row, url)
                     if case == 'duplicate_stale_hash':
                         other = copy.deepcopy(declaration); other['resolution']['endpoints'][0]['url'] = 'https://different.test/rail.zip'
                         resolution['declarations'].append(other)
@@ -302,14 +308,14 @@ class GlobalFrequency(unittest.TestCase):
         processed = pipeline.PROCESSED+'xx_rail.gtfs.zip'
         for published in [False, True]:
             row = copy.deepcopy(baseline); row['source_resolution']['declarations'][0].pop('upstream_skip')
-            if published: row['lineage'].append({'catalogue': 'transitous-licence', 'source': url})
+            if published: add_published_lineage(row, url)
             entry = pipeline.discover([row], {})[0]
             self.assertEqual(pipeline.source_candidates(entry), [processed, url] if published else [])
             row['source_resolution']['processed_filename'] = None
             entry = pipeline.discover([row], {})[0]
             self.assertEqual(pipeline.source_candidates(entry), [url], 'missing processing eligibility does not erase the proven public original')
         row = copy.deepcopy(baseline); row['source_resolution']['selected_static_declaration'] = None
-        row['lineage'].append({'catalogue': 'transitous-licence', 'source': url})
+        add_published_lineage(row, url)
         row['source'] = 'https://unproven.test/unverified.zip'
         entry = pipeline.discover([row], {})[0]
         self.assertEqual(entry['status'], 'pending')
@@ -317,6 +323,62 @@ class GlobalFrequency(unittest.TestCase):
         # A stale asserted hash cannot make the unproven URL an original-source proof.
         row['lineage'][-1]['source_sha256'] = __import__('hashlib').sha256(row['source'].encode()).hexdigest()
         self.assertEqual(pipeline.source_candidates(pipeline.discover([row], {})[0]), [processed, url])
+
+    def test_publication_lineage_requires_complete_row_bound_identity(self):
+        import copy
+        row = {'filename': 'xx_proven.gtfs.zip', 'source': '', 'delivery': 'transitous', 'lineage': [],
+            'source_resolution': {'schema': 1, 'state': 'schedule', 'specs': ['gtfs'], 'declarations': [],
+                                  'processed_filename': 'xx_proven.gtfs.zip'}}
+        add_published_lineage(row, '')
+        processed = pipeline.PROCESSED + row['filename']
+        self.assertEqual(pipeline.source_candidates(pipeline.discover([row], {})[0]), [processed])
+        changes = [(field, None, True) for field in ['catalogue', 'id', 'url', 'source']]
+        changes += [('id', 'different.gtfs.zip', False), ('source', 17, False), ('source', 'http://bad host/feed', False)]
+        changes += [('url', value, False) for value in [row['catalogue_url']+'?fake=1', row['catalogue_url']+'#fake',
+            row['catalogue_url'].replace('github.com/', 'github.com.example/'), row['catalogue_url'].replace('github.com/', 'github.com:443/'),
+            row['catalogue_url'].replace('github.com/', 'userinfo@github.com/'), 'https://github.com/public-transport/transitous/blob/main/wrong.json']]
+        for field, value, remove in changes:
+            with self.subTest(field=field, value=value):
+                bad = copy.deepcopy(row)
+                if remove: bad['lineage'][0].pop(field)
+                else: bad['lineage'][0][field] = value
+                entry = pipeline.discover([bad], {})[0]
+                self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
+                self.assertEqual(pipeline.source_candidates(entry), [])
+        wrong = copy.deepcopy(row); wrong['catalogue_url'] += '?wrong=1'
+        self.assertEqual(pipeline.source_candidates(pipeline.discover([wrong], {})[0]), [])
+        public = copy.deepcopy(row); public['source'] = 'https://unproven.test/feed'
+        public['lineage'][0]['source'] = 'https://public.test/proven'
+        self.assertEqual(pipeline.source_candidates(pipeline.discover([public], {})[0]), [processed, 'https://public.test/proven'])
+        mobility = copy.deepcopy(row); mobility['source_resolution']['processed_filename'] = None
+        mobility['source'] = 'https://public.test/mobility'
+        mobility['lineage'] = [{'catalogue':'mobility-database','id':'known','url':pipeline.registry.MOBILITY_CSV,
+            'source':mobility['source'],'status':'','authentication_type':'0'}]
+        self.assertEqual(pipeline.source_candidates(pipeline.discover([mobility], {})[0]), [mobility['source']])
+        for field in mobility['lineage'][0]:
+            bad = copy.deepcopy(mobility); bad['lineage'][0].pop(field)
+            self.assertEqual(pipeline.source_candidates(pipeline.discover([bad], {})[0]), [])
+
+    def test_reference_lineage_projection_holds_without_changing_legacy_rows(self):
+        import copy
+        baseline = self.projection_fixture()
+        add_published_lineage(baseline, 'https://public.test/static')
+        for nested in [False, True]:
+            row = copy.deepcopy(baseline)
+            if nested: row['lineage'][-1]['source'] = {'authorization': {'value': 'synthetic-lineage-marker'}}
+            else: row['lineage'][-1]['authorization'] = {'value': 'synthetic-lineage-marker'}
+            prepared = pipeline.registry.prepare_catalogue_row(row)
+            self.assertNotIn('synthetic-lineage-marker', json.dumps(prepared))
+            self.assertEqual(prepared['source_resolution']['state'], 'unresolved')
+            self.assertEqual(pipeline.registry.prepare_catalogue_row(prepared), prepared)
+            self.assertEqual(pipeline.source_candidates(pipeline.discover([row], {})[0]), [])
+            for status in ['pending','retry_pending','excluded','non_timetable','compiled','source_alias']:
+                published = pipeline.published_metadata({'status':status,'catalogue':row,'source':{'catalogue_attribution':row}})
+                self.assertNotIn('synthetic-lineage-marker', json.dumps(published))
+                self.assertEqual(pipeline.published_metadata(published), published)
+        legacy = copy.deepcopy(baseline); legacy.pop('source_resolution')
+        legacy['lineage'][-1]['unrelated_fixture_field'] = 'ordinary-fixture'
+        self.assertEqual(pipeline.registry.references.project_row(legacy), legacy)
 
     def projection_fixture(self):
         ordinary = ('xx', {'name': 'rail', 'type': 'http', 'url': 'https://public.test/static'}, 'https://github.test/pin/xx.json')
