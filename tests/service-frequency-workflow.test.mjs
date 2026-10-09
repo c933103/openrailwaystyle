@@ -47,10 +47,15 @@ test('catalogue acquisition has explicit time ceilings and fails closed before p
   assert.match(job('publish'),/needs: assemble/);
 });
 
-test('PR frequency validation executes immutable PR head without retained credentials',()=>{
+test('PR and push frequency validation execute immutable code without retained credentials',()=>{
   const validate=job('validate-pr');
-  assert.match(validate,/if: github\.event_name == 'pull_request'/);
-  assert.match(validate,/ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
+  assert.match(validate,/if: github\.event_name == 'pull_request' \|\| github\.event_name == 'push'/);
+  const expression=validate.match(/ref: \$\{\{ (.+) \}\}/)?.[1];
+  assert.ok(expression);
+  const checkout=(event)=>vm.runInNewContext(expression,{github:{event_name:event,
+    sha:'immutable-push-sha',event:{pull_request:{head:{sha:'immutable-pr-head-sha'}}}}});
+  assert.equal(checkout('pull_request'),'immutable-pr-head-sha');
+  assert.equal(checkout('push'),'immutable-push-sha');
   assert.match(validate,/persist-credentials: false/);
   assert.match(validate,/npm ci --ignore-scripts --no-audit --no-fund/);
   assert.doesNotMatch(workflow,/pull_request_target:|secrets\./);
@@ -58,16 +63,59 @@ test('PR frequency validation executes immutable PR head without retained creden
   assert.match(workflow,/^permissions:\n  contents: read\n/m);
 });
 
-test('only production events can enter worldwide acquisition, assembly and publication',()=>{
+test('only scheduled or explicitly dispatched refreshes can enter acquisition and publication',()=>{
   for(const name of ['catalogue','compile','assemble']){
-    assert.match(job(name),/^    if: github\.event_name != 'pull_request'\n/);
+    assert.match(job(name),/^    if: github\.event_name == 'schedule' \|\| github\.event_name == 'workflow_dispatch'\n/);
   }
   assert.match(job('compile'),/needs: catalogue/);
   assert.match(job('assemble'),/needs: \[catalogue, compile\]/);
   assert.match(job('publish'),/needs: assemble/);
-  assert.match(job('publish'),/if: github\.ref == 'refs\/heads\/main' && github\.event_name != 'pull_request'/);
+  assert.match(job('publish'),/if: github\.ref == 'refs\/heads\/main' && \(github\.event_name == 'schedule' \|\| github\.event_name == 'workflow_dispatch'\)/);
   assert.match(workflow,/schedule:\n    - cron: '41 2 \* \* 1'/);
   assert.match(workflow,/workflow_dispatch:\n    inputs:\n      service_date:/);
+});
+
+test('event and dependency contracts preserve required offline checks and complete production DAG',()=>{
+  const names=['validate-pr','catalogue','compile','assemble','publish'];
+  const simulate=(event,{ref='refs/heads/main',failed}={})=>{
+    const status={};
+    for(const name of names){
+      const body=job(name),condition=body.match(/^    if: (.+)$/m)?.[1];
+      assert.ok(condition,`${name} requires an explicit event gate`);
+      const needs=body.match(/^    needs: (.+)$/m)?.[1]?.replace(/[\[\]]/g,'').split(',').map(s=>s.trim())||[];
+      const eligible=vm.runInNewContext(condition,{github:{event_name:event,ref}});
+      status[name]=!eligible||needs.some(n=>status[n]!=='success')?'skipped':name===failed?'failure':'success';
+    }
+    return status;
+  };
+  for(const event of ['pull_request','push'])assert.deepEqual(simulate(event),{
+    'validate-pr':'success',catalogue:'skipped',compile:'skipped',assemble:'skipped',publish:'skipped',
+  });
+  for(const event of ['schedule','workflow_dispatch']){
+    assert.deepEqual(simulate(event),{
+      'validate-pr':'skipped',catalogue:'success',compile:'success',assemble:'success',publish:'success',
+    });
+    for(const failed of ['catalogue','compile','assemble']){
+      const result=simulate(event,{failed});
+      assert.equal(result[failed],'failure');
+      assert.equal(result.publish,'skipped',`failed ${failed} must preserve the previous release`);
+    }
+  }
+  assert.equal(simulate('workflow_dispatch',{ref:'refs/heads/feature'}).publish,'skipped');
+  assert.ok(Object.values(simulate('release')).every(value=>value==='skipped'));
+  assert.equal(simulate('push',{failed:'validate-pr'})['validate-pr'],'failure');
+  assert.doesNotMatch(job('validate-pr'),/continue-on-error|\|\| true/);
+});
+
+test('relevant source pushes stay covered while docs and test-only pushes avoid acquisition',()=>{
+  const push=workflow.split('  push:\n')[1].split('  workflow_dispatch:')[0];
+  const pr=workflow.split('  pull_request:\n')[1].split('permissions:')[0];
+  assert.match(push,/branches: \[main\]/);
+  for(const file of ['scripts/gtfs-frequency.py','scripts/frequency_catalogue.py',
+    '.github/workflows/service-frequency.yml'])assert.ok(push.includes(file));
+  assert.doesNotMatch(push,/docs\/|tests\//);
+  assert.ok(pr.includes('docs/service-frequency.md'));
+  assert.ok(pr.includes("'tests/*frequency*'"));
 });
 
 test('PR fixture command exercises compiler, assembly, streaming and service semantics without egress',()=>{
@@ -90,10 +138,10 @@ test('production keeps complete inventory gates, eight shards, caches and bounde
   assert.match(job('compile'),/restore-keys: worldwide-gtfs-\$\{\{ matrix\.shard \}\}-/);
   assert.match(job('assemble'),/timeout-minutes: 90/);
   assert.match(job('assemble'),/node --max-old-space-size=5500 scripts\/assemble-global-frequency\.mjs frequency-output/);
-  assert.match(workflow,/cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
+  assert.match(workflow,/cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \|\| github\.event_name == 'push' \}\}/);
 });
 
-test('PR concurrency is isolated by number and cannot cancel a production refresh',()=>{
+test('PR and push concurrency cannot replace or cancel a production refresh',()=>{
   const expression=workflow.match(/^  group: worldwide-frequency-\$\{\{ (.+) \}\}$/m)?.[1];
   assert.ok(expression,'the production group prefix must remain unchanged');
   const group=(event,number,head='feature',ref='refs/heads/main')=>
@@ -104,10 +152,19 @@ test('PR concurrency is isolated by number and cannot cancel a production refres
   assert.equal(group('pull_request',12),'worldwide-frequency-pr-12');
   assert.notEqual(group('pull_request',12,'same-name'),group('pull_request',13,'same-name'),
     'different forks with the same branch name must not cancel each other');
-  assert.notEqual(group('pull_request',12,'refs/heads/main'),group('push'),
+  assert.notEqual(group('pull_request',12,'refs/heads/main'),group('schedule'),
     'a PR branch name must not collide with the production refresh');
-  for(const event of ['push','schedule','workflow_dispatch']){
+  assert.equal(group('push'),'worldwide-frequency-push-refs/heads/main');
+  assert.notEqual(group('push'),group('schedule'),
+    'an offline push must not replace queued production work');
+  assert.notEqual(group('push'),group('pull_request',12));
+  for(const event of ['schedule','workflow_dispatch']){
     assert.equal(group(event),'worldwide-frequency-refs/heads/main',
       `${event} retains the existing production queue`);
+  }
+  const cancel=workflow.match(/^  cancel-in-progress: \$\{\{ (.+) \}\}$/m)?.[1];
+  for(const event of ['pull_request','push','schedule','workflow_dispatch']){
+    assert.equal(vm.runInNewContext(cancel,{github:{event_name:event}}),
+      ['pull_request','push'].includes(event));
   }
 });
