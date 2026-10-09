@@ -6,7 +6,7 @@ import {installPwaInstall} from '../styles/map-controls.mjs';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
-function start({userAgent = 'Mozilla/5.0 Chrome/140.0.0.0 Safari/537.36', platform = 'Linux x86_64', maxTouchPoints = 0, standalone = false, displayMode = false, watch = false} = {}) {
+function start({userAgent = 'Mozilla/5.0 Chrome/140.0.0.0 Safari/537.36', platform = 'Linux x86_64', maxTouchPoints = 0, standalone = false, displayMode = false, watch = false, noNativeDialog = false} = {}) {
   const dom = new JSDOM(html, {url: 'https://atlas.test/openrailwaystyle/#7/30.6/114.3'});
   const {window} = dom, {document} = window;
   for (const [name, value] of Object.entries({userAgent, platform, maxTouchPoints, standalone})) Object.defineProperty(window.navigator, name, {value, configurable: true});
@@ -14,6 +14,12 @@ function start({userAgent = 'Mozilla/5.0 Chrome/140.0.0.0 Safari/537.36', platfo
   media.matches = displayMode;
   window.matchMedia = () => media;
   if (watch) document.body.dataset.ui = 'watch';
+  if (noNativeDialog) {
+    // A browser with no native dialog treats it as an ordinary element: no
+    // reflected open property and no modal/close methods. jsdom otherwise
+    // reflects open even though it has no showModal(), hiding this failure.
+    for (const property of ['open', 'showModal', 'close']) delete window.HTMLDialogElement.prototype[property];
+  }
   const controls = installPwaInstall({window, document});
   const byId = id => document.getElementById(id);
   return {window, document, controls, media, byId,
@@ -179,6 +185,54 @@ test('manual help traps focus, closes by Escape or close button, and returns foc
     dialog.dispatchEvent(new s.window.Event('cancel', {cancelable: true}));
     assert.equal(dialog.open, false);
     assert.equal(s.document.activeElement, s.byId('pwa-install-open'));
+  } finally { s.cleanup(); }
+});
+
+test('clicking Install restores focus to its invoking button even when the click does not focus it', () => {
+  const s = start();
+  try {
+    const opener = s.byId('pwa-install-open'), previous = s.byId('share');
+    previous.focus();
+    let activeOnClick;
+    opener.addEventListener('click', () => { activeOnClick = s.document.activeElement; }, {capture: true});
+    opener.click();
+    assert.equal(activeOnClick, previous, 'reproduce WebKit keeping the previous control active on pointer click');
+    assert.equal(s.byId('pwa-install').open, true);
+    s.byId('pwa-install-close').click();
+    assert.equal(s.document.activeElement, opener, 'return to the control that opened the dialog, not the previous control');
+  } finally { s.cleanup(); }
+});
+
+test('a dialog without native open reflection closes, restores inert state and returns focus', () => {
+  const s = start({noNativeDialog: true});
+  try {
+    const opener = s.byId('pwa-install-open'), dialog = s.byId('pwa-install');
+    const previous = s.byId('share'), close = s.byId('pwa-install-close');
+    assert.equal('open' in dialog, false, 'the fallback must not rely on jsdom’s native open reflection');
+    assert.equal(typeof dialog.showModal, 'undefined');
+    s.byId('map-frame').inert = true;
+    s.document.querySelector('.panel').inert = false;
+    const originalInert = [...s.document.body.children].filter(element => element !== dialog).map(element => [element, element.inert]);
+    const checkRestored = () => {
+      assert.equal(dialog.hasAttribute('open'), false, 'fallback close removes the visible open state');
+      for (const [element, inert] of originalInert) assert.equal(element.inert, inert, 'restore each element’s previous inert state');
+      assert.equal(s.document.activeElement, opener);
+    };
+    for (const dismiss of [
+      () => close.click(),
+      () => close.dispatchEvent(new s.window.KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true})),
+      () => dialog.dispatchEvent(new s.window.Event('cancel', {cancelable: true})),
+      () => s.controls.destroy(),
+    ]) {
+      previous.focus();
+      opener.click();
+      assert.equal(dialog.hasAttribute('open'), true);
+      assert.equal(dialog.open, undefined);
+      for (const [element] of originalInert) assert.equal(element.inert, true, 'fallback makes the background inert');
+      opener.click(); // Reopening must not overwrite the saved inert states.
+      dismiss();
+      checkRestored();
+    }
   } finally { s.cleanup(); }
 });
 

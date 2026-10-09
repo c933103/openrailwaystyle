@@ -173,6 +173,9 @@ export function installPwaInstall({window = globalThis.window, document = window
   // flag: installation and removal in other contexts cannot be detected here.
   const runningAsApp = () => navigator.standalone === true || standalone?.matches === true;
   const unavailable = () => runningAsApp() || installedThisSession;
+  // Native dialogs reflect this attribute through .open; unsupported
+  // browsers have only the attribute used by our fallback.
+  const isOpen = () => dialog.hasAttribute('open');
   function restoreFocus() {
     for (const [element, inert] of fallbackInert) element.inert = inert;
     fallbackInert = [];
@@ -181,7 +184,7 @@ export function installPwaInstall({window = globalThis.window, document = window
     if (target?.isConnected && !target.closest('[hidden], [inert]') && !unavailable()) target.focus();
   }
   function close() {
-    if (dialog.open) {
+    if (isOpen()) {
       if (typeof dialog.close === 'function') dialog.close();
       else dialog.removeAttribute('open');
     }
@@ -199,8 +202,10 @@ export function installPwaInstall({window = globalThis.window, document = window
     if (hidden) close();
   }
   function open() {
-    if (unavailable() || document.body.dataset.ui === 'watch' || dialog.open) return;
-    returnFocus = document.activeElement;
+    if (unavailable() || document.body.dataset.ui === 'watch' || isOpen()) return;
+    // WebKit pointer clicks need not focus buttons. Restore the invoking
+    // control even when the previously focused control remains active.
+    returnFocus = opener;
     render();
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else {
@@ -240,13 +245,13 @@ export function installPwaInstall({window = globalThis.window, document = window
     } finally {
       prompting = false;
       render();
-      if (!destroyed && dialog.open && document.activeElement === nativeButton && nativeButton.hidden) closeButton.focus();
+      if (!destroyed && isOpen() && document.activeElement === nativeButton && nativeButton.hidden) closeButton.focus();
     }
   }
   listen(opener, 'click', open);
   listen(closeButton, 'click', close);
   listen(nativeButton, 'click', requestInstall);
-  listen(dialog, 'close', () => { if (!dialog.open) restoreFocus(); });
+  listen(dialog, 'close', () => { if (!isOpen()) restoreFocus(); });
   listen(dialog, 'cancel', event => { event.preventDefault(); close(); });
   listen(dialog, 'keydown', event => {
     if (event.key === 'Escape') { event.preventDefault(); close(); return; }
