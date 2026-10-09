@@ -150,7 +150,11 @@ and 32 identity tags, scanning at most 256 raw tag keys before withholding
 capture. Pattern, call, observation, source-envelope and captured-OSM records have explicit
 bounded field whitelists before canonical hashing; nested/oversized values or
 unsupported extra fields are rejected rather than recursively traversed or
-copied to results. Resource-limit outcomes remain `missing_evidence`.
+copied to results. Every bounded array must be dense with owned entries before
+hashing, comparison or selection. Holes and inherited numeric slots cannot
+substitute for evidence; JSON nulls are accepted only where the field permits
+unknown values, such as a missing departure time. Resource-limit outcomes remain
+`missing_evidence`.
 
 ### Outcomes
 

@@ -10,7 +10,14 @@ const id = value => typeof value === 'string' && value.length > 0 && value.lengt
 const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const instant = value => typeof value === 'string' && value.length <= 40 && /^\d{4}-\d\d-\d\dT/.test(value) && Number.isFinite(Date.parse(value));
 const memberId = member => `${member.type}:${member.ref}`;
-const array = (value, max) => Array.isArray(value) && value.length <= max;
+// Array iteration helpers skip holes. Require owned entries before any hash,
+// equality or candidate selection so an in-process sparse array cannot stand
+// in for absent evidence (inherited numeric properties are absent too).
+function array(value, max) {
+  if (!Array.isArray(value) || value.length > max) return false;
+  for (let index = 0; index < value.length; index++) if (!Object.hasOwn(value, index)) return false;
+  return true;
+}
 const positive = value => Number.isSafeInteger(value) && value > 0;
 const result = (status, reason, extra = {}) => ({schema: 1, status, reasons: [reason], frequency_status: 'not_evaluated', ...extra});
 const same = (a, b) => a.length === b.length && a.every((value, index) => value === b[index]);

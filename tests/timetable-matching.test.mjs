@@ -321,3 +321,57 @@ test('operator assertion absence, uncertainty and unrelated scope remain distinc
   noRef.candidates[0].operator_binding = {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: 'conflict'};
   assert.equal(status(noRef), 'conflicting', 'an exact binding establishes relevance without a ref guess');
 });
+
+test('sparse station sequences cannot verify a variant with no declared stations', () => {
+  const input = fixture();
+  input.candidates[0].variants[0].stations = Array(2);
+  assert.equal(status(input), 'missing_evidence');
+});
+
+test('all nested bounded arrays reject holes before hashing, equality or selection', () => {
+  const paths = [
+    'evidence.patterns', 'evidence.observations', 'evidence.stops',
+    'evidence.patterns.0.calls', 'evidence.observations.0.active_service_dates',
+    'evidence.observations.0.departures', 'evidence.observations.0.frequencies',
+    'candidates', 'crosswalk', 'candidates.0.route_bindings',
+    'candidates.0.osm.served_members', 'candidates.0.osm.track_members',
+    'candidates.0.eligible_way_ids', 'candidates.0.variants',
+    'candidates.0.variants.0.stations', 'candidates.0.variants.0.section_way_ids',
+  ];
+  for (const path of paths) {
+    const input = fixture(), values = path.split('.').reduce((value, key) => value[key], input);
+    values.length++;
+    assert.equal(status(input), 'missing_evidence', path);
+  }
+  const inherited = fixture(), stations = inherited.candidates[0].variants[0].stations;
+  const prototype = Object.create(Array.prototype);
+  prototype[0] = stations[0];
+  delete stations[0];
+  Object.setPrototypeOf(stations, prototype);
+  assert.equal(status(inherited), 'missing_evidence', 'an inherited station is not owned evidence');
+  assert.equal(captureOsmServiceEvidence(relation({members: Array(3)}), snapshot).status, 'incomplete');
+});
+
+test('explicit null evidence entries stay invalid while unknown departure times remain representable', () => {
+  for (const mutate of [
+    x => { x.evidence.patterns[0].calls[0] = null; },
+    x => { x.evidence.observations[0].active_service_dates[0] = null; },
+    x => { x.evidence.observations[0].frequencies = [null]; },
+    x => { x.candidates[0] = null; },
+    x => { x.candidates[0].osm.served_members[0] = null; },
+    x => { x.candidates[0].osm.track_members[0] = null; },
+    x => { x.candidates[0].eligible_way_ids[0] = null; },
+    x => { x.candidates[0].variants[0] = null; },
+    x => { x.candidates[0].variants[0].stations[0] = null; },
+    x => { x.candidates[0].variants[0].section_way_ids[0] = null; },
+  ]) {
+    const input = fixture(); mutate(input);
+    assert.equal(status(input), 'missing_evidence');
+  }
+  assert.equal(captureOsmServiceEvidence(relation({members: [null]}), snapshot).status, 'incomplete');
+  const unknown = fixture();
+  unknown.evidence.observations[0].departures[0] = null;
+  sealObservations(unknown);
+  assert.equal(status(unknown), 'verified', 'identity can verify without manufacturing a departure or frequency');
+  assert.equal(matchTimetablePattern(unknown).frequency_status, 'not_evaluated');
+});
