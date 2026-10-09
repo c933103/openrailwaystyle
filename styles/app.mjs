@@ -1,22 +1,23 @@
-import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261009-install-icon-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261009-install-icon-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261009-install-icon-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261009-install-icon-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261009-install-icon-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261009-install-icon-1';
+import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261010-train-schedules-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261010-train-schedules-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261010-train-schedules-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261010-train-schedules-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261010-train-schedules-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261010-train-schedules-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261009-install-icon-1';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261009-install-icon-1';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261009-install-icon-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261009-install-icon-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261009-install-icon-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261009-install-icon-1';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261009-install-icon-1';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261009-install-icon-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261009-install-icon-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261009-install-icon-1';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261009-install-icon-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261009-install-icon-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261010-train-schedules-1';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261010-train-schedules-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261010-train-schedules-1';
+import {departureItem} from './departures-ui.mjs?v=20261010-train-schedules-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261010-train-schedules-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261010-train-schedules-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261010-train-schedules-1';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261010-train-schedules-1';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261010-train-schedules-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261010-train-schedules-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261010-train-schedules-1';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261010-train-schedules-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261010-train-schedules-1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -53,7 +54,7 @@ let platformLengths,frequencyExpiry;
 let powerFacilities;
 let railRecovery, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261009-install-icon-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261010-train-schedules-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -463,7 +464,7 @@ function renderLegend() {
     const key=textNode('div','','frequency-key');
     key.append(textNode('p',FREQUENCY_LABELS[selectedFrequencyProfile(settings)],'small'));
     for(const rate of [1,6,12,24,30]){const sample=textNode('span','','frequency-sample'),mark=textNode('i');mark.style.height=frequencyWidth(rate)+'px';sample.append(mark,textNode('span',`${rate===30?'30+':rate}/h`));key.append(sample);}
-    key.append(textNode('p','Subdued line: frequency unavailable. Rates are per direction; published headways are estimates.','small'));box.append(key);
+    key.append(textNode('p','Subdued line: no matched frequency profile. Departure timetables may still be available. Rates are per direction; published headways are estimates.','small'));box.append(key);
   }
   const notes = {
     speed: settings.units === 'imperial' ? 'Labels in mph; limits tagged in mph keep their directional values. Grey means no numeric limit is recorded.' : 'Labels keep tagged units: bare numbers are km/h, mph is written out. Grey means no numeric limit is recorded.',
@@ -818,7 +819,7 @@ function showServiceDetails(feature) {
   row(dl, 'Reference', p.ref);
   row(dl, 'Network', p.network);
   row(dl, 'Operator', p.operator);
-  for(const profile of [...new Set(['am','pm','offpeak','overnight',selectedFrequencyProfile(settings)])].filter(profileCovered))row(dl,FREQUENCY_LABELS[profile],frequencyDetails(p,profile)||'Frequency unavailable');
+  for(const profile of [...new Set(['am','pm','offpeak','overnight',selectedFrequencyProfile(settings)])].filter(profileCovered))row(dl,FREQUENCY_LABELS[profile],frequencyDetails(p,profile)||'No matched frequency profile');
   if(p.frequency_source){row(dl,'Frequency source',`${p.frequency_source} · checked ${p.frequency_checked}`);row(dl,'Period definitions',p.frequency_definition);row(dl,'Source credit',p.frequency_credit);row(dl,'Licence',p.frequency_license);row(dl,'Schedule note',p.frequency_note);row(dl,'Geometry',p.geometry_source);}
   if(/^https:\/\//.test(p.frequency_url||'')){const link=textNode('a','Frequency source and terms');link.href=p.frequency_url;link.target='_blank';link.rel='noopener';panel.append(link);}
   if (p.n > 1) row(dl, 'Services on this track', String(p.n));
@@ -850,18 +851,11 @@ function showDepartures(panel, feature) {
     else {
       const live = rows.filter(r => r.live).length;
       section.append(textNode('p', live ? `Live times for ${live} of ${rows.length} departures; the rest are timetabled.` : 'Timetabled times: no live data for these departures.', 'small'));
+      if (settings.serviceWidth === 'frequency') section.append(textNode('p', 'These departure timetables are available independently of the map’s matched frequency profiles.', 'small'));
+      section.append(textNode('p', 'Click a departure to see its full train schedule. Drag over text to select and copy it.', 'small'));
       const list = document.createElement('ol'); list.className = 'departure-list';
       for (const r of rows) {
-        const item = document.createElement('li');
-        const time = textNode('span', clock(r.cancelled ? r.scheduled : r.departure, r.tz), 'departure-time');
-        if (r.cancelled) time.classList.add('cancelled');
-        const line = textNode('span', r.line || r.mode.toLowerCase().replace(/_/g, ' '), 'departure-line');
-        if (r.color) { line.style.background = r.color; line.style.color = r.textColor || '#fff'; }
-        const status = r.cancelled ? 'Cancelled' : r.live ? (r.delay > 0 ? `+${r.delay} min` : r.delay < 0 ? `${r.delay} min` : 'On time') : '';
-        item.append(time, line, textNode('span', r.headsign, 'departure-headsign'));
-        if (r.track) item.append(textNode('span', /^\w{1,4}$/.test(r.track) ? `Pl. ${r.track}` : r.track, 'departure-track'));
-        if (status) item.append(textNode('span', status, `departure-status${r.cancelled || r.delay > 0 ? ' late' : ''}`));
-        list.append(item);
+        list.append(departureItem(document, r));
       }
       section.append(list);
     }

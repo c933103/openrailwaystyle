@@ -11,6 +11,39 @@ in standard and watch layouts; selecting an hour changes widths, offsets and cli
 selection together. One shared scale applies across regions and periods. Settings
 persist in shared links. Unknown is not zero.
 
+## Station departures and frequency coverage
+
+The station departure board and the Service view's frequency widths have
+different data paths. `styles/departures.mjs` asks Transitous for a nearby
+station's upcoming trains. `scripts/rebuild-service-frequency.mjs` currently
+applies only the audited published headways in `styles/service-headways.json`
+to the cached OSM routes. Although the worldwide pipeline compiles timetable
+profiles, this rebuild deliberately does not match those profiles to OSM
+routes yet (tracked in #111). A usable Ginza Line departure board therefore
+does not currently give its mapped line a frequency profile. A subdued line
+means **no matched frequency profile**, not that no timetable exists. A
+limited list of upcoming departures is not an all-day, peak or off-peak rate.
+
+Each departure expands its complete trip using the opaque Transitous `tripId`
+retained through within-list and cross-feed reconciliation. The viewer uses
+the documented MOTIS `trip` itinerary: origin, intermediate stops and terminus,
+including stay-seated continuations and scheduled skipped stops. It shows
+arrival/departure times with local dates, platforms, live changes and
+cancellations; repeated stops on loops remain separate. It does not derive a
+schedule from the route name or another service. Missing identities and failed
+requests are reported explicitly; failures have a Retry action.
+
+Trip requests are made only when expanded. Concurrent requests are shared;
+the bounded 64-entry cache expires after one minute and evicts failed requests.
+Station board request limits are unchanged. Timetable text is explicitly
+selectable, and dragging text does not expand the train. The complete renderer
+is included in the versioned PWA shell. The Chromium/WebKit browser check uses
+the actual Atlas station click handler and local timetable fixtures; no public
+timetable or tile provider is contacted by automation.
+
+API contract: [MOTIS OpenAPI](https://github.com/motis-project/motis/blob/master/openapi.yaml),
+served by [Transitous](https://transitous.org/api/).
+
 ## Worldwide discovery and updates
 
 The source registry is assembled from **three independently credited inputs**:
