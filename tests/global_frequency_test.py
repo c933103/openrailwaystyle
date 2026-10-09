@@ -31,6 +31,330 @@ class GlobalFrequency(unittest.TestCase):
             return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, (host, port))]
         self.enterContext(patch.object(pipeline, 'resolve_public_addresses', side_effect=fixture_addresses))
 
+    def test_retry_after_receipts_survive_two_runs_without_early_requests(self):
+        from email.utils import formatdate
+        from urllib.error import HTTPError
+        start=1791536400.0
+        for hint,delay in [('120',120),(formatdate(start+3600,usegmt=True),3600),('31536000',31536000)]:
+            with self.subTest(hint=hint):
+                clock=[start];cache=self.root/('retry-'+str(delay))
+                url='https://operator.example/feed.zip?selector=fixture-value'
+                def unavailable(request,**kwargs):
+                    raise HTTPError(request.full_url,429,'Ignore echoed private text',{'Retry-After':hint},io.BytesIO())
+                with patch.object(pipeline.time,'time',side_effect=lambda:clock[0]), \
+                     patch.object(pipeline.time,'sleep') as sleep, \
+                     patch.object(pipeline,'urlopen',side_effect=unavailable) as request:
+                    with self.assertRaises(HTTPError):
+                        pipeline.get(url,retry_state=pipeline.retry.RetryAfterCache(cache))
+                    self.assertEqual(request.call_count,1)
+                    clock[0]+=delay-1
+                    with self.assertRaises(pipeline.retry.RetryAfterDeferred) as caught:
+                        pipeline.get(url,retry_state=pipeline.retry.RetryAfterCache(cache))
+                    self.assertEqual(caught.exception.not_before,start+delay)
+                    self.assertEqual(request.call_count,1)
+                    sleep.assert_not_called()
+                receipt=next((cache/'retry-after').glob('*.json'))
+                raw=receipt.read_text();self.assertNotIn('fixture-value',raw);self.assertNotIn('operator.example',raw)
+                clock[0]=start+delay
+                with patch.object(pipeline.time,'time',side_effect=lambda:clock[0]), \
+                     patch.object(pipeline,'urlopen',return_value=io.BytesIO(b'ok')) as request:
+                    with pipeline.get(url,retry_state=pipeline.retry.RetryAfterCache(cache)) as response:
+                        self.assertEqual(response.read(),b'ok')
+                    request.assert_called_once()
+                self.assertFalse(receipt.exists())
+
+    def test_retry_after_last_attempt_is_remembered_but_404_and_bad_hints_are_not(self):
+        from urllib.error import HTTPError
+        clock=[1791536400.0];cache=self.root/'last-attempt';url='https://operator.example/feed.zip'
+        calls=[]
+        def unavailable(request,**kwargs):
+            calls.append(clock[0])
+            raise HTTPError(request.full_url,503,'Unavailable',{'Retry-After':'120'} if len(calls)==3 else {},io.BytesIO())
+        with patch.object(pipeline.time,'time',side_effect=lambda:clock[0]), \
+             patch.object(pipeline.time,'sleep',side_effect=lambda delay:clock.__setitem__(0,clock[0]+delay)), \
+             patch.object(pipeline,'urlopen',side_effect=unavailable):
+            with self.assertRaises(HTTPError):pipeline.get(url,retry_state=pipeline.retry.RetryAfterCache(cache))
+            with self.assertRaises(pipeline.retry.RetryAfterDeferred):
+                pipeline.get(url,retry_state=pipeline.retry.RetryAfterCache(cache))
+        self.assertEqual(len(calls),3)
+        for code,hint,count in [(404,'120',1),(503,'invalid',3),(503,'0',3),
+                                (503,'Thu, 01 Jan 1970 00:00:00 GMT',3)]:
+            with self.subTest(code=code,hint=hint):
+                other=self.root/('no-hold-'+str(code)+'-'+str(len(hint)))
+                def response(request,**kwargs):
+                    raise HTTPError(request.full_url,code,'Failure',{'Retry-After':hint},io.BytesIO())
+                with patch.object(pipeline,'urlopen',side_effect=response) as request, patch.object(pipeline.time,'sleep'):
+                    for _ in range(2):
+                        with self.assertRaises(HTTPError):pipeline.get(url,retry_state=pipeline.retry.RetryAfterCache(other))
+                self.assertEqual(request.call_count,2*count)
+                self.assertFalse(list(other.glob('retry-after/*.json')))
+
+    def test_retry_receipt_corruption_versions_and_query_identities_cannot_freeze_sources(self):
+        cache=pipeline.retry.RetryAfterCache(self.root/'receipt-cache',clock=lambda:1000)
+        first='https://operator.example/feed.zip?feed=fixture-first'
+        second=first.replace('fixture-first','fixture-second')
+        cache.record(first,503,1000,1120)
+        cache.check(second)
+        self.assertNotEqual(cache.path(first),cache.path(second))
+        original=json.loads(cache.path(first).read_text())
+        invalid=['not-json','[]','['*1500+']'*1500,json.dumps({**original,'schema':True}),json.dumps({**original,'schema':999}),
+                 json.dumps({**original,'url_sha256':'0'*64}),json.dumps({**original,'status':200}),
+                 json.dumps({**original,'observed_at':2000}),json.dumps({**original,'not_before':float('inf')}),
+                 json.dumps({**original,'not_before':10**400}),
+                 json.dumps({**original,'rollback_anchor':2000}),json.dumps({**original,'extra':'fixture-secret'}),
+                 'x'*(pipeline.retry.MAX_RECEIPT_BYTES+1)]
+        for value in invalid:
+            with self.subTest(value=value[:40]):
+                cache.path(first).write_text(value)
+                cache.check(first)
+                self.assertFalse(cache.path(first).exists())
+        self.assertEqual(cache.metrics['invalid_receipts'],len(invalid))
+        # Compiler/source-policy implementation signatures are not endpoint
+        # identities: an upgrade must not erase a known provider deadline.
+        cache.write(first,original)
+        with patch.object(pipeline,'file_hash',return_value='new-compiler-version'):
+            with self.assertRaises(pipeline.retry.RetryAfterDeferred):cache.check(first)
+
+    def test_retry_receipt_reads_are_byte_bounded_and_io_errors_are_distinct(self):
+        url='https://operator.example/feed.zip'
+        state=pipeline.retry.RetryAfterCache(self.root/'bounded-retry',clock=lambda:1000)
+        state.record(url,503,1000,1120)
+        # The on-disk stat is small; bytes available when opened can be larger.
+        # An unbounded read or a stat-only guard must fail this sensitivity test.
+        sizes=[]
+        class LimitedRead(io.BytesIO):
+            def read(self,size=-1):
+                sizes.append(size)
+                self_size=pipeline.retry.MAX_RECEIPT_BYTES+1
+                if size != self_size:
+                    raise AssertionError('Receipt read must enforce its byte limit')
+                return super().read(size)
+        stream=LimitedRead(b'x'*(pipeline.retry.MAX_RECEIPT_BYTES+100))
+        with patch.object(Path,'open',return_value=stream):state.check(url)
+        self.assertEqual(sizes,[pipeline.retry.MAX_RECEIPT_BYTES+1])
+        self.assertTrue(stream.closed)
+        self.assertEqual(state.metrics['invalid_receipts'],1)
+        self.assertFalse(state.path(url).exists())
+        state.record(url,503,1000,1120)
+        with patch.object(Path,'open',side_effect=PermissionError('fixture I/O failure')):
+            with self.assertRaises(PermissionError):state.check(url)
+        self.assertEqual(state.metrics['invalid_receipts'],1,'I/O errors are not corrupt receipt content')
+        self.assertTrue(state.path(url).exists())
+
+    def test_retry_clock_rollback_reanchors_conservatively_and_recovers(self):
+        url='https://operator.example/feed.zip';clock=[1000]
+        cache=pipeline.retry.RetryAfterCache(self.root/'rollback',clock=lambda:clock[0])
+        cache.record(url,503,1000,1120)
+        clock[0]=100
+        with self.assertRaises(pipeline.retry.RetryAfterDeferred) as caught:cache.check(url)
+        self.assertEqual(caught.exception.not_before,220)
+        clock[0]=219
+        # A new process must retain the anchor, not restart the full delay.
+        restored=pipeline.retry.RetryAfterCache(self.root/'rollback',clock=lambda:clock[0])
+        with self.assertRaises(pipeline.retry.RetryAfterDeferred):restored.check(url)
+        clock[0]=220;restored.check(url);self.assertFalse(cache.path(url).exists())
+        cache.record(url,503,1000,1120);clock[0]=100
+        with self.assertRaises(pipeline.retry.RetryAfterDeferred):cache.check(url)
+        clock[0]=1010
+        with self.assertRaises(pipeline.retry.RetryAfterDeferred) as caught:cache.check(url)
+        self.assertEqual(caught.exception.not_before,1120,'clock recovery must preserve the original absolute deadline')
+        clock[0]=1120;cache.check(url)
+        cache.record(url,503,1000,1120);clock[0]=float('nan')
+        with self.assertRaisesRegex(ValueError,'clock'):cache.check(url)
+        # Even a consistent but far-future observation cannot silently freeze
+        # this clock until that date. It conservatively waits the full duration.
+        cache.record(url,503,10**12,10**12+120);clock[0]=1000
+        with self.assertRaises(pipeline.retry.RetryAfterDeferred) as caught:cache.check(url)
+        self.assertEqual(caught.exception.not_before,1120)
+        clock[0]=1120;cache.check(url);self.assertFalse(cache.path(url).exists())
+        # A small rollback can conservatively wait longer as the clock crosses
+        # the original observation; it must still expire at the original bound.
+        cache.record(url,503,1000,1120);clock[0]=990
+        with self.assertRaises(pipeline.retry.RetryAfterDeferred) as caught:cache.check(url)
+        self.assertEqual(caught.exception.not_before,1110)
+        clock[0]=1110
+        with self.assertRaises(pipeline.retry.RetryAfterDeferred) as caught:cache.check(url)
+        self.assertEqual(caught.exception.not_before,1120)
+        clock[0]=1120;cache.check(url);self.assertFalse(cache.path(url).exists())
+
+    def test_retry_after_short_dates_with_cache_wait_exactly_and_clear_on_success(self):
+        from email.utils import formatdate
+        from urllib.error import HTTPError
+        clock=[1791536400.0];deadline=clock[0]+5;calls=[]
+        state=pipeline.retry.RetryAfterCache(self.root/'short-retry',clock=lambda:clock[0])
+        def response(request,**kwargs):
+            calls.append(clock[0])
+            if len(calls)==1:
+                raise HTTPError(request.full_url,503,'Unavailable',{'Retry-After':formatdate(deadline,usegmt=True)},io.BytesIO())
+            return io.BytesIO(b'ok')
+        with patch.object(pipeline,'urlopen',side_effect=response), \
+             patch.object(pipeline.time,'time',side_effect=lambda:clock[0]), \
+             patch.object(pipeline.time,'sleep',side_effect=lambda delay:clock.__setitem__(0,clock[0]+delay)):
+            with pipeline.get('https://operator.example/feed.zip',retry_state=state) as result:
+                self.assertEqual(result.read(),b'ok')
+        self.assertEqual(calls,[deadline-5,deadline])
+        self.assertFalse(list(state.directory.glob('*.json')))
+
+    def test_unrepresentable_retry_after_is_reported_without_shortening_or_retries(self):
+        from urllib.error import HTTPError
+        for hint,error_type in [('9'*400,HTTPError),('9'*5000,HTTPError)]:
+            with self.subTest(digits=len(hint)):
+                state=pipeline.retry.RetryAfterCache(self.root/('huge-hint-'+str(len(hint))))
+                response=HTTPError('https://operator.example/feed.zip',503,'Failure',
+                                   {'Retry-After':hint},io.BytesIO())
+                with patch.object(pipeline,'urlopen',side_effect=response) as request, \
+                     patch.object(pipeline.time,'sleep') as sleep:
+                    with self.assertRaises(error_type):
+                        pipeline.get(response.url,retry_state=state)
+                response.close()
+                request.assert_called_once();sleep.assert_not_called()
+                self.assertEqual(state.metrics['unpersistable_hints'],1)
+                self.assertFalse(list(state.directory.glob('*.json')))
+
+    def test_retry_cache_io_failures_close_transport_resources(self):
+        from urllib.error import HTTPError
+        url='https://operator.example/feed.zip';state=pipeline.retry.RetryAfterCache(self.root/'io-retry')
+        stream=io.BytesIO();error=HTTPError(url,503,'Unavailable',{'Retry-After':'120'},stream)
+        with patch.object(pipeline,'urlopen',side_effect=error) as request, \
+             patch.object(state,'record',side_effect=OSError('fixture write failure')):
+            with self.assertRaises(OSError):pipeline.get(url,retry_state=state)
+        self.assertTrue(stream.closed);request.assert_called_once()
+        response=io.BytesIO(b'ok')
+        with patch.object(pipeline,'urlopen',return_value=response), \
+             patch.object(state,'clear',side_effect=OSError('fixture clear failure')):
+            with self.assertRaises(OSError):pipeline.get(url,retry_state=state)
+        self.assertTrue(response.closed)
+
+    def test_retry_receipts_cannot_override_source_policy_or_signed_access_holds(self):
+        from contextlib import redirect_stdout
+        state=pipeline.retry.RetryAfterCache(self.root/'held-retry')
+        rows=[]
+        for ident in ['3146','3147']:
+            url='https://fixture.blob.core.windows.net/'+ident+'.zip?sv=fixture-version&se=fixture-expiry&sp=rl&sr=c&sig=fixture-signature'
+            state.record(url,503,1000,2000)
+            with patch.object(pipeline,'urlopen') as request:
+                with self.assertRaises(pipeline.UnsafeSourceURL):pipeline.get(url,retry_state=state)
+            request.assert_not_called()
+            rows.append({'filename':'mdb_mdb-'+ident+'.gtfs.zip','delivery':'direct','country_code':'NZ','source':url})
+        catalogue=self.root/'held.json';catalogue.write_text(json.dumps(rows))
+        argv=['frequency','--catalogue',str(catalogue),'--cache',str(self.root/'held-retry'),
+              '--output',str(self.root/'held-out'),'--date','2026-10-05']
+        with patch.object(sys,'argv',argv), patch.object(pipeline,'compile_entry_isolated') as compile_entry, redirect_stdout(io.StringIO()):
+            pipeline.main()
+        compile_entry.assert_not_called()
+        records=json.loads((self.root/'held-out/inventory-0.json').read_text())['entries']
+        self.assertEqual(len(records),2)
+        self.assertTrue(all(r['status']=='retry_pending' and r['reason_code']=='source_access_review' for r in records))
+        ordinary='https://operator.example/feed.zip';state.record(ordinary,503,1000,2000)
+        def denied(url):raise pipeline.SourcePolicyError('fixture policy exclusion')
+        with patch.object(pipeline,'urlopen') as request:
+            with self.assertRaises(pipeline.SourcePolicyError):pipeline.get(ordinary,policy=denied,retry_state=state)
+        request.assert_not_called()
+
+    def test_retry_pause_allows_compiler_fixes_from_valid_cache_without_refresh(self):
+        url,held=self.server(self.archive());cache,output=self.root/'cached-retry',self.root/'cached-out';cache.mkdir()
+        entry=pipeline.discover([{'filename':'ca_retry.gtfs.zip','delivery':'direct','country_code':'CA','source':url}],{})[0]
+        first=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(first['acquisition_metrics']['http_requests'],len(held['requests']))
+        clock=[1791536400.0];held['retry_after']='120'
+        with patch.object(pipeline.time,'time',side_effect=lambda:clock[0]):
+            paused=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+            self.assertTrue(paused['source']['offline_cached'])
+            count=len(held['requests'])
+            with patch.object(pipeline,'file_hash',return_value='new-compiler-signature'), \
+                 patch.object(pipeline.compiler,'compile_feed',wraps=pipeline.compiler.compile_feed) as compile_feed:
+                again=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+            self.assertEqual([call.kwargs.get('geometry') for call in compile_feed.call_args_list],[True,False],
+                             'the fixture recompiles geometry, then its existing unmatched-pair audit')
+            self.assertEqual(len(held['requests']),count)
+            self.assertEqual(again['status'],'compiled')
+            self.assertEqual(again['source']['checked'],first['source']['checked'])
+            self.assertEqual(again['source']['retrieved'],first['source']['retrieved'])
+            self.assertEqual(again['acquisition_metrics'].get('http_requests',0),0)
+            self.assertEqual(again['acquisition_metrics']['offline_archive_uses'],1)
+            self.assertGreater(again['acquisition_metrics']['deferred_requests'],0)
+            clock[0]+=120;held.pop('retry_after')
+            restored=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+            self.assertFalse(restored['source']['offline_cached'])
+            self.assertEqual(restored['acquisition_metrics']['http_requests'],1)
+            self.assertEqual(restored['acquisition_metrics']['conditional_not_modified'],1)
+
+    def test_retry_pause_still_tries_alternates_and_reports_retriable_inventory(self):
+        from contextlib import redirect_stdout
+        blocked,held=self.server(self.archive());held['retry_after']='120'
+        good,_=self.server(self.archive());cache=self.root/'alternate-retry';cache.mkdir()
+        entry=pipeline.discover([{'filename':'ca_retry.gtfs.zip','country_code':'CA','source':good}],{})[0]
+        entry['processed_url']=blocked
+        first=pipeline.compile_entry(entry,cache,self.root/'alt-out','2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(first['status'],'compiled')
+        count=len(held['requests'])
+        direct=pipeline.discover([{'filename':'ca_direct.gtfs.zip','country_code':'CA','delivery':'direct','source':blocked}],{})[0]
+        with self.assertRaises(pipeline.SourceRetrievalError) as caught:
+            pipeline.compile_entry(direct,cache,self.root/'direct-out','2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(len(held['requests']),count)
+        self.assertEqual(pipeline.classify_failure(caught.exception),('source_retry_after','retrieval'))
+        catalogue=self.root/'retry-inventory.json';catalogue.write_text(json.dumps([direct['catalogue']]))
+        argv=['frequency','--catalogue',str(catalogue),'--cache',str(cache),'--output',str(self.root/'inventory-out'),'--date','2026-10-05']
+        with patch.object(sys,'argv',argv), patch.object(pipeline,'compile_entry_isolated',side_effect=caught.exception), redirect_stdout(io.StringIO()):
+            pipeline.main()
+        result=json.loads((self.root/'inventory-out/inventory-0.json').read_text())['entries'][0]
+        self.assertEqual(result['status'],'retry_pending');self.assertTrue(result['retry_eligible'])
+        self.assertEqual(result['reason_code'],'source_retry_after')
+        self.assertGreater(result['acquisition_metrics']['deferred_requests'],0)
+
+    def test_retry_receipt_and_metrics_survive_real_compile_children(self):
+        import time
+        cache=self.root/'child-retry';url='https://operator.example/feed.zip?selector=fixture-child-value'
+        entry=pipeline.discover([{'filename':'ca_child.gtfs.zip','delivery':'direct',
+                                 'country_code':'CA','source':url}],{})[0]
+        state=pipeline.retry.RetryAfterCache(cache)
+        start=time.time();state.record(url,503,start,start+3600)
+        for _ in range(2):
+            # These real child processes share only files, not mocks or state.
+            # The receipt must prevent even DNS/HTTP acquisition of the source.
+            with self.assertRaises(pipeline.SourceRetrievalError) as caught:
+                pipeline.compile_entry_isolated(entry,cache,self.root/'child-out',
+                                                '2026-10-05',None,1_000_000,pipeline.PROFILES)
+            error=caught.exception
+            self.assertEqual(pipeline.classify_failure(error),('source_retry_after','retrieval'))
+            self.assertEqual(error.acquisition_metrics,{'deferred_requests':1})
+            self.assertNotIn('fixture-child-value',json.dumps(error.attempts))
+            self.assertNotIn('fixture-child-value',str(error))
+            self.assertEqual(error.attempts[0]['retry_after_not_before'],start+3600)
+            self.assertTrue(state.path(url).exists())
+
+    def test_retry_receipts_cover_range_full_download_and_redirect_targets(self):
+        from urllib.error import HTTPError
+        for operation in ['table','download']:
+            with self.subTest(operation=operation):
+                url,held=self.server(self.archive());cache=self.root/('range-retry-'+operation)
+                state=pipeline.retry.RetryAfterCache(cache)
+                remote=pipeline.RemoteZip(url,1_000_000,retry_state=state)
+                held['retry_after']='120'
+                with self.assertRaises(HTTPError):
+                    remote.table('routes.txt') if operation=='table' else remote.download()
+                count=len(held['requests'])
+                with self.assertRaises(pipeline.retry.RetryAfterDeferred):
+                    pipeline.RemoteZip(url,1_000_000,retry_state=pipeline.retry.RetryAfterCache(cache))
+                self.assertEqual(len(held['requests']),count)
+        target,target_state=self.server(self.archive());target_state['retry_after']='120'
+        original,original_state=self.server(self.archive());original_state['redirect']=target
+        cache=self.root/'redirect-retry'
+        with self.assertRaises(HTTPError):pipeline.get(original,retry_state=pipeline.retry.RetryAfterCache(cache))
+        counts=(len(original_state['requests']),len(target_state['requests']))
+        with self.assertRaises(pipeline.retry.RetryAfterDeferred):
+            pipeline.get(original,retry_state=pipeline.retry.RetryAfterCache(cache))
+        self.assertEqual((len(original_state['requests']),len(target_state['requests'])),counts)
+        # An unseen redirect source can be contacted, but its held target cannot.
+        alias,alias_state=self.server(self.archive());alias_state['redirect']=target
+        with self.assertRaises(pipeline.retry.RetryAfterDeferred):
+            pipeline.get(alias,retry_state=pipeline.retry.RetryAfterCache(cache))
+        self.assertEqual(len(alias_state['requests']),1)
+        self.assertEqual(len(target_state['requests']),counts[1])
+        with self.assertRaises(pipeline.retry.RetryAfterDeferred):
+            pipeline.get(alias,retry_state=pipeline.retry.RetryAfterCache(cache))
+        self.assertEqual(len(alias_state['requests']),1,'the newly learned redirect alias also retains its deadline')
+
     def test_discovery_covers_non_latin_names_licences_and_exclusions_without_city_choices(self):
         countries=['DE','JP','BR','EG','NZ','CA','CN','RU','IR','KP']
         rows=[{'filename':c.lower()+'_鉄道.gtfs.zip','source':'https://example.org/'+c+'.zip','country_code':c,'spdx_license_identifier':'CC-BY-4.0'} for c in countries]
@@ -904,6 +1228,10 @@ class GlobalFrequency(unittest.TestCase):
                 range_value=self.headers.get('Range');held['requests'].append(range_value)
                 validator=self.headers.get('If-Range');held['range_validators'].append(validator)
                 held['conditional_requests'].append((self.headers.get('If-None-Match'),self.headers.get('If-Modified-Since')))
+                if held.get('redirect'):
+                    self.send_response(302);self.send_header('Location',held['redirect']);self.end_headers();return
+                if held.get('retry_after'):
+                    self.send_response(503);self.send_header('Retry-After',held['retry_after']);self.end_headers();return
                 if held['etag'] and self.headers.get('If-None-Match')==held['etag'] or held['last_modified'] and self.headers.get('If-Modified-Since')==held['last_modified']:
                     self.send_response(304);self.end_headers();return
                 if change and len(held['requests'])>1:held['etag']='"two"'
@@ -986,9 +1314,9 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual(first['status'],'compiled')
         archive=cache/'ca_changed.zip';old=archive.read_bytes()
         real_get=pipeline.get
-        def missing_processed(url,headers=None,*,policy=None):
+        def missing_processed(url,headers=None,*,policy=None,retry_state=None):
             if url==processed:raise HTTPError(url,404,'Gone',{},io.BytesIO())
-            return real_get(url,headers,policy=policy)
+            return real_get(url,headers,policy=policy,retry_state=retry_state)
         with patch.object(pipeline,'get',side_effect=missing_processed):
             current=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
         self.assertEqual(current['status'],'no_rail')
@@ -1001,7 +1329,7 @@ class GlobalFrequency(unittest.TestCase):
         # offline reuse even if the prior cache deletion was interrupted.
         archive.write_bytes(old)
         self.assertFalse(pipeline.valid_cached_archive(archive,meta,pipeline.source_candidates(entry)))
-        def unavailable(url,headers=None,*,policy=None):raise HTTPError(url,503,'Unavailable',{},io.BytesIO())
+        def unavailable(url,headers=None,*,policy=None,retry_state=None):raise HTTPError(url,503,'Unavailable',{},io.BytesIO())
         with patch.object(pipeline,'get',side_effect=unavailable):
             with self.assertRaises(pipeline.SourceRetrievalError):
                 pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
