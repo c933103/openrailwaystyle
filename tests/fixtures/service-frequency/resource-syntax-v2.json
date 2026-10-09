@@ -299,5 +299,36 @@
       "http://provider.test./feed",
       "http://xn--e1afmkfd.xn--p1ai/feed"
     ]
+  },
+  "userinfo_admission": {
+    "unsupported": [
+      "https://synthetic-user:synthetic-pass@public.test/feed",
+      "https://synthetic-user@public.test/feed",
+      "https://@public.test/feed",
+      "https://:synthetic-pass@public.test/feed",
+      "https://synthetic-user:@public.test/feed",
+      "https://synthetic%40user@public.test/feed",
+      "https://synthetic%3Auser@public.test/feed",
+      "https://synthetic-user@@public.test/feed",
+      "https://synthetic-user@[2001:db8::1]/feed",
+      "https://synthetic-user:synthetic-pass@[2001:db8::1]:443/feed",
+      "https://public%40other.test/feed",
+      "https://public.test%3A443/feed",
+      "https://public.test%2Fother/feed",
+      "https://%5B2001:db8::1%5D/feed"
+    ],
+    "supported": [
+      "https://public.test/feed",
+      "https://public.test",
+      "https://public.test#section",
+      "https://public.test?mode=synthetic-value",
+      "https://public.test:443#section",
+      "http://192.0.2.1/feed",
+      "https://[2001:db8::1]/feed",
+      "https://[2001:db8::1]#section",
+      "https://public.test/a@b",
+      "https://public.test/a%40b?value=a%3Ab%40c",
+      "https://public.test/feed?name=a@b#section"
+    ]
   }
 }

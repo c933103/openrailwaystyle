@@ -46,9 +46,9 @@ function removeResourceDotSegments(path){
 }
 export function referenceResourceKey(value){
   if(!referenceUrlValid(value))return null;
-  const match=/^(https?):\/\/(\[[^\]]+\]|[^/:?#@]+)(?::([0-9]+))?([^#]*)(?:#.*)?$/i.exec(value);
+  const match=/^(https?):\/\/(\[[^\]]+\]|[^/:?#@]+)(?::([0-9]+))?([/?][^#]*)?(?:#.*)?$/i.exec(value);
   if(!match)return null;
-  const [,rawScheme,rawHost,port,tail]=match,scheme=rawScheme.toLowerCase(),at=tail.indexOf('?');
+  const [,rawScheme,rawHost,port,rawTail]=match,tail=rawTail??'',scheme=rawScheme.toLowerCase(),at=tail.indexOf('?');
   const query=at<0?'':tail.slice(at+1),number=Number(port??(scheme==='https'?443:80));
   if(number<1||number>65535)return null;
   let host=rawHost.toLowerCase().replace(/\.$/,''),path=(at<0?tail:tail.slice(0,at))||'/';

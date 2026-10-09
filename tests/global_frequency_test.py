@@ -797,6 +797,70 @@ class GlobalFrequency(unittest.TestCase):
                         self.assertEqual(meta_path.read_bytes(),before_meta)
                 self.assertEqual((cache/'xx_rail.zip').read_bytes(),before_archive)
 
+    def test_reference_userinfo_grammar_and_safe_projection(self):
+        import copy
+        refs=pipeline.registry.references
+        vectors=json.loads((Path(__file__).parent/'fixtures/service-frequency/resource-syntax-v2.json').read_text())['userinfo_admission']
+        baseline=self.projection_fixture()
+        for url in vectors['unsupported']:
+            self.assertFalse(refs.reference_url_valid(url));self.assertIsNone(refs.resource_key(url))
+            row=copy.deepcopy(baseline);row['source']=url;row['source_sha256']=pipeline.source_url_fingerprint(url)
+            ordinary=row['source_resolution']['ordinary_static_declarations'][0]
+            ordinary.update(url=url,url_sha256=row['source_sha256'])
+            for value in [pipeline.registry.prepare_catalogue_row(row),pipeline.published_metadata(row)]:
+                self.assertEqual(value['source_resolution']['state'],'unresolved')
+                self.assertEqual(value['source_sha256'],row['source_sha256'])
+                self.assertNotIn('synthetic-user',json.dumps(value));self.assertNotIn('synthetic-pass',json.dumps(value))
+                entry=fixture_discover([value],{})[0]
+                self.assertEqual(fixture_candidates(entry),[])
+            self.assertEqual(pipeline.published_metadata(pipeline.published_metadata(row)),pipeline.published_metadata(row))
+        for url in vectors['supported']:
+            self.assertTrue(refs.reference_url_valid(url));self.assertIsNotNone(refs.resource_key(url))
+        self.assertEqual(fixture_candidates(fixture_discover([baseline],{})[0]),[pipeline.PROCESSED+'xx_rail.gtfs.zip','https://public.test/static'])
+
+    def test_reference_userinfo_metadata_does_not_hide_independent_public_source(self):
+        private='https://synthetic-user:synthetic-pass@private.test/rail.zip';public='https://public.test/rail.zip'
+        index={'state':'available','by_id':{'static':[{'feed':{'id':'static','spec':'gtfs','urls':{'static_current':private}},
+            'url':'https://github.test/pin/data.json','pointer':'/feeds/0','blob_sha':'a'*40}]}}
+        definition=('xx',{'name':'rail','type':'transitland-atlas','transitland-atlas-id':'static'},'https://github.test/pin/xx.json')
+        for independent in [False,True]:
+            definitions=[definition]+([('xx',{'name':'rail','type':'http','url':public},'https://github.test/pin/xx.json')] if independent else [])
+            row=fixture_build_catalogue([],definitions,[],'b'*40,index)[0][0]
+            entry=fixture_discover([row],{})[0]
+            self.assertEqual(entry['status'],'pending' if independent else 'retry_pending')
+            self.assertEqual(fixture_candidates(entry),[pipeline.PROCESSED+'xx_rail.gtfs.zip',public] if independent else [])
+            self.assertEqual(row['source_resolution']['declarations'][0]['resolution']['state'],'malformed_reference')
+            self.assertNotIn('synthetic-user',json.dumps(row));self.assertNotIn('synthetic-pass',json.dumps(row))
+
+    def test_userinfo_receipts_and_transport_never_gain_authority(self):
+        import copy
+        refs=pipeline.registry.references
+        vectors=json.loads((Path(__file__).parent/'fixtures/service-frequency/resource-syntax-v2.json').read_text())['userinfo_admission']
+        public='https://public.test/feed';entry=self.reference_lifecycle_entry(public)
+        data=b'synthetic archive bytes';path=self.root/'userinfo-cache.zip';path.write_bytes(data)
+        for version in [1,2]:
+            endpoint=pipeline.request_endpoint(public)
+            if version==1:
+                endpoint['resource_sha256']=endpoint['visible_resource_sha256']=pipeline.request_resource_hash(public,legacy=True)
+            receipt={'schema':version,**({'resource_normalization':refs.RESOURCE_NORMALIZATION} if version==2 else {}),
+                'candidate_sha256':pipeline.source_url_fingerprint(public),'terminal_resource_sha256':endpoint['resource_sha256'],
+                'artifact_kind':'archive','artifact_sha256':pipeline.hashlib.sha256(data).hexdigest(),'endpoints':[endpoint]}
+            self.assertTrue(pipeline.request_receipt_valid(receipt,public))
+            self.assertEqual(pipeline.reference_cache_state(entry,{'request_provenance':receipt},path,public),'legacy_public_unverified' if version==1 else 'verified')
+            for url in vectors['unsupported']:
+                for position in ['candidate','intermediate','terminal']:
+                    changed=copy.deepcopy(receipt);candidate=url if position=='candidate' else public
+                    if position=='candidate':changed['candidate_sha256']=pipeline.source_url_fingerprint(url)
+                    else:
+                        bad={**endpoint,'url':url,'url_sha256':pipeline.source_url_fingerprint(url)}
+                        changed['endpoints'].insert(0 if position=='intermediate' else len(changed['endpoints']),bad)
+                    self.assertFalse(pipeline.request_receipt_valid(changed,candidate))
+                    self.assertEqual(pipeline.reference_cache_state(entry,{'request_provenance':changed},path,candidate),'invalid')
+                with patch.object(pipeline,'resolve_public_addresses') as dns:
+                    with self.assertRaises(pipeline.UnsafeSourceURL):pipeline.get(url,policy=lambda u:pipeline.source_policy(entry,u))
+                    dns.assert_not_called()
+        self.assertEqual(path.read_bytes(),data)
+
     def test_reference_host_admission_preserves_supported_keys_and_legacy_transport(self):
         refs=pipeline.registry.references
         vectors=json.loads((Path(__file__).parent/'fixtures/service-frequency/resource-syntax-v2.json').read_text())['host_admission']

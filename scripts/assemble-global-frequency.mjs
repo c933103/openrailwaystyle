@@ -23,6 +23,9 @@ export function redactedSourceUrl(value){
     if(/[\u0000-\u0020\u007f]/.test(decoded))return '[invalid source URL]';
     const relative=decoded.startsWith('//'),url=new URL(relative?'https:'+decoded:decoded);
     if(!url.hostname)return '[invalid source URL]';
+    // Keep an already publication-safe IPv6 spelling byte-for-byte. WHATWG
+    // compression would otherwise detach a recoverable URL from its raw hash.
+    if(url.hostname.startsWith('[')&&referenceUrlValid(decoded)&&referenceDisplayUrl(decoded)===decoded)return decoded;
     url.username='';url.password='';url.hash='';
     const names=[...url.searchParams.keys()];
     url.search='';

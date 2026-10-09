@@ -629,7 +629,8 @@ accepted URIs with the shared grammar. It removes userinfo, fragment and query
 values without invoking a second hostname parser. This preserves cross-language
 publication stability and original fingerprints; it is still syntactic metadata
 handling, with public-address/TLS/access checks enforced separately at acquisition.
-Legacy publication handling is unchanged.
+Other legacy publication handling is unchanged; the IPv6 compatibility exception
+is described below.
 
 
 #### Resource identity and the publication-membership correction
@@ -654,6 +655,13 @@ hashes; already query-redacted URLs also need compatible visible components.
 Matching display text alone does not equate hidden query values. A copied owner
 hash cannot equate another host, path or visible query. These checks affect alias
 acceptance, without changing the existing acquisition owner's rows or policy.
+
+Legacy publication preserves an already publication-safe, supported IPv6 URL
+byte-for-byte when the shared reference display would leave it unchanged. This
+avoids compressing an expanded literal and detaching its recoverable display from
+the exact original fingerprint. URLs needing redaction still use the existing
+redactor. Historical rewritten displays do not gain raw-identity authority, and
+alias validation, acquisition, access holds and reviewed terms are unchanged.
 
 On the frozen inputs, the secret-free index contains 2,040 records, including one
 NeTEx record that does not itself establish GTFS membership. Exactly 1,120 reference
@@ -784,3 +792,12 @@ without reconstructing a raw URL or fingerprint from its display. Supported
 public fallback remains usable; unsuccessful reuse preserves old archive/receipt
 bytes. Global legacy/direct-owner transport and reviewed-terms matching are
 unchanged by this reference-only admission correction.
+
+Reference metadata/proof URLs use a credential-free authority grammar. Userinfo
+(including username-only or escaped forms) is unsupported, and the resource
+parser requires an explicit path/query boundary after the authority. This keeps
+raw staged alias validation aligned with Python acquisition admission; an
+invalid graph retains an unresolved hold after safe projection. Literal or
+encoded `@` in path/query and fragment-only public URLs remain supported.
+Historical/current receipt admission already rejects credential-bearing
+authorities; supported identity hashes and schema markers are unchanged.

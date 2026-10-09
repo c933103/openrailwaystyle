@@ -327,7 +327,7 @@ test('reference URL grammar is identical and publication-stable in both language
     ['http://provider.test:0/feed',true],['https://provider.test:65535/feed',true],['https://provider.test:65536/feed',false],
     ['https://provider.test:99999/feed',false],['https://provider.test:invalid/feed',false],['https://provider.test:/feed',false],
     ['http://exa mple.test/feed',false],['https://provider.test/space here',false],['https://provider.test/line\nfeed',false],
-    ['https://provider.test\\other/feed',false],['https://user:synthetic-pass@provider.test/feed?key=synthetic-query',true],
+    ['https://provider.test\\other/feed',false],['https://user:synthetic-pass@provider.test/feed?key=synthetic-query',false],
     ['https://[2001:db8::1]:443/feed',true],['https://[::ffff:192.0.2.1]/feed',true],['https://[bad:ip]/feed',false],
     ['https://provider.test./feed',true],['https://xn--bcher-kva.example/feed',true],['https://bücher.example/feed',false],
     ['https://provider.test/%E8%BB%8C',true],['https://provider.test/軌',false],['https://provider.test/%ZZ',false],
@@ -458,12 +458,60 @@ test('noncanonical numeric hosts cannot become published static aliases',async()
     const alias={id:'alias',status:'source_alias',catalogue:{source:url,source_sha256:hash,source_resolution:aliasProof(url,hash)}};
     for(const entries of [[owner,alias],publishedMetadata([owner,alias])]){
       const merge=()=>mergeInventories([{...base,entries}]);
-      // Existing legacy publication may compress an expanded IPv6 display.
-      // Preserve its conservative retained-hash rejection in this bounded fix.
-      const ownerDisplayChanged=entries[0].catalogue.source!==url;
-      if(valid&&!ownerDisplayChanged){assert.doesNotThrow(merge,url);assert.equal(merge().entries.find(x=>x.id==='alias').status,'source_alias');}
+      if(valid){assert.doesNotThrow(merge,url);assert.equal(merge().entries.find(x=>x.id==='alias').status,'source_alias');}
       else assert.throws(merge,/Invalid static source alias/);
     }
+  }
+});
+
+test('publication-stable IPv6 legacy aliases retain exact URL fingerprints',async()=>{
+  const {publishedMetadata,redactedSourceUrl}=await import('../scripts/assemble-global-frequency.mjs');
+  const {referenceDisplayUrl}=await import('../scripts/frequency-reference-metadata.mjs');
+  const urls=[
+    'http://[2001:0db8:0000:0000:0000:0000:0000:0001]/feed',
+    'http://[2001:db8:0:0:0:0:0:1]:80/feed',
+    'https://[2001:db8:0:0:0:0:0:1]:443/a/../feed',
+    'http://[::ffff:192.0.2.1]/feed',
+    'http://[2001:db8:0:0:0:0:0:1]/a%2fb'
+  ];
+  const base={schema:3,shards:1,shard:0,catalogue_entries:2,catalogue_sha256:'fixture'};
+  const merge=entries=>mergeInventories([{...base,entries}]);
+  for(const source of urls){
+    const hash=sourceHash(source),owner={id:'owner',status:'no_rail',catalogue:{delivery:'direct',source,source_sha256:hash}};
+    const alias={id:'alias',status:'source_alias',catalogue:{source,source_sha256:hash,source_resolution:aliasProof(source,hash)}};
+    const before=structuredClone([owner,alias]);
+    assert.equal(referenceDisplayUrl(source),source,'the original needs no publication redaction');
+    assert.equal(redactedSourceUrl(source),source,'display must not compress or rewrite a recoverable original');
+    const published=publishedMetadata([owner,alias]);
+    for(const entries of [[owner,alias],published,[owner,published[1]],[published[0],alias]]){
+      assert.equal(merge(entries).entries.find(e=>e.id==='alias').status,'source_alias');
+      for(const entry of entries){assert.equal(entry.catalogue.source,source);assert.equal(entry.catalogue.source_sha256,hash);}
+    }
+    assert.deepEqual(publishedMetadata(published),published);
+    assert.deepEqual([owner,alias],before,'publication and reconciliation do not mutate raw inputs');
+    const compressed=structuredClone(published);compressed[0].catalogue.source=new URL(source).href;
+    assert.notEqual(compressed[0].catalogue.source,source);
+    assert.throws(()=>merge(compressed),/Invalid static source alias/,'a changed display cannot inherit an unrelated original hash');
+    for(const value of [source.replace('/feed','/other').replace('/a%2fb','/other'),'http://[2001:db8::2]/feed']){
+      const changed=structuredClone(published);changed[0].catalogue.source=value;
+      assert.throws(()=>merge(changed),/Invalid static source alias/);
+    }
+    const held=structuredClone(published);held[0].catalogue.access_review={reason:'fixture'};
+    assert.throws(()=>merge(held),/Invalid static source alias/);
+  }
+  const sensitive='http://fixture-user:fixture-pass@[2001:0db8:0:0:0:0:0:1]/feed?token=fixture-value#fixture-fragment';
+  const published=publishedMetadata({source:sensitive});
+  assert.doesNotMatch(JSON.stringify(published),/fixture-(?:user|pass|value|fragment)/);
+  assert.equal(published.source_sha256,sourceHash(sensitive));
+  assert.deepEqual(publishedMetadata(published),published);
+  for(const source of [
+    'http://[2001:db8::xyz]/feed','http://[2001:db8::1]suffix/feed',
+    'http://[2001:db8::1]:65536/feed'
+  ]){
+    const hash=sourceHash(source),owner={id:'owner',status:'no_rail',catalogue:{delivery:'direct',source,source_sha256:hash}};
+    const alias={id:'alias',status:'source_alias',catalogue:{source,source_sha256:hash,source_resolution:aliasProof(source,hash)}};
+    for(const entries of [[owner,alias],publishedMetadata([owner,alias])])assert.throws(()=>merge(entries),/Invalid static source alias/,source);
+    assert.doesNotMatch(redactedSourceUrl(source),/fixture-(?:user|pass)/);
   }
 });
 
@@ -579,4 +627,61 @@ test('alias assembly requires its own semantic public static proof and respects 
     else assert.equal(run(a).entries[0].status,'source_alias','distinct fully raw query values remain separate');
     assert.throws(()=>run(publishedMetadata(a)),/Invalid static source alias/,'redacted held original remains uncertain');
   }
+});
+
+test('credential-free reference authority grammar has exact runtime resource parity',async()=>{
+  const {referenceUrlValid,referenceResourceKey}=await import('../scripts/frequency-reference-metadata.mjs');
+  const vectors=JSON.parse(await readFile(new URL('./fixtures/service-frequency/resource-syntax-v2.json',import.meta.url),'utf8')).userinfo_admission;
+  const urls=[...vectors.unsupported,...vectors.supported];
+  const run=spawnSync('python3',['-c',`import sys,json\nsys.path.insert(0,'scripts');import frequency_references as r\nprint(json.dumps([[r.reference_url_valid(u),r.resource_key(u)] for u in json.loads(sys.argv[1])]))`,JSON.stringify(urls)],{encoding:'utf8'});
+  assert.equal(run.status,0,run.stderr);
+  assert.deepEqual(urls.map(url=>[referenceUrlValid(url),referenceResourceKey(url)]),JSON.parse(run.stdout));
+  for(const url of vectors.unsupported){assert.equal(referenceUrlValid(url),false);assert.equal(referenceResourceKey(url),null);}
+  for(const url of vectors.supported){assert.equal(referenceUrlValid(url),true);assert.notEqual(referenceResourceKey(url),null);}
+  assert.deepEqual(referenceResourceKey('https://public.test#section'),referenceResourceKey('https://public.test/'));
+});
+
+test('raw staged userinfo aliases fail proof before any publication rewriting',async()=>{
+  const {publishedMetadata}=await import('../scripts/assemble-global-frequency.mjs');
+  const vectors=JSON.parse(await readFile(new URL('./fixtures/service-frequency/resource-syntax-v2.json',import.meta.url),'utf8')).userinfo_admission;
+  const base={schema:3,shards:1,shard:0,catalogue_sha256:'fixture',catalogue_entries:2,service_date:'2026-10-05'};
+  for(const url of vectors.unsupported){
+    const hash=sourceHash(url),owner={id:'owner',status:'pending',catalogue:{delivery:'direct',source:url,source_sha256:hash}};
+    const alias={id:'alias',status:'source_alias',catalogue:{source:url,source_sha256:hash,source_resolution:aliasProof(url,hash)}};
+    const original=JSON.stringify(owner);
+    assert.throws(()=>mergeInventories([{...base,entries:[owner,alias]}]),/Invalid static source alias/);
+    assert.equal(JSON.stringify(owner),original,'owner bytes are not rewritten for proof');
+    const safe=publishedMetadata(alias);
+    assert.equal(safe.catalogue.source_resolution.state,'unresolved');
+    assert.equal(safe.catalogue.source_sha256,hash);
+    assert.doesNotMatch(JSON.stringify(safe),/synthetic-user|synthetic-pass/);
+    assert.deepEqual(publishedMetadata(safe),safe);
+    assert.throws(()=>mergeInventories([{...base,entries:[publishedMetadata(owner),safe]}]),/Invalid static source alias/);
+  }
+  const url='https://public.test/feed',hash=sourceHash(url),owner={id:'owner',status:'pending',catalogue:{delivery:'direct',source:url,source_sha256:hash}};
+  const alias={id:'alias',status:'source_alias',catalogue:{source:url,source_sha256:hash,source_resolution:aliasProof(url,hash)}};
+  assert.equal(mergeInventories([{...base,entries:[owner,alias]}]).entries.find(e=>e.id==='alias').status,'source_alias');
+});
+
+test('userinfo projection sanitizes held shard copies and compiled attribution',async()=>{
+  const {gzipSync}=await import('node:zlib'),{publishedMetadata}=await import('../scripts/assemble-global-frequency.mjs');
+  const url='https://synthetic-user:synthetic-pass@public.test/feed',hash=sourceHash(url),row={source:url,source_sha256:hash,source_resolution:aliasProof(url,hash)};
+  const root=await mkdtemp(join(tmpdir(),'atlas-userinfo-projection-'));
+  const source={id:'rail',sha256:'fixture',service_date:'2026-10-05',checked:'2026-10-04',name:'Rail',feed_info:{},valid_until:1900000000,catalogue_attribution:row};
+  const feed={schema:1,source,agencies:[{agency_id:'a',agency_name:'Rail',agency_timezone:'UTC'}],routes:[{route_id:'r',route_type:'2'}],profiles:{h01:{start:'01:00:00',end:'02:00:00'}},segments:[{route_id:'r',agency_id:'a',geometry:[[0,0],[1,1]],profiles:{h01:{display_tph:2,forward_tph:2,backward_tph:2,quality:'scheduled'}}}]};
+  try{
+    await mkdir(join(root,'feeds'));const raw=gzipSync(JSON.stringify(feed));await writeFile(join(root,'feeds/rail.json.gz'),raw);
+    const entries=[{id:'rail',country:'XX',status:'compiled',sha256:'fixture',output:'feeds/rail.json.gz',catalogue:row},
+      ...['retry_pending','excluded','non_timetable','no_rail'].map(status=>({id:status,status,catalogue:row}))];
+    const shard={schema:3,shards:1,shard:0,catalogue_sha256:'fixture',catalogue_entries:entries.length,service_date:'2026-10-05',entries};
+    await writeFile(join(root,'inventory-0.json'),JSON.stringify(shard));const manifest=await assemble(root);
+    for(const name of ['inventory-0.json','inventory.json','manifest.json']){
+      const value=JSON.parse(await readFile(join(root,name),'utf8'));
+      assert.doesNotMatch(JSON.stringify(value),/synthetic-user|synthetic-pass/);
+      assert.deepEqual(publishedMetadata(value),value);
+    }
+    assert.equal(manifest.feeds[0].source.catalogue_attribution.source_resolution.state,'unresolved');
+    assert.equal(manifest.feeds[0].source.catalogue_attribution.source_sha256,hash);
+    assert.deepEqual(await readFile(join(root,'feeds/rail.json.gz')),raw,'historical payload bytes stay unchanged');
+  }finally{await rm(root,{recursive:true,force:true});}
 });
