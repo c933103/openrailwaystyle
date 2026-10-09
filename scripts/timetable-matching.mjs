@@ -132,6 +132,9 @@ export function matchTimetablePattern(input = {}) {
     if (!candidate || !array(candidate.route_bindings, 32)) { blockers.push(['missing_evidence', 'invalid_candidate']); continue; }
     const previous = candidate.route_bindings.some(row => row && row.feed_id === source.feed_id && row.route_id === pattern.source_route_id && row.source_sha256 !== source.sha256);
     if (previous && candidate.eligibility !== 'excluded') { blockers.push(['stale', 'route_binding_source_mismatch']); continue; }
+    const oldOperator = candidate.operator_binding?.feed_id === source.feed_id && candidate.operator_binding.agency_id === pattern.agency_id &&
+      id(pattern.route_ref) && candidate.osm?.tags?.ref === pattern.route_ref && candidate.operator_binding.source_sha256 !== source.sha256;
+    if (oldOperator && candidate.eligibility !== 'excluded') { blockers.push(['stale', 'operator_binding_source_mismatch']); continue; }
     const exact = candidate.route_bindings.filter(row => bound(row) && row.route_id === pattern.source_route_id);
     const fallback = bound(candidate.operator_binding) && candidate.operator_binding.agency_id === pattern.agency_id &&
       id(pattern.route_ref) && candidate.osm?.tags?.ref === pattern.route_ref;

@@ -239,3 +239,25 @@ test('observation calendar, source-trip identity and bounded complete schema are
     input => { input.evidence.observations[0].timezone = {nested: 'unsupported'}; },
   ]) { const input = fixture(); mutate(input); assert.equal(status(input), 'missing_evidence'); }
 });
+
+test('a stale plausible operator fallback blocks a valid exact candidate', () => {
+  const input = fixture();
+  const alternate = structuredClone(input.candidates[0]);
+  alternate.service_id = 'r-alternate';
+  alternate.route_bindings = [];
+  alternate.operator_binding = {feed_id: 'feed', source_sha256: 'b'.repeat(64), agency_id: 'A', status: 'verified'};
+  input.candidates.push(alternate);
+  assert.equal(status(input), 'stale');
+  input.candidates.reverse();
+  assert.equal(status(input), 'stale', 'candidate order cannot hide the stale alternative');
+});
+
+test('a differently scoped operator assertion is not a stale same-feed alternative', () => {
+  for (const change of [{feed_id: 'different-feed'}, {agency_id: 'different-agency'}]) {
+    const input = fixture(), alternate = structuredClone(input.candidates[0]);
+    alternate.route_bindings = [];
+    alternate.operator_binding = {feed_id: 'feed', agency_id: 'A', source_sha256: 'b'.repeat(64), status: 'verified', ...change};
+    input.candidates.push(alternate);
+    assert.equal(status(input), 'verified');
+  }
+});
