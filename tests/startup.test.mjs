@@ -32,9 +32,11 @@ const style = JSON.parse(await readFile(new URL('../styles/world.style.json', im
 const legacyDistributions=await Promise.all(BROWSER_LIBRARIES.map(async library=>({...library,
   url:`https://cdn.jsdelivr.net/npm/${library.package}@${library.version}/${library.source}`,
   body:await readFile(new URL(`../node_modules/${library.package}/${library.source}`,import.meta.url)),
-})));
+}))).then(async libraries=>Promise.all(libraries.map(async library=>({...library,
+  patchedBody:library.sourceSha256?Buffer.from(await controlFunctions.backportMapLibre524(library.body,webcrypto.subtle)):null,
+}))));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, platformGeometryOptions, departureLoader, cacheOnlyLibraries, noLegacyCrypto=false } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, platformGeometryOptions, departureLoader, cacheOnlyLibraries, noLegacyCrypto=false, controlSource } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -121,7 +123,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const scriptLoads=[],revoked=[];
   if (cacheOnlyLibraries) {
     window.caches=cacheOnlyLibraries;
-    window.Blob=Blob;
+    window.Blob=Blob; window.Response=Response; window.TextDecoder=TextDecoder; window.TextEncoder=TextEncoder;
     Object.defineProperty(window.crypto,'subtle',{value:noLegacyCrypto?undefined:webcrypto.subtle});
     Object.assign(window,{mlcontour:libraries.mlcontour});
     const blobs=new globalThis.Map();let sequence=0;
@@ -137,7 +139,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
           if(!saved){script.onerror?.();return;}
           try {
             const body=Buffer.from(await saved.arrayBuffer());
-            const library=legacyDistributions.find(library=>library.body.equals(body));
+            const library=legacyDistributions.find(library=>(library.patchedBody || library.body).equals(body));
             // The real app has hashed the actual upstream bytes. This DOM
             // unit harness substitutes only the renderer API after accepting
             // those exact bytes; browser coverage also executes the real code.
@@ -206,7 +208,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const semantics = new vm.SyntheticModule(Object.keys(layerSemantics), function() {
     for (const [key,value] of Object.entries(layerSemantics)) this.setExport(key,value);
   }, {context});
-  const mapControls = new vm.SyntheticModule(Object.keys(controlFunctions), function() {
+  const mapControls = controlSource ? new vm.SourceTextModule(controlSource, {context}) : new vm.SyntheticModule(Object.keys(controlFunctions), function() {
     for (const [key,value] of Object.entries(controlFunctions)) this.setExport(key,value);
   }, {context});
   const bundles = new vm.SyntheticModule(Object.keys(tileBundleModule),function(){for(const [key,value] of Object.entries(tileBundleModule))this.setExport(key,value);},{context});
@@ -221,13 +223,15 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
 
 const ALL_PROBES='顿頓嘢冧𨋢俆㜏駅峠畑\uF900\uFA11㐀㙟𠮷';
 
-test('an actual old worker admitting the new page still boots from its cached libraries when replacement fails offline',async()=>{
+for (const previous of ['sw-before-first-party-libraries.js','sw-before-maplibre-backport.js']) test(`actual ${previous} keeps app/control versions coherent and safely recovers cached libraries`,async()=>{
   const [oldSource,newSource]=await Promise.all([
-    readFile(new URL('fixtures/sw-before-first-party-libraries.js',import.meta.url),'utf8'),
+    readFile(new URL(`fixtures/${previous}`,import.meta.url),'utf8'),
     readFile(new URL('../styles/sw.js',import.meta.url),'utf8'),
   ]);
   const scope='https://example.org/openrailwaystyle/',stores=new Map(),fetched=[];
-  let deployed='old',offline=false,failReplacement=false;
+  const controlCode=await readFile(new URL('../styles/map-controls.mjs',import.meta.url),'utf8');
+  const oldControlCode=controlCode.split('// MapLibre attribution hardening')[0];
+  let deployed='old',offline=false,failReplacement=false,failControl=false;
   const caches={
     keys:async()=>[...stores.keys()],delete:async key=>stores.delete(key),
     open:async key=>{
@@ -240,17 +244,20 @@ test('an actual old worker admitting the new page still boots from its cached li
   const fetcher=async input=>{
     const url=new URL(typeof input==='string'?input:input.url||input.href);fetched.push(url.href);
     if(offline)throw Error('offline');
-    if(failReplacement&&url.pathname.endsWith('vendor/maplibre-gl-5.24.0.js'))throw Error('replacement library unavailable');
-    if(url.hostname==='cdn.jsdelivr.net') {
+    if(failControl&&url.pathname.endsWith('/map-controls.mjs'))throw Error('control download interrupted');
+    if(failReplacement&&url.pathname.endsWith('vendor/maplibre-gl-5.24.0-atlas.1.js'))throw Error('replacement library unavailable');
+    const oldFirstParty=legacyDistributions.find(library=>url.pathname.endsWith('/'+library.target.replace('-atlas.1.js','.js')));
+    if(url.hostname==='cdn.jsdelivr.net'||oldFirstParty) {
       const css=url.pathname.endsWith('.css');
-      const library=legacyDistributions.find(library=>library.url===url.href);
+      const library=oldFirstParty||legacyDistributions.find(library=>library.url===url.href);
       assert.ok(library,'only exact released dependencies enter the old cache');
       const body=library.body;
-      assert.equal(createHash('sha256').update(body).digest('hex'),library.sha256);
+      assert.equal(createHash('sha256').update(body).digest('hex'),library.sourceSha256 || library.sha256);
       return new Response(body,{headers:{'content-type':css?'text/css':'application/javascript'}});
     }
     const body=url.href===scope?(deployed==='old'?'<script type="module" src="app.mjs?v=old"></script>':html)
-      :url.pathname.endsWith('/app.mjs')&&deployed==='new'?code:`${deployed}:${url.pathname}`;
+      :url.pathname.endsWith('/app.mjs')&&deployed==='new'?code
+      :url.pathname.endsWith('/map-controls.mjs')?(deployed==='new'?controlCode:oldControlCode):`${deployed}:${url.pathname}`;
     return new Response(body);
   };
   const worker=source=>{
@@ -262,15 +269,21 @@ test('an actual old worker admitting the new page still boots from its cached li
   const install=handlers=>{let result;handlers.install({waitUntil:promise=>result=promise});return result;};
   const request=(handlers,path)=>{let result;handlers.fetch({request:{method:'GET',url:new URL(path,scope).href,mode:path==='./'?'navigate':'cors'},respondWith:promise=>result=promise});return result;};
   const old=worker(oldSource);await install(old);deployed='new';
+  failControl=true;
+  assert.match(await (await request(old,'./')).text(),/app.mjs\?v=old/, 'failed updated control module keeps the complete old page');
+  failControl=false;
   assert.equal(await (await request(old,'./')).text(),html,'old worker really admitted the new HTML');
   failReplacement=true;await assert.rejects(install(worker(newSource)),/replacement library unavailable/);
   offline=true;
   assert.equal(await (await request(old,'./')).text(),html);
   const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
   assert.equal(await (await request(old,`app.mjs?v=${version}`)).text(),code,'the tested app is exactly the copy kept by the old worker');
-  assert.equal(request(old,'vendor/maplibre-gl-5.24.0.js'),undefined,'the actual old worker cannot serve the new dotted vendor path');
+  if(previous==='sw-before-first-party-libraries.js')assert.equal(request(old,'vendor/maplibre-gl-5.24.0-atlas.1.js'),undefined,'the actual CDN-era worker cannot serve the new dotted vendor path');
+  const savedControls=await (await request(old,`map-controls.mjs?v=${version}`)).text();
+  assert.equal(savedControls,controlCode,'new app receives exact updated controls from its own version');
+  assert.equal(await (await request(old,'map-controls.mjs?v=old')).text(),oldControlCode,'old tab still receives its own controls');
   const before=fetched.length;
-  const result=await start({cacheOnlyLibraries:caches});
+  const result=await start({cacheOnlyLibraries:caches,controlSource:savedControls});
   try {
     assert.equal(result.maps.length,1,'cached legacy JavaScript can still initialize the app');
     assert.deepEqual(result.errors,[]);
@@ -282,6 +295,23 @@ test('an actual old worker admitting the new page still boots from its cached li
     assert.match(fallback.textContent,/maplibregl-map/);
     assert.ok(fallback.nextElementSibling.href.includes('app.css'),'app styling keeps priority over recovered MapLibre CSS');
     assert.equal(fetched.length,before,'cache recovery makes no network request, including to the old CDN');
+  } finally {result.dom.window.close();}
+});
+
+test('new app recovers verified already-patched first-party cache bytes without a second patch',async()=>{
+  const scope='https://example.org/openrailwaystyle/';
+  const caches={keys:async()=>['atlas-shell-24'],open:async()=>({match:async url=>{
+    if(url===scope)return new Response(html,{headers:{'content-type':'text/html'}});
+    const library=legacyDistributions.find(library=>new URL(library.target,scope).href===url);
+    if(!library)return undefined;
+    return new Response(library.patchedBody||library.body,{headers:{'content-type':library.target.endsWith('.css')?'text/css':'text/javascript'}});
+  }})};
+  const result=await start({cacheOnlyLibraries:caches});
+  try {
+    assert.equal(result.maps.length,1);
+    assert.deepEqual(result.errors,[]);
+    assert.equal(result.scriptLoads.filter(url=>url.startsWith('blob:')).length,2);
+    assert.equal(result.revoked.length,2);
   } finally {result.dom.window.close();}
 });
 
@@ -305,7 +335,7 @@ for(const mode of ['tampered-bytes','crypto-unavailable'])test(`legacy startup r
   const caches={keys:async()=>['atlas-shell-22'],open:async()=>({match:async url=>{
     if(url==='https://example.org/openrailwaystyle/')return new Response(html,{headers:{'content-type':'text/html'}});
     const library=legacyDistributions.find(library=>library.url===url);
-    assert.ok(library);
+    if (!library) return undefined;
     const body=mode==='tampered-bytes'?Buffer.concat([library.body,Buffer.from('\n/* modified cached distribution */')]):library.body;
     const type=library.target.endsWith('.css')?'text/css':'application/javascript';
     served.push({url,status:200,type});

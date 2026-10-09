@@ -2,14 +2,40 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {readFile} from 'node:fs/promises';
+import {backportMapLibre524} from '../styles/map-controls.mjs';
+import {webcrypto} from 'node:crypto';
 import {BROWSER_LIBRARIES} from '../scripts/browser-libraries.mjs';
-import {observeRequiredBrowserLibraries} from '../scripts/required-browser-libraries.mjs';
+import {observeRequiredBrowserLibraries,blockRequiredBrowserScripts} from '../scripts/required-browser-libraries.mjs';
 
 const base='https://atlas.example/project/';
-const bodies=new Map(await Promise.all(BROWSER_LIBRARIES.map(async library=>[
-  library.target,await readFile(new URL(`../node_modules/${library.package}/${library.source}`,import.meta.url)),
-])));
+const bodies=new Map(await Promise.all(BROWSER_LIBRARIES.map(async library=>{
+  const bytes=await readFile(new URL(`../node_modules/${library.package}/${library.source}`,import.meta.url));
+  return [library.target,library.sourceSha256?Buffer.from(await backportMapLibre524(bytes,webcrypto.subtle)):bytes];
+})));
 const css=BROWSER_LIBRARIES.find(library=>library.target.endsWith('.css'));
+
+test('failure probes block current manifest scripts at root and project paths without filename drift',async()=>{
+  for(const root of ['https://atlas.example/','https://atlas.example/project/']){
+    let handler;
+    const blocked=await blockRequiredBrowserScripts({route:async(pattern,callback)=>{assert.equal(pattern,'**/*');handler=callback;}},root);
+    const check=async(url,expected)=>{
+      let result;
+      await handler({request:()=>({url:()=>url}),abort:reason=>{result=reason;},fallback:()=>{result='fallback';}});
+      assert.equal(result,expected,url);
+    };
+    for(const library of BROWSER_LIBRARIES){
+      const url=new URL(library.target,root).href;
+      await check(url,library.target.endsWith('.js')?'blockedbyclient':'fallback');
+      if(library.target.endsWith('.js'))await check(url+'?v=current','blockedbyclient');
+    }
+    const renderer=BROWSER_LIBRARIES.find(library=>library.package==='maplibre-gl'&&library.target.endsWith('.js'));
+    assert.ok(blocked.some(request=>request.url===new URL(renderer.target,root).href&&request.package==='maplibre-gl'));
+    assert.equal(blocked.length,4,'both renderer and archive client are blocked, including version queries');
+    for(const url of [new URL('vendor/maplibre-gl-5.24.0.js',root).href,
+      'https://atlas.example/other/'+renderer.target,'https://other.example/'+renderer.target,new URL('app.mjs',root).href])await check(url,'fallback');
+    assert.equal(blocked.length,4,'unrelated and historical URLs do not count as renderer failure');
+  }
+});
 
 function respond(page,library,{url=new URL(library.target,base).href,status=200,type=library.target.endsWith('.css')?'text/css':'text/javascript',
   body=bodies.get(library.target),failure,incomplete}={}) {

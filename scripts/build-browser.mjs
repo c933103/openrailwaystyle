@@ -1,8 +1,10 @@
 import {build} from 'esbuild';
-import {mkdir,copyFile,readFile} from 'node:fs/promises';
-import {createHash} from 'node:crypto';
+import {mkdir,copyFile,readFile,writeFile,rm} from 'node:fs/promises';
+import {createHash,webcrypto} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {BROWSER_LIBRARIES} from './browser-libraries.mjs';
+import {backportMapLibre524} from '../styles/map-controls.mjs';
+import {verifyMapLibreBackportSource} from './maplibre-backport.mjs';
 // Embedded in the cached code bundle: never fetch the current remote HEAD.
 const commit=process.env.GITHUB_SHA || '';
 if(commit && !/^[a-f0-9]{40}$/i.test(commit))throw new Error('Invalid build commit');
@@ -21,9 +23,15 @@ for (const library of BROWSER_LIBRARIES) {
   const installed = JSON.parse(await readFile(`${root}/package.json`, 'utf8'));
   assert.equal(installed.version, library.version, `${library.package}: browser URL must pin its installed version`);
   const source = `${root}/${library.source}`;
-  assert.equal(createHash('sha256').update(await readFile(source)).digest('hex'), library.sha256,
+  let bytes = await readFile(source);
+  assert.equal(createHash('sha256').update(bytes).digest('hex'), library.sourceSha256 || library.sha256,
     `${library.package}: immutable browser URL must contain the pinned distribution`);
-  await copyFile(source, `styles/${library.target}`);
+  if (library.sourceSha256) {
+    await verifyMapLibreBackportSource(root);
+    bytes = await backportMapLibre524(bytes, webcrypto.subtle);
+  }
+  assert.equal(createHash('sha256').update(bytes).digest('hex'), library.sha256);
+  await writeFile(`styles/${library.target}`, bytes);
 }
 await copyFile('node_modules/maplibre-gl/LICENSE.txt','styles/vendor/maplibre-gl-5.24.0-LICENSE.txt');
 await copyFile('scripts/licenses/pmtiles-4.2.1-LICENSE.txt','styles/vendor/pmtiles-4.2.1-LICENSE.txt');
@@ -37,3 +45,7 @@ await copyFile('node_modules/earcut/LICENSE','styles/vendor/earcut-LICENSE.txt')
 await copyFile('node_modules/maplibre-contour/dist/index.min.js','styles/vendor/maplibre-contour.js');
 await copyFile('node_modules/maplibre-contour/LICENSE','styles/vendor/maplibre-contour-LICENSE.txt');
 for (const [source,target] of [['@mapbox/point-geometry/LICENSE','point-geometry-LICENSE.txt'],['ieee754/LICENSE','ieee754-LICENSE.txt'],['vt-pbf/LICENSE','vt-pbf-LICENSE.txt'],['pbf/LICENSE','pbf-LICENSE.txt'],['@mapbox/vector-tile/LICENSE.txt','vector-tile-LICENSE.txt']]) await copyFile(`node_modules/${source}`,`styles/vendor/${target}`);
+
+// A reused development/deployment directory may contain the old generated
+// distribution. Only publish the fixed immutable asset after a successful build.
+await rm('styles/vendor/maplibre-gl-5.24.0.js', {force:true});

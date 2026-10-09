@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {webcrypto} from 'node:crypto';
+import {backportMapLibre524} from '../styles/map-controls.mjs';
 import {BROWSER_LIBRARIES} from '../scripts/browser-libraries.mjs';
 
 const source = readFileSync(new URL('../styles/sw.js', import.meta.url), 'utf8');
@@ -14,6 +15,9 @@ const legacyDistributions=new Map(BROWSER_LIBRARIES.map(library=>[
   `https://cdn.jsdelivr.net/npm/${library.package}@${library.version}/${library.source}`,
   {body:readFileSync(new URL(`../node_modules/${library.package}/${library.source}`,import.meta.url)),type:library.target.endsWith('.css')?'text/css':'application/javascript'},
 ]));
+
+const patchedMapLibre=Buffer.from(await backportMapLibre524(
+  legacyDistributions.get('https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js').body,webcrypto.subtle));
 
 // Installing workers have a small network concurrency budget. A fetch resolves
 // at headers, but its slot is only released when the response body is consumed.
@@ -58,7 +62,9 @@ function startWorker({version = 'new', fail = '', stores = new Map(), code = sou
     if (counts.active >= 3) await new Promise(resolve => queue.push(resolve));
     else counts.active++;
     counts.started++; counts.peak = Math.max(counts.peak, counts.active);
-    const legacy=legacyDistributions.get(url);
+    const legacy=new URL(url).pathname.endsWith('/vendor/maplibre-gl-5.24.0-atlas.1.js')
+      ? {body:patchedMapLibre,type:'application/javascript'} : legacyDistributions.get(url) ?? (new URL(url).pathname.endsWith('/vendor/maplibre-gl-5.24.0.js')
+      ? legacyDistributions.get('https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js') : null);
     const body = page ? `<script type="module" src="app.mjs?v=${version}"></script>` : assetBodies.get(new URL(url).pathname)??legacy?.body??`${version}: ${url}`;
     let consumed = false;
     return new Response(new ReadableStream({
@@ -126,7 +132,7 @@ test('installation drains response bodies without exhausting its three network s
   assert.equal(await app.clone().text(), `new: ${scope}app.mjs?v=new`);
 });
 
-for (const fail of ['map-model.mjs', 'maplibre-gl-5.24.0.js', 'maplibre-gl-5.24.0.css', 'pmtiles-4.2.1.js']) {
+for (const fail of ['map-model.mjs', 'maplibre-gl-5.24.0-atlas.1.js', 'maplibre-gl-5.24.0.css', 'pmtiles-4.2.1.js']) {
   test(`a truncated ${fail} response cannot publish or activate an incomplete shell`, async () => {
     const worker = startWorker({fail});
     await assert.rejects(bounded(worker.lifecycle('install')), /truncated response/);
@@ -192,9 +198,10 @@ test('first-party libraries install together and remain available offline with e
   await worker.lifecycle('activate');
   assert.ok(worker.requests.every(url => new URL(url).origin === new URL(scope).origin));
   worker.setOffline();
-  for (const path of ['vendor/maplibre-gl-5.24.0.js', 'vendor/maplibre-gl-5.24.0.css', 'vendor/pmtiles-4.2.1.js']) {
-    assert.equal(await (await worker.request(path)).text(), `new: ${scope}${path}?v=new`);
-    assert.equal(await (await worker.request(path+'?v=new')).text(), `new: ${scope}${path}?v=new`);
+  for (const path of ['vendor/maplibre-gl-5.24.0-atlas.1.js', 'vendor/maplibre-gl-5.24.0.css', 'vendor/pmtiles-4.2.1.js']) {
+    const expected=path.endsWith('-atlas.1.js')?patchedMapLibre.toString('utf8'):`new: ${scope}${path}?v=new`;
+    assert.equal(await (await worker.request(path)).text(), expected);
+    assert.equal(await (await worker.request(path+'?v=new')).text(), expected);
   }
 });
 
@@ -212,16 +219,19 @@ test('actual CDN-era worker copies remain usable after first-party migration wit
   assert.equal(next.stores.has(`atlas-shell-${oldGeneration}`), false);
   next.setOffline();
   assert.equal(await (await next.request('app.mjs?v=old')).text(), `old: ${scope}app.mjs?v=old`);
-  for (const url of oldLibraries) assert.deepEqual(Buffer.from(await (await next.request(url)).arrayBuffer()),legacyDistributions.get(url).body);
+  for (const url of oldLibraries) {
+    const expected=url.includes('/maplibre-gl@')&&url.endsWith('.js')?patchedMapLibre:legacyDistributions.get(url).body;
+    assert.deepEqual(Buffer.from(await (await next.request(url)).arrayBuffer()),expected);
+  }
   assert.ok(next.requests.every(url => new URL(url).origin === new URL(scope).origin));
 });
 
-test('a cache miss on an old CDN URL never causes a new CDN download', async () => {
+test('an old CDN JS URL receives the fixed library even without a legacy cache entry', async () => {
   const worker = startWorker({rejectExternal: true});
   await bounded(worker.lifecycle('install'));
   const before = worker.requests.length;
   const response = await worker.request('https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js');
-  assert.equal(response.type, 'error');
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()),patchedMapLibre);
   assert.equal(worker.requests.length, before);
 });
 
@@ -242,9 +252,31 @@ for(const mode of ['tampered-bytes','crypto-unavailable'])test(`legacy cache mig
     assert.equal(current.has(url),false,'unverified legacy bytes must not migrate into the new cache');
     // Also cover a previously poisoned entry already in the active cache.
     current.set(url,response.clone());
-    assert.equal((await next.request(url)).type,'error','serving must validate again before exposing the response');
+    const servedResponse=await next.request(url);
+    if(url.includes('/maplibre-gl@')&&url.endsWith('.js')&&mode!=='crypto-unavailable')
+      assert.deepEqual(Buffer.from(await servedResponse.arrayBuffer()),patchedMapLibre,'original JS cache poison is ignored in favour of the installed fixed library');
+    else assert.equal(servedResponse.type,'error','serving must validate again before exposing the response');
   }
   next.setOffline();
-  assert.match(await(await next.request('vendor/maplibre-gl-5.24.0.js')).text(),/^new:/,'first-party installation remains independent of legacy recovery');
+  assert.deepEqual(Buffer.from(await(await next.request('vendor/maplibre-gl-5.24.0-atlas.1.js')).arrayBuffer()),patchedMapLibre,'first-party installation remains independent of legacy recovery');
   assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
+});
+
+
+test('actual first-party worker migration serves fixed bytes to delayed old tabs',async()=>{
+  const oldCode=readFileSync(new URL('fixtures/sw-before-maplibre-backport.js',import.meta.url),'utf8');
+  const old=startWorker({version:'old',code:oldCode});
+  await bounded(old.lifecycle('install')); await old.lifecycle('activate');
+  const next=startWorker({version:'new',stores:old.stores,rejectExternal:true});
+  await bounded(next.lifecycle('install')); await next.lifecycle('activate');
+  assert.equal(next.stores.has('atlas-shell-23'),false);
+  next.setOffline();
+  for(const path of ['vendor/maplibre-gl-5.24.0.js','vendor/maplibre-gl-5.24.0.js?v=old','vendor/maplibre-gl-5.24.0-atlas.1.js'])
+    assert.deepEqual(Buffer.from(await (await next.request(path)).arrayBuffer()),patchedMapLibre);
+  assert.equal(await (await next.request('app.mjs?v=old')).text(),`old: ${scope}app.mjs?v=old`);
+  assert.ok(next.requests.every(url=>new URL(url).origin===new URL(scope).origin));
+  const cache=next.stores.get(`atlas-shell-${generation}`);
+  assert.ok(![...cache.keys()].some(url=>url.startsWith(scope+'vendor/maplibre-gl-5.24.0.js')),'original executable JS is not migrated');
+  cache.set(scope+'vendor/maplibre-gl-5.24.0-atlas.1.js',new Response(Buffer.concat([patchedMapLibre,Buffer.from(' ')]),{headers:{'content-type':'text/javascript'}}));
+  assert.equal((await next.request('vendor/maplibre-gl-5.24.0.js')).type,'error','modified legacy first-party bytes must not execute');
 });
