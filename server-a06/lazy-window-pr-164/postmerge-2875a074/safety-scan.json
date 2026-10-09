@@ -1,0 +1,52 @@
+{
+  "status": "passed",
+  "scope": "PR164 post-merge run/job receipts, deployment log excerpts and their reproducible selection helper only. No full CI logs, input/output working data, benchmarks, runtime/dependencies, secret values or private tool metadata.",
+  "original_access_values_screened_count": 11,
+  "files_scanned": 7,
+  "scanned_uncompressed_or_plaintext_bytes": 34216,
+  "metadata_URLs_checked": 89,
+  "checks": [
+    "Known original access-like values searched without recording values",
+    "All UTF-8 text URLs checked for user-info and signed/access-like query parameters; JSON/JSONL also checked for nonempty authentication-like fields",
+    "All outputs are represented by exact identity manifests only; no working output or input archive copies are included",
+    "No node_modules, working source/output copies, private security draft or approval/tool metadata in scoped publication"
+  ],
+  "findings": [],
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 2946,
+      "sha256": "b6aa892cce0305c28bc65378417f0a1a2d0a062f0d671e58009818b0d14b8407"
+    },
+    {
+      "path": "downstream-deployment.excerpt.log",
+      "bytes": 1259,
+      "sha256": "d97c33c6aa269387137b0ab3d48bb9cd9e79fe06d173a738410d7f6105831290"
+    },
+    {
+      "path": "extract_deployment_evidence.py",
+      "bytes": 812,
+      "sha256": "139837f5109aef734253a07fadd27d810ebaf7d81f9a288cc5a60cd00c971953"
+    },
+    {
+      "path": "initial-deployment.excerpt.log",
+      "bytes": 1259,
+      "sha256": "41cbc9ad163261cb288407c7cff82d8bed42a5f037acb3f0adedfb0eb2e0e0dd"
+    },
+    {
+      "path": "postmerge-verification.json",
+      "bytes": 3906,
+      "sha256": "ab9c65a78e96e42c50a8c557494315e2708cc482e3fdd771bcef0b514440e57c"
+    },
+    {
+      "path": "refresh-dispatch.excerpt.log",
+      "bytes": 98,
+      "sha256": "748d9a4c87d6283f028d95719895527fb28f804c8c626b367df593b32ba1c04c"
+    },
+    {
+      "path": "workflow-receipts.json",
+      "bytes": 23936,
+      "sha256": "3a6cd7c9d96041ab4a3a7be1d2b9ecfcf38730d1742ad696e067fa513521f9ac"
+    }
+  ]
+}

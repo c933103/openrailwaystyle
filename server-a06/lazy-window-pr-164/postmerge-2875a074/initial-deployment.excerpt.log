@@ -1,0 +1,9 @@
+2026-10-09T07:54:05.2910590Z 	"pages_build_version": "2875a0744912633f35cd6faba25e3260dae09d89",
+2026-10-09T07:54:06.6691512Z Created deployment for 2875a0744912633f35cd6faba25e3260dae09d89, ID: 2875a0744912633f35cd6faba25e3260dae09d89
+2026-10-09T07:54:28.0950947Z PASS: exact deployed vector tile 7/109/50 identity
+2026-10-09T07:54:28.1563277Z PASS: exact deployed vector tile 7/109/50 gzip, deflate, br, zstd, identity
+2026-10-09T07:54:28.2341750Z PASS: exact deployed vector tile 0/0/0 identity
+2026-10-09T07:54:28.2848143Z PASS: exact deployed vector tile 0/0/0 gzip, deflate, br, zstd, identity
+2026-10-09T07:54:28.3219191Z PASS: exact deployed vector tile 10/552/143 identity
+2026-10-09T07:54:28.3672344Z PASS: exact deployed vector tile 10/552/143 gzip, deflate, br, zstd, identity
+2026-10-09T07:55:31.2834544Z PASS: Wuhan rail overlays at z6/z7; z14 track-count interaction used local fixtures only {"initial":{"requests":61,"unique":61,"byDataset":{"railway_line_high":25,"standard_railway_grouped_station_areas":18,"standard_railway_text_stations":18}},"afterPan":{"requests":72,"unique":72,"byDataset":{"railway_line_high":30,"standard_railway_grouped_station_areas":21,"standard_railway_text_stations":21}},"panAdded":11,"metadata":1,"tiles":317}

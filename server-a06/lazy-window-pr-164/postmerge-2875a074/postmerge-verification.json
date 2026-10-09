@@ -1,0 +1,69 @@
+{
+  "observed_at": "2026-10-09T08:12:35.714869+00:00",
+  "pull_request": 164,
+  "merged_source": "2875a0744912633f35cd6faba25e3260dae09d89",
+  "accepted_tree": "022a4b8cdc6d42ecb96da5969fe27217e4932fde",
+  "reviewed_pr_head": "4d34da8a3d06e83b7c979bd882c4725d3cebbd7a",
+  "accepted_tree_equals_reviewed_tested_tree": true,
+  "automatic_refresh": {
+    "run": 37900129169,
+    "result": "success",
+    "completed_at": "2026-10-09T07:49:45Z",
+    "scope": "Catalogue, all eight compilation shards, assembly and publication passed."
+  },
+  "initial_merge_site": {
+    "run": 37900129119,
+    "result": "success",
+    "completed_at": "2026-10-09T07:55:43Z"
+  },
+  "post_refresh_site": {
+    "run": 37901259820,
+    "result": "success",
+    "completed_at": "2026-10-09T08:08:58Z",
+    "linkage": "Explicit run URL printed by refresh publish job 113724045809"
+  },
+  "both_site_checks": "All six browser groups, aggregate, Pages deployment, six exact vector-tile byte comparisons, and deployed map check using a local railway fixture passed at merged source 2875a074. This is a bounded deployment smoke check, not proof of every map feature.",
+  "live_url": "https://c933103.github.io/openrailwaystyle/",
+  "execution": "Existing automatic post-merge/refresh workflows only; no manual provider workflow or fresh local provider acquisition was triggered by this verification.",
+  "logs": [
+    {
+      "run_id": 37900129119,
+      "job_id": 113725252063,
+      "job_url": "https://github.com/c933103/openrailwaystyle/actions/runs/37900129119/job/113725252063",
+      "full_log_bytes": 7335299,
+      "full_log_sha256": "0a2632b630eedfe62d0344113a6717d1669169172f1b21e9999af9a0ed76fc34",
+      "full_log_retention": "Not duplicated in this package; GitHub Actions retention applies. Only the labelled exact excerpt is durable here.",
+      "excerpt_path": "initial-deployment.excerpt.log",
+      "excerpt_bytes": 1259,
+      "excerpt_sha256": "41cbc9ad163261cb288407c7cff82d8bed42a5f037acb3f0adedfb0eb2e0e0dd",
+      "selected_lines": 9
+    },
+    {
+      "run_id": 37901259820,
+      "job_id": 113729530699,
+      "job_url": "https://github.com/c933103/openrailwaystyle/actions/runs/37901259820/job/113729530699",
+      "full_log_bytes": 7334922,
+      "full_log_sha256": "397e5eac74e58fb92efbee0e5c325d45ca36a216cd24e2af176cbd30f9e7baf8",
+      "full_log_retention": "Not duplicated in this package; GitHub Actions retention applies. Only the labelled exact excerpt is durable here.",
+      "excerpt_path": "downstream-deployment.excerpt.log",
+      "excerpt_bytes": 1259,
+      "excerpt_sha256": "d97c33c6aa269387137b0ab3d48bb9cd9e79fe06d173a738410d7f6105831290",
+      "selected_lines": 9
+    },
+    {
+      "run_id": 37900129169,
+      "job_id": 113724045809,
+      "job_url": "https://github.com/c933103/openrailwaystyle/actions/runs/37900129169/job/113724045809",
+      "full_log_bytes": 13866,
+      "full_log_sha256": "f3a9290f6bbd160ec664d3c866805cdd39d7ac93dab80d25956c03ad20466d43",
+      "full_log_retention": "Not duplicated; GitHub Actions retention applies. The exact dispatch URL line is durable here.",
+      "excerpt_path": "refresh-dispatch.excerpt.log",
+      "excerpt_bytes": 98,
+      "excerpt_sha256": "748d9a4c87d6283f028d95719895527fb28f804c8c626b367df593b32ba1c04c",
+      "selected_lines": 1,
+      "selection": "Keep the complete original line containing Z https://github.com/c933103/openrailwaystyle/actions/runs/37901259820"
+    }
+  ],
+  "benchmark_scope": "The earlier frozen Node 22.23.3 cohort at base 802062b5 reported median paired wall -9.65897% and CPU -7.23243%, four of four pairs lower, mixed RSS. These post-merge workflows are correctness/deployment evidence, not comparable resource measurements or a new performance cohort.",
+  "original_recovery": "57 of 83 original artifacts recovered; 26 remain missing. This new post-merge evidence does not change that ledger."
+}
