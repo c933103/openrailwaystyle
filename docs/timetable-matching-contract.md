@@ -209,11 +209,15 @@ that a candidate service is unrelated. These are input-contract distinctions,
 not independent proof that supplied source keys or mappings are true.
 
 Individually complete current scoped conflicts are retained as negative
-diagnostics even beside malformed records. Partial or malformed inventories
-can never verify. This diagnostic priority is distinct from preventing false
+diagnostics even beside malformed records or sparse containers. Negative scans
+inspect only owned entries after validating array type and length caps; inherited
+slots never establish assertions. Holes in candidate inventories, crosswalks,
+route bindings and variants remain explicit positive-matching blockers. Partial
+or malformed inventories can never verify. This diagnostic priority is distinct from preventing false
 verification: `missing_evidence` and `stale` also withhold matching. Invalid
-context/source schemas and hard work limits may end validation before later
-identity diagnostics can be established.
+context/source schemas, invalid container types, over-cap arrays and hard work
+limits may end validation before later identity diagnostics can be established.
+This is not a promise of universal precedence for invalid or over-budget input.
 
 Supported instants have the complete form `YYYY-MM-DDTHH:MM:SS`, optionally
 followed by 1–3 fractional digits, and a required `Z` or signed `HH:MM` offset.
@@ -307,14 +311,14 @@ bounded; they do not justify enabling it across the production registry yet.
 The same report also records fresh, serial Node 22.23.3 matcher processes over a
 controlled 10,000-observation, 2-pattern, 5,825,261-byte sidecar produced from the
 240,000-stop-row/28-profile fixture. Across three repetitions, the valid identity
-case took a median 206.007 ms; an unbound alternative was withheld in 181.278 ms.
-Median peak process RSS was 116,832 and 116,548 KiB respectively. These elapsed
+case took a median 130.450 ms; an unbound alternative was withheld in 126.298 ms.
+Median peak process RSS was 116,884 and 116,580 KiB respectively. These elapsed
 times cover matching after parsing/preparation; RSS includes startup, parsing
 and fixture preparation and is not a matcher-only allocation measurement.
 
 The source-work adversary and candidate-reference adversary returned explicit
-work-limit outcomes in median 66.673 and 225.340 ms, with median peak process RSS
-122,064 and 117,672 KiB. The source adversary fails during all-pattern validation
+work-limit outcomes in median 46.588 and 134.845 ms, with median peak process RSS
+121,088 and 117,516 KiB. The source adversary fails during all-pattern validation
 before reaching the ordinary observation scan, so its lower elapsed time is not
 a speed improvement. The script publishes only aggregate measurements and
 source hashes, never the temporary synthetic sidecar or ZIP. Compiler and

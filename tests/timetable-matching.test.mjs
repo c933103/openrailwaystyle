@@ -832,3 +832,69 @@ test('crosswalk lookup keys separate unused mapping state from selected mapping 
     assert.equal(status(input), 'verified', 'a different feed has a separate lookup namespace');
   }
 });
+
+function diagnosticInventory(field) {
+  const input = fixture();
+  const alternative = structuredClone(input.candidates[0]);
+  input.candidates.push(alternative);
+  if (field === 'crosswalk') input.crosswalk.push({...input.crosswalk[0]});
+  const rows = field === 'candidates' ? input.candidates : field === 'crosswalk' ? input.crosswalk : alternative[field];
+  const row = rows.at(-1);
+  return {input, rows, row, replace: value => {
+    if (field === 'candidates' || field === 'crosswalk') input[field] = value;
+    else alternative[field] = value;
+  }};
+}
+
+for (const field of ['route_bindings', 'variants', 'candidates', 'crosswalk']) {
+  test(`owned current conflicts survive sparse ${field} in either order`, () => {
+    for (const reverse of [false, true]) {
+      const {input, rows, row} = diagnosticInventory(field);
+      row.status = 'conflict';
+      assert.equal(status(input), 'conflicting', 'dense current conflict control');
+      rows.length++;
+      if (reverse) { rows.reverse(); if (rows !== input.candidates) input.candidates.reverse(); }
+      assert.equal(status(input), 'conflicting', `${field}/${reverse}`);
+    }
+  });
+}
+
+test('inherited conflict slots cannot establish a negative identity assertion', () => {
+  for (const field of ['route_bindings', 'variants', 'candidates', 'crosswalk']) {
+    const {input, rows, row} = diagnosticInventory(field);
+    row.status = 'conflict';
+    const index = rows.length - 1;
+    delete rows[index];
+    Object.setPrototypeOf(rows, Object.assign(Object.create(Array.prototype), {[index]: row}));
+    assert.equal(status(input), 'missing_evidence', field);
+  }
+});
+
+test('holes always withhold positive matching across diagnostic containers', () => {
+  for (const field of ['route_bindings', 'variants', 'candidates', 'crosswalk']) for (const reverse of [false, true]) {
+    const {input, rows} = diagnosticInventory(field);
+    if (field !== 'candidates') input.candidates.shift();
+    rows.length++;
+    if (reverse) rows.reverse();
+    const output = matchTimetablePattern(input);
+    assert.equal(output.status, 'missing_evidence', field);
+    assert.equal(output.frequency_status, 'not_evaluated');
+  }
+  for (const candidates of [new Array(1), [{eligibility: 'excluded'}, ,]]) {
+    assert.equal(status({...fixture(), candidates}), 'missing_evidence', 'holes are not explicit exclusions');
+  }
+});
+
+test('invalid container types and length caps precede negative diagnostic scanning', () => {
+  for (const [field, cap] of [['route_bindings', 32], ['variants', 128], ['candidates', 256], ['crosswalk', 1024]]) {
+    for (const invalid of [null, {}, 'invalid']) {
+      const {input, replace} = diagnosticInventory(field);
+      replace(invalid);
+      assert.equal(status(input), 'missing_evidence', `${field}/${invalid}`);
+    }
+    const {input, rows, row} = diagnosticInventory(field);
+    row.status = 'conflict';
+    rows.length = cap + 1;
+    assert.equal(status(input), 'missing_evidence', `${field}/over limit`);
+  }
+});

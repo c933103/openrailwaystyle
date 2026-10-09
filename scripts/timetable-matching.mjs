@@ -32,6 +32,15 @@ function array(value, max) {
   for (let index = 0; index < value.length; index++) if (!Object.hasOwn(value, index)) return false;
   return true;
 }
+// Negative diagnostics may use complete owned records beside holes, but only
+// after checking the container's type and length cap. Density is still required
+// independently for every positive path; inherited slots are never evidence.
+function ownedEntries(value, max) {
+  if (!Array.isArray(value) || value.length > max) return null;
+  const entries = [];
+  for (let index = 0; index < value.length; index++) if (Object.hasOwn(value, index)) entries.push(value[index]);
+  return entries;
+}
 const positive = value => Number.isSafeInteger(value) && value > 0;
 const result = (status, reason, extra = {}) => ({schema: 1, status, reasons: [reason], frequency_status: 'not_evaluated', ...extra});
 const same = (a, b) => a.length === b.length && a.every((value, index) => value === b[index]);
@@ -193,31 +202,36 @@ function matchPattern(input) {
   if (!selectedObservations.length) return result('missing_evidence', 'missing_observations');
   if (!selectedObservations.some(row => row.calendar_state === 'current' && now <= row.valid_until)) return result(selectedObservations.every(row => row.calendar_state === 'expired' || now > row.valid_until) ? 'stale' : 'missing_evidence', 'no_current_observations');
   if (!['0', '1'].includes(pattern.direction_id)) return result('missing_evidence', 'missing_direction');
-  if (!array(candidates, 256)) return result('missing_evidence', 'candidate_or_crosswalk_limit');
+  const suppliedCandidates = ownedEntries(candidates, 256);
+  if (!suppliedCandidates) return result('missing_evidence', 'candidate_or_crosswalk_limit');
   // Explicit exclusion alone needs no match-only schema. No other missing or
   // unknown field can stand in for exclusion.
-  const included = candidates.filter(candidate => candidate?.eligibility !== 'excluded');
-  if (!included.length) return result('no_eligible_service', 'no_eligible_identity_in_candidates');
-  if (!array(crosswalk, 1024)) return result('missing_evidence', 'candidate_or_crosswalk_limit');
+  const included = suppliedCandidates.filter(candidate => candidate?.eligibility !== 'excluded');
+  const sparseCandidates = suppliedCandidates.length !== candidates.length;
+  if (!included.length) return sparseCandidates ? result('missing_evidence', 'sparse_candidate_inventory') : result('no_eligible_service', 'no_eligible_identity_in_candidates');
+  const suppliedCrosswalk = ownedEntries(crosswalk, 1024);
+  if (!suppliedCrosswalk) return result('missing_evidence', 'candidate_or_crosswalk_limit');
   if (pattern.calls.some(call => ['2', '3'].includes(call.pickup_type) || ['2', '3'].includes(call.drop_off_type))) return result('missing_evidence', 'conditional_stop_service');
   const served = pattern.calls.filter(call => call.pickup_type !== '1' || call.drop_off_type !== '1');
   if (served.length < 2) return result('missing_evidence', 'insufficient_served_stops');
   const bound = row => row.feed_id === source.feed_id && row.source_sha256 === source.sha256;
   const servedIds = new Set(served.map(call => call.station_id)), blockers = [], recognizedStations = new Map();
+  if (sparseCandidates) blockers.push(['missing_evidence', 'sparse_candidate_inventory']);
+  if (suppliedCrosswalk.length !== crosswalk.length) blockers.push(['missing_evidence', 'sparse_station_crosswalk']);
 
   // Negative diagnostics from individually complete scoped records survive a
   // malformed neighbor. They never authorize positive matching of that input.
-  for (const row of crosswalk) if (stationBinding(row) && bound(row) && servedIds.has(row.station_id)) {
+  for (const row of suppliedCrosswalk) if (stationBinding(row) && bound(row) && servedIds.has(row.station_id)) {
     if (row.status === 'conflict' || (recognizedStations.has(row.station_id) && recognizedStations.get(row.station_id) !== row.osm_station_id)) blockers.push(['conflicting', 'station_crosswalk_conflict']);
     recognizedStations.set(row.station_id, row.osm_station_id);
   }
   for (const candidate of included) {
-    const routes = array(candidate?.route_bindings, 32) ? candidate.route_bindings.filter(row => routeBinding(row) && bound(row) && row.route_id === pattern.source_route_id) : [];
+    const routes = (ownedEntries(candidate?.route_bindings, 32) ?? []).filter(row => routeBinding(row) && bound(row) && row.route_id === pattern.source_route_id);
     const operator = operatorBinding(candidate?.operator_binding) && bound(candidate.operator_binding) && candidate.operator_binding.agency_id === pattern.agency_id;
     if (routes.some(row => row.status === 'conflict') || (routes.length && (candidate.status === 'conflict' || (operator && candidate.operator_binding.status === 'conflict')))) blockers.push(['conflicting', 'service_identity_conflict']);
   }
-  const validCrosswalk = crosswalk.filter(stationBinding);
-  if (validCrosswalk.length !== crosswalk.length) blockers.push(['missing_evidence', 'invalid_station_binding']);
+  const validCrosswalk = suppliedCrosswalk.filter(stationBinding);
+  if (validCrosswalk.length !== suppliedCrosswalk.length) blockers.push(['missing_evidence', 'invalid_station_binding']);
   const candidateWork = workBudget('candidate_work_limit'), prepared = [];
   candidateWork.encode(validCrosswalk);
   for (const candidate of included) {
@@ -231,9 +245,9 @@ function matchPattern(input) {
     const operator = candidate?.operator_binding;
     const currentFallback = !osmProblem && operatorBinding(operator) && bound(operator) && operator.agency_id === pattern.agency_id && id(pattern.route_ref) && candidate.osm.tags.ref === pattern.route_ref;
     if (currentFallback && (operator.status === 'conflict' || candidate.status === 'conflict')) blockers.push(['conflicting', 'service_identity_conflict']);
-    if (schemaProblem && !osmProblem && array(candidate?.variants, 128)) {
-      const currentExact = array(candidate.route_bindings, 32) && candidate.route_bindings.some(row => routeBinding(row) && bound(row) && row.route_id === pattern.source_route_id);
-      if (currentExact || currentFallback) for (const variant of candidate.variants) {
+    if (schemaProblem && !osmProblem) {
+      const currentExact = (ownedEntries(candidate.route_bindings, 32) ?? []).some(row => routeBinding(row) && bound(row) && row.route_id === pattern.source_route_id);
+      if (currentExact || currentFallback) for (const variant of ownedEntries(candidate.variants, 128) ?? []) {
         if (variantSchema(variant, candidateWork) && variant.status === 'conflict') blockers.push(['conflicting', 'variant_identity_conflict']);
       }
     }
