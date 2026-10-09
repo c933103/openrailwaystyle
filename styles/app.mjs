@@ -155,11 +155,13 @@ ensureCjkChoice(cjkScript(settings.language));
 // the label language whenever MapLibre sets up one of these fonts.
 const CANVAS_LANG = {'zh-Hans':'zh-CN', 'zh-Hant':'zh-TW', ja:'ja', ko:'ko'};
 const DETAIL_CJK_CHARACTER = String.raw`[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}]`;
-const detailRunPattern = separators => new RegExp(`${DETAIL_CJK_CHARACTER}(?:${DETAIL_CJK_CHARACTER}|[\\p{Mark}ーｰﾞﾟ゛゜]|${separators}+(?=${DETAIL_CJK_CHARACTER}))*`, 'gu');
+// The neutral Bopomofo tone can precede its syllable; other tones follow it.
+const DETAIL_CJK_START = `(?:${DETAIL_CJK_CHARACTER}|˙(?=\\p{Script=Bopomofo}))`;
+const detailRunPattern = separators => new RegExp(`${DETAIL_CJK_START}(?:${DETAIL_CJK_CHARACTER}|[\\p{Mark}ーｰﾞﾟ゛゜ˉˊˇˋ˙˪˫]|${separators}+(?=${DETAIL_CJK_START}))*`, 'gu');
 // Internal separators and line numbers belong to the CJK name when followed
 // by another CJK character. Latin letters and line breaks remain boundaries.
 const DETAIL_GLYPH_RUNS = detailRunPattern(String.raw`[\p{Punctuation}\p{Space_Separator}\p{Number}]`);
-const DETAIL_LANGUAGE_HINTS = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}]/gu;
+const DETAIL_LANGUAGE_HINTS = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]|˙?\p{Script=Bopomofo}/gu;
 const DETAIL_CONNECTORS = /[\p{Punctuation}\p{Space_Separator}\p{Number}]+/gu;
 const detailGlyphHints = text => [
   /[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(text) && 'ja',
