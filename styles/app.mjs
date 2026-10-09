@@ -1,22 +1,22 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261009-infobox-cjk';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261009-infobox-cjk';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261009-infobox-cjk';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261009-infobox-cjk';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261009-infobox-cjk';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261009-infobox-cjk';
+import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261009-first-party-libraries';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261009-first-party-libraries';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261009-first-party-libraries';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261009-first-party-libraries';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261009-first-party-libraries';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261009-first-party-libraries';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261009-infobox-cjk';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261009-infobox-cjk';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261009-infobox-cjk';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261009-infobox-cjk';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261009-infobox-cjk';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261009-infobox-cjk';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261009-infobox-cjk';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261009-infobox-cjk';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261009-infobox-cjk';
-import { installWatchGesture } from './watch-map.mjs?v=20261009-infobox-cjk';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261009-infobox-cjk';
-import { createBundleReader } from './tile-bundles.mjs?v=20261009-infobox-cjk';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261009-first-party-libraries';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261009-first-party-libraries';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261009-first-party-libraries';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261009-first-party-libraries';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261009-first-party-libraries';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261009-first-party-libraries';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261009-first-party-libraries';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261009-first-party-libraries';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261009-first-party-libraries';
+import { installWatchGesture } from './watch-map.mjs?v=20261009-first-party-libraries';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261009-first-party-libraries';
+import { createBundleReader } from './tile-bundles.mjs?v=20261009-first-party-libraries';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -52,16 +52,69 @@ let platformLengths,frequencyExpiry;
 let powerFacilities;
 let railRecovery, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261009-infobox-cjk';
-const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261009-first-party-libraries';
+// An old active worker can save this new page before its replacement has
+// installed. If that update is interrupted, only the old CDN copies may be
+// available offline. Read those exact saved responses without contacting the
+// CDN; first visits and successful upgrades use the first-party files below.
+async function cachedLegacyLibrary(name) {
+  const url = {
+    'maplibre-js': 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js',
+    'maplibre-css': 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css',
+    'pmtiles-js': 'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js',
+  }[name];
+  if (!url || !window.caches) return null;
+  try {
+    const names = (await window.caches.keys()).filter(key => /^atlas-shell-\d+$/.test(key));
+    names.sort((a,b) => Number(b.split('-').at(-1)) - Number(a.split('-').at(-1)));
+    for (const key of names) {
+      const cache = await window.caches.open(key);
+      if (!await cache.match(new URL('./', import.meta.url).href)) continue;
+      const response = await cache.match(url);
+      if (!response?.ok || response.type === 'opaque') continue;
+      const type = (response.headers.get('content-type') || '').split(';')[0].trim();
+      if (name.endsWith('-css') ? /^text\/css$/i.test(type) : /^(?:text|application)\/(?:x-)?(?:java|ecma)script$/i.test(type)) return response;
+    }
+  } catch {}
+  return null;
+}
+const appendLibraryScript = src => new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
-  script.onerror = () => reject(new Error('Map libraries could not load. Check your connection and reload.'));
+  script.onerror = () => {script.remove(); reject(new Error('Map libraries could not load. Check your connection and reload.'));};
   document.head.append(script);
 });
+async function loadScript(src, global, legacy) {
+  if (window[global]) return;
+  try { await appendLibraryScript(src); }
+  catch (error) {
+    const saved = await cachedLegacyLibrary(legacy);
+    if (!saved) throw error;
+    const blob = URL.createObjectURL(new Blob([await saved.blob()], {type: 'text/javascript'}));
+    try { await appendLibraryScript(blob); }
+    finally { URL.revokeObjectURL(blob); }
+  }
+}
+let legacyStyle;
+function restoreCachedMapStyle() {
+  return legacyStyle ||= (async () => {
+    const link = $('maplibre-css');
+    if (!link || link.sheet) return;
+    const saved = await cachedLegacyLibrary('maplibre-css');
+    if (!saved || link.sheet) return;
+    const style = document.createElement('style');
+    style.textContent = await saved.text();
+    link.after(style);
+  })();
+}
+// The link's error may precede module execution, so check its sheet now as
+// well as listening for a later failure. Both copies have the same pinned
+// version; a slow successful first-party link can safely finish afterwards.
+$('maplibre-css')?.addEventListener('error', () => restoreCachedMapStyle().catch(() => {}), {once: true});
+restoreCachedMapStyle().catch(() => {});
 const libraries = Promise.all([
-  loadScript('https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js', 'maplibregl'),
-  loadScript('https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js', 'pmtiles'),
+  loadScript(new URL('vendor/maplibre-gl-5.24.0.js', import.meta.url).href, 'maplibregl', 'maplibre-js'),
+  loadScript(new URL('vendor/pmtiles-4.2.1.js', import.meta.url).href, 'pmtiles', 'pmtiles-js'),
   loadScript(new URL(`vendor/maplibre-contour.js?v=${assetVersion}`, import.meta.url).href, 'mlcontour'),
 ]);
 const labels = import(`./vendor/tile-labels.js?v=${assetVersion}`);

@@ -6,7 +6,7 @@ import {mkdir, readFile} from 'node:fs/promises';
 // railway snapshots. Pixel checks exercise the protocol and coastline mask.
 const base = (process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/, '/');
 const app = await readFile(new URL('../styles/app.mjs',import.meta.url),'utf8');
-const library = app.match(/loadScript\('([^']+maplibre-gl[^']+\.js)'/)[1];
+const library = new URL(app.match(/loadScript\(new URL\('([^']+maplibre-gl[^']+\.js)'/)[1], base).href;
 const deadline=setTimeout(()=>{console.error('Bathymetry validation exceeded five minutes');process.exit(1);},300000);deadline.unref();
 const proxyURL=process.env.HTTPS_PROXY || process.env.https_proxy;
 const proxy=proxyURL ? {server:proxyURL,bypass:'localhost,127.0.0.1'} : undefined;
@@ -19,7 +19,7 @@ try {
   await page.route('**/__bathymetry-check',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><style>body{margin:0}#map{position:absolute;inset:0}</style><div id="map"></div>'}));
   await page.goto(base+'__bathymetry-check');
   await page.addScriptTag({url:library});
-  await page.addScriptTag({url:'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js'});
+  await page.addScriptTag({url:base+'vendor/pmtiles-4.2.1.js'});
   await page.addScriptTag({url:base+'vendor/maplibre-contour.js'});
   const checks = await page.evaluate(async base => {
     const {installBathymetry, maskOcean, shareArchiveRequests} = await import(base+'bathymetry.mjs');

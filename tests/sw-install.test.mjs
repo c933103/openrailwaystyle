@@ -13,8 +13,8 @@ const bytes = value => new TextEncoder().encode(value);
 // at headers, but its slot is only released when the response body is consumed.
 // highWaterMark:0 makes this distinction explicit instead of eagerly buffering
 // every mock response (which would hide the installation deadlock).
-function startWorker({version = 'new', fail = '', stores = new Map(), code = source} = {}) {
-  const handlers = new Map(), queue = [], writes = [];
+function startWorker({version = 'new', fail = '', stores = new Map(), code = source, rejectExternal = false} = {}) {
+  const handlers = new Map(), queue = [], writes = [], requests = [];
   const counts = {active: 0, peak: 0, started: 0, finished: 0};
   let offline = false, skipped = false, claimed = false;
   const caches = {
@@ -45,11 +45,13 @@ function startWorker({version = 'new', fail = '', stores = new Map(), code = sou
     if (next) { counts.active++; next(); }
   };
   const fetch = async input => {
+    const url = keyOf(input), page = url === scope;
+    requests.push(url);
+    if (rejectExternal && new URL(url).origin !== new URL(scope).origin) throw new TypeError('blocked third-party request');
     if (offline) throw new TypeError('offline');
     if (counts.active >= 3) await new Promise(resolve => queue.push(resolve));
     else counts.active++;
     counts.started++; counts.peak = Math.max(counts.peak, counts.active);
-    const url = keyOf(input), page = url === scope;
     const body = page ? `<script type="module" src="app.mjs?v=${version}"></script>` : `${version}: ${url}`;
     let consumed = false;
     return new Response(new ReadableStream({
@@ -87,7 +89,7 @@ function startWorker({version = 'new', fail = '', stores = new Map(), code = sou
     assert.ok(result, `${path} must be handled by the worker`);
     return result;
   };
-  return {stores, counts, writes, lifecycle, request, setOffline() { offline = true; },
+  return {stores, counts, writes, requests, lifecycle, request, setOffline() { offline = true; },
     get skipped() { return skipped; }, get claimed() { return claimed; }};
 }
 
@@ -116,7 +118,7 @@ test('installation drains response bodies without exhausting its three network s
   assert.equal(await app.clone().text(), `new: ${scope}app.mjs?v=new`);
 });
 
-for (const fail of ['map-model.mjs', 'maplibre-gl.js']) {
+for (const fail of ['map-model.mjs', 'maplibre-gl-5.24.0.js', 'maplibre-gl-5.24.0.css', 'pmtiles-4.2.1.js']) {
   test(`a truncated ${fail} response cannot publish or activate an incomplete shell`, async () => {
     const worker = startWorker({fail});
     await assert.rejects(bounded(worker.lifecycle('install')), /truncated response/);
@@ -145,4 +147,43 @@ test('a complete replacement keeps the previous version and revised icons availa
   assert.match(await (await next.request('atlas-icon-512.png?rev=changed')).text(), /^new:/);
   const versions = await next.stores.get(`atlas-shell-${generation}`).get(`${scope}__versions`).clone().json();
   assert.deepEqual(versions, ['new', 'old']);
+});
+
+test('first-party libraries install together and remain available offline with every external origin blocked', async () => {
+  const worker = startWorker({rejectExternal: true});
+  await bounded(worker.lifecycle('install'));
+  await worker.lifecycle('activate');
+  assert.ok(worker.requests.every(url => new URL(url).origin === new URL(scope).origin));
+  worker.setOffline();
+  for (const path of ['vendor/maplibre-gl-5.24.0.js', 'vendor/maplibre-gl-5.24.0.css', 'vendor/pmtiles-4.2.1.js']) {
+    assert.equal(await (await worker.request(path)).text(), `new: ${scope}${path}?v=new`);
+    assert.equal(await (await worker.request(path+'?v=new')).text(), `new: ${scope}${path}?v=new`);
+  }
+});
+
+test('actual CDN-era worker copies remain usable after first-party migration without new CDN requests', async () => {
+  const oldCode = readFileSync(new URL('fixtures/sw-before-first-party-libraries.js', import.meta.url), 'utf8');
+  const oldGeneration = Number(oldCode.match(/CACHE = `\$\{PREFIX\}(\d+)`/)[1]);
+  const old = startWorker({version: 'old', code: oldCode});
+  await bounded(old.lifecycle('install'));
+  await old.lifecycle('activate');
+  const oldLibraries = old.requests.filter(url => new URL(url).origin !== new URL(scope).origin);
+  assert.equal(oldLibraries.length, 3, 'fixture really uses the three old CDN assets');
+  const next = startWorker({version: 'new', stores: old.stores, rejectExternal: true});
+  await bounded(next.lifecycle('install'));
+  await next.lifecycle('activate');
+  assert.equal(next.stores.has(`atlas-shell-${oldGeneration}`), false);
+  next.setOffline();
+  assert.equal(await (await next.request('app.mjs?v=old')).text(), `old: ${scope}app.mjs?v=old`);
+  for (const url of oldLibraries) assert.equal(await (await next.request(url)).text(), `old: ${url}`);
+  assert.ok(next.requests.every(url => new URL(url).origin === new URL(scope).origin));
+});
+
+test('a cache miss on an old CDN URL never causes a new CDN download', async () => {
+  const worker = startWorker({rejectExternal: true});
+  await bounded(worker.lifecycle('install'));
+  const before = worker.requests.length;
+  const response = await worker.request('https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js');
+  assert.equal(response.type, 'error');
+  assert.equal(worker.requests.length, before);
 });

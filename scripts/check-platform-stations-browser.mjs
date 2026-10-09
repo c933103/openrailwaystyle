@@ -16,7 +16,7 @@ for(const [offset,value] of [[8,127],[16,1],[24,128],[32,2],[40,130],[56,130]])a
 archive[96]=1;archive[97]=archive[98]=archive[99]=1;archive[101]=22;
 for(const [offset,value] of [[102,-1800000000],[106,-850000000],[110,1800000000],[114,850000000]])archive.writeInt32LE(value,offset);
 archive.write('{}',128);
-const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/'),runtime=process.env.ATLAS_BROWSER_RUNTIME,glyphFile=process.env.ATLAS_BROWSER_GLYPHS;
+const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/'),glyphFile=process.env.ATLAS_BROWSER_GLYPHS;
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 await mkdir('browser-review',{recursive:true});
 try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
@@ -31,7 +31,6 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
   stand(['Noto Sans SC','Noto Sans CJK SC','Source Han Sans SC','PingFang SC','Microsoft YaHei','Hiragino Sans GB'],'atlas-cjk-sc-v1.woff2','U+3000-9FFF,U+F900-FAFF');
  });
  page.on('pageerror',error=>errors.push(error.message));
- if(runtime)await page.route('https://cdn.jsdelivr.net/npm/**',async route=>{const path=new URL(route.request().url()).pathname,local=path.includes('maplibre-gl')?'maplibre-gl/dist/'+path.split('/').at(-1):'pmtiles/dist/pmtiles.js';await route.fulfill({body:await readFile(`${runtime}/${local}`),contentType:path.endsWith('.css')?'text/css':'text/javascript'});});
  await page.route('https://tuiles.enliberte.fr/planet.pmtiles',route=>route.fulfill({body:archive,contentType:'application/octet-stream'}));
  if(glyphFile)await page.route('https://tuiles.enliberte.fr/fonts/**',async route=>route.fulfill({body:await readFile(glyphFile),contentType:'application/x-protobuf'}));
  await page.route('**/data/**/index.json',route=>route.fulfill({json:{tiles:[]}}));
