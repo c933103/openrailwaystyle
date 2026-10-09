@@ -23,6 +23,9 @@ MOBILITY_CSV = "https://files.mobilitydatabase.org/feeds_v2.csv"
 _reference_spec = importlib.util.spec_from_file_location('frequency_references', Path(__file__).with_name('frequency_references.py'))
 references = importlib.util.module_from_spec(_reference_spec)
 _reference_spec.loader.exec_module(references)
+_publication_spec = importlib.util.spec_from_file_location('frequency_publication', Path(__file__).with_name('frequency_publication.py'))
+publication = importlib.util.module_from_spec(_publication_spec)
+_publication_spec.loader.exec_module(publication)
 
 
 def access_review_url(url):
@@ -243,7 +246,7 @@ def catalogue_sources(transitous_ref):
             TRANSITOUS_FEEDS.replace('/main/', '/' + transitous_ref + '/'), MOBILITY_CSV]
 
 
-def build_catalogue(licences, feed_sources, mobility_rows, transitous_ref=None, reference_index=None, definition_metadata=None):
+def build_catalogue(licences, feed_sources, mobility_rows, transitous_ref=None, reference_index=None, definition_metadata=None, publication_context=None):
     """feed_sources: (region, source, pinned source-list URL) tuples."""
     licence_url, feeds_url, _ = catalogue_sources(transitous_ref) if transitous_ref is not None else [
         TRANSITOUS_LICENSES, TRANSITOUS_FEEDS, MOBILITY_CSV]
@@ -352,7 +355,7 @@ def build_catalogue(licences, feed_sources, mobility_rows, transitous_ref=None, 
     # Resolve only after forming the legacy universe, preserving old owners and
     # identities instead of silently swallowing newly matched Mobility rows.
     prepared, reference_counts = references.apply_references(prepared, feed_sources,
-        mobility_rows, compact_mobility, reference_index, licence_evidence, definition_metadata)
+        mobility_rows, compact_mobility, reference_index, licence_evidence, definition_metadata, publication_context)
     prepared = [prepare_catalogue_row(row) for row in prepared]
     counts.update(reference_counts)
     counts['pending_access_review'] = sum(bool(row.get('access_review')) for row in prepared)
@@ -406,6 +409,7 @@ def main():
     parser.add_argument("--transitland-ref")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--publication-index", type=Path, help="Secret-free pinned licence membership artifact")
     args = parser.parse_args()
     try:
         sources = catalogue_sources(args.transitous_ref)
@@ -420,19 +424,25 @@ def main():
         parser.error(str(error))
     if args.transitland_ref:
         sources.append(references.pinned_url(args.transitland_ref))
-    licence_data = args.licences.read_bytes()
+    with args.licences.open('rb') as stream:
+        licence_data = stream.read(publication.MAX_INPUT_BYTES + 1)
+    publication_index = publication.build_index(licence_data, sources[0])
+    publication_context = publication.Context(publication_index)
     mobility_data = args.mobility_csv.read_bytes()
     mobility = list(csv.DictReader(io.StringIO(mobility_data.decode("utf-8-sig"), newline="")))
     feed_hashes, definition_metadata = {}, {}
     rows, counts = build_catalogue(json.loads(licence_data),
-        read_transitous(args.feeds_directory, args.transitous_ref, feed_hashes, definition_metadata), mobility, args.transitous_ref, reference_index, definition_metadata)
+        read_transitous(args.feeds_directory, args.transitous_ref, feed_hashes, definition_metadata), mobility, args.transitous_ref, reference_index, definition_metadata, publication_context)
     # Exact parsed feed files: SHA-256 of the sorted compact filename -> SHA-256
     # JSON map (UTF-8 with JSON's default ASCII escaping), not the mutable branch.
     feeds_digest = hashlib.sha256(json.dumps(feed_hashes, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     data = (json.dumps(rows, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
     args.output.write_bytes(data)
-    report = {"schema": 3, "catalogue_sha256": hashlib.sha256(data).hexdigest(),
+    index_data = publication.encoded(publication_index) + b'\n'
+    index_path = args.publication_index or args.report.with_name('publication-index.json')
+    index_path.write_bytes(index_data)
+    report = {"schema": 4, "publication_index": {"sha256": publication.sha(index_data), "records": len(publication_index['records'])}, "catalogue_sha256": hashlib.sha256(data).hexdigest(),
         "transitous_ref": args.transitous_ref, "sources": sources,
         "transitland_ref": args.transitland_ref,
         "transitland_state": reference_index['state'],

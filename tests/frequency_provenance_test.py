@@ -49,18 +49,19 @@ class CatalogueProvenance(unittest.TestCase):
         self.data = json.loads(self.report.read_text())
         self.hash = hashlib.sha256(self.catalogue.read_bytes()).hexdigest()
 
-    def run_compiler(self, output, report=True, local=True, extra=()):
+    def run_compiler(self, output, report=True, local=True, extra=(), index=True):
         argv = ['global-service-frequency.py', '--cache', str(self.root/'cache'),
                 '--output', str(output), '--date', '2026-10-05', *extra]
         if local:
             argv.extend(['--catalogue', str(self.catalogue)])
         if report:
             argv.extend(['--catalogue-report', str(self.report)])
+            if index: argv.extend(['--publication-index', str(self.root/'publication-index.json')])
         with patch.object(sys, 'argv', argv), patch('sys.stdout', new_callable=io.StringIO):
             pipeline.main()
 
     def test_report_to_shards_to_manifest_preserves_all_sources_and_accounting(self):
-        self.assertEqual(self.data['schema'], 3)
+        self.assertEqual(self.data['schema'], 4)
         self.assertEqual(self.data['catalogue_sha256'], self.hash)
         self.assertEqual(self.data['input_sha256'], self.input_hashes)
         self.assertEqual(self.data['counts']['merged_entries'], 3)
@@ -103,7 +104,8 @@ class CatalogueProvenance(unittest.TestCase):
         shards = [json.loads((output/f'inventory-{shard}.json').read_text()) for shard in range(2)]
         expected = pipeline.published_metadata({'schema': 2, 'kind': 'reconciled',
             'transitland_ref': None, 'transitland_state': 'unavailable', 'transitland_reason': 'not_supplied',
-            'transitous_ref': PIN, 'sources': sources, 'input_sha256': self.input_hashes})
+            'transitous_ref': PIN, 'sources': sources, 'input_sha256': self.input_hashes,
+            'publication_context': {'state': 'verified', 'index_sha256': self.data['publication_index']['sha256']}})
         for shard in shards:
             self.assertIsNone(shard['catalogue_url'])
             self.assertEqual(shard['catalogue_sha256'], self.hash)
@@ -123,6 +125,33 @@ class CatalogueProvenance(unittest.TestCase):
         published = '\n'.join(path.read_text() for path in output.glob('*.json'))+result.stdout+result.stderr
         for secret in ['fixture-password', 'fixture-region', 'fixture-private-report-value', 'fixture-private-hash-value']:
             self.assertNotIn(secret, published)
+
+    def test_real_producer_reference_proof_requires_its_matching_artifact(self):
+        (self.root/'feeds'/'be.json').write_text(json.dumps({'sources':[
+            {'name':'rail','type':'transitland-atlas','transitland-atlas-id':'missing'}]}))
+        with patch.object(sys,'argv',['frequency_catalogue.py','--licences',str(self.root/'license.json'),
+            '--feeds-directory',str(self.root/'feeds'),'--transitous-ref',PIN,'--mobility-csv',str(self.root/'mobility.csv'),
+            '--output',str(self.catalogue),'--report',str(self.report)]),patch('sys.stdout',new_callable=io.StringIO):
+            pipeline.registry.main()
+        row=next(r for r in json.loads(self.catalogue.read_text()) if r['filename']=='be_rail.gtfs.zip')
+        index=json.loads((self.root/'publication-index.json').read_text())
+        self.assertEqual(row['source_resolution']['publication_evidence'],{'input_sha256':index['input_sha256'],**index['records'][0]})
+        raw_input=(self.root/'license.json').read_bytes()
+        self.assertEqual(index['input_sha256'],hashlib.sha256(raw_input).hexdigest())
+        self.assertNotIn('fixture-region',(self.root/'publication-index.json').read_text())
+        for supplied in [False,True]:
+            output=self.root/('with-index' if supplied else 'without-index')
+            self.run_compiler(output,extra=('--inventory-only',),index=supplied)
+            inventory=json.loads((output/'inventory-0.json').read_text())
+            entry=next(e for e in inventory['entries'] if e['id']=='be_rail')
+            self.assertEqual(entry['status'],'pending' if supplied else 'retry_pending')
+            self.assertEqual(inventory['catalogue_provenance']['publication_context']['state'],'verified' if supplied else 'not_supplied')
+        (self.root/'publication-index.json').write_text('{}')
+        self.run_compiler(self.root/'wrong-index',extra=('--inventory-only',))
+        inventory=json.loads((self.root/'wrong-index'/'inventory-0.json').read_text())
+        self.assertEqual(next(e for e in inventory['entries'] if e['id']=='be_rail')['reason_code'],'unresolved_source_reference')
+        self.assertEqual(inventory['catalogue_provenance']['publication_context']['state'],'index_hash_mismatch')
+
 
     def test_invalid_or_mismatched_reports_fail_before_compilation(self):
         cases = []
@@ -205,6 +234,163 @@ class CatalogueProvenance(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 self.run_compiler(self.root/'invalid', local=False, extra=('--inventory-only',))
         get.assert_not_called()
+
+
+class PublicationMembership(unittest.TestCase):
+    def fixture(self, source='', active=False):
+        pub = pipeline.registry.publication
+        raw = pub.encoded([{'filename':'xx_proven.gtfs.zip','source':source}])
+        index = pub.build_index(raw, pipeline.registry.catalogue_sources(PIN)[0])
+        context = pub.Context(index)
+        row = {'filename':'xx_proven.gtfs.zip','delivery':'transitous','source':source,
+            'catalogue_url':index['source_url'],
+            'lineage':[{'catalogue':'transitous-licence','id':'xx_proven.gtfs.zip','url':index['source_url'],'source':source}],
+            'source_resolution':{'schema':1,'state':'schedule','specs':['gtfs'],'declarations':[],
+                'processed_filename':'xx_proven.gtfs.zip','publication_evidence':context.evidence('xx_proven.gtfs.zip')}}
+        if active:
+            row['source_resolution']['ordinary_static_declarations']=[{'type':'http','spec':'gtfs','url':source,
+                'url_sha256':pub.sha(source.encode()),'access_state':'public_declared','upstream_skip':False,
+                'definition':{'url':'https://github.test/feeds/xx.json','pointer':'/sources/0','sha256':'a'*64}}]
+        return row, context, index
+
+    def candidates(self, row, context=None):
+        entry = pipeline.discover([row], {}, context)[0]
+        return pipeline.source_candidates(entry, context)
+
+    def test_membership_requires_separate_context_and_exact_record(self):
+        row, context, _ = self.fixture()
+        processed = pipeline.PROCESSED+row['filename']
+        self.assertEqual(self.candidates(row, context), [processed])
+        self.assertEqual(self.candidates(row), [])
+        for key in ['input_sha256','record_sha256','source_sha256','pointer','filename']:
+            bad=copy.deepcopy(row);bad['source_resolution']['publication_evidence'][key]='0'*64 if key.endswith('sha256') else '/99' if key=='pointer' else 'invented.gtfs.zip'
+            self.assertEqual(self.candidates(bad, context), [])
+        fake=copy.deepcopy(row);fake['filename']='invented.gtfs.zip';fake['lineage'][0]['id']=fake['filename']
+        fake['source_resolution']['processed_filename']=fake['filename'];fake['source_resolution']['publication_evidence']['filename']=fake['filename']
+        self.assertEqual(self.candidates(fake, context), [])
+        # Audit state cannot serialize the runtime authority.
+        for flag in ['verified','publication_verified']:
+            fake=copy.deepcopy(row);fake[flag]=True
+            self.assertEqual(self.candidates(fake), [])
+        reloaded=pipeline.published_metadata(row)
+        self.assertEqual(self.candidates(reloaded), [])
+        self.assertEqual(self.candidates(reloaded, context), [processed])
+
+    def test_public_ordinary_fallback_and_redacted_original_boundary(self):
+        raw='https://provider.test/feed?region=public-fixture'
+        row, context, _=self.fixture(raw, active=True)
+        self.assertEqual(self.candidates(row), [pipeline.PROCESSED+row['filename'],raw])
+        published=pipeline.published_metadata(row)
+        # Matching original-source digest establishes membership, never a raw
+        # request to the one-way redacted display URL.
+        self.assertEqual(self.candidates(published, context), [pipeline.PROCESSED+row['filename']])
+        self.assertEqual(self.candidates(published), [])
+        public, _, _=self.fixture('https://provider.test/public',active=True)
+        self.assertEqual(self.candidates(public), [pipeline.PROCESSED+public['filename'],public['source']])
+
+    def test_resource_holds_cover_all_candidates_and_keep_distinct_public_sources(self):
+        held='https://EXAMPLE.test:443/feed#held-fixture'
+        for public, equivalent in [('https://example.test/feed#public',True),('https://example.test./feed',True),
+                ('https://EXAMPLE.TEST:443/feed',True),('https://example.test/other',False),
+                ('http://example.test/feed',False),('https://example.test/feed?q=1',False)]:
+            with self.subTest(public=public):
+                row, context, _=self.fixture(public,active=True)
+                ordinary=row['source_resolution']['ordinary_static_declarations']
+                private=copy.deepcopy(ordinary[0]);private.update(url=held,url_sha256=hashlib.sha256(held.encode()).hexdigest(),access_state='authorization_required')
+                ordinary.append(private)
+                processed=pipeline.PROCESSED+row['filename']
+                self.assertEqual(self.candidates(row, context), [processed] if equivalent else [processed,public])
+                self.assertEqual(self.candidates(row), [] if equivalent else [processed,public])
+        row, context, _=self.fixture('',active=False)
+        processed=pipeline.PROCESSED+row['filename']
+        row['source_resolution']['ordinary_static_declarations']=[{'type':'http','spec':'gtfs','url':processed+'#hold',
+            'url_sha256':hashlib.sha256((processed+'#hold').encode()).hexdigest(),'access_state':'authorization_required','upstream_skip':True,
+            'definition':{'url':'https://github.test/xx.json','pointer':'/sources/0','sha256':'a'*64}}]
+        self.assertEqual(self.candidates(row, context), [],'even the processed request is subject to the canonical hold')
+        # Preserve exact query values/order/path and credential-authority distinctions.
+        key=pipeline.registry.references.resource_key
+        for a,b in [('https://x.test/f?a=1','https://x.test/f?a=2'),('https://x.test/f?a=1&b=2','https://x.test/f?b=2&a=1'),
+                    ('https://x.test/f','https://x.test/f/'),('http://x.test/f','https://x.test/f')]:
+            self.assertNotEqual(key(a),key(b))
+        self.assertIsNone(key('https://fixture-user:fixture-pass@x.test/f'))
+
+    def test_redacted_hold_retains_uncertainty_without_equating_raw_queries(self):
+        pub=pipeline.registry.publication
+        held='https://EXAMPLE.test:443/feed?region=one#held'
+        public='https://example.test/feed?region=one#public'
+        row,context,_=self.fixture(public,active=True)
+        private=copy.deepcopy(row['source_resolution']['ordinary_static_declarations'][0])
+        private.update(url=held,url_sha256=pub.sha(held.encode()),access_state='authorization_required')
+        row['source_resolution']['ordinary_static_declarations'].append(private)
+        processed=pipeline.PROCESSED+row['filename']
+        self.assertEqual(self.candidates(row,context),[processed])
+        distinct=copy.deepcopy(row);source='https://example.test/feed?region=two'
+        distinct['source']=source;distinct['lineage'][0]['source']=source
+        distinct['source_resolution']['ordinary_static_declarations'][0].update(url=source,url_sha256=pub.sha(source.encode()))
+        self.assertEqual(self.candidates(distinct),[processed,source])
+        private.update(url=pipeline.registry.references.reference_display_url(held))
+        self.assertEqual(self.candidates(row,context),[processed])
+        self.assertEqual(self.candidates(row),[])
+        entry=pipeline.discover([row],{})[0]
+        self.assertEqual(entry['reason_code'],'unresolved_source_reference')
+        self.assertIn('Original identity of a redacted access-held source is unavailable',entry['reason'])
+        distinct['source_resolution']['ordinary_static_declarations'][1]=copy.deepcopy(private)
+        self.assertEqual(self.candidates(distinct),[],'unknown hidden held value is not independent public proof')
+        other=copy.deepcopy(distinct);source='https://example.test/other?region=two'
+        other['source']=source;other['source_resolution']['ordinary_static_declarations'][0].update(url=source,url_sha256=pub.sha(source.encode()))
+        self.assertEqual(self.candidates(other),[processed,source])
+
+    def test_index_is_bounded_unique_and_bound_to_report(self):
+        pub=pipeline.registry.publication;row,context,index=self.fixture('https://provider.test/feed')
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'index.json';data=pub.encoded(index)+b'\n';path.write_bytes(data)
+            report={'schema':4,'transitous_ref':PIN,'input_sha256':{'transitous_licences':index['input_sha256']},
+                'publication_index':{'sha256':pub.sha(data),'records':1}}
+            self.assertEqual(pub.read_context(path,report)[1],'verified')
+            self.assertIsNone(pub.read_context(None,report)[0])
+            for key,value in [('schema',3),('transitous_ref','f'*40),('input_sha256',{'transitous_licences':'f'*64}),
+                              ('publication_index',{'sha256':pub.sha(data),'records':2})]:
+                bad=copy.deepcopy(report);bad[key]=value;self.assertIsNone(pub.read_context(path,bad)[0])
+            for changed in [dict(index,records=index['records']*2),dict(index,source_url=index['source_url']+'?wrong=1')]:
+                altered=pub.encoded(changed);path.write_bytes(altered);bad=copy.deepcopy(report);bad['publication_index']['sha256']=pub.sha(altered)
+                self.assertIsNone(pub.read_context(path,bad)[0])
+            path.write_bytes(data+b' ');self.assertIsNone(pub.read_context(path,report)[0])
+            path.unlink();self.assertIsNone(pub.read_context(path,report)[0])
+        for records in [[{'filename':'../escape.gtfs.zip'}],[{'filename':'same.gtfs.zip'}]*2]:
+            with self.assertRaises(ValueError):pub.build_index(pub.encoded(records),index['source_url'])
+        with self.assertRaises(ValueError):pub.build_index(b' '* (pub.MAX_INPUT_BYTES+1),index['source_url'])
+        for data in [b'{"schema":1,"schema":1}', b'{"value":NaN}']:
+            with self.assertRaises(ValueError):pub.parsed(data)
+
+    def test_worker_handoff_is_separate_minimal_and_checked_before_cache(self):
+        row,context,index=self.fixture()
+        entry=pipeline.discover([row],{},context)[0]
+        pub=pipeline.registry.publication
+        worker=pub.from_worker(context.worker_record(row))
+        self.assertEqual(len(worker.records),1)
+        self.assertEqual(pipeline.source_candidates(entry,worker),[pipeline.PROCESSED+row['filename']])
+        self.assertEqual(pipeline.source_candidates(entry),[])
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)
+            with patch.object(pipeline,'fetch_alternative',side_effect=AssertionError('No acquisition')),patch.object(pipeline,'cached_source_url',side_effect=AssertionError('No cache inspection')):
+                with self.assertRaisesRegex(ValueError,'not acquisition eligible'):
+                    pipeline.compile_entry(entry,root,root,'2026-10-05',None,1000,{})
+            def fake_process(command,**kwargs):
+                payload=json.loads(Path(command[-2]).read_text())
+                self.assertEqual(payload['publication_context'],context.worker_record(row))
+                self.assertNotIn('publication_context',payload['entry']['catalogue'])
+                Path(command[-1]).write_text(json.dumps({'entry':entry}))
+                return type('Result',(),{'returncode':0,'stderr':''})()
+            with patch.object(pipeline.subprocess,'run',side_effect=fake_process):
+                pipeline.compile_entry_isolated(entry,root,root,'2026-10-05',None,1000,{},publication_context=context)
+            payload={'entry':entry,'cache':str(root),'output':str(root),'date':'2026-10-05','graph':None,'max_bytes':1000,
+                'profiles':{},'max_seconds':10,'max_memory_bytes':10**9,'publication_context':context.worker_record(row)}
+            request=root/'request';response=root/'response';request.write_text(json.dumps(payload))
+            def compiled(**kwargs):
+                self.assertTrue(kwargs['publication_context'].matches(row,row['lineage'][0]));return entry
+            with patch('resource.setrlimit'),patch.object(pipeline,'compile_entry',side_effect=compiled):
+                pipeline.compile_one(request,response)
+            self.assertNotIn('records',json.loads(response.read_text())['entry'])
 
 
 if __name__ == '__main__':

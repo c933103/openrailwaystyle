@@ -70,14 +70,26 @@ export const countOutcomeReasons=entries=>{
   }
   return counts;
 };
-const sourceFingerprints=row=>{
+const sourceBindings=row=>{
+  if(!referenceUrlValid(row?.source))return null;
   const values=[row,...(Array.isArray(row?.lineage)?row.lineage:[])],result=new Set();
   for(const item of values){
-    if(typeof item?.source!=='string'||!/^https?:\/\//.test(item.source))continue;
-    result.add(/^[a-f0-9]{64}$/.test(item.source_sha256||'')?item.source_sha256:urlFingerprint(item.source));
+    if(typeof item?.source!=='string'||!/^https?:\/\//i.test(item.source))continue;
+    if(!referenceUrlValid(item.source))return null;
+    const actual=urlFingerprint(item.source),stored=item.source_sha256??actual;
+    if(!/^[a-f0-9]{64}$/.test(stored))return null;
+    if(stored!==actual){
+      const query=[...new URLSearchParams(item.source.split('#',1)[0].split('?').slice(1).join('?'))];
+      if(!query.length||query.some(([,value])=>value!=='[redacted]'))return null;
+    }
+    const display=referenceDisplayUrl(item.source),match=/^(https?):\/\/(\[[^\]]+\]|[^/:]+)(?::([0-9]+))?(.*)$/.exec(display);
+    if(!match)return null;
+    const [,scheme,host,port,tail]=match;
+    result.add(JSON.stringify([stored,scheme,host.replace(/\.$/,''),Number(port??(scheme==='https'?443:80)),tail]));
   }
   return [...result].sort();
 };
+const sourceFingerprints=row=>sourceBindings(row)?.map(value=>JSON.parse(value)[0]);
 const ownerMetadataCompatible=row=>{
   const lineage=row?.lineage??[];
   return row?.lineage!==null&&Array.isArray(lineage)&&lineage.length<=64&&lineage.every(item=>item&&typeof item==='object'&&!Array.isArray(item)&&
@@ -110,6 +122,7 @@ export function mergeInventories(inventories){
         target.catalogue?.access_review||resolution.processed_filename!=null||
         !isDeepStrictEqual(sourceFingerprints(entry.catalogue),[resolution.alias_source_sha256])||
         !isDeepStrictEqual(sourceFingerprints(target.catalogue),[resolution.alias_source_sha256])||
+        !isDeepStrictEqual(sourceBindings(entry.catalogue),sourceBindings(target.catalogue))||
         !/^[a-f0-9]{64}$/.test(resolution.alias_source_sha256||'')||
         resolution.alias_source_sha256!==target.catalogue?.source_sha256||entry.output||target.status==='excluded'||
         target.status==='non_timetable'||['source_access_review','unresolved_source_reference','ambiguous_source_reference','missing_source_url'].includes(target.reason_code))

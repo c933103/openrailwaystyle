@@ -11,7 +11,7 @@ import ipaddress
 import json
 from pathlib import Path
 import re
-from urllib.parse import urlsplit, parse_qsl
+from urllib.parse import urlsplit, urlparse, parse_qsl
 
 MAX_FILES = 4096
 MAX_FILE_BYTES = 4 * 1024 * 1024
@@ -458,25 +458,80 @@ def source_identities(item, key='source'):
     return result
 
 
-def withheld_static_identities(row):
-    """Access requirements bind original identities, even beside a public primary."""
+def resource_key(value):
+    """Acquisition's lexical resource identity, without policy or DNS inference."""
+    if not isinstance(value, str) or any(ord(c) < 33 or ord(c) == 127 for c in value) or '\\' in value:
+        return None
+    try:
+        parsed = urlparse(value)
+        if (parsed.scheme not in ('http', 'https') or not parsed.hostname or '%' in parsed.hostname
+                or parsed.username is not None or parsed.password is not None or parsed.netloc.endswith(':')):
+            return None
+        host = parsed.hostname.encode('idna').decode('ascii').rstrip('.').lower()
+        port = parsed.port if parsed.port is not None else (443 if parsed.scheme == 'https' else 80)
+        if not host or not 1 <= port <= 65535: return None
+        return parsed.scheme, host, port, parsed.path or '/', parsed.params, parsed.query
+    except (ValueError, UnicodeError):
+        return None
+
+
+def raw_source(item, key='source'):
+    """A retained original digest cannot reconstruct a redacted download URL."""
+    value = item.get(key)
+    if not _url(value): return None
+    stored = item.get(key + '_sha256')
+    if stored is not None and stored != hashlib.sha256(value.encode()).hexdigest(): return None
+    return value
+
+
+def held_sources(row):
     evidence = row.get('source_resolution') or {}
-    withheld = set()
     for declaration in evidence.get('declarations', []):
         for endpoint in declaration['resolution']['endpoints']:
             if endpoint['spec'] == 'gtfs' and endpoint['access_state'] != 'public_declared':
-                withheld.update(source_identities(endpoint, 'url'))
-                withheld.update(source_identities(endpoint, 'declared_url'))
+                yield endpoint, 'url'
+                yield endpoint, 'declared_url'
     for item in evidence.get('ordinary_static_declarations', []):
-        if item.get('access_state') != 'public_declared':
-            withheld.update(source_identities(item, 'url'))
+        if item.get('access_state') != 'public_declared': yield item, 'url'
     for item in row.get('lineage') or []:
         if item.get('catalogue') == 'mobility-database' and not public_authentication(item.get('authentication_type')):
-            withheld.update(source_identities(item))
-    return withheld
+            yield item, 'source'
 
 
-def evidenced_static_identities(row):
+def withheld_static_resources(row):
+    # Visible query values retain lexical identity even if an asserted hash is
+    # stale. Redacted values keep exact hashes without equating hidden values.
+    return {key for item, field in held_sources(row) if _url(item.get(field))
+            and not any(value == '[redacted]' for _, value in parse_qsl(urlsplit(item[field]).query, keep_blank_values=True))
+            for key in [resource_key(item[field])] if key is not None}
+
+
+def uncertain_static_resources(row):
+    # A published query display cannot prove which value was held. Compatible
+    # visible resources remain unresolved; this is uncertainty, not equivalence
+    # between distinct original query values or a reconstructed request key.
+    return {key for item, field in held_sources(row) if _url(item.get(field))
+        and any(value == '[redacted]' for _, value in parse_qsl(urlsplit(item[field]).query, keep_blank_values=True))
+        for key in [resource_key(reference_display_url(item[field]))] if key is not None}
+
+
+def source_withheld(row, value):
+    if not isinstance(value, str): return False
+    exact = hashlib.sha256(value.encode()).hexdigest()
+    resource = resource_key(value)
+    visible = resource_key(reference_display_url(value)) if _url(value) else None
+    return (exact in withheld_static_identities(row)
+        or resource is not None and resource in withheld_static_resources(row)
+        or visible is not None and visible in uncertain_static_resources(row))
+
+
+
+def withheld_static_identities(row):
+    """Access requirements bind original identities, even beside a public primary."""
+    return {identity for item, field in held_sources(row) for identity in source_identities(item, field)}
+
+
+def evidenced_static_identities(row, publication_context=None):
     """Acquisition authority comes from source evidence, never a display hash."""
     evidence = row.get('source_resolution') or {}
     urls = []
@@ -484,14 +539,14 @@ def evidenced_static_identities(row):
         for endpoint in declaration['resolution']['endpoints']:
             if (endpoint['spec'] == 'gtfs' and endpoint['access_state'] == 'public_declared'
                     and declaration['resolution']['state'] == 'resolved'):
-                urls.append(endpoint['url'])
-    urls.extend(item['url'] for item in evidence.get('ordinary_static_declarations', [])
+                urls.append(raw_source(endpoint, 'url'))
+    urls.extend(raw_source(item, 'url') for item in evidence.get('ordinary_static_declarations', [])
         if item['access_state'] == 'public_declared')
     for item in row.get('lineage') or []:
-        if (lineage_valid(row, item) and (item.get('catalogue') == 'transitous-licence' or item.get('catalogue') == 'mobility-database'
+        if (lineage_valid(row, item) and (item.get('catalogue') == 'transitous-licence' and publication_context is not None and publication_context.matches(row, item) or item.get('catalogue') == 'mobility-database'
                 and public_authentication(item.get('authentication_type')))):
-            urls.append(item.get('source'))
-    return {hashlib.sha256(url.encode()).hexdigest() for url in urls if _url(url)} - withheld_static_identities(row)
+            urls.append(raw_source(item))
+    return {hashlib.sha256(url.encode()).hexdigest() for url in urls if _url(url) and not source_withheld(row, url)}
 
 
 def alias_owner_metadata_compatible(row):
@@ -502,19 +557,19 @@ def alias_owner_metadata_compatible(row):
             or public_authentication(item.get('authentication_type'))) for item in lineage))
 
 
-def independent_static_evidence(row):
+def independent_static_evidence(row, publication_context=None):
     evidence = row.get('source_resolution') or {}
-    withheld = withheld_static_identities(row)
     lineage = row.get('lineage') if isinstance(row.get('lineage'), list) else []
     # Published GTFS establishes the public processed archive, not that an
     # authenticated original suddenly became public.
-    published = any(lineage_valid(row, item) and item.get('catalogue') == 'transitous-licence' for item in lineage)
+    published = publication_context is not None and any(lineage_valid(row, item) and item.get('catalogue') == 'transitous-licence'
+        and publication_context.matches(row, item) for item in lineage)
     mobility = any(lineage_valid(row, item) and item.get('catalogue') == 'mobility-database'
         and public_authentication(item.get('authentication_type')) and source_identities(item)
-        and not source_identities(item) & withheld for item in lineage)
+        and raw_source(item) and not source_withheld(row, item['source']) for item in lineage)
     ordinary = [item for item in evidence.get('ordinary_static_declarations', [])
         if item.get('access_state') == 'public_declared' and source_identities(item, 'url')
-        and not source_identities(item, 'url') & withheld]
+        and raw_source(item, 'url') and not source_withheld(row, item['url'])]
     return published, mobility, ordinary
 
 
@@ -526,7 +581,7 @@ def companion_only(declaration):
     return bool(specs) or declaration.get('declared_spec') in ('gtfs-rt', 'gbfs')
 
 
-def apply_references(rows, feed_sources, mobility_rows, compact_mobility, index=None, licence_evidence=None, definition_metadata=None):
+def apply_references(rows, feed_sources, mobility_rows, compact_mobility, index=None, licence_evidence=None, definition_metadata=None, publication_context=None):
     """Keep legacy identities/owners; attach complete reference declarations."""
     index = index or unavailable()
     result = deepcopy(rows)
@@ -564,6 +619,9 @@ def apply_references(rows, feed_sources, mobility_rows, compact_mobility, index=
             'selected_static_declaration': None, 'acquisition_alias_of': None,
             'processed_filename': None, 'processed_basis': 'unresolved', 'declarations': []}
         row['source_resolution'] = evidence
+        if publication_context is not None:
+            membership = publication_context.evidence(filename)
+            if membership is not None: evidence['publication_evidence'] = membership
         if len(definitions) > MAX_DECLARATIONS:
             evidence['reason'] = 'declaration_limit'
             counts['reference_unresolved'] += 1
@@ -596,7 +654,7 @@ def apply_references(rows, feed_sources, mobility_rows, compact_mobility, index=
         evidence['ordinary_static_declarations'] = ordinary_static
         if ordinary_static:
             evidence['specs'] = sorted(set(specs) | {'gtfs'})
-        published, public_mobility, public_ordinary = independent_static_evidence(row)
+        published, public_mobility, public_ordinary = independent_static_evidence(row, publication_context)
         independent = published or public_mobility or bool(public_ordinary)
         active_ordinary = any(d['type'] in ('http', 'ftp') and not d['upstream_skip'] for d in public_ordinary)
         unknown = [d for d in declarations if d['resolution']['state'] not in ('resolved', 'authorization_required')]
@@ -639,7 +697,7 @@ def apply_references(rows, feed_sources, mobility_rows, compact_mobility, index=
                 evidence['processed_basis'] = 'published_gtfs_record' if published else 'active_static_declaration'
             else:
                 evidence['processed_basis'] = 'upstream_skip' if static else 'unresolved'
-            if not evidence['processed_filename'] and not (candidate_identities(row) - withheld_static_identities(row)):
+            if not evidence['processed_filename'] and not (candidate_identities(row) & evidenced_static_identities(row, publication_context)):
                 evidence['state'] = 'unresolved'
                 evidence['reason'] = 'no_public_static_candidate'
         elif ordinary_static:
@@ -661,7 +719,7 @@ def apply_references(rows, feed_sources, mobility_rows, compact_mobility, index=
     return result, dict(counts)
 
 
-def resolution_state(row):
+def resolution_state(row, publication_context=None):
     """Validate all static proof before selection; malformed new schemas hold."""
     value = row.get('source_resolution')
     if value is None:
@@ -751,17 +809,16 @@ def resolution_state(row):
             and (not row.get('source') or e['url'] == row['source'])]
         if selected is not None and (not isinstance(selected, str) or not selected_static):
             return 'invalid'
-        published, public_mobility, public_ordinary = independent_static_evidence(row)
+        published, public_mobility, public_ordinary = independent_static_evidence(row, publication_context)
         if (not (published or public_mobility or public_ordinary) and any(
                 d['resolution']['state'] not in ('resolved', 'authorization_required') and not companion_only(d) for d in declarations)):
-            return 'invalid'
+            return 'unresolved'
         if not (selected_static or published or public_mobility or public_ordinary):
+            return 'unresolved'
+        if processed and any('upstream_skip' not in d for d, _ in selected_static) and not published:
             return 'invalid'
-        if processed and not (published or any(d.get('upstream_skip') is False for d, _ in selected_static)
-                or any(d.get('upstream_skip') is False and d.get('type') in ('http', 'ftp') for d in public_ordinary)):
-            return 'invalid'
-        if not processed and not (candidate_identities(row) & evidenced_static_identities(row)):
-            return 'invalid'
+        if not processed_available(row, publication_context) and not (candidate_identities(row) & evidenced_static_identities(row, publication_context)):
+            return 'unresolved'
     alias = value.get('acquisition_alias_of')
     if alias is not None and (state != 'schedule' or processed is not None
             or not isinstance(alias, str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,256}', alias)
@@ -769,3 +826,35 @@ def resolution_state(row):
             or not re.fullmatch('[a-f0-9]{64}', value['alias_source_sha256'])):
         return 'invalid'
     return state
+
+
+def processed_available(row, publication_context=None):
+    value = row.get('source_resolution') or {}
+    if not value.get('processed_filename'): return False
+    published, _, ordinary = independent_static_evidence(row, publication_context)
+    if published: return True
+    if any(d.get('upstream_skip') is False and d.get('type') in ('http', 'ftp') for d in ordinary): return True
+    return any(d.get('upstream_skip') is False and d['resolution']['state'] == 'resolved'
+        and e['spec'] == 'gtfs' and e['access_state'] == 'public_declared' and raw_source(e, 'url')
+        and not source_withheld(row, e['url'])
+        for d in value.get('declarations', []) for e in d['resolution']['endpoints'])
+
+
+def alias_source_bindings(row):
+    if not _url(row.get('source')): return None
+    result = set()
+    for item in [row] + (row.get('lineage') or []):
+        value = item.get('source')
+        if not _url(value): continue
+        actual = hashlib.sha256(value.encode()).hexdigest()
+        stored = item.get('source_sha256', actual)
+        if not isinstance(stored, str) or not re.fullmatch('[a-f0-9]{64}', stored): return None
+        if stored != actual:
+            query = parse_qsl(urlsplit(value).query, keep_blank_values=True)
+            if not query or any(v != '[redacted]' for _, v in query): return None
+        # Canonical display is only a compatibility check beside the exact
+        # original fingerprint. It never grants source acquisition authority.
+        key = resource_key(reference_display_url(value))
+        if key is None: return None
+        result.add((stored, key))
+    return result

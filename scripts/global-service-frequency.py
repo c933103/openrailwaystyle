@@ -93,7 +93,7 @@ def blocked(row):
     return None
 
 
-def discover(rows, rules):
+def discover(rows, rules, publication_context=None):
     """Inventory each normalized feed; unknown catalogue rights are not denials."""
     out, seen = [], set()
     # Rules belong to the trusted local configuration, never catalogue lineage.
@@ -132,7 +132,7 @@ def discover(rows, rules):
             raise ValueError('Duplicate catalogue ID '+ident)
         seen.add(ident)
         resolution = row.get('source_resolution') or {}
-        reference_state = registry.references.resolution_state(row)
+        reference_state = registry.references.resolution_state(row, publication_context)
         rights = registry.usage_rights(row)
         policy_reason = blocked(row)
         if row.get('access_review'):
@@ -149,6 +149,8 @@ def discover(rows, rules):
         elif reference_state in ('unresolved', 'ambiguous', 'invalid'):
             status, reason_code = 'retry_pending', ('ambiguous_source_reference' if reference_state == 'ambiguous' else 'unresolved_source_reference')
             reason = 'Source reference metadata is incomplete, invalid or conflicting; acquisition paused'
+            if reference_state == 'unresolved' and registry.references.uncertain_static_resources(row):
+                reason = 'Original identity of a redacted access-held source is unavailable; compatible acquisition paused'
         elif reference_state == 'schedule' and resolution.get('acquisition_alias_of'):
             status, reason_code = 'source_alias', 'duplicate_static_source'
             reason = 'Exact static source is retained under another existing acquisition owner'
@@ -164,8 +166,16 @@ def discover(rows, rules):
                     'country': row.get('country_code', ''),
                     'name': row.get('human_name', ident), 'catalogue': row,
                     'processed_url': ('' if reference_state is not None and
-                        (reference_state != 'schedule' or not resolution.get('processed_filename')) else
+                        (reference_state != 'schedule' or not registry.references.processed_available(row, publication_context)) else
                         row.get('source', '') if row.get('delivery') == 'direct' else PROCESSED+quote(row['filename']))})
+    for entry in out:
+        if (entry['status'] == 'pending' and 'source_resolution' in entry['catalogue']
+                and not source_candidates(entry, publication_context)):
+            entry.update(status='retry_pending', reason_code='unresolved_source_reference',
+                reason='No independently evidenced public acquisition candidate; acquisition paused',
+                retry_eligible=True, failure_stage='discovery', next_action='resolve_catalogue_reference', processed_url='')
+            if registry.references.uncertain_static_resources(entry['catalogue']):
+                entry['reason'] = 'Original identity of a redacted access-held source is unavailable; compatible acquisition paused'
     by_id = {entry['id']: entry for entry in out}
     for entry in out:
         if entry['status'] != 'source_alias':
@@ -180,7 +190,8 @@ def discover(rows, rules):
                 or target_resolution.get('acquisition_alias_of') or target['status'] != 'pending'
                 or not registry.references.alias_owner_metadata_compatible(target_row)
                 or registry.references.withheld_static_identities(target_row)
-                or registry.references.candidate_identities(entry['catalogue']) != registry.references.candidate_identities(target_row)
+                or not registry.references.alias_source_bindings(entry['catalogue'])
+                or registry.references.alias_source_bindings(entry['catalogue']) != registry.references.alias_source_bindings(target_row)
                 or not isinstance(source, str) or hashlib.sha256(source.encode()).hexdigest() != resolution['alias_source_sha256']):
             entry.update(status='retry_pending', reason_code='ambiguous_source_reference',
                 reason='Static source alias target is missing, changed or has incompatible acquisition policy; acquisition paused',
@@ -257,7 +268,7 @@ def acquisition_url_key(url):
         parsed, host, port = parse_acquisition_url(url)
     except ValueError:
         return ('invalid', url)
-    return parsed.scheme, host, port, parsed.path or '/', parsed.params, parsed.query
+    return registry.references.resource_key(url) or ('invalid', url)
 
 
 def public_address(value):
@@ -467,10 +478,10 @@ def get(url, headers=None, *, policy=None, retry_state=None):
             time.sleep(float(2 ** attempt))
 
 
-def source_candidates(entry):
+def source_candidates(entry, publication_context=None):
     """Distinct public source endpoints, processed first, originals as fallback."""
     row = entry.get('catalogue') or {}
-    reference_state = registry.references.resolution_state(row)
+    reference_state = registry.references.resolution_state(row, publication_context)
     if reference_state is not None and (reference_state != 'schedule'
             or row['source_resolution'].get('acquisition_alias_of')):
         return []
@@ -482,14 +493,16 @@ def source_candidates(entry):
         return []
     processed = entry.get('processed_url')
     if reference_state is not None:
-        processed = PROCESSED+quote(row['filename']) if row['source_resolution'].get('processed_filename') else ''
+        processed = PROCESSED+quote(row['filename']) if registry.references.processed_available(row, publication_context) else ''
     values = [processed, row.get('source')]
     values.extend(x.get('source') for x in lineage if isinstance(x, dict))
-    allowed = registry.references.evidenced_static_identities(row) if reference_state is not None else None
+    allowed = registry.references.evidenced_static_identities(row, publication_context) if reference_state is not None else None
     urls, seen = [], set()
     for url in values:
         if (not isinstance(url, str) or url in seen or (allowed is not None and url != processed
                 and hashlib.sha256(url.encode()).hexdigest() not in allowed)):
+            continue
+        if reference_state is not None and registry.references.source_withheld(row, url):
             continue
         try:
             parse_acquisition_url(url)
@@ -708,14 +721,14 @@ def valid_cached_archive(path, meta, candidates, max_age_days=30):
         return False
 
 
-def fetch_alternative(entry, path, max_bytes, skip=(), *, retry_state=None):
+def fetch_alternative(entry, path, max_bytes, skip=(), *, retry_state=None, publication_context=None):
     """Fallback to another real published schedule, without inventing data.
 
     Cache writes only after a valid ZIP has been downloaded. Each upstream
     failure stays attached to the resulting source entry for investigation.
     """
     attempts, unsafe_urls = [], set()
-    for url in source_candidates(entry):
+    for url in source_candidates(entry, publication_context):
         if url in skip:
             continue
         try:
@@ -904,9 +917,9 @@ def file_hash(path):
     return digest.hexdigest()
 
 
-def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_seconds=600, *, retry_state=None):
+def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_seconds=600, *, retry_state=None, publication_context=None):
     ident, row = entry['id'], entry['catalogue']
-    reference_state = registry.references.resolution_state(row)
+    reference_state = registry.references.resolution_state(row, publication_context)
     if reference_state is not None and (reference_state != 'schedule'
             or row['source_resolution'].get('acquisition_alias_of')):
         raise ValueError('Source reference is not acquisition eligible')
@@ -918,11 +931,11 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
     meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
     headers = {'If-None-Match': meta['etag']} if meta.get('etag') else {'If-Modified-Since':meta['last_modified']} if meta.get('last_modified') else {}
     fresh, attempted, attempts, unsafe_urls = False, set(), [], set()
-    cached_url = cached_source_url(meta, source_candidates(entry), entry.get('processed_url'))
+    cached_url = cached_source_url(meta, source_candidates(entry, publication_context), entry.get('processed_url'))
     if cached_url:
         meta['download_url'] = redacted_source_url(cached_url)
         meta['download_url_sha256'] = source_url_fingerprint(cached_url)
-    if path.exists() and headers and cached_url in source_candidates(entry):
+    if path.exists() and headers and cached_url in source_candidates(entry, publication_context):
         try:
             with get(cached_url, headers, policy=lambda target: source_policy(entry, target), retry_state=retry_state) as response:
                 data = RemoteZip.read_bounded(type('Budget', (), {'max_bytes': max_bytes})(), response)
@@ -966,12 +979,12 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
             attempts.append(source_attempt(cached_url, error))
     if not fresh:
         try:
-            meta, more_attempts = fetch_alternative(entry, path, max_bytes, skip=attempted, retry_state=retry_state)
+            meta, more_attempts = fetch_alternative(entry, path, max_bytes, skip=attempted, retry_state=retry_state, publication_context=publication_context)
             attempts.extend(more_attempts)
         except SourceRetrievalError as error:
             attempts.extend(error.attempts)
             unsafe_urls.update(error._unsafe_urls)
-            safe_cache_urls = [url for url in source_candidates(entry) if url not in unsafe_urls]
+            safe_cache_urls = [url for url in source_candidates(entry, publication_context) if url not in unsafe_urls]
             if valid_cached_archive(path, meta, safe_cache_urls):
                 # Continue compiling using the last successfully retrieved
                 # ZIP. Never advance its 'checked' or 'retrieved' timestamps.
@@ -1004,7 +1017,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     signature=hashlib.sha256(json.dumps({'catalogue':row,'profiles':profiles,'denied_source_urls':entry.get('denied_source_urls', []),
         'graph':file_hash(str(graph)) if graph else None,
-        'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['global-service-frequency.py','frequency_catalogue.py','frequency_references.py','frequency-reference-schema.json','gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()
+        'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['global-service-frequency.py','frequency_catalogue.py','frequency_references.py','frequency_publication.py','frequency-reference-schema.json','gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()
     destination = output/'feeds'/(ident+'.json.gz')
     if destination.exists():
         with gzip.open(destination, 'rt') as file:
@@ -1075,11 +1088,12 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
 
 
 def compile_entry_isolated(entry, cache, output, date, graph, max_bytes, profiles,
-                           max_seconds=600, max_memory_bytes=3_000_000_000):
+                           max_seconds=600, max_memory_bytes=3_000_000_000, publication_context=None):
     """Keep a failed feed's memory/CPU budget separate from its worldwide shard."""
     payload={'entry':entry,'cache':str(cache),'output':str(output),'date':date,
              'graph':str(graph) if graph else None,'max_bytes':max_bytes,
-             'profiles':profiles,'max_seconds':max_seconds,'max_memory_bytes':max_memory_bytes}
+             'profiles':profiles,'max_seconds':max_seconds,'max_memory_bytes':max_memory_bytes,
+             'publication_context':publication_context.worker_record(entry.get('catalogue') or {}) if publication_context is not None else None}
     with tempfile.TemporaryDirectory(prefix='frequency-compile-') as folder:
         request, response = Path(folder)/'request.json', Path(folder)/'response.json'
         request.write_text(json.dumps(payload))
@@ -1103,6 +1117,7 @@ def compile_entry_isolated(entry, cache, output, date, graph, max_bytes, profile
 def compile_one(request, response):
     import resource
     payload=json.loads(Path(request).read_text())
+    payload['publication_context'] = registry.publication.from_worker(payload.get('publication_context'))
     limit=payload.pop('max_memory_bytes')
     resource.setrlimit(resource.RLIMIT_AS,(limit,limit))
     for key in ['cache','output']:
@@ -1159,20 +1174,21 @@ def classify_failure(error):
     return 'compile_error', 'compilation'
 
 
-def catalogue_provenance(report_path, catalogue_hash, catalogue_entries, local):
+def catalogue_provenance(report_path, catalogue_hash, catalogue_entries, local, report=None):
     """Bind reconciled provenance to these exact input bytes, never guess it."""
     if report_path is None:
         return {'schema': 1, 'kind': 'local-unverified' if local else 'transitous-licences',
                 'sources': [] if local else [CATALOGUE]}
-    report = json.loads(report_path.read_text())
-    if (not isinstance(report, dict) or report.get('schema') not in (2, 3)
+    if report is None:
+        report = registry.publication.read_report(report_path)
+    if (not isinstance(report, dict) or report.get('schema') not in (2, 3, 4)
             or report.get('catalogue_sha256') != catalogue_hash
             or not isinstance(report.get('counts'), dict)
             or report['counts'].get('merged_entries') != catalogue_entries):
         raise ValueError('Catalogue report does not match the input catalogue')
     sources = registry.catalogue_sources(report.get('transitous_ref'))
     reference_provenance = {}
-    if report['schema'] == 3:
+    if report['schema'] >= 3:
         ref, state, reason = report.get('transitland_ref'), report.get('transitland_state'), report.get('transitland_reason')
         if ref is not None:
             sources.append(registry.references.pinned_url(ref))
@@ -1185,7 +1201,7 @@ def catalogue_provenance(report_path, catalogue_hash, catalogue_entries, local):
                    for key in ('transitous_licences', 'transitous_feeds', 'mobility_csv'))):
         raise ValueError('Catalogue report is missing pinned input identities')
     keys = ['transitous_licences', 'transitous_feeds', 'mobility_csv']
-    if report['schema'] == 3:
+    if report['schema'] >= 3:
         digest = hashes.get('transitland_feeds')
         if ((reference_provenance['transitland_state'] == 'available' and
                 (reference_provenance['transitland_ref'] is None or not isinstance(digest, str) or not re.fullmatch('[a-f0-9]{64}', digest)))
@@ -1193,7 +1209,7 @@ def catalogue_provenance(report_path, catalogue_hash, catalogue_entries, local):
             raise ValueError('Catalogue report has invalid reference input identity')
         keys.append('transitland_feeds')
     # Copy only the public provenance schema, not arbitrary report metadata.
-    return {'schema': 2 if report['schema'] == 3 else 1, 'kind': 'reconciled', 'transitous_ref': report['transitous_ref'],
+    return {'schema': 2 if report['schema'] >= 3 else 1, 'kind': 'reconciled', 'transitous_ref': report['transitous_ref'],
             'sources': sources, 'input_sha256': {key: hashes[key] for key in keys}, **reference_provenance}
 
 
@@ -1201,6 +1217,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--catalogue', help='Local catalogue for offline reproduction; default downloads worldwide registry')
     parser.add_argument('--catalogue-report', type=Path, help='Matching reconciliation report with pinned upstream identities')
+    parser.add_argument('--publication-index', type=Path, help='Explicit secret-free membership artifact from the catalogue producer')
     parser.add_argument('--rules', type=Path, default=ROOT/'styles/data-src/frequency-source-rules.json')
     parser.add_argument('--cache', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
@@ -1217,13 +1234,22 @@ def main():
         parser.error('Invalid shard or byte budget')
     if args.catalogue_report and not args.catalogue:
         parser.error('--catalogue-report requires --catalogue')
+    if args.publication_index and not args.catalogue_report:
+        parser.error('--publication-index requires --catalogue-report')
     dt.date.fromisoformat(args.date)
     args.cache.mkdir(parents=True, exist_ok=True)
     data = Path(args.catalogue).read_bytes() if args.catalogue else get(CATALOGUE).read()
     catalogue_hash = hashlib.sha256(data).hexdigest()
     rules = json.loads(args.rules.read_text())
-    entries = discover(json.loads(data), rules)
-    provenance = catalogue_provenance(args.catalogue_report, catalogue_hash, len(entries), bool(args.catalogue))
+    rows = json.loads(data)
+    report = registry.publication.read_report(args.catalogue_report) if args.catalogue_report else None
+    provenance = catalogue_provenance(args.catalogue_report, catalogue_hash, len(rows), bool(args.catalogue), report)
+    publication_context, publication_state = registry.publication.read_context(args.publication_index, report)
+    if args.publication_index or args.catalogue_report:
+        provenance['publication_context'] = {'state': publication_state}
+        if publication_context is not None:
+            provenance['publication_context']['index_sha256'] = file_hash(str(args.publication_index))
+    entries = discover(rows, rules, publication_context)
     previous_path = args.output/f'inventory-{args.shard}.json'
     outcomes = []
     def save():
@@ -1239,7 +1265,7 @@ def main():
             continue
         if entry['status'] == 'pending' and not args.inventory_only:
             try:
-                entry = compile_entry_isolated(entry, args.cache, args.output, args.date, args.rail_graph, args.max_feed_bytes, rules.get('profiles', PROFILES), args.max_compile_seconds, args.max_compile_memory_bytes)
+                entry = compile_entry_isolated(entry, args.cache, args.output, args.date, args.rail_graph, args.max_feed_bytes, rules.get('profiles', PROFILES), args.max_compile_seconds, args.max_compile_memory_bytes, publication_context)
             except Exception as error:
                 code, stage = classify_failure(error)
                 entry = {**entry, 'status': 'retry_pending', 'reason': redacted_diagnostic(f'{type(error).__name__}: {error}'),

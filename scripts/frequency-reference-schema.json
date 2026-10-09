@@ -446,6 +446,9 @@
           "kind": "string",
           "max": 80,
           "min": 0
+        },
+        "publication_evidence": {
+          "ref": "publication_evidence"
         }
       },
       "required": [
@@ -657,6 +660,47 @@
         "url",
         "source",
         "source_sha256"
+      ]
+    },
+    "publication_evidence": {
+      "kind": "object",
+      "fields": {
+        "input_sha256": {
+          "kind": "string",
+          "min": 64,
+          "max": 64,
+          "pattern": "[a-f0-9]{64}"
+        },
+        "record_sha256": {
+          "kind": "string",
+          "min": 64,
+          "max": 64,
+          "pattern": "[a-f0-9]{64}"
+        },
+        "source_sha256": {
+          "kind": "string",
+          "min": 64,
+          "max": 64,
+          "pattern": "[a-f0-9]{64}"
+        },
+        "filename": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096
+        },
+        "pointer": {
+          "kind": "string",
+          "min": 2,
+          "max": 9,
+          "pattern": "/(?:0|[1-9][0-9]{0,7})"
+        }
+      },
+      "required": [
+        "input_sha256",
+        "record_sha256",
+        "source_sha256",
+        "filename",
+        "pointer"
       ]
     }
   },

@@ -1,4 +1,6 @@
 import test from 'node:test';
+import {createHash} from 'node:crypto';
+const sourceHash=value=>createHash('sha256').update(value).digest('hex');
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {mergeInventories,countOutcomeReasons,pruneFrequencyOutputs,assemble} from '../scripts/assemble-global-frequency.mjs';
@@ -168,7 +170,7 @@ test('assembly rejects missing or inconsistent composite provenance without inve
 });
 
 test('format and alias outcomes retain identity accounting without duplicate contributions',()=>{
-  const hash='a'.repeat(64),base={schema:3,shards:2,catalogue_url:null,catalogue_sha256:'fixture',catalogue_entries:3,service_date:'2026-10-05'};
+  const hash=sourceHash('https://provider.test/feed'),base={schema:3,shards:2,catalogue_url:null,catalogue_sha256:'fixture',catalogue_entries:3,service_date:'2026-10-05'};
   const owner={id:'owner',status:'no_rail',catalogue:{delivery:'direct',source:'https://provider.test/feed',source_sha256:hash}};
   const alias={id:'alias',status:'source_alias',reason_code:'duplicate_static_source',catalogue:{source:owner.catalogue.source,source_sha256:hash,source_resolution:{schema:1,state:'schedule',specs:['gtfs'],declarations:[],processed_filename:null,acquisition_alias_of:'owner',alias_source_sha256:hash}}};
   const bikes={id:'bikes',status:'non_timetable',reason_code:'non_timetable_format'};
@@ -194,7 +196,7 @@ test('format and alias outcomes retain identity accounting without duplicate con
 
 test('assembled format-aware inventories keep alias provenance and emit one canonical feed',async()=>{
   const {gzipSync}=await import('node:zlib'),{readFile}=await import('node:fs/promises');
-  const root=await mkdtemp(join(tmpdir(),'atlas-reference-assembly-')),hash='a'.repeat(64);
+  const root=await mkdtemp(join(tmpdir(),'atlas-reference-assembly-')),hash=sourceHash('https://provider.test/static');
   const feed={schema:1,source:{id:'owner',sha256:'fixture-content',service_date:'2026-10-05',checked:'2026-10-04',name:'Rail',feed_info:{},valid_until:1900000000},agencies:[{agency_id:'a',agency_name:'Rail',agency_timezone:'UTC'}],routes:[{route_id:'r',route_type:'2'}],profiles:{h01:{start:'01:00:00',end:'02:00:00'}},segments:[{route_id:'r',agency_id:'a',geometry:[[0,0],[1,1]],profiles:{h01:{display_tph:2,forward_tph:2,backward_tph:2,quality:'scheduled'}}}]};
   try{
     await mkdir(join(root,'feeds'));await writeFile(join(root,'feeds/owner.json.gz'),gzipSync(JSON.stringify(feed)));
@@ -358,7 +360,7 @@ print(json.dumps(result))
 test('reference lineage projection and alias reconciliation preserve complete owner links',async()=>{
   const {projectReferenceRow}=await import('../scripts/frequency-reference-metadata.mjs');
   const {publishedMetadata}=await import('../scripts/assemble-global-frequency.mjs');
-  const hash='a'.repeat(64),base={schema:3,shards:1,shard:0,catalogue_sha256:'fixture',catalogue_entries:2,service_date:'2026-10-05'};
+  const hash=sourceHash('https://provider.test/feed'),base={schema:3,shards:1,shard:0,catalogue_sha256:'fixture',catalogue_entries:2,service_date:'2026-10-05'};
   const owner={id:'owner',status:'no_rail',catalogue:{delivery:'direct',source:'https://provider.test/feed',source_sha256:hash}};
   const alias={id:'alias',status:'source_alias',catalogue:{source:owner.catalogue.source,source_sha256:hash,
     source_resolution:{schema:1,state:'schedule',specs:['gtfs'],declarations:[],processed_filename:null,acquisition_alias_of:'owner',alias_source_sha256:hash}}};
@@ -389,4 +391,38 @@ test('reference lineage projection and alias reconciliation preserve complete ow
   }
   const legacy={lineage:[{catalogue:'fixture',unknown_extra:'ordinary-fixture'}]};
   assert.deepEqual(projectReferenceRow(legacy),legacy,'legacy non-reference rows keep their established behavior');
+});
+
+test('alias ownership binds visible resources and recoverable raw hashes',async()=>{
+  const {publishedMetadata}=await import('../scripts/assemble-global-frequency.mjs');
+  const base={schema:3,shards:1,shard:0,catalogue_sha256:'fixture',catalogue_entries:2,service_date:'2026-10-05'};
+  const fixture=url=>{
+    const hash=sourceHash(url),owner={id:'owner',status:'no_rail',catalogue:{delivery:'direct',source:url,source_sha256:hash}};
+    const alias={id:'alias',status:'source_alias',catalogue:{source:url,source_sha256:hash,source_resolution:{schema:1,state:'schedule',specs:['gtfs'],declarations:[],processed_filename:null,acquisition_alias_of:'owner',alias_source_sha256:hash}}};
+    return {owner,alias};
+  };
+  const merge=(owner,alias)=>mergeInventories([{...base,entries:[owner,alias]}]);
+  for(const url of ['https://provider.test/feed','https://provider.test/feed?region=one&mode=rail']){
+    const {owner,alias}=fixture(url);
+    assert.equal(merge(owner,alias).entries[0].status,'source_alias');
+    for(const other of ['https://different.test/feed','https://provider.test/other','https://provider.test/feed?region=two&mode=rail']){
+      const bad=structuredClone(alias);bad.catalogue.source=other;
+      assert.throws(()=>merge(owner,bad),/Invalid static source alias/,'copied original hash is not source equivalence');
+    }
+    const invalidOwner=structuredClone(owner);invalidOwner.catalogue.source='unusable';
+    invalidOwner.catalogue.lineage=[{source:url,source_sha256:owner.catalogue.source_sha256}];
+    assert.throws(()=>merge(invalidOwner,alias),/Invalid static source alias/);
+    const publicOwner=publishedMetadata(owner),publicAlias=publishedMetadata(alias);
+    assert.equal(merge(publicOwner,publicAlias).entries[0].status,'source_alias');
+    assert.equal(merge(owner,publicAlias).entries[0].status,'source_alias');
+    assert.equal(merge(publicOwner,alias).entries[0].status,'source_alias');
+    const bad=structuredClone(publicAlias);bad.catalogue.source=bad.catalogue.source.replace('/feed','/other');
+    assert.throws(()=>merge(publicOwner,bad),/Invalid static source alias/);
+    if(url.includes('?')){
+      const hidden=structuredClone(publicAlias);hidden.catalogue.source_sha256='b'.repeat(64);
+      assert.throws(()=>merge(publicOwner,hidden),/Invalid static source alias/,'same display retains distinct original hashes');
+      const visible=structuredClone(publicAlias);visible.catalogue.source=visible.catalogue.source.replace('%5Bredacted%5D','different');
+      assert.throws(()=>merge(publicOwner,visible),/Invalid static source alias/);
+    }
+  }
 });

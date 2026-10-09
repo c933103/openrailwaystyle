@@ -216,7 +216,8 @@ class ReferenceResolution(unittest.TestCase):
                 'https://github.test/' + self.PIN + '/feeds/xx.json')
 
     def build(self, definitions, feeds, licences=(), mobility=()):
-        return catalogue.build_catalogue(list(licences), definitions, list(mobility), self.PIN, self.index(feeds))[0]
+        context = catalogue.publication.Context(catalogue.publication.build_index(catalogue.publication.encoded(list(licences)), catalogue.catalogue_sources(self.PIN)[0]))
+        return catalogue.build_catalogue(list(licences), definitions, list(mobility), self.PIN, self.index(feeds), publication_context=context)[0]
 
     def test_burlington_and_milwaukee_static_rt_groups_keep_all_declarations(self):
         for name in ['Burlington-Transit', 'milwaukee']:
@@ -368,7 +369,8 @@ class ReferenceResolution(unittest.TestCase):
         for declared in ['gtfs', 'gtfs-rt']:
             definition = ('xx', {'name': 'mismatch', 'type': 'mobility-database', 'mdb-id': 'known', 'spec': declared}, 'https://github.test/pin/xx.json')
             licence = [{'filename': 'xx_mismatch.gtfs.zip', 'source': 'https://known.test/static'}] if declared == 'gtfs-rt' else []
-            rows = catalogue.build_catalogue(licence, [definition], [{'id': 'known', 'data_type': 'gbfs', 'urls.direct_download': 'https://operator.test/gbfs'}], self.PIN)[0]
+            context = catalogue.publication.Context(catalogue.publication.build_index(catalogue.publication.encoded(licence), catalogue.catalogue_sources(self.PIN)[0]))
+            rows = catalogue.build_catalogue(licence, [definition], [{'id': 'known', 'data_type': 'gbfs', 'urls.direct_download': 'https://operator.test/gbfs'}], self.PIN, publication_context=context)[0]
             resolution = rows[0]['source_resolution']
             self.assertEqual(resolution['declarations'][0]['resolution']['state'], 'conflicting_reference')
             self.assertEqual(resolution['state'], 'schedule' if licence else 'ambiguous')

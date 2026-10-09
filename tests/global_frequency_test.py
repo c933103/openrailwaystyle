@@ -18,10 +18,40 @@ spec=importlib.util.spec_from_file_location('global_frequency',Path(__file__).pa
 pipeline=importlib.util.module_from_spec(spec);spec.loader.exec_module(pipeline)
 
 
+# Separate fixture input context. No context is reconstructed from row fields.
+PUBLICATION_CONTEXTS = {}
+
+def input_context(records, pin='b'*40):
+    pub = pipeline.registry.publication
+    index = pub.build_index(pub.encoded(records), pipeline.registry.catalogue_sources(pin)[0])
+    context = pub.Context(index)
+    PUBLICATION_CONTEXTS[context.input_sha256] = context
+    return context
+
+def fixture_context(row):
+    resolution = row.get('source_resolution')
+    evidence = resolution.get('publication_evidence') if isinstance(resolution, dict) else None
+    key = evidence.get('input_sha256') if isinstance(evidence, dict) else None
+    return PUBLICATION_CONTEXTS.get(key)
+
+def fixture_build_catalogue(licences, definitions, mobility, pin=None, index=None, metadata=None):
+    context = input_context(licences, pin) if pin and len(pin) == 40 else None
+    return pipeline.registry.build_catalogue(licences, definitions, mobility, pin, index, metadata, context)
+
+def fixture_discover(rows, rules):
+    contexts = [fixture_context(row) for row in rows if fixture_context(row) is not None]
+    return pipeline.discover(rows, rules, contexts[0] if contexts else None)
+
+def fixture_candidates(entry):
+    return pipeline.source_candidates(entry, fixture_context(entry.get('catalogue') or {}))
+
 def add_published_lineage(row, source):
     row['catalogue_url'] = pipeline.registry.catalogue_sources('b'*40)[0]
     row.setdefault('lineage', []).append({'catalogue': 'transitous-licence', 'id': row['filename'],
         'url': row['catalogue_url'], 'source': source})
+    context = input_context([{'filename': row['filename'], 'source': source}])
+    row['source_resolution']['publication_evidence'] = context.evidence(row['filename'])
+    return context
 
 
 class GlobalFrequency(unittest.TestCase):
@@ -48,15 +78,15 @@ class GlobalFrequency(unittest.TestCase):
         definitions = [('xx', {'name': name, 'type': 'transitland-atlas', 'transitland-atlas-id': ident, 'skip': True},
                         'https://github.test/pinned/xx.json') for name, ident in [('reference', 'static'), ('bikes', 'gbfs'), ('unknown', 'missing')]]
         rows, _ = registry.build_catalogue([], definitions, [{'id': 'owner', 'data_type': 'gtfs', 'urls.direct_download': url}], 'c'*40, index)
-        entries = pipeline.discover(rows, {})
+        entries = fixture_discover(rows, {})
         standalone_rows = registry.build_catalogue([], definitions[:1], [], 'c'*40, index)[0]
-        standalone = pipeline.discover(standalone_rows, {})[0]
+        standalone = fixture_discover(standalone_rows, {})[0]
         standalone['processed_url'] = 'https://never-query.test/invented.gtfs.zip'
-        self.assertEqual(pipeline.source_candidates(standalone), [url], 'a stale processed URL cannot bypass explicit absent-file evidence')
+        self.assertEqual(fixture_candidates(standalone), [url], 'a stale processed URL cannot bypass explicit absent-file evidence')
         self.assertEqual({e['id']: e['status'] for e in entries}, {'mdb_owner': 'pending', 'xx_reference': 'source_alias', 'xx_bikes': 'non_timetable', 'xx_unknown': 'retry_pending'})
         for entry in entries:
             if entry['status'] == 'pending': continue
-            self.assertEqual(pipeline.source_candidates(entry), [])
+            self.assertEqual(fixture_candidates(entry), [])
             self.assertEqual(entry['processed_url'], '')
             with patch.object(pipeline, 'get', side_effect=AssertionError('No request permitted')):
                 with self.assertRaisesRegex(ValueError, 'not acquisition eligible'):
@@ -91,31 +121,31 @@ class GlobalFrequency(unittest.TestCase):
         for value in [[], 'schedule', {'schema': 2}, {'schema': 1, 'state': 'schedule', 'specs': ['gbfs'], 'declarations': []}, {'schema': 1, 'state': 'non_timetable_format', 'specs': ['gtfs'], 'declarations': []},
                       {'schema': 1, 'state': 'schedule', 'specs': ['gtfs'], 'declarations': [], 'processed_filename': '../escape.zip'}]:
             with self.subTest(value=value):
-                entry = pipeline.discover([{**base, 'source_resolution': value}], {})[0]
+                entry = fixture_discover([{**base, 'source_resolution': value}], {})[0]
                 self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
-                self.assertEqual(pipeline.source_candidates(entry), [])
+                self.assertEqual(fixture_candidates(entry), [])
         state = {'schema': 1, 'state': 'schedule', 'specs': ['gtfs'], 'declarations': [],
                  'processed_filename': None, 'acquisition_alias_of': 'missing', 'alias_source_sha256': 'a'*64}
-        entry = pipeline.discover([{**base, 'source_resolution': state}], {})[0]
+        entry = fixture_discover([{**base, 'source_resolution': state}], {})[0]
         self.assertEqual(entry['reason_code'], 'ambiguous_source_reference')
-        self.assertEqual(pipeline.source_candidates(entry), [])
+        self.assertEqual(fixture_candidates(entry), [])
 
     def test_reference_alias_requires_compatible_owner_policy_and_full_candidate_set(self):
         url = 'https://public.test/feed.zip'
         index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
             'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
         definition = ('xx', {'name': 'reference', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static', 'skip': True}, 'https://github.test/pin/xx.json')
-        rows = pipeline.registry.build_catalogue([], [definition], [{'id': 'owner', 'data_type': 'gtfs', 'urls.direct_download': url, 'location.country_code': 'CN'}], 'b'*40, index)[0]
-        entries = {e['id']: e for e in pipeline.discover(rows, {})}
+        rows = fixture_build_catalogue([], [definition], [{'id': 'owner', 'data_type': 'gtfs', 'urls.direct_download': url, 'location.country_code': 'CN'}], 'b'*40, index)[0]
+        entries = {e['id']: e for e in fixture_discover(rows, {})}
         self.assertEqual(entries['mdb_owner']['reason_code'], 'provider_policy')
         self.assertEqual(entries['xx_reference']['reason_code'], 'ambiguous_source_reference')
         self.assertIn('incompatible acquisition policy', entries['xx_reference']['reason'])
-        self.assertEqual(pipeline.source_candidates(entries['xx_reference']), [])
+        self.assertEqual(fixture_candidates(entries['xx_reference']), [])
         ordinary = ('xx', {'name': 'reference', 'type': 'http', 'url': 'https://independent.test/rail.zip'}, 'https://github.test/pin/xx.json')
-        rows = pipeline.registry.build_catalogue([], [ordinary, definition], [{'id': 'owner', 'data_type': 'gtfs', 'urls.direct_download': url}], 'b'*40, index)[0]
-        entry = next(e for e in pipeline.discover(rows, {}) if e['id'] == 'xx_reference')
+        rows = fixture_build_catalogue([], [ordinary, definition], [{'id': 'owner', 'data_type': 'gtfs', 'urls.direct_download': url}], 'b'*40, index)[0]
+        entry = next(e for e in fixture_discover(rows, {}) if e['id'] == 'xx_reference')
         self.assertEqual(entry['status'], 'pending')
-        self.assertIn('https://independent.test/rail.zip', pipeline.source_candidates(entry))
+        self.assertIn('https://independent.test/rail.zip', fixture_candidates(entry))
         self.assertEqual(entry['processed_url'], pipeline.PROCESSED+'xx_reference.gtfs.zip')
         self.assertIsNone(entry['catalogue']['source_resolution']['acquisition_alias_of'])
 
@@ -126,34 +156,34 @@ class GlobalFrequency(unittest.TestCase):
             'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
         definition = ('xx', {'name': 'reference', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static',
             'url-override': 'https://override.test/feed.zip'}, 'https://github.test/pin/xx.json')
-        rows = pipeline.registry.build_catalogue([], [definition], [], 'b'*40, index)[0]
-        entry = pipeline.discover(rows, {})[0]
+        rows = fixture_build_catalogue([], [definition], [], 'b'*40, index)[0]
+        entry = fixture_discover(rows, {})[0]
         self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
-        self.assertEqual(pipeline.source_candidates(entry), [])
+        self.assertEqual(fixture_candidates(entry), [])
         self.assertEqual(rows[0]['source_resolution']['declarations'][0]['resolution']['state'], 'authorization_required')
-        rows = pipeline.registry.build_catalogue([{'filename': 'xx_reference.gtfs.zip', 'source': url}], [definition], [], 'b'*40, index)[0]
-        entry = pipeline.discover(rows, {})[0]
-        self.assertEqual(pipeline.source_candidates(entry), [pipeline.PROCESSED+'xx_reference.gtfs.zip'])
+        rows = fixture_build_catalogue([{'filename': 'xx_reference.gtfs.zip', 'source': url}], [definition], [], 'b'*40, index)[0]
+        entry = fixture_discover(rows, {})[0]
+        self.assertEqual(fixture_candidates(entry), [pipeline.PROCESSED+'xx_reference.gtfs.zip'])
 
     def test_authenticated_mobility_reference_requires_distinct_public_static_evidence(self):
         private = 'https://private.test/feed.zip'; public = 'https://public.test/rail.zip'
         definition = ('xx', {'name': 'rail', 'type': 'mobility-database', 'mdb-id': 'private'}, 'https://github.test/pin/xx.json')
         mobility = [{'id': 'private', 'data_type': 'gtfs', 'urls.direct_download': private, 'urls.authentication_type': '1'}]
-        rows = pipeline.registry.build_catalogue([], [definition], mobility, 'b'*40)[0]
-        entry = pipeline.discover(rows, {})[0]
+        rows = fixture_build_catalogue([], [definition], mobility, 'b'*40)[0]
+        entry = fixture_discover(rows, {})[0]
         self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
-        self.assertEqual(pipeline.source_candidates(entry), [])
+        self.assertEqual(fixture_candidates(entry), [])
         for source in [public, private]:
             ordinary = ('xx', {'name': 'rail', 'type': 'http', 'url': source}, 'https://github.test/pin/xx.json')
-            rows = pipeline.registry.build_catalogue([], [definition, ordinary], mobility, 'b'*40)[0]
-            entry = pipeline.discover(rows, {})[0]
-            self.assertNotIn(private, pipeline.source_candidates(entry))
+            rows = fixture_build_catalogue([], [definition, ordinary], mobility, 'b'*40)[0]
+            entry = fixture_discover(rows, {})[0]
+            self.assertNotIn(private, fixture_candidates(entry))
             self.assertEqual(entry['status'], 'pending' if source == public else 'retry_pending')
             if source == public:
-                self.assertIn(public, pipeline.source_candidates(entry))
-        rows = pipeline.registry.build_catalogue([{'filename': 'xx_rail.gtfs.zip', 'source': private}], [definition], mobility, 'b'*40)[0]
-        entry = pipeline.discover(rows, {})[0]
-        self.assertEqual(pipeline.source_candidates(entry), [pipeline.PROCESSED+'xx_rail.gtfs.zip'])
+                self.assertIn(public, fixture_candidates(entry))
+        rows = fixture_build_catalogue([{'filename': 'xx_rail.gtfs.zip', 'source': private}], [definition], mobility, 'b'*40)[0]
+        entry = fixture_discover(rows, {})[0]
+        self.assertEqual(fixture_candidates(entry), [pipeline.PROCESSED+'xx_rail.gtfs.zip'])
 
     def test_multiple_static_reference_identities_in_malformed_schema_fail_closed(self):
         import copy, hashlib
@@ -161,13 +191,13 @@ class GlobalFrequency(unittest.TestCase):
         index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
             'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
         definition = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static'}, 'https://github.test/pin/xx.json')
-        row = pipeline.registry.build_catalogue([], [definition], [], 'b'*40, index)[0][0]
+        row = fixture_build_catalogue([], [definition], [], 'b'*40, index)[0][0]
         other = copy.deepcopy(row['source_resolution']['declarations'][0]); other['id'] = 'b'*64; other['reference_id'] = 'other'
         other['resolution']['endpoints'][0].update(url='https://other.test/rail.zip', url_sha256=hashlib.sha256(b'https://other.test/rail.zip').hexdigest())
         row['source_resolution']['declarations'].append(other)
-        entry = pipeline.discover([row], {})[0]
+        entry = fixture_discover([row], {})[0]
         self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
-        self.assertEqual(pipeline.source_candidates(entry), [])
+        self.assertEqual(fixture_candidates(entry), [])
 
     def test_reference_access_and_companion_matrix(self):
         static_url = 'https://public.test/rail.zip'; override = 'https://override.test/rail.zip'
@@ -181,17 +211,17 @@ class GlobalFrequency(unittest.TestCase):
                     index = {'state': 'available', 'by_id': {'static': [{'feed': feed,
                         'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
                     definition = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static', **options}, 'https://github.test/pin/xx.json')
-                    row = pipeline.registry.build_catalogue([], [definition], [], 'b'*40, index)[0][0]
-                    entry = pipeline.discover([row], {})[0]
+                    row = fixture_build_catalogue([], [definition], [], 'b'*40, index)[0][0]
+                    entry = fixture_discover([row], {})[0]
                     credentialed = required or 'api-key' in options or 'fixture-password' in options.get('url-override', '')
                     self.assertEqual(entry['status'], 'retry_pending' if credentialed else 'pending')
-                    self.assertEqual(bool(pipeline.source_candidates(entry)), not credentialed)
+                    self.assertEqual(bool(fixture_candidates(entry)), not credentialed)
                     for secret in ['fixture-user', 'fixture-password', 'fixture-secret']:
                         self.assertNotIn(secret, json.dumps(row))
         for auth in ['', '0', 'none', '1', '2']:
             definition = ('xx', {'name': 'rail', 'type': 'mobility-database', 'mdb-id': 'known'}, 'https://github.test/pin/xx.json')
-            rows = pipeline.registry.build_catalogue([], [definition], [{'id': 'known', 'data_type': 'gtfs', 'urls.direct_download': static_url, 'urls.authentication_type': auth}], 'b'*40)[0]
-            entry = pipeline.discover(rows, {})[0]
+            rows = fixture_build_catalogue([], [definition], [{'id': 'known', 'data_type': 'gtfs', 'urls.direct_download': static_url, 'urls.authentication_type': auth}], 'b'*40)[0]
+            entry = fixture_discover(rows, {})[0]
             self.assertEqual(entry['status'], 'pending' if auth in ('', '0', 'none') else 'retry_pending')
         for first in ['static', 'rt']:
             feeds = {'static': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': static_url}},
@@ -201,10 +231,10 @@ class GlobalFrequency(unittest.TestCase):
                 'pointer': '/feeds/'+str(i), 'blob_sha': 'a'*40}] for i, (key, feed) in enumerate(feeds.items())}}
             definitions = [('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': key}, 'https://github.test/pin/xx.json')
                 for key in [first, 'rt' if first == 'static' else 'static']]
-            entry = pipeline.discover(pipeline.registry.build_catalogue([], definitions, [], 'b'*40, index)[0], {})[0]
+            entry = fixture_discover(fixture_build_catalogue([], definitions, [], 'b'*40, index)[0], {})[0]
             self.assertEqual(entry['status'], 'pending')
-            self.assertIn(static_url, pipeline.source_candidates(entry))
-            self.assertNotIn('https://private.test/rt', pipeline.source_candidates(entry))
+            self.assertIn(static_url, fixture_candidates(entry))
+            self.assertNotIn('https://private.test/rt', fixture_candidates(entry))
 
     def test_static_identity_option_and_selection_matrix(self):
         import copy, hashlib
@@ -212,7 +242,7 @@ class GlobalFrequency(unittest.TestCase):
         index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
             'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
         definition = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static'}, 'https://github.test/pin/xx.json')
-        baseline = pipeline.registry.build_catalogue([], [definition], [], 'b'*40, index)[0][0]
+        baseline = fixture_build_catalogue([], [definition], [], 'b'*40, index)[0][0]
         for case in ['identical_occurrence', 'different_id_same_url', 'different_options', 'different_url',
                      'missing_selection', 'unknown_selection', 'malformed_selection']:
             for independently_published in [False, True]:
@@ -228,10 +258,10 @@ class GlobalFrequency(unittest.TestCase):
                     elif case == 'unknown_selection': resolution['selected_static_declaration'] = 'missing'
                     elif case == 'malformed_selection': resolution['selected_static_declaration'] = []
                     else: resolution['declarations'].append(other)
-                    entry = pipeline.discover([row], {})[0]
+                    entry = fixture_discover([row], {})[0]
                     valid = case == 'identical_occurrence' or case == 'missing_selection' and independently_published
                     self.assertEqual(entry['status'], 'pending' if valid else 'retry_pending')
-                    self.assertEqual(bool(pipeline.source_candidates(entry)), valid)
+                    self.assertEqual(bool(fixture_candidates(entry)), valid)
 
     def test_ordinary_access_options_do_not_hide_static_format_or_publish_secrets(self):
         ordinary = ('xx', {'name': 'rail', 'type': 'http', 'url': 'https://private.test/static',
@@ -240,11 +270,11 @@ class GlobalFrequency(unittest.TestCase):
         index = {'state': 'available', 'by_id': {'rt': [{'feed': {'id': 'rt', 'spec': 'gtfs-rt',
             'authorization': {'type': 'header', 'param_name': 'Authorization'}, 'urls': {'realtime_trip_updates': 'https://private.test/rt'}},
             'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
-        row = pipeline.registry.build_catalogue([], [ordinary, rt], [], 'b'*40, index)[0][0]
-        entry = pipeline.discover([row], {})[0]
+        row = fixture_build_catalogue([], [ordinary, rt], [], 'b'*40, index)[0][0]
+        entry = fixture_discover([row], {})[0]
         self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
         self.assertEqual(row['source_resolution']['specs'], ['gtfs', 'gtfs-rt'])
-        self.assertEqual(pipeline.source_candidates(entry), [])
+        self.assertEqual(fixture_candidates(entry), [])
         self.assertNotIn('fixture-secret', json.dumps(row))
         self.assertEqual(row['source_resolution']['ordinary_static_declarations'][0]['access_state'], 'review_required')
 
@@ -254,7 +284,7 @@ class GlobalFrequency(unittest.TestCase):
         index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
             'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
         definition = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static'}, 'https://github.test/pin/xx.json')
-        baseline = pipeline.registry.build_catalogue([], [definition], [], 'b'*40, index)[0][0]
+        baseline = fixture_build_catalogue([], [definition], [], 'b'*40, index)[0][0]
         for case in ['duplicate_stale_hash', 'duplicate_role_stale_hash', 'contradictory_authorization', 'unknown_non_companion', 'conflicting_non_companion', 'conflicting_rt_companion', 'null_lineage', 'missing_lineage']:
             for published in [False, True]:
                 with self.subTest(case=case, published=published):
@@ -276,10 +306,10 @@ class GlobalFrequency(unittest.TestCase):
                         resolution['declarations'].append(other)
                     elif case == 'null_lineage': row['lineage'] = None
                     elif case == 'missing_lineage': row.pop('lineage')
-                    entry = pipeline.discover([row], {})[0]
+                    entry = fixture_discover([row], {})[0]
                     valid = case in ('missing_lineage', 'conflicting_rt_companion') or case == 'unknown_non_companion' and published
                     self.assertEqual(entry['status'], 'pending' if valid else 'retry_pending')
-                    self.assertEqual(bool(pipeline.source_candidates(entry)), valid)
+                    self.assertEqual(bool(fixture_candidates(entry)), valid)
 
     def test_alias_rejects_authenticated_owner_without_changing_owner(self):
         import copy
@@ -289,14 +319,14 @@ class GlobalFrequency(unittest.TestCase):
         definition = ('xx', {'name': 'reference', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static', 'skip': True}, 'https://github.test/pin/xx.json')
         for auth in ['0', '1', '2']:
             mobility = [{'id': 'owner', 'data_type': 'gtfs', 'urls.direct_download': url, 'urls.authentication_type': auth}]
-            standalone = pipeline.registry.build_catalogue([], [], mobility, 'b'*40, index)[0][0]
-            owner_before = pipeline.discover([copy.deepcopy(standalone)], {})[0]
-            rows = pipeline.registry.build_catalogue([], [definition], mobility, 'b'*40, index)[0]
-            entries = {e['id']: e for e in pipeline.discover(rows, {})}
+            standalone = fixture_build_catalogue([], [], mobility, 'b'*40, index)[0][0]
+            owner_before = fixture_discover([copy.deepcopy(standalone)], {})[0]
+            rows = fixture_build_catalogue([], [definition], mobility, 'b'*40, index)[0]
+            entries = {e['id']: e for e in fixture_discover(rows, {})}
             self.assertEqual(entries['mdb_owner'], owner_before)
             self.assertEqual(entries['mdb_owner']['catalogue'], standalone)
             self.assertEqual(entries['xx_reference']['status'], 'source_alias' if auth == '0' else 'retry_pending')
-            self.assertEqual(pipeline.source_candidates(entries['xx_reference']), [])
+            self.assertEqual(fixture_candidates(entries['xx_reference']), [])
 
     def test_missing_skip_and_unproven_original_do_not_borrow_published_proof(self):
         import copy
@@ -304,25 +334,25 @@ class GlobalFrequency(unittest.TestCase):
         index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
             'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
         definition = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static'}, 'https://github.test/pin/xx.json')
-        baseline = pipeline.registry.build_catalogue([], [definition], [], 'b'*40, index)[0][0]
+        baseline = fixture_build_catalogue([], [definition], [], 'b'*40, index)[0][0]
         processed = pipeline.PROCESSED+'xx_rail.gtfs.zip'
         for published in [False, True]:
             row = copy.deepcopy(baseline); row['source_resolution']['declarations'][0].pop('upstream_skip')
             if published: add_published_lineage(row, url)
-            entry = pipeline.discover([row], {})[0]
-            self.assertEqual(pipeline.source_candidates(entry), [processed, url] if published else [])
+            entry = fixture_discover([row], {})[0]
+            self.assertEqual(fixture_candidates(entry), [processed, url] if published else [])
             row['source_resolution']['processed_filename'] = None
-            entry = pipeline.discover([row], {})[0]
-            self.assertEqual(pipeline.source_candidates(entry), [url], 'missing processing eligibility does not erase the proven public original')
+            entry = fixture_discover([row], {})[0]
+            self.assertEqual(fixture_candidates(entry), [url], 'missing processing eligibility does not erase the proven public original')
         row = copy.deepcopy(baseline); row['source_resolution']['selected_static_declaration'] = None
         add_published_lineage(row, url)
         row['source'] = 'https://unproven.test/unverified.zip'
-        entry = pipeline.discover([row], {})[0]
+        entry = fixture_discover([row], {})[0]
         self.assertEqual(entry['status'], 'pending')
-        self.assertEqual(pipeline.source_candidates(entry), [processed, url])
+        self.assertEqual(fixture_candidates(entry), [processed, url])
         # A stale asserted hash cannot make the unproven URL an original-source proof.
         row['lineage'][-1]['source_sha256'] = __import__('hashlib').sha256(row['source'].encode()).hexdigest()
-        self.assertEqual(pipeline.source_candidates(pipeline.discover([row], {})[0]), [processed, url])
+        self.assertEqual(fixture_candidates(fixture_discover([row], {})[0]), [processed, url])
 
     def test_publication_lineage_requires_complete_row_bound_identity(self):
         import copy
@@ -331,7 +361,7 @@ class GlobalFrequency(unittest.TestCase):
                                   'processed_filename': 'xx_proven.gtfs.zip'}}
         add_published_lineage(row, '')
         processed = pipeline.PROCESSED + row['filename']
-        self.assertEqual(pipeline.source_candidates(pipeline.discover([row], {})[0]), [processed])
+        self.assertEqual(fixture_candidates(fixture_discover([row], {})[0]), [processed])
         changes = [(field, None, True) for field in ['catalogue', 'id', 'url', 'source']]
         changes += [('id', 'different.gtfs.zip', False), ('source', 17, False), ('source', 'http://bad host/feed', False)]
         changes += [('url', value, False) for value in [row['catalogue_url']+'?fake=1', row['catalogue_url']+'#fake',
@@ -342,22 +372,22 @@ class GlobalFrequency(unittest.TestCase):
                 bad = copy.deepcopy(row)
                 if remove: bad['lineage'][0].pop(field)
                 else: bad['lineage'][0][field] = value
-                entry = pipeline.discover([bad], {})[0]
+                entry = fixture_discover([bad], {})[0]
                 self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
-                self.assertEqual(pipeline.source_candidates(entry), [])
+                self.assertEqual(fixture_candidates(entry), [])
         wrong = copy.deepcopy(row); wrong['catalogue_url'] += '?wrong=1'
-        self.assertEqual(pipeline.source_candidates(pipeline.discover([wrong], {})[0]), [])
+        self.assertEqual(fixture_candidates(fixture_discover([wrong], {})[0]), [])
         public = copy.deepcopy(row); public['source'] = 'https://unproven.test/feed'
-        public['lineage'][0]['source'] = 'https://public.test/proven'
-        self.assertEqual(pipeline.source_candidates(pipeline.discover([public], {})[0]), [processed, 'https://public.test/proven'])
+        public['lineage'] = []; add_published_lineage(public, 'https://public.test/proven')
+        self.assertEqual(fixture_candidates(fixture_discover([public], {})[0]), [processed, 'https://public.test/proven'])
         mobility = copy.deepcopy(row); mobility['source_resolution']['processed_filename'] = None
         mobility['source'] = 'https://public.test/mobility'
         mobility['lineage'] = [{'catalogue':'mobility-database','id':'known','url':pipeline.registry.MOBILITY_CSV,
             'source':mobility['source'],'status':'','authentication_type':'0'}]
-        self.assertEqual(pipeline.source_candidates(pipeline.discover([mobility], {})[0]), [mobility['source']])
+        self.assertEqual(fixture_candidates(fixture_discover([mobility], {})[0]), [mobility['source']])
         for field in mobility['lineage'][0]:
             bad = copy.deepcopy(mobility); bad['lineage'][0].pop(field)
-            self.assertEqual(pipeline.source_candidates(pipeline.discover([bad], {})[0]), [])
+            self.assertEqual(fixture_candidates(fixture_discover([bad], {})[0]), [])
 
     def test_reference_lineage_projection_holds_without_changing_legacy_rows(self):
         import copy
@@ -371,7 +401,7 @@ class GlobalFrequency(unittest.TestCase):
             self.assertNotIn('synthetic-lineage-marker', json.dumps(prepared))
             self.assertEqual(prepared['source_resolution']['state'], 'unresolved')
             self.assertEqual(pipeline.registry.prepare_catalogue_row(prepared), prepared)
-            self.assertEqual(pipeline.source_candidates(pipeline.discover([row], {})[0]), [])
+            self.assertEqual(fixture_candidates(fixture_discover([row], {})[0]), [])
             for status in ['pending','retry_pending','excluded','non_timetable','compiled','source_alias']:
                 published = pipeline.published_metadata({'status':status,'catalogue':row,'source':{'catalogue_attribution':row}})
                 self.assertNotIn('synthetic-lineage-marker', json.dumps(published))
@@ -387,7 +417,7 @@ class GlobalFrequency(unittest.TestCase):
             'authorization': {'type': 'header', 'param_name': 'Authorization', 'info_url': 'https://provider.test/docs'},
             'urls': {'realtime_trip_updates': 'https://private.test/rt'}},
             'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
-        return pipeline.registry.build_catalogue([], [ordinary, rt], [], 'b'*40, index)[0][0]
+        return fixture_build_catalogue([], [ordinary, rt], [], 'b'*40, index)[0][0]
 
     def test_complete_ordinary_schema_before_public_proof(self):
         import copy
@@ -402,10 +432,10 @@ class GlobalFrequency(unittest.TestCase):
                 if remove: ordinary.pop(field)
                 else: ordinary[field] = value
                 row['source_resolution']['processed_filename'] = None
-                entry = pipeline.discover([row], {})[0]
+                entry = fixture_discover([row], {})[0]
                 self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
-                self.assertEqual(pipeline.source_candidates(entry), [])
-        self.assertEqual(pipeline.source_candidates(pipeline.discover([baseline], {})[0]),
+                self.assertEqual(fixture_candidates(entry), [])
+        self.assertEqual(fixture_candidates(fixture_discover([baseline], {})[0]),
             [pipeline.PROCESSED+'xx_rail.gtfs.zip', 'https://public.test/static'])
 
     def test_unprojected_reference_payloads_never_enter_staged_or_published_metadata(self):
@@ -421,7 +451,7 @@ class GlobalFrequency(unittest.TestCase):
                 row = copy.deepcopy(baseline); target = row['source_resolution']
                 for key in path[:-1]: target = target[key]
                 target[path[-1]] = {'synthetic_marker': marker}
-                entry = pipeline.discover([row], {})[0]
+                entry = fixture_discover([row], {})[0]
                 self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
                 self.assertNotIn(marker, json.dumps(entry), 'staging must not retain unsupported values even when held')
                 for status in ['pending', 'retry_pending', 'excluded', 'non_timetable', 'compiled']:

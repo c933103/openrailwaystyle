@@ -477,7 +477,7 @@ policy/access/resolution state, direct ownership and
 absence of self-references/cycles; aliases cannot own compiled output or bypass a
 target's restriction. Historical target results are not copied onto aliases.
 
-Reconciliation report schema 3 and provenance schema 2 bind both repository pins,
+Reconciliation report schema 4 and provenance schema 2 bind both repository pins,
 all actual input digests and explicit metadata availability. Old schema-2 reports
 and old inventories remain readable without retroactively claiming reference
 resolution. The report's `legacy_transitous_candidate_sources` replaces the old
@@ -577,15 +577,35 @@ unknown fields, held outcomes, staged copies, URL redaction and idempotence. The
 to the access-proof checkpoint above. This is offline validation, with no new
 provider request or production availability/coverage claim.
 
-Publication proof on a reference row must also be a complete normalized lineage
-record. Transitous records bind their filename, delivery and licence origin to
-the row; the origin must be the generated Transitous licence path at a full Git
-pin (or the legacy normalizer's explicit `main` origin). An empty original source
-can still establish a processed archive. Public original candidates instead need
-their own source URL. Mobility proof requires the complete generated record and
-exact export origin, including explicit authentication metadata. These checks
-establish internal identity consistency, not independent source authenticity or
-cryptographic proof of upstream inventory inclusion.
+Publication proof on a reference row requires both complete normalized lineage
+and separately supplied membership context. Transitous records bind their filename,
+delivery and exact pinned licence origin to the row. The producer derives a
+secret-free schema-1 index from the actual licence input bytes: pinned source URL,
+input SHA-256, and filename/array pointer/canonical record SHA-256/exact original
+source SHA-256 per record. It does not publish raw licence records, source URLs or
+credential values. The raw input hash remains historical evidence.
+
+The report binds the exact catalogue and index bytes, index count, input hash and
+pin. Production passes the generated index through the existing catalogue-job
+Actions artifact to discovery and compile with `--publication-index`. The consumer
+checks the catalogue/report first, then the bounded index and each row's
+`source_resolution.publication_evidence`. The trusted boundary is the explicit
+producer/report/artifact handoff, not a serialized verified flag. A caller replacing
+all supplied inputs controls their own input trust; this is not an independent
+upstream signature or source-authenticity guarantee. Compile workers receive only
+the relevant record as a separate trusted parent argument, never as row authority.
+
+Index limits are 4 MiB, 20,000 records and unique filenames/pointers; the producer
+bounds the raw input at 32 MiB and individual canonical records at 1 MiB. Duplicate
+JSON fields and non-finite numbers are rejected. Invalid/missing index, mismatched
+report or absent membership withholds publication-dependent proof. Old schema-2/3
+reports remain readable but cannot supply this new authority. Catalogue-only mode
+ignores audit verification assertions. Independently public ordinary/resolved
+static sources remain usable without publication context. An empty source can
+prove a processed archive when real membership matches; a redacted original URL
+cannot become downloadable merely because its retained digest matches the index.
+Mobility proof still requires its complete generated record and explicit public
+authentication metadata. Legacy/direct-owner handling is unchanged.
 
 The same bounded projection covers recognized lineage on reference rows, including
 Transitous feed definitions and resolved Transitland identities. Malformed lineage
@@ -610,3 +630,45 @@ values without invoking a second hostname parser. This preserves cross-language
 publication stability and original fingerprints; it is still syntactic metadata
 handling, with public-address/TLS/access checks enforced separately at acquisition.
 Legacy publication handling is unchanged.
+
+
+#### Resource identity and the publication-membership correction
+
+Exact original URL fingerprints remain audit identities. Display sanitization,
+request-resource identity and upstream authenticity are separate concepts.
+Reference authorization holds additionally compare the same lexical HTTP resource
+key used by acquisition: scheme/host case, trailing hostname dot, default port,
+empty path versus `/` and fragment omission. Path/params and query bytes/order
+remain distinct, as do HTTP and HTTPS. Userinfo is never erased to mint a public
+request identity. No DNS, redirect or provider-specific equivalence is inferred.
+These holds filter every returned candidate, including the processed endpoint;
+a genuinely distinct verified processed alternative remains available. When a held
+query URL has already been redacted, compatible visible resource/query-name shapes
+remain unresolved access uncertainty, with an explicit missing-original-identity
+reason. This does not equate hidden values: fully raw distinct query-value
+controls remain separate.
+
+Aliases require both matching original fingerprints and compatible visible
+canonical endpoint components. Recoverable raw URLs must match their recomputed
+hashes; already query-redacted URLs also need compatible visible components.
+Matching display text alone does not equate hidden query values. A copied owner
+hash cannot equate another host, path or visible query. These checks affect alias
+acceptance, without changing the existing acquisition owner's rows or policy.
+
+On the frozen inputs, the secret-free index contains 2,040 records, including one
+NeTEx record that does not itself establish GTFS membership. Exactly 1,120 reference
+rows gain membership evidence. All 5,489 IDs/order, 2,836 direct-owner rows and two
+existing access-held rows are preserved. The complete candidate/discovery ledger
+is unchanged: 332 candidate-list changes versus main, 176 discovery changes with
+38 outside the 141-row cohort, and all 11 aliases. These are offline results, not
+new provider availability, timetable coverage or measured live savings. The earlier
+byte-identical catalogue statements describe the preceding checkpoints; this
+correction intentionally adds the 1,120 membership records.
+
+
+Without the separate context, this same frozen catalogue intentionally changes
+148 candidate lists and holds 115 additional publication-dependent rows; 5,191
+rows remain pending, 151 retry-pending, 131 non-timetable, 11 aliases and five
+excluded. This is an offline catalogue-only compatibility measurement, not a
+production change. A missing index does not rewrite legacy owners or existing
+access holds, and independently evidenced public sources remain available.
