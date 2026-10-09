@@ -2,32 +2,19 @@ import {pmtilesFixtureResponse} from './pmtiles-browser-fixture.mjs';
 import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
+import {BROWSER_LIBRARIES} from './browser-libraries.mjs';
 
-// The UI suite uses the real production renderer, not a renderer mock. Keep
-// its external distribution download outside page/reload timings, and serve
-// exactly the same verified bytes to every page, including the real PMTiles
-// client required by deployed mode (which deliberately has no PMTiles shim).
-// Live-map checks still use the actual site/CDN path without this fixture.
-export async function rendererFixture() {
-  const hashes = {
-    'maplibre-gl@5.24.0/dist/maplibre-gl.js': '45a9b07a9189ce56054c620a947ccf41e291e58c95e9b61533b740aaa65ee5cb',
-    'maplibre-gl@5.24.0/dist/maplibre-gl.css': 'ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732',
-    'pmtiles@4.2.1/dist/pmtiles.js': 'afc49d216fd24c0a3c0ff3cd2e0c62d6cdaf062854c3dced778dcab168824f79',
-  };
+// The UI suite uses the real production renderer, not a renderer mock. Serve
+// exactly the same built, verified bytes to isolated renderer tests. Production
+// deployment checks deliberately bypass this fixture for every first-party
+// asset, including these libraries, so missing deployed files cannot be hidden.
+export async function rendererFixture(base = 'http://127.0.0.1:4173/') {
   const assets = new Map();
-  for (const [name, expected] of Object.entries(hashes)) {
-    const url = `https://cdn.jsdelivr.net/npm/${name}`;
-    let body;
-    try { body = await readFile(`node_modules/${name.replace(/@[^/]+/, '')}`); }
-    catch (error) { if (error.code !== 'ENOENT') throw error; }
-    if (!body) {
-      const response = await fetch(url, {signal: AbortSignal.timeout(30000)});
-      if (!response.ok) throw new Error(`Renderer fixture ${name}: HTTP ${response.status}`);
-      body = Buffer.from(await response.arrayBuffer());
-    }
-    assert.equal(createHash('sha256').update(body).digest('hex'), expected,
-      `Renderer fixture must match production library: ${name}`);
-    assets.set(url, {body, contentType: name.endsWith('.css') ? 'text/css' : 'text/javascript'});
+  for (const {target,sha256} of BROWSER_LIBRARIES) {
+    const body = await readFile(new URL(`../styles/${target}`, import.meta.url));
+    assert.equal(createHash('sha256').update(body).digest('hex'), sha256,
+      `Renderer fixture must match production library: ${target}`);
+    assets.set(new URL(target, base).href, {body, contentType: target.endsWith('.css') ? 'text/css' : 'text/javascript'});
   }
   return assets;
 }
@@ -37,7 +24,7 @@ export async function installEmptyMapProviders(context, base, {firstParty = 'fix
   if (!['fixture', 'network'].includes(firstParty)) throw new Error(`Unknown first-party fixture mode: ${firstParty}`);
   const style = firstParty === 'fixture' ? JSON.parse(await readFile('styles/world.style.json','utf8')) : null;
   if (style) style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
-  const renderer = rendererAssets ?? await rendererFixture();
+  const renderer = firstParty === 'network' ? new Map() : rendererAssets ?? await rendererFixture(base);
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg==','base64');
   if (firstParty === 'fixture') {
     await context.addInitScript(()=>{window.pmtiles={Protocol:class{tiles=new Map();tile=async params=>({data:params.type==='json'?{tilejson:'3.0.0',minzoom:0,maxzoom:14,tiles:['pmtiles://fixture/{z}/{x}/{y}']}:new ArrayBuffer(0)});},FetchSource:class{getKey(){return 'fixture';}},PMTiles:class{}};});

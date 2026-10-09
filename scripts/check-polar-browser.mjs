@@ -3,7 +3,7 @@
 // is needed; fixtures exercise the production bundled custom layer.
 import {launchBrowser} from './browser.mjs';
 import assert from 'node:assert/strict';
-import {mkdir, readFile} from 'node:fs/promises';
+import {mkdir} from 'node:fs/promises';
 import {CAP_RADIUS, encodeLine, fromPolar} from '../styles/polar.mjs';
 import {detailTiles} from './polar-features.mjs';
 
@@ -32,10 +32,8 @@ try {
       const value=data.get(name);
       await route.fulfill({status:value?200:404,contentType:'application/json',body:JSON.stringify(value||{})});
     });
-    // Optional local CDN copy makes repeated local checks independent of CDN.
-    if(process.env.MAPLIBRE_TEST_JS)await page.route('**/maplibre-gl.js',async route=>route.fulfill({contentType:'text/javascript',body:await readFile(process.env.MAPLIBRE_TEST_JS,'utf8')}));
     await page.route('**/polar-check.html',route=>route.fulfill({contentType:'text/html',body:`<!doctype html><html><body style="margin:0"><div id="map" style="width:100vw;height:100vh"></div>
-      <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+      <script src="vendor/maplibre-gl-5.24.0.js"></script>
       <script type="module">
       import {PolarLayer} from './vendor/polar-layer.js';
       import {allowPolarCentres} from './globe-drag.mjs';

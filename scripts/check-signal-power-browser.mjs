@@ -85,7 +85,7 @@ function archiveFor(index,z=18) {
 const archive=archiveFor(basemapIndex);
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==','base64');
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
-const runtime=process.env.ATLAS_BROWSER_RUNTIME,glyphFile=process.env.ATLAS_BROWSER_GLYPHS;
+const glyphFile=process.env.ATLAS_BROWSER_GLYPHS;
 const deadline=setTimeout(()=>{console.error('Signal and power checks exceeded ten minutes');process.exit(1);},600000);deadline.unref();
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 await mkdir('browser-review',{recursive:true});
@@ -94,7 +94,6 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
   const errors=[];let supplyRequests=0;page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{if(message.type()==='error'){console.error(kind,message.text());if(message.text().startsWith('Map resource error:'))errors.push(message.text());}});
   await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(kind,options){return original.call(this,kind,/^webgl2?$/.test(kind)?{...options,preserveDrawingBuffer:true}:options);};});
-  if(runtime)await page.route('https://cdn.jsdelivr.net/npm/**',async route=>{const path=new URL(route.request().url()).pathname,local=path.includes('maplibre-gl')?'maplibre-gl/dist/'+path.split('/').at(-1):'pmtiles/dist/pmtiles.js';await route.fulfill({body:await readFile(`${runtime}/${local}`),contentType:path.endsWith('.css')?'text/css':'text/javascript'});});
   await page.route('https://tuiles.enliberte.fr/planet.pmtiles',route=>{
     const range=/bytes=(\d+)-(\d+)/.exec(route.request().headers().range||''),start=range?+range[1]:0,end=Math.min(range?+range[2]:archive.length-1,archive.length-1);
     return route.fulfill({status:range?206:200,body:archive.subarray(start,end+1),contentType:'application/octet-stream',headers:range?{'Content-Range':`bytes ${start}-${end}/${archive.length}`,'Accept-Ranges':'bytes'}:{}});

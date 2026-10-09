@@ -4,6 +4,7 @@ import * as labelModule from '../styles/tile-labels.mjs';
 import encodeTile from 'vt-pbf';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import {webcrypto,createHash} from 'node:crypto';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 import * as model from '../styles/map-model.mjs';
@@ -22,13 +23,18 @@ import * as watchModule from '../styles/watch-map.mjs';
 import * as railRecoveryModule from '../styles/rail-provider-recovery.mjs';
 import * as tileBundleModule from '../styles/tile-bundles.mjs';
 import * as layerSemantics from '../styles/layer-semantics.mjs';
+import {BROWSER_LIBRARIES} from '../scripts/browser-libraries.mjs';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
 const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
+const legacyDistributions=await Promise.all(BROWSER_LIBRARIES.map(async library=>({...library,
+  url:`https://cdn.jsdelivr.net/npm/${library.package}@${library.version}/${library.source}`,
+  body:await readFile(new URL(`../node_modules/${library.package}/${library.source}`,import.meta.url)),
+})));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, platformGeometryOptions, departureLoader } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, platformGeometryOptions, departureLoader, cacheOnlyLibraries, noLegacyCrypto=false } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -112,7 +118,38 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     Object.assign(window, libraries);
     for (const script of window.document.head.querySelectorAll('script')) script.onload?.();
   };
-  if (!delayLibraries) Object.assign(window, libraries);
+  const scriptLoads=[],revoked=[];
+  if (cacheOnlyLibraries) {
+    window.caches=cacheOnlyLibraries;
+    window.Blob=Blob;
+    Object.defineProperty(window.crypto,'subtle',{value:noLegacyCrypto?undefined:webcrypto.subtle});
+    Object.assign(window,{mlcontour:libraries.mlcontour});
+    const blobs=new globalThis.Map();let sequence=0;
+    window.URL.createObjectURL=blob=>{const url=`blob:https://example.org/${++sequence}`;blobs.set(url,blob);return url;};
+    window.URL.revokeObjectURL=url=>{revoked.push(url);blobs.delete(url);};
+    const append=window.document.head.append.bind(window.document.head);
+    window.document.head.append=(...nodes)=>{
+      append(...nodes);
+      for(const script of nodes.filter(node=>node.tagName==='SCRIPT')) {
+        scriptLoads.push(script.src);
+        queueMicrotask(async()=>{
+          const saved=blobs.get(script.src);
+          if(!saved){script.onerror?.();return;}
+          try {
+            const body=Buffer.from(await saved.arrayBuffer());
+            const library=legacyDistributions.find(library=>library.body.equals(body));
+            // The real app has hashed the actual upstream bytes. This DOM
+            // unit harness substitutes only the renderer API after accepting
+            // those exact bytes; browser coverage also executes the real code.
+            if(library)window[library.package==='maplibre-gl'?'maplibregl':'pmtiles']=libraries[library.package==='maplibre-gl'?'maplibregl':'pmtiles'];
+            else window.eval(body.toString('utf8'));
+            script.onload?.();
+          }
+          catch {script.onerror?.();}
+        });
+      }
+    };
+  } else if (!delayLibraries) Object.assign(window, libraries);
   window.fetch = fetcher || (async () => ({ok:true,json:async()=>structuredClone(style)}));
   window.matchMedia = () => ({matches:compact});
   const context = dom.getInternalVMContext();
@@ -124,7 +161,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   let loadLabels;
   const labelsReady=new Promise(resolve=>{loadLabels=resolve;});
   if(!delayLabels)loadLabels();
-  const app = new vm.SourceTextModule(code, {
+  const app = new vm.SourceTextModule(code+'\nexport {libraries as __testLibraryLoads, legacyStyle as __testLegacyStyle};', {
     context,
     initializeImportMeta(meta) { meta.url = 'https://example.org/openrailwaystyle/app.mjs'+assetQuery; },
     importModuleDynamically: async specifier => {
@@ -177,11 +214,112 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const recovery = new vm.SyntheticModule(Object.keys(railRecoveryModule),function(){for(const [key,value] of Object.entries(railRecoveryModule))this.setExport(key,key==='createRailProviderRecovery'&&recoveryClock?(map,options)=>value(map,{...options,...recoveryClock}):value);},{context});
   await app.link(specifier => specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
+  if(cacheOnlyLibraries)await Promise.allSettled([app.namespace.__testLibraryLoads,app.namespace.__testLegacyStyle]);
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
-  return {dom,window,maps,errors,loadLibraries,loadLabels,fonts};
+  return {dom,window,maps,errors,loadLibraries,loadLabels,fonts,scriptLoads,revoked};
 }
 
 const ALL_PROBES='顿頓嘢冧𨋢俆㜏駅峠畑\uF900\uFA11㐀㙟𠮷';
+
+test('an actual old worker admitting the new page still boots from its cached libraries when replacement fails offline',async()=>{
+  const [oldSource,newSource]=await Promise.all([
+    readFile(new URL('fixtures/sw-before-first-party-libraries.js',import.meta.url),'utf8'),
+    readFile(new URL('../styles/sw.js',import.meta.url),'utf8'),
+  ]);
+  const scope='https://example.org/openrailwaystyle/',stores=new Map(),fetched=[];
+  let deployed='old',offline=false,failReplacement=false;
+  const caches={
+    keys:async()=>[...stores.keys()],delete:async key=>stores.delete(key),
+    open:async key=>{
+      if(!stores.has(key))stores.set(key,new Map());const rows=stores.get(key);
+      const keyOf=key=>typeof key==='string'?key:key.url;
+      return {match:async key=>rows.get(keyOf(key))?.clone(),put:async(key,response)=>rows.set(keyOf(key),response.clone()),
+        keys:async()=>[...rows.keys()].map(url=>new Request(url)),delete:async key=>rows.delete(keyOf(key))};
+    },
+  };
+  const fetcher=async input=>{
+    const url=new URL(typeof input==='string'?input:input.url||input.href);fetched.push(url.href);
+    if(offline)throw Error('offline');
+    if(failReplacement&&url.pathname.endsWith('vendor/maplibre-gl-5.24.0.js'))throw Error('replacement library unavailable');
+    if(url.hostname==='cdn.jsdelivr.net') {
+      const css=url.pathname.endsWith('.css');
+      const library=legacyDistributions.find(library=>library.url===url.href);
+      assert.ok(library,'only exact released dependencies enter the old cache');
+      const body=library.body;
+      assert.equal(createHash('sha256').update(body).digest('hex'),library.sha256);
+      return new Response(body,{headers:{'content-type':css?'text/css':'application/javascript'}});
+    }
+    const body=url.href===scope?(deployed==='old'?'<script type="module" src="app.mjs?v=old"></script>':html)
+      :url.pathname.endsWith('/app.mjs')&&deployed==='new'?code:`${deployed}:${url.pathname}`;
+    return new Response(body);
+  };
+  const worker=source=>{
+    const handlers={};
+    vm.runInNewContext(source,{URL,Response,Request,fetch:fetcher,caches,location:{origin:new URL(scope).origin},
+      self:{registration:{scope},addEventListener:(name,handler)=>handlers[name]=handler,skipWaiting:async()=>{},clients:{claim:async()=>{}}}});
+    return handlers;
+  };
+  const install=handlers=>{let result;handlers.install({waitUntil:promise=>result=promise});return result;};
+  const request=(handlers,path)=>{let result;handlers.fetch({request:{method:'GET',url:new URL(path,scope).href,mode:path==='./'?'navigate':'cors'},respondWith:promise=>result=promise});return result;};
+  const old=worker(oldSource);await install(old);deployed='new';
+  assert.equal(await (await request(old,'./')).text(),html,'old worker really admitted the new HTML');
+  failReplacement=true;await assert.rejects(install(worker(newSource)),/replacement library unavailable/);
+  offline=true;
+  assert.equal(await (await request(old,'./')).text(),html);
+  const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
+  assert.equal(await (await request(old,`app.mjs?v=${version}`)).text(),code,'the tested app is exactly the copy kept by the old worker');
+  assert.equal(request(old,'vendor/maplibre-gl-5.24.0.js'),undefined,'the actual old worker cannot serve the new dotted vendor path');
+  const before=fetched.length;
+  const result=await start({cacheOnlyLibraries:caches});
+  try {
+    assert.equal(result.maps.length,1,'cached legacy JavaScript can still initialize the app');
+    assert.deepEqual(result.errors,[]);
+    assert.equal(result.scriptLoads.filter(url=>url.startsWith('blob:')).length,2);
+    assert.equal(result.revoked.length,2,'temporary script URLs are released');
+    assert.ok(result.scriptLoads.filter(url=>!url.startsWith('blob:')).every(url=>url.startsWith(scope+'vendor/')));
+    const link=result.window.document.getElementById('maplibre-css'),fallback=link.nextElementSibling;
+    assert.equal(fallback.tagName,'STYLE');
+    assert.match(fallback.textContent,/maplibregl-map/);
+    assert.ok(fallback.nextElementSibling.href.includes('app.css'),'app styling keeps priority over recovered MapLibre CSS');
+    assert.equal(fetched.length,before,'cache recovery makes no network request, including to the old CDN');
+  } finally {result.dom.window.close();}
+});
+
+test('legacy startup recovery ignores unrelated caches and non-JavaScript saved responses',async()=>{
+  const requested=[];
+  const caches={keys:async()=>['unrelated-cache','atlas-shell-22'],open:async name=>{
+    assert.equal(name,'atlas-shell-22');
+    return {match:async url=>{requested.push(url);return new Response('not executable',{headers:{'content-type':'text/plain'}});}};
+  }};
+  const result=await start({cacheOnlyLibraries:caches});
+  try {
+    assert.equal(result.maps.length,0);
+    assert.equal(result.scriptLoads.filter(url=>url.startsWith('blob:')).length,0);
+    assert.equal(result.window.document.getElementById('maplibre-css').nextElementSibling.tagName,'LINK');
+    assert.ok(result.scriptLoads.every(url=>url.startsWith('https://example.org/openrailwaystyle/vendor/')));
+    assert.ok(requested.length>0);
+  } finally {result.dom.window.close();}
+});
+for(const mode of ['tampered-bytes','crypto-unavailable'])test(`legacy startup recovery rejects ${mode} even with HTTP 200 and correct MIME`,async()=>{
+  const served=[];
+  const caches={keys:async()=>['atlas-shell-22'],open:async()=>({match:async url=>{
+    if(url==='https://example.org/openrailwaystyle/')return new Response(html,{headers:{'content-type':'text/html'}});
+    const library=legacyDistributions.find(library=>library.url===url);
+    assert.ok(library);
+    const body=mode==='tampered-bytes'?Buffer.concat([library.body,Buffer.from('\n/* modified cached distribution */')]):library.body;
+    const type=library.target.endsWith('.css')?'text/css':'application/javascript';
+    served.push({url,status:200,type});
+    return new Response(body,{status:200,headers:{'content-type':type}});
+  }})};
+  const result=await start({cacheOnlyLibraries:caches,noLegacyCrypto:mode==='crypto-unavailable'});
+  try {
+    assert.equal(result.maps.length,0);
+    assert.equal(result.scriptLoads.filter(url=>url.startsWith('blob:')).length,0,'unverified bytes must never become an executable blob');
+    assert.equal(result.window.document.getElementById('maplibre-css').nextElementSibling.tagName,'LINK','unverified CSS must never be inserted');
+    assert.ok(result.scriptLoads.every(url=>url.startsWith('https://example.org/openrailwaystyle/vendor/')),'there is no network fallback to the CDN');
+    assert.equal(served.length,mode==='tampered-bytes'?3:0,'all three valid-MIME responses reach integrity verification, or fail closed before reading without crypto');
+  } finally {result.dom.window.close();}
+});
 test('a complete installed Chinese font is used without any download',async()=>{
  const {dom,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true,installedFonts:{'Noto Sans CJK TC':ALL_PROBES}});
  try{

@@ -2,7 +2,6 @@
 // as the app, independently of remote tiles and fonts.
 import {launchBrowser} from './browser.mjs';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
 
 const browser = await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 try {
@@ -10,9 +9,8 @@ try {
   page.on('pageerror',e=>{errors.push(e.message);console.log('Page error',e.message);});
   page.on('requestfailed',r=>console.log('Failed request',r.url(),r.failure()));
   page.on('console',m=>{if(m.type()==='error')console.log(m.text());});
-  if(process.env.MAPLIBRE_TEST_JS)await page.route('**/maplibre-gl.js',async route=>route.fulfill({contentType:'text/javascript',body:await readFile(process.env.MAPLIBRE_TEST_JS,'utf8')}));
   await page.route('**/globe-check.html',route=>route.fulfill({contentType:'text/html',body:`<!doctype html><html><body style="margin:0"><div id="map" style="width:100vw;height:100vh;touch-action:none"></div>
-    <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+    <script src="vendor/maplibre-gl-5.24.0.js"></script>
     <script type="module">
     import {allowPolarCentres,installGlobeDrag,zoomForLatitude,globeGroundZoom} from './globe-drag.mjs';
     window.zoomForLatitude=zoomForLatitude;window.globeGroundZoom=globeGroundZoom;

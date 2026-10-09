@@ -9,7 +9,9 @@ import {rendererFixture} from './browser-renderer-fixture.mjs';
 // provider tiles. These features never enter the production map or snapshots.
 const style = JSON.parse(await readFile('styles/world.style.json'));
 const app = await readFile('styles/app.mjs', 'utf8');
-const library = /loadScript\('(https:\/\/[^']+maplibre-gl\.js)'/.exec(app)?.[1];
+const libraryPath = /loadScript\(new URL\('([^']+maplibre-gl[^']+\.js)'/.exec(app)?.[1];
+const base = (process.env.MAP_BASE_URL || 'http://127.0.0.1:4173/').replace(/\/?$/, '/');
+const library = libraryPath && new URL(libraryPath, base).href;
 assert.ok(library, 'use the application\'s pinned renderer');
 const mainLayers = style.layers.filter(layer => /^(infrastructure|speed|electrification|control|gauge|loading|axle|owner|service)-overview(?:-system-[23])?$/.test(layer.id));
 assert.ok(mainLayers.length >= 9);
@@ -33,7 +35,7 @@ const wuhanIndex = geojsonvt({type: 'FeatureCollection', features: [{type: 'Feat
   {maxZoom: 9, extent: 4096, buffer: 64});
 const browser = await launchBrowser();
 const page = await browser.newPage({viewport: {width: 360, height: 320}});
-const renderer=await rendererFixture();
+const renderer=await rendererFixture(base);
 await page.route(library,route=>route.fulfill(renderer.get(library)));
 const errors = [], requests = [], samples = [], consoleErrors = [];
 page.on('pageerror', error => errors.push(error.message));
