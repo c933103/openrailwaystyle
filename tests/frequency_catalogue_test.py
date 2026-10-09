@@ -102,7 +102,7 @@ class FrequencyCatalogue(unittest.TestCase):
         results,counts=catalogue.build_catalogue(older,sources,[])
         self.assertEqual([r['filename'] for r in results],
                          ['jp_japan-rail.gtfs.zip','jp_tokyo-rail.gtfs.zip'])
-        self.assertEqual(counts['transitous_schedule_source'],2)
+        self.assertEqual(counts['legacy_transitous_candidate_sources'],2)
         self.assertEqual(counts['non_schedule'],1)
         jr=results[0]
         self.assertEqual(jr['delivery'],'transitous')
@@ -201,6 +201,218 @@ class FrequencyCatalogue(unittest.TestCase):
             self.assertEqual(got[1]['delivery'],'direct')
 
 
+
+
+class ReferenceResolution(unittest.TestCase):
+    PIN = 'a' * 40
+
+    def index(self, feeds):
+        return {'ref': self.PIN, 'state': 'available', 'reason': '', 'sha256': 'b' * 64,
+            'files': {}, 'by_id': {f['id']: [{'feed': f, 'url': 'https://github.test/' + self.PIN + '/feeds/example.json',
+                'pointer': '/feeds/' + str(i), 'blob_sha': 'c' * 40}] for i, f in enumerate(feeds)}}
+
+    def reference(self, name, ident, **extra):
+        return ('xx', {'name': name, 'type': 'transitland-atlas', 'transitland-atlas-id': ident, **extra},
+                'https://github.test/' + self.PIN + '/feeds/xx.json')
+
+    def build(self, definitions, feeds, licences=(), mobility=()):
+        return catalogue.build_catalogue(list(licences), definitions, list(mobility), self.PIN, self.index(feeds))[0]
+
+    def test_burlington_and_milwaukee_static_rt_groups_keep_all_declarations(self):
+        for name in ['Burlington-Transit', 'milwaukee']:
+            with self.subTest(name=name):
+                rows = self.build([self.reference(name, 'static', skip=True), self.reference(name, 'rt', skip=True)], [
+                    {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': 'https://operator.test/rail.zip'}},
+                    {'id': 'rt', 'spec': 'gtfs-rt', 'urls': {'realtime_trip_updates': 'https://operator.test/rt'}}])
+                self.assertEqual(len(rows), 1)
+                row = rows[0]; v = row['source_resolution']
+                self.assertEqual(row['filename'], 'xx_' + name + '.gtfs.zip')
+                self.assertEqual(row['source'], 'https://operator.test/rail.zip')
+                self.assertEqual(v['state'], 'schedule'); self.assertIsNone(v['processed_filename'])
+                self.assertEqual([d['reference_id'] for d in v['declarations']], ['static', 'rt'])
+                self.assertEqual(v['specs'], ['gtfs', 'gtfs-rt'])
+                self.assertEqual(v['identity_state'], 'static_with_companions')
+                self.assertEqual([x['source'] for x in row['lineage'] if x.get('source')], ['https://operator.test/rail.zip'])
+
+    def test_transit_rt_authorization_is_held_separately_from_static(self):
+        rows = self.build([self.reference('TransIt', 'static', skip=True), self.reference('TransIt', 'rt', skip=True)], [
+            {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': 'https://operator.test/rail.zip'}},
+            {'id': 'rt', 'spec': 'gtfs-rt', 'authorization': {'type': 'header', 'param_name': 'Authorization', 'secret': 'fixture-do-not-copy'},
+             'urls': {'realtime_trip_updates': 'https://operator.test/rt'}}])
+        row = rows[0]; self.assertEqual(row['source_resolution']['state'], 'schedule')
+        self.assertEqual(row['source_resolution']['declarations'][1]['resolution']['state'], 'authorization_required')
+        self.assertNotIn('fixture-do-not-copy', json.dumps(rows)); self.assertNotIn('access_review', row)
+        self.assertEqual(row['source'], 'https://operator.test/rail.zip')
+
+    def test_slobozia_two_distinct_gbfs_references_are_not_silently_merged(self):
+        rows = self.build([self.reference('Slobozia-Bike-City', x) for x in ['buzau', 'slobozia']], [
+            {'id': x, 'spec': 'gbfs', 'urls': {'gbfs_auto_discovery': 'https://operator.test/' + x}} for x in ['buzau', 'slobozia']])
+        v = rows[0]['source_resolution']; self.assertEqual(v['state'], 'non_timetable_format')
+        self.assertEqual(v['identity_state'], 'multiple_declarations'); self.assertEqual(len(v['declarations']), 2)
+        self.assertIsNone(v['processed_filename']); self.assertFalse(rows[0]['source'])
+
+    def test_gbfs_name_hint_never_disables_verified_static_rail(self):
+        row = self.build([self.reference('rail-gbfs', 'static')], [
+            {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': 'https://operator.test/rail.zip'}}])[0]
+        self.assertEqual(row['source_resolution']['state'], 'schedule')
+        self.assertEqual(row['source_resolution']['processed_filename'], row['filename'])
+
+    def test_unknown_companion_is_not_a_non_timetable_only_result(self):
+        row = self.build([self.reference('mixed', 'known'), self.reference('mixed', 'unknown')], [
+            {'id': 'known', 'spec': 'gbfs', 'urls': {'gbfs_auto_discovery': 'https://operator.test/gbfs'}}])[0]
+        self.assertEqual(row['source_resolution']['state'], 'unresolved')
+        self.assertEqual(row['source_resolution']['declarations'][1]['resolution']['state'], 'missing_reference')
+
+    def test_multiple_static_sources_are_ambiguous_and_order_independent(self):
+        definitions = [self.reference('same', x) for x in ['one', 'two']]
+        feeds = [{'id': x, 'spec': 'gtfs', 'urls': {'static_current': 'https://operator.test/' + x}} for x in ['one', 'two']]
+        values = []
+        for order in [definitions, list(reversed(definitions))]:
+            row = self.build(order, feeds)[0]
+            self.assertEqual(row['source_resolution']['state'], 'ambiguous')
+            self.assertFalse(row['source']); self.assertIsNone(row['source_resolution']['processed_filename'])
+            values.append(sorted(d['id'] for d in row['source_resolution']['declarations']))
+        self.assertEqual(*values)
+
+    def test_duplicate_identity_options_conflict_but_identical_occurrences_survive(self):
+        feed = {'id': 'one', 'spec': 'gtfs', 'urls': {'static_current': 'https://operator.test/feed'}}
+        first = self.reference('same', 'one')
+        row = self.build([first, first], [feed])[0]
+        self.assertEqual(row['source_resolution']['state'], 'schedule')
+        self.assertEqual(len(row['source_resolution']['declarations']), 2)
+        row = self.build([first, self.reference('same', 'one', skip=True)], [feed])[0]
+        self.assertEqual(row['source_resolution']['state'], 'ambiguous')
+
+    def test_legacy_rt_label_precedence_is_narrow_and_explicit(self):
+        for roles in [{'realtime_trip_updates': 'https://operator.test/rt'},
+                      {'realtime_vehicle_positions': 'https://operator.test/rt', 'realtime_alerts': 'https://operator.test/alerts'}]:
+            row = self.build([self.reference('rt', 'legacy')], [{'id': 'legacy', 'spec': 'gtfs', 'urls': roles}])[0]
+            r = row['source_resolution']['declarations'][0]['resolution']
+            self.assertEqual(r['metadata_spec'], 'gtfs'); self.assertEqual(r['specs'], ['gtfs-rt'])
+            self.assertEqual(r['spec_precedence'], 'endpoint_roles_legacy_rt_label')
+            self.assertTrue(r['metadata_spec_mismatch']); self.assertEqual(row['source_resolution']['state'], 'non_timetable_format')
+        for declared, roles in [('gbfs', {'static_current': 'https://operator.test/feed'}),
+                                ('gtfs-rt', {'static_current': 'https://operator.test/feed'}),
+                                ('gtfs', {'gbfs_auto_discovery': 'https://operator.test/gbfs'})]:
+            row = self.build([self.reference('conflict', 'c')], [{'id': 'c', 'spec': declared, 'urls': roles}])[0]
+            self.assertEqual(row['source_resolution']['state'], 'ambiguous')
+            self.assertFalse(row['source']); self.assertIsNone(row['source_resolution']['processed_filename'])
+
+    def test_independent_published_static_survives_missing_current_reference_endpoint(self):
+        row = self.build([self.reference('rail', 'old')], [{'id': 'old', 'spec': 'gtfs', 'urls': {'static_historic': ['https://operator.test/old']}}],
+            licences=[{'filename': 'xx_rail.gtfs.zip', 'source': 'https://operator.test/known'}])[0]
+        self.assertEqual(row['source_resolution']['state'], 'schedule')
+        self.assertIsNone(row['source_resolution']['selected_static_declaration'])
+        self.assertTrue(row['source_resolution']['companion_resolution_incomplete'])
+        self.assertEqual(row['source'], 'https://operator.test/known')
+        self.assertEqual(row['source_resolution']['processed_basis'], 'published_gtfs_record')
+
+    def test_exact_original_alias_preserves_existing_owner_and_legacy_row(self):
+        definitions = [self.reference('reference', 'f', skip=True)]
+        feeds = [{'id': 'f', 'spec': 'gtfs', 'urls': {'static_current': 'https://operator.test/feed?q=first'}}]
+        mobility = [{'id': 'owner', 'data_type': 'gtfs', 'urls.direct_download': 'https://operator.test/feed?q=first'}]
+        rows = self.build(definitions, feeds, mobility=mobility)
+        self.assertEqual(len(rows), 2)
+        by_name = {r['filename']: r for r in rows}
+        owner = by_name['mdb_owner.gtfs.zip']; ref = by_name['xx_reference.gtfs.zip']
+        self.assertNotIn('source_resolution', owner)
+        self.assertEqual(ref['source_resolution']['acquisition_alias_of'], 'mdb_owner')
+        self.assertEqual(ref['source_resolution']['alias_source_sha256'], __import__('hashlib').sha256(owner['source'].encode()).hexdigest())
+        mobility[0]['urls.direct_download'] = 'https://operator.test/feed?q=second'
+        rows = self.build(definitions, feeds, mobility=mobility)
+        self.assertIsNone(next(r for r in rows if r['filename'].startswith('xx_'))['source_resolution']['acquisition_alias_of'])
+
+    def test_overrides_and_access_material_are_not_silently_stripped(self):
+        row = self.build([self.reference('gbfs', 'g', **{'url-override': 'https://override.test/gbfs'})], [
+            {'id': 'g', 'spec': 'gbfs', 'urls': {'gbfs_auto_discovery': 'https://operator.test/gbfs'}}])[0]
+        endpoint = row['source_resolution']['declarations'][0]['resolution']['endpoints'][0]
+        self.assertEqual(endpoint['url'], 'https://override.test/gbfs'); self.assertEqual(endpoint['declared_url'], 'https://operator.test/gbfs')
+        row = self.build([self.reference('held', 's', **{'api-key': 'fixture-secret-key', 'url-override': 'AGE-ENCRYPTED:fixture-secret'})], [
+            {'id': 's', 'spec': 'gtfs', 'urls': {'static_current': 'https://operator.test/static'}}])[0]
+        self.assertEqual(row['source_resolution']['state'], 'unresolved')
+        self.assertNotIn('fixture-secret', json.dumps(row))
+
+    def test_security_sensitive_transport_options_are_not_mislabelled_or_applied(self):
+        row = self.build([self.reference('transport', 'static', **{'http-options': {'ignore-tls-errors': True}})], [
+            {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': 'https://operator.test/rail.zip'}}])[0]
+        declaration = row['source_resolution']['declarations'][0]
+        self.assertEqual(declaration['resolution']['state'], 'transport_options_required')
+        self.assertEqual(declaration['resolution']['specs'], ['gtfs'])
+        self.assertEqual(declaration['resolution']['unsupported_options'], ['http-options'])
+        self.assertEqual(declaration['resolution']['endpoints'][0]['access_state'], 'review_required')
+        self.assertNotIn('authorization', declaration['resolution']['endpoints'][0])
+        self.assertNotIn('ignore-tls-errors', json.dumps(row))
+        self.assertEqual(row['source_resolution']['state'], 'unresolved')
+        self.assertFalse(row['source'])
+
+    def test_explicit_rt_missing_companion_keeps_unique_static_primary(self):
+        row = self.build([self.reference('rail', 'static', skip=True), self.reference('rail', 'missing', spec='gtfs-rt')], [
+            {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': 'https://operator.test/rail.zip'}}])[0]
+        self.assertEqual(row['source_resolution']['state'], 'schedule')
+        self.assertEqual(row['source'], 'https://operator.test/rail.zip')
+        self.assertEqual(row['source_resolution']['declarations'][1]['resolution']['state'], 'missing_reference')
+        self.assertTrue(row['source_resolution']['companion_resolution_incomplete'])
+
+    def test_distinct_ordinary_candidate_prevents_whole_row_alias(self):
+        ordinary = ('xx', {'name': 'rail', 'type': 'http', 'url': 'https://independent.test/rail.zip'}, 'https://github.test/pin/xx.json')
+        definitions = [ordinary, self.reference('rail', 'static', skip=True)]
+        feeds = [{'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': 'https://owner.test/shared.zip'}}]
+        rows = self.build(definitions, feeds, mobility=[{'id': 'owner', 'data_type': 'gtfs', 'urls.direct_download': 'https://owner.test/shared.zip'}])
+        row = next(r for r in rows if r['filename'] == 'xx_rail.gtfs.zip')
+        self.assertEqual(row['source_resolution']['state'], 'schedule')
+        self.assertEqual(row['source'], 'https://independent.test/rail.zip')
+        self.assertIsNone(row['source_resolution']['acquisition_alias_of'])
+        self.assertEqual(row['source_resolution']['processed_filename'], row['filename'])
+
+    def test_mobility_declared_format_disagreements_are_retained(self):
+        for declared in ['gtfs', 'gtfs-rt']:
+            definition = ('xx', {'name': 'mismatch', 'type': 'mobility-database', 'mdb-id': 'known', 'spec': declared}, 'https://github.test/pin/xx.json')
+            licence = [{'filename': 'xx_mismatch.gtfs.zip', 'source': 'https://known.test/static'}] if declared == 'gtfs-rt' else []
+            rows = catalogue.build_catalogue(licence, [definition], [{'id': 'known', 'data_type': 'gbfs', 'urls.direct_download': 'https://operator.test/gbfs'}], self.PIN)[0]
+            resolution = rows[0]['source_resolution']
+            self.assertEqual(resolution['declarations'][0]['resolution']['state'], 'conflicting_reference')
+            self.assertEqual(resolution['state'], 'schedule' if licence else 'ambiguous')
+            self.assertNotEqual(rows[0]['source'], 'https://operator.test/gbfs')
+
+    def test_existing_access_hold_stays_byte_equivalent(self):
+        signed = 'https://fixture-user:fixture-pass@operator.test/rail'
+        licences = [{'filename': 'xx_held.gtfs.zip', 'source': signed}]
+        definitions = [self.reference('held', 'static')]
+        old = catalogue.build_catalogue(licences, definitions, [], self.PIN)[0][0]
+        new = self.build(definitions, [{'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': 'https://public.test/feed'}}], licences=licences)[0]
+        self.assertEqual(new, old); self.assertNotIn('source_resolution', new)
+
+    def test_reference_index_limits_duplicates_and_corruption_are_explicit(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.assertEqual(catalogue.references.read_transitland(root, self.PIN)['state'], 'unavailable')
+            path = root/'one.json'; feed = {'id': 'same', 'spec': 'gtfs', 'urls': {'static_current': 'https://operator.test/feed'}}
+            path.write_text(json.dumps({'feeds': [feed, feed]}))
+            index = catalogue.references.read_transitland(root, self.PIN)
+            self.assertEqual(len(index['by_id']['same']), 2)
+            rows = catalogue.build_catalogue([], [self.reference('same', 'same')], [], self.PIN, index)[0]
+            self.assertEqual(rows[0]['source_resolution']['state'], 'ambiguous')
+            for field, limit in [('MAX_FILE_BYTES', 4), ('MAX_TOTAL_BYTES', 4), ('MAX_RECORDS', 1), ('MAX_RECORD_BYTES', 4), ('MAX_FILES', 0)]:
+                with patch.object(catalogue.references, field, limit):
+                    value = catalogue.references.read_transitland(root, self.PIN)
+                    self.assertEqual(value['state'], 'unavailable'); self.assertIsNone(value['sha256']); self.assertEqual(value['by_id'], {})
+            path.write_text('{ malformed fixture-private-body')
+            value = catalogue.references.read_transitland(root, self.PIN)
+            self.assertEqual(value['state'], 'unavailable'); self.assertNotIn('fixture-private-body', json.dumps(value))
+
+    def test_unavailable_index_never_guesses_reference_type_or_drops_rows(self):
+        for index in [None, catalogue.references.unavailable(self.PIN, 'metadata_unavailable')]:
+            rows = catalogue.build_catalogue([], [self.reference('rail', 'unknown')], [], self.PIN, index)[0]
+            self.assertEqual(len(rows), 1); self.assertEqual(rows[0]['source_resolution']['state'], 'unresolved')
+            self.assertIsNone(rows[0]['source_resolution']['processed_filename'])
+
+    def test_mobility_reference_resolves_exact_type_without_gtfs_default(self):
+        for datatype, expected in [('gtfs', 'schedule'), ('gtfs-rt', 'non_timetable_format'), ('gbfs', 'non_timetable_format')]:
+            definition = ('xx', {'name': 'source', 'type': 'mobility-database', 'mdb-id': 'known'}, 'https://github.test/feeds/xx.json')
+            rows = catalogue.build_catalogue([], [definition], [{'id': 'known', 'data_type': datatype, 'urls.direct_download': 'https://operator.test/feed'}], self.PIN)[0]
+            self.assertEqual(rows[0]['source_resolution']['state'], expected)
+
+
 if __name__ == '__main__':
     unittest.main()
-

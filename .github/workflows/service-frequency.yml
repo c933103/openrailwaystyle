@@ -5,6 +5,7 @@ on:
     paths:
       - scripts/global-service-frequency.py
       - scripts/frequency_catalogue.py
+      - scripts/frequency_references.py
       - scripts/frequency_retry.py
       - scripts/gtfs-frequency.py
       - scripts/gtfs-shapes.py
@@ -39,6 +40,7 @@ on:
       - scripts/load-frequency-snapshot.py
       - scripts/global-service-frequency.py
       - scripts/frequency_catalogue.py
+      - scripts/frequency_references.py
       - scripts/frequency_retry.py
       - scripts/gtfs-frequency.py
       - scripts/gtfs-shapes.py
@@ -120,6 +122,22 @@ jobs:
           timeout --signal=TERM --kill-after=30s 600 git clone --quiet --depth=1 --filter=blob:none --sparse https://github.com/public-transport/transitous.git catalogue/transitous
           timeout --signal=TERM --kill-after=30s 600 git -C catalogue/transitous sparse-checkout set feeds website/data
           transitous_ref="$(git -C catalogue/transitous rev-parse HEAD)"
+          # Resolve against the immutable gitlink, never submodule --remote or
+          # an upstream fetch program. A failed metadata checkout is retained as
+          # explicit unresolved evidence by the normalizer, not an empty index.
+          transitland_ref="$(git -C catalogue/transitous ls-tree "$transitous_ref" transitland-atlas | awk '$1 == "160000" && $2 == "commit" {print $3}')"
+          [[ "$transitland_ref" =~ ^[a-f0-9]{40}$ ]]
+          if git init --quiet catalogue/transitland &&
+             git -C catalogue/transitland remote add origin https://github.com/transitland/transitland-atlas.git &&
+             timeout --signal=TERM --kill-after=30s 600 git -C catalogue/transitland fetch --quiet --depth=1 --filter=blob:none origin "$transitland_ref" &&
+             timeout --signal=TERM --kill-after=30s 600 git -C catalogue/transitland sparse-checkout set feeds &&
+             timeout --signal=TERM --kill-after=30s 600 git -C catalogue/transitland checkout --quiet --detach "$transitland_ref" &&
+             test "$(git -C catalogue/transitland rev-parse HEAD)" = "$transitland_ref"; then
+            transitland_feeds=catalogue/transitland/feeds
+          else
+            echo 'Pinned Transitland metadata unavailable; references remain explicit and unresolved.'
+            transitland_feeds=catalogue/unavailable-transitland-feeds
+          fi
           curl --fail --retry 3 --retry-all-errors --retry-max-time 900 --location --max-time 300 \
             https://files.mobilitydatabase.org/feeds_v2.csv --output catalogue/mobility.csv
           python3 scripts/frequency_catalogue.py \
@@ -127,6 +145,7 @@ jobs:
             --feeds-directory catalogue/transitous/feeds \
             --transitous-ref "$transitous_ref" \
             --mobility-csv catalogue/mobility.csv \
+            --transitland-feeds-directory "$transitland_feeds" --transitland-ref "$transitland_ref" \
             --output catalogue/catalogue.json --report catalogue/catalogue-report.json
       - name: Inventory eligibility without downloading public GTFS archives
         run: |

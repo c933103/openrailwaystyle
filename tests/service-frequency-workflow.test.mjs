@@ -171,3 +171,13 @@ test('PR and push concurrency cannot replace or cancel a production refresh',()=
       ['pull_request','push'].includes(event));
   }
 });
+
+test('reference metadata is fetched at the immutable gitlink without upstream executables',()=>{
+  assert.match(workflow,/scripts\/frequency_references\.py/);
+  assert.match(workflow,/ls-tree "\$transitous_ref" transitland-atlas/);
+  assert.match(workflow,/fetch --quiet --depth=1 --filter=blob:none origin "\$transitland_ref"/);
+  assert.match(workflow,/test "\$\(git -C catalogue\/transitland rev-parse HEAD\)" = "\$transitland_ref"/);
+  assert.match(workflow,/--transitland-feeds-directory "\$transitland_feeds" --transitland-ref "\$transitland_ref"/);
+  assert.doesNotMatch(workflow,/git submodule update|src\/fetch\.py/);
+  assert.match(workflow,/unavailable-transitland-feeds/);
+});

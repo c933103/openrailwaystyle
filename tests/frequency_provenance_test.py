@@ -41,7 +41,7 @@ class CatalogueProvenance(unittest.TestCase):
         feed_hashes = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in feeds.glob('*.json')}
         self.input_hashes = {'transitous_feeds': hashlib.sha256(json.dumps(feed_hashes, sort_keys=True, separators=(',', ':')).encode()).hexdigest(),
                             'transitous_licences': hashlib.sha256(licences.read_bytes()).hexdigest(),
-                            'mobility_csv': hashlib.sha256(mobility.read_bytes()).hexdigest()}
+                            'mobility_csv': hashlib.sha256(mobility.read_bytes()).hexdigest(), 'transitland_feeds': None}
         with patch.object(sys, 'argv', ['frequency_catalogue.py', '--licences', str(licences),
                 '--feeds-directory', str(feeds), '--transitous-ref', PIN,
                 '--mobility-csv', str(mobility), '--output', str(self.catalogue), '--report', str(self.report)]), patch('sys.stdout', new_callable=io.StringIO):
@@ -60,7 +60,7 @@ class CatalogueProvenance(unittest.TestCase):
             pipeline.main()
 
     def test_report_to_shards_to_manifest_preserves_all_sources_and_accounting(self):
-        self.assertEqual(self.data['schema'], 2)
+        self.assertEqual(self.data['schema'], 3)
         self.assertEqual(self.data['catalogue_sha256'], self.hash)
         self.assertEqual(self.data['input_sha256'], self.input_hashes)
         self.assertEqual(self.data['counts']['merged_entries'], 3)
@@ -101,7 +101,8 @@ class CatalogueProvenance(unittest.TestCase):
                 self.run_compiler(output, extra=('--shards', '2', '--shard', str(shard)))
         self.assertEqual(sorted(acquired), ['be_rail', 'mdb_regional'])
         shards = [json.loads((output/f'inventory-{shard}.json').read_text()) for shard in range(2)]
-        expected = pipeline.published_metadata({'schema': 1, 'kind': 'reconciled',
+        expected = pipeline.published_metadata({'schema': 2, 'kind': 'reconciled',
+            'transitland_ref': None, 'transitland_state': 'unavailable', 'transitland_reason': 'not_supplied',
             'transitous_ref': PIN, 'sources': sources, 'input_sha256': self.input_hashes})
         for shard in shards:
             self.assertIsNone(shard['catalogue_url'])
@@ -149,6 +150,33 @@ class CatalogueProvenance(unittest.TestCase):
         with self.assertRaises(FileNotFoundError), patch.object(pipeline, 'compile_entry_isolated') as compile_one:
             self.run_compiler(self.root/'missing')
         compile_one.assert_not_called()
+
+    def test_old_schema_two_reports_remain_readable_without_reference_claims(self):
+        report = copy.deepcopy(self.data); report['schema'] = 2
+        for key in ['transitland_ref', 'transitland_state', 'transitland_reason']: report.pop(key)
+        report['input_sha256'].pop('transitland_feeds')
+        self.report.write_text(json.dumps(report))
+        self.run_compiler(self.root/'old', extra=('--inventory-only',))
+        inventory = json.loads((self.root/'old'/'inventory-0.json').read_text())
+        self.assertEqual(inventory['catalogue_provenance']['schema'], 1)
+        self.assertNotIn('transitland_ref', inventory['catalogue_provenance'])
+
+    def test_reference_report_binds_availability_pin_and_exact_input_digest(self):
+        cases = [('transitland_state', 'unknown'), ('transitland_reason', 'fixture-private-report-value'),
+                 ('transitland_state', 'available'), ('transitland_ref', 'main')]
+        for key, value in cases:
+            with self.subTest(key=key, value=value):
+                report = copy.deepcopy(self.data); report[key] = value
+                self.report.write_text(json.dumps(report))
+                with self.assertRaises(ValueError): self.run_compiler(self.root/'invalid-reference', extra=('--inventory-only',))
+        report = copy.deepcopy(self.data); report['transitland_ref'] = 'b'*40; report['transitland_state'] = 'available'; report['transitland_reason'] = ''
+        report['sources'].append(pipeline.registry.references.pinned_url('b'*40))
+        report['input_sha256']['transitland_feeds'] = 'c'*64
+        self.report.write_text(json.dumps(report))
+        self.run_compiler(self.root/'pinned', extra=('--inventory-only',))
+        evidence = json.loads((self.root/'pinned'/'inventory-0.json').read_text())['catalogue_provenance']
+        self.assertEqual(evidence['schema'], 2); self.assertEqual(evidence['transitland_ref'], 'b'*40)
+        self.assertEqual(evidence['input_sha256']['transitland_feeds'], 'c'*64)
 
     def test_local_without_report_has_no_invented_transitous_origin(self):
         output = self.root/'local'

@@ -164,3 +164,43 @@ test('assembly rejects missing or inconsistent composite provenance without inve
   const legacy=mergeInventories([{...a,catalogue_provenance:undefined},{...b,catalogue_provenance:undefined}]);
   assert.deepEqual(legacy.catalogue_provenance,{schema:1,kind:'legacy-unverified',sources:[]},'old shards remain readable without fabricating verified origins');
 });
+
+test('format and alias outcomes retain identity accounting without duplicate contributions',()=>{
+  const hash='a'.repeat(64),base={schema:3,shards:2,catalogue_url:null,catalogue_sha256:'fixture',catalogue_entries:3,service_date:'2026-10-05'};
+  const owner={id:'owner',status:'no_rail',catalogue:{delivery:'direct',source:'https://provider.test/feed',source_sha256:hash}};
+  const alias={id:'alias',status:'source_alias',reason_code:'duplicate_static_source',catalogue:{source:owner.catalogue.source,source_sha256:hash,source_resolution:{schema:1,state:'schedule',processed_filename:null,acquisition_alias_of:'owner',alias_source_sha256:hash}}};
+  const bikes={id:'bikes',status:'non_timetable',reason_code:'non_timetable_format'};
+  const merged=mergeInventories([{...base,shard:0,entries:[owner,bikes]},{...base,shard:1,entries:[alias]}]);
+  assert.deepEqual(merged.counts,{source_alias:1,non_timetable:1,no_rail:1});
+  assert.equal(merged.entries.find(e=>e.id==='alias').status,'source_alias');
+  assert.deepEqual(countOutcomeReasons(merged.entries),{duplicate_static_source:1,non_timetable_format:1});
+  const tryAlias=value=>mergeInventories([{...base,shard:0,entries:[owner,bikes]},{...base,shard:1,entries:[value]}]);
+  for(const changes of [{acquisition_alias_of:'missing'},{acquisition_alias_of:'alias'},{alias_source_sha256:'b'.repeat(64)},{schema:2}]){
+    assert.throws(()=>tryAlias({...alias,catalogue:{...alias.catalogue,source_resolution:{...alias.catalogue.source_resolution,...changes}}}),/Invalid static source alias/);
+  }
+  assert.throws(()=>tryAlias({...alias,catalogue:{...alias.catalogue,lineage:[{source:'https://different.test/static'}]}}),/Invalid static source alias/);
+  assert.throws(()=>tryAlias({...alias,output:'feeds/alias.json.gz'}),/Invalid static source alias/);
+  for(const policy of [{status:'excluded',reason_code:'provider_policy'},{status:'retry_pending',reason_code:'source_access_review'},{catalogue:{...owner.catalogue,source_resolution:{schema:1,state:'unresolved'}}}])assert.throws(()=>mergeInventories([{...base,shard:0,entries:[{...owner,...policy},bikes]},{...base,shard:1,entries:[alias]}]),/Invalid static source alias/);
+  assert.throws(()=>mergeInventories([{...base,shard:0,entries:[{...owner,status:'source_alias',catalogue:{...owner.catalogue,source_resolution:{acquisition_alias_of:'alias'}}},bikes]},{...base,shard:1,entries:[alias]}]),/Invalid static source alias/);
+});
+
+test('assembled format-aware inventories keep alias provenance and emit one canonical feed',async()=>{
+  const {gzipSync}=await import('node:zlib'),{readFile}=await import('node:fs/promises');
+  const root=await mkdtemp(join(tmpdir(),'atlas-reference-assembly-')),hash='a'.repeat(64);
+  const feed={schema:1,source:{id:'owner',sha256:'fixture-content',service_date:'2026-10-05',checked:'2026-10-04',name:'Rail',feed_info:{},valid_until:1900000000},agencies:[{agency_id:'a',agency_name:'Rail',agency_timezone:'UTC'}],routes:[{route_id:'r',route_type:'2'}],profiles:{h01:{start:'01:00:00',end:'02:00:00'}},segments:[{route_id:'r',agency_id:'a',geometry:[[0,0],[1,1]],profiles:{h01:{display_tph:2,forward_tph:2,backward_tph:2,quality:'scheduled'}}}]};
+  try{
+    await mkdir(join(root,'feeds'));await writeFile(join(root,'feeds/owner.json.gz'),gzipSync(JSON.stringify(feed)));
+    const owner={id:'owner',country:'XX',status:'compiled',output:'feeds/owner.json.gz',sha256:'fixture-content',catalogue:{delivery:'direct',source:'https://provider.test/static',source_sha256:hash}};
+    const alias={id:'alias',country:'XX',status:'source_alias',reason_code:'duplicate_static_source',catalogue:{source:owner.catalogue.source,source_sha256:hash,source_resolution:{schema:1,state:'schedule',processed_filename:null,acquisition_alias_of:'owner',alias_source_sha256:hash}}};
+    const bikes={id:'bikes',country:'XX',status:'non_timetable',reason_code:'non_timetable_format'};
+    const base={schema:3,shards:2,catalogue_url:null,catalogue_sha256:'fixture',catalogue_entries:3,service_date:'2026-10-05'};
+    await writeFile(join(root,'inventory-0.json'),JSON.stringify({...base,shard:0,entries:[owner,bikes]}));
+    await writeFile(join(root,'inventory-1.json'),JSON.stringify({...base,shard:1,entries:[alias]}));
+    const manifest=await assemble(root);
+    assert.deepEqual(manifest.counts,{source_alias:1,non_timetable:1,compiled:1});
+    assert.equal(manifest.feeds.length,1);assert.equal(manifest.feeds[0].id,'owner');assert.equal(manifest.tiles,0);
+    const inventory=JSON.parse(await readFile(join(root,'inventory.json'),'utf8'));
+    assert.equal(inventory.entries.length,3);assert.equal(inventory.entries.find(e=>e.id==='alias').status,'source_alias');
+    assert.deepEqual(await readdir(join(root,'feeds')),['owner.json.gz']);
+  }finally{await rm(root,{recursive:true,force:true});}
+});

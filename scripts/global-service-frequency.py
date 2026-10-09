@@ -131,6 +131,8 @@ def discover(rows, rules):
         if ident in seen:
             raise ValueError('Duplicate catalogue ID '+ident)
         seen.add(ident)
+        resolution = row.get('source_resolution') or {}
+        reference_state = registry.references.resolution_state(row)
         rights = registry.usage_rights(row)
         policy_reason = blocked(row)
         if row.get('access_review'):
@@ -141,19 +143,46 @@ def discover(rows, rules):
         elif rights['prohibitions']:
             status, reason_code = 'excluded', 'source_terms_prohibit_derived_use'
             reason = '; '.join(item['basis'] for item in rights['prohibitions'])
+        elif reference_state == 'non_timetable_format':
+            status, reason_code = 'non_timetable', 'non_timetable_format'
+            reason = 'Pinned reference metadata describes a non-timetable format'
+        elif reference_state in ('unresolved', 'ambiguous', 'invalid'):
+            status, reason_code = 'retry_pending', ('ambiguous_source_reference' if reference_state == 'ambiguous' else 'unresolved_source_reference')
+            reason = 'Source reference metadata is incomplete, invalid or conflicting; acquisition paused'
+        elif reference_state == 'schedule' and resolution.get('acquisition_alias_of'):
+            status, reason_code = 'source_alias', 'duplicate_static_source'
+            reason = 'Exact static source is retained under another existing acquisition owner'
         elif row.get('delivery') == 'direct' and (not isinstance(row.get('source'), str) or not row.get('source')):
             status, reason, reason_code = 'retry_pending', 'Original GTFS URL unresolved', 'missing_source_url'
         else:
             status, reason, reason_code = 'pending', '', ''
         out.append({'id': ident, 'status': status, 'reason': reason,
                     'reason_code': reason_code, 'retry_eligible': status == 'retry_pending',
-                    'failure_stage': 'discovery' if reason_code in ('missing_source_url', 'source_access_review') else '',
-                    'next_action': 'review_source_access_or_declared_public_alternative' if reason_code == 'source_access_review' else '',
+                    'failure_stage': 'discovery' if reason_code in ('missing_source_url', 'source_access_review', 'non_timetable_format', 'unresolved_source_reference', 'ambiguous_source_reference', 'duplicate_static_source') else '',
+                    'next_action': ('review_source_access_or_declared_public_alternative' if reason_code == 'source_access_review' else 'resolve_catalogue_reference' if reason_code in ('unresolved_source_reference', 'ambiguous_source_reference') else ''),
                     'terms': rights, 'denied_source_urls': denied_sources,
                     'country': row.get('country_code', ''),
                     'name': row.get('human_name', ident), 'catalogue': row,
-                    'processed_url': (row.get('source', '') if row.get('delivery') == 'direct'
-                                      else PROCESSED+quote(row['filename']))})
+                    'processed_url': ('' if reference_state is not None and
+                        (reference_state != 'schedule' or not resolution.get('processed_filename')) else
+                        row.get('source', '') if row.get('delivery') == 'direct' else PROCESSED+quote(row['filename']))})
+    by_id = {entry['id']: entry for entry in out}
+    for entry in out:
+        if entry['status'] != 'source_alias':
+            continue
+        resolution = entry['catalogue']['source_resolution']
+        target = by_id.get(resolution['acquisition_alias_of'])
+        target_row = target['catalogue'] if target else {}
+        source = target_row.get('source')
+        target_resolution = target_row.get('source_resolution')
+        target_resolution = target_resolution if isinstance(target_resolution, dict) else {}
+        if (not target or target['id'] == entry['id'] or target_row.get('delivery') != 'direct'
+                or target_resolution.get('acquisition_alias_of') or target['status'] != 'pending'
+                or registry.references.candidate_identities(entry['catalogue']) != registry.references.candidate_identities(target_row)
+                or not isinstance(source, str) or hashlib.sha256(source.encode()).hexdigest() != resolution['alias_source_sha256']):
+            entry.update(status='retry_pending', reason_code='ambiguous_source_reference',
+                reason='Static source alias target is missing, changed or has incompatible acquisition policy; acquisition paused',
+                retry_eligible=True, failure_stage='discovery', next_action='resolve_catalogue_reference')
     return sorted(out, key=lambda x: x['id'])
 
 
@@ -439,13 +468,20 @@ def get(url, headers=None, *, policy=None, retry_state=None):
 def source_candidates(entry):
     """Distinct public source endpoints, processed first, originals as fallback."""
     row = entry.get('catalogue') or {}
+    reference_state = registry.references.resolution_state(row)
+    if reference_state is not None and (reference_state != 'schedule'
+            or row['source_resolution'].get('acquisition_alias_of')):
+        return []
     lineage = row.get('lineage') if isinstance(row.get('lineage'), list) else []
     if row.get('access_review') or any(registry.access_review_url(url) for url in
             [row.get('source'), entry.get('processed_url')]+[x.get('source') for x in lineage if isinstance(x, dict)]):
         return []
     if blocked(row) or (entry.get('terms') or registry.usage_rights(row))['prohibitions']:
         return []
-    values = [entry.get('processed_url'), row.get('source')]
+    processed = entry.get('processed_url')
+    if reference_state is not None:
+        processed = PROCESSED+quote(row['filename']) if row['source_resolution'].get('processed_filename') else ''
+    values = [processed, row.get('source')]
     values.extend(x.get('source') for x in lineage if isinstance(x, dict))
     urls, seen = [], set()
     for url in values:
@@ -863,6 +899,10 @@ def file_hash(path):
 
 def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_seconds=600, *, retry_state=None):
     ident, row = entry['id'], entry['catalogue']
+    reference_state = registry.references.resolution_state(row)
+    if reference_state is not None and (reference_state != 'schedule'
+            or row['source_resolution'].get('acquisition_alias_of')):
+        raise ValueError('Source reference is not acquisition eligible')
     if retry_state is None:
         retry_state = retry.RetryAfterCache(cache)
     path, meta_path = cache/(ident+'.zip'), cache/(ident+'.meta.json')
@@ -957,7 +997,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     signature=hashlib.sha256(json.dumps({'catalogue':row,'profiles':profiles,'denied_source_urls':entry.get('denied_source_urls', []),
         'graph':file_hash(str(graph)) if graph else None,
-        'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['global-service-frequency.py','frequency_catalogue.py','gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()
+        'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['global-service-frequency.py','frequency_catalogue.py','frequency_references.py','gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()
     destination = output/'feeds'/(ident+'.json.gz')
     if destination.exists():
         with gzip.open(destination, 'rt') as file:
@@ -1118,20 +1158,36 @@ def catalogue_provenance(report_path, catalogue_hash, catalogue_entries, local):
         return {'schema': 1, 'kind': 'local-unverified' if local else 'transitous-licences',
                 'sources': [] if local else [CATALOGUE]}
     report = json.loads(report_path.read_text())
-    if (not isinstance(report, dict) or report.get('schema') != 2
+    if (not isinstance(report, dict) or report.get('schema') not in (2, 3)
             or report.get('catalogue_sha256') != catalogue_hash
             or not isinstance(report.get('counts'), dict)
             or report['counts'].get('merged_entries') != catalogue_entries):
         raise ValueError('Catalogue report does not match the input catalogue')
     sources = registry.catalogue_sources(report.get('transitous_ref'))
+    reference_provenance = {}
+    if report['schema'] == 3:
+        ref, state, reason = report.get('transitland_ref'), report.get('transitland_state'), report.get('transitland_reason')
+        if ref is not None:
+            sources.append(registry.references.pinned_url(ref))
+        if state not in ('available', 'unavailable') or not isinstance(reason, str) or reason not in registry.references.METADATA_REASONS:
+            raise ValueError('Catalogue report has invalid reference input state')
+        reference_provenance = {'transitland_ref': ref, 'transitland_state': state, 'transitland_reason': reason}
     hashes = report.get('input_sha256')
     if (report.get('sources') != sources or not isinstance(hashes, dict)
             or any(not isinstance(hashes.get(key), str) or not re.fullmatch(r'[a-f0-9]{64}', hashes[key])
                    for key in ('transitous_licences', 'transitous_feeds', 'mobility_csv'))):
         raise ValueError('Catalogue report is missing pinned input identities')
+    keys = ['transitous_licences', 'transitous_feeds', 'mobility_csv']
+    if report['schema'] == 3:
+        digest = hashes.get('transitland_feeds')
+        if ((reference_provenance['transitland_state'] == 'available' and
+                (reference_provenance['transitland_ref'] is None or not isinstance(digest, str) or not re.fullmatch('[a-f0-9]{64}', digest)))
+                or (reference_provenance['transitland_state'] == 'unavailable' and digest is not None)):
+            raise ValueError('Catalogue report has invalid reference input identity')
+        keys.append('transitland_feeds')
     # Copy only the public provenance schema, not arbitrary report metadata.
-    return {'schema': 1, 'kind': 'reconciled', 'transitous_ref': report['transitous_ref'],
-            'sources': sources, 'input_sha256': {key: hashes[key] for key in ('transitous_licences', 'transitous_feeds', 'mobility_csv')}}
+    return {'schema': 2 if report['schema'] == 3 else 1, 'kind': 'reconciled', 'transitous_ref': report['transitous_ref'],
+            'sources': sources, 'input_sha256': {key: hashes[key] for key in keys}, **reference_provenance}
 
 
 def main():
@@ -1164,10 +1220,10 @@ def main():
     previous_path = args.output/f'inventory-{args.shard}.json'
     outcomes = []
     def save():
-        atomic_json(previous_path, {'schema': 2, 'catalogue_url': None if args.catalogue else CATALOGUE, 'catalogue_sha256': catalogue_hash,
+        atomic_json(previous_path, {'schema': 3, 'catalogue_url': None if args.catalogue else CATALOGUE, 'catalogue_sha256': catalogue_hash,
             'catalogue_provenance': published_metadata(provenance),
             'catalogue_entries': len(entries), 'service_date': args.date, 'shard': args.shard, 'shards': args.shards,
-            'scope': 'Every GTFS feed in the worldwide catalogue; no city allow-list',
+            'scope': 'Worldwide timetable discovery plus explicit source-reference outcomes; no city allow-list',
             'counts': dict(Counter(x['status'] for x in outcomes)),
             'reason_codes': dict(Counter(x.get('reason_code') or 'none' for x in outcomes)),
             'entries': published_metadata(outcomes)})

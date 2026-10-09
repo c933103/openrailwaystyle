@@ -374,3 +374,145 @@ with published headways and writes the manifest (including the covered frequency
 periods) and credits; the snapshot's feeds add no lines. `npm run build` and
 `npm test` validate the app. `--fixtures` is reserved for the browser regression
 check that timetable fixtures draw nothing.
+
+## Pinned source-reference resolution
+
+Reference names and legacy `.gtfs.zip` catalogue keys are not evidence of a
+static timetable. `frequency_references.py` independently resolves Transitous
+`transitland-atlas` declarations against the exact Transitland Git commit stored
+in the pinned Transitous tree, and `mobility-database` declarations against the
+already supplied Mobility export. The metadata job fetches that immutable commit
+with a shallow, blob-filtered checkout of `feeds`, verifies `HEAD`, and hashes the
+files actually parsed. It never follows `--remote`, executes an upstream fetch
+program, or calls a provider to resolve a reference. A failed checkout or malformed,
+empty or over-budget metadata input is recorded as unavailable; its references
+remain explicit and unresolved.
+
+The old row universe, filenames, stable IDs and shard ownership are preserved.
+The filename remains a compatibility identity key; a new `source_resolution`
+object, schema 1, supplies the actual acquisition decision:
+
+- `state`: `schedule`, `non_timetable_format`, `unresolved` or `ambiguous`
+- `specs`, `identity_state`, complete `declarations` with exact reference IDs,
+  pinned source-list/file URLs, JSON pointers, original file/blob and declaration
+  hashes, upstream skip/reason, endpoint roles and declared format metadata
+- `ordinary_static_declarations` retains independent same-name static URL sources,
+  including their exact definition pointers, hashes and upstream skip metadata
+- `selected_static_declaration` and nullable `processed_filename` with its
+  evidence basis; neither an unresolved reference nor upstream skip alone
+  establishes a processed archive
+- `acquisition_alias_of` and `alias_source_sha256` for a matching existing direct
+  acquisition owner; both historical catalogue identities remain present
+
+Only the selected static endpoint enters acquisition lineage. Realtime and GBFS
+endpoints remain separate evidence, never GTFS fallback URLs. Original and
+`url-override` identities remain distinct. Authorization descriptions retain only
+the type, parameter name and public documentation; no credential value, custom
+request body, encrypted payload or arbitrary HTTP options is copied. Unsupported
+transport options remain `transport_options_required`/`review_required`, separately
+from actual `authorization_required`; they never lower TLS requirements. Existing
+access-grant holds and one-way redaction remain in force. Upstream `skip` describes
+Transitous behavior; it is not an Atlas licence or provider-policy exclusion.
+Published GTFS metadata can independently establish an existing usable timetable
+when a companion reference is unavailable. A uniquely resolved public static
+reference also remains usable when its missing companion explicitly declares
+GTFS-RT; an untyped missing companion still requires metadata resolution.
+
+### Endpoint-role precedence and disagreements
+
+The pinned official resolver maps `static_current` to GTFS,
+`realtime_trip_updates`/`realtime_vehicle_positions`/`realtime_alerts` to GTFS-RT,
+and `gbfs_auto_discovery` to GBFS. The project implementation follows those roles.
+A narrowly supported legacy mismatch is recorded explicitly: an Atlas record
+labelled `spec=gtfs` whose recognized roles are **exclusively** realtime is typed
+as GTFS-RT with `spec_precedence=endpoint_roles_legacy_rt_label`. Both the original
+label and the mismatch remain in the declaration. This is supported by the pinned
+[`gohrt.com` HRT RT declaration](https://github.com/transitland/transitland-atlas/blob/e2c827fdc0540577eb8e0d668d80ce290a948498/feeds/gohrt.com.dmfr.json)
+and [`syncromatics.com` Kenosha RT declaration](https://github.com/transitland/transitland-atlas/blob/e2c827fdc0540577eb8e0d668d80ce290a948498/feeds/syncromatics.com.dmfr.json),
+and by the inspected
+[Transitous resolver](https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/src/transitland.py).
+This refinement replaces the initial proposal's blanket spec-disagreement hold:
+it prevents those RT companions from hiding independently evidenced static feeds,
+without converting a conflicting reference into a static candidate.
+
+Other explicit format/role conflicts remain unresolved or ambiguous, including
+Mobility declarations whose explicit spec disagrees with the export data type. Missing
+current endpoint roles do not become a new verified static source; the Microsoft
+Shuttles declaration is one such case, while its separately published static
+source remains available. Missing metadata, duplicate Atlas IDs, invalid overrides,
+unknown companions and different static references collapsed under one name
+cannot be resolved by a name/suffix guess. Identical declaration occurrences keep
+all pointers. Different options under one reference identity are visible conflicts.
+Four regression groups retain the original collapsed-name evidence: Burlington
+GTFS+RT, TransIt GTFS+authorization-held RT, Milwaukee GTFS+RT, and Slobozia's two
+distinct GBFS references. Slobozia's two identities are not assigned to a guessed
+city/operator.
+
+### Outcomes, aliases and compatibility
+
+Format-aware inventory schema 3 preserves all identities. `non_timetable` with
+reason `non_timetable_format` reports a verified format, never `no_rail` or a
+licence exclusion. Unresolved/ambiguous metadata uses `retry_pending` with
+`unresolved_source_reference`/`ambiguous_source_reference` and an explicit metadata
+resolution next step; neither receives provider requests. Existing policy/access
+checks take precedence and remain unchanged.
+
+Exact-source aliases use `source_alias`/`duplicate_static_source`, retain the
+existing direct owner and its cache, and produce no duplicate request or compiled
+contribution. This requires the exact original URL identity and a compatible
+static source whose complete original candidate set is identical, without a
+distinct ordinary source or active processed candidate. Discovery requires the
+owner to pass its own policy/access/resolution checks; otherwise the alias is held
+with an explicit ambiguity result. A shared operator,
+host, redacted display URL or similar path is insufficient. Complete-inventory
+assembly validates target existence, complete source fingerprint sets, compatible
+policy/access/resolution state, direct ownership and
+absence of self-references/cycles; aliases cannot own compiled output or bypass a
+target's restriction. Historical target results are not copied onto aliases.
+
+Reconciliation report schema 3 and provenance schema 2 bind both repository pins,
+all actual input digests and explicit metadata availability. Old schema-2 reports
+and old inventories remain readable without retroactively claiming reference
+resolution. The report's `legacy_transitous_candidate_sources` replaces the old
+misleading `transitous_schedule_source` counter. Assembly retains separate format
+and alias status/reason counts; compiled/no-rail totals and the all-shards/row-count
+invariant remain unchanged. The published manifest stays schema 3 and no standalone
+timetable tiles are introduced.
+
+Parsing caps are 4,096 directory entries, 4 MiB per file, 32 MiB total, 50,000
+records, 64 KiB per record, 4,096 characters per projected string and 64 source
+declarations per legacy row. Failure never publishes a partial reference index.
+The normalizer has no provider network code. Production cadence, eight-shard
+structure, Retry-After receipts, byte/time budgets and PR/main-push offline gates
+are unchanged.
+
+### October 9 frozen evidence
+
+The [full before/after ledger](investigations/catalogue-reference-ledger-20261009.json)
+compares the exact held 5,489-row catalogue with baseline main
+`741b5e858710fb20fa55533eacd330142ad1c271`, using Transitous
+`afcc88b467259bae36c25964dbb1db165d2afb31` and its Transitland gitlink
+`e2c827fdc0540577eb8e0d668d80ce290a948498`. The gitlink is reproducible metadata;
+Transitous production uses `--remote`, so it does not establish their actual
+production resolver revision. The original Mobility export was not reacquired:
+this frozen overlay uses its already-normalized static lineage, while controlled
+fixtures separately test Mobility RT/missing/duplicate cases.
+
+All 5,489 IDs remain. All 2,836 existing direct-owner rows and both existing access
+holds remain byte-equivalent under the same compact row serialization. The overlay
+adds 1,876 declaration records across 1,454 rows. It records 131 non-timetable rows,
+11 aliases, eight unresolved and two ambiguous reference outcomes; 14 changed
+discovery outcomes lie outside the focused 141-row cohort and every one is listed.
+The ledger distinguishes these proposed discovery outcomes from the historical
+runtime results. It also lists all 227 changed candidate lists by original-URL
+hash, all 11 unique owners and the exact spec/role disagreements.
+
+Within the [focused attribution](investigations/catalogue-reference-attribution-20261009.json),
+145 declarations correspond to 141 legacy rows: 132 GBFS declarations across 131
+rows, ten static GTFS declarations, and three RT companions. The updated discovery
+produces 131 explicit non-timetable rows, seven existing-source aliases and three
+unmatched static candidates. Ten recovered source links do not mean ten new feeds.
+No provider endpoint, production refresh or held archive was used for this replay;
+no new coverage, successful availability or production savings is claimed. The
+historical 5,489-row published scope and 652.7 compile runner-minute baseline remain
+historical measurements.

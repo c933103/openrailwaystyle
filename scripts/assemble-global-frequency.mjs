@@ -62,11 +62,19 @@ export const countStatuses=entries=>{const counts={};for(const entry of entries)
 export const countOutcomeReasons=entries=>{
   const counts={};
   for(const entry of entries){
-    if(!['excluded','failed','retry_pending'].includes(entry.status))continue;
+    if(!['excluded','failed','retry_pending','non_timetable','source_alias'].includes(entry.status))continue;
     const reason=entry.reason_code||'unclassified';
     counts[reason]=(counts[reason]||0)+1;
   }
   return counts;
+};
+const sourceFingerprints=row=>{
+  const values=[row,...(Array.isArray(row?.lineage)?row.lineage:[])],result=new Set();
+  for(const item of values){
+    if(typeof item?.source!=='string'||!/^https?:\/\//.test(item.source))continue;
+    result.add(/^[a-f0-9]{64}$/.test(item.source_sha256||'')?item.source_sha256:urlFingerprint(item.source));
+  }
+  return [...result].sort();
 };
 export function mergeInventories(inventories){
   if(!inventories.length)throw new Error('No worldwide inventory');
@@ -78,6 +86,21 @@ export function mergeInventories(inventories){
     for(const entry of inventory.entries){if(ids.has(entry.id))throw new Error('Duplicate feed');ids.add(entry.id);entries.push(entry);}
   }
   if(shards.size!==first.shards||ids.size!==first.catalogue_entries)throw new Error('Incomplete worldwide scan; refusing to publish a partial shard collection');
+  const byId=new Map(entries.map(entry=>[entry.id,entry]));
+  for(const entry of entries){
+    if(entry.status!=='source_alias')continue;
+    const resolution=entry.catalogue?.source_resolution,target=byId.get(resolution?.acquisition_alias_of),targetResolution=target?.catalogue?.source_resolution;
+    if(resolution?.schema!==1||resolution.state!=='schedule'||!target||target.id===entry.id||target.status==='source_alias'||
+        targetResolution?.acquisition_alias_of||target.catalogue?.delivery!=='direct'||
+        (targetResolution&&(targetResolution.schema!==1||targetResolution.state!=='schedule'||!targetResolution.specs?.includes('gtfs')))||
+        target.catalogue?.access_review||resolution.processed_filename!=null||
+        !isDeepStrictEqual(sourceFingerprints(entry.catalogue),[resolution.alias_source_sha256])||
+        !isDeepStrictEqual(sourceFingerprints(target.catalogue),[resolution.alias_source_sha256])||
+        !/^[a-f0-9]{64}$/.test(resolution.alias_source_sha256||'')||
+        resolution.alias_source_sha256!==target.catalogue?.source_sha256||entry.output||target.status==='excluded'||
+        target.status==='non_timetable'||['source_access_review','unresolved_source_reference','ambiguous_source_reference','missing_source_url'].includes(target.reason_code))
+      throw new Error('Invalid static source alias target');
+  }
   entries.sort((a,b)=>a.id.localeCompare(b.id));
   // Old shards never bound their origins to this catalogue. Keep them readable
   // without retroactively certifying the old single-URL attribution.

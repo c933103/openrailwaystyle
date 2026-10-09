@@ -31,6 +31,88 @@ class GlobalFrequency(unittest.TestCase):
             return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, (host, port))]
         self.enterContext(patch.object(pipeline, 'resolve_public_addresses', side_effect=fixture_addresses))
 
+    def test_reference_alias_non_timetable_and_unknown_do_not_duplicate_acquisition(self):
+        url, held = self.server(self.archive(), ranges=False)
+        registry = pipeline.registry
+        index = {'state': 'available', 'by_id': {
+            'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
+                        'url': 'https://github.test/pinned/static.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}],
+            'gbfs': [{'feed': {'id': 'gbfs', 'spec': 'gbfs', 'urls': {'gbfs_auto_discovery': 'https://never-query.test/gbfs'}},
+                      'url': 'https://github.test/pinned/gbfs.json', 'pointer': '/feeds/0', 'blob_sha': 'b'*40}]}}
+        definitions = [('xx', {'name': name, 'type': 'transitland-atlas', 'transitland-atlas-id': ident, 'skip': True},
+                        'https://github.test/pinned/xx.json') for name, ident in [('reference', 'static'), ('bikes', 'gbfs'), ('unknown', 'missing')]]
+        rows, _ = registry.build_catalogue([], definitions, [{'id': 'owner', 'data_type': 'gtfs', 'urls.direct_download': url}], 'c'*40, index)
+        entries = pipeline.discover(rows, {})
+        standalone_rows = registry.build_catalogue([], definitions[:1], [], 'c'*40, index)[0]
+        standalone = pipeline.discover(standalone_rows, {})[0]
+        standalone['processed_url'] = 'https://never-query.test/invented.gtfs.zip'
+        self.assertEqual(pipeline.source_candidates(standalone), [url], 'a stale processed URL cannot bypass explicit absent-file evidence')
+        self.assertEqual({e['id']: e['status'] for e in entries}, {'mdb_owner': 'pending', 'xx_reference': 'source_alias', 'xx_bikes': 'non_timetable', 'xx_unknown': 'retry_pending'})
+        for entry in entries:
+            if entry['status'] == 'pending': continue
+            self.assertEqual(pipeline.source_candidates(entry), [])
+            self.assertEqual(entry['processed_url'], '')
+            with patch.object(pipeline, 'get', side_effect=AssertionError('No request permitted')):
+                with self.assertRaisesRegex(ValueError, 'not acquisition eligible'):
+                    pipeline.compile_entry(entry, self.root/'cache', self.root/'out', '2026-10-05', None, 1_000_000, pipeline.PROFILES)
+        source = self.root/'catalogue.json'; source.write_text(json.dumps(rows))
+        calls = []
+        def compile_fixture(entry, cache, output, date, graph, max_bytes, profiles, *args):
+            calls.append(entry['id'])
+            return pipeline.compile_entry(entry, cache, output, date, graph, max_bytes, profiles)
+        with patch.object(pipeline, 'compile_entry_isolated', side_effect=compile_fixture):
+            for shard in range(2):
+                argv = ['global-service-frequency.py', '--catalogue', str(source), '--cache', str(self.root/'cache'),
+                        '--output', str(self.root/'out'), '--date', '2026-10-05', '--shards', '2', '--shard', str(shard)]
+                with patch.object(sys, 'argv', argv), patch('sys.stdout', new_callable=io.StringIO): pipeline.main()
+        self.assertEqual(calls, ['mdb_owner'])
+        self.assertTrue(held['requests'])
+        outputs = list((self.root/'out'/'feeds').glob('*.json.gz'))
+        self.assertEqual([p.name for p in outputs], ['mdb_owner.json.gz'])
+        all_entries = [e for i in range(2) for e in json.loads((self.root/'out'/f'inventory-{i}.json').read_text())['entries']]
+        self.assertEqual(len(all_entries), 4)
+        self.assertEqual(next(e for e in all_entries if e['id'] == 'xx_reference')['status'], 'source_alias')
+        import os, subprocess
+        # Merge real cross-shard outcomes; this acquisition fixture intentionally
+        # supplies no OSM graph, so it makes no map-geometry coverage claim.
+        program = "import{mergeInventories}from'./scripts/assemble-global-frequency.mjs';import{readFileSync}from'node:fs';const root=process.argv[1];console.log(JSON.stringify(mergeInventories([0,1].map(i=>JSON.parse(readFileSync(root+'/inventory-'+i+'.json','utf8')))).counts))"
+        assembly = subprocess.run([os.environ.get('ATLAS_TEST_NODE', 'node'), '--input-type=module', '-e', program, str(self.root/'out')], cwd=pipeline.ROOT, capture_output=True, text=True)
+        self.assertEqual(assembly.returncode, 0, assembly.stdout+assembly.stderr)
+        self.assertEqual(json.loads(assembly.stdout), {'compiled': 1, 'non_timetable': 1, 'source_alias': 1, 'retry_pending': 1})
+
+    def test_malformed_resolution_and_alias_targets_fail_closed(self):
+        base = {'filename': 'x.gtfs.zip', 'source': 'https://operator.test/feed', 'delivery': 'direct', 'lineage': [{'catalogue': 'mobility-database', 'id': 'known'}]}
+        for value in [[], 'schedule', {'schema': 2}, {'schema': 1, 'state': 'schedule', 'specs': ['gbfs'], 'declarations': []}, {'schema': 1, 'state': 'non_timetable_format', 'specs': ['gtfs'], 'declarations': []},
+                      {'schema': 1, 'state': 'schedule', 'specs': ['gtfs'], 'declarations': [], 'processed_filename': '../escape.zip'}]:
+            with self.subTest(value=value):
+                entry = pipeline.discover([{**base, 'source_resolution': value}], {})[0]
+                self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
+                self.assertEqual(pipeline.source_candidates(entry), [])
+        state = {'schema': 1, 'state': 'schedule', 'specs': ['gtfs'], 'declarations': [],
+                 'processed_filename': None, 'acquisition_alias_of': 'missing', 'alias_source_sha256': 'a'*64}
+        entry = pipeline.discover([{**base, 'source_resolution': state}], {})[0]
+        self.assertEqual(entry['reason_code'], 'ambiguous_source_reference')
+        self.assertEqual(pipeline.source_candidates(entry), [])
+
+    def test_reference_alias_requires_compatible_owner_policy_and_full_candidate_set(self):
+        url = 'https://public.test/feed.zip'
+        index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
+            'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+        definition = ('xx', {'name': 'reference', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static', 'skip': True}, 'https://github.test/pin/xx.json')
+        rows = pipeline.registry.build_catalogue([], [definition], [{'id': 'owner', 'data_type': 'gtfs', 'urls.direct_download': url, 'location.country_code': 'CN'}], 'b'*40, index)[0]
+        entries = {e['id']: e for e in pipeline.discover(rows, {})}
+        self.assertEqual(entries['mdb_owner']['reason_code'], 'provider_policy')
+        self.assertEqual(entries['xx_reference']['reason_code'], 'ambiguous_source_reference')
+        self.assertIn('incompatible acquisition policy', entries['xx_reference']['reason'])
+        self.assertEqual(pipeline.source_candidates(entries['xx_reference']), [])
+        ordinary = ('xx', {'name': 'reference', 'type': 'http', 'url': 'https://independent.test/rail.zip'}, 'https://github.test/pin/xx.json')
+        rows = pipeline.registry.build_catalogue([], [ordinary, definition], [{'id': 'owner', 'data_type': 'gtfs', 'urls.direct_download': url}], 'b'*40, index)[0]
+        entry = next(e for e in pipeline.discover(rows, {}) if e['id'] == 'xx_reference')
+        self.assertEqual(entry['status'], 'pending')
+        self.assertIn('https://independent.test/rail.zip', pipeline.source_candidates(entry))
+        self.assertEqual(entry['processed_url'], pipeline.PROCESSED+'xx_reference.gtfs.zip')
+        self.assertIsNone(entry['catalogue']['source_resolution']['acquisition_alias_of'])
+
     def test_retry_after_receipts_survive_two_runs_without_early_requests(self):
         from email.utils import formatdate
         from urllib.error import HTTPError
