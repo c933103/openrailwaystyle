@@ -189,6 +189,32 @@ relative so the repository subpath works. The workflow uploads a reviewable site
 artifact and browser screenshots, verifies deployed vector-tile bytes, and runs
 browser checks against the published map.
 
+### Custom domain
+
+The intended canonical URL is [https://10671435.xyz/](https://10671435.xyz/).
+The Pages artifact contains the contents of `styles/`, so `styles/index.html`
+is served at the domain root. Keep application assets, the manifest and the
+service worker relative; no `/styles/` redirect or repository-path prefix is
+needed. The workflow uses the Pages deployment's reported URL for its published
+tile and browser checks.
+
+**Activation status on 2026-10-09: pending.** The domain is still parked at the
+registrar. Repository URL changes do not configure the domain. Complete the
+external setup before merging the canonical-URL change:
+
+1. Set **Settings → Pages → Custom domain** to `10671435.xyz` in this repository.
+2. Configure the domain's DNS for GitHub Pages using GitHub's
+   [custom-domain instructions](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site).
+3. Wait for successful DNS verification and certificate issuance, then enable
+   **Enforce HTTPS** and verify that the domain serves Railway Atlas. See
+   [GitHub Pages HTTPS](https://docs.github.com/en/pages/getting-started-with-github-pages/securing-your-github-pages-site-with-https).
+
+This Actions-based deployment uses the repository's Pages settings for the
+custom domain; a `CNAME` file in the artifact does not configure it. The station
+search probe sends the origin of `MAP_BASE_URL` and checks that the API permits
+it; its default is `https://10671435.xyz/`. Set `MAP_BASE_URL` when checking a
+fork or another deployment.
+
 ## Served code version
 
 Expand the map's bottom-right information button to see the executing asset build and a link to its source commit. Carto keeps this attribution open. The commit and its repository URL are embedded into the existing cached label-code bundle by `scripts/build-browser.mjs` from CI's `GITHUB_SHA`, `GITHUB_REPOSITORY` and `GITHUB_SERVER_URL`; they are not fetched from the latest branch head. Fork builds link to their own repository. An older cached page therefore reports its own build. A mixed cached bundle reports both asset versions. Local builds without `GITHUB_SHA` say “Development build”; a commit supplied without a repository is shown without a link.
