@@ -9,6 +9,7 @@ download. Raw ZIPs are a cache, not site assets. No Overpass requests are made.
 import argparse
 from collections import Counter
 import datetime as dt
+from email.utils import parsedate_to_datetime
 import gzip
 import hashlib
 import importlib.util
@@ -117,6 +118,22 @@ def discover(rows, rules):
 RETRYABLE_HTTP = {408, 425, 429, 500, 502, 503, 504}
 
 
+def retry_after_delay(value, now=None):
+    """Decode either HTTP Retry-After form; malformed values use normal backoff."""
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    if re.fullmatch(r'[0-9]+', value):
+        return int(value)
+    try:
+        deadline = parsedate_to_datetime(value)
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=dt.timezone.utc)
+        return max(0.0, deadline.timestamp() - (time.time() if now is None else now))
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
 def get(url, headers=None):
     """Bounded retry for transport outages; never loop on permanent HTTP 404."""
     request = Request(url, headers={'User-Agent': 'RailwayAtlas-frequency/1.0 (+https://github.com/c933103/openrailwaystyle)', **(headers or {})})
@@ -126,16 +143,13 @@ def get(url, headers=None):
         except HTTPError as error:
             if error.code not in RETRYABLE_HTTP or attempt == 2:
                 raise
-            retry_after = error.headers.get('Retry-After') if error.headers else None
-            if retry_after and retry_after.isdigit() and int(retry_after) > 8:
+            delay = retry_after_delay(error.headers.get('Retry-After')) if error.headers else None
+            if delay is not None and delay > 8:
                 # Respect a publisher's longer retry window: the next
                 # scheduled workflow can retry instead of hammering it now.
                 raise
-            try:
-                delay = max(float(retry_after), 0.0) if retry_after and retry_after.isdigit() else float(2 ** attempt)
-            finally:
-                error.close()
-            time.sleep(delay)
+            error.close()
+            time.sleep(float(2 ** attempt) if delay is None else delay)
         except (URLError, TimeoutError, ConnectionError):
             if attempt == 2:
                 raise

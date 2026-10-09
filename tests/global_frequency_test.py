@@ -282,6 +282,86 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual(len(record['source_attempts']),2)
         self.assertEqual(record['next_action'],'repair_or_find_feed_url')
 
+    def test_retry_after_parses_seconds_dates_past_and_invalid_values(self):
+        from email.utils import formatdate
+        now = 1791536400.0
+        cases = [('0', 0), (' 8 ', 8), ('120', 120),
+                 (formatdate(now + 5, usegmt=True), 5),
+                 (formatdate(now + 3600, usegmt=True), 3600),
+                 (formatdate(now - 10, usegmt=True), 0),
+                 (None, None), ('', None), ('later', None), ('-1', None), ('1.5', None)]
+        for value, expected in cases:
+            with self.subTest(value=value):
+                self.assertEqual(pipeline.retry_after_delay(value, now), expected)
+
+    def test_short_retry_after_date_waits_until_the_publisher_deadline(self):
+        from email.utils import formatdate
+        from urllib.error import HTTPError
+        clock=[1791536400.0]
+        deadline=clock[0]+5
+        requests=[]
+        def upstream(request,timeout=45):
+            requests.append(clock[0])
+            if len(requests)==1:
+                raise HTTPError(request.full_url,503,'Unavailable',
+                                {'Retry-After':formatdate(deadline,usegmt=True)},io.BytesIO())
+            return io.BytesIO(b'ok')
+        def advance(delay):
+            clock[0]+=delay
+        with patch.object(pipeline,'urlopen',side_effect=upstream), \
+             patch.object(pipeline.time,'time',side_effect=lambda:clock[0]), \
+             patch.object(pipeline.time,'sleep',side_effect=advance) as sleep:
+            with pipeline.get('https://operator.example/rail.zip') as response:
+                self.assertEqual(response.read(),b'ok')
+        self.assertEqual(requests,[deadline-5,deadline])
+        sleep.assert_called_once_with(5.0)
+
+    def test_retry_after_dates_bound_requests_and_preserve_retry_pending_inventory(self):
+        from email.utils import formatdate
+        from urllib.error import HTTPError
+        now = 1791536400.0
+        for header, sleeps, count in [
+                ('120', [], 1), (formatdate(now + 3600, usegmt=True), [], 1),
+                (formatdate(now + 5, usegmt=True), [5.0, 5.0], 3),
+                (formatdate(now - 5, usegmt=True), [0.0, 0.0], 3),
+                ('invalid', [1.0, 2.0], 3)]:
+            with self.subTest(header=header):
+                def unavailable(request, timeout=45):
+                    raise HTTPError(request.full_url,503,'Unavailable',{'Retry-After':header},io.BytesIO())
+                with patch.object(pipeline,'urlopen',side_effect=unavailable) as request, \
+                     patch.object(pipeline.time,'time',return_value=now), \
+                     patch.object(pipeline.time,'sleep') as sleep:
+                    with self.assertRaises(HTTPError) as caught:
+                        pipeline.get('https://operator.example/rail.zip')
+                self.assertEqual(request.call_count,count)
+                self.assertEqual([x.args[0] for x in sleep.call_args_list],sleeps)
+                caught.exception.close()
+        catalogue=self.root/'delayed-catalogue.json'
+        catalogue.write_text(json.dumps([{'filename':'delayed.gtfs.zip','country_code':'CA',
+                                         'delivery':'direct','source':'https://operator.example/rail.zip'}]))
+        cache,output=self.root/'delay-cache',self.root/'delay-output'
+        def deferred(entry,*args):
+            try:
+                pipeline.get(entry['processed_url'])
+            except HTTPError as error:
+                raise pipeline.SourceRetrievalError([pipeline.source_attempt(entry['processed_url'],error)])
+        def long_delay(request,timeout=45):
+            raise HTTPError(request.full_url,429,'Rate Limited',
+                            {'Retry-After':formatdate(now+3600,usegmt=True)},io.BytesIO())
+        with patch('sys.argv',['global-service-frequency.py','--catalogue',str(catalogue),
+                              '--cache',str(cache),'--output',str(output),'--date','2026-10-05']), \
+             patch.object(pipeline,'compile_entry_isolated',side_effect=deferred), \
+             patch.object(pipeline,'urlopen',side_effect=long_delay) as request, \
+             patch.object(pipeline.time,'time',return_value=now), \
+             patch.object(pipeline.time,'sleep') as sleep:
+            pipeline.main()
+        record=json.loads((output/'inventory-0.json').read_text())['entries'][0]
+        self.assertEqual(request.call_count,1)
+        sleep.assert_not_called()
+        self.assertEqual(record['status'],'retry_pending')
+        self.assertTrue(record['retry_eligible'])
+        self.assertEqual(record['source_attempts'][0]['code'],'http_429')
+
     def archive(self,rail=True):
         data=io.BytesIO()
         with zipfile.ZipFile(data,'w',compression=zipfile.ZIP_DEFLATED) as z:
