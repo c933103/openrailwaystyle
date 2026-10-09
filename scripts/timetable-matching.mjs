@@ -136,17 +136,17 @@ export function matchTimetablePattern(input = {}) {
     if (!candidate || !array(candidate.route_bindings, 32)) { blockers.push(['missing_evidence', 'invalid_candidate']); continue; }
     const previous = candidate.route_bindings.some(row => row && row.feed_id === source.feed_id && row.route_id === pattern.source_route_id && row.source_sha256 !== source.sha256);
     if (previous && candidate.eligibility !== 'excluded') { blockers.push(['stale', 'route_binding_source_mismatch']); continue; }
-    const oldOperator = candidate.operator_binding?.feed_id === source.feed_id && candidate.operator_binding.agency_id === pattern.agency_id &&
-      id(pattern.route_ref) && candidate.osm?.tags?.ref === pattern.route_ref && candidate.operator_binding.source_sha256 !== source.sha256;
-    if (oldOperator && candidate.eligibility !== 'excluded') { blockers.push(['stale', 'operator_binding_source_mismatch']); continue; }
     const exact = candidate.route_bindings.filter(row => bound(row) && row.route_id === pattern.source_route_id);
-    const fallback = bound(candidate.operator_binding) && candidate.operator_binding.agency_id === pattern.agency_id &&
-      id(pattern.route_ref) && candidate.osm?.tags?.ref === pattern.route_ref;
+    const sameOperator = candidate.operator_binding?.feed_id === source.feed_id && candidate.operator_binding.agency_id === pattern.agency_id;
+    const refMatches = id(pattern.route_ref) && candidate.osm?.tags?.ref === pattern.route_ref;
+    const relevantOperator = sameOperator && (exact.length > 0 || refMatches);
+    if (relevantOperator && candidate.operator_binding.source_sha256 !== source.sha256) { blockers.push(['stale', 'operator_binding_source_mismatch']); continue; }
+    const fallback = sameOperator && refMatches && bound(candidate.operator_binding);
     if (!exact.length && !fallback) continue;
     if (candidate.eligibility !== 'eligible') { blockers.push(['missing_evidence', 'unverified_eligibility']); continue; }
     eligible++;
-    if (candidate.status === 'conflict' || exact.some(row => row.status === 'conflict')) { blockers.push(['conflicting', 'service_identity_conflict']); continue; }
-    if (candidate.status !== 'verified' || (exact.length ? exact.some(row => row.status !== 'verified') : candidate.operator_binding.status !== 'verified')) { blockers.push(['missing_evidence', 'unverified_service_identity']); continue; }
+    if (candidate.status === 'conflict' || exact.some(row => row.status === 'conflict') || (relevantOperator && candidate.operator_binding.status === 'conflict')) { blockers.push(['conflicting', 'service_identity_conflict']); continue; }
+    if (candidate.status !== 'verified' || exact.some(row => row.status !== 'verified') || (relevantOperator && candidate.operator_binding.status !== 'verified')) { blockers.push(['missing_evidence', 'unverified_service_identity']); continue; }
     const osm = candidate.osm;
     if (!record(osm, osmFields) || osm?.status !== 'captured' || !array(osm.reasons, 0) || !positive(osm.relation_id) || !positive(osm.version) || !instant(osm.timestamp) || !instant(osm.snapshot) || Date.parse(osm.timestamp) > Date.parse(osm.snapshot) || !capturedTags(osm.tags) || !digest(osm.fingerprint) || !id(candidate.service_id)) { blockers.push(['missing_evidence', 'missing_osm_declaration']); continue; }
     if (!array(osm.served_members, 512) || !array(osm.track_members, 10000) || !array(candidate.eligible_way_ids, 10000) || !array(candidate.variants, 128)) { blockers.push(['missing_evidence', 'invalid_service_sections']); continue; }

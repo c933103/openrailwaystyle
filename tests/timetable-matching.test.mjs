@@ -297,3 +297,27 @@ test('unknown eligibility and incomplete candidate coverage are not treated as e
   input.candidates = [{eligibility: 'excluded'}]; input.context.candidate_inventory = 'partial';
   assert.equal(status(input), 'missing_evidence');
 });
+
+test('a current conflicting operator assertion blocks an exact binding on the same candidate', () => {
+  const input = fixture();
+  input.candidates[0].operator_binding = {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: 'conflict'};
+  assert.equal(status(input), 'conflicting');
+});
+
+test('operator assertion absence, uncertainty and unrelated scope remain distinct beside exact bindings', () => {
+  assert.equal(status(fixture()), 'verified', 'absence is not a conflicting assertion');
+  for (const state of ['unknown', undefined]) {
+    const input = fixture(); input.candidates[0].operator_binding = {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: state};
+    assert.equal(status(input), 'missing_evidence');
+  }
+  for (const scope of [{feed_id: 'other', agency_id: 'A'}, {feed_id: 'feed', agency_id: 'other'}]) {
+    const input = fixture(); input.candidates[0].operator_binding = {...scope, source_sha256: sha, status: 'conflict'};
+    assert.equal(status(input), 'verified');
+  }
+  const noRef = fixture(), pattern = noRef.evidence.patterns[0];
+  pattern.route_ref = null;
+  const {id, ...definition} = pattern; pattern.id = hash(['feed', sha, definition]);
+  noRef.pattern_id = pattern.id; noRef.evidence.observations[0].pattern_id = pattern.id; sealObservations(noRef);
+  noRef.candidates[0].operator_binding = {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: 'conflict'};
+  assert.equal(status(noRef), 'conflicting', 'an exact binding establishes relevance without a ref guess');
+});

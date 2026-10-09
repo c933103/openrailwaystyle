@@ -166,7 +166,9 @@ copied to results. Resource-limit outcomes remain `missing_evidence`.
 - `stale`: expired feed/review/observation validity or mismatched source/OSM pins.
 
 A plausible stale, conflicting or incomplete alternative prevents a verified
-first candidate from winning. Every result says
+first candidate from winning. A supplied same-feed/agency operator assertion
+remains relevant beside an exact route binding, even without a route ref;
+conflict or uncertainty is distinct from absent or differently scoped evidence. Every result says
 `frequency_status: "not_evaluated"`; it supplies no rate or profile. A successful
 identity decision alone must never copy a consolidated route's frequency onto
 all matched branches. Unknown is not zero.
