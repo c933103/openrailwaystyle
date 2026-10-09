@@ -282,6 +282,34 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual(same['status'],'compiled')
         self.assertEqual(same['source']['retrieved'],result['source']['retrieved'])
 
+    def test_malformed_routes_metadata_falls_back_for_whole_and_ranged_archives(self):
+        valid=self.archive()
+        for ranges in [False,True]:
+            for name,table in [('missing-table',None),('missing-column',b'route_id,route_short_name\nr,R\n'),
+                               ('missing-value',b'route_id,route_type\nr\n')]:
+                with self.subTest(ranges=ranges,malformation=name):
+                    data=io.BytesIO()
+                    with zipfile.ZipFile(io.BytesIO(valid)) as old,zipfile.ZipFile(data,'w') as archive:
+                        for item in old.infolist():
+                            if item.filename!='routes.txt':archive.writestr(item,old.read(item.filename))
+                        if table is not None:archive.writestr('routes.txt',table)
+                    broken,held=self.server(data.getvalue(),ranges=ranges)
+                    fallback,_=self.server(valid)
+                    entry=pipeline.discover([{'filename':'fallback.gtfs.zip','source':fallback,'country_code':'CA'}],{})[0]
+                    entry['processed_url']=broken
+                    cache=self.root/f'cache-{ranges}-{name}';cache.mkdir()
+                    result=pipeline.compile_entry(entry,cache,self.root/f'output-{ranges}-{name}',
+                                                  '2026-10-05',None,1_000_000,pipeline.PROFILES)
+                    self.assertEqual(result['status'],'compiled')
+                    self.assertEqual(result['source']['download_url_sha256'],pipeline.source_url_fingerprint(fallback))
+                    self.assertEqual(result['source']['recovered_source_errors'][0]['code'],'invalid_feed_or_budget')
+                    self.assertTrue(held['requests'])
+                    direct=pipeline.discover([{'filename':'broken.gtfs.zip','source':broken,'country_code':'CA','delivery':'direct'}],{})[0]
+                    with self.assertRaises(pipeline.SourceRetrievalError) as error:
+                        pipeline.fetch_alternative(direct,cache/'broken.zip',1_000_000)
+                    self.assertEqual(error.exception.attempts[0]['code'],'invalid_feed_or_budget')
+                    self.assertFalse((cache/'broken.zip').exists(),'unusable metadata is not a successful no-rail cache')
+
     def test_lineage_fallback_enforces_domains_and_exact_source_review_before_fetch(self):
         from urllib.error import HTTPError
         allowed, held = self.server(self.archive())

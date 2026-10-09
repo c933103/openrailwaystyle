@@ -550,7 +550,9 @@ def fetch_alternative(entry, path, max_bytes, skip=()):
             # entire stop_times/shapes archive or consume a compile slot.
             import csv
             routes = csv.DictReader(io.StringIO(remote.table('routes.txt').decode('utf-8-sig')))
-            if not any(compiler.rail_type(row['route_type']) for row in routes):
+            if 'route_type' not in (routes.fieldnames or []):
+                raise ValueError('Missing routes.txt route_type column')
+            if not any(compiler.rail_type(row.get('route_type') or '') for row in routes):
                 return {
                     'no_rail': True, 'download_url': redacted_source_url(url),
                     'download_url_sha256': source_url_fingerprint(url),
@@ -657,7 +659,11 @@ class RemoteZip:
     def table(self, name):
         if self.full is not None:
             with zipfile.ZipFile(io.BytesIO(self.full)) as archive:
-                if archive.getinfo(name).file_size > 128_000_000:
+                try:
+                    info = archive.getinfo(name)
+                except KeyError:
+                    raise ValueError('Missing '+name) from None
+                if info.file_size > 128_000_000:
                     raise ValueError('Metadata table exceeds budget')
                 return archive.read(name)
         if self.directory is None:
