@@ -30,6 +30,19 @@ test('production consumes the same normalized catalogue and publishes no per-fee
   assert.doesNotMatch(job('publish'),/tar .*\bfeeds\b/);
 });
 
+test('catalogue acquisition has explicit time ceilings and fails closed before publication',()=>{
+  const catalogue=job('catalogue');
+  assert.match(catalogue,/timeout-minutes: 30/);
+  assert.match(catalogue,/timeout --signal=TERM --kill-after=30s 600 git clone/);
+  assert.match(catalogue,/timeout --signal=TERM --kill-after=30s 600 git -C catalogue\/transitous sparse-checkout/);
+  assert.match(catalogue,/curl --fail --retry 3 --retry-all-errors --retry-max-time 900 --location --max-time 300/);
+  assert.doesNotMatch(catalogue,/continue-on-error|\|\| true/);
+  for(const name of ['compile','assemble','publish'])assert.doesNotMatch(job(name).split('    steps:')[0],/always\(/);
+  assert.match(job('compile'),/needs: catalogue/);
+  assert.match(job('assemble'),/needs: \[catalogue, compile\]/);
+  assert.match(job('publish'),/needs: assemble/);
+});
+
 test('PR frequency validation executes immutable PR head without retained credentials',()=>{
   const validate=job('validate-pr');
   assert.match(validate,/if: github\.event_name == 'pull_request'/);

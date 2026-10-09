@@ -91,6 +91,7 @@ jobs:
   catalogue:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     outputs:
       service_date: ${{ steps.date.outputs.value }}
     steps:
@@ -113,10 +114,10 @@ jobs:
       - name: Pin actual Transitous feed registry and authoritative Mobility Database export
         run: |
           mkdir -p catalogue
-          git clone --quiet --depth=1 --filter=blob:none --sparse https://github.com/public-transport/transitous.git catalogue/transitous
-          git -C catalogue/transitous sparse-checkout set feeds website/data
+          timeout --signal=TERM --kill-after=30s 600 git clone --quiet --depth=1 --filter=blob:none --sparse https://github.com/public-transport/transitous.git catalogue/transitous
+          timeout --signal=TERM --kill-after=30s 600 git -C catalogue/transitous sparse-checkout set feeds website/data
           transitous_ref="$(git -C catalogue/transitous rev-parse HEAD)"
-          curl --fail --retry 3 --retry-all-errors --location --max-time 300 \
+          curl --fail --retry 3 --retry-all-errors --retry-max-time 900 --location --max-time 300 \
             https://files.mobilitydatabase.org/feeds_v2.csv --output catalogue/mobility.csv
           python3 scripts/frequency_catalogue.py \
             --licences catalogue/transitous/website/data/license.json \

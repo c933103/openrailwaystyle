@@ -114,6 +114,38 @@ exclusion. The October 9 follow-up catalogue run reported 5,486 entries,
 exclusions. These dated discovery results are not proof of compiled or mapped
 rail services, and this integration does not acquire a fresh catalogue.
 
+## Resource limits and coverage expansion
+
+A main-branch merge affecting this pipeline starts production acquisition and
+normal site validation; successful aggregate publication then starts another
+site build. PR checks do neither. The October 9 pinned discovery result had
+5,481 pending candidates, compared with 819 non-excluded entries in the older
+2,039-entry run. Those cohorts differ and are not a reconciled rail-coverage
+count. Processing demand can grow materially; fixture-only PR validation and
+retained assembly optimizations do not establish a production load reduction.
+
+Catalogue acquisition has a 30-minute job ceiling. The Transitous clone and
+sparse materialization each have a 600-second timeout with a 30-second kill
+grace. Mobility CSV retrieval has a 300-second per-transfer timeout, three
+retries and a 900-second retry window. Failure stops dependent compilation,
+assembly and publication; it leaves the last valid published release intact.
+
+Production retains eight deterministic compile shards with 180-minute job
+ceilings. Per-feed limits remain 600 MB downloaded, 3 GB process address space,
+600 seconds for geometry compilation plus a 600-second stop-pair fallback, and
+a 1,500-second outer subprocess deadline. Each source has at most eight
+candidate URLs; each HTTP operation has at most three attempts with a 45-second
+timeout. Retry-After waits above eight seconds defer that retrieval rather than
+sleeping in the worker. Assembly retains its 90-minute job ceiling, 5.5 GB Node
+heap and complete-inventory checks. The public release contains only the
+aggregate manifest, inventory and tiles, not per-feed derived archives.
+
+These are per-feed and per-job limits, **not** a global run byte/request budget
+or cross-shard origin scheduler. Measuring the expanded workload and designing
+those aggregate controls remain separate follow-up work. Existing 2 GB expanded
+archive, 512 MB table, three-million table-row and ten-thousand retained-stop-row
+limits also remain unresolved scalability constraints for valid large feeds.
+
 ## Geometry and service identity
 
 The compiled geometry below is kept for matching timetable routes to
