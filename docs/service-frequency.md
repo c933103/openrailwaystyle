@@ -145,6 +145,24 @@ sleeping in the worker. Assembly retains its 90-minute job ceiling, 5.5 GB Node
 heap and complete-inventory checks. The public release contains only the
 aggregate manifest, inventory and tiles, not per-feed derived archives.
 
+Source-failure logs, compiled provenance/agency/route metadata, shard inventories
+and final aggregate metadata redact URL userinfo, query **values** and fragments.
+Endpoint paths and parameter names stay visible for diagnosis. A sibling
+`<field>_sha256` is the SHA-256 of the exact original UTF-8 URL: it preserves
+same-path/different-query identity and cache validation across runs. It is an
+identity fingerprint, not encryption or an authorization credential. Legacy
+cache URLs migrate after matching the complete current source URL; redacted
+display URLs never become retrieval inputs or cache-identity comparisons.
+
+The pinned operational `catalogue/catalogue.json` is passed between acquisition
+and compile jobs as a GitHub Actions staging artifact with its original public
+source URLs. Ordinary public query parameters can be required for retrieval;
+they are not all secrets and cannot simply be removed. Staging artifacts and
+the retained raw cache are separate from the aggregate-only release. This
+redaction does not claim to sanitize historical artifacts or arbitrary secrets
+embedded in paths/free text. Confirmed private access material requires stopping
+the affected publication/acquisition path and separate private review.
+
 These are per-feed and per-job limits, **not** a global run byte/request budget
 or cross-shard origin scheduler. Measuring the expanded workload and designing
 those aggregate controls remain separate follow-up work. Existing 2 GB expanded

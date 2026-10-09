@@ -28,7 +28,7 @@ import sys
 import tempfile
 import time
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urljoin, urlparse
+from urllib.parse import parse_qsl, quote, unquote, urlencode, urljoin, urlparse, urlunparse
 from urllib.request import Request
 import zipfile
 
@@ -392,10 +392,87 @@ def source_candidates(entry):
     return urls[:8]
 
 
+def redacted_source_url(url):
+    """Retain endpoint/parameter context without credentials or query values."""
+    if not url:
+        return ''
+    try:
+        url = url.replace('\\/', '/')
+        if re.match(r'^https?%3a', url, re.I):
+            url = unquote(url, errors='strict')
+        if re.search(r'[\x00-\x20\x7f]', url):
+            return '[invalid source URL]'
+        parsed = urlparse(url)
+        host = parsed.hostname or ''
+        if not host:
+            return '[invalid source URL]'
+        authority = '['+host+']' if ':' in host else host
+        if parsed.port is not None:
+            authority += ':'+str(parsed.port)
+        parameters = parse_qsl(parsed.query, keep_blank_values=True, max_num_fields=128)
+        query = urlencode([(key if re.fullmatch(r'[A-Za-z0-9_.-]{1,80}', key) else 'parameter',
+                            '[redacted]') for key, _ in parameters])
+        return urlunparse((parsed.scheme, authority, parsed.path, parsed.params, query, ''))
+    except (AttributeError, TypeError, ValueError):
+        return '[invalid source URL]'
+
+
+URL_START = re.compile(r'^(?:[a-z][a-z0-9+.-]*:(?:/|\\/){1,2}|https?%3a(?:%2f){1,2}|//)', re.I)
+URL_IN_TEXT = re.compile(r'''(?:[a-z][a-z0-9+.-]*:(?:/|\\/){1,2}|https?%3a(?:%2f){1,2}|//)[^\s<>"'`]+''', re.I)
+
+
+def redacted_diagnostic(value):
+    if URL_START.match(value):
+        return redacted_source_url(value)
+    return URL_IN_TEXT.sub(lambda match: redacted_source_url(match[0]), value)
+
+
+def published_metadata(value):
+    """Redact diagnostic copies; never use display URLs as acquisition inputs."""
+    if isinstance(value, str):
+        return redacted_diagnostic(value)
+    if isinstance(value, list):
+        return [published_metadata(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    def public_key(key):
+        display = redacted_diagnostic(key)
+        return key if display == key else '[sha256:'+source_url_fingerprint(key)+'] '+display
+    result = {public_key(key): published_metadata(item) for key, item in value.items()}
+    for key, item in value.items():
+        hash_key = public_key(key)+'_sha256'
+        if isinstance(item, str) and URL_START.match(item):
+            if not re.fullmatch(r'[a-f0-9]{64}', str(result.get(hash_key, ''))):
+                result[hash_key] = source_url_fingerprint(item)
+        elif isinstance(item, list) and any(isinstance(x, str) and URL_START.match(x) for x in item):
+            if not isinstance(result.get(hash_key), list):
+                result[hash_key] = [source_url_fingerprint(x) if isinstance(x, str) and URL_START.match(x) else None for x in item]
+    return result
+
+
+def source_url_fingerprint(url):
+    """Full-URL identity only, not encryption or an authorization credential."""
+    return hashlib.sha256(url.encode('utf-8')).hexdigest()
+
+
+def cached_source_url(meta, candidates, default=None):
+    """Match operational inputs by full identity, never by a redacted display."""
+    fingerprint = meta.get('download_url_sha256')
+    if fingerprint:
+        return next((url for url in candidates if source_url_fingerprint(url) == fingerprint), None)
+    # One-way compatibility with earlier private cache records. A successful
+    # use rewrites this raw legacy URL as a fingerprint plus redacted display.
+    legacy = meta.get('download_url') or default
+    return legacy if legacy in candidates else None
+
+
 class SourceRetrievalError(RuntimeError):
     """Unresolved transport/feed failure after attempting available source links."""
-    def __init__(self, attempts):
+    def __init__(self, attempts, unsafe_urls=()):
         self.attempts = attempts
+        # Raw identities only decide whether an in-memory cache may be used.
+        # They are not included in the message, JSON response or source audit.
+        self._unsafe_urls = set(unsafe_urls)
         summary = '; '.join(x['code'] + ' @ ' + x['url'] for x in attempts)
         super().__init__('Source endpoints unavailable or unusable: ' + summary[:1900])
 
@@ -416,7 +493,12 @@ def source_attempt(url, error):
         code = 'invalid_zip'
     elif isinstance(error, ValueError):
         code = 'invalid_feed_or_budget'
-    return {'url': url, 'code': code, 'message': str(error)[:350]}
+    # HTTP reason lines and transport exception text are upstream-controlled
+    # and can echo access-like query values. Keep only a bounded category.
+    message = ('HTTP '+str(error.code) if isinstance(error, HTTPError)
+               else type(error).__name__+': source acquisition failed')
+    return {'url': redacted_source_url(url), 'url_sha256': source_url_fingerprint(url),
+            'code': code, 'message': message}
 
 
 def valid_cached_archive(path, meta, candidates, max_age_days=30):
@@ -427,7 +509,7 @@ def valid_cached_archive(path, meta, candidates, max_age_days=30):
     """
     checked = meta.get('checked') or meta.get('retrieved')
     if (meta.get('no_rail') or not checked or not path.is_file()
-            or meta.get('download_url') not in candidates):
+            or cached_source_url(meta, candidates) is None):
         return False
     try:
         last_success = dt.date.fromisoformat(checked)
@@ -446,7 +528,7 @@ def fetch_alternative(entry, path, max_bytes, skip=()):
     Cache writes only after a valid ZIP has been downloaded. Each upstream
     failure stays attached to the resulting source entry for investigation.
     """
-    attempts = []
+    attempts, unsafe_urls = [], set()
     for url in source_candidates(entry):
         if url in skip:
             continue
@@ -458,7 +540,8 @@ def fetch_alternative(entry, path, max_bytes, skip=()):
             routes = csv.DictReader(io.StringIO(remote.table('routes.txt').decode('utf-8-sig')))
             if not any(compiler.rail_type(row['route_type']) for row in routes):
                 return {
-                    'no_rail': True, 'download_url': url,
+                    'no_rail': True, 'download_url': redacted_source_url(url),
+                    'download_url_sha256': source_url_fingerprint(url),
                     'etag': remote.etag, 'last_modified': remote.last_modified,
                     'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()
                 }, attempts
@@ -471,11 +554,14 @@ def fetch_alternative(entry, path, max_bytes, skip=()):
             temporary.replace(path)
             return {
                 'etag': remote.etag, 'last_modified': remote.last_modified,
-                'download_url': url, 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()
+                'download_url': redacted_source_url(url), 'download_url_sha256': source_url_fingerprint(url),
+                'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()
             }, attempts
         except (HTTPError, URLError, TimeoutError, ConnectionError, OSError, ValueError, zipfile.BadZipFile, http.client.HTTPException) as error:
+            if isinstance(error, (SourcePolicyError, UnsafeSourceURL)):
+                unsafe_urls.add(url)
             attempts.append(source_attempt(url, error))
-    raise SourceRetrievalError(attempts or [{'url': '', 'code': 'missing_source_url', 'message': 'No suitable published GTFS source URL'}])
+    raise SourceRetrievalError(attempts or [{'url': '', 'code': 'missing_source_url', 'message': 'No suitable published GTFS source URL'}], unsafe_urls)
 
 
 class RemoteZip:
@@ -603,6 +689,13 @@ class RemoteZip:
 
 
 def write_feed(path, value):
+    # Redact provenance and GTFS URL columns, not matching identifiers that
+    # happen to resemble URLs. Avoid a second copy or walk of geometry/profiles.
+    value = {**value, 'source': published_metadata(value['source'])}
+    for table in ('agencies', 'routes'):
+        if table in value:
+            value[table] = [{**row, **published_metadata({key: item for key, item in row.items()
+                            if key == 'url' or key.endswith('_url')})} for row in value[table]]
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix('.tmp')
     with temporary.open('wb') as raw:
@@ -628,8 +721,11 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
     # outage MUST fall through to other known originals, not reject the feed.
     meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
     headers = {'If-None-Match': meta['etag']} if meta.get('etag') else {'If-Modified-Since':meta['last_modified']} if meta.get('last_modified') else {}
-    fresh, attempted, attempts = False, set(), []
-    cached_url = meta.get('download_url') or entry.get('processed_url')
+    fresh, attempted, attempts, unsafe_urls = False, set(), [], set()
+    cached_url = cached_source_url(meta, source_candidates(entry), entry.get('processed_url'))
+    if cached_url:
+        meta['download_url'] = redacted_source_url(cached_url)
+        meta['download_url_sha256'] = source_url_fingerprint(cached_url)
     if path.exists() and headers and cached_url in source_candidates(entry):
         try:
             with get(cached_url, headers, policy=lambda target: source_policy(entry, target)) as response:
@@ -643,12 +739,15 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
                 temporary.write_bytes(data)
                 temporary.replace(path)
                 meta = {'etag': response.headers.get('ETag'), 'last_modified':response.headers.get('Last-Modified'),
-                        'download_url': cached_url, 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
+                        'download_url': redacted_source_url(cached_url),
+                        'download_url_sha256': source_url_fingerprint(cached_url),
+                        'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
                 fresh = True
         except HTTPError as error:
             if error.code == 304:
                 error.close()
-                meta['download_url'] = cached_url
+                meta['download_url'] = redacted_source_url(cached_url)
+                meta['download_url_sha256'] = source_url_fingerprint(cached_url)
                 meta.pop('offline_cached', None)
                 meta.pop('recovered_source_errors', None)
                 fresh = True
@@ -657,6 +756,8 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
                 attempts.append(source_attempt(cached_url, error))
         except (URLError, TimeoutError, ConnectionError, OSError, ValueError, zipfile.BadZipFile, http.client.HTTPException) as error:
             attempted.add(cached_url)
+            if isinstance(error, (SourcePolicyError, UnsafeSourceURL)):
+                unsafe_urls.add(cached_url)
             attempts.append(source_attempt(cached_url, error))
     if not fresh:
         try:
@@ -664,9 +765,8 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
             attempts.extend(more_attempts)
         except SourceRetrievalError as error:
             attempts.extend(error.attempts)
-            safe_cache_urls = [url for url in source_candidates(entry)
-                               if not any(item['url'] == url and item['code'] in ('source_policy', 'unsafe_source_url')
-                                          for item in attempts)]
+            unsafe_urls.update(error._unsafe_urls)
+            safe_cache_urls = [url for url in source_candidates(entry) if url not in unsafe_urls]
             if valid_cached_archive(path, meta, safe_cache_urls):
                 # Continue compiling using the last successfully retrieved
                 # ZIP. Never advance its 'checked' or 'retrieved' timestamps.
@@ -674,7 +774,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
                 meta['recovered_source_errors'] = attempts
                 fresh = True
             else:
-                raise SourceRetrievalError(attempts) from error
+                raise SourceRetrievalError(attempts, unsafe_urls) from error
     if attempts:
         meta['recovered_source_errors'] = attempts
     if meta.get('no_rail'):
@@ -704,7 +804,10 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
         with gzip.open(destination, 'rt') as file:
             previous = json.load(file)
         if previous['source']['sha256'] == digest and previous['source']['service_date'] == date and previous['source'].get('input_signature') == signature:
+            previous['source'] = published_metadata(previous['source'])
             previous['source']['checked'] = meta['checked']
+            previous['source']['download_url'] = meta['download_url']
+            previous['source']['download_url_sha256'] = meta['download_url_sha256']
             previous['source']['offline_cached'] = bool(meta.get('offline_cached'))
             previous['source']['recovered_source_errors'] = meta.get('recovered_source_errors', [])
             write_feed(destination, previous)
@@ -722,7 +825,8 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
                'processed_url': entry['processed_url'], 'catalogue_url': row.get('catalogue_url') or CATALOGUE,
                'license': spdx, 'terms_url': terms_url, 'rights': rights,
                'catalogue_lineage': row.get('lineage', []),
-               'download_url': meta.get('download_url') or entry.get('processed_url'),
+               'download_url': meta.get('download_url') or redacted_source_url(entry.get('processed_url')),
+               'download_url_sha256': meta.get('download_url_sha256'),
                'recovered_source_errors': meta.get('recovered_source_errors', []),
                'offline_cached': bool(meta.get('offline_cached')),
                'attribution': row.get('attribution_text') or publisher.get('name') or entry['name'],
@@ -754,6 +858,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
         signal.alarm(0); signal.signal(signal.SIGALRM, previous_handler)
     source = result['source']
     source['attribution'] = '; '.join(dict.fromkeys([source['attribution']]+[a['agency_name'] for a in result['agencies']]+[a.get('organization_name','') for a in source['feed_attributions']]))
+    source = result['source'] = published_metadata(source)
     write_feed(destination, result)
     return {**entry, 'status': 'compiled', 'output': 'feeds/'+destination.name, 'sha256': digest,
             'rail_routes': len(result['routes']), 'mapped_segments': len(result['segments']),
@@ -773,7 +878,7 @@ def compile_entry_isolated(entry, cache, output, date, graph, max_bytes, profile
                                stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,text=True,
                                timeout=2*max_seconds+300)
         if not response.exists():
-            raise RuntimeError(f"Feed compiler exited {process.returncode}: {process.stderr[-2000:]}")
+            raise RuntimeError(f"Feed compiler exited {process.returncode}: {redacted_diagnostic(process.stderr)[-2000:]}")
         if response.stat().st_size > 8_000_000:
             raise ValueError('Feed audit metadata exceeds byte budget')
         result=json.loads(response.read_text())
@@ -794,12 +899,12 @@ def compile_one(request, response):
     if payload['graph']:
         payload['graph']=Path(payload['graph'])
     try:
-        atomic_json(Path(response),{'entry':compile_entry(**payload)})
+        atomic_json(Path(response),{'entry':published_metadata(compile_entry(**payload))})
     except SourceRetrievalError as error:
         atomic_json(Path(response),{'error':str(error)[:2000], 'source_attempts':error.attempts})
         return 1
     except Exception as error:
-        atomic_json(Path(response),{'error':f'{type(error).__name__}: {str(error)[:2000]}'})
+        atomic_json(Path(response),{'error':redacted_diagnostic(f'{type(error).__name__}: {error}')[:2000]})
         return 1
     return 0
 
@@ -869,7 +974,7 @@ def main():
             'scope': 'Every GTFS feed in the worldwide catalogue; no city allow-list',
             'counts': dict(Counter(x['status'] for x in outcomes)),
             'reason_codes': dict(Counter(x.get('reason_code') or 'none' for x in outcomes)),
-            'entries': outcomes})
+            'entries': published_metadata(outcomes)})
     for entry in entries:
         if int(hashlib.sha256(entry['id'].encode()).hexdigest(), 16) % args.shards != args.shard:
             continue
@@ -878,7 +983,7 @@ def main():
                 entry = compile_entry_isolated(entry, args.cache, args.output, args.date, args.rail_graph, args.max_feed_bytes, rules.get('profiles', PROFILES), args.max_compile_seconds, args.max_compile_memory_bytes)
             except Exception as error:
                 code, stage = classify_failure(error)
-                entry = {**entry, 'status': 'retry_pending', 'reason': f'{type(error).__name__}: {error}',
+                entry = {**entry, 'status': 'retry_pending', 'reason': redacted_diagnostic(f'{type(error).__name__}: {error}'),
                          'reason_code': code, 'failure_stage': stage, 'retry_eligible': True,
                          'next_action': ('repair_or_find_feed_url' if code in ('source_http_404', 'missing_source_url')
                                          else 'retry_source_or_repair_compiler'),
@@ -890,7 +995,7 @@ def main():
         if not args.inventory_only:
             save()
             print(entry['id'], entry['status'], entry.get('rail_routes', ''),
-                  entry.get('mapped_segments', ''), entry.get('reason', ''), flush=True)
+                  entry.get('mapped_segments', ''), redacted_diagnostic(entry.get('reason', '')), flush=True)
     if args.inventory_only:
         save()
     print(json.dumps({'catalogue_entries': len(entries), 'shard_outcomes': len(outcomes),

@@ -1,8 +1,10 @@
 import csv
+import gzip
 import importlib.util
 import io
 import json
 import socket
+import sys
 from pathlib import Path
 import tempfile
 import threading
@@ -88,6 +90,101 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual(item['status'],'retry_pending')
         self.assertTrue(item['retry_eligible'])
         self.assertEqual(item['reason_code'],'missing_source_url')
+
+    def test_source_failure_evidence_redacts_credentials_query_values_and_fragments(self):
+        from urllib.error import HTTPError
+        from urllib.parse import parse_qsl,urlparse
+        target='https://fixture-user:fixture-password@operator.example/feed.zip?api_key=fixture-key&mode=fixture-mode#fixture-fragment'
+        error=HTTPError(target,503,'Failure echoed '+target,{},io.BytesIO())
+        attempt=pipeline.source_attempt(target,error)
+        url=urlparse(attempt['url'])
+        self.assertEqual(url.hostname,'operator.example')
+        self.assertEqual(url.path,'/feed.zip')
+        self.assertIsNone(url.username)
+        self.assertEqual(parse_qsl(url.query),[('api_key','[redacted]'),('mode','[redacted]')])
+        self.assertEqual(url.fragment,'')
+        failure=pipeline.SourceRetrievalError([attempt],unsafe_urls=[target])
+        evidence=json.dumps(failure.attempts)+str(failure)
+        for value in ['fixture-user','fixture-password','fixture-key','fixture-mode','fixture-fragment']:
+            self.assertNotIn(value,evidence)
+        self.assertEqual(failure._unsafe_urls,{target},'raw identity stays in memory only for cache rejection')
+        self.assertEqual(attempt['message'],'HTTP 503')
+
+    def test_redacted_query_urls_keep_distinct_cache_identities_and_migrate_legacy_metadata(self):
+        base,held=self.server(self.archive())
+        first_url,second_url=base+'?feed=fixture-first',base+'?feed=fixture-second'
+        cache,output=self.root/'query-cache',self.root/'query-output';cache.mkdir()
+        def entry(url):
+            value=pipeline.discover([{'filename':'ca_query.gtfs.zip','source':url,
+                                     'country_code':'CA','delivery':'direct'}],{})[0]
+            return value
+        result=pipeline.compile_entry(entry(first_url),cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(result['status'],'compiled')
+        meta_path=cache/'ca_query.meta.json';meta=json.loads(meta_path.read_text())
+        self.assertNotIn('fixture-first',meta_path.read_text())
+        self.assertEqual(meta['download_url_sha256'],pipeline.source_url_fingerprint(first_url))
+        self.assertEqual(pipeline.redacted_source_url(first_url),pipeline.redacted_source_url(second_url))
+        self.assertNotEqual(pipeline.source_url_fingerprint(first_url),pipeline.source_url_fingerprint(second_url))
+        self.assertTrue(pipeline.valid_cached_archive(cache/'ca_query.zip',meta,[first_url]))
+        self.assertFalse(pipeline.valid_cached_archive(cache/'ca_query.zip',meta,[second_url]))
+        # Legacy private cache identity is accepted only against the same full
+        # current URL, and rewritten without its query value after revalidation.
+        meta['download_url']=first_url;meta.pop('download_url_sha256');meta_path.write_text(json.dumps(meta))
+        same=pipeline.compile_entry(entry(first_url),cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(same['status'],'compiled')
+        self.assertNotIn('fixture-first',meta_path.read_text())
+        self.assertEqual(same['source']['download_url_sha256'],pipeline.source_url_fingerprint(first_url))
+        # A different query with the same path must not reuse the old validator.
+        before=len(held['conditional_requests']);held['data']=self.archive(rail=False)
+        changed=pipeline.compile_entry(entry(second_url),cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        self.assertEqual(changed['status'],'no_rail')
+        self.assertTrue(all(value==(None,None) for value in held['conditional_requests'][before:]))
+        self.assertEqual(json.loads(meta_path.read_text())['download_url_sha256'],pipeline.source_url_fingerprint(second_url))
+
+    def test_compiled_shard_and_diagnostic_metadata_excludes_synthetic_url_values(self):
+        from contextlib import redirect_stdout
+        from urllib.parse import quote
+        target='https://fixture-user:fixture-password@operator.example/feed.zip?api_key=fixture-key#fixture-fragment'
+        other=target.replace('fixture-key','fixture-other')
+        raw={'source':target,'lineage':[{'source':other}], 'urls':[target,other],
+             'error':'Failure at '+quote(target,safe=''),target:'first',other:'second'}
+        redacted=pipeline.published_metadata(raw)
+        self.assertEqual(redacted['source_sha256'],pipeline.source_url_fingerprint(target))
+        self.assertEqual(redacted['lineage'][0]['source_sha256'],pipeline.source_url_fingerprint(other))
+        self.assertEqual(redacted['urls_sha256'],[pipeline.source_url_fingerprint(target),pipeline.source_url_fingerprint(other)])
+        self.assertEqual(pipeline.published_metadata(redacted),redacted)
+        self.assertEqual(raw['source'],target,'diagnostic copy does not mutate operational input')
+        self.assertEqual(len(redacted),len(raw)+2,'distinct URL keys are preserved')
+        identity='https://ids.example/route?variant=synthetic-route-id'
+        metadata_feed=self.root/'metadata.json.gz'
+        pipeline.write_feed(metadata_feed,{'source':raw,'agencies':[{'agency_id':identity,'agency_url':target}],
+                            'routes':[{'route_id':identity,'route_url':target}],
+                            'segments':[{'route_id':identity}]})
+        metadata=json.loads(gzip.decompress(metadata_feed.read_bytes()))
+        self.assertEqual(metadata['routes'][0]['route_id'],identity,'matching IDs are not display URL metadata')
+        self.assertEqual(metadata['agencies'][0]['agency_id'],identity)
+        self.assertEqual(metadata['segments'][0]['route_id'],identity)
+        self.assertEqual(metadata['routes'][0]['route_url_sha256'],pipeline.source_url_fingerprint(target))
+        base,_=self.server(self.archive())
+        source=base+'?feed=fixture-download'
+        row={'filename':'ca_diagnostic.gtfs.zip','source':source,'country_code':'CA','delivery':'direct',
+             'lineage':[{'source':target}], 'publisher':{'url':target}}
+        entry=pipeline.discover([row],{})[0]
+        cache,output=self.root/'diagnostic-cache',self.root/'diagnostic-output';cache.mkdir()
+        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
+        compiled=gzip.decompress((output/'feeds/ca_diagnostic.json.gz').read_bytes()).decode()
+        catalogue=self.root/'diagnostic-catalogue.json';catalogue.write_text(json.dumps([row]))
+        logs=io.StringIO()
+        argv=['global-service-frequency.py','--catalogue',str(catalogue),'--cache',str(cache),
+              '--output',str(output),'--date','2026-10-05']
+        with patch.object(sys,'argv',argv),patch.object(pipeline,'compile_entry_isolated',return_value=result),redirect_stdout(logs):
+            pipeline.main()
+        shard=(output/'inventory-0.json').read_text()
+        evidence=compiled+shard+logs.getvalue()+json.dumps(redacted)
+        for value in ['fixture-user','fixture-password','fixture-key','fixture-other','fixture-fragment','fixture-download']:
+            self.assertNotIn(value,evidence)
+        self.assertEqual(json.loads(shard)['entries'][0]['catalogue']['source_sha256'],pipeline.source_url_fingerprint(source))
+        self.assertIn('fixture-download',catalogue.read_text(),'operational pinned catalogue retains its retrieval input')
 
     def test_exact_source_prohibition_covers_catalogue_alias_and_its_processed_copy(self):
         rules={'sources':{'original.gtfs.zip':{
@@ -335,6 +432,7 @@ class GlobalFrequency(unittest.TestCase):
                 pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1_000_000,pipeline.PROFILES)
         meta['checked']=old_date=__import__('datetime').date.today().isoformat()
         meta['download_url']='https://different.example/previous-source.zip'
+        meta.pop('download_url_sha256',None)  # exercise legacy full-URL mismatch
         meta_file.write_text(json.dumps(meta))
         with patch.object(pipeline,'get',side_effect=unavailable):
             with self.assertRaises(pipeline.SourceRetrievalError):
