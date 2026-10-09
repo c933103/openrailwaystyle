@@ -1,0 +1,17 @@
+{
+  "base": "9ce43b0f93dadebdf3206429a6485691caf85d27",
+  "files": [
+    {
+      "path": "scripts/gtfs-service.mjs",
+      "bytes": 5601,
+      "sha256": "98617ff13c34fec98c9cc9ab6b3745f4b5456ff08b02cf43505dfb4a56bcf65e",
+      "git_blob_sha": "fad680e3adee7120f4b3d725d7d208c1b448beb9"
+    },
+    {
+      "path": "tests/gtfs-service.test.mjs",
+      "bytes": 10864,
+      "sha256": "4ef9f0443036b5e93aa2af712ab20f12cece7c5dbb5d2e1b66dee769937fdbbf",
+      "git_blob_sha": "fea79f4f18635f16430a15b657decc79b9789225"
+    }
+  ]
+}

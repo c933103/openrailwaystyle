@@ -1,0 +1,97 @@
+{
+  "status": "passed",
+  "scope": "PR164 new-base and combined-tree validation receipts, raw test/build/assembly logs and output identities only. No benchmark samples, original archives, working data, dependencies or private tool metadata are included.",
+  "original_access_values_screened_count": 11,
+  "files_scanned": 16,
+  "scanned_uncompressed_or_plaintext_bytes": 493299,
+  "metadata_URLs_checked": 6,
+  "checks": [
+    "Known original access-like values searched without recording values",
+    "All UTF-8 text URLs checked for user-info and signed/access-like query parameters; JSON/JSONL also checked for nonempty authentication-like fields",
+    "All outputs are represented by exact identity manifests only; no working output or input archive copies are included",
+    "No node_modules, working source/output copies, private security draft or approval/tool metadata in scoped publication"
+  ],
+  "findings": [],
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 2700,
+      "sha256": "54df47e933577af2ea902885746b461d07d46a34fcd73e50285c522e7b916c03"
+    },
+    {
+      "path": "assembly.stderr.log",
+      "bytes": 174,
+      "sha256": "e0cb71fe601c6aa0bc77d1c72b7de24eb689cec9d73775860edf39dc4fa5755c"
+    },
+    {
+      "path": "assembly.stdout.log",
+      "bytes": 5355,
+      "sha256": "989dbd54ac63c6ebf13caa8bcd563c442a50f8708f2a31de757af8b81f82e0f3"
+    },
+    {
+      "path": "build-reproduction.json",
+      "bytes": 319,
+      "sha256": "a344838849ee417bb01c61b27dd1b2d6cc0fe3151f9421eaa4436beb7ded7131"
+    },
+    {
+      "path": "build.log",
+      "bytes": 733,
+      "sha256": "a8268c5e6a87770994dfdb0b5c605a71db1f55b2078b42e72772e4f7ca36f78b"
+    },
+    {
+      "path": "check_frozen_outputs.py",
+      "bytes": 2115,
+      "sha256": "138ea3bdba30b99b3afcd3ba36d6c0863d594d755ed7547099360846e652b331"
+    },
+    {
+      "path": "code-manifest.json",
+      "bytes": 528,
+      "sha256": "480b4bd136ccf8f972baeddd70b55223edd9089659c0b4e60e96d7ade3700283"
+    },
+    {
+      "path": "combined-build.log",
+      "bytes": 740,
+      "sha256": "5b3fb4dd875e8e5188445a0b49f668c52bfe58aa341f85b5c613816e71762423"
+    },
+    {
+      "path": "combined-compatibility.json",
+      "bytes": 1350,
+      "sha256": "e28542ae20201e7c711661be1c7f5777734eaf086e02a6225bfef85680b01cb1"
+    },
+    {
+      "path": "combined-npm-test.log",
+      "bytes": 224123,
+      "sha256": "aa8c01d342bc377a3b9a515d79bce355f5f6e8e55268646d90395c7559868996"
+    },
+    {
+      "path": "correctness-receipt.json",
+      "bytes": 654,
+      "sha256": "c11fe00d8f89a9cb930aa66d3db7cff57a9ec4312582de7cb7535a9e2f96ca10"
+    },
+    {
+      "path": "equivalence.log",
+      "bytes": 6908,
+      "sha256": "db754c22e2d20c4c88d1fc3f4387268c2317a9bc0466007e225e5f15bd6ffb60"
+    },
+    {
+      "path": "npm-test.log",
+      "bytes": 221813,
+      "sha256": "1b52d52db81e9c47e3adeebf49362f018d18211a69b8cea95cf97a236723fef2"
+    },
+    {
+      "path": "output-comparison.json",
+      "bytes": 72,
+      "sha256": "f4ddf84c824cc41c55b01b50c77981aefc629b58aabc045748d9738e8511b94e"
+    },
+    {
+      "path": "output-identity.json",
+      "bytes": 24888,
+      "sha256": "5301d4c523555697f9528800c83930a8489d4e557b7bee48fddb03c8129b3139"
+    },
+    {
+      "path": "validation-summary.json",
+      "bytes": 827,
+      "sha256": "83e5d281cb485f6c707403a5d6b8841813ff3ab658e5a9f9b99768119a6589cc"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "pr": "https://github.com/c933103/openrailwaystyle/pull/164",
+  "head": "a313a22babd444ec93069234ca769f438b083ffc",
+  "base_at_creation": "9ce43b0f93dadebdf3206429a6485691caf85d27",
+  "combined_main_checked": "6c5fbb21ed86b0437f1bf2d6caca8819781e67f2",
+  "local_full_tests": 841,
+  "local_combined_full_tests": 848,
+  "control_candidate_equivalence_tests": 38,
+  "frozen_outputs_match": 117,
+  "hosted_frequency_run": 37897297337,
+  "hosted_fixture_job": 113711454964,
+  "hosted_fixture_tests": 53,
+  "acquisition_job_conclusions": {
+    "catalogue": "skipped",
+    "compile": "skipped",
+    "publish": "skipped",
+    "assemble": "skipped"
+  },
+  "performance_cohort": "Unchanged prior window-cache-ab-20261009a at base802062b5. These are new correctness/admission checks only.",
+  "original_recovery": "57/83;26missing"
+}

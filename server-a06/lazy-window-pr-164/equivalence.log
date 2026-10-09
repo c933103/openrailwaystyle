@@ -1,0 +1,242 @@
+(node:9) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+TAP version 13
+# (node:16) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: unchanged full/summary JSON semantics: ordinary
+ok 1 - unchanged full/summary JSON semantics: ordinary
+  ---
+  duration_ms: 7.005658
+  type: 'test'
+  ...
+# Subtest: unchanged full/summary JSON semantics: zero_rate
+ok 2 - unchanged full/summary JSON semantics: zero_rate
+  ---
+  duration_ms: 2.843029
+  type: 'test'
+  ...
+# Subtest: unchanged full/summary JSON semantics: null_rates
+ok 3 - unchanged full/summary JSON semantics: null_rates
+  ---
+  duration_ms: 2.113378
+  type: 'test'
+  ...
+# Subtest: unchanged full/summary JSON semantics: missing_rate
+ok 4 - unchanged full/summary JSON semantics: missing_rate
+  ---
+  duration_ms: 1.428284
+  type: 'test'
+  ...
+# Subtest: unchanged full/summary JSON semantics: empty_profiles
+ok 5 - unchanged full/summary JSON semantics: empty_profiles
+  ---
+  duration_ms: 1.499712
+  type: 'test'
+  ...
+# Subtest: unchanged full/summary JSON semantics: absent_geometry
+ok 6 - unchanged full/summary JSON semantics: absent_geometry
+  ---
+  duration_ms: 0.302446
+  type: 'test'
+  ...
+# Subtest: unchanged full/summary JSON semantics: short_geometry
+ok 7 - unchanged full/summary JSON semantics: short_geometry
+  ---
+  duration_ms: 0.444911
+  type: 'test'
+  ...
+# Subtest: unchanged full/summary JSON semantics: empty_segments
+ok 8 - unchanged full/summary JSON semantics: empty_segments
+  ---
+  duration_ms: 0.217608
+  type: 'test'
+  ...
+# Subtest: unchanged full/summary JSON semantics: route_expired
+ok 9 - unchanged full/summary JSON semantics: route_expired
+  ---
+  duration_ms: 1.568055
+  type: 'test'
+  ...
+# Subtest: unchanged full/summary JSON semantics: segment_expired
+ok 10 - unchanged full/summary JSON semantics: segment_expired
+  ---
+  duration_ms: 1.104186
+  type: 'test'
+  ...
+# Subtest: unchanged full/summary JSON semantics: feed_expired
+ok 11 - unchanged full/summary JSON semantics: feed_expired
+  ---
+  duration_ms: 1.23969
+  type: 'test'
+  ...
+# Subtest: unchanged full/summary JSON semantics: boundary_equal
+ok 12 - unchanged full/summary JSON semantics: boundary_equal
+  ---
+  duration_ms: 0.9877
+  type: 'test'
+  ...
+# Subtest: unchanged full/summary JSON semantics: review_expired
+ok 13 - unchanged full/summary JSON semantics: review_expired
+  ---
+  duration_ms: 0.945647
+  type: 'test'
+  ...
+# Subtest: unchanged full/summary JSON semantics: checked_refresh
+ok 14 - unchanged full/summary JSON semantics: checked_refresh
+  ---
+  duration_ms: 1.174942
+  type: 'test'
+  ...
+# Subtest: unchanged full/summary JSON semantics: repeated_route
+ok 15 - unchanged full/summary JSON semantics: repeated_route
+  ---
+  duration_ms: 10.111814
+  type: 'test'
+  ...
+# Subtest: unchanged full/summary JSON semantics: invalid_colour
+ok 16 - unchanged full/summary JSON semantics: invalid_colour
+  ---
+  duration_ms: 0.98732
+  type: 'test'
+  ...
+# Subtest: unchanged full/summary JSON semantics: fallback_name
+ok 17 - unchanged full/summary JSON semantics: fallback_name
+  ---
+  duration_ms: 0.955622
+  type: 'test'
+  ...
+# Subtest: full rendering and summary type 0
+ok 18 - full rendering and summary type 0
+  ---
+  duration_ms: 2.363095
+  type: 'test'
+  ...
+# Subtest: full rendering and summary type 2
+ok 19 - full rendering and summary type 2
+  ---
+  duration_ms: 1.098357
+  type: 'test'
+  ...
+# Subtest: full rendering and summary type 5
+ok 20 - full rendering and summary type 5
+  ---
+  duration_ms: 0.876963
+  type: 'test'
+  ...
+# Subtest: full rendering and summary type 7
+ok 21 - full rendering and summary type 7
+  ---
+  duration_ms: 0.628579
+  type: 'test'
+  ...
+# Subtest: full rendering and summary type 12
+ok 22 - full rendering and summary type 12
+  ---
+  duration_ms: 0.847338
+  type: 'test'
+  ...
+# Subtest: full rendering and summary type 405
+ok 23 - full rendering and summary type 405
+  ---
+  duration_ms: 0.793346
+  type: 'test'
+  ...
+# Subtest: full rendering and summary type 1400
+ok 24 - full rendering and summary type 1400
+  ---
+  duration_ms: 0.739275
+  type: 'test'
+  ...
+# Subtest: same validation error: missing_route
+ok 25 - same validation error: missing_route
+  ---
+  duration_ms: 0.707096
+  type: 'test'
+  ...
+# Subtest: same validation error: missing_agency
+ok 26 - same validation error: missing_agency
+  ---
+  duration_ms: 0.737152
+  type: 'test'
+  ...
+# Subtest: same validation error: null_segment_profiles
+ok 27 - same validation error: null_segment_profiles
+  ---
+  duration_ms: 0.411961
+  type: 'test'
+  ...
+# Subtest: same validation error: late_null_profile
+ok 28 - same validation error: late_null_profile
+  ---
+  duration_ms: 0.46425
+  type: 'test'
+  ...
+# Subtest: same validation error: null_feed_profiles
+ok 29 - same validation error: null_feed_profiles
+  ---
+  duration_ms: 0.336017
+  type: 'test'
+  ...
+# Subtest: same validation error: missing_window_start
+ok 30 - same validation error: missing_window_start
+  ---
+  duration_ms: 0.329798
+  type: 'test'
+  ...
+# Subtest: same validation error: missing_window_end
+ok 31 - same validation error: missing_window_end
+  ---
+  duration_ms: 0.240993
+  type: 'test'
+  ...
+# Subtest: empty feed collection unchanged
+ok 32 - empty feed collection unchanged
+  ---
+  duration_ms: 0.101994
+  type: 'test'
+  ...
+# Subtest: invalid feed windows remain unevaluated for empty or entirely unmapped feeds
+ok 33 - invalid feed windows remain unevaluated for empty or entirely unmapped feeds
+  ---
+  duration_ms: 0.495637
+  type: 'test'
+  ...
+# Subtest: valid empty window string remains valid across repeated segments
+ok 34 - valid empty window string remains valid across repeated segments
+  ---
+  duration_ms: 1.400343
+  type: 'test'
+  ...
+# Subtest: first mapped segment still evaluates malformed windows after skipped geometry
+ok 35 - first mapped segment still evaluates malformed windows after skipped geometry
+  ---
+  duration_ms: 0.339582
+  type: 'test'
+  ...
+# Subtest: route and segment-profile errors still precede malformed feed windows
+ok 36 - route and segment-profile errors still precede malformed feed windows
+  ---
+  duration_ms: 0.546545
+  type: 'test'
+  ...
+# Subtest: later segment validation is not bypassed by an initialized window cache
+ok 37 - later segment validation is not bypassed by an initialized window cache
+  ---
+  duration_ms: 0.286652
+  type: 'test'
+  ...
+# Subtest: multiple feeds reset window cache and retain agency timezone text
+ok 38 - multiple feeds reset window cache and retain agency timezone text
+  ---
+  duration_ms: 1.127801
+  type: 'test'
+  ...
+1..38
+# tests 38
+# suites 0
+# pass 38
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 174.825215

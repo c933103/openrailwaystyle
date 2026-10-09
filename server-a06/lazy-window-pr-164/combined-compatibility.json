@@ -1,0 +1,41 @@
+{
+  "scope": "Combined-tree compatibility validation, not a benchmark or new PR head",
+  "current_main": "6c5fbb21ed86b0437f1bf2d6caca8819781e67f2",
+  "pr_head": "a313a22babd444ec93069234ca769f438b083ffc",
+  "runtime": "Node22.23.3",
+  "records": [
+    {
+      "path": "package.json",
+      "sha256": "c8ee069f17be8763633106ed65e341cd9321e53246f1bc69384aca8fe5b43cb0",
+      "matches_current_main": true
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "0326163419f2c16947c500946ce65d8ff105450ef3131fd7e9902775140c1027",
+      "matches_current_main": true
+    },
+    {
+      "path": "styles/world.style.json",
+      "sha256": "196bb597797c6d674362d8740ba09715aaf15ec083f0b8b2a1d1f26d0080873f",
+      "matches_current_main": true
+    },
+    {
+      "path": "styles/major-stations.geojson",
+      "sha256": "51f0da6d83dd5870232b2b34126bc3f4667f127651b2c580fc42f5b9b26470c9",
+      "matches_current_main": true
+    },
+    {
+      "path": "scripts/gtfs-service.mjs",
+      "sha256": "98617ff13c34fec98c9cc9ab6b3745f4b5456ff08b02cf43505dfb4a56bcf65e",
+      "matches_pr_head": true
+    },
+    {
+      "path": "tests/gtfs-service.test.mjs",
+      "sha256": "4ef9f0443036b5e93aa2af712ab20f12cece7c5dbb5d2e1b66dee769937fdbbf",
+      "matches_pr_head": true
+    }
+  ],
+  "build_passed": true,
+  "full_tests_passed": true,
+  "conflict": false
+}

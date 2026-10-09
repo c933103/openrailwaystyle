@@ -1,0 +1,12 @@
+[
+  {
+    "path": "styles/world.style.json",
+    "sha256": "196bb597797c6d674362d8740ba09715aaf15ec083f0b8b2a1d1f26d0080873f",
+    "matches_base": true
+  },
+  {
+    "path": "styles/major-stations.geojson",
+    "sha256": "51f0da6d83dd5870232b2b34126bc3f4667f127651b2c580fc42f5b9b26470c9",
+    "matches_base": true
+  }
+]
