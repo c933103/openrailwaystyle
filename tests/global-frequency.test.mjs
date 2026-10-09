@@ -1,6 +1,9 @@
 import test from 'node:test';
 import {createHash} from 'node:crypto';
 const sourceHash=value=>createHash('sha256').update(value).digest('hex');
+const aliasProof=(url,hash=sourceHash(url))=>({schema:1,state:'schedule',specs:['gtfs'],processed_filename:null,acquisition_alias_of:'owner',alias_source_sha256:hash,selected_static_declaration:'a'.repeat(64),declarations:[{
+  id:'a'.repeat(64),type:'transitland-atlas',reference_id:'static',declared_spec:null,upstream_skip:true,upstream_skip_reason:'',definition:{url:'https://github.test/xx.json',pointer:'/sources/0',sha256:'b'.repeat(64)},resolution:{state:'resolved',specs:['gtfs'],endpoints:[{role:'static_current',spec:'gtfs',url,url_sha256:hash,url_origin:'metadata',access_state:'public_declared'}]}}]});
+
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {mergeInventories,countOutcomeReasons,pruneFrequencyOutputs,assemble} from '../scripts/assemble-global-frequency.mjs';
@@ -172,7 +175,7 @@ test('assembly rejects missing or inconsistent composite provenance without inve
 test('format and alias outcomes retain identity accounting without duplicate contributions',()=>{
   const hash=sourceHash('https://provider.test/feed'),base={schema:3,shards:2,catalogue_url:null,catalogue_sha256:'fixture',catalogue_entries:3,service_date:'2026-10-05'};
   const owner={id:'owner',status:'no_rail',catalogue:{delivery:'direct',source:'https://provider.test/feed',source_sha256:hash}};
-  const alias={id:'alias',status:'source_alias',reason_code:'duplicate_static_source',catalogue:{source:owner.catalogue.source,source_sha256:hash,source_resolution:{schema:1,state:'schedule',specs:['gtfs'],declarations:[],processed_filename:null,acquisition_alias_of:'owner',alias_source_sha256:hash}}};
+  const alias={id:'alias',status:'source_alias',reason_code:'duplicate_static_source',catalogue:{source:owner.catalogue.source,source_sha256:hash,source_resolution:aliasProof(owner.catalogue.source,hash)}};
   const bikes={id:'bikes',status:'non_timetable',reason_code:'non_timetable_format'};
   const merged=mergeInventories([{...base,shard:0,entries:[owner,bikes]},{...base,shard:1,entries:[alias]}]);
   assert.deepEqual(merged.counts,{source_alias:1,non_timetable:1,no_rail:1});
@@ -201,7 +204,7 @@ test('assembled format-aware inventories keep alias provenance and emit one cano
   try{
     await mkdir(join(root,'feeds'));await writeFile(join(root,'feeds/owner.json.gz'),gzipSync(JSON.stringify(feed)));
     const owner={id:'owner',country:'XX',status:'compiled',output:'feeds/owner.json.gz',sha256:'fixture-content',catalogue:{delivery:'direct',source:'https://provider.test/static',source_sha256:hash}};
-    const alias={id:'alias',country:'XX',status:'source_alias',reason_code:'duplicate_static_source',catalogue:{source:owner.catalogue.source,source_sha256:hash,source_resolution:{schema:1,state:'schedule',specs:['gtfs'],declarations:[],processed_filename:null,acquisition_alias_of:'owner',alias_source_sha256:hash}}};
+    const alias={id:'alias',country:'XX',status:'source_alias',reason_code:'duplicate_static_source',catalogue:{source:owner.catalogue.source,source_sha256:hash,source_resolution:aliasProof(owner.catalogue.source,hash)}};
     const bikes={id:'bikes',country:'XX',status:'non_timetable',reason_code:'non_timetable_format'};
     const base={schema:3,shards:2,catalogue_url:null,catalogue_sha256:'fixture',catalogue_entries:3,service_date:'2026-10-05'};
     await writeFile(join(root,'inventory-0.json'),JSON.stringify({...base,shard:0,entries:[owner,bikes]}));
@@ -363,7 +366,7 @@ test('reference lineage projection and alias reconciliation preserve complete ow
   const hash=sourceHash('https://provider.test/feed'),base={schema:3,shards:1,shard:0,catalogue_sha256:'fixture',catalogue_entries:2,service_date:'2026-10-05'};
   const owner={id:'owner',status:'no_rail',catalogue:{delivery:'direct',source:'https://provider.test/feed',source_sha256:hash}};
   const alias={id:'alias',status:'source_alias',catalogue:{source:owner.catalogue.source,source_sha256:hash,
-    source_resolution:{schema:1,state:'schedule',specs:['gtfs'],declarations:[],processed_filename:null,acquisition_alias_of:'owner',alias_source_sha256:hash}}};
+    source_resolution:aliasProof(owner.catalogue.source,hash)}};
   const merge=(a=alias,o=owner)=>mergeInventories([{...base,entries:[o,a]}]);
   assert.equal(publishedMetadata(merge()).entries.find(e=>e.id==='alias').catalogue.source_resolution.acquisition_alias_of,'owner');
   for(const extra of [{unknown_extra:{credential:'synthetic-lineage-marker'}},{specs:['gbfs']}]){
@@ -398,7 +401,7 @@ test('alias ownership binds visible resources and recoverable raw hashes',async(
   const base={schema:3,shards:1,shard:0,catalogue_sha256:'fixture',catalogue_entries:2,service_date:'2026-10-05'};
   const fixture=url=>{
     const hash=sourceHash(url),owner={id:'owner',status:'no_rail',catalogue:{delivery:'direct',source:url,source_sha256:hash}};
-    const alias={id:'alias',status:'source_alias',catalogue:{source:url,source_sha256:hash,source_resolution:{schema:1,state:'schedule',specs:['gtfs'],declarations:[],processed_filename:null,acquisition_alias_of:'owner',alias_source_sha256:hash}}};
+    const alias={id:'alias',status:'source_alias',catalogue:{source:url,source_sha256:hash,source_resolution:aliasProof(owner.catalogue.source,hash)}};
     return {owner,alias};
   };
   const merge=(owner,alias)=>mergeInventories([{...base,entries:[owner,alias]}]);
@@ -424,5 +427,92 @@ test('alias ownership binds visible resources and recoverable raw hashes',async(
       const visible=structuredClone(publicAlias);visible.catalogue.source=visible.catalogue.source.replace('%5Bredacted%5D','different');
       assert.throws(()=>merge(publicOwner,visible),/Invalid static source alias/);
     }
+  }
+});
+
+test('alias owner authentication accepts only supported scalar public values',async()=>{
+  const {publishedMetadata}=await import('../scripts/assemble-global-frequency.mjs');
+  // Send the same literal JSON to both parsers; stringify would erase 0.0/0e0.
+  const tokens=['null','""','"0"','0','0.0','0e0','-0.0','1e-400','"none"','" NONE "','"1"','1','"2"','false','true','[]','["0"]','{}','0.5','-0.5','1e309','-1e309'];
+  const literal='['+tokens.join(',')+']',values=JSON.parse(literal),expected=values.map((_,index)=>index<10);
+  const python=spawnSync('python3',['-c',"import json,sys; sys.path.insert(0,'scripts'); import frequency_references as r; print(json.dumps([r.alias_owner_metadata_compatible({'lineage':[{'catalogue':'mobility-database','authentication_type':x}]}) for x in json.load(sys.stdin)]))"],{input:literal,encoding:'utf8'});
+  assert.equal(python.status,0,python.stderr);assert.deepEqual(JSON.parse(python.stdout),expected);
+  const url='https://public.test/feed',hash=sourceHash(url),base={schema:3,shards:1,shard:0,catalogue_entries:2,catalogue_sha256:'fixture'};
+  for(const [index,authentication_type] of values.entries()){
+    const owner={id:'owner',status:'no_rail',catalogue:{delivery:'direct',source:url,source_sha256:hash,lineage:[{catalogue:'mobility-database',authentication_type}]}};
+    const alias={id:'alias',status:'source_alias',catalogue:{source:url,source_sha256:hash,source_resolution:aliasProof(url,hash)}};
+    const before=structuredClone(owner);
+    const copies=[[owner,alias],[publishedMetadata(owner),publishedMetadata(alias)]];
+    // Nonfinite numbers are rejected before serialization can turn them null.
+    if(typeof authentication_type!=='number'||Number.isFinite(authentication_type))copies.push(JSON.parse(JSON.stringify(copies[1])));
+    for(const entries of copies){
+      const merge=()=>mergeInventories([{...base,entries}]);
+      if(expected[index])assert.equal(merge().entries.find(x=>x.id==='alias').status,'source_alias');
+      else assert.throws(merge,/Invalid static source alias/);
+    }
+    assert.deepEqual(owner,before,'alias validation never rewrites the legacy owner');
+  }
+  const generated=spawnSync('python3',['-c',[
+    'import json,sys; sys.path.insert(0,"tests")',
+    'from global_frequency_test import alias_owner_literal_fixture,fixture_discover,pipeline',
+    'result=[]',
+    'for literal in json.load(sys.stdin):',
+    ' entries=fixture_discover(alias_owner_literal_fixture(literal),{})',
+    ' result.append({"raw":entries,"published":pipeline.published_metadata(entries)})',
+    'print(json.dumps(result,allow_nan=False))'
+  ].join('\n')],{input:JSON.stringify(tokens.slice(0,-2)),encoding:'utf8'});
+  assert.equal(generated.status,0,generated.stderr);
+  for(const [index,fixture] of JSON.parse(generated.stdout).entries()){
+    for(const input of [fixture.raw,fixture.published]){
+      // Compiler publication supplies original fingerprints before assembly.
+      const entries=publishedMetadata(input);
+      const result=mergeInventories([{...base,entries}]);
+      assert.equal(result.entries.find(x=>x.id==='xx_reference').status,expected[index]?'source_alias':'retry_pending');
+      assert.deepEqual(result.entries.find(x=>x.id==='mdb_owner'),entries.find(x=>x.id==='mdb_owner'));
+    }
+  }
+});
+
+test('alias assembly requires its own semantic public static proof and respects row holds',async()=>{
+  const {publishedMetadata}=await import('../scripts/assemble-global-frequency.mjs');
+  const url='https://public.test/feed',hash=sourceHash(url),base={schema:3,shards:1,shard:0,catalogue_entries:2,catalogue_sha256:'fixture'};
+  const owner={id:'owner',status:'no_rail',catalogue:{delivery:'direct',source:url,source_sha256:hash}};
+  const baseline={id:'alias',status:'source_alias',catalogue:{source:url,source_sha256:hash,source_resolution:aliasProof(url,hash)}};
+  const merge=alias=>mergeInventories([{...base,entries:[owner,alias]}]);
+  const ordinary=value=>({type:'http',spec:'gtfs',url:value,url_sha256:sourceHash(value),access_state:'authorization_required',upstream_skip:true,definition:{url:'https://github.test/xx.json',pointer:'/sources/1',sha256:'c'.repeat(64)}});
+  for(const change of ['held_static','review_static','held_effective','held_declared','held_ordinary','held_mobility','row_hold','no_declarations','missing_selection','inconsistent_access','active_static','active_ordinary','held_empty_params','unknown_skip']){
+    const alias=structuredClone(baseline),r=alias.catalogue.source_resolution,d=r.declarations[0],e=d.resolution.endpoints[0];
+    if(change==='held_static'||change==='review_static'){
+      r.selected_static_declaration=null;e.access_state=change==='held_static'?'authorization_required':'review_required';d.resolution.state=change==='held_static'?'authorization_required':'transport_options_required';
+    }else if(change==='held_effective'||change==='held_declared'){
+      const held=structuredClone(d);held.id='d'.repeat(64);held.reference_id='held';held.resolution.state='authorization_required';
+      const endpoint=held.resolution.endpoints[0];endpoint.access_state='authorization_required';endpoint.url='https://other.test/feed';endpoint.url_sha256=sourceHash(endpoint.url);
+      const value='https://PUBLIC.test:443/feed#fixture';endpoint[change==='held_effective'?'url':'declared_url']=value;endpoint[(change==='held_effective'?'url':'declared_url')+'_sha256']=sourceHash(value);r.declarations.push(held);
+    }else if(change==='held_ordinary')r.ordinary_static_declarations=[ordinary('https://PUBLIC.test:443/feed#fixture')];
+    else if(change==='held_mobility')alias.catalogue.lineage=[{catalogue:'mobility-database',id:'held',url:'https://files.mobilitydatabase.org/feeds_v2.csv',source:'https://PUBLIC.test:443/feed#fixture',source_sha256:sourceHash('https://PUBLIC.test:443/feed#fixture'),status:'',authentication_type:'1'}];
+    else if(change==='held_empty_params')r.ordinary_static_declarations=[ordinary(url+';')];
+    else if(change==='row_hold')alias.catalogue.access_review=[{reason:'fixture_hold'}];
+    else if(change==='no_declarations')r.declarations=[];
+    else if(change==='missing_selection')r.selected_static_declaration=null;
+    else if(change==='inconsistent_access')d.resolution.state='authorization_required';
+    else if(change==='active_static')d.upstream_skip=false;
+    else if(change==='active_ordinary')r.ordinary_static_declarations=[{...ordinary(url),access_state:'public_declared',upstream_skip:false}];
+    else delete d.upstream_skip;
+    assert.throws(()=>merge(alias),/Invalid static source alias/,change);
+    assert.throws(()=>merge(publishedMetadata(alias)),/Invalid static source alias/,change+' after projection');
+  }
+  const companion=structuredClone(baseline),r=companion.catalogue.source_resolution,rt=structuredClone(r.declarations[0]);
+  rt.id='d'.repeat(64);rt.reference_id='rt';rt.declared_spec='gtfs-rt';rt.resolution={state:'authorization_required',specs:['gtfs-rt'],endpoints:[{role:'realtime_trip_updates',spec:'gtfs-rt',url:'https://private.test/rt',url_sha256:sourceHash('https://private.test/rt'),url_origin:'metadata',access_state:'authorization_required'}]};
+  r.declarations.push(rt);r.specs.push('gtfs-rt');r.ordinary_static_declarations=[ordinary('https://different.test/held')];
+  assert.equal(merge(companion).entries[0].status,'source_alias');
+  assert.equal(merge(publishedMetadata(companion)).entries[0].status,'source_alias');
+  for(const publicUrl of ['https://public.test/feed?region=one','https://public.test/feed?region=two']){
+    const h=sourceHash(publicUrl),a={id:'alias',status:'source_alias',catalogue:{source:publicUrl,source_sha256:h,source_resolution:aliasProof(publicUrl,h)}};
+    a.catalogue.source_resolution.ordinary_static_declarations=[ordinary('https://PUBLIC.test:443/feed?region=one#held')];
+    const o={...owner,catalogue:{...owner.catalogue,source:publicUrl,source_sha256:h}};
+    const run=entry=>mergeInventories([{...base,entries:[o,entry]}]);
+    if(publicUrl.endsWith('one'))assert.throws(()=>run(a),/Invalid static source alias/);
+    else assert.equal(run(a).entries[0].status,'source_alias','distinct fully raw query values remain separate');
+    assert.throws(()=>run(publishedMetadata(a)),/Invalid static source alias/,'redacted held original remains uncertain');
   }
 });

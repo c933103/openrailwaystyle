@@ -551,10 +551,15 @@ def evidenced_static_identities(row, publication_context=None):
 
 def alias_owner_metadata_compatible(row):
     """Legacy owner outcomes stay unchanged; new aliases need compatible proof."""
+    def public_owner_authentication(value):
+        # JSON parsers' finite numeric-zero values are equivalent here,
+        # including a literal that underflows to zero in both runtimes.
+        # Keep this alias-only compatibility distinct from reference proof.
+        return public_authentication(value) or type(value) in (int, float) and value == 0
     lineage = row.get('lineage', [])
     return (isinstance(lineage, list) and len(lineage) <= MAX_DECLARATIONS
         and all(isinstance(item, dict) and (item.get('catalogue') != 'mobility-database'
-            or public_authentication(item.get('authentication_type'))) for item in lineage))
+            or public_owner_authentication(item.get('authentication_type'))) for item in lineage))
 
 
 def independent_static_evidence(row, publication_context=None):

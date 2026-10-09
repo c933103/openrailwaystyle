@@ -672,3 +672,55 @@ rows remain pending, 151 retry-pending, 131 non-timetable, 11 aliases and five
 excluded. This is an offline catalogue-only compatibility measurement, not a
 production change. A missing index does not rewrite legacy owners or existing
 access holds, and independently evidenced public sources remain available.
+
+#### Reference holds through retrieval and cache reuse
+
+A reference row's declared access holds apply before DNS/connect at every redirect
+hop, including range metadata, full downloads and conditional requests. The same
+exact/canonical/uncertain resource checks used for candidate selection apply here.
+A held destination is an explicit access-review outcome, not a licence exclusion
+or observed HTTP denial. Independently public alternatives remain available.
+
+Successful reference acquisition writes a bounded internal `request_provenance`
+cache receipt (schema 1): candidate fingerprint, terminal resource fingerprint,
+artifact kind/digest, and at most 64 deduplicated checked hop records. Each record
+contains only a sanitized display URL and exact/resource/visible-resource hashes.
+Reference cache metadata reads have a 1 MiB cap and strict JSON parsing; malformed
+bytes are never echoed. No raw query values, credentials or headers are retained.
+Rail archives bind their
+full ZIP digest; successful no-rail decisions bind the inspected routes metadata.
+Failed retry chains are not attributed to the accepted representation.
+Every range/full response must retain the same terminal resource before its bytes
+are consumed. Equal ETags at different terminals cannot join representations.
+
+Conditional and If-Range validators are sent only to their bound terminal resource.
+A changed-terminal 304 cannot certify old bytes; an independently fetched public
+representation may establish new provenance instead. Same-terminal 304 revalidation
+retains the historical hop evidence and adds checked current hops. Current holds
+are checked against every retained intermediate and terminal identity before cache
+revalidation, offline fallback or compiled-output reuse.
+
+Old or malformed reference receipts do not manufacture destination proof. An old
+cache with access-held alternatives stays on disk but cannot be reused without
+sufficient destination evidence. This is explicit cache-provenance uncertainty,
+not a claim of a new unauthorized request during offline reuse. An older public
+cache without holds can remain usable during an outage without adding a receipt
+or advancing `checked`/`retrieved`; a fresh successful representation establishes
+its new receipt. Legacy/direct-owner behavior remains unchanged. No raw archive
+purge or rewrite of historical destination evidence is introduced.
+
+Assembly also validates an alias's own semantic public-static proof after safe
+projection: a complete selected resolved GTFS declaration, consistent roles/access,
+no conflicting static identities/options, and no hold affecting its resource.
+Held real-time companions and genuinely distinct held ordinary sources do not
+invalidate a supported public primary. Empty/unproven alias declarations, active
+processed-source contradictions and access-held aliases are rejected. Owner rows
+and historical no-rail outcomes are never copied to aliases.
+
+Alias-owner authentication compatibility treats finite parsed JSON numeric zero
+(`0`, `0.0`, `0e0`, negative zero, or a literal that underflows to zero)
+equivalently across Python and JavaScript. Existing
+public string/null markers remain supported; booleans, arrays/objects, nonfinite
+and nonzero numbers do not establish a public owner. This check does not rewrite
+owner bytes or change legacy acquisition or reference-proof authentication rules.
+Parsed-value compatibility is not authentication of external metadata.

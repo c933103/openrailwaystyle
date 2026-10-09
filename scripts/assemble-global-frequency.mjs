@@ -90,10 +90,76 @@ const sourceBindings=row=>{
   return [...result].sort();
 };
 const sourceFingerprints=row=>sourceBindings(row)?.map(value=>JSON.parse(value)[0]);
+// A shape-valid schedule label is not the alias's own public acquisition proof.
+const roleSpecs={static_current:'gtfs',realtime_trip_updates:'gtfs-rt',realtime_vehicle_positions:'gtfs-rt',realtime_alerts:'gtfs-rt',gbfs_auto_discovery:'gbfs'};
+const publicAuth=value=>value==null||(typeof value==='string'||Number.isInteger(value))&&['','0','none'].includes(String(value).trim().toLowerCase());
+const rawResource=value=>{
+  if(!referenceUrlValid(value))return null;
+  const match=/^(https?):\/\/(\[[^\]]+\]|[^/:?#@]+)(?::([0-9]+))?([^#]*)(?:#.*)?$/i.exec(value);
+  if(!match)return null;
+  const [,scheme,host,port,tail]=match,at=tail.indexOf('?'),query=at<0?'':tail.slice(at+1);
+  let path=at<0?tail:tail.slice(0,at);
+  const number=Number(port??(scheme.toLowerCase()==='https'?443:80));if(number<1||number>65535)return null;
+  // Match Python urlparse/request construction for an empty final params part.
+  const semi=path.indexOf(';',path.lastIndexOf('/')+1);if(semi===path.length-1&&semi>=0)path=path.slice(0,-1);
+  return JSON.stringify([scheme.toLowerCase(),host.toLowerCase().replace(/\.$/,''),number,path||'/',query]);
+};
+const visibleResource=value=>referenceUrlValid(value)?rawResource(referenceDisplayUrl(value)):null;
+const redactedQuery=value=>referenceUrlValid(value)&&[...new URLSearchParams(value.split('#',1)[0].split('?').slice(1).join('?'))].some(([,v])=>v==='[redacted]');
+const itemHashes=(item,key)=>new Set([item?.[key+'_sha256'],typeof item?.[key]==='string'?urlFingerprint(item[key]):null].filter(value=>/^[a-f0-9]{64}$/.test(value||'')));
+const heldAliasResource=(row,item,key)=>{
+  const value=item?.[key];if(!referenceUrlValid(value))return false;
+  const hashes=itemHashes(item,key),own=itemHashes(row,'source');
+  if([...hashes].some(hash=>own.has(hash)))return true;
+  const actual=rawResource(value),candidate=rawResource(row.source);
+  if(actual!==null&&actual===candidate)return true;
+  return (redactedQuery(value)||redactedQuery(row.source))&&visibleResource(value)===visibleResource(row.source);
+};
+const referenceStaticProof=row=>{
+  const resolution=row?.source_resolution;
+  if(!resolution||resolution.schema!==1||resolution.state!=='schedule'||!resolution.specs?.includes('gtfs')||row.access_review||rawResource(row.source)===null)return false;
+  const declarations=resolution.declarations??[],ordinary=resolution.ordinary_static_declarations??[],statics=[],options=new Map();
+  const companion=d=>!(d.resolution.specs??[]).includes('gtfs')&&((d.resolution.specs??[]).length>0||['gtfs-rt','gbfs'].includes(d.declared_spec));
+  for(const declaration of declarations){
+    const r=declaration.resolution,endpoints=r.endpoints??[];
+    if(typeof declaration.upstream_skip!=='boolean')return false;
+    if(!['resolved','authorization_required','transport_options_required','metadata_unavailable','conflicting_reference','missing_reference','malformed_reference','unsupported_type'].includes(r.state))return false;
+    if(!companion(declaration)){
+      if(r.state==='conflicting_reference')return false;
+      const value=JSON.stringify([declaration.definition.sha256,r.state,r.specs,declaration.upstream_skip,endpoints]);
+      if(options.has(declaration.id)&&options.get(declaration.id)!==value)return false;
+      options.set(declaration.id,value);
+    }
+    if(new Set(endpoints.map(e=>e.role)).size!==endpoints.length)return false;
+    for(const endpoint of endpoints){
+      if(roleSpecs[endpoint.role]!==endpoint.spec||!r.specs.includes(endpoint.spec)||endpoint.authorization&&endpoint.access_state!=='authorization_required')return false;
+      if(endpoint.spec==='gtfs'){
+        statics.push([declaration,endpoint]);
+        if(endpoint.access_state!=='public_declared'&&(heldAliasResource(row,endpoint,'url')||heldAliasResource(row,endpoint,'declared_url')))return false;
+      }
+    }
+    if(endpoints.length){
+      const expected=endpoints.some(e=>e.access_state==='authorization_required')?'authorization_required':endpoints.some(e=>e.access_state==='review_required')?'transport_options_required':'resolved';
+      if(r.state!==expected)return false;
+    }
+  }
+  for(const item of ordinary)if(item.access_state!=='public_declared'&&heldAliasResource(row,item,'url'))return false;
+  for(const item of row.lineage??[])if(item.catalogue==='mobility-database'&&!publicAuth(item.authentication_type)&&heldAliasResource(row,item,'source'))return false;
+  if(new Set(statics.map(([d])=>d.id)).size!==1||new Set(statics.map(([,e])=>e.url)).size!==1||new Set(statics.map(([,e])=>e.url_sha256)).size!==1)return false;
+  const selected=statics.filter(([d,e])=>d.id===resolution.selected_static_declaration&&d.resolution.state==='resolved'&&e.access_state==='public_declared');
+  if(!selected.length)return false;
+  if(resolution.acquisition_alias_of&&(selected.some(([d])=>d.upstream_skip!==true)||ordinary.some(item=>item.access_state==='public_declared'&&item.upstream_skip===false&&['http','ftp'].includes(item.type))))return false;
+  const binding=sourceBindings(row);
+  if(!binding||!selected.every(([,e])=>isDeepStrictEqual(sourceBindings({source:e.url,source_sha256:e.url_sha256}),binding)))return false;
+  const independent=ordinary.some(item=>item.access_state==='public_declared'&&isDeepStrictEqual(sourceBindings({source:item.url,source_sha256:item.url_sha256}),binding))||
+    (row.lineage??[]).some(item=>item.catalogue==='mobility-database'&&publicAuth(item.authentication_type)&&isDeepStrictEqual(sourceBindings(item),binding));
+  if(!independent&&declarations.some(d=>!['resolved','authorization_required'].includes(d.resolution.state)&&!companion(d)))return false;
+  return true;
+};
 const ownerMetadataCompatible=row=>{
   const lineage=row?.lineage??[];
   return row?.lineage!==null&&Array.isArray(lineage)&&lineage.length<=64&&lineage.every(item=>item&&typeof item==='object'&&!Array.isArray(item)&&
-    (item.catalogue!=='mobility-database'||item.authentication_type==null||['','0','none'].includes(String(item.authentication_type).trim().toLowerCase())));
+    (item.catalogue!=='mobility-database'||publicAuth(item.authentication_type)));
 };
 export function mergeInventories(inventories){
   if(!inventories.length)throw new Error('No worldwide inventory');
@@ -116,9 +182,9 @@ export function mergeInventories(inventories){
   for(const entry of entries){
     if(entry.status!=='source_alias')continue;
     const resolution=entry.catalogue?.source_resolution,target=byId.get(resolution?.acquisition_alias_of),targetResolution=target?.catalogue?.source_resolution;
-    if(resolution?.schema!==1||resolution.state!=='schedule'||!resolution.specs?.includes('gtfs')||!target||target.id===entry.id||target.status==='source_alias'||
+    if(!referenceStaticProof(entry.catalogue)||resolution?.schema!==1||resolution.state!=='schedule'||!resolution.specs?.includes('gtfs')||!target||target.id===entry.id||target.status==='source_alias'||
         targetResolution?.acquisition_alias_of||target.catalogue?.delivery!=='direct'||!ownerMetadataCompatible(target.catalogue)||
-        (targetResolution&&(targetResolution.schema!==1||targetResolution.state!=='schedule'||!targetResolution.specs?.includes('gtfs')))||
+        (targetResolution&&!referenceStaticProof(target.catalogue))||
         target.catalogue?.access_review||resolution.processed_filename!=null||
         !isDeepStrictEqual(sourceFingerprints(entry.catalogue),[resolution.alias_source_sha256])||
         !isDeepStrictEqual(sourceFingerprints(target.catalogue),[resolution.alias_source_sha256])||

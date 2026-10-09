@@ -45,6 +45,18 @@ def fixture_discover(rows, rules):
 def fixture_candidates(entry):
     return pipeline.source_candidates(entry, fixture_context(entry.get('catalogue') or {}))
 
+def alias_owner_literal_fixture(literal):
+    url = 'https://public.test/feed.zip'
+    index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
+        'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+    definition = ('xx', {'name': 'reference', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static', 'skip': True}, 'https://github.test/pin/xx.json')
+    mobility = [{'id': 'owner', 'data_type': 'gtfs', 'urls.direct_download': url, 'urls.authentication_type': '0'}]
+    rows = fixture_build_catalogue([], [definition], mobility, 'b'*40, index)[0]
+    owner = next(row for row in rows if row.get('delivery') == 'direct')
+    for item in owner['lineage']:
+        if item['catalogue'] == 'mobility-database': item['authentication_type'] = json.loads(literal)
+    return rows
+
 def add_published_lineage(row, source):
     row['catalogue_url'] = pipeline.registry.catalogue_sources('b'*40)[0]
     row.setdefault('lineage', []).append({'catalogue': 'transitous-licence', 'id': row['filename'],
@@ -328,6 +340,25 @@ class GlobalFrequency(unittest.TestCase):
             self.assertEqual(entries['xx_reference']['status'], 'source_alias' if auth == '0' else 'retry_pending')
             self.assertEqual(fixture_candidates(entries['xx_reference']), [])
 
+    def test_alias_owner_literal_numbers_match_discovery_without_owner_mutation(self):
+        import copy
+        literals = ['0', '0.0', '0e0', '-0.0', '1e-400', 'null', '"0"', '"none"',
+                    '0.5', '-0.5', '1', '1e309', '-1e309', 'false', 'true', '[]', '["0"]', '{}']
+        for position, literal in enumerate(literals):
+            with self.subTest(literal=literal):
+                rows = alias_owner_literal_fixture(literal)
+                for current in [rows, pipeline.published_metadata(rows)]:
+                    owner = next(row for row in current if row.get('delivery') == 'direct')
+                    before = copy.deepcopy(owner)
+                    standalone = fixture_discover([copy.deepcopy(owner)], {})[0]
+                    entries = {e['id']: e for e in fixture_discover(current, {})}
+                    self.assertEqual(entries['mdb_owner'], standalone)
+                    self.assertEqual(owner, before)
+                    self.assertEqual(entries['xx_reference']['status'], 'source_alias' if position < 8 else 'retry_pending')
+                    self.assertEqual(fixture_candidates(entries['mdb_owner']), fixture_candidates(standalone))
+        # The equivalence is confined to owner compatibility, not static proof.
+        self.assertFalse(pipeline.registry.references.public_authentication(0.0))
+
     def test_missing_skip_and_unproven_original_do_not_borrow_published_proof(self):
         import copy
         url = 'https://public.test/rail.zip'
@@ -470,6 +501,192 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual(auth['parameter_name'], 'Authorization')
         self.assertEqual(auth['info_url'], 'https://provider.test/docs')
         self.assertEqual(pipeline.published_metadata(safe), safe)
+
+    def reference_lifecycle_entry(self, url, held=None):
+        index={'state':'available','by_id':{'static':[{'feed':{'id':'static','spec':'gtfs','urls':{'static_current':url}},
+            'url':'https://github.test/pin/data.json','pointer':'/feeds/0','blob_sha':'a'*40}]}}
+        definition=('xx',{'name':'rail','type':'transitland-atlas','transitland-atlas-id':'static','skip':True},'https://github.test/xx.json')
+        row=pipeline.registry.build_catalogue([],[definition],[],'b'*40,index)[0][0]
+        if held:self.add_lifecycle_hold(row,held)
+        return pipeline.discover([row],{})[0]
+
+    def add_lifecycle_hold(self,row,url,access='authorization_required'):
+        row['source_resolution']['ordinary_static_declarations'].append({'type':'http','spec':'gtfs','url':url,
+            'url_sha256':pipeline.source_url_fingerprint(url),'access_state':access,'upstream_skip':True,
+            'definition':{'url':'https://github.test/xx.json','pointer':'/sources/1','sha256':'c'*64}})
+
+    def test_reference_holds_stop_initial_range_full_and_conditional_redirects(self):
+        for phase in ['initial','range','full','conditional']:
+            with self.subTest(phase=phase):
+                a,ah=self.server(self.archive());b,bh=self.server(self.archive());entry=self.reference_lifecycle_entry(a,b)
+                if phase=='initial':
+                    ah['redirect']=b
+                    with self.assertRaises(pipeline.SourceRetrievalError) as failure:
+                        pipeline.fetch_alternative(entry,self.root/(phase+'.zip'),1000000)
+                    self.assertEqual(failure.exception.attempts[0]['code'],'source_access_hold')
+                elif phase in ('range','full'):
+                    checked=pipeline.CheckedRequests(entry,a)
+                    remote=pipeline.RemoteZip(a,1000000,policy=checked.policy,checked_requests=checked)
+                    ah['redirect']=b
+                    with self.assertRaises(pipeline.SourceAccessHold):
+                        remote.range(0,1) if phase=='range' else remote.download()
+                else:
+                    cache=self.root/'conditional-cache';output=self.root/'conditional-out';cache.mkdir()
+                    pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                    ah['redirect']=b
+                    with self.assertRaises(pipeline.SourceRetrievalError):
+                        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                self.assertEqual(bh['requests'],[],'held hop must fail before its socket request')
+
+    def test_reference_redirect_hold_preserves_a_genuinely_public_fallback(self):
+        a,ah=self.server(self.archive());b,bh=self.server(self.archive());c,ch=self.server(self.archive());ah['redirect']=b
+        entry=self.reference_lifecycle_entry(a,b);row=entry['catalogue']
+        row['lineage'].append({'catalogue':'mobility-database','id':'fallback','url':pipeline.registry.MOBILITY_CSV,
+            'source':c,'status':'','authentication_type':'0'})
+        self.assertEqual(pipeline.source_candidates(entry),[a,c])
+        meta,attempts=pipeline.fetch_alternative(entry,self.root/'fallback.zip',1000000)
+        self.assertEqual(bh['requests'],[]);self.assertTrue(ch['requests'])
+        self.assertEqual(attempts[0]['code'],'source_access_hold')
+        self.assertEqual(meta['download_url_sha256'],pipeline.source_url_fingerprint(c))
+        self.assertTrue(pipeline.request_receipt_valid(meta['request_provenance'],c))
+
+    def test_checked_redirect_chain_blocks_new_holds_and_unknown_old_cache(self):
+        import copy
+        from urllib.error import URLError
+        for held_part in ['terminal','intermediate','old_missing','malformed','artifact_tamper']:
+            with self.subTest(held_part=held_part):
+                a,ah=self.server(self.archive());b,bh=self.server(self.archive());c,ch=self.server(self.archive())
+                ah['redirect']=b;bh['redirect']=c
+                entry=self.reference_lifecycle_entry(a);cache=self.root/('cache-'+held_part);cache.mkdir();output=self.root/('out-'+held_part)
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                meta_path=cache/'xx_rail.meta.json';archive_path=cache/'xx_rail.zip';meta=json.loads(meta_path.read_text())
+                self.assertEqual(len(meta['request_provenance']['endpoints']),3)
+                self.add_lifecycle_hold(entry['catalogue'],b if held_part=='intermediate' else c)
+                if held_part=='old_missing':meta.pop('request_provenance')
+                elif held_part=='malformed':meta['request_provenance']['unknown']='synthetic-cache-marker'
+                elif held_part=='artifact_tamper':archive_path.write_bytes(archive_path.read_bytes()+b'synthetic-tail')
+                meta_path.write_text(json.dumps(meta));before=meta_path.read_bytes();archive_before=archive_path.read_bytes();target_requests=len(ch['requests'])
+                with patch.object(pipeline,'get',side_effect=URLError('offline fixture')):
+                    with self.assertRaises(pipeline.SourceRetrievalError) as failed:
+                        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                self.assertIn('source_cache_identity_unresolved' if held_part in ('old_missing','malformed','artifact_tamper') else 'source_cache_access_hold',{a['code'] for a in failed.exception.attempts})
+                self.assertEqual(pipeline.classify_failure(failed.exception)[0],'unresolved_source_cache_identity' if held_part in ('old_missing','malformed','artifact_tamper') else 'source_access_review')
+                self.assertEqual(meta_path.read_bytes(),before);self.assertEqual(archive_path.read_bytes(),archive_before)
+                self.assertEqual(len(ch['requests']),target_requests,'offline cache rejection is not a new held-target request')
+                self.assertNotIn('synthetic-cache-marker',str(failed.exception))
+
+    def test_public_legacy_reference_cache_stays_usable_without_minting_receipt(self):
+        from urllib.error import URLError
+        url,_=self.server(self.archive());entry=self.reference_lifecycle_entry(url)
+        cache=self.root/'legacy-reference';cache.mkdir();output=self.root/'legacy-reference-out'
+        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        path=cache/'xx_rail.meta.json';meta=json.loads(path.read_text());meta.pop('request_provenance');path.write_text(json.dumps(meta))
+        with patch.object(pipeline,'get',side_effect=URLError('offline fixture')):
+            result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        self.assertTrue(result['source']['offline_cached']);after=json.loads(path.read_text())
+        self.assertNotIn('request_provenance',after)
+        self.assertEqual(after['checked'],meta['checked']);self.assertEqual(after['retrieved'],meta['retrieved'])
+
+    def test_reference_terminal_binds_conditional_and_range_validators(self):
+        for phase in ['conditional_public_200','conditional_changed_304','range','full']:
+            with self.subTest(phase=phase):
+                a,ah=self.server(self.archive());b,bh=self.server(self.archive());c,ch=self.server(self.archive());ah['redirect']=b
+                entry=self.reference_lifecycle_entry(a)
+                if phase.startswith('conditional'):
+                    cache=self.root/phase;cache.mkdir();output=self.root/(phase+'-out')
+                    pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                    ah['redirect']=c
+                    if phase.endswith('304'):ch['force_304']=True
+                    if phase.endswith('304'):
+                        with self.assertRaises(pipeline.SourceRetrievalError) as failed:
+                            pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                        self.assertIn('source_identity_changed',{a['code'] for a in failed.exception.attempts})
+                    else:
+                        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                        self.assertEqual(result['acquisition_metrics'].get('conditional_not_modified',0),0)
+                        receipt=json.loads((cache/'xx_rail.meta.json').read_text())['request_provenance']
+                        self.assertEqual(receipt['terminal_resource_sha256'],pipeline.request_resource_hash(c))
+                    self.assertTrue(all(pair==(None,None) for pair in ch['conditional_requests']))
+                else:
+                    checked=pipeline.CheckedRequests(entry,a)
+                    remote=pipeline.RemoteZip(a,1000000,policy=checked.policy,checked_requests=checked)
+                    ah['redirect']=c
+                    with self.assertRaises(pipeline.SourceIdentityChanged):
+                        remote.range(0,1) if phase=='range' else remote.download()
+                    self.assertTrue(all(value is None for value in ch['range_validators']))
+
+    def test_reference_receipts_are_bounded_secret_free_and_cover_no_rail(self):
+        url,held=self.server(self.archive(rail=False));entry=self.reference_lifecycle_entry(url)
+        cache=self.root/'no-rail-receipt';cache.mkdir()
+        result=pipeline.compile_entry(entry,cache,self.root/'no-rail-out','2026-10-05',None,1000000,pipeline.PROFILES)
+        self.assertEqual(result['status'],'no_rail')
+        receipt=json.loads((cache/'xx_rail.meta.json').read_text())['request_provenance']
+        self.assertEqual(receipt['artifact_kind'],'routes');self.assertTrue(pipeline.request_receipt_valid(receipt,url))
+        checked=pipeline.CheckedRequests(entry,'https://public.test/feed?region=synthetic-private-value')
+        checked.policy('https://public.test/feed?region=synthetic-private-value');checked.response('https://public.test/feed?region=synthetic-private-value')
+        safe=checked.receipt(b'fixture');self.assertNotIn('synthetic-private-value',json.dumps(safe))
+        self.assertTrue(pipeline.request_receipt_valid(safe,'https://public.test/feed?region=synthetic-private-value'))
+        for n in range(pipeline.MAX_CHECKED_ENDPOINTS-1):checked.policy('https://public.test/'+str(n))
+        with self.assertRaisesRegex(ValueError,'endpoint budget'):checked.policy('https://public.test/overflow')
+
+    def test_reference_cache_metadata_reader_is_bounded_and_does_not_echo_invalid_bytes(self):
+        from urllib.error import URLError
+        for metadata in [b'{synthetic-cache-private-marker', b'[]', b' '* (pipeline.MAX_REFERENCE_CACHE_METADATA_BYTES+1)]:
+            url,_=self.server(self.archive());entry=self.reference_lifecycle_entry(url)
+            cache=self.root/('metadata-'+str(len(metadata)));cache.mkdir();output=cache/'out'
+            pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+            path=cache/'xx_rail.meta.json';path.write_bytes(metadata);archive=(cache/'xx_rail.zip').read_bytes()
+            with patch.object(pipeline,'get',side_effect=URLError('offline fixture')):
+                with self.assertRaises(pipeline.SourceRetrievalError) as failed:
+                    pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+            self.assertEqual(pipeline.classify_failure(failed.exception)[0],'unresolved_source_cache_identity')
+            self.assertNotIn('synthetic-cache-private-marker',str(failed.exception))
+            self.assertEqual(path.read_bytes(),metadata);self.assertEqual((cache/'xx_rail.zip').read_bytes(),archive)
+
+    def test_reference_receipt_commits_only_successful_retry_chains(self):
+        a,ah=self.server(self.archive());b,bh=self.server(self.archive());failed,fh=self.server(self.archive())
+        ah['redirect_sequence']=[failed];ah['redirect']=b;fh['retry_after']='0'
+        entry=self.reference_lifecycle_entry(a);cache=self.root/'retry-chains';cache.mkdir();output=cache/'out'
+        with patch.object(pipeline.time,'sleep'):
+            pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        receipt=json.loads((cache/'xx_rail.meta.json').read_text())['request_provenance']
+        identities={e['url_sha256'] for e in receipt['endpoints']}
+        self.assertEqual(identities,{pipeline.source_url_fingerprint(a),pipeline.source_url_fingerprint(b)})
+        self.assertTrue(fh['requests'],'the failed hop was observed but supplied no accepted archive bytes')
+        self.add_lifecycle_hold(entry['catalogue'],failed);failed_count=len(fh['requests'])
+        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        self.assertEqual(result['status'],'compiled');self.assertEqual(len(fh['requests']),failed_count)
+
+    def test_reference_same_terminal_304_preserves_checked_hop_history(self):
+        from urllib.error import URLError
+        a,ah=self.server(self.archive());b,bh=self.server(self.archive());c,ch=self.server(self.archive());ah['redirect']=b;bh['redirect']=c
+        entry=self.reference_lifecycle_entry(a);cache=self.root/'same-terminal';cache.mkdir();output=self.root/'same-terminal-out'
+        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        before=json.loads((cache/'xx_rail.meta.json').read_text())['request_provenance'];ah['redirect']=c
+        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        self.assertEqual(result['acquisition_metrics']['conditional_not_modified'],1)
+        after=json.loads((cache/'xx_rail.meta.json').read_text())['request_provenance']
+        self.assertEqual(after['artifact_sha256'],before['artifact_sha256']);self.assertEqual(len(after['endpoints']),3)
+        self.assertTrue(all(pair==(None,None) for pair in ah['conditional_requests']))
+        self.assertIn(('"one"',None),ch['conditional_requests'])
+        self.add_lifecycle_hold(entry['catalogue'],b)
+        with patch.object(pipeline,'get',side_effect=URLError('offline fixture')):
+            with self.assertRaises(pipeline.SourceRetrievalError) as failed:
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        self.assertIn('source_cache_access_hold',{a['code'] for a in failed.exception.attempts})
+
+    def test_reference_redirect_resource_and_redacted_uncertainty_controls(self):
+        for query,redacted,allowed in [('one',False,False),('two',False,True),('two',True,False)]:
+            with self.subTest(query=query,redacted=redacted):
+                a,ah=self.server(self.archive());b,bh=self.server(self.archive());ah['redirect']=b+'?region='+query+'#redirect'
+                held=b+'?region=one#declared';entry=self.reference_lifecycle_entry(a,held)
+                if redacted:entry['catalogue']['source_resolution']['ordinary_static_declarations'][0]['url']=pipeline.registry.references.reference_display_url(held)
+                if allowed:
+                    with pipeline.get(a,policy=lambda target:pipeline.source_policy(entry,target)) as response:response.read()
+                    self.assertTrue(bh['requests'])
+                else:
+                    with self.assertRaises(pipeline.SourceAccessHold):pipeline.get(a,policy=lambda target:pipeline.source_policy(entry,target))
+                    self.assertEqual(bh['requests'],[])
 
     def test_retry_after_receipts_survive_two_runs_without_early_requests(self):
         from email.utils import formatdate
@@ -1668,6 +1885,10 @@ class GlobalFrequency(unittest.TestCase):
                 range_value=self.headers.get('Range');held['requests'].append(range_value)
                 validator=self.headers.get('If-Range');held['range_validators'].append(validator)
                 held['conditional_requests'].append((self.headers.get('If-None-Match'),self.headers.get('If-Modified-Since')))
+                if held.get('redirect_sequence'):
+                    self.send_response(302);self.send_header('Location',held['redirect_sequence'].pop(0));self.end_headers();return
+                if held.get('force_304'):
+                    self.send_response(304);self.end_headers();return
                 if held.get('redirect'):
                     self.send_response(302);self.send_header('Location',held['redirect']);self.end_headers();return
                 if held.get('retry_after'):
