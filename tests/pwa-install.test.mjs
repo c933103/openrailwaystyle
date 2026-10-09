@@ -77,30 +77,43 @@ test('a Mac without touch and a browser without install prompt retain useful men
   } finally { s.cleanup(); }
 });
 
-test('a real prompt capability is deferred until a click, consumed once, and can be offered again after dismissal', async () => {
+test('the toolbar icon directly prompts once, ignores pending clicks, and retains a fresh offer', async () => {
   const s = start();
   try {
-    const first = s.offer();
+    let finish;
+    const first = s.offer({pending: new Promise(resolve => { finish = resolve; })});
+    const opener = s.byId('pwa-install-open'), dialog = s.byId('pwa-install');
     assert.equal(first.event.defaultPrevented, true);
     assert.equal(first.calls(), 0);
-    assert.equal(s.byId('pwa-install').open, false, 'the browser event does not open an automatic modal');
+    assert.equal(dialog.open, false, 'the browser event does not open an automatic modal');
+    assert.equal(opener.hasAttribute('aria-controls'), false, 'a direct prompt does not claim to open manual help');
     s.open();
-    const action = s.byId('pwa-install-native');
-    assert.equal(action.hidden, false);
-    action.click();
-    assert.equal(first.calls(), 1, 'prompt() runs inside the initiating click, before yielding');
-    action.click();
-    await tick();
-    assert.equal(first.calls(), 1, 'a pending or consumed event cannot be reused');
-    assert.equal(action.hidden, true);
-    assert.match(s.byId('pwa-install-status').textContent, /dismissed/);
-    assert.equal(s.byId('pwa-install-generic').hidden, false);
+    assert.equal(first.calls(), 1, 'the original toolbar click synchronously invokes prompt()');
+    assert.equal(dialog.open, false, 'there is no intermediate instructions dialog');
+    assert.equal(opener.disabled, false, 'the pending icon remains focusable');
+    assert.equal(opener.getAttribute('aria-busy'), 'true');
+    assert.equal(s.document.activeElement, opener);
+    opener.click();
+    assert.equal(first.calls(), 1);
+    assert.equal(dialog.open, false, 'a repeated pending click does not open fallback help');
     const second = s.offer();
-    assert.equal(action.hidden, false);
-    assert.equal(s.byId('pwa-install-status').hidden, true, 'a new offer clears stale failure/dismissal text');
-    action.click();
+    opener.click();
+    assert.equal(second.calls(), 0, 'a fresh event still waits for the current prompt to settle');
+    finish({outcome: 'dismissed'});
     await tick();
-    assert.equal(second.calls(), 1);
+    assert.equal(dialog.open, false, 'dismissal does not reopen instructions');
+    assert.equal(opener.hasAttribute('aria-busy'), false);
+    assert.equal(s.document.activeElement, opener);
+    assert.match(s.byId('pwa-install-status').textContent, /dismissed/);
+    opener.click();
+    assert.equal(second.calls(), 1, 'a later click uses the fresh event directly');
+    await tick();
+    assert.equal(dialog.open, false);
+    opener.click();
+    assert.equal(dialog.open, true, 'a later click without an offer opens manual instructions');
+    assert.equal(opener.getAttribute('aria-controls'), dialog.id);
+    assert.equal(first.calls(), 1);
+    assert.equal(second.calls(), 1, 'neither consumed event is reused');
   } finally { s.cleanup(); }
 });
 
@@ -109,7 +122,6 @@ test('prompt failure preserves instructions and does not repeatedly invoke the b
   try {
     const offer = s.offer({failure: new Error('NotAllowedError')});
     s.open();
-    s.byId('pwa-install-native').click();
     await tick();
     assert.equal(offer.calls(), 1);
     assert.match(s.byId('pwa-install-status').textContent, /could not open/);
@@ -126,8 +138,8 @@ test('a focused native action transfers focus before being disabled, then retain
   const s = start();
   try {
     let finish;
-    const offer = s.offer({pending: new Promise(resolve => { finish = resolve; })});
     s.open();
+    const offer = s.offer({pending: new Promise(resolve => { finish = resolve; })});
     const action = s.byId('pwa-install-native'), close = s.byId('pwa-install-close');
     let stateOnBlur;
     action.addEventListener('blur', () => { stateOnBlur = {hidden: action.hidden, disabled: action.disabled}; });
@@ -148,8 +160,8 @@ test('finishing a pending prompt after help closes preserves focus on the userâ€
   const s = start();
   try {
     let finish;
-    s.offer({pending: new Promise(resolve => { finish = resolve; })});
     s.open();
+    s.offer({pending: new Promise(resolve => { finish = resolve; })});
     const action = s.byId('pwa-install-native'), next = s.byId('share');
     action.focus();action.click();
     s.byId('pwa-install-close').click();
@@ -167,9 +179,9 @@ test('acceptance awaits installation confirmation, while appinstalled hides the 
   try {
     s.offer({outcome: 'accepted'});
     s.open();
-    s.byId('pwa-install-native').click();
     await tick();
     assert.equal(s.byId('pwa-install-open').hidden, false, 'accepting a request does not prove installation completed');
+    assert.equal(s.byId('pwa-install').open, false, 'acceptance does not open manual instructions');
     assert.match(s.byId('pwa-install-status').textContent, /accepted the installation request/);
     s.window.dispatchEvent(new s.window.Event('appinstalled'));
     assert.equal(s.byId('pwa-install-open').hidden, true);
@@ -189,6 +201,7 @@ for (const [context, options] of [
     s.open();
     assert.equal(s.byId('pwa-install').open, false);
     const offer = s.offer();
+    s.open();
     assert.equal(s.byId('pwa-install-native').hidden, true);
     assert.equal(offer.calls(), 0);
   } finally { s.cleanup(); }
@@ -334,8 +347,45 @@ test('fallback blocks background activation and redirects outside focus without 
 test('watch mode never opens an install overlay, including after a browser prompt event', () => {
   const s = start({watch: true});
   try {
-    s.offer();
+    const offer = s.offer();
     s.open();
     assert.equal(s.byId('pwa-install').open, false);
+    assert.equal(offer.calls(), 0, 'watch mode also blocks direct native prompts');
   } finally { s.cleanup(); }
 });
+
+test('a direct prompt can recover focus after the browser blurs the icon', async () => {
+  const s = start();
+  try {
+    let finish;
+    s.offer({pending: new Promise(resolve => { finish = resolve; })});
+    s.open();
+    s.byId('pwa-install-open').blur();
+    assert.equal(s.document.activeElement, s.document.body);
+    finish({outcome: 'dismissed'});
+    await tick();
+    assert.equal(s.byId('pwa-install').open, false);
+    assert.equal(s.document.activeElement, s.byId('pwa-install-open'));
+  } finally { s.cleanup(); }
+});
+
+for (const change of ['focus', 'navigation', 'standalone', 'watch', 'destroy']) {
+  test(`a delayed direct prompt failure does not interrupt a later ${change} change`, async () => {
+    const s = start();
+    try {
+      let fail;
+      const offer = s.offer({pending: new Promise((_, reject) => { fail = reject; })});
+      s.open();
+      if (change === 'focus') s.byId('share').focus();
+      if (change === 'navigation') s.window.location.hash = '#8/31/115';
+      if (change === 'standalone') { s.media.matches = true; s.media.dispatchEvent(new s.window.Event('change')); }
+      if (change === 'watch') s.document.body.dataset.ui = 'watch';
+      if (change === 'destroy') s.controls.destroy();
+      fail(new Error('Browser prompt rejected'));
+      await tick();
+      assert.equal(offer.calls(), 1);
+      assert.equal(s.byId('pwa-install').open, false, 'late failure does not reopen help in another interaction');
+      if (change === 'focus') assert.equal(s.document.activeElement, s.byId('share'));
+    } finally { s.cleanup(); }
+  });
+}
