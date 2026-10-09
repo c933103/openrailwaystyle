@@ -133,6 +133,7 @@ export function matchTimetablePattern(input = {}) {
   const stations = [];
   for (const call of served) {
     const rows = crosswalk.filter(row => row?.feed_id === source.feed_id && row.station_id === call.station_id);
+    if (rows.some(row => row.source_sha256 === source.sha256 && row.status === 'conflict')) return result('conflicting', 'station_crosswalk_conflict');
     if (rows.some(row => row.source_sha256 !== source.sha256)) return result('stale', 'station_source_mismatch');
     if (!rows.length) return result('missing_evidence', 'missing_station_crosswalk');
     if (rows.some(row => row.status === 'conflict') || new Set(rows.map(row => row.osm_station_id)).size !== 1) return result('conflicting', 'station_crosswalk_conflict');
@@ -158,8 +159,11 @@ export function matchTimetablePattern(input = {}) {
     if (candidate?.eligibility === 'excluded') continue;
     if (!candidate || !array(candidate.route_bindings, 32) || candidate.route_bindings.some(row => !routeBinding(row)) || (candidate.operator_binding !== undefined && !operatorBinding(candidate.operator_binding))) { blockers.push(['missing_evidence', 'invalid_candidate']); continue; }
     const previous = candidate.route_bindings.some(row => row && row.feed_id === source.feed_id && row.route_id === pattern.source_route_id && row.source_sha256 !== source.sha256);
-    if (previous && candidate.eligibility !== 'excluded') { blockers.push(['stale', 'route_binding_source_mismatch']); continue; }
+    if (previous) blockers.push(['stale', 'route_binding_source_mismatch']);
     const exact = candidate.route_bindings.filter(row => bound(row) && row.route_id === pattern.source_route_id);
+    // Record current conflicts before inspecting other evidence on the same
+    // candidate. Grouping assertions cannot hide them behind a stale blocker.
+    if (exact.length && (candidate.status === 'conflict' || exact.some(row => row.status === 'conflict'))) blockers.push(['conflicting', 'service_identity_conflict']);
     const sameOperator = candidate.operator_binding?.feed_id === source.feed_id && candidate.operator_binding.agency_id === pattern.agency_id;
     const osm = candidate.osm;
     // A same-scope operator alternative is not unrelated merely because its
@@ -172,7 +176,7 @@ export function matchTimetablePattern(input = {}) {
     }
     const refMatches = id(pattern.route_ref) && osm?.tags?.ref === pattern.route_ref;
     const relevantOperator = sameOperator && (exact.length > 0 || refMatches);
-    if (relevantOperator && candidate.operator_binding.source_sha256 !== source.sha256) { blockers.push(['stale', 'operator_binding_source_mismatch']); continue; }
+    if (relevantOperator && candidate.operator_binding.source_sha256 !== source.sha256) blockers.push(['stale', 'operator_binding_source_mismatch']);
     const fallback = sameOperator && refMatches && bound(candidate.operator_binding);
     if (!exact.length && !fallback) continue;
     if (candidate.eligibility !== 'eligible') { blockers.push(['missing_evidence', 'unverified_eligibility']); continue; }

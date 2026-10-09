@@ -538,3 +538,38 @@ test('binding inventories validate every bounded record before scope filtering',
   oversized.candidates[0].route_bindings.push({feed_id: 'other', source_sha256: sha, route_id: 'x'.repeat(1025), status: 'verified'});
   assert.equal(status(oversized), 'missing_evidence');
 });
+
+test('current conflicts outrank stale assertions whether grouped together or in separate candidates', () => {
+  for (const grouped of [false, true]) for (const reverse of [false, true]) {
+    const input = fixture();
+    input.candidates[0].route_bindings[0].status = 'conflict';
+    const other = grouped ? input.candidates[0] : structuredClone(input.candidates[0]);
+    if (!grouped) { other.route_bindings = []; input.candidates.push(other); }
+    other.operator_binding = {feed_id: 'feed', source_sha256: 'b'.repeat(64), agency_id: 'A', status: 'verified'};
+    if (reverse) input.candidates.reverse();
+    assert.equal(status(input), 'conflicting', `grouped=${grouped}/reverse=${reverse}`);
+  }
+});
+
+test('current route, operator and station conflicts retain priority over grouped stale assertions', () => {
+  for (const kind of ['route', 'operator', 'station']) for (const reverse of [false, true]) {
+    const input = fixture(), candidate = input.candidates[0];
+    if (kind === 'route') {
+      candidate.route_bindings[0].status = 'conflict';
+      candidate.route_bindings.push({...candidate.route_bindings[0], status: 'verified', source_sha256: 'b'.repeat(64)});
+      if (reverse) candidate.route_bindings.reverse();
+    } else if (kind === 'operator') {
+      candidate.route_bindings[0].source_sha256 = 'b'.repeat(64);
+      candidate.operator_binding = {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: 'conflict'};
+      input.candidates.push(structuredClone(fixture().candidates[0]));
+      if (reverse) input.candidates.reverse();
+    } else {
+      input.crosswalk[0].status = 'conflict';
+      input.crosswalk.push({...input.crosswalk[0], status: 'verified', source_sha256: 'b'.repeat(64)});
+      if (reverse) input.crosswalk.reverse();
+    }
+    const output = matchTimetablePattern(input);
+    assert.equal(output.status, 'conflicting', `${kind}/${reverse}`);
+    assert.equal(output.frequency_status, 'not_evaluated');
+  }
+});
