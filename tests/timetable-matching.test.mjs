@@ -1002,3 +1002,45 @@ test('unconsumed hidden or inherited optional operator metadata is not hashed or
     } else assert.equal(withPrototypeField('operator_binding', unused, () => status(input)), 'verified');
   }
 });
+
+test('station conflicts are scoped to current source and requested OSM snapshot', () => {
+  for (const state of ['verified', 'conflict', 'unknown']) for (const differentIdentity of [false, true]) for (const reverse of [false, true]) {
+    const input = fixture();
+    input.crosswalk.push({...input.crosswalk[0], status: state, osm_station_id: differentIdentity ? 'node:99' : 'node:1', osm_snapshot: '2026-10-04T00:00:00Z'});
+    if (reverse) input.crosswalk.reverse();
+    const output = matchTimetablePattern(input);
+    assert.equal(output.status, 'stale', `${state}/${differentIdentity}/${reverse}`);
+    assert.deepEqual(output.reasons, ['station_snapshot_mismatch']);
+    assert.equal(output.frequency_status, 'not_evaluated');
+  }
+});
+
+test('current station conflicts retain priority beside stale source or snapshot rows', () => {
+  for (const stalePin of ['source', 'snapshot']) for (const differentIdentity of [false, true]) for (const reverse of [false, true]) {
+    const input = fixture();
+    input.crosswalk[0].status = 'conflict';
+    const previous = {...input.crosswalk[0], status: 'verified', osm_station_id: differentIdentity ? 'node:99' : 'node:1'};
+    if (stalePin === 'source') previous.source_sha256 = 'b'.repeat(64);
+    else previous.osm_snapshot = '2026-10-04T00:00:00Z';
+    input.crosswalk.push(previous);
+    if (reverse) input.crosswalk.reverse();
+    assert.equal(status(input), 'conflicting', `${stalePin}/${reverse}`);
+  }
+  const input = fixture();
+  input.crosswalk.push({...input.crosswalk[0], osm_station_id: 'node:99'});
+  assert.equal(status(input), 'conflicting', 'two identities within current pins still conflict');
+});
+
+test('old-only station mappings withhold stale while unused same-source mappings remain irrelevant', () => {
+  for (const state of ['verified', 'conflict', 'unknown']) for (const differentIdentity of [false, true]) for (const selected of [false, true]) for (const reverse of [false, true]) {
+    const input = fixture();
+    const previous = {...input.crosswalk[0], status: state, osm_snapshot: '2026-10-04T00:00:00Z', osm_station_id: differentIdentity ? 'node:99' : 'node:1'};
+    if (selected) input.crosswalk.shift();
+    else previous.station_id = 'unserved';
+    input.crosswalk.push(previous);
+    if (reverse) input.crosswalk.reverse();
+    const output = matchTimetablePattern(input);
+    assert.equal(output.status, selected ? 'stale' : 'verified', `${state}/${selected}/${reverse}`);
+    assert.equal(output.frequency_status, 'not_evaluated');
+  }
+});

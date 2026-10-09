@@ -214,7 +214,11 @@ source SHA and `station_id` define the declared source-side lookup key; `status`
 same-source key absent from the pattern's actually served calls, mapping
 uncertainty, conflict or an older OSM snapshot remains irrelevant and cannot
 change the selected station output. For a selected key, any such uncertainty
-withholds verification. Same-feed source mismatches still withhold before key
+withholds verification. Station conflict/status comparisons use only rows pinned
+to the current source and requested OSM snapshot. An older snapshot contributes
+a stale blocker even when its identity differs or its mapping status says
+conflict; an independently current conflict still takes diagnostic priority.
+Same-feed source mismatches still withhold before key
 lookup because source revisions can change the identifier namespace. A
 separate feed remains a separate namespace. This exception does not extend to
 route/operator candidate dismissal: unreviewed assertions cannot establish
@@ -324,14 +328,14 @@ bounded; they do not justify enabling it across the production registry yet.
 The same report also records fresh, serial Node 22.23.3 matcher processes over a
 controlled 10,000-observation, 2-pattern, 5,825,261-byte sidecar produced from the
 240,000-stop-row/28-profile fixture. Across three repetitions, the valid identity
-case took a median 137.671 ms; an unbound alternative was withheld in 130.010 ms.
-Median peak process RSS was 116,592 and 116,544 KiB respectively. These elapsed
+case took a median 128.876 ms; an unbound alternative was withheld in 125.724 ms.
+Median peak process RSS was 116,672 and 116,700 KiB respectively. These elapsed
 times cover matching after parsing/preparation; RSS includes startup, parsing
 and fixture preparation and is not a matcher-only allocation measurement.
 
 The source-work adversary and candidate-reference adversary returned explicit
-work-limit outcomes in median 49.035 and 149.015 ms, with median peak process RSS
-121,832 and 117,684 KiB. The source adversary fails during all-pattern validation
+work-limit outcomes in median 43.996 and 134.603 ms, with median peak process RSS
+121,488 and 117,592 KiB. The source adversary fails during all-pattern validation
 before reaching the ordinary observation scan, so its lower elapsed time is not
 a speed improvement. The script publishes only aggregate measurements and
 source hashes, never the temporary synthetic sidecar or ZIP. Compiler and

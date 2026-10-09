@@ -228,7 +228,7 @@ function matchPattern(input) {
 
   // Negative diagnostics from individually complete scoped records survive a
   // malformed neighbor. They never authorize positive matching of that input.
-  for (const row of suppliedCrosswalk) if (stationBinding(row) && bound(row) && servedIds.has(row.station_id)) {
+  for (const row of suppliedCrosswalk) if (stationBinding(row) && bound(row) && row.osm_snapshot === context.osm_snapshot && servedIds.has(row.station_id)) {
     if (row.status === 'conflict' || (recognizedStations.has(row.station_id) && recognizedStations.get(row.station_id) !== row.osm_station_id)) blockers.push(['conflicting', 'station_crosswalk_conflict']);
     recognizedStations.set(row.station_id, row.osm_station_id);
   }
@@ -278,11 +278,12 @@ function matchPattern(input) {
   for (const call of served) {
     const rows = validCrosswalk.filter(row => row.feed_id === source.feed_id && row.station_id === call.station_id);
     if (!rows.length) { blockers.push(['missing_evidence', 'missing_station_crosswalk']); continue; }
+    const currentRows = rows.filter(row => bound(row) && row.osm_snapshot === context.osm_snapshot);
     if (rows.some(row => row.source_sha256 !== source.sha256)) blockers.push(['stale', 'station_source_mismatch']);
-    else if (rows.some(row => row.status === 'conflict') || new Set(rows.map(row => row.osm_station_id)).size !== 1) blockers.push(['conflicting', 'station_crosswalk_conflict']);
+    if (currentRows.some(row => row.status === 'conflict') || new Set(currentRows.map(row => row.osm_station_id)).size > 1) blockers.push(['conflicting', 'station_crosswalk_conflict']);
     if (rows.some(row => row.osm_snapshot !== context.osm_snapshot)) blockers.push(['stale', 'station_snapshot_mismatch']);
-    if (rows.some(row => row.status !== 'verified')) blockers.push(['missing_evidence', 'unverified_station_crosswalk']);
-    stations.push(rows[0].osm_station_id);
+    if (currentRows.some(row => row.status !== 'verified')) blockers.push(['missing_evidence', 'unverified_station_crosswalk']);
+    stations.push(currentRows[0]?.osm_station_id);
   }
   let matchCount = 0, selectedMatch = null;
   for (const candidate of prepared) {
