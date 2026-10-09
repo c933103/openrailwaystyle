@@ -20,7 +20,18 @@ The source registry is assembled from **three independently credited inputs**:
 - The [Mobility Database feed CSV](https://files.mobilitydatabase.org/feeds_v2.csv), pinned as the input to each catalogue generation. Transitous `mdb-id` references reconcile with Mobility Database IDs; an exactly matching original feed URL also reconciles entries. The pipeline does **not** merge feeds just because their operators, names, or geographic areas look similar.
 
 The [normalizer](../scripts/frequency_catalogue.py) emits the complete catalogue,
-lineage entries and a reconciliation report. Each source retains links to its
+lineage entries and a reconciliation report. The report binds the exact combined
+catalogue bytes to the pinned Transitous commit and source URLs, the licence JSON
+SHA-256, a digest of the exact parsed feed-definition snapshot, and the Mobility
+Database CSV SHA-256. The feed snapshot digest hashes a compact, key-sorted JSON
+map of filenames to their content SHA-256s (UTF-8, default ASCII escaping). Both production compiler steps
+require that matching report. Each shard and the assembled manifest retain this
+composite `catalogue_provenance`; a combined catalogue has no single
+`catalogue_url`. Assembly rejects missing/mismatched provenance across shards.
+A local input without a report is explicitly `local-unverified`, while the
+standalone default records only the actual Transitous licence URL it downloads.
+Legacy shards remain readable with `legacy-unverified` provenance, without
+inferring source identities they did not record. Each source retains links to its
 originating registry and original feed URL, names, available publisher credits,
 licence identifiers, terms URLs and structured usage restrictions. A missing
 catalogue licence field, an unidentified/URL-only licence, or even a generic
@@ -276,6 +287,7 @@ python3 scripts/frequency_catalogue.py \
   --report /path/to/catalogue-report.json
 
 python3 scripts/global-service-frequency.py --catalogue /path/to/catalogue.json \
+  --catalogue-report /path/to/catalogue-report.json \
   --cache /path/to/gtfs-cache --output /path/to/frequency-output \
   --date 2026-10-12 --rail-graph /path/to/published/branch-lines.ndjson.gz
 node scripts/assemble-global-frequency.mjs /path/to/frequency-output

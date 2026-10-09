@@ -9,6 +9,7 @@ import argparse
 from collections import Counter
 import csv
 import hashlib
+import io
 import json
 from pathlib import Path
 import re
@@ -228,8 +229,18 @@ def compact_mobility(row):
             "authentication_type": get("urls.authentication_type", "authentication_type")}
 
 
-def build_catalogue(licences, feed_sources, mobility_rows):
+def catalogue_sources(transitous_ref):
+    """Public upstream locations for the exact pinned reconciliation inputs."""
+    if not isinstance(transitous_ref, str) or not re.fullmatch(r'[a-f0-9]{40}', transitous_ref):
+        raise ValueError('Transitous ref must be a full pinned Git commit SHA')
+    return [TRANSITOUS_LICENSES.replace('/main/', '/' + transitous_ref + '/'),
+            TRANSITOUS_FEEDS.replace('/main/', '/' + transitous_ref + '/'), MOBILITY_CSV]
+
+
+def build_catalogue(licences, feed_sources, mobility_rows, transitous_ref=None):
     """feed_sources: (region, source, pinned source-list URL) tuples."""
+    licence_url, feeds_url, _ = catalogue_sources(transitous_ref) if transitous_ref is not None else [
+        TRANSITOUS_LICENSES, TRANSITOUS_FEEDS, MOBILITY_CSV]
     rows = {}
     by_mdb = {}
     by_url = {}
@@ -239,11 +250,11 @@ def build_catalogue(licences, feed_sources, mobility_rows):
         if not isinstance(name, str) or not name.endswith(".gtfs.zip"):
             continue
         row = dict(item)
-        row["catalogue_url"] = TRANSITOUS_LICENSES
+        row["catalogue_url"] = licence_url
         row["delivery"] = "transitous"
         row["lineage"] = [{"catalogue": "transitous-licence", "id": name,
-                           "url": TRANSITOUS_LICENSES, "source": item.get("source", "")}]
-        ev = licence_evidence(item, "transitous-licence", TRANSITOUS_LICENSES)
+                           "url": licence_url, "source": item.get("source", "")}]
+        ev = licence_evidence(item, "transitous-licence", licence_url)
         row["rights_evidence"] = [ev] if ev else []
         rows[name] = row
         if source_key(item.get("source")):
@@ -272,7 +283,7 @@ def build_catalogue(licences, feed_sources, mobility_rows):
         mdb = str(item.get("mdb-id") or "")
         row = rows.setdefault(filename, {
             "filename": filename, "human_name": name, "country_code": region.split("-")[0].upper(),
-            "source": direct, "delivery": "transitous", "catalogue_url": TRANSITOUS_FEEDS,
+            "source": direct, "delivery": "transitous", "catalogue_url": feeds_url,
             "lineage": [], "rights_evidence": []})
         if not row.get("source") and direct:
             row["source"] = direct
@@ -333,10 +344,13 @@ def build_catalogue(licences, feed_sources, mobility_rows):
     return prepared, dict(counts)
 
 
-def read_transitous(directory, ref):
+def read_transitous(directory, ref, input_hashes=None):
     for path in sorted(Path(directory).glob("*.json")):
         region = path.stem
-        obj = json.loads(path.read_text())
+        data = path.read_bytes()
+        if input_hashes is not None:
+            input_hashes[path.name] = hashlib.sha256(data).hexdigest()
+        obj = json.loads(data)
         if not isinstance(obj, dict) or not isinstance(obj.get("sources"), list):
             raise ValueError("Invalid Transitous source list: " + str(path))
         url = "https://github.com/public-transport/transitous/blob/" + ref + "/feeds/" + path.name
@@ -353,14 +367,28 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     args = parser.parse_args()
-    with args.mobility_csv.open(newline="", encoding="utf-8-sig") as f:
-        mobility = list(csv.DictReader(f))
-    rows, counts = build_catalogue(json.loads(args.licences.read_text()),
-                                   read_transitous(args.feeds_directory, args.transitous_ref), mobility)
+    try:
+        sources = catalogue_sources(args.transitous_ref)
+    except ValueError as error:
+        parser.error(str(error))
+    licence_data = args.licences.read_bytes()
+    mobility_data = args.mobility_csv.read_bytes()
+    mobility = list(csv.DictReader(io.StringIO(mobility_data.decode("utf-8-sig"), newline="")))
+    feed_hashes = {}
+    rows, counts = build_catalogue(json.loads(licence_data),
+        read_transitous(args.feeds_directory, args.transitous_ref, feed_hashes), mobility, args.transitous_ref)
+    # Exact parsed feed files: SHA-256 of the sorted compact filename -> SHA-256
+    # JSON map (UTF-8 with JSON's default ASCII escaping), not the mutable branch.
+    feeds_digest = hashlib.sha256(json.dumps(feed_hashes, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(rows, ensure_ascii=False, separators=(",", ":")) + "\n")
-    report = {"schema": 1, "transitous_ref": args.transitous_ref, "sources": [
-        TRANSITOUS_LICENSES, TRANSITOUS_FEEDS, MOBILITY_CSV], "counts": counts,
+    data = (json.dumps(rows, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
+    args.output.write_bytes(data)
+    report = {"schema": 2, "catalogue_sha256": hashlib.sha256(data).hexdigest(),
+        "transitous_ref": args.transitous_ref, "sources": sources,
+        "input_sha256": {"transitous_licences": hashlib.sha256(licence_data).hexdigest(),
+                         "transitous_feeds": feeds_digest,
+                         "mobility_csv": hashlib.sha256(mobility_data).hexdigest()},
+        "counts": counts,
         "note": "Metadata and overlaps only; legal eligibility and rail schedules are assessed downstream."}
     args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
     print(json.dumps(counts))

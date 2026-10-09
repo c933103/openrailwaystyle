@@ -5,6 +5,7 @@
 import {readFile,readdir,mkdir,writeFile,rm} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
 import {createHash} from 'node:crypto';
+import {isDeepStrictEqual} from 'node:util';
 import {timetableFeatures} from './gtfs-service.mjs';
 import {readFrequencyFeed} from './read-frequency-feed.mjs';
 // Publication-only display URLs. Acquisition/cache identities and inputs stay
@@ -71,13 +72,17 @@ export function mergeInventories(inventories){
   if(!inventories.length)throw new Error('No worldwide inventory');
   const first=inventories[0],ids=new Set(),shards=new Set(),entries=[];
   for(const inventory of inventories){
-    for(const field of ['schema','shards','catalogue_sha256','catalogue_entries','service_date'])if(inventory[field]!==first[field])throw new Error(`Inconsistent inventory ${field}`);
+    for(const field of ['schema','shards','catalogue_url','catalogue_sha256','catalogue_entries','service_date'])if(inventory[field]!==first[field])throw new Error(`Inconsistent inventory ${field}`);
+    if(!isDeepStrictEqual(inventory.catalogue_provenance,first.catalogue_provenance))throw new Error('Inconsistent inventory catalogue_provenance');
     if(shards.has(inventory.shard))throw new Error('Duplicate shard');shards.add(inventory.shard);
     for(const entry of inventory.entries){if(ids.has(entry.id))throw new Error('Duplicate feed');ids.add(entry.id);entries.push(entry);}
   }
   if(shards.size!==first.shards||ids.size!==first.catalogue_entries)throw new Error('Incomplete worldwide scan; refusing to publish a partial shard collection');
   entries.sort((a,b)=>a.id.localeCompare(b.id));
-  return {...first,shard:undefined,counts:countStatuses(entries),entries};
+  // Old shards never bound their origins to this catalogue. Keep them readable
+  // without retroactively certifying the old single-URL attribution.
+  return {...first,catalogue_provenance:first.catalogue_provenance??{schema:1,kind:'legacy-unverified',sources:[]},
+    shard:undefined,counts:countStatuses(entries),entries};
 }
 export async function pruneFrequencyOutputs(directory,entries){
   const wanted=new Set(entries.filter(e=>e.status==='compiled').map(e=>e.output));
@@ -111,6 +116,7 @@ export async function assemble(directory){
   inventory.counts=counts;
   inventory.reason_codes=reasonCounts;
   const manifest=publishedMetadata({schema:3,service_date:inventory.service_date,catalogue_url:inventory.catalogue_url,catalogue_sha256:inventory.catalogue_sha256,catalogue_entries:inventory.catalogue_entries,
+    catalogue_provenance:inventory.catalogue_provenance,
     countries_scanned:countrySet(()=>true),
     countries_compiled:countrySet(e=>e.status==='compiled'),
     countries_with_mapped_feed:countriesMapped,

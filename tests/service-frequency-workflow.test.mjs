@@ -25,7 +25,11 @@ test('reconciled catalogue fixtures run inside the isolated PR test process',()=
 
 test('production consumes the same normalized catalogue and publishes no per-feed copies',()=>{
   assert.match(job('catalogue'),/--output catalogue\/catalogue\.json/);
-  for(const name of ['catalogue','compile'])assert.match(job(name),/--catalogue catalogue\/catalogue\.json/);
+  for(const name of ['catalogue','compile']){
+    assert.match(job(name),/--catalogue catalogue\/catalogue\.json/);
+    assert.match(job(name),/--catalogue-report catalogue\/catalogue-report\.json/);
+  }
+  assert.match(globalFixtures,/frequency_provenance_test\.py/);
   assert.match(job('publish'),/tar -czf frequency-snapshot\.tar\.gz -C frequency-output manifest\.json inventory\.json tiles/);
   assert.doesNotMatch(job('publish'),/tar .*\bfeeds\b/);
 });

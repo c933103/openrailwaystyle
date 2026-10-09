@@ -190,14 +190,14 @@ class FrequencyCatalogue(unittest.TestCase):
             import sys
             with patch.object(sys,'argv',['frequency_catalogue.py',
                 '--licences',str(path/'license.json'),'--feeds-directory',str(path/'feeds'),
-                '--mobility-csv',str(path/'mobility.csv'),'--transitous-ref','0123456789abcdef',
+                '--mobility-csv',str(path/'mobility.csv'),'--transitous-ref','0123456789abcdef0123456789abcdef01234567',
                 '--output',str(path/'combined.json'),'--report',str(path/'report.json')]):
                 catalogue.main()
             got=json.loads((path/'combined.json').read_text())
             report=json.loads((path/'report.json').read_text())
             self.assertEqual(len(got),2)
             self.assertEqual(report['counts']['merged_entries'],2)
-            self.assertIn('0123456789abcdef',got[0]['lineage'][0]['url'])
+            self.assertIn('0123456789abcdef0123456789abcdef01234567',got[0]['lineage'][0]['url'])
             self.assertEqual(got[1]['delivery'],'direct')
 
 

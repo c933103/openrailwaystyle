@@ -143,3 +143,24 @@ test('aggregate publication scans exclude synthetic URL secrets and retain accou
     assert.equal(await readFile(join(root,'inventory-0.json'),'utf8'),shard,'raw shard file stays unchanged');
   }finally{console.log=originalLog;await rm(root,{recursive:true,force:true});}
 });
+
+
+test('combined catalogue provenance is verified through generator, compiler shards and manifest',()=>{
+  const run=spawnSync('python3',['-m','unittest','discover','-s','tests','-p','frequency_provenance_test.py'],{encoding:'utf8',env:{...process.env,ATLAS_TEST_NODE:process.execPath}});
+  assert.equal(run.status,0,run.stdout+run.stderr);
+});
+
+test('assembly rejects missing or inconsistent composite provenance without inventing legacy metadata',()=>{
+  const provenance={schema:1,kind:'reconciled',transitous_ref:'a'.repeat(40),sources:['https://catalogue.example.test/one','https://catalogue.example.test/two'],input_sha256:{mobility_csv:'b'.repeat(64)}};
+  const base={schema:2,shards:2,catalogue_url:null,catalogue_sha256:'hash',catalogue_entries:2,service_date:'2026-10-05',catalogue_provenance:provenance};
+  const a={...base,shard:0,entries:[{id:'a'}]},b={...base,shard:1,entries:[{id:'b'}]};
+  assert.deepEqual(mergeInventories([a,b]).catalogue_provenance,provenance);
+  for(const changed of [undefined,{...provenance,transitous_ref:'c'.repeat(40)},
+      {...provenance,sources:provenance.sources.slice(0,1)},
+      {...provenance,input_sha256:{mobility_csv:'d'.repeat(64)}}]){
+    assert.throws(()=>mergeInventories([a,{...b,catalogue_provenance:changed}]),/Inconsistent inventory catalogue_provenance/);
+  }
+  assert.throws(()=>mergeInventories([a,{...b,catalogue_url:'https://different.example.test/catalogue'}]),/Inconsistent inventory catalogue_url/);
+  const legacy=mergeInventories([{...a,catalogue_provenance:undefined},{...b,catalogue_provenance:undefined}]);
+  assert.deepEqual(legacy.catalogue_provenance,{schema:1,kind:'legacy-unverified',sources:[]},'old shards remain readable without fabricating verified origins');
+});

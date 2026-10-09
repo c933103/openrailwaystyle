@@ -1040,9 +1040,32 @@ def classify_failure(error):
     return 'compile_error', 'compilation'
 
 
+def catalogue_provenance(report_path, catalogue_hash, catalogue_entries, local):
+    """Bind reconciled provenance to these exact input bytes, never guess it."""
+    if report_path is None:
+        return {'schema': 1, 'kind': 'local-unverified' if local else 'transitous-licences',
+                'sources': [] if local else [CATALOGUE]}
+    report = json.loads(report_path.read_text())
+    if (not isinstance(report, dict) or report.get('schema') != 2
+            or report.get('catalogue_sha256') != catalogue_hash
+            or not isinstance(report.get('counts'), dict)
+            or report['counts'].get('merged_entries') != catalogue_entries):
+        raise ValueError('Catalogue report does not match the input catalogue')
+    sources = registry.catalogue_sources(report.get('transitous_ref'))
+    hashes = report.get('input_sha256')
+    if (report.get('sources') != sources or not isinstance(hashes, dict)
+            or any(not isinstance(hashes.get(key), str) or not re.fullmatch(r'[a-f0-9]{64}', hashes[key])
+                   for key in ('transitous_licences', 'transitous_feeds', 'mobility_csv'))):
+        raise ValueError('Catalogue report is missing pinned input identities')
+    # Copy only the public provenance schema, not arbitrary report metadata.
+    return {'schema': 1, 'kind': 'reconciled', 'transitous_ref': report['transitous_ref'],
+            'sources': sources, 'input_sha256': {key: hashes[key] for key in ('transitous_licences', 'transitous_feeds', 'mobility_csv')}}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--catalogue', help='Local catalogue for offline reproduction; default downloads worldwide registry')
+    parser.add_argument('--catalogue-report', type=Path, help='Matching reconciliation report with pinned upstream identities')
     parser.add_argument('--rules', type=Path, default=ROOT/'styles/data-src/frequency-source-rules.json')
     parser.add_argument('--cache', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
@@ -1057,16 +1080,20 @@ def main():
     args = parser.parse_args()
     if not 0 <= args.shard < args.shards or args.max_feed_bytes <= 0 or args.max_compile_seconds <= 0 or args.max_compile_memory_bytes <= 0:
         parser.error('Invalid shard or byte budget')
+    if args.catalogue_report and not args.catalogue:
+        parser.error('--catalogue-report requires --catalogue')
     dt.date.fromisoformat(args.date)
     args.cache.mkdir(parents=True, exist_ok=True)
     data = Path(args.catalogue).read_bytes() if args.catalogue else get(CATALOGUE).read()
     catalogue_hash = hashlib.sha256(data).hexdigest()
     rules = json.loads(args.rules.read_text())
     entries = discover(json.loads(data), rules)
+    provenance = catalogue_provenance(args.catalogue_report, catalogue_hash, len(entries), bool(args.catalogue))
     previous_path = args.output/f'inventory-{args.shard}.json'
     outcomes = []
     def save():
-        atomic_json(previous_path, {'schema': 2, 'catalogue_url': CATALOGUE, 'catalogue_sha256': catalogue_hash,
+        atomic_json(previous_path, {'schema': 2, 'catalogue_url': None if args.catalogue else CATALOGUE, 'catalogue_sha256': catalogue_hash,
+            'catalogue_provenance': published_metadata(provenance),
             'catalogue_entries': len(entries), 'service_date': args.date, 'shard': args.shard, 'shards': args.shards,
             'scope': 'Every GTFS feed in the worldwide catalogue; no city allow-list',
             'counts': dict(Counter(x['status'] for x in outcomes)),
