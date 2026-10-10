@@ -34,9 +34,9 @@ test('hidden, wrong thematic, wrong source and off-centre checks are rejected',(
   }
 });
 
-test('actual browser sampler queries city-centred present lines from only the active source',async()=>{
+test('actual browser sampler uses one city-centred source and rendered-line observation',async()=>{
   const {readWuhanRail,checkWuhanRailZoom}=await import('../scripts/wuhan-rail-browser.mjs');
-  let zoom=6,center=WUHAN_CENTER,renderedOverride,sourceOverride;
+  let zoom=6,center=WUHAN_CENTER,renderedOverride,sourceOverride,sourceReady=true,frameReady=false,sampledBeforeTargetFrame=false,renderListener;
   const queries=[],line={source:'railway',geometry:{type:'LineString'},properties:{feature:'rail',state:'present'}};
   const features=()=>[
     {...line,source:wuhanRailPlan(zoom).source},
@@ -46,7 +46,7 @@ test('actual browser sampler queries city-centred present lines from only the ac
   ];
   const map={
     getZoom:()=>zoom,getCenter:()=>({lng:center[0],lat:center[1]}),project:point=>{assert.deepEqual(point,WUHAN_CENTER);return {x:500,y:400};},
-    getSource:()=>({}),isSourceLoaded:()=>true,isMoving:()=>false,
+    getSource:()=>({}),isSourceLoaded:()=>sourceReady,isMoving:()=>false,
     loaded:()=>{throw new Error('Unrelated sources must not gate this diagnostic');},
     // MapLibre runtime layers use camel-case sourceLayer; getStyle() returns
     // the public serialized style specification with the source-layer key.
@@ -54,21 +54,34 @@ test('actual browser sampler queries city-centred present lines from only the ac
     getStyle:()=>({layers:style.layers}),
     getLayoutProperty:id=>id.startsWith('speed-')?'none':'visible',
     querySourceFeatures:(source,options)=>{queries.push({source,...options});return sourceOverride??features();},
-    queryRenderedFeatures:(box,options)=>{assert.deepEqual(box,[[405,305],[595,495]]);assert.deepEqual(options.layers,[wuhanRailPlan(zoom).layer]);return renderedOverride??[...features(),{...line,source:'unrelated'}];},
-    jumpTo:next=>{zoom=next.zoom;center=next.center;},once:(_event,callback)=>queueMicrotask(callback),triggerRepaint:()=>{},
+    queryRenderedFeatures:(box,options)=>{if(!frameReady)sampledBeforeTargetFrame=true;assert.deepEqual(box,[[405,305],[595,495]]);assert.deepEqual(options.layers,[wuhanRailPlan(zoom).layer]);return renderedOverride??[...features(),{...line,source:'unrelated'}];},
+    jumpTo:next=>{zoom=next.zoom;center=next.center;sourceReady=true;frameReady=false;},
+    once:(_event,callback)=>{renderListener=callback;},off:()=>{renderListener=undefined;},
+    triggerRepaint:()=>queueMicrotask(()=>{frameReady=true;renderListener?.();renderListener=undefined;}),
   };
   const previousDocument=globalThis.document;
   globalThis.__wuhanSamplerTestMap=map;
   globalThis.document={querySelector:()=>({src:'data:text/javascript,export const map=globalThis.__wuhanSamplerTestMap;'})};
-  const page={evaluate:async(callback,args)=>callback(args)};
+  const page={evaluate:async(callback,args)=>{
+    const result=await callback(args);
+    // Another tile starts loading immediately after the successful observation.
+    // Re-reading later must not invalidate the already observed rendered frame.
+    if(args?.waitForReady && result)sourceReady=false;
+    return result;
+  }};
   try {
     for(const value of WUHAN_ZOOMS) {
       const observed=await checkWuhanRailZoom(page,value);
+      assert.equal(sampledBeforeTargetFrame,false,'stale pre-first-frame lines must not satisfy the target-camera check');
+      assert.equal(frameReady,true,'target-camera frame was rendered before sampling');
+      assert.equal(observed.sourceLoaded,true);
+      assert.equal(sourceReady,false,'readiness changed after the successful sample');
       assert.equal(observed.rendered,1);
       assert.equal(observed.providerSourceFeatures,4);
       assert.equal(observed.providerPresentRail,1);
       assert.deepEqual(queries.at(-1),{source:wuhanRailPlan(value).source,sourceLayer:wuhanRailPlan(value).sourceLayer});
     }
+    sourceReady=true;
     renderedOverride=[];
     const filtered=await readWuhanRail(page,8);
     assert.throws(()=>assertWuhanRail(filtered,8),/WUHAN_TRACKS_NOT_RENDERED/);

@@ -58,18 +58,24 @@ export async function checkWuhanRailZoom(page,zoom) {
   await page.evaluate(async({zoom,center})=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     map.jumpTo({zoom,center});
+    // Camera coordinates update before the rendered frame. Wait for a target
+    // frame before sampling, with a bound if the renderer stops producing frames.
+    await new Promise((resolve,reject)=>{
+      const done=()=>{clearTimeout(timer);resolve();};
+      const timer=setTimeout(()=>{map.off('render',done);reject(new Error('WUHAN_TARGET_FRAME_TIMEOUT'));},30000);
+      map.once('render',done);map.triggerRepaint();
+    });
   },plan);
+  let report;
   try {
-    await waitUntil(page,inspectWuhanRail,{plan,waitForReady:true},{timeout:60000});
+    report=await waitUntil(page,inspectWuhanRail,{plan,waitForReady:true},{timeout:60000});
   } catch(error) {
     // Retain the specific source/visibility/render diagnosis after a timeout.
     assertWuhanRail(await readWuhanRail(page,zoom),zoom);
     throw error;
   }
-  // Let the settled source finish a render before querying painted geometry.
-  await page.evaluate(async()=>{
-    const {map}=await import(document.querySelector('script[type="module"]').src);
-    await new Promise(resolve=>{map.once('render',resolve);map.triggerRepaint();});
-  });
-  return assertWuhanRail(await readWuhanRail(page,zoom),zoom);
+  // The predicate already observed rendered geometry and source readiness in
+  // one browser evaluation. A later frame can start another tile request; do
+  // not replace this consistent observation with a second, racing sample.
+  return assertWuhanRail(report,zoom);
 }
