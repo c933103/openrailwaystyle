@@ -7,6 +7,10 @@ on:
       - scripts/frequency_catalogue.py
       - scripts/frequency_references.py
       - scripts/frequency_publication.py
+      - scripts/frequency_publication_metadata.py
+      - scripts/frequency-publication-metadata.mjs
+      - scripts/frequency-publication-lineage-schema.json
+      - scripts/stage-frequency-artifact.py
       - scripts/frequency-reference-schema.json
       - scripts/frequency-reference-metadata.mjs
       - scripts/frequency_retry.py
@@ -45,6 +49,10 @@ on:
       - scripts/frequency_catalogue.py
       - scripts/frequency_references.py
       - scripts/frequency_publication.py
+      - scripts/frequency_publication_metadata.py
+      - scripts/frequency-publication-metadata.mjs
+      - scripts/frequency-publication-lineage-schema.json
+      - scripts/stage-frequency-artifact.py
       - scripts/frequency-reference-schema.json
       - scripts/frequency-reference-metadata.mjs
       - scripts/frequency_retry.py
@@ -90,6 +98,7 @@ jobs:
             exec setpriv --reuid="$1" --regid="$2" --init-groups --no-new-privs \
               "$3" --test \
               tests/global-frequency.test.mjs \
+              tests/frequency-artifact-staging.test.mjs \
               tests/gtfs-frequency.test.mjs \
               tests/gtfs-service.test.mjs \
               tests/read-frequency-feed.test.mjs \
@@ -202,15 +211,29 @@ jobs:
           key: worldwide-gtfs-${{ matrix.shard }}-${{ needs.catalogue.outputs.service_date }}-${{ github.run_id }}
           restore-keys: worldwide-gtfs-${{ matrix.shard }}-
       - name: Compile every eligible feed in this worldwide shard
+        id: compile
         run: |
           graph=()
           if [ -f railway-graph/branch-lines.ndjson.gz ]; then graph=(--rail-graph railway-graph/branch-lines.ndjson.gz); fi
           python3 scripts/global-service-frequency.py --catalogue catalogue/catalogue.json --catalogue-report catalogue/catalogue-report.json --publication-index catalogue/publication-index.json --cache frequency-cache --output frequency-output --date '${{ needs.catalogue.outputs.service_date }}' --shards 8 --shard '${{ matrix.shard }}' "${graph[@]}"
+      - name: Stage a complete shard or bounded failure diagnostics
+        id: stage
+        if: always()
+        run: |
+          python3 scripts/stage-frequency-artifact.py --mode shard --producer-outcome '${{ steps.compile.outcome }}' --input frequency-output --output frequency-artifact --diagnostics frequency-diagnostics --catalogue catalogue/catalogue.json --catalogue-report catalogue/catalogue-report.json --publication-index catalogue/publication-index.json --date '${{ needs.catalogue.outputs.service_date }}' --shards 8 --shard '${{ matrix.shard }}'
+      - uses: actions/upload-artifact@v4
+        if: steps.compile.outcome == 'success' && steps.stage.outcome == 'success'
+        with:
+          name: worldwide-frequency-shard-${{ matrix.shard }}
+          path: frequency-artifact/
+          if-no-files-found: error
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: worldwide-frequency-shard-${{ matrix.shard }}
-          path: frequency-output/
+          name: worldwide-frequency-diagnostic-${{ matrix.shard }}
+          path: frequency-diagnostics/
+          if-no-files-found: ignore
           retention-days: 14
   assemble:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -226,14 +249,38 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           pattern: worldwide-frequency-shard-*
-          path: frequency-output
-          merge-multiple: true
+          path: frequency-shards
+          merge-multiple: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: worldwide-frequency-catalogue
+          path: catalogue
+      - name: Validate separate shard receipts before flattening
+        run: |
+          python3 scripts/stage-frequency-artifact.py --mode assembly-input --producer-outcome success --input frequency-shards --output frequency-output --diagnostics frequency-merge-diagnostics --catalogue catalogue/catalogue.json --catalogue-report catalogue/catalogue-report.json --publication-index catalogue/publication-index.json --date '${{ needs.catalogue.outputs.service_date }}' --shards 8
       - name: Validate complete inventory and assemble bounded tile batches
+        id: assemble
         run: node --max-old-space-size=5500 scripts/assemble-global-frequency.mjs frequency-output
+      - name: Stage the assembled snapshot
+        id: stage
+        if: always()
+        run: |
+          python3 scripts/stage-frequency-artifact.py --mode snapshot --producer-outcome '${{ steps.assemble.outcome }}' --input frequency-output --output frequency-snapshot-artifact --diagnostics frequency-snapshot-diagnostics --catalogue catalogue/catalogue.json --catalogue-report catalogue/catalogue-report.json --publication-index catalogue/publication-index.json --date '${{ needs.catalogue.outputs.service_date }}' --shards 8
       - uses: actions/upload-artifact@v4
+        if: steps.assemble.outcome == 'success' && steps.stage.outcome == 'success'
         with:
           name: worldwide-frequency-snapshot
-          path: frequency-output/
+          path: frequency-snapshot-artifact/
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: worldwide-frequency-snapshot-diagnostic
+          path: |
+            frequency-merge-diagnostics/
+            frequency-snapshot-diagnostics/
+          if-no-files-found: ignore
           retention-days: 14
   publish:
     needs: assemble

@@ -554,9 +554,14 @@ test('alias owner authentication accepts only supported scalar public values',as
     const owner={id:'owner',status:'no_rail',catalogue:{delivery:'direct',source:url,source_sha256:hash,lineage:[{catalogue:'mobility-database',authentication_type}]}};
     const alias={id:'alias',status:'source_alias',catalogue:{source:url,source_sha256:hash,source_resolution:aliasProof(url,hash)}};
     const before=structuredClone(owner);
-    const copies=[[owner,alias],[publishedMetadata(owner),publishedMetadata(alias)]];
-    // Nonfinite numbers are rejected before serialization can turn them null.
-    if(typeof authentication_type!=='number'||Number.isFinite(authentication_type))copies.push(JSON.parse(JSON.stringify(copies[1])));
+    const copies=[[owner,alias]];
+    // Malformed authority now fails at publication, before it can become public.
+    if(authentication_type!==null&&typeof authentication_type==='object'||typeof authentication_type==='number'&&!Number.isFinite(authentication_type)){
+      assert.throws(()=>publishedMetadata(owner),/invalid_publication_lineage_authority/);
+    }else{
+      copies.push([publishedMetadata(owner),publishedMetadata(alias)]);
+      copies.push(JSON.parse(JSON.stringify(copies[1])));
+    }
     for(const entries of copies){
       const merge=()=>mergeInventories([{...base,entries}]);
       if(expected[index])assert.equal(merge().entries.find(x=>x.id==='alias').status,'source_alias');
@@ -572,7 +577,7 @@ test('alias owner authentication accepts only supported scalar public values',as
     ' entries=fixture_discover(alias_owner_literal_fixture(literal),{})',
     ' result.append({"raw":entries,"published":pipeline.published_metadata(entries)})',
     'print(json.dumps(result,allow_nan=False))'
-  ].join('\n')],{input:JSON.stringify(tokens.slice(0,-2)),encoding:'utf8'});
+  ].join('\n')],{input:JSON.stringify(tokens.filter(token=>!['[]','["0"]','{}','1e309','-1e309'].includes(token))),encoding:'utf8'});
   assert.equal(generated.status,0,generated.stderr);
   for(const [index,fixture] of JSON.parse(generated.stdout).entries()){
     for(const input of [fixture.raw,fixture.published]){
