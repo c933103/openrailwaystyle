@@ -109,6 +109,13 @@
       "promoteId": "id",
       "attribution": "<a href=\"https://www.openrailwaymap.app/\">OpenRailwayMap</a> · <a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors</a>"
     },
+    "railBackbone": {
+      "type": "vector",
+      "url": "https://papers.reearth.land/naturalearth_transport/tilejson.json",
+      "minzoom": 4,
+      "maxzoom": 10,
+      "attribution": "<a href=\"https://www.naturalearthdata.com/\">Natural Earth (public domain)</a> · <a href=\"https://papers.reearth.land/\">Re:Earth Papers</a>"
+    },
     "trackCounts": {
       "type": "vector",
       "tiles": [
@@ -8466,6 +8473,104 @@
         "atlas:initial-hidden": false,
         "atlas:base-map": true,
         "atlas:terrain": true,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "rail-backbone-railroads",
+      "type": "line",
+      "source": "railBackbone",
+      "source-layer": "railroads",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#728783",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          4,
+          1,
+          6,
+          1.2,
+          7,
+          1.5
+        ],
+        "line-opacity": 0.8,
+        "line-dasharray": [
+          2,
+          2
+        ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railroads",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "rail-backbone-railroads_north_america",
+      "type": "line",
+      "source": "railBackbone",
+      "source-layer": "railroads_north_america",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#728783",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          4,
+          1,
+          6,
+          1.2,
+          7,
+          1.5
+        ],
+        "line-opacity": 0.8,
+        "line-dasharray": [
+          2,
+          2
+        ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "railroads_north_america",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
         "atlas:runtime": false,
         "atlas:background": null,
         "atlas:hide-backgrounds": [],
@@ -54126,6 +54231,719 @@
       }
     },
     {
+      "id": "station-stationLow-dots",
+      "type": "circle",
+      "source": "stationLow",
+      "source-layer": "standard_railway_text_stations_low",
+      "minzoom": 4,
+      "maxzoom": 6,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ],
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "feature"
+              ],
+              "station"
+            ],
+            "station"
+          ]
+        ],
+        [
+          "literal",
+          true
+        ]
+      ],
+      "layout": {
+        "circle-sort-key": [
+          "match",
+          [
+            "case",
+            [
+              "==",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
+            ],
+            "minor",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "station"
+                ],
+                ""
+              ],
+              [
+                "monorail",
+                "funicular",
+                "miniature",
+                "tram"
+              ],
+              true,
+              false
+            ],
+            "minor",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "station"
+                ],
+                ""
+              ],
+              [
+                "light_rail"
+              ],
+              true,
+              false
+            ],
+            "light",
+            "major"
+          ],
+          "minor",
+          0,
+          "light",
+          1,
+          [
+            "match",
+            [
+              "get",
+              "station_size"
+            ],
+            "large",
+            4,
+            "normal",
+            3,
+            2
+          ]
+        ]
+      },
+      "paint": {
+        "circle-color": "#ffa323",
+        "circle-stroke-color": "#123e52",
+        "circle-stroke-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          0.7,
+          8,
+          1,
+          12,
+          1.5
+        ],
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          1.4,
+          5,
+          1.9,
+          7,
+          2.5,
+          12,
+          3.2
+        ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "station-stationMed-dots",
+      "type": "circle",
+      "source": "stationMed",
+      "source-layer": "standard_railway_text_stations_med",
+      "minzoom": 6,
+      "maxzoom": 8,
+      "filter": [
+        "all",
+        [
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "state"
+              ],
+              "present"
+            ],
+            "present"
+          ],
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "feature"
+              ],
+              "station"
+            ],
+            "station"
+          ]
+        ],
+        [
+          "any",
+          [
+            ">=",
+            [
+              "zoom"
+            ],
+            7
+          ],
+          [
+            "literal",
+            true
+          ]
+        ]
+      ],
+      "layout": {
+        "circle-sort-key": [
+          "match",
+          [
+            "case",
+            [
+              "==",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
+            ],
+            "minor",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "station"
+                ],
+                ""
+              ],
+              [
+                "monorail",
+                "funicular",
+                "miniature",
+                "tram"
+              ],
+              true,
+              false
+            ],
+            "minor",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "station"
+                ],
+                ""
+              ],
+              [
+                "light_rail"
+              ],
+              true,
+              false
+            ],
+            "light",
+            "major"
+          ],
+          "minor",
+          0,
+          "light",
+          1,
+          [
+            "match",
+            [
+              "get",
+              "station_size"
+            ],
+            "large",
+            4,
+            "normal",
+            3,
+            2
+          ]
+        ]
+      },
+      "paint": {
+        "circle-color": "#ffa323",
+        "circle-stroke-color": "#123e52",
+        "circle-stroke-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          0.7,
+          8,
+          1,
+          12,
+          1.5
+        ],
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          1.4,
+          5,
+          1.9,
+          7,
+          2.5,
+          12,
+          3.2
+        ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "station-major-dots",
+      "type": "circle",
+      "source": "stationMajor",
+      "minzoom": 3,
+      "maxzoom": 7,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "feature"
+          ],
+          "station"
+        ],
+        [
+          "has",
+          "tier"
+        ]
+      ],
+      "layout": {
+        "circle-sort-key": [
+          "match",
+          [
+            "case",
+            [
+              "==",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
+            ],
+            "minor",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "station"
+                ],
+                ""
+              ],
+              [
+                "monorail",
+                "funicular",
+                "miniature",
+                "tram"
+              ],
+              true,
+              false
+            ],
+            "minor",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "station"
+                ],
+                ""
+              ],
+              [
+                "light_rail"
+              ],
+              true,
+              false
+            ],
+            "light",
+            "major"
+          ],
+          "minor",
+          0,
+          "light",
+          1,
+          [
+            "match",
+            [
+              "get",
+              "station_size"
+            ],
+            "large",
+            4,
+            "normal",
+            3,
+            2
+          ]
+        ]
+      },
+      "paint": {
+        "circle-color": "#ffa323",
+        "circle-stroke-color": "#123e52",
+        "circle-stroke-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          0.7,
+          8,
+          1,
+          12,
+          1.5
+        ],
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          1.4,
+          5,
+          1.9,
+          7,
+          2.5,
+          12,
+          3.2
+        ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "station-provider-dots",
+      "type": "circle",
+      "source": "stations",
+      "source-layer": "standard_railway_text_stations",
+      "minzoom": 8,
+      "maxzoom": 12,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "state"
+            ],
+            "present"
+          ],
+          "present"
+        ],
+        [
+          "match",
+          [
+            "coalesce",
+            [
+              "get",
+              "feature"
+            ],
+            "station"
+          ],
+          [
+            "station",
+            "halt",
+            "tram_stop"
+          ],
+          true,
+          false
+        ]
+      ],
+      "layout": {
+        "circle-sort-key": [
+          "match",
+          [
+            "case",
+            [
+              "==",
+              [
+                "get",
+                "feature"
+              ],
+              "tram_stop"
+            ],
+            "minor",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "station"
+                ],
+                ""
+              ],
+              [
+                "monorail",
+                "funicular",
+                "miniature",
+                "tram"
+              ],
+              true,
+              false
+            ],
+            "minor",
+            [
+              "match",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "station"
+                ],
+                ""
+              ],
+              [
+                "light_rail"
+              ],
+              true,
+              false
+            ],
+            "light",
+            "major"
+          ],
+          "minor",
+          0,
+          "light",
+          1,
+          [
+            "match",
+            [
+              "get",
+              "station_size"
+            ],
+            "large",
+            4,
+            "normal",
+            3,
+            2
+          ]
+        ]
+      },
+      "paint": {
+        "circle-color": "#ffa323",
+        "circle-stroke-color": "#123e52",
+        "circle-stroke-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          0.7,
+          8,
+          1,
+          12,
+          1.5
+        ],
+        "circle-radius": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          2,
+          12,
+          [
+            "match",
+            [
+              "case",
+              [
+                "==",
+                [
+                  "get",
+                  "feature"
+                ],
+                "tram_stop"
+              ],
+              "minor",
+              [
+                "match",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "station"
+                  ],
+                  ""
+                ],
+                [
+                  "monorail",
+                  "funicular",
+                  "miniature",
+                  "tram"
+                ],
+                true,
+                false
+              ],
+              "minor",
+              [
+                "match",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "station"
+                  ],
+                  ""
+                ],
+                [
+                  "light_rail"
+                ],
+                true,
+                false
+              ],
+              "light",
+              "major"
+            ],
+            "minor",
+            2.3,
+            "light",
+            2.7,
+            [
+              "match",
+              [
+                "get",
+                "station_size"
+              ],
+              "large",
+              5,
+              "normal",
+              4,
+              3.2
+            ]
+          ]
+        ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "stations",
+        "atlas:category": "current",
+        "atlas:views": [],
+        "atlas:settings": [
+          "stations"
+        ],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
       "id": "station-former-dots",
       "type": "circle",
       "source": "stations",
@@ -63119,94 +63937,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -63699,94 +64429,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -64369,94 +65011,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -64913,94 +65467,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -65475,94 +65941,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -66127,94 +66505,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -66671,94 +66961,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -67233,94 +67435,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -67885,94 +67999,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -68467,94 +68493,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -69067,94 +69005,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -69757,94 +69607,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -70356,94 +70118,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -70973,94 +70647,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -71680,94 +71266,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -72271,94 +71769,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -72880,94 +72290,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -73579,94 +72901,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -74170,94 +73404,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -74779,94 +73925,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -75478,94 +74536,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          4,
-          0.8,
-          6,
-          0.95,
-          11,
-          [
-            "match",
-            [
-              "case",
-              [
-                "==",
-                [
-                  "get",
-                  "feature"
-                ],
-                "tram_stop"
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "monorail",
-                  "funicular",
-                  "miniature",
-                  "tram"
-                ],
-                true,
-                false
-              ],
-              "minor",
-              [
-                "match",
-                [
-                  "coalesce",
-                  [
-                    "get",
-                    "station"
-                  ],
-                  ""
-                ],
-                [
-                  "light_rail"
-                ],
-                true,
-                false
-              ],
-              "light",
-              "major"
-            ],
-            "minor",
-            0.8,
-            "light",
-            0.9,
-            [
-              "match",
-              [
-                "get",
-                "station_size"
-              ],
-              "large",
-              1.25,
-              "normal",
-              1.15,
-              1.05
-            ]
-          ]
-        ],
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -75914,12 +74884,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": 0.85,
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -76268,12 +75232,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": 0.85,
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -76622,12 +75580,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": 0.85,
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -76976,12 +75928,6 @@
         ],
         "text-max-width": 9,
         "text-allow-overlap": false,
-        "icon-image": "station-dot",
-        "icon-size": 0.85,
-        "icon-padding": 12,
-        "icon-allow-overlap": false,
-        "icon-ignore-placement": false,
-        "icon-optional": false,
         "text-optional": false
       },
       "paint": {
@@ -81314,87 +80260,6 @@
       }
     },
     {
-      "id": "country_label-other",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "place",
-      "maxzoom": 8,
-      "filter": [
-        "all",
-        [
-          "==",
-          "$type",
-          "Point"
-        ],
-        [
-          "==",
-          "class",
-          "country"
-        ],
-        [
-          "!has",
-          "iso_a2"
-        ]
-      ],
-      "layout": {
-        "text-field": "{name:latin}",
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-max-width": 8,
-        "text-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          2,
-          10,
-          6,
-          15
-        ],
-        "visibility": "visible",
-        "text-transform": "uppercase",
-        "text-letter-spacing": 0.12
-      },
-      "paint": {
-        "text-color": "#5c6c68",
-        "text-halo-blur": 0,
-        "text-halo-color": "rgba(255,255,255,0.75)",
-        "text-halo-width": 2,
-        "text-opacity": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          7,
-          1,
-          8,
-          0
-        ]
-      },
-      "minzoom": 1,
-      "metadata": {
-        "atlas:semantics-version": 1,
-        "atlas:group": "basemap",
-        "atlas:category": "place",
-        "atlas:views": [],
-        "atlas:settings": [],
-        "atlas:initial-hidden": false,
-        "atlas:base-map": true,
-        "atlas:terrain": false,
-        "atlas:runtime": false,
-        "atlas:background": null,
-        "atlas:hide-backgrounds": [],
-        "atlas:localize": true
-      }
-    },
-    {
       "id": "country_label",
       "type": "symbol",
       "source": "openmaptiles",
@@ -81411,14 +80276,11 @@
           "==",
           "class",
           "country"
-        ],
-        [
-          "has",
-          "iso_a2"
         ]
       ],
       "layout": {
         "text-field": "{name:en}",
+        "text-padding": 10,
         "text-font": [
           "Noto Sans Regular"
         ],
