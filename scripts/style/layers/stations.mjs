@@ -104,7 +104,7 @@ export function stationLayers(curatedFilter) {
   // The vetted overview set is small enough to draw every dot from zoom 3;
   // its selected tier remains a LABEL priority, not a location cutoff.
   marker('station-major-dots','stationMajor',null,3,7,
-    ['==',['get','feature'],'station'],earlyRadius);
+    ['all',['==',['get','feature'],'station'],['has','tier']],earlyRadius);
   marker('station-provider-dots','stations','standard_railway_text_stations',8,12,
     ['all',current,['match',['coalesce',['get','feature'],'station'],['station','halt','tram_stop'],true,false]],
     ['interpolate',['linear'],['zoom'],8,2,12,bySize(5,4,3.2,2.7,2.3)]);
