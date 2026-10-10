@@ -10,7 +10,8 @@ const DROPPED_HEADERS = new Set(['content-encoding', 'content-length', 'transfer
 
 export function createResponseCache() {
   const responses = new Map();
-  return (target, fetchResponse) => {
+  let failures = 0;
+  const cached = (target, fetchResponse) => {
     if (!responses.has(target)) {
       // Start after storing the promise, including when fetch throws before
       // returning one. Evict in this shared promise, not in each consumer's
@@ -20,10 +21,11 @@ export function createResponseCache() {
           const response = await fetchResponse();
           const headers = Object.fromEntries(Object.entries(response.headers()).filter(([name]) => !DROPPED_HEADERS.has(name.toLowerCase())));
           const result = {status: response.status(), headers, body: await response.body()};
-          if (!CACHED_STATUS.has(result.status)) responses.delete(target);
+          if (!CACHED_STATUS.has(result.status)) { responses.delete(target);failures++; }
           return result;
         } catch (error) {
           responses.delete(target);
+          failures++;
           throw error;
         }
       });
@@ -31,4 +33,7 @@ export function createResponseCache() {
     }
     return responses.get(target);
   };
+  // A recovered response cannot erase evidence that one map saw a failure.
+  cached.failureCount = () => failures;
+  return cached;
 }

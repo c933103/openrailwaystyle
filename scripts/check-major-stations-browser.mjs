@@ -1,5 +1,6 @@
 import {launchBrowser} from './browser.mjs';
 import {createResponseCache} from './browser-response-cache.mjs';
+import {measureStationDensity, resetStationSources, stationFailureCount} from './station-density-comparison.mjs';
 import {fetchLoopbackNoRedirect, localOrmAuditTarget} from './browser.mjs';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
@@ -24,6 +25,7 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  // Both maps receive identical responses from the explicitly configured local
  // provider. Never fetch public provider tiles directly, even on a cache miss.
  const stationResponse=createResponseCache();
+ let stationRouteFailures=0;
  await context.route(/\/standard_railway_text_stations_(?:low|med)(?:\/|$)/,async route=>{
   const url=route.request().url();
   try {
@@ -31,7 +33,7 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
    // while TileJSON-advertised loopback URLs remain direct local requests.
    const target=localOrmAuditTarget(url);
    await route.fulfill(await stationResponse(target,()=>fetchLoopbackNoRedirect(route,target)));
-  } catch(error){console.error('Station tile unavailable:',url,error.message);await route.abort().catch(()=>{});}
+  } catch(error){stationRouteFailures++;console.error('Station tile unavailable:',url,error.message);await route.abort().catch(()=>{});}
  });
  // Match the other WebGL checks' capture budget. The touch viewport renders
  // at DPR 2.625 and can still be finishing real tiles after label placement.
@@ -58,7 +60,7 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  // doubled the check's time. Mobile keeps the label, click, language and
  // polar checks below.
  if(kind==='desktop'){
- const density=[],baseline=await page.context().newPage();baseline.setDefaultTimeout(120000);baseline.on('console',reportResource);
+ const density=[],invalidated=[],baseline=await page.context().newPage();baseline.setDefaultTimeout(120000);baseline.on('console',reportResource);
  const baselineData=structuredClone(densityData);baselineData.features=baselineData.features.filter(f=>beforeTiers[f.id]).map(f=>({...f,properties:{...f.properties,tier:beforeTiers[f.id]}}));
  await baseline.route(base+'world.style.json**',async route=>{
   const style=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8'));
@@ -119,7 +121,22 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
   },active));return result;
  };
  for(const [region,center] of [['Europe',[12,50]],['Japan',[139,36]],['US',[-88,40]]])for(const zoom of [3,4,5,6]){
-  const before=await count(baseline,center,zoom),after=await count(page,center,zoom);density.push({region,zoom,before,after});
+  const {before,after}=await measureStationDensity({
+   failureCount:async()=>{
+    const pageFailures=await Promise.all([baseline,page].map(p=>p.evaluate(stationFailureCount)));
+    return stationResponse.failureCount()+stationRouteFailures+pageFailures.reduce((sum,count)=>sum+count,0);
+   },
+   reset:async()=>{
+    const resets=await Promise.allSettled([baseline,page].map(p=>p.evaluate(resetStationSources)));
+    const failed=resets.find(result=>result.status==='rejected');if(failed)throw failed.reason;
+   },
+   measure:async()=>({before:await count(baseline,center,zoom),after:await count(page,center,zoom)}),
+   onDiscard:async sample=>{
+    invalidated.push({region,zoom,...sample});console.log('DENSITY_INVALIDATED',kind,region,zoom,JSON.stringify(sample));
+    await writeFile(`browser-review/stations-${kind}-density-invalidated.json`,JSON.stringify(invalidated,null,2)+'\n');
+   },
+  });
+  density.push({region,zoom,before,after});
   console.log('DENSITY_SAMPLE',kind,region,zoom,before,after);
   await writeFile(`browser-review/stations-${kind}-density.json`,JSON.stringify(density,null,2)+'\n');
   if(region==='Europe'&&zoom>=4)await page.screenshot({path:`browser-review/stations-${kind}-density-${zoom}.png`});
