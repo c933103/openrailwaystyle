@@ -51,7 +51,7 @@ HTTP_ATTEMPT = re.compile('http_[1-5][0-9]{2}')
 FEED_ERRORS = frozenset(('compressed_feed_byte_limit expanded_feed_byte_limit feed_identity_mismatch feed_io_failure '
     'feed_memory_limit feed_metadata_invalid gzip_header_limit gzip_trailing_data invalid_feed_shape invalid_gzip_header '
     'invalid_gzip_payload invalid_json metadata_byte_limit metadata_input_changed nonregular_input symlink_input truncated_gzip').split())
-STAGE_ERRORS = FEED_ERRORS | frozenset(('aggregate_binding_mismatch aggregate_inventory_mismatch catalogue_report_binding_mismatch '
+STAGE_ERRORS = FEED_ERRORS | frozenset(('aggregate_binding_mismatch aggregate_inventory_mismatch catalogue_report_binding_mismatch invalid_applied_profiles applied_profile_time_limit '
     'cross_shard_output_collision duplicate_expected_id duplicate_feed_id duplicate_feed_output expected_metadata_byte_limit '
     'expected_metadata_renderer_failed expected_metadata_renderer_invalid expected_metadata_time_limit feed_stage_digest_mismatch '
     'feed_time_limit feed_worker_failed incomplete_inventory input_directory_missing invalid_aggregate invalid_catalogue '
@@ -391,6 +391,8 @@ def stage_snapshot(args, ctx, target, work):
     require({p.name for p in (args.input/'tiles').iterdir()} == {'index.json'}, 'tile_contract_changed')
     expected = {'inventory.json','manifest.json','tiles','feeds','catalogue-report.json','publication-index.json'} | {
         f'inventory-{i}.json' for i in range(args.shards)} | {f'stage-receipt-{i}.json' for i in range(args.shards)}
+    if 'applied_profiles' in manifest:
+        expected.add('profiles.json.gz')
     require({p.name for p in args.input.iterdir()} <= expected, 'unexpected_snapshot_artifact')
     require(digest(regular(args.input/'catalogue-report.json')) == ctx['report'] and digest(regular(args.input/'publication-index.json')) == ctx['index'], 'snapshot_sidecar_mismatch')
     sidecars(target,args)
@@ -406,6 +408,15 @@ def stage_snapshot(args, ctx, target, work):
     write_json(target/'inventory.json',pipeline.published_metadata(aggregated))
     write_json(target/'manifest.json',pipeline.published_metadata(manifest))
     write_json(target/'tiles/index.json',{'tiles':[]})
+    if 'applied_profiles' in manifest:
+        profile=regular(args.input/'profiles.json.gz')
+        require(profile.stat().st_size <= 512_000_000, 'invalid_applied_profiles')
+        shutil.copyfile(profile,target/'profiles.json.gz')
+        try:
+            checked=subprocess.run([os.environ.get('NODE_BINARY','node'),'--max-old-space-size=2048',str(ROOT/'scripts/stage-applied-frequency.mjs'),str(target/'manifest.json'),str(target/'profiles.json.gz')],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=args.max_feed_seconds)
+        except subprocess.TimeoutExpired:
+            raise StageError('applied_profile_time_limit') from None
+        require(checked.returncode == 0, 'invalid_applied_profiles')
     for entry in entries:
         if entry['status'] == 'compiled':stage_feed(args.input/entry['output'],target/entry['output'],entry,args,work)
     write_json(target/'snapshot-stage-receipt.json',{'schema':1,'status':'complete','mode':'snapshot',

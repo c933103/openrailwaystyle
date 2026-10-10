@@ -214,6 +214,22 @@ class ArtifactStaging(unittest.TestCase):
         result=subprocess.run([os.environ.get('NODE_BINARY','node'),str(ROOT/'scripts/assemble-global-frequency.mjs'),str(self.args.output)],capture_output=True,text=True)
         self.assertEqual(result.returncode,0,result.stderr)
         self.args.input=self.args.output;self.args.output=self.root/'snapshot';self.args.mode='snapshot'
+    def test_snapshot_applied_digest_mismatch_is_diagnostic(self):
+        self.assemble_fixture()
+        (self.args.input/'profiles.json.gz').write_bytes(b'invalid_gzip')
+        self.failure('invalid_applied_profiles')
+    def test_snapshot_owns_applied_gzip_wrapper_and_preserves_input(self):
+        self.assemble_fixture()
+        profile=self.args.input/'profiles.json.gz';raw=profile.read_bytes();marker=b'synthetic-private-header'
+        wrapper=raw[:3]+bytes([raw[3] | 8])+raw[4:10]+marker+b'\0'+raw[10:]
+        profile.write_bytes(wrapper)
+        manifest=stage.read_json(self.args.input/'manifest.json');manifest['applied_profiles']['sha256']=stage.digest(profile);stage.write_json(self.args.input/'manifest.json',manifest)
+        before=stage.file_hashes(self.args.input);original=json.loads(gzip.decompress(wrapper))
+        self.assertEqual(stage.run(self.args),0)
+        uploaded=self.args.output/'profiles.json.gz';self.assertNotIn(marker,uploaded.read_bytes())
+        self.assertEqual(json.loads(gzip.decompress(uploaded.read_bytes())),original)
+        self.assertEqual(stage.read_json(self.args.output/'manifest.json')['applied_profiles']['sha256'],stage.digest(uploaded))
+        self.assertEqual(stage.file_hashes(self.args.input),before)
     def test_snapshot_rejects_changed_display_hash_and_hold(self):
         self.assemble_fixture()
         path=self.args.input/'inventory-0.json';original=stage.read_json(path)

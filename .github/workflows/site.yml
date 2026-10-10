@@ -213,14 +213,14 @@ jobs:
             echo "Could not look up the service-data snapshot (git exit $status)"
             exit 1
           fi
-      - name: Add published headways to the OSM service tiles (timetables draw no lines)
+      - name: Apply matched timetable counts and headways to the OSM service tiles
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           python3 scripts/load-frequency-snapshot.py
           node scripts/rebuild-service-frequency.mjs
-          # Compiled feeds are kept for matching, not published: no timetable
-          # is applied yet. The manifest and inventory stay as coverage records.
+          # Only OSM-bound section aggregates are applied. Intermediate feed
+          # archives and standalone timetable tiles are not website assets.
           rm -rf styles/data/service-frequency/feeds styles/data/service-frequency/tiles
       - name: Load worldwide railway signals and energy supplies
         run: |
@@ -286,8 +286,8 @@ jobs:
           path: styles
       - name: Install test browser
         run: npx playwright install --with-deps chromium
-      - name: Install WebKit for Safari installation checks
-        if: matrix.group == 'controls' && contains(matrix.checks, 'check-pwa-install-browser.mjs')
+      - name: Install WebKit for Safari installation and timetable checks
+        if: contains(matrix.checks, 'check-pwa-install-browser.mjs') || contains(matrix.checks, 'check-departures-browser.mjs') || contains(matrix.checks, 'check-timetable-frequency-browser.mjs')
         run: npx playwright install --with-deps webkit
       - name: Start test server
         run: node scripts/serve.mjs &

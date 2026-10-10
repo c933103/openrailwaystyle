@@ -13,8 +13,29 @@ const deny=()=>{throw new Error('network_and_dns_forbidden');};
 net.Socket.prototype.connect=deny;dns.lookup=deny;dns.resolve=deny;globalThis.fetch=deny;
 const root=resolve(process.env.ATLAS_SOURCE_ROOT||fileURLToPath(new URL('../',import.meta.url)));
 const {publishedMetadata,assemble,mergeInventories}=await import(pathToFileURL(join(root,'scripts/assemble-global-frequency.mjs')));
+const {validateAppliedFrequency}=await import(pathToFileURL(join(root,'scripts/stage-applied-frequency.mjs')));
+const {createTimetableMatcher}=await import(pathToFileURL(join(root,'scripts/timetable-frequency.mjs')));
+const {table,feed,now}=await import(pathToFileURL(join(root,'tests/fixtures/service-frequency/matching-fixture.mjs')));
 const marker='synthetic-unpublished-lineage-marker',url='https://feeds.example.test/static.zip?region=synthetic-one';
 const lineage={catalogue:'mobility-database',id:'synthetic',url:'https://files.mobilitydatabase.org/feeds_v2.csv',source:url,status:'active',authentication_type:'0',authorization:{value:marker},debug:{nested:[marker]}};
+test('applied aggregate staging binds compressed bytes, OSM sections and safe publication metadata',()=>{
+ const artifact={schema:1,osm_sha256:'a'.repeat(64),records:[],sections:[],feeds:[],matching:{sections:0,feeds:[]}},bytes=gzipSync(JSON.stringify(artifact));
+ const manifest={applied_profiles:{schema:1,file:'profiles.json.gz',sha256:createHash('sha256').update(bytes).digest('hex'),osm_sha256:artifact.osm_sha256,sections:0}};
+ assert.deepEqual(validateAppliedFrequency(bytes,manifest),artifact);
+ for(const change of [m=>m.applied_profiles.sha256='b'.repeat(64),m=>m.applied_profiles.osm_sha256='b'.repeat(64),m=>m.applied_profiles.sections=1,m=>m.applied_profiles.file='../profiles.json.gz']){const m=structuredClone(manifest);change(m);assert.throws(()=>validateAppliedFrequency(bytes,m));}
+ const changed={...artifact,records:[{properties:{frequency_until:1900000000,frequency_sources:'fixture'},profiles:{am:{rate:-1,high:0,quality:'scheduled'}}}]},bad=gzipSync(JSON.stringify(changed)),bound=structuredClone(manifest);bound.applied_profiles.sha256=createHash('sha256').update(bad).digest('hex');assert.throws(()=>validateAppliedFrequency(bad,bound));
+ const unsafe={...artifact,feeds:[{source:{url:'https://user:synthetic@public.example.test/feed?token=synthetic'}}]},raw=gzipSync(JSON.stringify(unsafe));bound.applied_profiles.sha256=createHash('sha256').update(raw).digest('hex');assert.throws(()=>validateAppliedFrequency(raw,bound));
+});
+test('a nonempty matched aggregate retains counts and section bindings through the actual stage worker',async()=>{
+ const directory=await mkdtemp(join(tmpdir(),'atlas-applied-stage-'));
+ try{
+  const matcher=createTimetableMatcher(table(),{now});matcher.addFeed(feed());const artifact=publishedMetadata(matcher.finish()),bytes=gzipSync(JSON.stringify(artifact));
+  const manifest={applied_profiles:{schema:1,file:'profiles.json.gz',sha256:createHash('sha256').update(bytes).digest('hex'),osm_sha256:artifact.osm_sha256,sections:artifact.sections.length}};
+  const manifestPath=join(directory,'manifest.json'),profilePath=join(directory,'profiles.json.gz');await writeFile(manifestPath,JSON.stringify(manifest));await writeFile(profilePath,bytes);
+  const result=spawnSync(process.execPath,[join(root,'scripts/stage-applied-frequency.mjs'),manifestPath,profilePath],{encoding:'utf8'});assert.equal(result.status,0,result.stderr);
+  const staged=await readFile(profilePath),binding=JSON.parse(await readFile(manifestPath));assert.deepEqual(validateAppliedFrequency(staged,binding),artifact);assert.equal(artifact.sections.length,3);assert.deepEqual(artifact.records.map(r=>r.profiles.am.rate).sort((a,b)=>a-b),[4,7,10]);
+ }finally{await rm(directory,{recursive:true,force:true});}
+});
 test('legacy lineage in every outcome drops unsupported nested fields',()=>{
   for(const status of ['compiled','excluded','retry_pending','failed','no_rail','non_timetable','source_alias']){
     const value={id:'fixture',status,catalogue:{lineage:[lineage]},source:{catalogue_lineage:[lineage]}};
@@ -66,7 +87,7 @@ test('both intermediate artifact uploads use isolated validated staging',async()
 test('release aggregates and operational catalogue acquisition handoff remain exact',async()=>{
   const workflow=await readFile(join(root,'.github/workflows/service-frequency.yml'),'utf8');
   for(const file of ['catalogue/catalogue.json','catalogue/catalogue-report.json','catalogue/publication-index.json','catalogue/inventory-0.json'])assert.ok(workflow.includes(file));
-  assert.match(workflow,/tar -czf frequency-snapshot\.tar\.gz -C frequency-output manifest\.json inventory\.json tiles/);
+  assert.match(workflow,/tar -czf frequency-snapshot\.tar\.gz -C frequency-output manifest\.json inventory\.json profiles\.json\.gz tiles/);
 });
 
 

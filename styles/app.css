@@ -81,7 +81,24 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 
 .departures h3 { font-size: 13px; margin: 18px 0 6px; }
 .departure-list { list-style: none; padding: 0; margin: 6px 0; font-size: 12px; }
-.departure-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 7px; padding: 5px 0; border-top: 1px solid var(--border); }
+.departure-list > li { border-top: 1px solid var(--border); }
+.departure-summary { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 7px; padding:7px 0; list-style:none; }
+.departure-summary::-webkit-details-marker { display:none; }
+.departure-summary:hover { background:#ecf1eb; }
+.departure-expand { margin-left:auto; }
+.departure-trip[open] .departure-expand { transform:rotate(180deg); }
+/* Explicitly restore native selection in the details panel, including the
+   clickable departure summary and Safari's prefixed selection property. */
+#detail-content, #detail-content * { -webkit-user-select:text; user-select:text; }
+.trip-schedule h4 { margin:10px 0 4px; }
+.trip-stops { width:100%; border-collapse:collapse; table-layout:fixed; font-size:11px; }
+.trip-stops caption { text-align:left; font-weight:650; margin:8px 0; overflow-wrap:anywhere; }
+.trip-stops th, .trip-stops td { text-align:left; vertical-align:top; border-top:1px solid var(--border); padding:6px 3px; overflow-wrap:anywhere; }
+.trip-stops th:first-child { width:44%; }
+.trip-stops td { font-variant-numeric:tabular-nums; }
+.trip-date { display:block; font-weight:400; color:#697970; font-size:10px; }
+.trip-current-stop { background:#fff0d3; }
+.trip-stops .cancelled { text-decoration:line-through; }
 .departure-time { font-variant-numeric: tabular-nums; font-weight: 650; min-width: 38px; }
 .departure-time.cancelled { text-decoration: line-through; color: #8a948e; }
 .departure-line { background: #e3ebe6; border-radius: 4px; padding: 0 5px; font-weight: 650; font-size: 11px; }

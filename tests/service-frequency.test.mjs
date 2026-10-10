@@ -34,6 +34,27 @@ test('shared scale keeps equal rates equal across profiles and separates unknown
   assert.equal(frequencyDetails(missing,'am',now),null);
 });
 
+test('empty or unusable timetable counts preserve audited whole-route headways',()=>{
+ const expected=frequencyBundle([route('ISL')],line,catalog,[],now)[0];
+ for(const profiles of [{},{am:{rate:null}},{am:{rate:NaN}}]){
+  const timetable={properties:{frequency_source:'Unknown timetable',frequency_until:now/1000+1},profiles};
+  assert.deepEqual(frequencyBundle([route('ISL')],line,catalog,[timetable],now)[0],expected);
+ }
+});
+
+test('partial timetable counts take precedence while missing periods retain their headway evidence',()=>{
+ const timetable={properties:{frequency_id:'counted',frequency_source:'Full timetable',frequency_url:'https://example.test/timetable-terms',frequency_date:'2026-10-05',frequency_checked:'2026-10-05',frequency_definition:'Agency-local 07:00–09:00',frequency_until:now/1000+86400},profiles:{am:{rate:0,quality:'scheduled'},h08:{rate:6,quality:'scheduled'}}};
+ const p=frequencyBundle([route('ISL')],line,catalog,[timetable],now)[0];
+ assert.equal(p.frequency_am,0);assert.equal(p.frequency_quality_am,'scheduled');assert.equal(p.frequency_h08,6);assert.equal(p.frequency_offpeak,12);assert.equal(p.frequency_quality_offpeak,'headway_estimate');assert.equal(p.frequency_overnight,undefined);
+ assert.equal(p.frequency_source_am,'Full timetable');assert.equal(p.frequency_source_offpeak,catalog.source.name);assert.equal(p.frequency_url_offpeak,catalog.source.url);assert.equal(p.frequency_date_offpeak,'');assert.equal(p.frequency_definition_offpeak,catalog.source.period_definition);
+ assert.match(frequencyDetails(p,'am',now),/scheduled.*2026-10-05/);assert.match(frequencyDetails(p,'offpeak',now),/estimated from/);
+ assert.equal(p.frequency_until,timetable.properties.frequency_until);
+ const expired={...timetable,properties:{...timetable.properties,frequency_until:now/1000-1}};
+ assert.deepEqual(frequencyBundle([route('ISL')],line,catalog,[expired],now),frequencyBundle([route('ISL')],line,catalog,[],now));
+ const staleCatalog=structuredClone(catalog);staleCatalog.source.checked='2020-01-01';
+ const current=frequencyBundle([route('ISL')],line,staleCatalog,[timetable],now)[0];assert.equal(current.frequency_offpeak,undefined);assert.equal(current.frequency_am,0);assert.equal(current.frequency_until,timetable.properties.frequency_until);
+});
+
 test('paint, label placement and hit selection share the changed bundle geometry',()=>{
   const bundle=frequencyBundle([route('ISL'),route('TWL'),route('KTL')],line,catalog).map((p,i)=>({...p,i,n:3,slot:2*i-2}));
   for(const profile of ['am','pm','offpeak']){
