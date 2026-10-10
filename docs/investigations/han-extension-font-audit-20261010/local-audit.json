@@ -1,0 +1,6384 @@
+{
+  "checkedAt": "2026-10-10T15:20:13.288128+00:00",
+  "mainCommitVerifiedViaGitHub": "74bc7efa89526c5cbd310b55f3d499fd8f3cc7f3",
+  "archive": {
+    "bytes": 423921725,
+    "sha256": "3062ce7007f000704240cd0849dd7e0c4fb3a9479696b167bd8fe0fc1c24ff74",
+    "artifactId": 11672435802,
+    "runId": 38058389835,
+    "testedSiteCommit": "a38098c1d459238f62bc113c7d5845e38b07cf79"
+  },
+  "ranges": {
+    "H": {
+      "first": "U+31350",
+      "lastAssigned": "U+323AF",
+      "assignedScalarCount": 4192,
+      "mappedScalarCount": 4192,
+      "missing": []
+    },
+    "I": {
+      "first": "U+2EBF0",
+      "lastAssigned": "U+2EE5D",
+      "assignedScalarCount": 622,
+      "mappedScalarCount": 622,
+      "missing": []
+    },
+    "J": {
+      "first": "U+323B0",
+      "lastAssigned": "U+33479",
+      "assignedScalarCount": 4298,
+      "mappedScalarCount": 4298,
+      "missing": []
+    }
+  },
+  "packaged": {
+    "sc": {
+      "sha256": "4132a64d817daf5322cf4d006e931bd628decccebe1c9ff7057067ec536bf939",
+      "bytes": 4445976,
+      "cmapFormats": [
+        4,
+        12,
+        4,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": [],
+        "GPOS": []
+      },
+      "fontNames": {
+        "1": "Atlas CJK SC",
+        "2": "Regular",
+        "4": "Atlas CJK SC",
+        "5": "Version 2.004;hotconv 1.0.118;makeotfexe 2.5.65603",
+        "6": "AtlasCJKsc-Thin"
+      },
+      "mappedScalars": 31883,
+      "gitBlobSha": "7f4b24cde1119cdd4432462ffba62afb6392f1b6",
+      "coverage": {
+        "H": 0,
+        "I": 0,
+        "J": 0
+      }
+    },
+    "tc": {
+      "sha256": "d8743b7fdc4a651ca6c97f59eda3ded88410727f6a12c162e85d69bfc553a872",
+      "bytes": 4549188,
+      "cmapFormats": [
+        4,
+        12,
+        4,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": [],
+        "GPOS": []
+      },
+      "fontNames": {
+        "1": "Atlas CJK TC",
+        "2": "Regular",
+        "4": "Atlas CJK TC",
+        "5": "Version 2.004;hotconv 1.0.118;makeotfexe 2.5.65603",
+        "6": "AtlasCJKtc-Thin"
+      },
+      "mappedScalars": 31883,
+      "gitBlobSha": "fe88072cc5f8c429d02df86bb3174faf599cd979",
+      "coverage": {
+        "H": 0,
+        "I": 0,
+        "J": 0
+      }
+    }
+  },
+  "rareSlices": {
+    "fonts/rare-han-v1/200.woff2": {
+      "sha256": "7aa712b490d077ac3233fb2a38c40168f03d16b23bc7cf8825ac7d19470df36d",
+      "bytes": 45116,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/201.woff2": {
+      "sha256": "f8c75eefcc6eb6e2c2ce7e9632794e11fc7fcef0c33721b51ac828ae564376a0",
+      "bytes": 50908,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/202.woff2": {
+      "sha256": "cb18ebcd4d31e66f62ec2d601fec99696b1149c741902d35fa2810a8e4a83c08",
+      "bytes": 54668,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/203.woff2": {
+      "sha256": "59e8bfd067d86d4c89749d1a5447022de432d79e8bece3c600437a2e096bee50",
+      "bytes": 70020,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/204.woff2": {
+      "sha256": "6f370986eea4a9a40ee8e31a0f80fd04f999a391d6c3f1b030f01e3008e30534",
+      "bytes": 75196,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/205.woff2": {
+      "sha256": "289fb04d06c9d2324740fc01ef9123a2b4f26ce87073a48528151e8dbb4f4580",
+      "bytes": 57188,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/206.woff2": {
+      "sha256": "8e7fbf02c0be21930fe1431197682a415304550b0d0268ca9967cc2885d7a6e9",
+      "bytes": 54112,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/207.woff2": {
+      "sha256": "8ae3850f56f7724794e4bee2bedfc6bd663f2cd390b0024f0190a0a95350d5ab",
+      "bytes": 60084,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/208.woff2": {
+      "sha256": "28c2c801ac1166b00a84fad45755c52cd11acd0dea975b50768f52c8d1a54830",
+      "bytes": 70452,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/209.woff2": {
+      "sha256": "134d253665fe3c56406fa789e84cd81219a0544d36e5a85f93a918fa25132395",
+      "bytes": 53136,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/20a.woff2": {
+      "sha256": "dcbb142755c7bbe77fd58adde7d8c9a79f0a17d4baf6b0025b500c111d596be4",
+      "bytes": 58728,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/20b.woff2": {
+      "sha256": "1820fab12f63a5d559b5ac591e087556724d5b5d34d890f2319f3dcf74a80d53",
+      "bytes": 58684,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/20c.woff2": {
+      "sha256": "0f59cec03cc2e9dccc83efbdda4fe253f82511d546ddcc54ed032f8a834801d6",
+      "bytes": 42020,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/20d.woff2": {
+      "sha256": "aee4616e1f8ef01c123d89d86208b6fefd6afc04f8d8b3b79c48abc012d01d03",
+      "bytes": 51904,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/20e.woff2": {
+      "sha256": "a4b8a06e0e444a873646865224ae5799716f2139873fd4bc090cc60fcfc2ae23",
+      "bytes": 60604,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/20f.woff2": {
+      "sha256": "da7d22ebfebede0985a4d010310f3982a83dd378fe1ebd7f6d679e596164fa94",
+      "bytes": 65436,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/210.woff2": {
+      "sha256": "c2d26d17083949ea92cf878c0b4c025431abb398e0472c4410e611ee18d11ab7",
+      "bytes": 76364,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/212.woff2": {
+      "sha256": "07eb1897c13f9f74d1d54279fcb1a2676924c04345ada6c85cf1b956bb9c9a94",
+      "bytes": 44536,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/211.woff2": {
+      "sha256": "ed7734fc95c6955b36e14de8e4a4a02f4dd4dbad7f89249f837f19b22879cc78",
+      "bytes": 69388,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/214.woff2": {
+      "sha256": "d13b8b9abe7168dc6109e990859c3760fa40be6b14cf8405571d1f582111bc13",
+      "bytes": 77124,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/213.woff2": {
+      "sha256": "2964ac0bce582ee8c2ac303ff5d5292bdb8b43433b802773ccfe483a8c9ba4cb",
+      "bytes": 58416,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/215.woff2": {
+      "sha256": "38952762d56410f2ce6e6d7b6810fa7add02916018b96c57bd1f8e5c44faa1f0",
+      "bytes": 68340,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/216.woff2": {
+      "sha256": "cd91e611ff19ebdc5df48a60792e3e64263c5e1ad2d2c138a72e99db454c9686",
+      "bytes": 63524,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/217.woff2": {
+      "sha256": "cc12c8c6690046417a27e253c701a25a25956e1502bf2b2692d4ef7fec307498",
+      "bytes": 59252,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/218.woff2": {
+      "sha256": "34878afa55004d6b320819b2b116fe57caefe6f278b77e6aebe117194eaf821b",
+      "bytes": 78644,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/21a.woff2": {
+      "sha256": "207e38f9d9839321ae1728e9939f822ffc2d7f855d0d54e027a6ea536398083a",
+      "bytes": 68968,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/219.woff2": {
+      "sha256": "e126b4c267aff2c0bcb9539b6e06f3de22987dd3050ba71d10f86e00c17606b1",
+      "bytes": 70636,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/21b.woff2": {
+      "sha256": "9d33705551a7085fca932cd52b24762fafaf169a47500be955ec0a5d9146ccea",
+      "bytes": 62452,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/21c.woff2": {
+      "sha256": "9ae40f62f5da84681d997c3bfdae67aa0f3b5f0d816d5c9d847d5859dc87227d",
+      "bytes": 57020,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/21d.woff2": {
+      "sha256": "21a5025d2e8e46513bc4dc8346d2df1c8e1f4e801ab26758ed2fa72774231e03",
+      "bytes": 41752,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/21e.woff2": {
+      "sha256": "b4ba2d81ab84da4d0b5f57feb572a53ce8f70c72045a5ded1eb673c2ec916bfa",
+      "bytes": 55600,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/21f.woff2": {
+      "sha256": "dd01ccdebb340ae6e3fb01fa9f9534122105b1852084001da69e6c8440b8f59d",
+      "bytes": 77896,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/220.woff2": {
+      "sha256": "da344edf8faca07e3585187073da8aa3b45e2109ebb3a02e44b10dc6cff8dca6",
+      "bytes": 54228,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/222.woff2": {
+      "sha256": "1f935bfdaac42b906986f5fd1fa150a6a1c97331ad0eb2044c8cd736252bed28",
+      "bytes": 57164,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/221.woff2": {
+      "sha256": "78fff39cf1115004c041fc5e4f1974ddc177b18641394cbfcc381d06a8992066",
+      "bytes": 69748,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/223.woff2": {
+      "sha256": "6eb01f874d37e3704f4b565dfb89be54b526c112c36bf7b4436d73d667baf944",
+      "bytes": 53796,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/224.woff2": {
+      "sha256": "991d1f8ce8a4fef6ffcb648dfaed3e5ed2f3309c47511420213bea57d2645a3c",
+      "bytes": 68016,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/226.woff2": {
+      "sha256": "8d986609f200516edd214540640a2ddaf6db351cf262533deb67b64ccd878f6e",
+      "bytes": 53712,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/225.woff2": {
+      "sha256": "b1f5486a40aaac16fdf429134d046b7f93e4c62d9e55c76db7c242fe148e42ca",
+      "bytes": 62020,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/227.woff2": {
+      "sha256": "a6ae5e2ab17607e3f46548ad8ba6bf1c25bbb087b7497e2bdb0e1f87e0e8d6cd",
+      "bytes": 65792,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/228.woff2": {
+      "sha256": "d794ad0068325f615017e112d06868324701d06a7c2992150075ccaac5f2b76f",
+      "bytes": 79652,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/229.woff2": {
+      "sha256": "31534958f28a03c9ce35f64667dd0a6ac4c3fd23c3910fd03f5c8b0006b9ebae",
+      "bytes": 77248,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/22a.woff2": {
+      "sha256": "1454901c048f2fb452265e58868715bc3369466543f8c6be5185e92cf4f91056",
+      "bytes": 50652,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/22c.woff2": {
+      "sha256": "e9c73ff098d38f7f2a8f1c50258ff8729097da26e17f83fc26fe5b2716412dea",
+      "bytes": 64900,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/22b.woff2": {
+      "sha256": "f6a2f89bf21019e632a1ea29e97766725f82c1556a0f2a8786358892cf4f86e1",
+      "bytes": 53760,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/22d.woff2": {
+      "sha256": "cf96ea813c86717afdf5b2c8029f76b69ba5c1c49f5e5c38437456159042fd0a",
+      "bytes": 75304,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/22e.woff2": {
+      "sha256": "ea9adf2a763d45b710edeabcda13b36301ce480ffb63c6aa643091bc2380489d",
+      "bytes": 84140,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/22f.woff2": {
+      "sha256": "b7660896562423b02c3c23cea4778ef447082090253d39a253ed109f70659505",
+      "bytes": 56952,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/230.woff2": {
+      "sha256": "ab5709344aca8cf31e22d60dcf33524cf894c59a8b5c6188ede5f2842939cb4c",
+      "bytes": 68204,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/231.woff2": {
+      "sha256": "fddb18ebe7f74fecbc9403b7b21d26da845b52274f9585c3efac4e35176fe010",
+      "bytes": 47292,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/232.woff2": {
+      "sha256": "dd7758c023649522ce81127960ec10f6e5e443175be5932c9e5e31a4a9211a16",
+      "bytes": 62512,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/234.woff2": {
+      "sha256": "bef9be49c73b09146377b81c6dbc201dac0a34aa2c85d03d656f4b2457657a32",
+      "bytes": 51740,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/233.woff2": {
+      "sha256": "772f0266991c937f6a523423e55ac44e24efe6c01bf20ab6a9eeeb246e835bc3",
+      "bytes": 60732,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/235.woff2": {
+      "sha256": "baa68368e43e75962f91d5fea38330575168d0023ea7f7bf76c35043e464048b",
+      "bytes": 60812,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/236.woff2": {
+      "sha256": "e67e36d36668684a1a774e1bc5b65c841344f0f3a2e9d6424eed093a85c67b7c",
+      "bytes": 71212,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/237.woff2": {
+      "sha256": "5b73a3baf6693eaee6d6c36a93212bcfc4947c02e2f741785ca4aa4e9fe87404",
+      "bytes": 85496,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/238.woff2": {
+      "sha256": "db8ee26166d9e0c5966221e82aadbabc71e8eeb978f69a5dcc33bcc88a365f33",
+      "bytes": 82072,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/239.woff2": {
+      "sha256": "99dab2bcefec78947f5bc390199030e08caa5c13c7faf3ad8245f5ef83b82a5b",
+      "bytes": 61196,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/23a.woff2": {
+      "sha256": "cd6f3c3bcd24f5bf64b521c396479773b5bf547e3edd7b0a6187e8488c7aab07",
+      "bytes": 69872,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/23b.woff2": {
+      "sha256": "b27a16a086cb6e03aa5ed0c1ffb7cf81f94416f2dc6a7b7bfd2bb02837ad88e8",
+      "bytes": 55020,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/23c.woff2": {
+      "sha256": "f1cdb905ebf0d13d3b546461bc005afcf00dc8abd1f066f0224f1e3e2a81e2a0",
+      "bytes": 62496,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/23e.woff2": {
+      "sha256": "5710cb8bc7c7e0e7dbead4d617bd0efcd39e71f78a17d662e219edc37d2ea85b",
+      "bytes": 70368,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/23d.woff2": {
+      "sha256": "874eee4a3aed0a5f9b26302352b6e704413f2394f5db7ca8f2b8159fcf49097a",
+      "bytes": 58140,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/240.woff2": {
+      "sha256": "814879f1a7f754397549bc4f5c507c4c679fced4f75d0e6cd570b9b126cc1ea5",
+      "bytes": 88400,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/23f.woff2": {
+      "sha256": "7209f0400fa8a3d34e9724fb4176db154f1660e15ae8fcd4be33c91fb62469f3",
+      "bytes": 76756,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/241.woff2": {
+      "sha256": "180b0c0f31d706d062b9ff629e62588aedcdad434b7d72de2012de95899c2802",
+      "bytes": 82564,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/242.woff2": {
+      "sha256": "0352a8a076010be347982cf348e02942f2a5e8c89cde01e5b64c9993b52c6f7c",
+      "bytes": 61168,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/243.woff2": {
+      "sha256": "d1721d5ca06b59f1169be9c986d489660346b81b95ced5e3929d5d5301f642c0",
+      "bytes": 78488,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/244.woff2": {
+      "sha256": "286a0e451546a56d3b69d886b2a028027b20f2a861f52e08cc65cfbedf0e8e83",
+      "bytes": 95360,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/245.woff2": {
+      "sha256": "eaf674714c14d1fd4ca4ee4310bccff34fd5f51cea15820d40edcdcfb2c2e397",
+      "bytes": 68008,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/246.woff2": {
+      "sha256": "2aa585a56fca665953dd5b75f4e628abec20c256c2752e4fd84ebdbfc41b77dc",
+      "bytes": 56972,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/247.woff2": {
+      "sha256": "643e3d4df2e0e0de1b218e65481358e65810af91bc9c0e0ed83fd8e05fc982f3",
+      "bytes": 53988,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/248.woff2": {
+      "sha256": "8e44df1bda2fe8b5e53753c856e510997534129a1686187f46b31ba2f5acfdb1",
+      "bytes": 72632,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/249.woff2": {
+      "sha256": "b315660c40b56d14ac4e1f2e9c42d3f23b7ac525594850fe30bb6d0ef80a9934",
+      "bytes": 50848,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/24a.woff2": {
+      "sha256": "c037605e0f9ebac2834bc212d977151cfc5c7b01fc8e9cdaeb565293bfa26bc3",
+      "bytes": 75040,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/24c.woff2": {
+      "sha256": "875a41565f7b717def71457a7fe6841d0123a3ff79fef479b6436e305d6075e4",
+      "bytes": 56832,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/24b.woff2": {
+      "sha256": "4963fec10d2e6a15e430775d6e4c2dc5fbef13f0e0288e7351925bed9bb1907b",
+      "bytes": 72024,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/24d.woff2": {
+      "sha256": "cd42503e22c138d8b51c018c2d026d9ff6829e43c91a2a618c9a3b35ca0f1eb9",
+      "bytes": 46740,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/24e.woff2": {
+      "sha256": "13410a058dbd983205a869be3133e533ce924d0b372ef99b3db4f4661e3504e6",
+      "bytes": 66916,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/250.woff2": {
+      "sha256": "a904b779b10cd96c704fa2788cdecddf44865019c825daa1167e004c26ca36ea",
+      "bytes": 66732,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/251.woff2": {
+      "sha256": "38eba8b4e3b4f62206bd21f3241f4737ccde73628219e13c7472d48950c35e2f",
+      "bytes": 44420,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/24f.woff2": {
+      "sha256": "80f4c0453aa099439da7145b5215a207a081e39d017e2014f7d1eba320395fb7",
+      "bytes": 67676,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/252.woff2": {
+      "sha256": "bd2c37859fde79768102d9ba3b3f8fff2b2a5032f7b95cb2c55a95045d5108b3",
+      "bytes": 64932,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/253.woff2": {
+      "sha256": "cb27229738c55ffc8f753726571d4897335e3add59206e8925a4336c214155e1",
+      "bytes": 75720,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/254.woff2": {
+      "sha256": "6bec04e07344137038152d1efdd33d4143147626a62c5723db5c07eb3fc6c48a",
+      "bytes": 50004,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/255.woff2": {
+      "sha256": "0b949fdf3d87773ac1793a625f3cb2b4277470a93eb02963361b46fccbcaca57",
+      "bytes": 71668,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/256.woff2": {
+      "sha256": "99af19742bf5cd65a3908fdb89f52a4bb60cd58da1186d6efeb1b11425ea4c78",
+      "bytes": 51368,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/257.woff2": {
+      "sha256": "c43222089874244f8f0186dd7a4c7d0f99997c2a12e9b871899860b4aa3a40f3",
+      "bytes": 59344,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/258.woff2": {
+      "sha256": "1edb5a1fa5f8a0527cbacb2a8e409f4e0321e59a2921d4ae73a24f87eb2b7168",
+      "bytes": 74768,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/25a.woff2": {
+      "sha256": "b3c09e8168b10fd62b509cee134341a94026a8e2bf4e8b1197609565f638dade",
+      "bytes": 70388,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/259.woff2": {
+      "sha256": "3f18d30fd1f4774a3594b9b84f450ab080638711018a2247cdf22f5fa7cea9cf",
+      "bytes": 63888,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/25b.woff2": {
+      "sha256": "bcc06e8af077922096439343247c676f41498cbf79442f8cb6398053d6c2c095",
+      "bytes": 54944,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/25c.woff2": {
+      "sha256": "1908e2bdb70be5facf054d93e7b71bd48e7d49888ab204c02d625ef701fcf7e1",
+      "bytes": 71644,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/25e.woff2": {
+      "sha256": "cad1cc052c5d33df346d99fe6a2ce436762cf48d3d5fc356c29b07efd8d716e7",
+      "bytes": 67260,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/25d.woff2": {
+      "sha256": "548ad920c47f4016197e1faa45e70db758d3d72b7fc14f01526bfee65f7ced04",
+      "bytes": 86712,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/25f.woff2": {
+      "sha256": "86bac5b718541895ad19d24dd430c2249c331f3490fddf024fb7ac7c7c88b878",
+      "bytes": 76064,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/260.woff2": {
+      "sha256": "e9cf082b264c008d8d75eaadd44ec84829f93374cdc6a46725cd7427c6129eb4",
+      "bytes": 72728,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/261.woff2": {
+      "sha256": "2285042b3a7b80c372b72b89c0eda047bda2e555865b06528aa79e30e965d37b",
+      "bytes": 96236,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/263.woff2": {
+      "sha256": "9ec9bdd2f9422c5f893868a84c36fb702a2bb9b9b7749b0aea8dd5a53eb400fa",
+      "bytes": 74260,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/262.woff2": {
+      "sha256": "f1e82b8dade39971a643fa34e642f978a34e845bcfe2a4fd1a96dbd6ad6f28aa",
+      "bytes": 60932,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/264.woff2": {
+      "sha256": "79f72b4e1e89b370f2a8cdd193c2d7c3b5ed7976c087b0aaa0a901bd599f9b39",
+      "bytes": 68156,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/265.woff2": {
+      "sha256": "d55aa28bbb4f14a6e1693c9c3915d14cf81fed2f4d2eda2e2937d948ad93ee4a",
+      "bytes": 60264,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/266.woff2": {
+      "sha256": "b58347d49ecfda877bdfc0fe60402bd69b5a4d42394f34105ae398c872c8e07d",
+      "bytes": 51748,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/267.woff2": {
+      "sha256": "a70366a3c09363274ff60cf569bfae63f2c895095774e7712e8caebff99a830c",
+      "bytes": 61892,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/268.woff2": {
+      "sha256": "0a55ea06e2b97f3f941bc23da58a4c4ee7e00c7156a83617d9b0b5ce0b020e07",
+      "bytes": 80380,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/269.woff2": {
+      "sha256": "e258fc8957ec430e0fb31deb2714a7c6f0b78878cb5c2aa7860b45b9ba5dfb4c",
+      "bytes": 67124,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/26a.woff2": {
+      "sha256": "4339418837ee292dee77e1db88d2b7c573aab9d6da790d512ac642347b7e50f2",
+      "bytes": 70648,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/26b.woff2": {
+      "sha256": "7bcdf5aeea96bebedc56ef2f3eba8668b1c020fa7d710bb0b2692451d9530437",
+      "bytes": 41908,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/26c.woff2": {
+      "sha256": "efff0468eabc9be0a4f8c4e6543e1666977d6301686a1eba39db8772799783f0",
+      "bytes": 54168,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/26d.woff2": {
+      "sha256": "729292eff08716c7826bc8f3ad0558316b90797bd19d3cb8c2a4976fbaaa2f3d",
+      "bytes": 61696,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/26e.woff2": {
+      "sha256": "36880aea3a6426a95e7adad154759387a87f360e7790646c0e60a7ca812b2972",
+      "bytes": 67564,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/26f.woff2": {
+      "sha256": "2a8d32e6ea6f625fe36ab96daf38fdadfec1809f682462abd159f11ec33bf171",
+      "bytes": 75900,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/270.woff2": {
+      "sha256": "426a41f5c6e6532ddbda149d12767c8a306d19d652f0e3d679d2540395d54a9d",
+      "bytes": 84596,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/271.woff2": {
+      "sha256": "98d6250dfacae851c368f010ce6bce60e80676f0df0f81bda6fa7ab4619952df",
+      "bytes": 87504,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/272.woff2": {
+      "sha256": "2e3bdfa5e2caa491127c4ff920edd90d698bb5677c2d28a74242c2d25fa6b619",
+      "bytes": 55360,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/273.woff2": {
+      "sha256": "3100dae30e9025c9ed1c4f70008d4f84a3a05411550c9c0569b5d3cd175e19a5",
+      "bytes": 65100,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/274.woff2": {
+      "sha256": "0a5ecdf78e30fc546d33ffdc65ad3a390a54088d9cc82c669770b19791b8e15e",
+      "bytes": 77932,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/275.woff2": {
+      "sha256": "39f046198880bc5615dd51cd346a9a51295d3049cdebc228b5a5d63b5f4cfb0d",
+      "bytes": 82540,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/276.woff2": {
+      "sha256": "c5a292db455b62d8826ff7310df4099e8ee4e2ac77a575f805748f4f748ac628",
+      "bytes": 52160,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/277.woff2": {
+      "sha256": "49c4b4061baef8eaeb0df2f4c0c271d758a7c253bcc959ea2606481f670305a3",
+      "bytes": 77924,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/278.woff2": {
+      "sha256": "92bfed172e81f3bf309e05c0afb5d42e3748ed9f2a79f2c8ffe3be6a4ba0077a",
+      "bytes": 62528,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/279.woff2": {
+      "sha256": "3ac05fcfc633554dd66b0c69478d2c829f9a5ccb734fd2ab566bedc3cfbded23",
+      "bytes": 58668,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/27a.woff2": {
+      "sha256": "3c7dc5e0197d48a14aaa46456c1f3fc7434e5792ee23fdb0c4812b484f9af24e",
+      "bytes": 59420,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/27b.woff2": {
+      "sha256": "226e3e4af5775206a84a4a55ff9537a28e7fb7f1f8184100a4450edea1a1b9df",
+      "bytes": 78000,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/27c.woff2": {
+      "sha256": "1f488498aeec599c22d2d59e86859eea375a698b15d3603187cdc5e83ec85165",
+      "bytes": 72512,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/27e.woff2": {
+      "sha256": "fa4139d723eecd8c1a169fa8b6f0380923a265def7a2e4c2eb47a26a6165702e",
+      "bytes": 63232,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/27d.woff2": {
+      "sha256": "ef7a205f6c7f1e9b03758f49fb9844b26249806e255705b5aa8e46bb20b6f823",
+      "bytes": 66316,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/280.woff2": {
+      "sha256": "97bbac4a3a008052055e8f9f10a4ef7d92f5b13f7fdc0b09a1192cc6e2af0191",
+      "bytes": 54292,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/27f.woff2": {
+      "sha256": "caf3eb48133571d3f07cba15442c495daae65a8dc1189479b80314ed49e7ebdc",
+      "bytes": 55752,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/281.woff2": {
+      "sha256": "d685742d63e7b96c17478bf8406bce2224bbe2d58a967e8f2ee4b2cefbb63aa6",
+      "bytes": 77252,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/282.woff2": {
+      "sha256": "43d954f9ef0ebb503de00dbfe2f96f7652d2c0e67b027197e4fe75dcb48e0821",
+      "bytes": 60196,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/283.woff2": {
+      "sha256": "9c1cad12d07efa24054f2f4c7fe8539ab7adf426dfb6bd1bc2eb10aa2979254f",
+      "bytes": 67272,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/284.woff2": {
+      "sha256": "0562e3907dfcb23b639d7b9941774b7cd36a8ced645dab08ce8680dab8f09ee7",
+      "bytes": 50880,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/285.woff2": {
+      "sha256": "a845170bf3730e41b2034cef211a6843e7cd20808e4556ae570d40aa315f66c1",
+      "bytes": 61588,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/286.woff2": {
+      "sha256": "91609645ce2f1ba89862f05e8e27aab2b92a344a3ebc2b5f608c6ecca85f6b0a",
+      "bytes": 62756,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/287.woff2": {
+      "sha256": "507ce4ba2ecc1f7efa13cef0b0fb0e160376050ca67b61804ace3ce9212a530f",
+      "bytes": 67200,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/288.woff2": {
+      "sha256": "b38aa593fa426d8fc3d06bdc7a2bc883b5fd53dc30760fb47fb623b34c543aa9",
+      "bytes": 66952,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/289.woff2": {
+      "sha256": "d091287e31b8e8f7a59155aa159fb4f53e659eaa17033c8a791a27b09dcf5e36",
+      "bytes": 66404,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/28a.woff2": {
+      "sha256": "53227bb073dcd388948657ed9df8f63be5ba0e3e44108b414cc2dfe551a08893",
+      "bytes": 69480,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/28b.woff2": {
+      "sha256": "271a0c743179eaaf7db090bc687f02c5436eecf8069d239e56f7c7bafcaa41a5",
+      "bytes": 84148,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/28c.woff2": {
+      "sha256": "8c9ca883ddf0e0826007540ce6bd30af7b5d1bda0c48013c96e3536937ea25af",
+      "bytes": 70520,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/28d.woff2": {
+      "sha256": "2dc11d605c4dea20bb5aab46da665a8eef75bd5a545a6dd572aa0566c1bb1f4a",
+      "bytes": 57812,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/28e.woff2": {
+      "sha256": "0650b28b997735738308ec8e7d2db4ffb7881b7d664ef0d4d02b5be3b4a42095",
+      "bytes": 51624,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/28f.woff2": {
+      "sha256": "f71cb7aec1bb5e1487f99b8225bfe064bc6a198d6d8cae5d9457783106723eb7",
+      "bytes": 69772,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/290.woff2": {
+      "sha256": "7701033c75cd36095743fb9361d54482bbe3dbcb96bb45a669a397f1adcf68e6",
+      "bytes": 64968,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/291.woff2": {
+      "sha256": "53ed43b307c056a120b51d8d7d7a79910cfd0389eac1c2155b0a80c7469e39f8",
+      "bytes": 73628,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/292.woff2": {
+      "sha256": "00f37c055024c446c37dd653e79247ffcc22f1716b2e9ee4f61f9225b3a72607",
+      "bytes": 55240,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/293.woff2": {
+      "sha256": "ae8077cdad0e8c79e9f59235b283e77627b6a3e0095fbf4d940db567e1198a52",
+      "bytes": 74324,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/294.woff2": {
+      "sha256": "a0fa5c258391095690baf457d1e3e107699c5f3ab8b3eb5d96ae15b1f180c11c",
+      "bytes": 56296,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/295.woff2": {
+      "sha256": "c79b4e607f3506134f6790a2d537004418aa631e76b28a588e4cf4e8acae7a62",
+      "bytes": 67704,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/296.woff2": {
+      "sha256": "f565bd1f96805c564411a4082a2842e0d80b313342b57c343d5aa93d17fc589b",
+      "bytes": 70440,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/297.woff2": {
+      "sha256": "9558488ada03fcfe96c38de3abdb3242650b6a111a98bddeae76bee32f6b5f01",
+      "bytes": 71260,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/298.woff2": {
+      "sha256": "9ba5cdb5ca264a517064bb1e1092d4dff9f763c69bf1ac96c1c7b807d7bac8b4",
+      "bytes": 66812,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/299.woff2": {
+      "sha256": "a373357d83c80ccd6893ccd156657aa7b09fcc0a2dacca2ef7aa825fbb0434b0",
+      "bytes": 77824,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/29a.woff2": {
+      "sha256": "fe17a9922ce219fd40c93ef9c093fe17811ac8e0559182d46a433d9a87bb0bf6",
+      "bytes": 63180,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/29b.woff2": {
+      "sha256": "487344bb1f3af2d8e383f11ab19ff563b4a76d077c714aae4a1a9897e3082c75",
+      "bytes": 68352,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/29c.woff2": {
+      "sha256": "b43676de9baa42a39d5177b9c9343d5748129fb5cec4456d55821d21bb2e166f",
+      "bytes": 70596,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/29d.woff2": {
+      "sha256": "b739fc76b212b1da3aae3859a92d25a3b46544e8bc733f1f8145b24d14320c0f",
+      "bytes": 75260,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/29e.woff2": {
+      "sha256": "736ebddc2995af9b5b9b877d3f06d71090c2525e879243455be19d867b4a4fc5",
+      "bytes": 81584,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/29f.woff2": {
+      "sha256": "9b7b1727987e7d5906b9116d0866555303e41058277f83fcc6ac79482671c5a6",
+      "bytes": 87120,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2a0.woff2": {
+      "sha256": "f00c280015199d3713d94d0e4fad937d74086caaaf532ebd534462514dc1e804",
+      "bytes": 70356,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2a1.woff2": {
+      "sha256": "d4a91bcc50aa9f06c0434782d619c2cd8d828331236214caa1981a8dbd9d3961",
+      "bytes": 91316,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2a2.woff2": {
+      "sha256": "3289e239f82aaa8b6110267baa5a359f5d0b34a2db4386ad05e8ea6bccebabff",
+      "bytes": 87212,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2a3.woff2": {
+      "sha256": "6c9c0a52d8f198d74845fecaae14b203f94d93c924d89f9be808e40c837070f7",
+      "bytes": 72088,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2a4.woff2": {
+      "sha256": "e88248c20afdc6c81c9e13b5d2b0639d2e07b7ac81f5290ee730041ed47b60b4",
+      "bytes": 83396,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2a5.woff2": {
+      "sha256": "ac2e47e70256032024e46832585020fd286bfcbd84333238173e3690d701ea6c",
+      "bytes": 78520,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2a7.woff2": {
+      "sha256": "de922e2cf30d1a23fd9af47218ad26089a77caddf059d6df36cb2b26198d5f28",
+      "bytes": 60416,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2a6.woff2": {
+      "sha256": "7252f7c195782e84e1f3b383967f99a724796d54abe150d4959f62826ef27126",
+      "bytes": 80512,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 224
+    },
+    "fonts/rare-han-v1/2a8.woff2": {
+      "sha256": "46334e33759884a402b401b4d80d6290fe5b4158368394fbe6e65b11fd10f10b",
+      "bytes": 56884,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2a9.woff2": {
+      "sha256": "cd3e40a56add7f85731f140c657c5a3ed2cbaa52b789b1900f5dd5f60f1411b3",
+      "bytes": 73200,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2aa.woff2": {
+      "sha256": "e2ab01241a6809344d964e3b51bcfd8e98730e56bc220aa1b47bde00565ce5e5",
+      "bytes": 61244,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2ab.woff2": {
+      "sha256": "e320139fbf2e45803737f9dd564e97d6b5c956bb9d774c8478f45ed2a3721d6c",
+      "bytes": 69232,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2ac.woff2": {
+      "sha256": "37103f959660c007764241bab02ac5ae24f992438fc3e73f9d658c7aa7c8b4c8",
+      "bytes": 60576,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2ae.woff2": {
+      "sha256": "4e6e0795b191292c829659fa35cdef05970930fac74a4f884f6f7b5b577980e4",
+      "bytes": 70948,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2ad.woff2": {
+      "sha256": "ec0b654a95f458fbc77e460fcaf0e9b45b59a04ef211280f20c6652428c56c25",
+      "bytes": 77604,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2af.woff2": {
+      "sha256": "9667bf4031945be93459214f8e94851bf66448fb6d7b131a82ac6fbaa011b44c",
+      "bytes": 65456,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2b0.woff2": {
+      "sha256": "da0d54a27988f2c2edb93b15a0f1dea66b6571d90da3aa69c48791e6f9f9af3b",
+      "bytes": 73304,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2b1.woff2": {
+      "sha256": "7cc0ed7775b43ca797b685323c38c68e29ac589b488d0cf69ea651244f32f489",
+      "bytes": 76412,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2b3.woff2": {
+      "sha256": "9adfb9178f31ef8c5748c5a5972ab58f06cbdf31fc2af43b69a5841e35cecfcc",
+      "bytes": 68992,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2b2.woff2": {
+      "sha256": "5fc03ba455ce947276902325ebafe862e045495638c96a846ef93e4685bd1ed2",
+      "bytes": 66736,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2b4.woff2": {
+      "sha256": "ff3b40ee34f2f59f46dddc9cfb974c0a78651b571efa4649f5b1eb2ea81c98ac",
+      "bytes": 69080,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2b5.woff2": {
+      "sha256": "6467e83d52aeec887d3383aecb7440a3cb16a714083355b9d2b7f4bb72282de1",
+      "bytes": 68464,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2b7.woff2": {
+      "sha256": "321040136cfb18097cfb45888d934c41e438a15eb65daf76cc1823157b933086",
+      "bytes": 68820,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2b6.woff2": {
+      "sha256": "d8d72a7aa513845e7ea515c58b04cb8145ae319879d2e62a57b6c339a202d545",
+      "bytes": 84084,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2b8.woff2": {
+      "sha256": "5c9fd3d41b6e85cd380155441c927cc8f9c4c96df406f094ba5da4bec9934c70",
+      "bytes": 58288,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 254
+    },
+    "fonts/rare-han-v1/2b9.woff2": {
+      "sha256": "a9936cdc32a2c0ba90d88cbef5fd475672111bb2891e3a88edc1e7b1fe138294",
+      "bytes": 67616,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2ba.woff2": {
+      "sha256": "0e3250cd39d485b8af38206cdef6b03bcd44b523c4ca8fa52b96ff163b1d9893",
+      "bytes": 57184,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2bb.woff2": {
+      "sha256": "1e359601327f89aacf1af8aa1c2449374658e0f08241bb14bf35995814e347a8",
+      "bytes": 70668,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2bc.woff2": {
+      "sha256": "d3307241ccc56c0a9629d21fb1a045b15a4baae2db18cab635e99c35aef28f92",
+      "bytes": 68084,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2bd.woff2": {
+      "sha256": "f15c2ded3753d4fbfbf3d54db9285dd9c712b7230b375f006a5785f32c0fb970",
+      "bytes": 67800,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2be.woff2": {
+      "sha256": "6c5c65de84bf1e028c07d2a6adff3aba3095183ac20bfcfb9039b9fddfc5f324",
+      "bytes": 67968,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2bf.woff2": {
+      "sha256": "e244ce8ee18af67ca76a11c51b84f09dd5431a7b9faea7f337c2f4ac180e6dfd",
+      "bytes": 70060,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2c0.woff2": {
+      "sha256": "c0becd02a011581803ec2ca79be0ca4c39d460226d5d97029ec307d9e1b8bacb",
+      "bytes": 60072,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2c1.woff2": {
+      "sha256": "e3e6beeed9f710b9ac6c4cfd6cecadd652a3561bbd23a13ce6e66fde4bc1f869",
+      "bytes": 71908,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2c3.woff2": {
+      "sha256": "22ac1c430d8623ab00340021e17c2842df653064c14ac655a3cd97535eff4c28",
+      "bytes": 60376,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2c2.woff2": {
+      "sha256": "fc38c4c811e3d194d2ff69d8ed0674de59f6cb725e7ec0debb30c62c6bc8f43a",
+      "bytes": 82508,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2c4.woff2": {
+      "sha256": "3832a2d137bbd69844ffc6094852153c1d3dcc7fb5cdb3f3aac06903f55411a4",
+      "bytes": 63464,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2c5.woff2": {
+      "sha256": "6c6ad7b2d2f4fcb5bf6bf7740173fd92c0df33c8adf990a442ef9b728be144d4",
+      "bytes": 76076,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2c7.woff2": {
+      "sha256": "142ecef78d9a593858ddd1c3759ac3938ae1628a385bdb5d3c7de38d781e327e",
+      "bytes": 71320,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2c6.woff2": {
+      "sha256": "9ea57de479cd137d560b808c105fc33aece400474c504b1c343c3b3c7d50471c",
+      "bytes": 70940,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2c9.woff2": {
+      "sha256": "e63350b621d5377c096afb8ede279a7c8293e870bb060daf7fe4155b6e70a912",
+      "bytes": 70396,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2c8.woff2": {
+      "sha256": "8606220d3a8572bef0aab6fc00335a84a750280db897dfb7e265fd66cdf665e1",
+      "bytes": 66660,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2ca.woff2": {
+      "sha256": "0754c9af334bb110009c7e6a40d7f7010e65c7ed346871d9d77a7cbb706576b8",
+      "bytes": 69112,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2cb.woff2": {
+      "sha256": "869f99f6f21f52756af9932f1b6702da866e8c9f057f360a79d79ee2d3ca0f52",
+      "bytes": 68652,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2cc.woff2": {
+      "sha256": "945045b18fb959d29580677b9178eeff784469f467c818c7f2f83da4894be3eb",
+      "bytes": 72056,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2cd.woff2": {
+      "sha256": "f31fa1f1dd8927058e1130f9fe0f0b69f677031f1be551bf6e13687d09357d89",
+      "bytes": 81232,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2ce.woff2": {
+      "sha256": "a2b1307eb0b5f4b1d39dcd85716c3713fb43654504cfb0075994c06facd0222d",
+      "bytes": 65804,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 254
+    },
+    "fonts/rare-han-v1/2cf.woff2": {
+      "sha256": "203ea43b3427dcd6233885081dd9fbe6feffe1fb5ed9fbe19fa88e8bc5a2eb32",
+      "bytes": 56740,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2d0.woff2": {
+      "sha256": "e588bff41c37d9b282cc4000d3762c94056a922a62914b30b22252e4eedc7b0c",
+      "bytes": 63552,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2d1.woff2": {
+      "sha256": "a86054e3723f23e01ef37aaf191abcd4cdcbf47e313a814bcd12ab8d5db0d562",
+      "bytes": 57956,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2d3.woff2": {
+      "sha256": "f56860448e6ac7e80b67e1ef96f026d7ebaa2a44eadf187c1dd078cbeeb6c522",
+      "bytes": 69736,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2d2.woff2": {
+      "sha256": "5854ca60d43d2549dcd313f87146f4e4cec030dae99d97db2970de8f5a27fde9",
+      "bytes": 63480,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2d4.woff2": {
+      "sha256": "69d65454b3de6f3d956a40b84bd9e557078b220b3985e07ee60e6856d6c3ec67",
+      "bytes": 71528,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2d5.woff2": {
+      "sha256": "7779e2d24c2d0e9205f3d8108a4a0413e405856dbf961b583a42529ed38c019f",
+      "bytes": 62240,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2d6.woff2": {
+      "sha256": "4974b6b6a69cc5576f57aa6373a5064b79899616541a7ce2ab415f50282326af",
+      "bytes": 59440,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2d7.woff2": {
+      "sha256": "2c83eae4e2435d2072d479f87a416ce31c45dfcfbf1cd8427574e457167d474e",
+      "bytes": 70392,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2d8.woff2": {
+      "sha256": "3eb8f0090c1893d2607ed519427b520d8fd841544458d673c48dc3619b3d9a20",
+      "bytes": 65492,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2d9.woff2": {
+      "sha256": "29f9ec33e09003d71130f4acf864c4eb007d89ce7e508208e3d61bc8f719f22b",
+      "bytes": 59332,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2da.woff2": {
+      "sha256": "128a46e042ce78a5dde43cab1bd911954786074e895467eae63a62eb47eb79ff",
+      "bytes": 64212,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2db.woff2": {
+      "sha256": "396b07cf95205fcf4719e7d9a7f95dbc1360347d34728947959bd5fe618d7b66",
+      "bytes": 74888,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2dc.woff2": {
+      "sha256": "f60aa6133a74905a26676065d939edf7ebe8b7adea69d5a626c435718d40bff8",
+      "bytes": 74252,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2dd.woff2": {
+      "sha256": "d0cd9c8e442fe7893e03ea7103303370cb827c5b72f327218863560960748e38",
+      "bytes": 67676,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2de.woff2": {
+      "sha256": "fd07c6e9af417dfadca274e5966ccca0fac8fbbaa0bb10fecfe3ed227acb29c0",
+      "bytes": 64624,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2df.woff2": {
+      "sha256": "a239a957bf49fb8d4ebbed3dbf1c0068becd4e717f2cda4ca25b2ecd0897f454",
+      "bytes": 63028,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2e0.woff2": {
+      "sha256": "22c4e49f51d1cb2c99061d3874623e7236cf420e1b9b56fdf75842dc57bbc72e",
+      "bytes": 65304,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2e1.woff2": {
+      "sha256": "aae71e8a43e0bfe8c79b6541e80ccee1eae0481da0ac0c1cfb36b4b5cc22d10b",
+      "bytes": 75896,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2e2.woff2": {
+      "sha256": "3f426a8bd734590e8d3619b7c2d70a4e2304138db1aee57510dfc90c997308d8",
+      "bytes": 82408,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2e3.woff2": {
+      "sha256": "3cbffc4e7b1f7fb07265fab7ccd313f3fa3160c2c232b202c031923f6cc167f6",
+      "bytes": 61972,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2e4.woff2": {
+      "sha256": "5fa62d291c5b825b55f9929f9aa294be589515e7bcfc1be46f8c45ba8bc696d0",
+      "bytes": 75540,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2e5.woff2": {
+      "sha256": "39aa2c5f05d700aa32d53e5c39c7459ad1d47fb39f74834f29a16ea4b29359f4",
+      "bytes": 69512,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2e6.woff2": {
+      "sha256": "8e993253555729a6c0eb8ac2fee7efea0249b01bbc57978b980233e2561f6a6b",
+      "bytes": 64880,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2e8.woff2": {
+      "sha256": "b8b6706635f907a6eb168e5c3580ed6f1009ab76875eec2a56538b1b221da7ad",
+      "bytes": 76720,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2e9.woff2": {
+      "sha256": "b411a70a5e5b48675ca473cce159468039e196cff09e5ec868f1b034410d3ec1",
+      "bytes": 66112,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2e7.woff2": {
+      "sha256": "57cf7fe61b563548e81f1f53733cc6f71eb8ad36295c1b50c5faea0979a84783",
+      "bytes": 64816,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2ea.woff2": {
+      "sha256": "725d0d9ab634bde45772fdac26b42ee03f1cf2eae33c4d2487f12f6a4819716b",
+      "bytes": 80408,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2eb.woff2": {
+      "sha256": "1dfd5555ec5f4b2ce9caba4344f8e7cbe4613427ffe78c22cbf09908bafe9338",
+      "bytes": 85128,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 241,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/2ec.woff2": {
+      "sha256": "3c79aa071875539af370d2f15a8206a0c76b7aa82025312be233f360867945b5",
+      "bytes": 61588,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/2ed.woff2": {
+      "sha256": "0a05b1314b07594ac2edbffa225ab62b347bd128f3600ab24ff6e56f56a1739a",
+      "bytes": 60656,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/2ee.woff2": {
+      "sha256": "f8e4745e4da188d0c71923351d95700b51f19428257730286ece8404a2eaefc0",
+      "bytes": 25756,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 94,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/2f8.woff2": {
+      "sha256": "d7a80587efdee00ce70f7014624a0ca4b6e198ffbc127cfbcbe9fa9be9be77f6",
+      "bytes": 57952,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2f9.woff2": {
+      "sha256": "e67da13193fbc78b6c26593f7a06f13118b3d6287d8fd4af9026316a3de65a88",
+      "bytes": 69776,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/2fa.woff2": {
+      "sha256": "06d8bc4f1e0814dd051b17cd9252f05c5950f721b4a81b32763b64323d830051",
+      "bytes": 11336,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo2",
+        "2": "Regular",
+        "4": "Jigmo2 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo2"
+      },
+      "mappedScalars": 30
+    },
+    "fonts/rare-han-v1/301.woff2": {
+      "sha256": "6b2ed5ec9d5135ec540d9c01ddc0bdc5d64e3786bd57f6a86d26cd38a6ee4225",
+      "bytes": 59628,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/300.woff2": {
+      "sha256": "821c1467ae7646b22f686e24ff0a97a4d9c50b73c69871f832bcf54bdf790c0b",
+      "bytes": 56212,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/303.woff2": {
+      "sha256": "c272916f9f56496d9381094f03108499e3a9d298d5de6d0a67d840f3138e9ea5",
+      "bytes": 61548,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/302.woff2": {
+      "sha256": "0b69bff18b72cbd5ed9d24598658a67d0616ecf003acb2afb809b10b9885043d",
+      "bytes": 66256,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/304.woff2": {
+      "sha256": "3eb2842db7836d83cd52476961e07ca5a2cef65df62bd270a1fe6bf1fcfd8b82",
+      "bytes": 63820,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/305.woff2": {
+      "sha256": "2d5f3b47bc29dd735b6da008d5cc10170e19c358d22f51ab672eb9a25bb2dc9e",
+      "bytes": 64368,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/306.woff2": {
+      "sha256": "47035ead6e9fd320c121fc5bfd7a63c78c563e35a8c003a292f1eb5d4a82ad20",
+      "bytes": 65552,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/307.woff2": {
+      "sha256": "8b8402a23e2806aca74a0db86c9e3e8749385408f8b368484a60a098dcc488e2",
+      "bytes": 77040,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/308.woff2": {
+      "sha256": "1e56cf05d14f8cad5951a70a4779671af8e6df3f4cb9ae18e09bd2c1a10d1449",
+      "bytes": 59092,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/309.woff2": {
+      "sha256": "4dff07657eb3ed7d9dae8f345d23f06cd3e6925180e576f77955ad65034f0800",
+      "bytes": 59784,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/30a.woff2": {
+      "sha256": "b7ae6e697e9d09ccf087bcad471851ec8c22411ab78c6811e697ffd4c27d6ccd",
+      "bytes": 75612,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/30b.woff2": {
+      "sha256": "4c693f0b5a6cef11d3329c1b23a11b8ea507b9f1879308a60450a09d89860979",
+      "bytes": 69652,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/30c.woff2": {
+      "sha256": "b4ab15700868dec9eea2f851ea4e38e98ed47282a6781a341837727a2d518438",
+      "bytes": 64584,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/30d.woff2": {
+      "sha256": "26b77e6f736aa3bb841a20580e029343f3b13c67da1c854af9c233368b38ecbd",
+      "bytes": 68808,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/30e.woff2": {
+      "sha256": "19fb0b4c0944702904a06ff733267a929e3e120497f557c91d317322c1f112ca",
+      "bytes": 64652,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/30f.woff2": {
+      "sha256": "9a11f36c65799a4df4f5085cc92c6f15d173382858e5151bc9c35afdd1d7b53e",
+      "bytes": 66352,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/310.woff2": {
+      "sha256": "d7ed16e7f3eae965adfbf23ad9857da04a8389e37419e55a419920e560dfbafe",
+      "bytes": 73584,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/311.woff2": {
+      "sha256": "f6abe962758d73b1c526e2ef72da1edbf5ff8f0b9e22b5db7cb795f900d94261",
+      "bytes": 76812,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/312.woff2": {
+      "sha256": "514bb92a9a369b5ec8b7add39c7265c3ef9ec822358c36f9ba4251013e5ccd49",
+      "bytes": 80132,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256
+    },
+    "fonts/rare-han-v1/314.woff2": {
+      "sha256": "76d4a7079b3ccd4b3b3af5e01e746981d17298bfee72a3cc38a8e1ba7e25d1bb",
+      "bytes": 58232,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/313.woff2": {
+      "sha256": "d9e6f903c3a0dbe1edcd149de36919c9795681edd6b3aaf5aab3f0a240362b98",
+      "bytes": 66980,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 251,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/315.woff2": {
+      "sha256": "feceb9618ac42e53a1c27acae02017d61ec5d0efc0e1492ba02c442751ea1ebd",
+      "bytes": 65948,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/316.woff2": {
+      "sha256": "8e1d03c241222baa742a158f00b1db61c807ca39fb018cdcc7064db18328cb89",
+      "bytes": 68548,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/317.woff2": {
+      "sha256": "b3a3b4de27e593fb92edb751ae7fdd36ab4ff9377d5196feed9750bb7a30245c",
+      "bytes": 70576,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/318.woff2": {
+      "sha256": "62dd58cba7d8e2b450359391beb53b5bd7505017ef0a7de550c70b2bf3ded546",
+      "bytes": 65216,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/319.woff2": {
+      "sha256": "a435c58b05bd8c94eafc44607a80a6d1cff97b3c6ae307ae12fd9f739fe7ed6b",
+      "bytes": 68448,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/31a.woff2": {
+      "sha256": "25ddf00fbc79314b3b60fc2b502435e7123b3bae3e785678eb5fb8e1e25f8d23",
+      "bytes": 74960,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/31b.woff2": {
+      "sha256": "37accbacb17a4ef98c48fc5852da7a0b0eb58e9641bbf83cba28b5f9a9069a41",
+      "bytes": 74028,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/31c.woff2": {
+      "sha256": "b8da053ba5b8c880913e8c54f5cdd15c1e24ee83340cfbd4bb194671e9df4dde",
+      "bytes": 65100,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/31d.woff2": {
+      "sha256": "6ff062ef2758ca86084692ed49c1c200cc8636b846061f0e3034454dc6223a07",
+      "bytes": 68928,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/31e.woff2": {
+      "sha256": "c235b5f2c4e4fcf7d331d97e8720360483e7e7b918c72840df200709a898d861",
+      "bytes": 77224,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/31f.woff2": {
+      "sha256": "19c23d99f3e6905e9440cdb048d0111bdde7e02877dfdf5484bdf8fdd8eb291b",
+      "bytes": 70648,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/320.woff2": {
+      "sha256": "e9f31e8b626db63c28698420095a5285c1b2a4540df5d107a64501be086ae656",
+      "bytes": 70288,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/321.woff2": {
+      "sha256": "3a146533a8a9c3444655f27d9e515437ea8452cef0305270efc1c830af3d18f2",
+      "bytes": 73344,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/322.woff2": {
+      "sha256": "fe11ff8ad1c136724f777fd5bc942b40809fc898f541b5379d1a3b38748be130",
+      "bytes": 71692,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/323.woff2": {
+      "sha256": "03e71a874683eab0cd9704b6c24ea946ab1ece4a184d6c6e6fe359519a3d76bd",
+      "bytes": 79812,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/325.woff2": {
+      "sha256": "5c749c6319385ef4507a44e6561df0f4bb62a9235adc757fa78c4bf4ee87a3e5",
+      "bytes": 62596,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/324.woff2": {
+      "sha256": "de2ddf5e34aec3b969375c9ed4b40d0f494e2d649d6d7c6515f711043c7bcafd",
+      "bytes": 66400,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/326.woff2": {
+      "sha256": "5291168960af6e0723a296d7f23a9c5a39309caa31e076911b7e378dd1bcd18c",
+      "bytes": 70852,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/327.woff2": {
+      "sha256": "ebbd3e5c48cfe6db19ec22972fb8c60c411fec7a6a4339c6851a2db36ce03e73",
+      "bytes": 64780,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/328.woff2": {
+      "sha256": "ac5c4e4291346751c3e3e01992456d76edbf1e9c8343d1b7a1b10c8f911606c3",
+      "bytes": 76160,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/329.woff2": {
+      "sha256": "9c59168b9fe237622d2ec64eb8bdb80e8fdaae2312d1f936a252ce2e2921c955",
+      "bytes": 71528,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/32a.woff2": {
+      "sha256": "a3161d32cd385600a5e0be21ac13fc8cc162501c61cc6dce815e4c93b7691e87",
+      "bytes": 74400,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/32b.woff2": {
+      "sha256": "75214bbbdbf94033a13f93e438484c08b0f0e2f8dd32a97a8e59dfdaec98f322",
+      "bytes": 75828,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/32c.woff2": {
+      "sha256": "01e5ac75da8d39b4a3fbfecd3547c3430a4d85a1274a464ba969ce7909b391af",
+      "bytes": 68572,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/32d.woff2": {
+      "sha256": "54f3c0e7b656af4d3c52e8979b9fe857533596573a961587821d85207c3928e0",
+      "bytes": 78028,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/32e.woff2": {
+      "sha256": "eed44839b5963858b1603c4bed7a950a2263fb9b043b822a7de73ed4c2ed873e",
+      "bytes": 74780,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/32f.woff2": {
+      "sha256": "b6e42d959c1b9696f3c33c9866153b6629612d51342cbd382aac63722e596eb8",
+      "bytes": 70156,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/330.woff2": {
+      "sha256": "5c0e46f49a33f88554d6e931160b7015e50657f29b05eeadb5b5a6767b474497",
+      "bytes": 72136,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/331.woff2": {
+      "sha256": "8f6a5726db60f39d747b7f8c4a145191af78f997a238600b3d2e7aca6d9a9d44",
+      "bytes": 75264,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/333.woff2": {
+      "sha256": "ebe3d34b5ef005629c2cac7110f46c396c2c9b68344ad9e71bebcf5cda41e6ed",
+      "bytes": 87696,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/332.woff2": {
+      "sha256": "7e3a21205e6e7ffaf4894cce8ab060da5d4c4eeffeee4ac45e630488e19a324f",
+      "bytes": 76876,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 256,
+      "emptyMappedOutlines": []
+    },
+    "fonts/rare-han-v1/334.woff2": {
+      "sha256": "ad444e7df1a8d730c9a46757ff131bea5e0b01aeff94f306f413d2cec6be702c",
+      "bytes": 41472,
+      "cmapFormats": [
+        12,
+        12
+      ],
+      "uvsEntries": 0,
+      "layoutFeatures": {
+        "GSUB": []
+      },
+      "fontNames": {
+        "1": "Jigmo3",
+        "2": "Regular",
+        "4": "Jigmo3 Regular",
+        "5": "2025-09-12",
+        "6": "Jigmo3"
+      },
+      "mappedScalars": 122,
+      "emptyMappedOutlines": []
+    }
+  },
+  "rareIndex": {
+    "family": "Jigmo",
+    "release": "20250912",
+    "license": "CC0-1.0",
+    "source": "https://kamichikoichi.github.io/jigmo/Jigmo-20250912.zip",
+    "range": [
+      131072,
+      262143
+    ],
+    "characters": 74942,
+    "bytes": 19748976,
+    "blocks": [
+      512,
+      513,
+      514,
+      515,
+      516,
+      517,
+      518,
+      519,
+      520,
+      521,
+      522,
+      523,
+      524,
+      525,
+      526,
+      527,
+      528,
+      529,
+      530,
+      531,
+      532,
+      533,
+      534,
+      535,
+      536,
+      537,
+      538,
+      539,
+      540,
+      541,
+      542,
+      543,
+      544,
+      545,
+      546,
+      547,
+      548,
+      549,
+      550,
+      551,
+      552,
+      553,
+      554,
+      555,
+      556,
+      557,
+      558,
+      559,
+      560,
+      561,
+      562,
+      563,
+      564,
+      565,
+      566,
+      567,
+      568,
+      569,
+      570,
+      571,
+      572,
+      573,
+      574,
+      575,
+      576,
+      577,
+      578,
+      579,
+      580,
+      581,
+      582,
+      583,
+      584,
+      585,
+      586,
+      587,
+      588,
+      589,
+      590,
+      591,
+      592,
+      593,
+      594,
+      595,
+      596,
+      597,
+      598,
+      599,
+      600,
+      601,
+      602,
+      603,
+      604,
+      605,
+      606,
+      607,
+      608,
+      609,
+      610,
+      611,
+      612,
+      613,
+      614,
+      615,
+      616,
+      617,
+      618,
+      619,
+      620,
+      621,
+      622,
+      623,
+      624,
+      625,
+      626,
+      627,
+      628,
+      629,
+      630,
+      631,
+      632,
+      633,
+      634,
+      635,
+      636,
+      637,
+      638,
+      639,
+      640,
+      641,
+      642,
+      643,
+      644,
+      645,
+      646,
+      647,
+      648,
+      649,
+      650,
+      651,
+      652,
+      653,
+      654,
+      655,
+      656,
+      657,
+      658,
+      659,
+      660,
+      661,
+      662,
+      663,
+      664,
+      665,
+      666,
+      667,
+      668,
+      669,
+      670,
+      671,
+      672,
+      673,
+      674,
+      675,
+      676,
+      677,
+      678,
+      679,
+      680,
+      681,
+      682,
+      683,
+      684,
+      685,
+      686,
+      687,
+      688,
+      689,
+      690,
+      691,
+      692,
+      693,
+      694,
+      695,
+      696,
+      697,
+      698,
+      699,
+      700,
+      701,
+      702,
+      703,
+      704,
+      705,
+      706,
+      707,
+      708,
+      709,
+      710,
+      711,
+      712,
+      713,
+      714,
+      715,
+      716,
+      717,
+      718,
+      719,
+      720,
+      721,
+      722,
+      723,
+      724,
+      725,
+      726,
+      727,
+      728,
+      729,
+      730,
+      731,
+      732,
+      733,
+      734,
+      735,
+      736,
+      737,
+      738,
+      739,
+      740,
+      741,
+      742,
+      743,
+      744,
+      745,
+      746,
+      747,
+      748,
+      749,
+      750,
+      760,
+      761,
+      762,
+      768,
+      769,
+      770,
+      771,
+      772,
+      773,
+      774,
+      775,
+      776,
+      777,
+      778,
+      779,
+      780,
+      781,
+      782,
+      783,
+      784,
+      785,
+      786,
+      787,
+      788,
+      789,
+      790,
+      791,
+      792,
+      793,
+      794,
+      795,
+      796,
+      797,
+      798,
+      799,
+      800,
+      801,
+      802,
+      803,
+      804,
+      805,
+      806,
+      807,
+      808,
+      809,
+      810,
+      811,
+      812,
+      813,
+      814,
+      815,
+      816,
+      817,
+      818,
+      819,
+      820
+    ]
+  },
+  "liveExpectedHashes": {
+    "fonts/rare-han-v1/index.json": "fb67ad1cb5a5ec293b3307156768b9decdd35f5b2eb4d6134f0baac225b2a505",
+    "fonts/rare-han-v1/2eb.woff2": "1dfd5555ec5f4b2ce9caba4344f8e7cbe4613427ffe78c22cbf09908bafe9338",
+    "fonts/rare-han-v1/2ec.woff2": "3c79aa071875539af370d2f15a8206a0c76b7aa82025312be233f360867945b5",
+    "fonts/rare-han-v1/2ed.woff2": "0a05b1314b07594ac2edbffa225ab62b347bd128f3600ab24ff6e56f56a1739a",
+    "fonts/rare-han-v1/2ee.woff2": "f8e4745e4da188d0c71923351d95700b51f19428257730286ece8404a2eaefc0",
+    "fonts/rare-han-v1/314.woff2": "76d4a7079b3ccd4b3b3af5e01e746981d17298bfee72a3cc38a8e1ba7e25d1bb",
+    "fonts/rare-han-v1/313.woff2": "d9e6f903c3a0dbe1edcd149de36919c9795681edd6b3aaf5aab3f0a240362b98",
+    "fonts/rare-han-v1/315.woff2": "feceb9618ac42e53a1c27acae02017d61ec5d0efc0e1492ba02c442751ea1ebd",
+    "fonts/rare-han-v1/316.woff2": "8e1d03c241222baa742a158f00b1db61c807ca39fb018cdcc7064db18328cb89",
+    "fonts/rare-han-v1/317.woff2": "b3a3b4de27e593fb92edb751ae7fdd36ab4ff9377d5196feed9750bb7a30245c",
+    "fonts/rare-han-v1/318.woff2": "62dd58cba7d8e2b450359391beb53b5bd7505017ef0a7de550c70b2bf3ded546",
+    "fonts/rare-han-v1/319.woff2": "a435c58b05bd8c94eafc44607a80a6d1cff97b3c6ae307ae12fd9f739fe7ed6b",
+    "fonts/rare-han-v1/31a.woff2": "25ddf00fbc79314b3b60fc2b502435e7123b3bae3e785678eb5fb8e1e25f8d23",
+    "fonts/rare-han-v1/31b.woff2": "37accbacb17a4ef98c48fc5852da7a0b0eb58e9641bbf83cba28b5f9a9069a41",
+    "fonts/rare-han-v1/31c.woff2": "b8da053ba5b8c880913e8c54f5cdd15c1e24ee83340cfbd4bb194671e9df4dde",
+    "fonts/rare-han-v1/31d.woff2": "6ff062ef2758ca86084692ed49c1c200cc8636b846061f0e3034454dc6223a07",
+    "fonts/rare-han-v1/31e.woff2": "c235b5f2c4e4fcf7d331d97e8720360483e7e7b918c72840df200709a898d861",
+    "fonts/rare-han-v1/31f.woff2": "19c23d99f3e6905e9440cdb048d0111bdde7e02877dfdf5484bdf8fdd8eb291b",
+    "fonts/rare-han-v1/320.woff2": "e9f31e8b626db63c28698420095a5285c1b2a4540df5d107a64501be086ae656",
+    "fonts/rare-han-v1/321.woff2": "3a146533a8a9c3444655f27d9e515437ea8452cef0305270efc1c830af3d18f2",
+    "fonts/rare-han-v1/322.woff2": "fe11ff8ad1c136724f777fd5bc942b40809fc898f541b5379d1a3b38748be130",
+    "fonts/rare-han-v1/323.woff2": "03e71a874683eab0cd9704b6c24ea946ab1ece4a184d6c6e6fe359519a3d76bd",
+    "fonts/rare-han-v1/325.woff2": "5c749c6319385ef4507a44e6561df0f4bb62a9235adc757fa78c4bf4ee87a3e5",
+    "fonts/rare-han-v1/324.woff2": "de2ddf5e34aec3b969375c9ed4b40d0f494e2d649d6d7c6515f711043c7bcafd",
+    "fonts/rare-han-v1/326.woff2": "5291168960af6e0723a296d7f23a9c5a39309caa31e076911b7e378dd1bcd18c",
+    "fonts/rare-han-v1/327.woff2": "ebbd3e5c48cfe6db19ec22972fb8c60c411fec7a6a4339c6851a2db36ce03e73",
+    "fonts/rare-han-v1/328.woff2": "ac5c4e4291346751c3e3e01992456d76edbf1e9c8343d1b7a1b10c8f911606c3",
+    "fonts/rare-han-v1/329.woff2": "9c59168b9fe237622d2ec64eb8bdb80e8fdaae2312d1f936a252ce2e2921c955",
+    "fonts/rare-han-v1/32a.woff2": "a3161d32cd385600a5e0be21ac13fc8cc162501c61cc6dce815e4c93b7691e87",
+    "fonts/rare-han-v1/32b.woff2": "75214bbbdbf94033a13f93e438484c08b0f0e2f8dd32a97a8e59dfdaec98f322",
+    "fonts/rare-han-v1/32c.woff2": "01e5ac75da8d39b4a3fbfecd3547c3430a4d85a1274a464ba969ce7909b391af",
+    "fonts/rare-han-v1/32d.woff2": "54f3c0e7b656af4d3c52e8979b9fe857533596573a961587821d85207c3928e0",
+    "fonts/rare-han-v1/32e.woff2": "eed44839b5963858b1603c4bed7a950a2263fb9b043b822a7de73ed4c2ed873e",
+    "fonts/rare-han-v1/32f.woff2": "b6e42d959c1b9696f3c33c9866153b6629612d51342cbd382aac63722e596eb8",
+    "fonts/rare-han-v1/330.woff2": "5c0e46f49a33f88554d6e931160b7015e50657f29b05eeadb5b5a6767b474497",
+    "fonts/rare-han-v1/331.woff2": "8f6a5726db60f39d747b7f8c4a145191af78f997a238600b3d2e7aca6d9a9d44",
+    "fonts/rare-han-v1/333.woff2": "ebe3d34b5ef005629c2cac7110f46c396c2c9b68344ad9e71bebcf5cda41e6ed",
+    "fonts/rare-han-v1/332.woff2": "7e3a21205e6e7ffaf4894cce8ab060da5d4c4eeffeee4ac45e630488e19a324f",
+    "fonts/rare-han-v1/334.woff2": "ad444e7df1a8d730c9a46757ff131bea5e0b01aeff94f306f413d2cec6be702c"
+  }
+}

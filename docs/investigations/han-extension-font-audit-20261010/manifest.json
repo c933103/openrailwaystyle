@@ -1,0 +1,32 @@
+{
+  "repository": "c933103/openrailwaystyle",
+  "sourceMain": "74bc7efa89526c5cbd310b55f3d499fd8f3cc7f3",
+  "inspection": "read-only font bytes, source code and public HTTPS endpoints",
+  "repeatLocalAuditEquivalent": true,
+  "files": [
+    {
+      "path": "REPORT.md",
+      "bytes": 8756,
+      "sha256": "28d090570f844d6dbda1234ef3e7463b0d487a227bd620b84aaf37c4808d1807",
+      "gitBlobSha": "4874aa9a4b8c60175c76de9f1c0adf592b1a2dbb"
+    },
+    {
+      "path": "audit.py",
+      "bytes": 5001,
+      "sha256": "4b4a6033d5c48fd195e28ad520586c5502b022f2095fcda740354e177838d209",
+      "gitBlobSha": "2d83b863f98af8167b6f40a044d10013ad6f4813"
+    },
+    {
+      "path": "local-audit.json",
+      "bytes": 148599,
+      "sha256": "e221fc9e74db90a8cb3d6bec157a1e8e14815b074d4409c19eb383eeda8d9ece",
+      "gitBlobSha": "c5e242799f13458ad712f16d84a12ce6c9120dab"
+    },
+    {
+      "path": "live-receipt.json",
+      "bytes": 8780,
+      "sha256": "62197707ece3aa709142707e4224df6acdfb358bfd214785452dd1647a8aa8d0",
+      "gitBlobSha": "c4c51dce75ce683db293b14d01afb40b75cd42da"
+    }
+  ]
+}

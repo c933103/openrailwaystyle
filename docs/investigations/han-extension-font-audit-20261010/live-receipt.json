@@ -1,0 +1,291 @@
+{
+  "observedAtUTC": "2026-10-10T15:19:13Z/2026-10-10T15:20:14Z",
+  "base": "https://c933103.github.io/openrailwaystyle/",
+  "records": [
+    {
+      "path": "fonts/rare-han-v1/2eb.woff2",
+      "status": 200,
+      "bytes": 85128,
+      "sha256": "1dfd5555ec5f4b2ce9caba4344f8e7cbe4613427ffe78c22cbf09908bafe9338",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/2ec.woff2",
+      "status": 200,
+      "bytes": 61588,
+      "sha256": "3c79aa071875539af370d2f15a8206a0c76b7aa82025312be233f360867945b5",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/2ed.woff2",
+      "status": 200,
+      "bytes": 60656,
+      "sha256": "0a05b1314b07594ac2edbffa225ab62b347bd128f3600ab24ff6e56f56a1739a",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/2ee.woff2",
+      "status": 200,
+      "bytes": 25756,
+      "sha256": "f8e4745e4da188d0c71923351d95700b51f19428257730286ece8404a2eaefc0",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/313.woff2",
+      "status": 200,
+      "bytes": 66980,
+      "sha256": "d9e6f903c3a0dbe1edcd149de36919c9795681edd6b3aaf5aab3f0a240362b98",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/314.woff2",
+      "status": 200,
+      "bytes": 58232,
+      "sha256": "76d4a7079b3ccd4b3b3af5e01e746981d17298bfee72a3cc38a8e1ba7e25d1bb",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/315.woff2",
+      "status": 200,
+      "bytes": 65948,
+      "sha256": "feceb9618ac42e53a1c27acae02017d61ec5d0efc0e1492ba02c442751ea1ebd",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/316.woff2",
+      "status": 200,
+      "bytes": 68548,
+      "sha256": "8e1d03c241222baa742a158f00b1db61c807ca39fb018cdcc7064db18328cb89",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/317.woff2",
+      "status": 200,
+      "bytes": 70576,
+      "sha256": "b3a3b4de27e593fb92edb751ae7fdd36ab4ff9377d5196feed9750bb7a30245c",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/318.woff2",
+      "status": 200,
+      "bytes": 65216,
+      "sha256": "62dd58cba7d8e2b450359391beb53b5bd7505017ef0a7de550c70b2bf3ded546",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/319.woff2",
+      "status": 200,
+      "bytes": 68448,
+      "sha256": "a435c58b05bd8c94eafc44607a80a6d1cff97b3c6ae307ae12fd9f739fe7ed6b",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/31a.woff2",
+      "status": 200,
+      "bytes": 74960,
+      "sha256": "25ddf00fbc79314b3b60fc2b502435e7123b3bae3e785678eb5fb8e1e25f8d23",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/31b.woff2",
+      "status": 200,
+      "bytes": 74028,
+      "sha256": "37accbacb17a4ef98c48fc5852da7a0b0eb58e9641bbf83cba28b5f9a9069a41",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/31c.woff2",
+      "status": 200,
+      "bytes": 65100,
+      "sha256": "b8da053ba5b8c880913e8c54f5cdd15c1e24ee83340cfbd4bb194671e9df4dde",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/31d.woff2",
+      "status": 200,
+      "bytes": 68928,
+      "sha256": "6ff062ef2758ca86084692ed49c1c200cc8636b846061f0e3034454dc6223a07",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/31e.woff2",
+      "status": 200,
+      "bytes": 77224,
+      "sha256": "c235b5f2c4e4fcf7d331d97e8720360483e7e7b918c72840df200709a898d861",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/31f.woff2",
+      "status": 200,
+      "bytes": 70648,
+      "sha256": "19c23d99f3e6905e9440cdb048d0111bdde7e02877dfdf5484bdf8fdd8eb291b",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/320.woff2",
+      "status": 200,
+      "bytes": 70288,
+      "sha256": "e9f31e8b626db63c28698420095a5285c1b2a4540df5d107a64501be086ae656",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/321.woff2",
+      "status": 200,
+      "bytes": 73344,
+      "sha256": "3a146533a8a9c3444655f27d9e515437ea8452cef0305270efc1c830af3d18f2",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/322.woff2",
+      "status": 200,
+      "bytes": 71692,
+      "sha256": "fe11ff8ad1c136724f777fd5bc942b40809fc898f541b5379d1a3b38748be130",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/323.woff2",
+      "status": 200,
+      "bytes": 79812,
+      "sha256": "03e71a874683eab0cd9704b6c24ea946ab1ece4a184d6c6e6fe359519a3d76bd",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/324.woff2",
+      "status": 200,
+      "bytes": 66400,
+      "sha256": "de2ddf5e34aec3b969375c9ed4b40d0f494e2d649d6d7c6515f711043c7bcafd",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/325.woff2",
+      "status": 200,
+      "bytes": 62596,
+      "sha256": "5c749c6319385ef4507a44e6561df0f4bb62a9235adc757fa78c4bf4ee87a3e5",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/326.woff2",
+      "status": 200,
+      "bytes": 70852,
+      "sha256": "5291168960af6e0723a296d7f23a9c5a39309caa31e076911b7e378dd1bcd18c",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/327.woff2",
+      "status": 200,
+      "bytes": 64780,
+      "sha256": "ebbd3e5c48cfe6db19ec22972fb8c60c411fec7a6a4339c6851a2db36ce03e73",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/328.woff2",
+      "status": 200,
+      "bytes": 76160,
+      "sha256": "ac5c4e4291346751c3e3e01992456d76edbf1e9c8343d1b7a1b10c8f911606c3",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/329.woff2",
+      "status": 200,
+      "bytes": 71528,
+      "sha256": "9c59168b9fe237622d2ec64eb8bdb80e8fdaae2312d1f936a252ce2e2921c955",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/32a.woff2",
+      "status": 200,
+      "bytes": 74400,
+      "sha256": "a3161d32cd385600a5e0be21ac13fc8cc162501c61cc6dce815e4c93b7691e87",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/32b.woff2",
+      "status": 200,
+      "bytes": 75828,
+      "sha256": "75214bbbdbf94033a13f93e438484c08b0f0e2f8dd32a97a8e59dfdaec98f322",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/32c.woff2",
+      "status": 200,
+      "bytes": 68572,
+      "sha256": "01e5ac75da8d39b4a3fbfecd3547c3430a4d85a1274a464ba969ce7909b391af",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/32d.woff2",
+      "status": 200,
+      "bytes": 78028,
+      "sha256": "54f3c0e7b656af4d3c52e8979b9fe857533596573a961587821d85207c3928e0",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/32e.woff2",
+      "status": 200,
+      "bytes": 74780,
+      "sha256": "eed44839b5963858b1603c4bed7a950a2263fb9b043b822a7de73ed4c2ed873e",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/32f.woff2",
+      "status": 200,
+      "bytes": 70156,
+      "sha256": "b6e42d959c1b9696f3c33c9866153b6629612d51342cbd382aac63722e596eb8",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/330.woff2",
+      "status": 200,
+      "bytes": 72136,
+      "sha256": "5c0e46f49a33f88554d6e931160b7015e50657f29b05eeadb5b5a6767b474497",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/331.woff2",
+      "status": 200,
+      "bytes": 75264,
+      "sha256": "8f6a5726db60f39d747b7f8c4a145191af78f997a238600b3d2e7aca6d9a9d44",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/332.woff2",
+      "status": 200,
+      "bytes": 76876,
+      "sha256": "7e3a21205e6e7ffaf4894cce8ab060da5d4c4eeffeee4ac45e630488e19a324f",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/333.woff2",
+      "status": 200,
+      "bytes": 87696,
+      "sha256": "ebe3d34b5ef005629c2cac7110f46c396c2c9b68344ad9e71bebcf5cda41e6ed",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/334.woff2",
+      "status": 200,
+      "bytes": 41472,
+      "sha256": "ad444e7df1a8d730c9a46757ff131bea5e0b01aeff94f306f413d2cec6be702c",
+      "matchesCI": true
+    },
+    {
+      "path": "fonts/rare-han-v1/index.json",
+      "status": 200,
+      "bytes": 1379,
+      "sha256": "fb67ad1cb5a5ec293b3307156768b9decdd35f5b2eb4d6134f0baac225b2a505",
+      "matchesCI": true
+    },
+    {
+      "path": "app.mjs",
+      "status": 200,
+      "bytes": 150373,
+      "sha256": "559883954f8b02d4285ad4d7616c23b83703e02e7a1b66a5ae5a270cf08bae1c",
+      "matchesCI": null,
+      "note": "SHA-256 equals inspected app source; its Git blob SHA equals GitHub main74bc7efa app blob.",
+      "matchesCurrentMainSource": true,
+      "currentMainGitBlobSha": "fd585a819ddc48402606ada162886d4eb3eb646e"
+    }
+  ],
+  "fontSliceCount": 38,
+  "all39FontResourcesMatchAuditedArchive": true
+}
