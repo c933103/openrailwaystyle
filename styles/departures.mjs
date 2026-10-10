@@ -3,7 +3,8 @@
 // timetables (GTFS) with live updates (GTFS-RT) where operators provide them.
 // Its API is free for open-source, non-commercial projects that link to its
 // sources and stay light on its resources: one stop search and at most two
-// departure boards per station opened, nothing while panning.
+// departure boards per station opened, and one trip request when a train is
+// expanded; nothing while panning.
 export const TRANSITOUS_API = 'https://api.transitous.org/api/v1';
 export const TRANSITOUS_PLANNER = 'https://api.transitous.org/';
 export const TRANSITOUS_SOURCES = 'https://transitous.org/sources/';
@@ -48,7 +49,8 @@ const squash = text => String(text || '').replace(/[\s()（）]/g, '');
 const compareText = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 // Stable presentation ties must not depend on either feed or observation order.
 const rowOrder = row => JSON.stringify([row.line, row.headsign, row.mode, row.tz ?? null,
-  row.color, row.textColor, row.track, row.departure, row.scheduled, row.live, row.delay, row.cancelled]);
+  row.color, row.textColor, row.track, row.departure, row.scheduled, row.live, row.delay, row.cancelled,
+  row.tripId, row.stopId, row.tripScheduled, row.tripEvent]);
 const compareRows = (a, b) => Number(!a.line) - Number(!b.line) || a.headsign.length - b.headsign.length || compareText(rowOrder(a), rowOrder(b));
 const mergeObservations = group => {
   const ordered = [...group].sort(compareRows), keep = ordered[0];
@@ -64,6 +66,10 @@ const mergeObservations = group => {
     .sort((a, b) => b.departure - a.departure || compareText(a.track, b.track))[0] || null;
   const merged = {...keep, cancelled: group.some(r => r.cancelled), liveTrack,
     track: liveTrack?.track || live?.track || keep.track || ordered.find(r => r.track)?.track || ''};
+  // Keep the ID and its own stop together. Prefer the named observation, but
+  // a feed without a trip ID must not hide another feed's usable trip link.
+  const trip = ordered.find(r => r.tripId);
+  if (trip) Object.assign(merged, {tripId: trip.tripId, stopId: trip.stopId,tripScheduled:trip.tripScheduled??trip.scheduled,tripEvent:trip.tripEvent||'departure'});
   if (live) Object.assign(merged, {departure: live.departure, live: true, delay: live.delay});
   return merged;
 };
@@ -88,7 +94,7 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
   const rows = [], exact = new Map();
   for (const [list, times] of lists.entries()) for (const time of times) {
     if (!RAIL_MODES.has(time.mode)) continue;
-    const place = time.place || {}, departure = Date.parse(place.departure ?? place.arrival), scheduled = Date.parse(place.scheduledDeparture ?? place.scheduledArrival ?? place.departure);
+    const place = time.place || {}, departure = Date.parse(place.departure ?? place.arrival), scheduled = Date.parse(place.scheduledDeparture ?? place.scheduledArrival ?? place.departure ?? place.arrival);
     if (!Number.isFinite(departure)) continue;
     const named = [time.displayName, time.routeShortName].find(name => name && !opaqueName(name, time.routeId));
     const line = named || time.tripShortName || time.routeLongName || '';
@@ -102,6 +108,9 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
         [place.scheduledDeparture ?? null, place.scheduledArrival ?? null, departure]]);
     const row = {
       departure, scheduled, tz: place.tz, line, headsign,
+      tripId: typeof time.tripId === 'string' ? time.tripId : '',
+      stopId: typeof place.stopId === 'string' ? place.stopId : '',
+      ...(typeof time.tripId==='string'&&time.tripId?{tripScheduled:scheduled,tripEvent:place.scheduledDeparture!=null?'departure':place.scheduledArrival!=null?'arrival':place.departure!=null?'departure':'arrival'}:{}),
       color: /^[0-9a-f]{6}$/i.test(time.routeColor || '') ? `#${time.routeColor}` : null,
       textColor: /^[0-9a-f]{6}$/i.test(time.routeTextColor || '') ? `#${time.routeTextColor}` : null,
       track: place.track || place.scheduledTrack || '', live: time.realTime === true,
@@ -137,8 +146,50 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
 
 // Clock time at the station (its own time zone).
 export function clock(ms, tz) {
+  if (!Number.isFinite(ms)) return '—';
   try { return new Intl.DateTimeFormat('en-GB', {hour: '2-digit', minute: '2-digit', timeZone: tz || undefined}).format(ms); }
   catch { return new Intl.DateTimeFormat('en-GB', {hour: '2-digit', minute: '2-digit'}).format(ms); }
+}
+
+// Trip endpoint returns the complete itinerary: origin, every intermediate
+// stop, terminus, and any stay-seated continuation. Never infer stops from
+// another train's headsign or route ID. Preserve repeated stations on loops.
+export function tripStops(itinerary) {
+  if (!Array.isArray(itinerary?.legs) || !itinerary.legs.length) throw new Error('Missing trip legs');
+  const stops = [];
+  for (const [index, leg] of itinerary.legs.entries()) {
+    if (!RAIL_MODES.has(leg.mode) || !leg.from || !leg.to ||
+        (index && leg.interlineWithPreviousLeg !== true)) throw new Error('Invalid train itinerary');
+    const places = [leg.from, ...(leg.intermediateStops || []), leg.to];
+    for (const [i, place] of places.entries()) {
+      const stop = {name: String(place.name || 'Unnamed stop'), stopId: place.stopId || '', tz: place.tz,
+        arrival: Date.parse(place.arrival), departure: Date.parse(place.departure),
+        scheduledArrival: Date.parse(place.scheduledArrival ?? place.arrival),
+        scheduledDeparture: Date.parse(place.scheduledDeparture ?? place.departure),
+        track: place.track || place.scheduledTrack || '',
+        cancelled: leg.cancelled === true || place.cancelled === true,
+        pickupType: place.pickupType, dropoffType: place.dropoffType, live: leg.realTime === true};
+      // Only join the shared boundary of a stay-seated continuation. Its
+      // arrival belongs to the preceding leg and departure to this one.
+      const previous = stops.at(-1);
+      if (index && i === 0 && previous?.stopId && previous.stopId === stop.stopId) {
+        Object.assign(previous, {departure: stop.departure, scheduledDeparture: stop.scheduledDeparture,
+          pickupType: stop.pickupType, track: stop.track || previous.track,
+          cancelled: previous.cancelled || stop.cancelled, live: previous.live || stop.live});
+      } else stops.push(stop);
+    }
+  }
+  return stops;
+}
+
+export async function trainSchedule(tripId, {signal, fetch: get = fetch} = {}) {
+  if (typeof tripId !== 'string' || !tripId) throw new Error('Missing trip ID');
+  const url = new URL(`${TRANSITOUS_API}/trip`);
+  url.searchParams.set('tripId', tripId);
+  url.searchParams.set('withScheduledSkippedStops', 'true');
+  const response = await get(url.href, {signal});
+  if (!response.ok) throw new Error(`Transitous returned ${response.status}`);
+  return tripStops(await response.json());
 }
 
 // A journey from or to this place in the Transitous planner.

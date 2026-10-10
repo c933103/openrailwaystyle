@@ -20,6 +20,11 @@ export function matchHeadway(route, lines, catalog) {
   return catalog.routes.find(r=>r.scope==='whole_route' && r.match?.ref===route.ref && r.match.network===route.network && r.match.kind===route.kind) || null;
 }
 const rounded = n=>Math.round(n*1e6)/1e6;
+const ATTRIBUTION_FIELDS=['source','url','checked','definition','credit','license','date','timezone','note','sources'];
+export const frequencyAttribution=(properties,profile)=>Object.fromEntries(ATTRIBUTION_FIELDS.map(field=>{
+  const key=`frequency_${field}`;return [key,properties[`${key}_${profile}`]??properties[key]];
+}));
+const usable=p=>typeof p?.rate==='number'&&Number.isFinite(p.rate)&&p.rate>=0;
 // All sources share the scale and bundle spacing. A bundle expires together
 // at its earliest source expiry so widths and offsets cannot disagree.
 export function profileBundle(records) {
@@ -35,6 +40,7 @@ export function profileBundle(records) {
       Object.assign(out[i],{[`frequency_width_${profile}`]:rounded(width),[`frequency_offset_${profile}`]:rounded(offset),[`frequency_label_${profile}`]:Math.max(-255,Math.min(255,Math.round(offset*4)))});
       const p=records[i]?.profiles[profile];
       if(rates[i]!==null){Object.assign(out[i],{[`frequency_${profile}`]:rounded(rates[i]),[`frequency_high_${profile}`]:rounded(p.high??rates[i]),[`frequency_quality_${profile}`]:p.quality||'headway_estimate'});
+        if(p.properties)for(const field of ATTRIBUTION_FIELDS)out[i][`frequency_${field}_${profile}`]=p.properties[`frequency_${field}`]??'';
         if(p.headway)out[i][`headway_${profile}`]=p.headway;
         for(const d of ['forward','backward'])if(p[d]!==undefined&&p[d]!==null)out[i][`frequency_${d}_${profile}`]=p[d];
       }
@@ -42,16 +48,26 @@ export function profileBundle(records) {
   }
   return out;
 }
-export function frequencyBundle(routes, lines, catalog) {
-  const until=Date.parse(catalog.source.checked+'T00:00:00Z')/1000+catalog.source.review_after_days*86400;
-  const records=routes.map(route=>{
-    const r=matchHeadway(route,lines,catalog);if(!r)return null;
-    return {properties:{frequency_id:r.id,frequency_source:catalog.source.name,frequency_url:catalog.source.url,frequency_checked:catalog.source.checked,frequency_quality:catalog.source.quality,frequency_definition:catalog.source.period_definition,frequency_until:until},
-      profiles:Object.fromEntries(FREQUENCY_PROFILES.map(p=>[p,r.profiles[p]?.minutes?{rate:60/r.profiles[p].minutes[1],high:60/r.profiles[p].minutes[0],headway:r.profiles[p].reported,quality:'headway_estimate'}:{}]))};
+export function frequencyBundle(routes, lines, catalog, timetables=[], now=Date.now()) {
+  const until=catalog?Date.parse(catalog.source.checked+'T00:00:00Z')/1000+catalog.source.review_after_days*86400:0;
+  const records=routes.map((route,i)=>{
+    const r=matchHeadway(route,lines,catalog);
+    const headway=r?{properties:{frequency_id:r.id,frequency_source:catalog.source.name,frequency_url:catalog.source.url,frequency_checked:catalog.source.checked,frequency_quality:catalog.source.quality,frequency_definition:catalog.source.period_definition,frequency_until:until},
+      profiles:Object.fromEntries(FREQUENCY_PROFILES.map(p=>[p,r.profiles[p]?.minutes?{rate:60/r.profiles[p].minutes[1],high:60/r.profiles[p].minutes[0],headway:r.profiles[p].reported,quality:'headway_estimate'}:{}]))}:null;
+    const timetable=timetables[i];
+    if(!timetable||timetable.properties.frequency_until*1000<now||!FREQUENCY_PROFILES.some(p=>usable(timetable.profiles[p])))return headway;
+    if(!headway||!Number.isFinite(until)||until*1000<now||!FREQUENCY_PROFILES.some(p=>!usable(timetable.profiles[p])&&usable(headway.profiles[p])))return timetable;
+    // Counts win, including a verified zero. Missing periods keep audited
+    // headways with their own attribution and operator period definition.
+    return {properties:{...timetable.properties,frequency_until:Math.min(timetable.properties.frequency_until,until)},profiles:Object.fromEntries(FREQUENCY_PROFILES.flatMap(p=>{
+      const source=usable(timetable.profiles[p])?timetable:usable(headway.profiles[p])?headway:null;
+      return source?[[p,{...source.profiles[p],properties:source.properties}]]:[];
+    }))};
   });
   // Unknown peers must retain the source expiry so known routes in a mixed
   // OSM bundle remain usable; unknown width is still the baseline.
-  return profileBundle(records.map(r=>r||{properties:{frequency_until:records.some(Boolean)?until:0},profiles:{}}));
+  const expiry=Math.min(...records.filter(Boolean).map(r=>r.properties.frequency_until));
+  return profileBundle(records.map(r=>r||{properties:{frequency_until:Number.isFinite(expiry)?expiry:0},profiles:{}}));
 }
 const legacyOffset=['*',['-',['get','i'],['/',['-',['get','n'],1],2]],3.5];
 const zoomScale=value=>['interpolate',['linear'],['zoom'],7,['*',value,2/3.5],12,value,16,['*',value,5/3.5]];
@@ -82,7 +98,8 @@ export function frequencyDetails(properties,profile,now=Date.now()) {
   const quality=properties[`frequency_quality_${profile}`]==='headway_estimate'?'headway estimate':'scheduled';
   const forward=properties[`frequency_forward_${profile}`],backward=properties[`frequency_backward_${profile}`];
   const directions=forward!==undefined&&backward!==undefined?`; directions ${format(forward)} / ${format(backward)}; width uses the lower rate`:'';
-  return `${rate} (${quality}${properties.frequency_date?' · '+properties.frequency_date:''}${directions})`;
+  const date=frequencyAttribution(properties,profile).frequency_date;
+  return `${rate} (${quality}${date?' · '+date:''}${directions})`;
 }
 
 export function nearestServiceFeature(services, point, project, z, settings, now=Date.now()) {
