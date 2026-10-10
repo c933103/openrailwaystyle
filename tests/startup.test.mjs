@@ -890,7 +890,7 @@ test('curated hubs take their names from the provider station tiles by OSM ident
   assert.equal(named.properties.atlas_name,'Provider Penn (en)');
   assert.ok(tileRequests.every(([url,lang])=>/^https:\/\/tiles\.test\/stations\/(8|10)\/\d+\/\d+$/.test(url)&&lang==='en'),'zoom-8 station tiles through the station pipeline');
   assert.ok(!requests.some(url=>url.includes('openstreetmap.org')),'no OSM API requests');
-  assert.ok(map.sourceData.stationMajor.features.every(f=>f.properties.atlas_name),'unnamed hubs stay hidden rather than showing a source note');
+  assert.ok(map.sourceData.stationMajor.features.every(f=>f.properties.atlas_name || (f.properties.atlas_name==='' && f.properties.name==='')),'deferred hubs retain unlabeled marker points without leaking source notes');
  }finally{dom.window.close();}
 });
 
