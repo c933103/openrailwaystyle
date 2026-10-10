@@ -347,7 +347,13 @@ class GlobalFrequency(unittest.TestCase):
         for position, literal in enumerate(literals):
             with self.subTest(literal=literal):
                 rows = alias_owner_literal_fixture(literal)
-                for current in [rows, pipeline.published_metadata(rows)]:
+                copies = [rows]
+                if literal in ('1e309','-1e309','[]','["0"]','{}'):
+                    with self.assertRaisesRegex(ValueError, 'invalid_publication_lineage_authority'):
+                        pipeline.published_metadata(rows)
+                else:
+                    copies.append(pipeline.published_metadata(rows))
+                for current in copies:
                     owner = next(row for row in current if row.get('delivery') == 'direct')
                     before = copy.deepcopy(owner)
                     standalone = fixture_discover([copy.deepcopy(owner)], {})[0]
@@ -1582,7 +1588,8 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual(redacted['urls_sha256'],[pipeline.source_url_fingerprint(target),pipeline.source_url_fingerprint(other)])
         self.assertEqual(pipeline.published_metadata(redacted),redacted)
         self.assertEqual(raw['source'],target,'diagnostic copy does not mutate operational input')
-        self.assertEqual(len(redacted),len(raw)+2,'distinct URL keys are preserved')
+        self.assertEqual(len(redacted),len(raw)+3,'distinct URL keys and explicit publication alias rejection are preserved')
+        self.assertIs(redacted['publication_alias_eligible'], False)
         identity='https://ids.example/route?variant=synthetic-route-id'
         metadata_feed=self.root/'metadata.json.gz'
         pipeline.write_feed(metadata_feed,{'source':raw,'agencies':[{'agency_id':identity,'agency_url':target}],

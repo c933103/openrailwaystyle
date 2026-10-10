@@ -55,6 +55,9 @@ catalogue_spec.loader.exec_module(registry)
 retry_spec = importlib.util.spec_from_file_location('frequency_retry', ROOT/'scripts/frequency_retry.py')
 retry = importlib.util.module_from_spec(retry_spec)
 retry_spec.loader.exec_module(retry)
+metadata_spec = importlib.util.spec_from_file_location('frequency_publication_metadata', ROOT/'scripts/frequency_publication_metadata.py')
+publication_metadata = importlib.util.module_from_spec(metadata_spec)
+metadata_spec.loader.exec_module(publication_metadata)
 
 
 def atomic_json(path, value):
@@ -604,6 +607,16 @@ def published_metadata(value, reference_context=False):
         display = redacted_diagnostic(key)
         return key if display == key else '[sha256:'+source_url_fingerprint(key)+'] '+display
     value = registry.references.project_row(value)
+    def legacy_alias_compatible(row):
+        if not registry.references.alias_owner_metadata_compatible(row):
+            return False
+        # The assembler rejects malformed HTTP lineage before display rendering.
+        # Preserve that rejection even when a legacy URI renders differently.
+        if any(isinstance(item.get('source'), str) and item['source'].lower().startswith(('http://', 'https://'))
+               and not registry.references.reference_url_valid(item['source']) for item in row.get('lineage', [])):
+            return False
+        return registry.references.alias_source_bindings(row) is not None
+    value = publication_metadata.project_metadata(value, redacted_source_url, legacy_alias_compatible, URL_START.match)
     result = {public_key(key): published_metadata(item, reference_context or key == 'source_resolution'
         or key == 'lineage' and 'source_resolution' in value) for key, item in value.items()}
     for key, item in value.items():
@@ -614,6 +627,11 @@ def published_metadata(value, reference_context=False):
         elif isinstance(item, list) and any(isinstance(x, str) and URL_START.match(x) for x in item):
             if not isinstance(result.get(hash_key), list):
                 result[hash_key] = [source_url_fingerprint(x) if isinstance(x, str) and URL_START.match(x) else None for x in item]
+    # Rendering can itself make a retained original hash unsuitable for alias
+    # binding. Record that rejection now, not on a second publication pass.
+    if ('lineage' in value or value.get('delivery') == 'direct') and 'source_resolution' not in value:
+        if not legacy_alias_compatible(result):
+            result['publication_alias_eligible'] = False
     return result
 
 
@@ -1123,10 +1141,16 @@ def write_feed(path, value):
     # Redact provenance and GTFS URL columns, not matching identifiers that
     # happen to resemble URLs. Avoid a second copy or walk of geometry/profiles.
     value = {**value, 'source': published_metadata(value['source'])}
+    def public_url_columns(row):
+        columns = {key: item for key, item in row.items() if key == 'url' or key.endswith('_url')}
+        # Re-staging a display must retain its original URL fingerprint too.
+        for key in list(columns):
+            if key+'_sha256' in row:
+                columns[key+'_sha256'] = row[key+'_sha256']
+        return {**row, **published_metadata(columns)}
     for table in ('agencies', 'routes'):
         if table in value:
-            value[table] = [{**row, **published_metadata({key: item for key, item in row.items()
-                            if key == 'url' or key.endswith('_url')})} for row in value[table]]
+            value[table] = [public_url_columns(row) for row in value[table]]
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix('.tmp')
     with temporary.open('wb') as raw:
@@ -1289,7 +1313,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     signature=hashlib.sha256(json.dumps({'catalogue':row,'profiles':profiles,'denied_source_urls':entry.get('denied_source_urls', []),
         'graph':file_hash(str(graph)) if graph else None,
-        'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['global-service-frequency.py','frequency_catalogue.py','frequency_references.py','frequency_publication.py','frequency-reference-schema.json','gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()
+        'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['global-service-frequency.py','frequency_catalogue.py','frequency_references.py','frequency_publication.py','frequency_publication_metadata.py','frequency-publication-lineage-schema.json','frequency-reference-schema.json','gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()
     destination = output/'feeds'/(ident+'.json.gz')
     if destination.exists():
         with gzip.open(destination, 'rt') as file:

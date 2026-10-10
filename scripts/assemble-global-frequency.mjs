@@ -10,6 +10,7 @@ import {createTimetableMatcher} from './timetable-frequency.mjs';
 import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
 import {timetableFeatures} from './gtfs-service.mjs';
+import {projectLegacyMetadata} from './frequency-publication-metadata.mjs';
 import {readFrequencyFeed} from './read-frequency-feed.mjs';
 import {projectReferenceRow,referenceUrlValid,referenceDisplayUrl,referenceResourceKey} from './frequency-reference-metadata.mjs';
 // Publication-only display URLs. Acquisition/cache identities and inputs stay
@@ -50,6 +51,7 @@ export function publishedMetadata(value,referenceContext=false){
   // the same redacted key. Ordinary schema and accounting keys are unchanged.
   const publicKey=key=>{const redacted=redactText(key);return redacted===key?key:`[sha256:${urlFingerprint(key)}] ${redacted}`;};
   value=projectReferenceRow(value);
+  value=projectLegacyMetadata(value,redactedSourceUrl,row=>ownerMetadataCompatible(row)&&sourceBindings(row)!==null,value=>urlStart.test(value));
   const result=Object.fromEntries(Object.entries(value).map(([key,item])=>[publicKey(key),publishedMetadata(item,referenceContext||key==='source_resolution'||key==='lineage'&&Object.hasOwn(value,'source_resolution'))]));
   for(const [key,item] of Object.entries(value)){
     if(typeof item==='string'&&urlStart.test(item)){
@@ -62,6 +64,10 @@ export function publishedMetadata(value,referenceContext=false){
       if(!Array.isArray(result[hashKey]))result[hashKey]=item.map(x=>typeof x==='string'&&urlStart.test(x)?urlFingerprint(x):null);
     }
   }
+  // Final display/hash bindings can be less recoverable than the raw input.
+  // Keep the first published result stable without repairing prior authority.
+  if((Object.hasOwn(value,'lineage')||value.delivery==='direct')&&!Object.hasOwn(value,'source_resolution')&&
+      (!ownerMetadataCompatible(result)||sourceBindings(result)===null))result.publication_alias_eligible=false;
   return result;
 }
 // Outcome totals always come from the entries themselves: each shard's own
@@ -153,7 +159,7 @@ const referenceStaticProof=row=>{
 };
 const ownerMetadataCompatible=row=>{
   const lineage=row?.lineage??[];
-  return row?.lineage!==null&&Array.isArray(lineage)&&lineage.length<=64&&lineage.every(item=>item&&typeof item==='object'&&!Array.isArray(item)&&
+  return row?.publication_alias_eligible!==false&&row?.lineage!==null&&Array.isArray(lineage)&&lineage.length<=64&&lineage.every(item=>item&&typeof item==='object'&&!Array.isArray(item)&&
     (item.catalogue!=='mobility-database'||publicAuth(item.authentication_type)));
 };
 export function mergeInventories(inventories){

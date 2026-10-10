@@ -184,8 +184,35 @@ test('reference metadata is fetched at the immutable gitlink without upstream ex
 
 test('publication membership uses a secret-free catalogue artifact and explicit worker input',async()=>{
   const workflow=await readFile(new URL('../.github/workflows/service-frequency.yml',import.meta.url),'utf8');
-  assert.equal((workflow.match(/--publication-index catalogue\/publication-index\.json/g)||[]).length,3);
+  assert.equal((workflow.match(/--publication-index catalogue\/publication-index\.json/g)||[]).length,6);
   assert.match(workflow,/catalogue\/publication-index\.json\n/);
   const uploaded=workflow.split('name: worldwide-frequency-catalogue')[1].split('retention-days:')[0];
   assert.doesNotMatch(uploaded,/license\.json|mobility\.csv/);
+});
+
+
+test('artifact handoffs preserve separate shards and cannot upload failed producer data',()=>{
+  const compile=job('compile'),assemble=job('assemble');
+  assert.match(compile,/id: compile/);
+  assert.match(compile,/--producer-outcome '\$\{\{ steps.compile.outcome \}\}'/);
+  assert.match(compile,/if: steps.compile.outcome == 'success' && steps.stage.outcome == 'success'/);
+  assert.match(assemble,/--producer-outcome '\$\{\{ steps.assemble.outcome \}\}'/);
+  assert.match(assemble,/if: steps.assemble.outcome == 'success' && steps.stage.outcome == 'success'/);
+  assert.match(assemble,/path: frequency-shards\n          merge-multiple: false/);
+  assert.match(assemble,/name: worldwide-frequency-catalogue\n          path: catalogue/);
+  assert.ok(assemble.indexOf('--mode assembly-input')<assemble.indexOf('scripts/assemble-global-frequency.mjs'));
+  for(const body of [compile,assemble]){
+    assert.doesNotMatch(body,/path: frequency-output\//);
+    assert.doesNotMatch(body,/continue-on-error/);
+  }
+  assert.match(compile,/name: worldwide-frequency-diagnostic-/);
+  assert.match(assemble,/pattern: worldwide-frequency-shard-\*/);
+  const cache=compile.split('- uses: actions/cache@v4')[1].split('- name:')[0];
+  assert.doesNotMatch(cache,/inventory/);
+  for(const file of ['scripts/frequency_publication_metadata.py','scripts/frequency-publication-metadata.mjs',
+    'scripts/frequency-publication-lineage-schema.json','scripts/stage-frequency-artifact.py']){
+    assert.ok(workflow.split('  workflow_dispatch:')[0].includes(file));
+    assert.ok(workflow.split('  pull_request:')[1].split('permissions:')[0].includes(file));
+  }
+  assert.match(job('validate-pr'),/tests\/frequency-artifact-staging.test.mjs/);
 });

@@ -643,9 +643,10 @@ graphs are explicitly unresolved, with selection, alias and processed proof
 cleared. Existing URL redaction and original-source fingerprints still apply,
 including authorization documentation URLs. The same projection covers every
 outcome, compiled source attribution, and staged shard inventory copies as well
-as the merged inventory/manifest. It does not rewrite internal compiled timetable
-payloads or historical archives. Valid legacy rows without reference metadata keep
-their existing behavior.
+as the merged inventory/manifest. It does not rewrite historical archives.
+New intermediate artifact derivatives additionally use the publication-only
+legacy projection and disposable staging described below; operational legacy
+acquisition and owner selection retain their existing behavior.
 
 Controlled cross-language fixtures exercise malformed ordinary proof, nested
 unknown fields, held outcomes, staged copies, URL redaction and idempotence. The
@@ -895,3 +896,82 @@ retriable cache outcomes, not observed requests, HTTP failures or feed exclusion
 Existing global lexical reviewed-terms semantics and legacy-owner cache handling
 are unchanged. No original archive or historical receipt is purged or rewritten
 when reuse fails.
+
+### Disposable intermediate artifact staging
+
+Compilation keeps the operational `frequency-cache` and `frequency-output/feeds`
+cache contract. Those inputs, the bound catalogue/report/publication index and
+historical artifacts are separate from new upload-artifact derivatives. Source
+URLs and full-URL fingerprints are never reconstructed from display URLs or
+fed back into acquisition.
+
+The compiler and assembler share a publication-only legacy-lineage field schema.
+It retains normalizer identity/status/authentication scalars and valid original
+fingerprints, alongside the existing URL display projection. Malformed recognized
+identity/authority shapes fail publication instead of becoming apparently valid
+metadata. Legacy plain-text source strings outside the existing URL-token grammar
+remain readable without conferring acquisition authority. Existing reference
+declaration/proof validation is unchanged. A
+monotone `publication_alias_eligible: false` keeps a pre-publication alias rejection
+through display transformations, including a binding lost during the first render; it grants no acquisition authority, and absence
+or true never bypasses the usual owner/binding checks. Valid legacy URI displays
+keep their existing behavior, including Unicode URLs. Timetable identifiers that
+look like URLs are unchanged.
+
+`scripts/stage-frequency-artifact.py` writes only into a fresh disposable stage.
+A successful shard requires the actual compiler-step success, the expected
+catalogue digest/date/shard membership and validated source ID/archive digest/date
+for each referenced feed. Only those feed derivatives, inventory, validated
+report/index and a fixed-schema receipt enter the successful shard artifact.
+Unreferenced restored feed files remain in the operational input and are not
+uploaded as shard contents.
+
+Assembly downloads shards into separate directories. The `assembly-input` stage
+compares each receipt and sidecar to an independently downloaded canonical
+catalogue handoff before flattening; same-named files cannot hide a disagreement.
+The normal assembler then runs on the new flattened derivative directory.
+Snapshot expected metadata follows the same Python-producer then JavaScript-
+assembler publication sequence, using a fixed local Node invocation with
+64 MiB JSON input/output bounds, a 512 MiB Node heap and a 600-second timeout.
+Strict field comparison remains in place, including original hashes and holds;
+legitimate Unicode/default-port/authority displays are not replaced by a new
+cross-language URI canonicalization rule. Final
+snapshot staging preserves every shard inventory/receipt, aggregate inventory,
+manifest, matched `profiles.json.gz` and the current complete tile output
+(`tiles/index.json` containing `{"tiles":[]}`). The profile stage verifies its
+compressed digest, OSM binding, section/rate schema and publication-safe metadata,
+with a 512 MB expanded limit, 2 GiB Node heap and bounded timeout. It emits an
+owned canonical gzip, updates the manifest digest, and includes both in the stage
+receipt. Original input bytes remain unchanged. Future tile-format extensions
+must extend the staging contract in the same change. The release package contains
+only manifest, inventory, matched profiles and tiles; per-feed intermediate
+archives stay outside it.
+
+Failed, cancelled or skipped producers produce only a separate diagnostic
+artifact, outside the successful shard download glob. Missing, partial and
+stale/mismatched inventory states are explicit. A sanitization/staging failure
+returns a failed step and never exposes a partially built successful stage. No raw
+input directory is used as an upload fallback. Fixed-schema diagnosis retains
+statuses, reason codes, retry instructions and bounded redacted source attempts;
+raw exception strings and rejected metadata values are not diagnostic payloads.
+Statuses, reasons, actions and attempt categories use explicit producer vocabularies
+(with bounded HTTP status codes); unrecognized values become fixed unknowns.
+Receipt producers and consumers enforce exact field sets, current catalogue/date/
+shard/ID-set bindings and file-name/hash sets. After assembly rewrites inventories,
+their earlier receipt hashes remain provenance only; unchanged feed and sidecar
+digests are still verified before snapshot publication.
+
+The stage handles one national feed at a time in a separate bounded process.
+Defaults cap compressed and expanded bytes at 3,000,000,000 each, address space
+at 3,000,000,000 bytes and wall time at 600 seconds. Gzip headers are limited to
+64 KiB; one member is required, with no concatenated members or trailing bytes.
+The decoder counts expansion incrementally and the writer creates a new
+deterministic derivative without inherited header metadata. Decoded timetable, geometry, profiles,
+route/trip/agency identifiers and licence/rights content stay unchanged outside
+the declared publication metadata/URL fields. These finite budgets can reject an
+oversized or malformed input and do not certify all production feeds fit.
+
+The trusted workflow supplies the producer outcome, and cache restore does not
+include inventory checkpoints. CLI outcomes/receipts are not cryptographic
+invocation proofs. Same-bound historical feeds can be staged without being
+misrepresented as newly acquired. No provider request is part of staging.

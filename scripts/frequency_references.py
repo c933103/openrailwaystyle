@@ -614,7 +614,7 @@ def alias_owner_metadata_compatible(row):
         # Keep this alias-only compatibility distinct from reference proof.
         return public_authentication(value) or type(value) in (int, float) and value == 0
     lineage = row.get('lineage', [])
-    return (isinstance(lineage, list) and len(lineage) <= MAX_DECLARATIONS
+    return (row.get('publication_alias_eligible') is not False and isinstance(lineage, list) and len(lineage) <= MAX_DECLARATIONS
         and all(isinstance(item, dict) and (item.get('catalogue') != 'mobility-database'
             or public_owner_authentication(item.get('authentication_type'))) for item in lineage))
 
