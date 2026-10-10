@@ -33,6 +33,19 @@ test('SC readiness waits for the current style to load even with an SC stack', (
   }
 });
 
+test('packaged SC readiness can change while the explicit font stack stays unchanged', () => {
+  const fonts = ['Noto Sans Bold', 'Atlas CJK SC', 'Atlas Rare Han'];
+  const window = state(fonts);
+  let loaded = true;
+  window.reviewMap.isStyleLoaded = () => loaded;
+  assert.equal(evaluate(window), true);
+  loaded = false;
+  assert.equal(evaluate(window), false, 'pending source work also makes the current style unready');
+  loaded = true;
+  assert.equal(evaluate(window), true, 'the complete predicate recovers without changing fonts');
+  assert.equal(window.reviewMap.getStyle().layers[0].layout['text-font'], fonts);
+});
+
 test('SC readiness requires an exact family element in the station symbol layer', () => {
   for (const fonts of [undefined, null, 'Noto Sans SC', ['Noto Sans TC'], ['Atlas CJK TC'], ['Noto Sans SC Extra'], ['Atlas CJK SC Extra'], ['Noto Sans SC,Atlas Rare Han']]) {
     assert.equal(evaluate(state(fonts)), false, JSON.stringify(fonts));

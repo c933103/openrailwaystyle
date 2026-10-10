@@ -119,7 +119,9 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  await drawHan();
  await page.waitForFunction(()=>document.fonts.check('24px "Atlas CJK SC"')&&window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Atlas CJK SC'),undefined,{timeout:30000});
  await checkGlyphs('SC');
- assert.equal(await page.evaluate(stationScFontReady),true,'the already-loaded packaged SC stack remains ready');
+ // Source work can make current-style readiness false again after glyphs pass.
+ // Sample the complete predicate in the bounded wait, not in a later assertion.
+ await page.waitForFunction(stationScFontReady,undefined,{timeout:30000});
  const counts=new Map();for(const id of requests)counts.set(id,(counts.get(id)||0)+1);assert.ok([...counts.values()].every(n=>n===1),'pans, zooms and font/style changes reuse measuring tiles');
  assert.deepEqual(errors,[]);console.log(`PASS: ${kind} both packaged CJK fonts load without blocking startup`);await page.close();
 }}finally{await browser.close();}
