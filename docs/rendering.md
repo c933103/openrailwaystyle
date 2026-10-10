@@ -29,8 +29,12 @@ Main-line railway geometry comes from OpenRailwayMap's live vector service, not
 from the Atlas's regional branch-line snapshot. In all operating-rail views the
 simplified overview runs below zoom 7; at zoom 7 the renderer switches to the
 provider's `railway_line_high` tiles. The branch-line snapshot instead supplies
-branch lines at zooms 4–6 and subway lines at zooms 7–9. Its presence does not
-prove the live main-line source is available.
+branch lines at zooms 4–6 and subway lines at zooms 7–9. A separate, coarsely
+generalized Natural Earth railway underlay appears at zooms 4–6 underneath the
+thematic strokes. Its thin neutral dashed lines are geographic reference only,
+not verified operating status, speed, gauge, electrification or service. The
+underlay cannot replace complete mainline data or disguise tile errors; a
+visible branch never proves that the provider's mainline source is healthy.
 
 An upstream HTTP 520 or network failure can therefore hide rails even while the
 basemap, regional station symbols and Atlas snapshot layers remain visible.
@@ -86,7 +90,16 @@ By mode, metro stations appear from zoom 8 (the first station tiles that carry t
 
 Metro tracks are drawn from zoom 7 where data exists (the provider's tiles hold them only from zoom 10); light rail, monorail, tram, funicular and miniature tracks from zoom 10.
 
-Before zoom 12 a marker and its name are placed together with collision detection. From zoom 12 individual markers remain visible when labels collide. Worldwide coverage means global source coverage, not a guarantee that every railway, station or speed is mapped.
+Markers and station names are separate at all zooms, so collision and name
+selection only affect text. Curated worldwide marker points start at zoom 3,
+two zooms ahead of level crossings (zoom 5). The provider contributes station
+dots from zoom 4, additional points from zoom 6, and detailed stations from
+zoom 8. Every station *actually present in the loaded source tiles* can retain
+its point even when its name is deferred or collides. Below zoom 8 the provider
+station tiles are selective; rendering every station worldwide at zoom 3 still
+requires a prebuilt nationwide/worldwide station-point dataset, not a burst of
+on-demand detailed tile requests. From zoom 12 the detailed marker hierarchy
+continues unchanged. Worldwide coverage means global source coverage, not a guarantee that every railway, station or speed is mapped.
 
 ## Branch lines at overview zooms
 
@@ -165,6 +178,11 @@ Ocean bathymetry is generally much coarser than land elevation; extra zoom does 
 Beyond 85.05° N and S, where the terrain tiles end, the globe's relief and contours come from NOAA ETOPO 2022 at 60 arc-seconds (about 1.85 km), prepared in advance rather than in the browser. This is not a navigation chart.
 
 ## Country and state names
+
+One collision-managed, ISO-neutral country-label layer handles country points
+with or without ISO country codes. This prevents separate base-map country
+layers from competing to display names in the same region.
+
 
 Country names are shown up to zoom 7 in spaced capitals and are placed before station names (the base style faded them out by zoom 6, and station names, placed first, hid most of the rest). States, provinces and prefectures (OpenMapTiles `place` classes `state` and `province`) have their own lighter layer from zoom 4 to 9, below station names in priority.
 
