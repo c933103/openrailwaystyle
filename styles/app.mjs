@@ -558,11 +558,14 @@ function updateMajorStations(){
  const generation=++majorStationGeneration,zoom=map.getZoom(),bounds=map.getBounds();
  majorStationsPromise ||= majorStationData?Promise.resolve(majorStationData):fetch(new URL(`major-stations.geojson?v=${assetVersion}`,import.meta.url)).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}).catch(error=>{majorStationsPromise=undefined;throw error;});
  majorStationsPromise.then(async data=>{
-  // Only the hubs this view can show are named; others wait for their view.
+  // Keep every curated location, but fetch names only at their label tier.
+  // A dot must not disappear just because a hub's name is deferred.
   const west=bounds.getWest()-10,east=bounds.getEast()+10,south=bounds.getSouth()-10,north=bounds.getNorth()+10;
   // Into the world copy the view shows, however far it was panned.
   const centre=(west+east)/2;
-  const wanted=data.features.filter(f=>{const [lon,lat]=f.geometry.coordinates,l=lon+360*Math.round((centre-lon)/360);return (f.properties.tier??7)<=Math.floor(zoom)&&l>=west&&l<=east&&lat>=south&&lat<=north;});
+  const visible=data.features.filter(f=>{const [lon,lat]=f.geometry.coordinates,l=lon+360*Math.round((centre-lon)/360);return l>=west&&l<=east&&lat>=south&&lat<=north;});
+  const visibleIDs=new Set(visible.map(f=>f.id));
+  const wanted=visible.filter(f=>(f.properties.tier??7)<=Math.floor(zoom));
   const named=await Promise.all(wanted.map(f=>majorStationName(f,language).catch(()=>null)));
   if(generation!==majorStationGeneration||!ready||language!==settings.language||source!==map.getSource('stationMajor'))return;
   const names=new Map(wanted.map((f,i)=>[f.id,named[i]]));
@@ -572,7 +575,9 @@ function updateMajorStations(){
   const features=data.features.map(f=>{
    const p=names.get(f.id);
    if(p)return {...f,properties:{...f.properties,name:p.name,localized_name:p.localized_name,atlas_name:p.atlas_name,atlas_language:language,atlas_name_source:'provider'}};
-   return previous.get(f.id)||null;
+   // A location is always present when in view, independently of whether
+   // its translated name has been fetched or has label priority yet.
+   return previous.get(f.id)||(visibleIDs.has(f.id)?{...f,properties:{...f.properties,name:'',atlas_name:''}}:null);
   }).filter(Boolean);
   // These names reach the map as GeoJSON, not through a tile protocol, so
   // their rare Han slices load here (the layers draw atlas_name, else name).
