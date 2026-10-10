@@ -20,7 +20,10 @@ async function inspectWuhanRail({plan,waitForReady=false}) {
   const target=Math.abs(map.getZoom()-zoom)<0.01 && Math.abs(actualCenter.lng-center[0])<0.01 && Math.abs(actualCenter.lat-center[1])<0.01;
   const sourceLoaded=Boolean(map.getSource(source) && map.isSourceLoaded(source));
   const presentRail=f=>['LineString','MultiLineString'].includes(f.geometry.type) && f.properties.feature==='rail' && (!f.properties.state || f.properties.state==='present');
-  const active=map.getLayer(layer),sourceFeatures=map.getSource(source)?map.querySourceFeatures(source,{sourceLayer}):[];
+  // getLayer() exposes MapLibre's runtime object (sourceLayer), whereas the
+  // public serialized style retains the specification's source-layer key.
+  const active=map.getStyle().layers.find(item=>item.id===layer);
+  const sourceFeatures=map.getSource(source)?map.querySourceFeatures(source,{sourceLayer}):[];
   const tracks=active?map.queryRenderedFeatures([[point.x-radius,point.y-radius],[point.x+radius,point.y+radius]],{layers:[layer]}):[];
   const report={zoom:map.getZoom(),center:[actualCenter.lng,actualCenter.lat],layer:active?.id,source:active?.source,sourceLayer:active?.['source-layer'],
     infrastructureVisibility:active?map.getLayoutProperty(layer,'visibility'):null,

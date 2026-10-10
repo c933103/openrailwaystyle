@@ -48,7 +48,10 @@ test('actual browser sampler queries city-centred present lines from only the ac
     getZoom:()=>zoom,getCenter:()=>({lng:center[0],lat:center[1]}),project:point=>{assert.deepEqual(point,WUHAN_CENTER);return {x:500,y:400};},
     getSource:()=>({}),isSourceLoaded:()=>true,isMoving:()=>false,
     loaded:()=>{throw new Error('Unrelated sources must not gate this diagnostic');},
-    getLayer:id=>{const plan=wuhanRailPlan(zoom);return {id,source:plan.source,'source-layer':plan.sourceLayer};},
+    // MapLibre runtime layers use camel-case sourceLayer; getStyle() returns
+    // the public serialized style specification with the source-layer key.
+    getLayer:id=>{const plan=wuhanRailPlan(zoom);return {id,source:plan.source,sourceLayer:plan.sourceLayer};},
+    getStyle:()=>({layers:style.layers}),
     getLayoutProperty:id=>id.startsWith('speed-')?'none':'visible',
     querySourceFeatures:(source,options)=>{queries.push({source,...options});return sourceOverride??features();},
     queryRenderedFeatures:(box,options)=>{assert.deepEqual(box,[[405,305],[595,495]]);assert.deepEqual(options.layers,[wuhanRailPlan(zoom).layer]);return renderedOverride??[...features(),{...line,source:'unrelated'}];},
