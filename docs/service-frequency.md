@@ -24,14 +24,17 @@ evidence only and never becomes a displayed line.
 Matching requires compatible rail modes, a declared operator/network and
 reference or name, plus coverage of the supplied timetable path by the OSM
 service. A feed-scoped `gtfs:route_id` can also establish the declared identity.
+Grouped OSM relations retain each relation's localized operator aliases and
+route IDs within their original feed namespace.
 Names are normalized for Unicode typography; arbitrary agency IDs are not
 operator names. A spelled-out agency acronym is accepted only when the feed
 uses that exact acronym as its agency ID. Tram/light-rail modes share a compatible
 family. Different candidates remain ambiguous. These are corroborated source
 declarations, not independent certification of upstream metadata.
 
-Rates attach separately to each original OSM edge. Every sampled interior point
-and both ends must lie within a served timetable interval, with compatible
+Rates attach separately to each original OSM edge. Every sampled interior point,
+including midpoints between supplied interval boundaries, and both ends must
+resolve to the same measurement, with compatible
 alignment; counts cannot extend beyond a short working's terminus. An OSM edge
 crossing a rate boundary is withheld, rather than receiving one branch's rate.
 Distinct same-feed route records are not summed or collapsed. Duplicate feeds can supply a measurement once only when their original ZIP
@@ -54,7 +57,9 @@ physical track identity or a complete station crosswalk. A subdued line means
 still have an independently available departure board.
 
 Each departure expands its complete trip using the opaque Transitous `tripId`
-retained through within-list and cross-feed reconciliation. The viewer uses
+retained through within-list and cross-feed reconciliation. Its selected stop
+uses that trip observation's own scheduled arrival or departure, including
+when another feed supplies the board's preferred presentation. The viewer uses
 the documented MOTIS `trip` itinerary: origin, intermediate stops and terminus,
 including stay-seated continuations and scheduled skipped stops. It shows
 arrival/departure times with local dates, platforms, live changes and

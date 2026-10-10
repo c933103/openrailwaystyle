@@ -287,7 +287,7 @@ jobs:
       - name: Install test browser
         run: npx playwright install --with-deps chromium
       - name: Install WebKit for Safari installation and timetable checks
-        if: matrix.group == 'controls' && (contains(matrix.checks, 'check-pwa-install-browser.mjs') || contains(matrix.checks, 'check-departures-browser.mjs') || contains(matrix.checks, 'check-timetable-frequency-browser.mjs'))
+        if: contains(matrix.checks, 'check-pwa-install-browser.mjs') || contains(matrix.checks, 'check-departures-browser.mjs') || contains(matrix.checks, 'check-timetable-frequency-browser.mjs')
         run: npx playwright install --with-deps webkit
       - name: Start test server
         run: node scripts/serve.mjs &

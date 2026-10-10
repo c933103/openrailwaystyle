@@ -55,7 +55,7 @@ export function renderSchedule(container, stops, row) {
   const body = document.createElement('tbody');
   for (const stop of stops) {
     const tr = document.createElement('tr');
-    if (row.stopId && stop.stopId === row.stopId && stop.scheduledDeparture === row.scheduled) tr.className = 'trip-current-stop';
+    if (row.stopId && stop.stopId === row.stopId && stop[row.tripEvent==='arrival'?'scheduledArrival':'scheduledDeparture'] === (row.tripScheduled??row.scheduled)) tr.className = 'trip-current-stop';
     const name = node(document, 'th', stop.name); name.scope = 'row';
     if (stop.track) name.append(node(document, 'small', `Platform ${stop.track}`, 'trip-date'));
     if (stop.cancelled) name.append(node(document, 'small', 'Cancelled / stop skipped', 'trip-date'));

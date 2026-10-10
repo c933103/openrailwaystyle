@@ -141,3 +141,27 @@ test('equal rates do not establish duplicate trains across different source arch
   const result=apply(table(),[a,b]);assert.equal(result.sections.length,0);assert.equal(result.matching.conflictingSections,3);assert.equal(result.feeds.length,0);
  }
 });
+
+test('a short tail across a rate boundary cannot borrow the midpoint profile',()=>{
+ const t=table(),way=structuredClone(t.ways.get(1));way.id=4;way.geometry.lines=[[[139.70985,35.68],[139.71005,35.68]]];t.ways.set(4,way);t.routes.get('r10').evidence.eligible.push(4);
+ assert.ok(!apply(t,[feed()]).sections.some(s=>s.way===4));
+});
+test('a narrow interior rate interval cannot fall between spatial samples',()=>{
+ const t=table(),way=structuredClone(t.ways.get(1));way.id=4;way.geometry.lines=[[[139.705,35.68],[139.707,35.68]]];t.ways.set(4,way);t.routes.get('r10').evidence.eligible.push(4);
+ const f=feed(),base=f.segments.shift(),middle=structuredClone(base);middle.geometry=[[139.7059,35.68],[139.70595,35.68]];middle.profiles.am={forward_tph:12,backward_tph:12,display_tph:12,quality:'scheduled'};
+ f.segments.unshift({...base,geometry:[[139.70595,35.68],[139.71,35.68]]},middle,{...base,geometry:[[139.7,35.68],[139.7059,35.68]]});
+ assert.ok(!apply(t,[f]).sections.some(s=>s.way===4));
+});
+test('secondary grouped relations retain localized operators and feed-scoped route IDs',()=>{
+ const add=(t,id,tags)=>{
+  const extra={type:'relation',id,tags:{route:'subway',ref:'G',name:'銀座線',network:'東京メトロ',colour:'#f39700',...tags},members:[1,2,3].map(ref=>({type:'way',ref,role:''}))};
+  const ways=[...t.ways.values()].map(w=>({type:'way',id:w.id,geometry:w.geometry.lines[0].map(([lon,lat])=>({lon,lat}))}));
+  addResult(t,toTable({elements:[extra,...ways]}),'extra-'+id);commitStage(t,'extra-'+id);
+ };
+ const t=table(),f=feed();f.agencies[0].agency_name='English Metro';
+ add(t,11,{'network:en':'English Metro'});assert.equal(apply(t,[f]).sections.length,3);
+ const bound=table();f.agencies[0].agency_name='Renamed operator';
+ add(bound,11,{'gtfs:feed':'jp-metro','gtfs:route_id':'ginza'});add(bound,12,{'gtfs:feed':'other-feed','gtfs:route_id':'unrelated'});
+ assert.equal(apply(bound,[f]).sections.length,3);
+ f.source.id='other-feed';assert.equal(apply(bound,[f]).sections.length,0,'route IDs never cross their feed namespace');
+});

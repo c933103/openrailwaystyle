@@ -61,7 +61,7 @@ function metadataMatch(osm,route,agency,source){
   if(osmKind(osm.kind)!==kind(route.route_type))return false;
   const ids=new Set([route.route_id,...(route.source_route_ids||[])]);
   // OSM GTFS IDs are meaningful only with an explicit feed namespace.
-  if(osm.timetable?.feed&&osm.timetable.feed===source.id&&osm.timetable.routeIds?.some(id=>ids.has(id)))return true;
+  if((osm.timetable?.bindings||[osm.timetable]).some(b=>b?.feed===source.id&&b.routeIds?.some(id=>ids.has(id))))return true;
   const operators=new Set([osm.operator,osm.network,...(osm.timetable?.operators||[])].map(text).filter(Boolean));
   if(!agencyNames(agency).some(n=>operators.has(n)))return false;
   const refs=String(osm.ref||'').split(';').map(reference).filter(Boolean);
@@ -96,21 +96,37 @@ function aligned(a,b,c,d){
   const sx=Math.cos((a[1]+b[1])*Math.PI/360),x=(b[0]-a[0])*sx,y=b[1]-a[1],u=(d[0]-c[0])*sx,v=d[1]-c[1];
   return Math.abs(x*u+y*v)>=.5*Math.hypot(x,y)*Math.hypot(u,v);
 }
+function position(p,a,b){
+  const sx=Math.cos((a[1]+b[1])*Math.PI/360),dx=(b[0]-a[0])*sx,dy=b[1]-a[1],length=dx*dx+dy*dy;
+  return length?((p[0]-a[0])*sx*dx+(p[1]-a[1])*dy)/length:0;
+}
 function select(edge,lookup){
   const [a,b]=edge.geometry,n=Math.ceil(metres(a,b)/50);if(!n||n>2000)return null;
+  const nearby=p=>{
+    const near=lookup(p).filter(e=>aligned(a,b,...e.geometry)).map(e=>({e,d:distance(p,...e.geometry,true)})).filter(v=>v.d<=120).sort((a,b)=>a.d-b.d);
+    return near.length?near.filter(v=>v.d<=near[0].d+.5).map(v=>v.e):[];
+  };
+  const candidates=new Set(),boundaries=new Set([0,1]),probes=[];
+  for(let i=0;i<=n;i++)for(const e of lookup(interpolate(a,b,i/n)))if(aligned(a,b,...e.geometry))candidates.add(e);
+  if(candidates.size>5000)return null;
+  // Every supplied interval contributes its projected boundary. Midpoints
+  // between these boundaries catch rate changes shorter than the spatial
+  // sampling step, including a narrow interval inside an otherwise uniform edge.
+  for(const e of candidates)for(const p of e.geometry){const t=position(p,a,b);if(t>0&&t<1)boundaries.add(t);}
+  const sorted=[...boundaries].sort((a,b)=>a-b);
+  for(let i=1;i<sorted.length;i++)probes.push((sorted[i-1]+sorted[i])/2);
+  for(let i=0;i<n;i++)probes.push((i+.5)/n);
   let selected;
-  // Interior samples avoid attributing a neighbouring section solely because
-  // two shape intervals share an endpoint. Endpoints still require coverage.
-  if(![a,b].every(p=>lookup(p).some(e=>aligned(a,b,...e.geometry)&&distance(p,...e.geometry,true)<=120)))return null;
-  for(let i=0;i<n;i++){
-    const p=interpolate(a,b,(i+.5)/n),near=lookup(p).filter(e=>aligned(a,b,...e.geometry)).map(e=>({e,d:distance(p,...e.geometry,true)})).filter(v=>v.d<=120).sort((a,b)=>a.d-b.d);
-    if(!near.length)return null;
-    const records=near.filter(v=>v.d<=near[0].d+.5).map(v=>v.e.record);
-    if(new Set(records.map(measurement)).size!==1)return null;
+  for(const t of probes){
+    const records=nearby(interpolate(a,b,t)).map(e=>e.record);
+    if(!records.length||new Set(records.map(measurement)).size!==1)return null;
     const chosen=records.reduce((a,b)=>a.properties.frequency_until<=b.properties.frequency_until?a:b);
     if(selected&&measurement(selected)!==measurement(chosen))return null;
     selected=chosen;
   }
+  // A shared endpoint may touch the next interval, but the selected profile
+  // must itself reach both ends. Coverage by a different profile is insufficient.
+  if(!selected||![a,b].every(p=>nearby(p).some(e=>measurement(e.record)===measurement(selected))))return null;
   return selected;
 }
 
@@ -125,7 +141,7 @@ export function createTimetableMatcher(table,{now=Date.now()}={}){
       for(const ref of String(r.ref||'').split(';').map(reference).filter(Boolean))file(`${osmKind(r.kind)}|${operator}|ref:${ref}`,g);
       for(const name of new Set([r.label,...Object.values(r.names||{})].map(text).filter(Boolean)))file(`${osmKind(r.kind)}|${operator}|name:${name}`,g);
     }
-    if(r.timetable?.feed)for(const id of r.timetable.routeIds||[])file(`gtfs|${r.timetable.feed}|${id}`,g);
+    for(const binding of r.timetable?.bindings||[r.timetable])if(binding?.feed)for(const id of binding.routeIds||[])file(`gtfs|${binding.feed}|${id}`,g);
   }
   function addFeed(feed){
     if(feed.schema!==1||!Array.isArray(feed.routes)||!Array.isArray(feed.agencies)||!Array.isArray(feed.segments))throw new Error('Invalid compiled timetable');

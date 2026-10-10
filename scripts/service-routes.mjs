@@ -48,6 +48,11 @@ const NAME_KEY = /^name:[a-z]{2,3}(-[A-Za-z]{2,4})?$/;
 // in the same place. routeOf gives that group without the place;
 // serviceRoutes adds it, since networks are often named generically
 // ("Metro").
+function timetableTags(t){
+  const feed=t['gtfs:feed']||t['gtfs:feed_id']||t['gtfs:source']||'',routeIds=String(t['gtfs:route_id']||'').split(';').filter(Boolean);
+  const operators=Object.entries(t).filter(([k])=>/^(operator|network):(?:[a-z]{2,3}(?:-[A-Za-z]{2,4})?|short|full)$/.test(k)&&!/:((ref)|(url))$/.test(k)).map(([,v])=>v);
+  return feed||routeIds.length||operators.length?{feed,routeIds,operators}:null;
+}
 export function routeOf(rel) {
   const t = rel.tags || {};
   const label = routeLabel(t.name) || t.ref || '', ref = t.ref || '';
@@ -58,7 +63,7 @@ export function routeOf(rel) {
   // operator to scope the reference.
   const scope = t.network || t.operator || '';
   return {key: [kind, scope, ref, colour(t.colour), ref && scope ? '' : label].join('|'), kind,
-    ref, label, colour: colour(t.colour), network: t.network || '', operator: t.operator || '', relation: rel.id, names, ...(Object.keys(t).some(k=>k.startsWith('gtfs:')||/^(operator|network):/.test(k))?{timetable:{feed:t['gtfs:feed']||t['gtfs:source']||'',routeIds:String(t['gtfs:route_id']||'').split(';').filter(Boolean),operators:Object.entries(t).filter(([k])=>/^(operator|network):/.test(k)).map(([,v])=>v)}}:{})};
+    ref, label, colour: colour(t.colour), network: t.network || '', operator: t.operator || '', relation: rel.id, names, ...(timetableTags(t)?{timetable:timetableTags(t)}:{})};
 }
 
 // From an Overpass response: the routes (by key) and the track ways with the
@@ -264,7 +269,7 @@ export const wayRoutes = (way, routes) => [...new Set([...Object.values(way.rout
 // without relation evidence retain their legacy lowest-relation fallback.
 export function routeView(route) {
   const evidence = drawnRelation(route);
-  if (evidence) return evidence.view;
+  if (evidence) {const timetable=timetableTags(evidence.tags||{});return timetable?{...evidence.view,timetable}:evidence.view;}
   const parts = Object.values(route.stages).length ? Object.values(route.stages) : Object.values(route.next);
   return parts.reduce((a, b) => (b.relation < a.relation ? b : a));
 }
@@ -396,6 +401,19 @@ export function serviceRoutes({routes, ways}) {
     for (const other of rest) {
       for (const [k, v] of Object.entries(other.names || {})) if (!view.names[k]) view.names[k] = v;
       for (const field of ['network', 'operator', 'colour']) if (!view[field] && other[field]) view[field] = other[field];
+    }
+    const identities=[first,...rest].map(r=>r.timetable).filter(Boolean);
+    if(identities.length){
+      const bindings=new Map(),operators=new Set();
+      for(const t of identities){
+        for(const op of t.operators||[])operators.add(op);
+        for(const b of t.bindings||[t])if(b.feed){
+          if(!bindings.has(b.feed))bindings.set(b.feed,new Set());
+          for(const id of b.routeIds||[])bindings.get(b.feed).add(id);
+        }
+      }
+      const scoped=[...bindings].sort(([a],[b])=>a<b?-1:a>b?1:0).map(([feed,ids])=>({feed,routeIds:[...ids].sort()}));
+      view.timetable={bindings:scoped,operators:[...operators].sort(),...(scoped.length===1?scoped[0]:{})};
     }
     for (const key of members) out.set(key, view);
   }

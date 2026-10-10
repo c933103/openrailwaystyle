@@ -89,3 +89,27 @@ test('schedule shows local dates over midnight, dwell, live scheduled times, can
   assert.equal(container.querySelectorAll('.trip-current-stop').length,2);
   dom.window.close();
 });
+
+test('merged trip highlight uses its own observation time through both reconciliation stages',()=>{
+ const linked=new Date(Date.parse(at)+30_000).toISOString();
+ const rows=departureRows([[{mode:'SUBWAY',displayName:'G',headsign:'Asakusa',place:place('Suehirocho','preferred',{scheduledDeparture:at})}],
+  [{mode:'SUBWAY',headsign:'Asakusa',tripId:'linked',place:place('Suehirocho','selected',{departure:linked,scheduledDeparture:linked})}]],{now:Date.parse(at)-60000});
+ assert.equal(rows.length,1);assert.equal(rows[0].scheduled,Date.parse(at));assert.equal(rows[0].tripScheduled,Date.parse(linked));
+ const dom=new JSDOM('<div></div>'),container=dom.window.document.querySelector('div');
+ renderSchedule(container,[{name:'Earlier loop',stopId:'selected',scheduledDeparture:Date.parse(at)},
+  {name:'Selected',stopId:'selected',scheduledDeparture:Date.parse(linked)}],rows[0]);
+ assert.equal(container.querySelectorAll('.trip-current-stop').length,1);assert.equal(container.querySelector('.trip-current-stop th').textContent,'Selected');dom.window.close();
+});
+test('arrival-only board events highlight the matching arrival rather than a later departure',()=>{
+ const row=departureRows([[{mode:'SUBWAY',displayName:'G',headsign:'Asakusa',tripId:'arrival-trip',place:{stopId:'selected',arrival:at,scheduledArrival:at}}]],{now:Date.parse(at)-60000})[0];
+ assert.equal(row.tripEvent,'arrival');
+ const dom=new JSDOM('<div></div>'),container=dom.window.document.querySelector('div');
+ renderSchedule(container,[{name:'Selected',stopId:'selected',scheduledArrival:Date.parse(at),scheduledDeparture:Date.parse(at)+120000}],row);
+ assert.equal(container.querySelectorAll('.trip-current-stop').length,1);dom.window.close();
+});
+
+test('arrival and departure observations tied in presentation choose trip context deterministically',()=>{
+ const common={mode:'SUBWAY',displayName:'G',headsign:'Asakusa',tripId:'trip',place:{stopId:'selected',tz:'Asia/Tokyo'}};
+ const arrival={...common,place:{...common.place,arrival:at,scheduledArrival:at}},departure={...common,place:{...common.place,departure:at,scheduledDeparture:at}};
+ const rows=items=>departureRows([items],{now:Date.parse(at)-60000});assert.deepEqual(rows([arrival,departure]),rows([departure,arrival]));
+});

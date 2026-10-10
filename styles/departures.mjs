@@ -50,7 +50,7 @@ const compareText = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 // Stable presentation ties must not depend on either feed or observation order.
 const rowOrder = row => JSON.stringify([row.line, row.headsign, row.mode, row.tz ?? null,
   row.color, row.textColor, row.track, row.departure, row.scheduled, row.live, row.delay, row.cancelled,
-  row.tripId, row.stopId]);
+  row.tripId, row.stopId, row.tripScheduled, row.tripEvent]);
 const compareRows = (a, b) => Number(!a.line) - Number(!b.line) || a.headsign.length - b.headsign.length || compareText(rowOrder(a), rowOrder(b));
 const mergeObservations = group => {
   const ordered = [...group].sort(compareRows), keep = ordered[0];
@@ -69,7 +69,7 @@ const mergeObservations = group => {
   // Keep the ID and its own stop together. Prefer the named observation, but
   // a feed without a trip ID must not hide another feed's usable trip link.
   const trip = ordered.find(r => r.tripId);
-  if (trip) Object.assign(merged, {tripId: trip.tripId, stopId: trip.stopId});
+  if (trip) Object.assign(merged, {tripId: trip.tripId, stopId: trip.stopId,tripScheduled:trip.tripScheduled??trip.scheduled,tripEvent:trip.tripEvent||'departure'});
   if (live) Object.assign(merged, {departure: live.departure, live: true, delay: live.delay});
   return merged;
 };
@@ -94,7 +94,7 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
   const rows = [], exact = new Map();
   for (const [list, times] of lists.entries()) for (const time of times) {
     if (!RAIL_MODES.has(time.mode)) continue;
-    const place = time.place || {}, departure = Date.parse(place.departure ?? place.arrival), scheduled = Date.parse(place.scheduledDeparture ?? place.scheduledArrival ?? place.departure);
+    const place = time.place || {}, departure = Date.parse(place.departure ?? place.arrival), scheduled = Date.parse(place.scheduledDeparture ?? place.scheduledArrival ?? place.departure ?? place.arrival);
     if (!Number.isFinite(departure)) continue;
     const named = [time.displayName, time.routeShortName].find(name => name && !opaqueName(name, time.routeId));
     const line = named || time.tripShortName || time.routeLongName || '';
@@ -110,6 +110,7 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
       departure, scheduled, tz: place.tz, line, headsign,
       tripId: typeof time.tripId === 'string' ? time.tripId : '',
       stopId: typeof place.stopId === 'string' ? place.stopId : '',
+      ...(typeof time.tripId==='string'&&time.tripId?{tripScheduled:scheduled,tripEvent:place.scheduledDeparture!=null?'departure':place.scheduledArrival!=null?'arrival':place.departure!=null?'departure':'arrival'}:{}),
       color: /^[0-9a-f]{6}$/i.test(time.routeColor || '') ? `#${time.routeColor}` : null,
       textColor: /^[0-9a-f]{6}$/i.test(time.routeTextColor || '') ? `#${time.routeTextColor}` : null,
       track: place.track || place.scheduledTrack || '', live: time.realTime === true,
