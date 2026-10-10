@@ -66,6 +66,25 @@ test('timetables add no geometry or eligible services; OSM coordinate sequences 
  assert.deepEqual(vertices(buildTiles(t,{timetables:bindTimetableSections(t,artifact).sections})),vertices(buildTiles(t)));
 });
 
+test('curved timetable sections keep the whole OSM line orientation and their original edge rates',()=>{
+ const curve=[[139.7,35.68],[139.704,35.684],[139.702,35.688],[139.706,35.691]];
+ const read=tiles=>[...tiles].filter(([key])=>key.startsWith('12/')).flatMap(([key,bytes])=>{
+  const layer=new VectorTile(new Pbf(bytes)).layers[LAYER];return Array.from({length:layer.length},(_,i)=>{const f=layer.feature(i);return {key,rate:f.properties.frequency_am,paths:f.loadGeometry().map(line=>line.map(p=>[p.x,p.y]))};});
+ });
+ for(const reverse of [false,true]){
+  const t=table(),line=reverse?[...curve].reverse():curve;t.ways.get(1).geometry.lines=[line];t.ways.delete(2);t.ways.delete(3);
+  const f=feed();f.segments.forEach((s,i)=>s.geometry=line.slice(i,i+2));const variable=structuredClone(f);
+  f.segments.forEach(s=>s.profiles=structuredClone(f.segments[0].profiles));
+  const before=read(buildTiles(t)),matched=bindTimetableSections(t,apply(t,[f])).sections;
+  assert.equal(matched.get(1).length,3);assert.deepEqual(read(buildTiles(t,{timetables:matched})).map(({key,paths})=>({key,paths})),before.map(({key,paths})=>({key,paths})));
+  const varying=read(buildTiles(t,{timetables:bindTimetableSections(t,apply(t,[variable])).sections}));
+  for(const whole of before){
+   assert.equal(whole.paths.length,1);const vertices=whole.paths[0];assert.equal(vertices.length,4);
+   for(let edge=0;edge<3;edge++){const rate=[10,7,4][reverse?2-edge:edge],section=varying.find(v=>v.key===whole.key&&v.rate===rate);assert.deepEqual(section.paths,[[vertices[edge],vertices[edge+1]]]);}
+  }
+ }
+});
+
 
 test('full GTFS calendar-to-publication-to-OSM tile pipeline counts short workings only on their section',async()=>{
  const {mkdtemp,mkdir,writeFile,readFile,rm}=await import('node:fs/promises'),{tmpdir}=await import('node:os'),{join}=await import('node:path');

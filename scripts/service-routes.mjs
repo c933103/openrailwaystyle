@@ -468,7 +468,12 @@ export function buildTiles({routes, ways}, {headways, timetables} = {}) {
     const original = drawnLines(way), sections = timetables?.get(way.id);
     // Only split at existing OSM vertices. Timetable shapes never supply a
     // coordinate, route ID, eligibility or offset slot to the renderer.
-    const parts=sections?.length ? original.flatMap((line,l)=>line.slice(1).map((b,e)=>({lines:[orient([line[e],b])],records:new Map(sections.filter(s=>s.line===l&&s.edge===e).map(s=>[s.relation,s.record]))}))) : [{lines:original.map(orient),records:new Map()}];
+    const parts=sections?.length ? original.flatMap((line,l)=>{
+      // Keep bends in the whole line's direction; records index the original
+      // OSM sequence even when the complete line is reversed for offsets.
+      const oriented=orient(line),reversed=oriented!==line;
+      return oriented.slice(1).map((b,e)=>({lines:[[oriented[e],b]],records:new Map(sections.filter(s=>s.line===l&&s.edge===(reversed?line.length-2-e:e)).map(s=>[s.relation,s.record]))}));
+    }) : [{lines:original.map(orient),records:new Map()}];
     for(const {lines,records} of parts){
     if (!lines.length) continue;
     for (const [groups, , , shown] of sets) {
