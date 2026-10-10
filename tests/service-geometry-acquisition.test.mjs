@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {gzipSync, gunzipSync} from 'node:zlib';
-import {addResult, commitStage, readTable, toTable, writeTable, geometrySummary} from '../scripts/service-routes.mjs';
+import {addResult, buildTiles, commitStage, readTable, toTable, writeTable, geometrySummary} from '../scripts/service-routes.mjs';
 const points = [[139.70,35.68],[139.71,35.69],[139.72,35.68],[139.73,35.69],[139.74,35.68]];
 const response = (day, coordinates = points) => ({osm3s: {timestamp_osm_base: `2026-10-${day}T00:00:00Z`}, elements: [
   {type:'relation',id:1,version:1,timestamp:'2026-10-01T00:00:00Z',tags:{route:'subway',ref:'1',name:'One',network:'N'},members:[{type:'way',ref:10,role:''}]},
@@ -157,4 +157,36 @@ test('relation acquisition: a complete refresh during a dependency gap can recov
   refreshRelationDependencyHealth(savedState, savedTable, '2026-10-07T01:00:00Z');
   assert.equal(savedState.stages.japan.geometry.status, 'complete'); assert.equal(savedState.stages.japan.geometry.retry, null);
   assert.equal(savedState.stages.japan.geometry.lastFailure, null); assert.equal(savedState.stages.japan.geometry.attempts, 4);
+}));
+
+test('inactive acquisition: published active totals differ from retained source declarations and frequency rebuild agrees',async()=>fixture(async run=>{
+  const body=response('07'),first=body.elements[0];
+  body.elements.unshift({...first,id:2,tags:{...first.tags,name:'Two',ref:'2'}});
+  first.tags={...first.tags,name:'',ref:''};
+  const result=await run([{body}]),manifest=await result.read('manifest.json'),savedState=await result.read('state.json');
+  assert.equal(manifest.routes,1);assert.equal(manifest.retainedRelations,2);
+  assert.equal(manifest.stages.find(s=>s.name==='japan').routes,1);assert.equal(manifest.stages.find(s=>s.name==='japan').retainedRelations,2);
+  assert.equal(savedState.stages.japan.routes,1);assert.equal(savedState.stages.japan.retainedRelations,2);
+  assert.equal(savedState.stages.japan.geometry.relationCounts.complete,2);
+  assert.deepEqual(manifest.geometry.routeRelationsWithoutGeometry,[]);
+  assert.match(result.stdout,/1 active routes .*2 retained declarations/);
+  const directory=join(result.root,'service-data'),raw=await readFile(join(directory,'service-routes.ndjson.gz'));
+  const table=readTable(gunzipSync(raw).toString());assert.equal(table.routes.size,2);assert.equal(table.ways.size,1);
+  const rebuild=spawnSync(process.execPath,['scripts/rebuild-service-frequency.mjs',directory,join(result.root,'credits.html'),'--fixtures'],{encoding:'utf8'});
+  assert.equal(rebuild.status,0,rebuild.stderr);
+  assert.deepEqual(JSON.parse(await readFile(join(directory,'frequency-manifest.json'),'utf8')).geometry,manifest.geometry);
+  assert.deepEqual(await readFile(join(directory,'service-routes.ndjson.gz')),raw);
+}));
+
+test('unverified relation acquisition retains committed tiles below the stage loss threshold',async()=>fixture(async run=>{
+  const table={routes:new Map(),ways:new Map()};addResult(table,toTable(response('06')),'japan');commitStage(table,'japan');
+  const expected=buildTiles(table),body=response('07');delete body.elements[0].members;
+  const result=await run([{body}],state(),table),manifest=await result.read('manifest.json'),savedState=await result.read('state.json');
+  assert.equal(manifest.routes,1);assert.equal(manifest.ways,1);assert.deepEqual(manifest.geometry.routeRelationsWithoutGeometry,[]);
+  const saved=readTable(gunzipSync(await readFile(join(result.root,'service-data/service-routes.ndjson.gz'))).toString());
+  assert.deepEqual(saved.ways.get(10).routes.japan,['r1']);
+  assert.equal(savedState.stages.japan.geometry.observed.relationCounts.unknown,1);
+  assert.equal(savedState.stages.japan.geometry.lastFailure,'unverified-source');
+  const actual=new Map();for(const key of (await result.read('index.json')).tiles)actual.set(key,gunzipSync(await readFile(join(result.root,`service-data/${key}.pbf.gz`))));
+  assert.deepEqual([...actual].sort(),[...expected].map(([key,bytes])=>[key,Buffer.from(bytes)]).sort(),'actual published tiles preserve the retained accepted service');
 }));

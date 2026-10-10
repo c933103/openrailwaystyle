@@ -45,9 +45,33 @@ const opaqueName = (name, routeId) => /^\d{5,}$/.test(name || '') && String(rout
 const MODE_FAMILY = {METRO: 'metro', SUBWAY: 'metro', TRAM: 'tram', FUNICULAR: 'funicular', CABLE_CAR: 'cable'};
 const modeFamily = mode => MODE_FAMILY[mode] || 'rail';
 const squash = text => String(text || '').replace(/[\s()（）]/g, '');
+const compareText = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+// Stable presentation ties must not depend on either feed or observation order.
+const rowOrder = row => JSON.stringify([row.line, row.headsign, row.mode, row.tz ?? null,
+  row.color, row.textColor, row.track, row.departure, row.scheduled, row.live, row.delay, row.cancelled]);
+const compareRows = (a, b) => Number(!a.line) - Number(!b.line) || a.headsign.length - b.headsign.length || compareText(rowOrder(a), rowOrder(b));
+const mergeObservations = group => {
+  const ordered = [...group].sort(compareRows), keep = ordered[0];
+  // There is no observation timestamp. Prefer live over scheduled data; if
+  // live predictions conflict, keep the later prediction deterministically,
+  // without claiming it is the newest update. Cancellation is never dropped.
+  const live = ordered.filter(r => r.live).sort((a, b) => b.departure - a.departure || Number(!a.track) - Number(!b.track) || compareRows(a, b))[0];
+  // A time-only update must not hide an explicit live platform. Carry the
+  // platform's own prediction through both merge stages: borrowed scheduled
+  // platforms are not live updates, and later time-only predictions must not
+  // make an older platform observation appear newer. Ties are deterministic.
+  const liveTrack = group.map(r => r.liveTrack).filter(Boolean)
+    .sort((a, b) => b.departure - a.departure || compareText(a.track, b.track))[0] || null;
+  const merged = {...keep, cancelled: group.some(r => r.cancelled), liveTrack,
+    track: liveTrack?.track || live?.track || keep.track || ordered.find(r => r.track)?.track || ''};
+  if (live) Object.assign(merged, {departure: live.departure, live: true, delay: live.delay});
+  return merged;
+};
 // Board rows from departure lists (one list per stop; merged, earliest first,
 // rail modes only, one row per train). Within one list only an exact repeat is
-// the same train: two services of one feed can leave together. Across lists,
+// the same train: trip/route identity, names, mode family, resolved destination
+// and scheduled time must all agree. Live/cancelled observations of that exact
+// train are combined, not discarded. Two services of one feed can leave together. Across lists,
 // two feeds can describe one train with different names and destination texts
 // ("桜木町" and "(普通 Local) 桜木町 Sakuragichō"). Rows from different lists
 // are compatible when they are of the same mode family, leave in the same
@@ -61,24 +85,39 @@ const squash = text => String(text || '').replace(/[\s()（）]/g, '');
 // cancelled if any row is. A row is live when the operator's real-time feed
 // covers that trip; delay in whole minutes.
 export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
-  const rows = [];
+  const rows = [], exact = new Map();
   for (const [list, times] of lists.entries()) for (const time of times) {
     if (!RAIL_MODES.has(time.mode)) continue;
     const place = time.place || {}, departure = Date.parse(place.departure ?? place.arrival), scheduled = Date.parse(place.scheduledDeparture ?? place.scheduledArrival ?? place.departure);
-    if (!Number.isFinite(departure) || departure < now - 60_000) continue;
+    if (!Number.isFinite(departure)) continue;
     const named = [time.displayName, time.routeShortName].find(name => name && !opaqueName(name, time.routeId));
     const line = named || time.tripShortName || time.routeLongName || '';
-    const key = `${time.displayName || time.routeShortName || line}|${time.headsign}|${scheduled}`;
-    if (rows.some(r => r.list === list && r.key === key)) continue;
-    rows.push({
-      departure, scheduled, tz: place.tz, line, headsign: time.headsign || time.tripTo?.name || '',
+    const headsign = time.headsign || time.tripTo?.name || '';
+    // JSON tuples preserve field boundaries even when IDs/names contain '|'.
+    // Missing IDs are equal only to missing IDs, never a wildcard. If the
+    // schedule is invalid, differing actual times must remain distinguishable.
+    const key = JSON.stringify([list, time.tripId ?? null, time.routeId ?? null,
+      time.displayName || '', time.routeShortName || '', time.tripShortName || '', time.routeLongName || '',
+      modeFamily(time.mode), headsign, Number.isFinite(scheduled) ? scheduled :
+        [place.scheduledDeparture ?? null, place.scheduledArrival ?? null, departure]]);
+    const row = {
+      departure, scheduled, tz: place.tz, line, headsign,
       color: /^[0-9a-f]{6}$/i.test(time.routeColor || '') ? `#${time.routeColor}` : null,
       textColor: /^[0-9a-f]{6}$/i.test(time.routeTextColor || '') ? `#${time.routeTextColor}` : null,
       track: place.track || place.scheduledTrack || '', live: time.realTime === true,
+      liveTrack: time.realTime === true && place.track ? {track: place.track, departure} : null,
       delay: time.realTime === true && Number.isFinite(scheduled) ? Math.round((departure - scheduled) / 60000) : null,
       cancelled: time.cancelled === true || time.tripCancelled === true || place.cancelled === true, mode: time.mode,
-      list, key, to: squash(time.headsign || time.tripTo?.name || ''), minute: Math.floor(scheduled / 60000),
-    });
+      list, to: squash(headsign), minute: Math.floor(scheduled / 60000),
+    };
+    if (!exact.has(key)) exact.set(key, []);
+    exact.get(key).push(row);
+  }
+  for (const group of exact.values()) {
+    const row = mergeObservations(group);
+    // A delayed live observation can still be upcoming when its scheduled
+    // duplicate is old. Merge cancellation/state before filtering that train.
+    if (row.departure >= now - 60_000) rows.push(row);
   }
   const compatible = (a, b) => a.list !== b.list && modeFamily(a.mode) === modeFamily(b.mode) && a.minute === b.minute && a.to && b.to &&
     (a.to.includes(b.to) || b.to.includes(a.to)) && (!a.line || !b.line || a.line === b.line);
@@ -91,12 +130,9 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
   const out = [];
   for (const group of groups.values()) {
     if (new Set(group.map(r => r.list)).size < group.length) { out.push(...group); continue; }
-    const keep = group.find(r => r.line) || group[0], live = group.find(r => r.live);
-    const merged = {...keep, cancelled: group.some(r => r.cancelled), track: keep.track || group.find(r => r.track)?.track || ''};
-    if (live && !keep.live) Object.assign(merged, {departure: live.departure, live: true, delay: live.delay, track: live.track || merged.track});
-    out.push(merged);
+    out.push(mergeObservations(group));
   }
-  return out.sort((a, b) => a.departure - b.departure || a.list - b.list).slice(0, count).map(({list, key, to, minute, ...row}) => row);
+  return out.sort((a, b) => a.departure - b.departure || compareRows(a, b)).slice(0, count).map(({list, to, minute, liveTrack, ...row}) => row);
 }
 
 // Clock time at the station (its own time zone).

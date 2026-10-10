@@ -7,13 +7,14 @@ import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {launchBrowser} from './browser.mjs';
 import {rendererFixture} from './browser-renderer-fixture.mjs';
+import {BROWSER_LIBRARIES} from './browser-libraries.mjs';
 import {buildParisAcceptanceVariants, injectParisAdversaryTiles} from './paris-service-geometry-fixture.mjs';
 import {geometryTestCenter, validateGeometryTestFrames} from './service-geometry-test-framing.mjs';
 import {FREQUENCY_PROFILES} from '../styles/service-frequency.mjs';
 
 const digest = value => createHash('sha256').update(value).digest('hex');
 export async function checkParisServiceGeometryBrowser({root = process.env.ATLAS_TEST_URL || 'http://127.0.0.1:4173',
-  browserLauncher = launchBrowser, fixtureBuilder = buildParisAcceptanceVariants, reportPrefix = 'paris-service',
+  fixtureBuilder = buildParisAcceptanceVariants, reportPrefix = 'paris-service',
   title = 'Paris: retained OSM services, rejected timetable chords',
   caption = 'Pinned legacy OSM service-data subset, not a fresh source-certified acquisition. Timetable adversary is synthetic, not the original Normandy feed.',
   attribution = 'OSM-derived paths © OpenStreetMap contributors (ODbL 1.0). Synthetic timetable controls carry no authentic timetable claim.',
@@ -27,18 +28,14 @@ export async function checkParisServiceGeometryBrowser({root = process.env.ATLAS
   assert.ok(layer, 'the production service line layer exists');
   layer.layout = {...layer.layout, visibility: 'visible'};
   const modes = ['equal', ...FREQUENCY_PROFILES, 'equal-return'];
-  const renderer = process.env.ATLAS_MAPLIBRE_ASSETS ? new Map(await Promise.all(Object.entries({
-    'maplibre-gl.js': '45a9b07a9189ce56054c620a947ccf41e291e58c95e9b61533b740aaa65ee5cb',
-    'maplibre-gl.css': 'ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732',
-  }).map(async ([name, hash]) => {
-    const body = await readFile(`${process.env.ATLAS_MAPLIBRE_ASSETS}/${name}`);
-    assert.equal(digest(body), hash, `Pinned production MapLibre asset: ${name}`);
-    return [`https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/${name}`, {body, contentType: name.endsWith('.js') ? 'text/javascript' : 'text/css'}];
-  }))) : await rendererFixture();
+  const renderer = await rendererFixture(root.replace(/\/?$/, '/'));
+  const rendererLibraries = BROWSER_LIBRARIES.filter(library => library.package === 'maplibre-gl');
+  const rendererScript = rendererLibraries.find(library => library.target.endsWith('.js')).target;
+  const rendererStyle = rendererLibraries.find(library => library.target.endsWith('.css')).target;
   const tiles = new Map(variants.flatMap(variant => [...variant.tiles].map(([key, bytes]) => [`${variant.id}/${key}`, Buffer.from(bytes)])));
   const injected = injectParisAdversaryTiles(variants.find(variant => variant.id === 'present').tiles, built.forbiddenTiles);
   for (const [key, bytes] of injected) tiles.set(`injected/${key}`, Buffer.from(bytes));
-  const browser = await browserLauncher(process.env.ATLAS_CHROMIUM_EXECUTABLE ? {executablePath: process.env.ATLAS_CHROMIUM_EXECUTABLE} : {}).catch(async error => {await built.dispose(); throw error;});
+  const browser = await launchBrowser(process.env.ATLAS_CHROMIUM_EXECUTABLE ? {executablePath: process.env.ATLAS_CHROMIUM_EXECUTABLE} : {}).catch(async error => {await built.dispose(); throw error;});
   const results = [], errors = [], sensitivity = [], baselines = new Map();
   let page;
   await mkdir('browser-review', {recursive: true});
@@ -55,11 +52,11 @@ export async function checkParisServiceGeometryBrowser({root = process.env.ATLAS
       if (url.pathname.includes('/paris-service-tiles/')) return route.fulfill({contentType: 'application/x-protobuf', body: tiles.get(url.pathname.split('/paris-service-tiles/')[1]) || Buffer.alloc(0)});
       if (url.pathname.endsWith('/paris-service-check.html')) return route.fulfill({contentType: 'text/html', body: `<!doctype html>
         <meta charset="utf-8"><title>Paris Service geometry acceptance</title>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+        <link rel="stylesheet" href="${rendererStyle}">
         <style>body{margin:0;background:#edf2f5;color:#1e3545;font:14px system-ui}header,footer{padding:14px 20px}h1{font-size:21px;margin:0 0 7px}#maps{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 16px}.panel{border:1px solid #bac9d1;background:white}h2{font-size:15px;padding:10px;margin:0}.map{height:470px}footer{font-size:12px;line-height:1.5}</style>
         <header><h1>${title}</h1><div id="profile"></div></header><main id="maps"></main>
         <footer>${caption}<br>Real production tiles, line layer and width profiles; blank background intentionally removes live-provider dependencies. Paris frequency profiles use the unknown-data fallback.<br>${attribution}</footer>
-        <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>`});
+        <script src="${rendererScript}"></script>`});
       errors.push(`Unexpected network request: ${url.href}`);
       return route.abort();
     });
@@ -173,7 +170,8 @@ export async function checkParisServiceGeometryBrowser({root = process.env.ATLAS
     }
   } finally {
     if (page && !page.isClosed()) errors.push(...await page.evaluate(() => window.parisAudit?.errors || []).catch(error => [`Could not read browser diagnostics: ${error.message}`]));
-    await writeFile(`browser-review/${reportPrefix}-geometry-results.json`, JSON.stringify({schema: 1, browser: browser.version(), renderer: 'MapLibre 5.24.0',
+    await writeFile(`browser-review/${reportPrefix}-geometry-results.json`, JSON.stringify({schema: 1, browser: browser.version(), renderer: 'MapLibre 5.24.0 with production Atlas backport',
+      rendererLibraries: rendererLibraries.map(({target, sha256}) => ({target, sha256})),
       scope,
       metadata, productionStyleSha256: digest(source), fixtureVariants: variants.map(({id, manifest, assemblyManifest, staleOutputsRemoved, inputSha256, clock}) => ({id, manifest, assemblyManifest, staleOutputsRemoved, inputSha256, clock})),
       expected: probes.length * 3 * variants.length * modes.length, total: results.length, passed: results.filter(row => row.pass).length, errors, sensitivity, results}, null, 2) + '\n');

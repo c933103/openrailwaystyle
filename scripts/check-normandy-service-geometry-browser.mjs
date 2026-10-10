@@ -1,11 +1,9 @@
 // Actual pre-fix compiled Normandy publication replay, using the same production
 // renderer acceptance assertions as the separate synthetic Paris sensitivity gate.
-import {launchBrowser} from './browser.mjs';
 import {checkParisServiceGeometryBrowser} from './check-paris-service-geometry-browser.mjs';
 import {buildNormandyAcceptanceVariants} from './normandy-service-geometry-fixture.mjs';
 
 await checkParisServiceGeometryBrowser({
-  browserLauncher: launchBrowser,
   fixtureBuilder: buildNormandyAcceptanceVariants,
   reportPrefix: 'normandy-service',
   title: 'Paris: historical Normandy publication regression',

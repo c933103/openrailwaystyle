@@ -16,7 +16,7 @@
 ## Working on the project
 
 - [Development guide](development.md): setup, published data, source layout, checks and deployment.
-- [Paris Service geometry acceptance](service-paris-acceptance.md): pinned real OSM paths, synthetic timetable negatives, all-profile browser checks and evidence limits.
+- [Paris Service geometry acceptance](service-paris-acceptance.md): pinned real OSM paths, synthetic and archived timetable negatives, all-profile browser checks and evidence limits.
 - [Branding and app identity](branding.md): the app name, shared icon assets, installed-app updates and GitHub metadata.
 - [Data maintenance](data-maintenance.md): providers and attribution, snapshot workflows, refresh schedules, polar data and caches.
 - [Contribution guidelines](../CONTRIBUTING.md): proposing changes and keeping documentation organised.

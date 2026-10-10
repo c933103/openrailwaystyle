@@ -5,15 +5,16 @@
 // closing it only disconnects. A check with options a shared browser cannot
 // take (a proxy, another executable) starts its own.
 //
-// With BROWSER_TILE_CACHE, GET responses from other origins (map tiles,
-// glyphs, provider APIs) are kept in that directory and served from it for
-// TILE_CACHE_DAYS (7): checks wait for the network far less. The site under test is never cached, and the
-// deploy job checks the published site without a cache. Routes a check sets
-// itself take precedence; this one only sees what they pass on.
-import {chromium} from 'playwright';
+// All external providers require explicit fixtures. The shared transport guard
+// rejects unmocked requests and redirects before egress, including attempts made
+// by later route handlers. First-party deployment assets remain actual HTTP reads.
+import {chromium, webkit} from 'playwright';
+import {guardBrowserNetwork} from './browser-network-guard.mjs';
 import {createHash} from 'node:crypto';
-import {mkdir, readFile, rename, writeFile} from 'node:fs/promises';
+import {mkdir, readFile, rename, rm, writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
+import {validProviderVectorTile} from '../styles/vector-tile-validation.mjs';
+import {fetchLoopbackNoRedirect, isLoopbackHttp, isPublicOrm, localOrmAuditTarget, localOrmTarget} from './browser-policy.mjs';
 
 export const BROWSER_ARGS = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'];
 export const TILE_CACHE_DAYS = 7;
@@ -26,22 +27,67 @@ const CACHED_STATUS = new Set([200, 204, 206]);
 // decoded body Playwright hands over.
 const DROPPED_HEADERS = new Set(['content-encoding', 'content-length', 'transfer-encoding', 'connection', 'set-cookie']);
 
-export async function launchBrowser(options = {}) {
+export async function launchBrowser({engine = 'chromium', ...options} = {}) {
+  if (!['chromium', 'webkit'].includes(engine)) throw new Error('Unknown test browser engine');
   const shared = process.env.BROWSER_WS_ENDPOINT;
-  const browser = shared && !options.proxy && !options.executablePath
+  const browser = shared && engine === 'chromium' && !options.proxy && !options.executablePath
     ? await chromium.connect(shared)
+    : engine === 'webkit' ? await webkit.launch({headless: true, ...options})
     : await chromium.launch({headless: true, ...options, args: [...new Set([...BROWSER_ARGS, ...(options.args || [])])]});
-  const cache = process.env.BROWSER_TILE_CACHE;
-  if (cache) {
-    const newContext = browser.newContext.bind(browser);
-    // browser.newPage() creates its context through this method as well.
-    browser.newContext = async (...args) => {
-      const context = await newContext(...args);
-      await cacheOtherOrigins(context, cache);
-      return context;
-    };
-  }
+  const blocked = [];
+  const close = browser.close.bind(browser);
+  browser.close = async (...args) => {
+    await close(...args);
+    if (blocked.length) throw new Error('Unmocked browser network requests were blocked: ' + [...new Set(blocked)].join(', '));
+  };
+  const newContext = browser.newContext.bind(browser);
+  // Browser.newPage() creates its context through this method too. Service
+  // workers can bypass Playwright routing, so disable them for browser tests.
+  browser.newContext = async (options = {}) => {
+    const context = await newContext({...options, serviceWorkers: 'block'});
+    await guardBrowserNetwork(context, {blocked});
+    await isolatePublicOrm(context, {onBlocked: url => {const value = new URL(url);blocked.push(value.origin + value.pathname);}});
+    return context;
+  };
   return browser;
+}
+
+
+export {fetchLoopbackNoRedirect, isLoopbackHttp, isPublicOrm, localOrmAuditTarget, localOrmTarget} from './browser-policy.mjs';
+
+// Installed BEFORE optional generic caching. A later explicit test fixture
+// route can fulfill requests without contacting the public provider.
+export async function isolatePublicOrm(context, {mirror = process.env.ATLAS_TEST_ORM_URL, warn = console.warn, onBlocked = () => {}} = {}) {
+  // Validate the configured local destination even before requests arrive.
+  if (mirror) localOrmTarget('https://openrailwaymap.app/', mirror);
+  // A local TileJSON response may advertise any supported loopback host/port.
+  // Once a mirror is configured, route every non-navigation loopback request
+  // through the same no-redirect boundary as rewritten public ORM requests.
+  // Initial page/subframe navigations remain first-party, while explicit test
+  // fixture routes registered later still take precedence over this guard.
+  const guarded = url => isPublicOrm(url) || Boolean(mirror && isLoopbackHttp(url));
+  await context.route(guarded, async route => {
+    const request = route.request(), original = request.url();
+    if (isLoopbackHttp(original) && request.isNavigationRequest?.()) return route.fallback();
+    const local = isPublicOrm(original)
+      ? localOrmTarget(original, mirror)
+      : localOrmAuditTarget(original, mirror);
+    if (!local) {
+      onBlocked(original);
+      warn('Blocked automated OpenRailwayMap request (no fixture/local instance): ' + original);
+      return route.abort('blockedbyclient');
+    }
+    try {
+      const response = await fetchLoopbackNoRedirect(route, local, mirror);
+      const options = typeof response.routeFulfillOptions === 'function'
+        ? response.routeFulfillOptions()
+        : {response};
+      return await route.fulfill(options);
+    } catch (error) {
+      warn('Local OpenRailwayMap fixture failed: ' + error.message);
+      return route.abort('failed').catch(() => {});
+    }
+  });
 }
 
 const local = url => {
@@ -51,23 +97,31 @@ const local = url => {
 // One entry per URL and byte range.
 export const cacheKey = (url, range = '') => createHash('sha256').update(`${url}\n${range}`).digest('hex');
 
+// Legacy cache utility retained for cache-format regression tests. The browser
+// harness never installs it; installing it on a guarded context still cannot
+// send a provider miss out through its wrapped route.continue().
 export async function cacheOtherOrigins(context, directory, {now = Date.now, maxAge = TILE_CACHE_DAYS * 86400000} = {}) {
   await mkdir(directory, {recursive: true});
   // A check may close its page or context while a request is still on its
   // way; the route then fails quietly instead of crashing the check, and an
-  // answer that cannot be kept is simply not kept.
-  await context.route(url => !local(url.href ?? url), route => serve(route, directory, {now, maxAge}).catch(() => route.abort().catch(() => {})));
+  // answer that cannot be kept is simply not kept. Every supported loopback
+  // address stays live, including IPv6, so local audits never replay stale data.
+  await context.route(url => !local(url.href ?? url) && !isLoopbackHttp(url) && !isPublicOrm(url), route => serve(route, directory, {now, maxAge}).catch(() => route.abort().catch(() => {})));
 }
 async function serve(route, directory, {now, maxAge}) {
   const request = route.request();
-  if (request.method() !== 'GET') return route.fallback();
+  if (isPublicOrm(request.url()) || request.method() !== 'GET') return route.fallback();
   const range = (await request.allHeaders()).range || '';
   const key = cacheKey(request.url(), range), file = join(directory, key);
   try {
     const entry = JSON.parse(await readFile(`${file}.json`, 'utf8'));
     if (now() - entry.saved < maxAge) {
       const body = entry.size ? await readFile(`${file}.body`) : Buffer.alloc(0);
-      return await route.fulfill({status: entry.status, headers: entry.headers, body});
+      if (validProviderVectorTile(request.url(), entry.status, body))
+        return await route.fulfill({status: entry.status, headers: entry.headers, body});
+      // Discard an already-poisoned cache entry and ask the network again.
+      await rm(`${file}.json`, {force: true}); await rm(`${file}.body`, {force: true});
+      await writeFile(join(directory, '.changed'), '');
     }
   } catch {}
   // A miss goes out from the browser itself, as it would without the cache:
@@ -77,6 +131,7 @@ async function serve(route, directory, {now, maxAge}) {
   const response = await request.response();
   if (!response || !CACHED_STATUS.has(response.status())) return;
   const body = await response.body(), headers = {};
+  if (!validProviderVectorTile(request.url(), response.status(), body)) return;
   for (const [name, value] of Object.entries(await response.allHeaders())) if (!DROPPED_HEADERS.has(name.toLowerCase())) headers[name] = value;
   // Written under a temporary name and renamed, so a concurrent check never
   // reads half an entry.

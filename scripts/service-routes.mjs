@@ -145,6 +145,11 @@ export function stageChange(table, stage) {
 export const suspiciousChange = ({routes, ways}) =>
   (routes.total >= 20 && routes.stale > routes.total * 0.2) || (ways.total > 100 && ways.stale > ways.total * 0.2);
 function settle(table, stage, commit) {
+  const rejected = new Map();
+  if (commit) for (const route of table.routes.values()) {
+    const accepted = acceptedRelation(route), candidate = route.next[stage]?.membership;
+    if (accepted?.snapshot && candidate && !candidate.snapshot) rejected.set(route.key, new Set(accepted.eligible));
+  }
   for (const [map, key] of [[table.routes, 'key'], [table.ways, 'id']]) for (const item of [...map.values()]) {
     const part = partOf(item);
     if (map === table.routes && commit) {
@@ -152,7 +157,15 @@ function settle(table, stage, commit) {
       item.evidence = reconcileRelations(accepted, item.next[stage]?.membership);
       if (!item.evidence) delete item.evidence;
     }
-    if (commit) { if (stage in item.next) part[stage] = item.next[stage]; else delete part[stage]; }
+    if (commit && map === table.ways && rejected.size) {
+      // Reject the membership delta along with its unverified declaration.
+      // Retain only this stage's previous, still-eligible associations; never
+      // borrow old memberships from another stage or revive a superseded way.
+      const retained = (part[stage] || []).filter(key => rejected.get(key)?.has(item.id));
+      const next = (item.next[stage] || []).filter(key => !rejected.has(key));
+      const memberships = [...new Set([...next, ...retained])].sort();
+      if (memberships.length) part[stage] = memberships; else delete part[stage];
+    } else if (commit) { if (stage in item.next) part[stage] = item.next[stage]; else delete part[stage]; }
     if (map === table.ways) {
       if (item.retiredGeometry) delete item.retiredGeometry[stage];
       const candidate = item.nextGeometry?.[stage] || (item.nextLines?.[stage] ? legacyGeometry(item.nextLines[stage]) : null);
@@ -309,7 +322,9 @@ export function geometrySummary({routes, ways}) {
     if (status.status === 'conflict') conflictWays.push(way.id);
     if (status.status === 'unknown') unknownWays.push(way.id);
     const pending = [...Object.values(way.nextGeometry || {}), ...Object.values(way.retiredGeometry || {})].reduce(reconcileGeometry, null);
-    if (pending && JSON.stringify(pending) !== JSON.stringify(evidence)) pendingWays.push(way.id);
+    // Pending is a transaction state, even when drawing uses that same
+    // fallback or its geometry is identical to the accepted frontier.
+    if (pending) pendingWays.push(way.id);
     for (const key of wayRoutes(way, routes)) if (routes.has(key)) {
       if (status.drawable) drawable.add(key);
       if (!status.drawable || status.missing.length || ['partial', 'conflict'].includes(status.status)) missing.add(key);
@@ -322,7 +337,7 @@ export function geometrySummary({routes, ways}) {
   const relationIds = keys => [...keys].map(key => routeView(routes.get(key)).relation).sort((a, b) => a - b);
   return {schema: 2, waysWithoutGeometry, waysWithPartialGeometry: partialWays, waysWithConflicts: conflictWays,
     waysWithUnknownProvenance: unknownWays, waysWithPendingEvidence: pendingWays,
-    routeRelationsWithoutGeometry: relationIds([...routes.keys()].filter(key => !drawable.has(key))),
+    routeRelationsWithoutGeometry: relationIds([...routes.keys()].filter(key => routeView(routes.get(key)).active !== false && !drawable.has(key))),
     routeRelationsWithPartialGeometry: relationIds([...missing].filter(key => drawable.has(key))), details, relations: relationSummary(routes, ways)};
 }
 // Relations of one service (the same kind, network, reference and colour…)

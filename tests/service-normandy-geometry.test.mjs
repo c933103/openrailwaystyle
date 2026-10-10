@@ -18,6 +18,17 @@ const baseline = built.variants[0], decodedBaseline = decodeParisTiles(baseline.
 const headways = JSON.parse(await readFile(new URL('../styles/service-headways.json', import.meta.url), 'utf8'));
 const allProbes = fixture.probes.flatMap(terminal => terminal.negativeProbes);
 const prefix = `gtfs:${fixture.feed.source.id}:`;
+// Independent expected publication contract: preserve every original field,
+// add the digest of each original URL, and canonicalize the one bare-host URL.
+// Do not call the production sanitizer to compute its own expected output.
+const publishedSource = structuredClone(fixture.feed.source);
+for (const [record, fields] of [
+  [publishedSource, ['url', 'processed_url', 'catalogue_url', 'terms_url']],
+  [publishedSource.catalogue_attribution, ['license_url', 'source']],
+  [publishedSource.catalogue_attribution.rt[0], ['license_url', 'source']],
+  [publishedSource.feed_info, ['feed_publisher_url']],
+]) for (const field of fields) record[`${field}_sha256`] = sha256(record[field]);
+publishedSource.feed_info.feed_publisher_url = 'http://cityway.fr/';
 function assertNoNormandyGeometry(tiles) {
   for (const zoom of [9, 12, 16]) {
     const decoded = decodeParisTiles(tiles, Math.min(zoom, 12));
@@ -119,7 +130,11 @@ test('unchanged production assembly and rebuild replay authentic present and exp
     assert.equal(summary.mappedRoutes, 2);
     assert.equal(summary.pathSegments, 203);
     assert.equal(summary.availableSegments, variant.id === 'present' ? 197 : 0, 'all 203 original segments are replayed; six have no available profile');
-    assert.deepEqual(summary.source, fixture.feed.source, 'real original source dates are never rewritten to simulate expiry');
+    assert.deepEqual(summary.source, publishedSource,
+      'published source preserves the original metadata with exact safe display URLs and original-URL hashes');
+    for (const field of ['retrieved', 'checked', 'service_date', 'valid_until'])
+      assert.equal(summary.source[field], fixture.feed.source[field],
+        `real original ${field} is never rewritten to simulate expiry`);
     assert.equal(variant.manifest.worldwide.catalogue_entries, 1);
   }
 });

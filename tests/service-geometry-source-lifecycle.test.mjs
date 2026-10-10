@@ -546,3 +546,21 @@ test('source lifecycle: diagnostics bound point-level payload while retaining co
   }
   assert.equal(geometryStatus(evidence(restore(table))).missing.length, 60, 'storage preserves the uncapped raw evidence');
 });
+
+test('retired-only complete fallback remains pending through migration and NDJSON resume',()=>{
+  const table=empty(),state=layoutTwo();addResult(table,result(),'europe-a');
+  const before=visible(table),source=structuredClone(table.ways.get(101).nextGeometry['europe-a']);
+  migrateServiceDownloads(state,table);
+  for(const current of [table,restore(table)]){
+    assert.deepEqual(current.ways.get(101).nextGeometry,{});
+    assert.deepEqual(current.ways.get(101).retiredGeometry['europe:europe-a'],source);
+    assert.deepEqual(visible(current),before,'adopted fallback stays drawable');
+    assert.deepEqual(geometrySummary(current).waysWithPendingEvidence,[101]);
+    assert.equal(geometrySummary(current).details[0].pending.status,'complete');
+    assert.equal(geometrySummary(current).details[0].pending.snapshot,source.snapshot);
+  }
+  // A successful transaction for that fallback clears its retired evidence.
+  addResult(table,result(),'europe:europe-a');commitStage(table,'europe:europe-a');
+  assert.deepEqual(geometrySummary(restore(table)).waysWithPendingEvidence,[]);
+  assert.deepEqual(visible(table),before);
+});

@@ -1,11 +1,14 @@
 import {launchBrowser} from './browser.mjs';
+// This audit needs real geographic railway geometry. It must only read
+// self-hosted OpenRailwayMap tiles; the shared browser helper enforces this.
+if (!process.env.ATLAS_TEST_ORM_URL) throw new Error('Full geographic browser audit requires ATLAS_TEST_ORM_URL pointing to a local OpenRailwayMap instance (not the public tile server)');
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {waitUntil,setDefaultTimeout} from './wait-until.mjs';
 // A hang guard only: every wait below has its own timeout. The whole check
 // already takes about nine minutes on CI's software renderer.
-// Twenty minutes: with an empty provider tile cache (scripts/browser.mjs)
-// every request goes to the network, and runs took up to fifteen.
+// The full local-data audit can still take up to fifteen minutes on
+// software rendering. It is excluded from public CI.
 const deadline=setTimeout(()=>{console.error('Browser validation exceeded twenty minutes');process.exit(1);},1200000);deadline.unref();
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1365,height:900},deviceScaleFactor:1});
@@ -343,6 +346,34 @@ try{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-') && f.properties.atlas_language==='zh-Hans').length>5;
   },'Completed Chinese view must retain station labels');
+  // A loaded source and legible stations alone do not establish that the
+  // operating railway geometry rendered. Probe Wuhan on the actual map at
+  // z7, where the overview stops and the high-detail provider takes over.
+  const wuhan=await page.evaluate(async()=>{
+    const {map}=await import(document.querySelector('script[type="module"]').src);
+    const point=map.project([114.305,30.593]);
+    const layer=map.getLayer('infrastructure-tracks');
+    const tracks=layer && map.queryRenderedFeatures([[point.x-95,point.y-95],[point.x+95,point.y+95]],
+      {layers:['infrastructure-tracks']}).filter(f=>f.source==='railway' && ['LineString','MultiLineString'].includes(f.geometry.type));
+    return {zoom:map.getZoom(), infrastructureLayer:layer?.id, source:layer?.source, sourceLayer:layer?.['source-layer'],
+      infrastructureVisibility:map.getLayoutProperty('infrastructure-tracks','visibility'),
+      speedVisibility:map.getLayoutProperty('speed-tracks','visibility'),
+      providerSourceLoaded:map.isSourceLoaded('railway'),
+      providerSourceFeatures:map.querySourceFeatures('railway',{sourceLayer:'railway_line_high'}).length,
+      rendered:tracks?.length||0};
+  });
+  // Only the active Infrastructure layer can satisfy this check. A Speed,
+  // Owner or Axle layer accidentally left visible must never mask a bug.
+  assert.ok(Math.abs(wuhan.zoom-7)<0.01 && wuhan.source==='railway' &&
+    wuhan.sourceLayer==='railway_line_high' && wuhan.infrastructureVisibility!=='none' &&
+    wuhan.speedVisibility==='none', 'Wuhan test must use visible Infrastructure tracks: '+JSON.stringify(wuhan));
+  // Missing provider source features and source features that fail to render
+  // are different diagnostics. Neither is proof that isSourceLoaded suffices.
+  assert.ok(wuhan.rendered>0,
+    (wuhan.providerSourceFeatures===0 ? 'WUHAN_PROVIDER_DATA_ABSENT: no provider railway geometry was decoded' :
+      'WUHAN_TRACKS_NOT_RENDERED: provider railway geometry exists in visible tiles but Wuhan has no painted tracks')+
+    ' at zoom 7; '+JSON.stringify(wuhan));
+  console.log('PASS: Wuhan zoom-7 Infrastructure railway geometry',wuhan.rendered,'rendered line features');
   assert.equal(await page.locator('#map-status.error').count(),0,'Cancelled old requests must not leave a load-failure warning');
   const china=await page.screenshot({path:'browser-review/china-z7.jpg',type:'jpeg',quality:45});
   console.log('CHINA_IMAGE_START'+china.toString('base64')+'CHINA_IMAGE_END');
