@@ -43,6 +43,11 @@ with every profile, date, timezone and counting definition. Equal rates from
 different archives or compilations do not prove duplicate trains: unresolved
 overlap and conflicting measurements stay unavailable.
 The pipeline retains its calendar, overnight, hourly and headway semantics.
+Usable timetable counts take precedence, including zero. Missing periods keep
+audited whole-route headways where available; empty or expired timetable
+records do not hide them. Mixed profiles retain each source's period definition,
+credit and terms link in the service details, and expire together at the
+earliest contributing source expiry.
 Each section binds to its OSM coordinates, service identity and memberships;
 changed bindings are withheld at the site rebuild. Coverage and conflicts are
 reported in `frequency-manifest.json`.

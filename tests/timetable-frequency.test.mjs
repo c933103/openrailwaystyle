@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createTimetableMatcher,bindTimetableSections} from '../scripts/timetable-frequency.mjs';
-import {addResult,commitStage,toTable,buildTiles,LAYER} from '../scripts/service-routes.mjs';
+import {addResult,commitStage,toTable,buildTiles as osmTiles,LAYER} from '../scripts/service-routes.mjs';
 import {frequencyDetails,frequencyWidth} from '../styles/service-frequency.mjs';
 import Pbf from 'pbf';
 import {VectorTile} from '@mapbox/vector-tile';
 import {now,table,feed} from './fixtures/service-frequency/matching-fixture.mjs';
 const apply=(t,feeds)=>{const m=createTimetableMatcher(t,{now});for(const f of feeds)m.addFeed(f);return m.finish();};
+const buildTiles=(t,options={})=>osmTiles(t,{...options,now});
 const features=tiles=>[...tiles].filter(([k])=>k.startsWith('12/')).flatMap(([,bytes])=>{const layer=new VectorTile(new Pbf(bytes)).layers[LAYER];return Array.from({length:layer.length},(_,i)=>layer.feature(i).properties);});
 
 test('Ginza-style OSM service gets actual per-section timetable counts, hourly widths and original OSM identity',()=>{

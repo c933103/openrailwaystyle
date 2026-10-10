@@ -14,7 +14,7 @@ import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from '.
 import { installKeyboardPan } from './keyboard-pan.mjs?v=20261010-matched-frequency-1';
 import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261010-matched-frequency-1';
 import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261010-matched-frequency-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261010-matched-frequency-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261010-matched-frequency-1';
 import { installWatchGesture } from './watch-map.mjs?v=20261010-matched-frequency-1';
 import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261010-matched-frequency-1';
 import { createBundleReader } from './tile-bundles.mjs?v=20261010-matched-frequency-1';
@@ -819,9 +819,19 @@ function showServiceDetails(feature) {
   row(dl, 'Reference', p.ref);
   row(dl, 'Network', p.network);
   row(dl, 'Operator', p.operator);
-  for(const profile of [...new Set(['am','pm','offpeak','overnight',selectedFrequencyProfile(settings)])].filter(profileCovered))row(dl,FREQUENCY_LABELS[profile],frequencyDetails(p,profile)||'No matched frequency profile');
-  if(p.frequency_source){row(dl,'Frequency source',`${p.frequency_source} · checked ${p.frequency_checked}`);row(dl,'Period definitions',p.frequency_definition);row(dl,'Source credit',p.frequency_credit);row(dl,'Licence',p.frequency_license);row(dl,'Schedule note',p.frequency_note);row(dl,'Geometry',p.geometry_source);}
-  if(/^https:\/\//.test(p.frequency_url||'')){const link=textNode('a','Frequency source and terms');link.href=p.frequency_url;link.target='_blank';link.rel='noopener';panel.append(link);}
+  const profiles=[...new Set(['am','pm','offpeak','overnight',selectedFrequencyProfile(settings)])].filter(profileCovered),sources=new Map();
+  for(const profile of profiles){
+    row(dl,FREQUENCY_LABELS[profile],frequencyDetails(p,profile)||'No matched frequency profile');
+    if(p[`frequency_${profile}`]===undefined)continue;
+    const attribution=frequencyAttribution(p,profile),key=JSON.stringify(attribution);
+    if(!sources.has(key))sources.set(key,{...attribution,periods:[]});sources.get(key).periods.push(FREQUENCY_LABELS[profile]);
+  }
+  if(!sources.size&&p.frequency_source)sources.set('',frequencyAttribution(p,selectedFrequencyProfile(settings)));
+  for(const source of sources.values()){
+    if(source.frequency_source){row(dl,'Frequency source',`${source.frequency_source}${source.periods?.length?' · '+source.periods.join(', '):''} · checked ${source.frequency_checked}`);row(dl,'Period definitions',source.frequency_definition);row(dl,'Source credit',source.frequency_credit);row(dl,'Licence',source.frequency_license);row(dl,'Schedule note',source.frequency_note);}
+    if(/^https:\/\//.test(source.frequency_url||'')){const link=textNode('a','Frequency source and terms');link.href=source.frequency_url;link.target='_blank';link.rel='noopener';panel.append(link);}
+  }
+  row(dl,'Geometry',p.geometry_source);
   if (p.n > 1) row(dl, 'Services on this track', String(p.n));
   panel.append(dl);
   osmLink(panel, feature);

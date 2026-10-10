@@ -676,6 +676,19 @@ test('equal-width service details expire even after the inspected route leaves l
     window.dispatchEvent(new window.Event('pagehide'));
   }finally{dom.window.close();}
 });
+test('mixed timetable and headway details name each source, period definition and terms link',async()=>{
+ const catalog=JSON.parse(await readFile(new URL('../styles/service-headways.json',import.meta.url),'utf8'));
+ const timetable={properties:{frequency_source:'Full timetable',frequency_url:'https://example.test/timetable-terms',frequency_checked:'2026-10-05',frequency_definition:'Agency-local 07:00–09:00',frequency_date:'2026-10-05',frequency_credit:'Timetable operator',frequency_license:'CC0',frequency_until:20},profiles:{am:{rate:4,quality:'scheduled'}}};
+ const properties=frequencyModule.frequencyBundle([{ref:'ISL',network:'港鐵 MTR',kind:'subway'}],[[[114.12,22.28],[114.13,22.29]]],catalog,[timetable],1000)[0];
+ const {dom,window,maps,errors}=await start({search:'?mode=service',frequencyClock:{now:()=>1000,setTimer:()=>0,clearTimer:()=>{}}});
+ try{
+  const map=maps[0],doc=window.document;map.handlers['style.load']();map.project=([lng,lat])=>({x:500+lng*100,y:400+lat*100});
+  map.rendered=[{source:'serviceRoutes',sourceLayer:'service_routes',layer:{id:'service-routes'},properties:{...properties,id:'relation-10',ref:'ISL',kind:'subway',i:0,n:1},geometry:{type:'LineString',coordinates:[[0,0],[1,0]]}}];
+  map.handlers.click({point:{x:550,y:400},lngLat:{lng:.5,lat:0}});
+  const panel=doc.getElementById('detail-content');assert.match(panel.textContent,/Full timetable · Morning peak/);assert.match(panel.textContent,/MTR published average headways · Evening peak, Off-peak/);assert.match(panel.textContent,/clock windows are not supplied/);
+  const links=[...panel.querySelectorAll('a')].filter(a=>a.textContent==='Frequency source and terms').map(a=>a.href);assert.deepEqual(links,[timetable.properties.frequency_url,catalog.source.url]);assert.equal(errors.length,0);
+ }finally{dom.window.close();}
+});
 test('app starts with the MapLibre 5 API and enables map controls', async () => {
   const {dom,window,maps,errors} = await start();
   try {

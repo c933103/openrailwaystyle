@@ -16,7 +16,7 @@ try{
  const output=join(temp,'feed.json'),run=spawnSync('python3',['tests/fixtures/service-frequency/compile-matching-fixture.py',output],{encoding:'utf8'});
  assert.equal(run.status,0,run.stderr);
  const feed=JSON.parse(await readFile(output,'utf8')),osm=table(),matcher=createTimetableMatcher(osm,{now});matcher.addFeed(feed);
- const artifact=matcher.finish(),tiles=buildTiles(osm,{timetables:bindTimetableSections(osm,artifact).sections});
+ const artifact=matcher.finish(),tiles=buildTiles(osm,{timetables:bindTimetableSections(osm,artifact).sections,now});
  await mkdir('browser-review',{recursive:true});
  for(const engine of ['chromium','webkit']){
   const browser=await launchBrowser({engine});

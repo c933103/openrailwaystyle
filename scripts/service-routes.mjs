@@ -458,7 +458,7 @@ export function joinLines(lines) {
 // own: a GTFS route is often an individual train service, and a feed's
 // "shapes" can be bare stop-to-stop chords. Frequencies only ever attach to
 // these routes (headways).
-export function buildTiles({routes, ways}, {headways, timetables} = {}) {
+export function buildTiles({routes, ways}, {headways, timetables, now=Date.now()} = {}) {
   const out = new Map(), sets = [[new Map(), MIN_ZOOM, LOCAL_MIN_ZOOM - 1, r => !LOCAL_KINDS.includes(r.kind)], [new Map(), LOCAL_MIN_ZOOM, MAX_ZOOM, () => true]];
   const service = serviceRoutes({routes, ways});
   for (const way of ways.values()) {
@@ -478,7 +478,7 @@ export function buildTiles({routes, ways}, {headways, timetables} = {}) {
     if (!lines.length) continue;
     for (const [groups, , , shown] of sets) {
       const list = all.filter(shown);
-      const frequency = headways || records.size ? frequencyBundle(list, lines, headways, list.map(r=>records.get(r.relation))) : null;
+      const frequency = headways || records.size ? frequencyBundle(list, lines, headways, list.map(r=>records.get(r.relation)),now) : null;
       // Names as name and name:xx, as the map's other labels, so they follow
       // the label language.
       list.forEach((route, i) => {
