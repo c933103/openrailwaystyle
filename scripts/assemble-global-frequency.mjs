@@ -1,9 +1,12 @@
 // Assemble all completed worldwide shards: the inventory, the manifest and
-// the compiled feeds, kept for matching timetable routes to OSM routes. No
-// map tiles are built from them: the Service view draws OSM routes only
+// the compiled feeds and OSM-bound section-count aggregates. No standalone
+// map tiles are built from timetables: the Service view draws OSM routes only
 // (service-routes.mjs). Only one feed is held at a time.
 import {readFile,readdir,mkdir,writeFile,rm} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
+import {gunzipSync,gzipSync} from 'node:zlib';
+import {readTable} from './service-routes.mjs';
+import {createTimetableMatcher} from './timetable-frequency.mjs';
 import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
 import {timetableFeatures} from './gtfs-service.mjs';
@@ -204,7 +207,9 @@ export async function pruneFrequencyOutputs(directory,entries){
   let files;try{files=await readdir(join(directory,'feeds'));}catch(error){if(error.code==='ENOENT')return;throw error;}
   for(const file of files)if(!wanted.has('feeds/'+file))await rm(join(directory,'feeds',file),{recursive:true,force:true});
 }
-export async function assemble(directory){
+export async function assemble(directory,{osmTable,now=Date.now()}={}){
+  const table=readTable(osmTable ? gunzipSync(await readFile(osmTable)).toString() : '');
+  const matcher=createTimetableMatcher(table,{now});
   const names=(await readdir(directory)).filter(n=>/^inventory-\d+\.json$/.test(n));
   const shards=await Promise.all(names.map(async name=>JSON.parse(await readFile(join(directory,name),'utf8'))));
   const inventory=mergeInventories(shards);
@@ -219,7 +224,8 @@ export async function assemble(directory){
     const feed=await readFrequencyFeed(join(directory,entry.output));
     if(feed.source.id!==entry.id||feed.source.sha256!==entry.sha256||feed.source.service_date!==inventory.service_date)throw new Error(`Unverified feed ${redactText(entry.id)}`);
     // No tiles are built, so a feed's size no longer fails it here.
-    const data=timetableFeatures([feed],Date.now(),{summaryOnly:true});
+    const data=timetableFeatures([feed],now,{summaryOnly:true});
+    matcher.addFeed(feed);
     summary.push(...data.summary);
     console.log(redactText(entry.id),feed.routes.length,'rail services');
   }
@@ -233,14 +239,17 @@ export async function assemble(directory){
   const countriesMapped=[...new Set(summary.filter(f=>f.mappedRoutes>0).map(f=>compiledById.get(f.id)?.country).filter(Boolean))].sort();
   inventory.counts=counts;
   inventory.reason_codes=reasonCounts;
-  const manifest=publishedMetadata({schema:3,service_date:inventory.service_date,catalogue_url:inventory.catalogue_url,catalogue_sha256:inventory.catalogue_sha256,catalogue_entries:inventory.catalogue_entries,
+  const applied=publishedMetadata(matcher.finish());
+  const appliedBytes=gzipSync(JSON.stringify(applied),{level:9});
+  await writeFile(join(directory,'profiles.json.gz'),appliedBytes);
+  const manifest=publishedMetadata({schema:3,applied_profiles:{schema:1,file:'profiles.json.gz',sha256:createHash('sha256').update(appliedBytes).digest('hex'),osm_sha256:applied.osm_sha256,sections:applied.sections.length,matching:applied.matching},service_date:inventory.service_date,catalogue_url:inventory.catalogue_url,catalogue_sha256:inventory.catalogue_sha256,catalogue_entries:inventory.catalogue_entries,
     catalogue_provenance:inventory.catalogue_provenance,
     countries_scanned:countrySet(()=>true),
     countries_compiled:countrySet(e=>e.status==='compiled'),
     countries_with_mapped_feed:countriesMapped,
     reason_codes:reasonCounts,
     counts,feeds:summary,tiles:0,
-    scope:'Whole worldwide catalogue scanned. Compiled timetables are kept for matching to OSM routes and draw no lines; failed, excluded, unshaped and expired sources are explicitly reported. Coverage is not complete worldwide.'});
+    scope:'Whole worldwide catalogue scanned. Timetable counts are applied to verified OSM service sections; unmatched, ambiguous, conflicting, expired and unusable sources remain explicit gaps. Timetables add no geometry. Coverage is partial.'});
   await writeFile(join(tileRoot,'index.json'),JSON.stringify({tiles:[]}));
   await writeFile(join(directory,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
   await writeFile(join(directory,'inventory.json'),JSON.stringify(publishedMetadata(inventory),null,2)+'\n');
@@ -250,4 +259,4 @@ export async function assemble(directory){
     mappedFeeds:summary.filter(f=>f.mappedRoutes>0).length,reasonCodes:reasonCounts})));
   return manifest;
 }
-if(process.argv[1]&&resolve(process.argv[1])===resolve(new URL(import.meta.url).pathname))await assemble(process.argv[2]||'frequency-output');
+if(process.argv[1]&&resolve(process.argv[1])===resolve(new URL(import.meta.url).pathname))await assemble(process.argv[2]||'frequency-output',{osmTable:process.argv[3]});

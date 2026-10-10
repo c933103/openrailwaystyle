@@ -110,7 +110,11 @@ test('conflicting explicit platforms at one live instant are deterministic acros
   for (let singleton = 0; singleton < source.length; singleton++) {
     for (const pair of permutations(source.filter((_, i) => i !== singleton))) {
       const lists = [feed([source[singleton]], 'one'), feed(pair, 'two')];
-      for (const order of permutations(lists)) assert.deepEqual(rows(order), expected);
+      for (const order of permutations(lists)) {
+        // Different fixture feeds deliberately have different trip IDs.
+        const presentation = values => values.map(({tripId, stopId, ...row}) => row);
+        assert.deepEqual(presentation(rows(order)), presentation(expected));
+      }
     }
   }
 });

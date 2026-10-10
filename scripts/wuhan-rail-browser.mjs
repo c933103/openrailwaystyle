@@ -17,18 +17,47 @@ async function inspectWuhanRail({plan,waitForReady=false}) {
   const {map}=await import(document.querySelector('script[type="module"]').src);
   const {zoom,center,layer,source,sourceLayer,speedLayer}=plan;
   const actualCenter=map.getCenter(),point=map.project(center),radius=95;
+  const box=[[point.x-radius,point.y-radius],[point.x+radius,point.y+radius]];
   const target=Math.abs(map.getZoom()-zoom)<0.01 && Math.abs(actualCenter.lng-center[0])<0.01 && Math.abs(actualCenter.lat-center[1])<0.01;
   const sourceLoaded=Boolean(map.getSource(source) && map.isSourceLoaded(source));
   const presentRail=f=>['LineString','MultiLineString'].includes(f.geometry.type) && f.properties.feature==='rail' && (!f.properties.state || f.properties.state==='present');
+  // Source queries include every loaded tile. Clip projected segments against
+  // the same closed screen box as the rendered query; endpoint-only or feature
+  // bounding-box tests misclassify crossing lines and near-corner misses.
+  const intersectsSegment=(a,b)=>{
+    if(![a.x,a.y,b.x,b.y].every(Number.isFinite))return false;
+    let enter=0,leave=1;
+    for(const [start,end,min,max] of [[a.x,b.x,box[0][0],box[1][0]],[a.y,b.y,box[0][1],box[1][1]]]) {
+      const delta=end-start;
+      if(delta===0) {if(start<min || start>max)return false;continue;}
+      const first=(min-start)/delta,last=(max-start)/delta;
+      enter=Math.max(enter,Math.min(first,last));
+      leave=Math.min(leave,Math.max(first,last));
+      if(enter>leave)return false;
+    }
+    return true;
+  };
+  const intersectsSample=geometry=>{
+    const parts=geometry.type==='LineString'?[geometry.coordinates]:geometry.coordinates;
+    for(const part of parts) {
+      let previous;
+      for(const coordinate of part) {
+        const current=map.project(coordinate);
+        if(previous && intersectsSegment(previous,current))return true;
+        previous=current;
+      }
+    }
+    return false;
+  };
   // getLayer() exposes MapLibre's runtime object (sourceLayer), whereas the
   // public serialized style retains the specification's source-layer key.
   const active=map.getStyle().layers.find(item=>item.id===layer);
   const sourceFeatures=map.getSource(source)?map.querySourceFeatures(source,{sourceLayer}):[];
-  const tracks=active?map.queryRenderedFeatures([[point.x-radius,point.y-radius],[point.x+radius,point.y+radius]],{layers:[layer]}):[];
+  const tracks=active?map.queryRenderedFeatures(box,{layers:[layer]}):[];
   const report={zoom:map.getZoom(),center:[actualCenter.lng,actualCenter.lat],layer:active?.id,source:active?.source,sourceLayer:active?.['source-layer'],
     infrastructureVisibility:active?map.getLayoutProperty(layer,'visibility'):null,
     speedVisibility:map.getLayer(speedLayer)?map.getLayoutProperty(speedLayer,'visibility'):null,
-    sourceLoaded,providerSourceFeatures:sourceFeatures.length,providerPresentRail:sourceFeatures.filter(presentRail).length,
+    sourceLoaded,providerSourceFeatures:sourceFeatures.length,providerPresentRail:sourceFeatures.filter(f=>presentRail(f) && intersectsSample(f.geometry)).length,
     rendered:tracks.filter(f=>f.source===source && presentRail(f)).length};
   // Hidden sources may retain cancelled loading tiles. Wait only for this
   // visible railway source and its rendered lines, never unrelated map.loaded().
@@ -47,8 +76,8 @@ export function assertWuhanRail(report,zoom) {
   'Wuhan test must use city-centred visible Infrastructure tracks: '+JSON.stringify(report));
   assert.ok(report.sourceLoaded,'WUHAN_PROVIDER_NOT_READY: railway source did not finish loading; '+JSON.stringify(report));
   assert.ok(report.rendered>0,
-    (report.providerPresentRail===0?'WUHAN_PROVIDER_DATA_ABSENT: no present provider railway lines were decoded':
-      'WUHAN_TRACKS_NOT_RENDERED: provider railway lines exist in loaded tiles but Wuhan has no rendered tracks')+
+    (report.providerPresentRail===0?'WUHAN_PROVIDER_DATA_ABSENT: no present provider railway lines intersect the Wuhan sample':
+      'WUHAN_TRACKS_NOT_RENDERED: provider railway lines intersect the Wuhan sample but it has no rendered tracks')+
     ` at zoom ${zoom}; `+JSON.stringify(report));
   return report;
 }

@@ -37,7 +37,11 @@ test('hidden, wrong thematic, wrong source and off-centre checks are rejected',(
 test('actual browser sampler uses one city-centred source and rendered-line observation',async()=>{
   const {readWuhanRail,checkWuhanRailZoom}=await import('../scripts/wuhan-rail-browser.mjs');
   let zoom=6,center=WUHAN_CENTER,renderedOverride,sourceOverride,sourceReady=true,frameReady=false,sampledBeforeTargetFrame=false,renderListener;
-  const queries=[],line={source:'railway',geometry:{type:'LineString'},properties:{feature:'rail',state:'present'}};
+  // Synthetic screen coordinates are converted through the same projection
+  // used for the city centre; rounded fixture output keeps boundary cases exact.
+  const at=(x,y)=>[WUHAN_CENTER[0]+(x-500)/1024,WUHAN_CENTER[1]-(y-400)/1024];
+  const geometry=(type,coordinates)=>({type,coordinates:type==='MultiLineString'?coordinates.map(part=>part.map(([x,y])=>at(x,y))):coordinates.map(([x,y])=>at(x,y))});
+  const queries=[],line={source:'railway',geometry:geometry('LineString',[[490,390],[510,410]]),properties:{feature:'rail',state:'present'}};
   const features=()=>[
     {...line,source:wuhanRailPlan(zoom).source},
     {...line,geometry:{type:'Point'}},
@@ -45,7 +49,8 @@ test('actual browser sampler uses one city-centred source and rendered-line obse
     {...line,properties:{feature:'rail',state:'abandoned'}},
   ];
   const map={
-    getZoom:()=>zoom,getCenter:()=>({lng:center[0],lat:center[1]}),project:point=>{assert.deepEqual(point,WUHAN_CENTER);return {x:500,y:400};},
+    getZoom:()=>zoom,getCenter:()=>({lng:center[0],lat:center[1]}),
+    project:([lng,lat])=>({x:Number((500+(lng-WUHAN_CENTER[0])*1024).toFixed(8)),y:Number((400-(lat-WUHAN_CENTER[1])*1024).toFixed(8))}),
     getSource:()=>({}),isSourceLoaded:()=>sourceReady,isMoving:()=>false,
     loaded:()=>{throw new Error('Unrelated sources must not gate this diagnostic');},
     // MapLibre runtime layers use camel-case sourceLayer; getStyle() returns
@@ -85,6 +90,31 @@ test('actual browser sampler uses one city-centred source and rendered-line obse
     renderedOverride=[];
     const filtered=await readWuhanRail(page,8);
     assert.throws(()=>assertWuhanRail(filtered,8),/WUHAN_TRACKS_NOT_RENDERED/);
+    // Source queries cover all loaded tiles; classification must use exactly
+    // the rendered query's closed [405,305]–[595,495] screen-space box.
+    for(const [name,type,coordinates,expected] of [
+      ['outside right','LineString',[[610,400],[700,400]],0],
+      ['overlapping bounds but segment misses corner','LineString',[[590,250],[700,320]],0],
+      ['horizontal crossing with both endpoints outside','LineString',[[300,400],[700,400]],1],
+      ['vertical crossing with both endpoints outside','LineString',[[500,200],[500,600]],1],
+      ['diagonal crossing with both endpoints outside','LineString',[[300,200],[700,600]],1],
+      ['later polyline segment intersects','LineString',[[300,250],[350,250],[500,400]],1],
+      ['left boundary overlap','LineString',[[405,250],[405,550]],1],
+      ['top boundary overlap','LineString',[[300,305],[700,305]],1],
+      ['corner touch','LineString',[[300,200],[405,305]],1],
+      ['just outside boundary','LineString',[[300,304.99],[700,304.99]],0],
+      ['multi-line later part crosses','MultiLineString',[[[300,200],[350,250]],[[300,400],[700,400]]],1],
+      ['multi-line parts must not be connected','MultiLineString',[[[300,400],[350,400]],[[650,400],[700,400]]],0],
+      ['degenerate segment inside','LineString',[[500,400],[500,400]],1],
+      ['degenerate segment outside','LineString',[[700,400],[700,400]],0],
+    ]) {
+      sourceOverride=[{...line,geometry:geometry(type,coordinates)}];
+      const scoped=await readWuhanRail(page,8);
+      assert.equal(scoped.providerSourceFeatures,1,name+' retains loaded-tile context');
+      assert.equal(scoped.providerPresentRail,expected,name+' must use actual segment intersection');
+      assert.equal(scoped.rendered,0);
+      assert.throws(()=>assertWuhanRail(scoped,8),expected?/WUHAN_TRACKS_NOT_RENDERED/:/WUHAN_PROVIDER_DATA_ABSENT/,name);
+    }
     sourceOverride=[];
     const empty=await readWuhanRail(page,8);
     assert.throws(()=>assertWuhanRail(empty,8),/WUHAN_PROVIDER_DATA_ABSENT/);
