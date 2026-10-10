@@ -204,6 +204,28 @@ placement priority, proximity/deduplication and settings. The separate
 `node scripts/check-search-api.mjs` probes the public station-search API and CORS;
 CI treats its external-service failure as non-blocking.
 
+The self-hosted station-density audit shares successful responses between its
+before/after maps so both compare byte-identical inputs. Its in-memory replay
+cache coalesces concurrent requests by validated local target, retaining only
+HTTP 200, 204 and 206 responses. HTTP failures and fetch/body rejections are
+removed before the next application attempt, allowing a recovered local server
+to answer. Every cache miss still uses the loopback-only, no-redirect transport;
+TileJSON validation and all density/readiness assertions remain unchanged. No
+synthetic empty tile replaces a failure. Before each paired density measurement,
+both pages reset their station sources through MapLibre's public source setters.
+If either side encounters a failed station response or source/protocol error,
+including page-local errors after a successful transport, both counts are
+discarded and logged in the separate density-invalidated JSON artifact, both pages reset
+again, and the pair is measured once more. Each reset must confirm source-data
+invalidation; a no-op or failed setter cannot reuse retained tiles. A second
+failed attempt fails the audit rather than accepting unequal inputs. Recovery
+never erases evidence that the other page saw a missing tile. Each viewport gets
+a fresh cache, so changed fixtures are reread on the next comparison. The legacy
+disk cache is still unused. `tests/browser-response-cache.test.mjs` covers
+recovery, replay and the current local-only boundary with controlled responses.
+`tests/station-density-comparison.test.mjs` covers paired invalidation and the
+pinned MapLibre source/tile-manager reset path without WebGL or geographic data.
+
 For documentation-only changes, check relative links, heading anchors, command
 accuracy and `git diff --check`; no new application tests are needed.
 
