@@ -904,7 +904,7 @@ export const countryLayers = [
         "==",
         "class",
         "country"
- 
+      ]
     ],
     "layout": {
       "text-field": "{name:en}",
