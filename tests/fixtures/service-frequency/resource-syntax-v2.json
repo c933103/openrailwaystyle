@@ -1,0 +1,334 @@
+{
+  "normalization": "http-resource-syntax-v2",
+  "canonical": [
+    {
+      "url": "https://public.test/a/%2E%2e/%7Efeed;v=%61?q=%7e%2f",
+      "key": [
+        "https",
+        "public.test",
+        443,
+        "/~feed;v=a",
+        "q=~%2F"
+      ]
+    },
+    {
+      "url": "https://[2606:4700:0000:0000:0000:0000:0000:1111]:443/a/../",
+      "key": [
+        "https",
+        "2606:4700::1111",
+        443,
+        "/",
+        ""
+      ]
+    },
+    {
+      "url": "https://public.test/a//b/./",
+      "key": [
+        "https",
+        "public.test",
+        443,
+        "/a//b/",
+        ""
+      ]
+    }
+  ],
+  "pairs": [
+    {
+      "a": "https://public.test/a%2Fb",
+      "b": "https://public.test/a%2fb",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a;p=%3A",
+      "b": "https://public.test/a;p=%3a",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/feed?v=%2F",
+      "b": "https://public.test/feed?v=%2f",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/feed?%6A=v",
+      "b": "https://public.test/feed?%6a=v",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/%66eed.zip",
+      "b": "https://public.test/feed.zip",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a;p=%61",
+      "b": "https://public.test/a;p=a",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/feed?region=%61",
+      "b": "https://public.test/feed?region=a",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/%7euser/%41%5a%30%39%2d%2e%5f",
+      "b": "https://public.test/~user/AZ09-._",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a/./b",
+      "b": "https://public.test/a/b",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a/../b",
+      "b": "https://public.test/b",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a/%2E%2e/b",
+      "b": "https://public.test/b",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a/.%2e/b",
+      "b": "https://public.test/b",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a;param/../b",
+      "b": "https://public.test/b",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a/..;x/b",
+      "b": "https://public.test/b",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/a//b",
+      "b": "https://public.test/a/b",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/a//../b",
+      "b": "https://public.test/a/b",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a/.",
+      "b": "https://public.test/a/",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a/..",
+      "b": "https://public.test/",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/../a",
+      "b": "https://public.test/a",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a/../../b",
+      "b": "https://public.test/b",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a/",
+      "b": "https://public.test/a",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/a;",
+      "b": "https://public.test/a",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a;b;",
+      "b": "https://public.test/a;b",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/a%2Fb",
+      "b": "https://public.test/a/b",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/a%252f",
+      "b": "https://public.test/a%252F",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/a/%252e%252e/b",
+      "b": "https://public.test/b",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/a%3Fb",
+      "b": "https://public.test/a?b",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/feed?v=a%2Fb",
+      "b": "https://public.test/feed?v=a/b",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/feed?v=a%26b",
+      "b": "https://public.test/feed?v=a&b",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/feed?v=+",
+      "b": "https://public.test/feed?v=%20",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/feed?a=1&b=2",
+      "b": "https://public.test/feed?b=2&a=1",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/feed?a=1&a=2",
+      "b": "https://public.test/feed?a=2&a=1",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/feed?v=A",
+      "b": "https://public.test/feed?v=B",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/feed?v=%3A",
+      "b": "https://public.test/feed?v=%3B",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/feed?v=/a/../b",
+      "b": "https://public.test/feed?v=/b",
+      "equal": false
+    },
+    {
+      "a": "https://[2606:4700:0000:0000:0000:0000:0000:1111]/feed",
+      "b": "https://[2606:4700::1111]/feed",
+      "equal": true
+    },
+    {
+      "a": "https://[2606:4700::1111]/feed",
+      "b": "https://[2606:4700::1001]/feed",
+      "equal": false
+    },
+    {
+      "a": "HTTPS://PUBLIC.TEST.:443/a#one",
+      "b": "https://public.test/a#two",
+      "equal": true
+    },
+    {
+      "a": "https://public.test/a",
+      "b": "http://public.test/a",
+      "equal": false
+    },
+    {
+      "a": "https://public.test/a",
+      "b": "https://other.test/a",
+      "equal": false
+    }
+  ],
+  "invalid": [
+    "https://public.test/a%zz",
+    "https://public.test/a%2",
+    "https://public.test/%A%31",
+    "https://public.test/feed?v=%",
+    "https://public.test/feed?%A%31=x",
+    "http://001.002.003.004/feed",
+    "http://01.02.03.04/feed",
+    "http://0x1.0x2.0x3.0x4/feed",
+    "http://0X01020304/feed",
+    "http://16909060/feed",
+    "http://1.2.772/feed",
+    "http://1.131844/feed",
+    "http://1.2.3/feed",
+    "http://1.2/feed",
+    "http://1/feed",
+    "http://1.2.3.08/feed",
+    "http://4294967296/feed",
+    "http://1.2.3.999/feed",
+    "http://1.2.3.4./feed",
+    "http://1.2.3.4../feed",
+    "http://+16909060/feed",
+    "http://-1/feed",
+    "http://1.2.3.-4/feed",
+    "http://%31.2.3.4/feed",
+    "http://\uff10\uff10\uff11.\uff10\uff10\uff12.\uff10\uff10\uff13.\uff10\uff10\uff14/feed",
+    "http://\uff11.\uff12.\uff13.\uff14/feed"
+  ],
+  "host_admission": {
+    "unsupported": [
+      "http://001.002.003.004/feed",
+      "http://01.02.03.04/feed",
+      "http://0x1.0x2.0x3.0x4/feed",
+      "http://0X01020304/feed",
+      "http://16909060/feed",
+      "http://1.2.772/feed",
+      "http://1.131844/feed",
+      "http://1.2.3/feed",
+      "http://1.2/feed",
+      "http://1/feed",
+      "http://1.2.3.08/feed",
+      "http://4294967296/feed",
+      "http://1.2.3.999/feed",
+      "http://1.2.3.4./feed",
+      "http://1.2.3.4../feed",
+      "http://+16909060/feed",
+      "http://-1/feed",
+      "http://1.2.3.-4/feed",
+      "http://%31.2.3.4/feed",
+      "http://\uff10\uff10\uff11.\uff10\uff10\uff12.\uff10\uff10\uff13.\uff10\uff10\uff14/feed",
+      "http://\uff11.\uff12.\uff13.\uff14/feed"
+    ],
+    "supported": [
+      "http://1.2.3.4/feed",
+      "http://8.8.8.8/feed",
+      "http://127.0.0.1/feed",
+      "http://[2606:4700::1111]/feed",
+      "http://[2606:4700:0000:0000:0000:0000:0000:1111]/feed",
+      "http://provider.test/feed",
+      "http://123.provider.test/feed",
+      "http://0xfeed.provider.test/feed",
+      "http://feed123.provider.test/feed",
+      "http://provider.test./feed",
+      "http://xn--e1afmkfd.xn--p1ai/feed"
+    ]
+  },
+  "userinfo_admission": {
+    "unsupported": [
+      "https://synthetic-user:synthetic-pass@public.test/feed",
+      "https://synthetic-user@public.test/feed",
+      "https://@public.test/feed",
+      "https://:synthetic-pass@public.test/feed",
+      "https://synthetic-user:@public.test/feed",
+      "https://synthetic%40user@public.test/feed",
+      "https://synthetic%3Auser@public.test/feed",
+      "https://synthetic-user@@public.test/feed",
+      "https://synthetic-user@[2001:db8::1]/feed",
+      "https://synthetic-user:synthetic-pass@[2001:db8::1]:443/feed",
+      "https://public%40other.test/feed",
+      "https://public.test%3A443/feed",
+      "https://public.test%2Fother/feed",
+      "https://%5B2001:db8::1%5D/feed"
+    ],
+    "supported": [
+      "https://public.test/feed",
+      "https://public.test",
+      "https://public.test#section",
+      "https://public.test?mode=synthetic-value",
+      "https://public.test:443#section",
+      "http://192.0.2.1/feed",
+      "https://[2001:db8::1]/feed",
+      "https://[2001:db8::1]#section",
+      "https://public.test/a@b",
+      "https://public.test/a%40b?value=a%3Ab%40c",
+      "https://public.test/feed?name=a@b#section"
+    ]
+  }
+}

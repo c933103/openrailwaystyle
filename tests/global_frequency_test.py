@@ -18,6 +18,54 @@ spec=importlib.util.spec_from_file_location('global_frequency',Path(__file__).pa
 pipeline=importlib.util.module_from_spec(spec);spec.loader.exec_module(pipeline)
 
 
+# Separate fixture input context. No context is reconstructed from row fields.
+PUBLICATION_CONTEXTS = {}
+
+def input_context(records, pin='b'*40):
+    pub = pipeline.registry.publication
+    index = pub.build_index(pub.encoded(records), pipeline.registry.catalogue_sources(pin)[0])
+    context = pub.Context(index)
+    PUBLICATION_CONTEXTS[context.input_sha256] = context
+    return context
+
+def fixture_context(row):
+    resolution = row.get('source_resolution')
+    evidence = resolution.get('publication_evidence') if isinstance(resolution, dict) else None
+    key = evidence.get('input_sha256') if isinstance(evidence, dict) else None
+    return PUBLICATION_CONTEXTS.get(key)
+
+def fixture_build_catalogue(licences, definitions, mobility, pin=None, index=None, metadata=None):
+    context = input_context(licences, pin) if pin and len(pin) == 40 else None
+    return pipeline.registry.build_catalogue(licences, definitions, mobility, pin, index, metadata, context)
+
+def fixture_discover(rows, rules):
+    contexts = [fixture_context(row) for row in rows if fixture_context(row) is not None]
+    return pipeline.discover(rows, rules, contexts[0] if contexts else None)
+
+def fixture_candidates(entry):
+    return pipeline.source_candidates(entry, fixture_context(entry.get('catalogue') or {}))
+
+def alias_owner_literal_fixture(literal):
+    url = 'https://public.test/feed.zip'
+    index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
+        'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+    definition = ('xx', {'name': 'reference', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static', 'skip': True}, 'https://github.test/pin/xx.json')
+    mobility = [{'id': 'owner', 'data_type': 'gtfs', 'urls.direct_download': url, 'urls.authentication_type': '0'}]
+    rows = fixture_build_catalogue([], [definition], mobility, 'b'*40, index)[0]
+    owner = next(row for row in rows if row.get('delivery') == 'direct')
+    for item in owner['lineage']:
+        if item['catalogue'] == 'mobility-database': item['authentication_type'] = json.loads(literal)
+    return rows
+
+def add_published_lineage(row, source):
+    row['catalogue_url'] = pipeline.registry.catalogue_sources('b'*40)[0]
+    row.setdefault('lineage', []).append({'catalogue': 'transitous-licence', 'id': row['filename'],
+        'url': row['catalogue_url'], 'source': source})
+    context = input_context([{'filename': row['filename'], 'source': source}])
+    row['source_resolution']['publication_evidence'] = context.evidence(row['filename'])
+    return context
+
+
 class GlobalFrequency(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
@@ -30,6 +78,1027 @@ class GlobalFrequency(unittest.TestCase):
                 raise AssertionError('Unexpected network destination in offline fixture')
             return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, (host, port))]
         self.enterContext(patch.object(pipeline, 'resolve_public_addresses', side_effect=fixture_addresses))
+
+    def test_reference_alias_non_timetable_and_unknown_do_not_duplicate_acquisition(self):
+        url, held = self.server(self.archive(), ranges=False)
+        registry = pipeline.registry
+        index = {'state': 'available', 'by_id': {
+            'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
+                        'url': 'https://github.test/pinned/static.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}],
+            'gbfs': [{'feed': {'id': 'gbfs', 'spec': 'gbfs', 'urls': {'gbfs_auto_discovery': 'https://never-query.test/gbfs'}},
+                      'url': 'https://github.test/pinned/gbfs.json', 'pointer': '/feeds/0', 'blob_sha': 'b'*40}]}}
+        definitions = [('xx', {'name': name, 'type': 'transitland-atlas', 'transitland-atlas-id': ident, 'skip': True},
+                        'https://github.test/pinned/xx.json') for name, ident in [('reference', 'static'), ('bikes', 'gbfs'), ('unknown', 'missing')]]
+        rows, _ = registry.build_catalogue([], definitions, [{'id': 'owner', 'data_type': 'gtfs', 'urls.direct_download': url}], 'c'*40, index)
+        entries = fixture_discover(rows, {})
+        standalone_rows = registry.build_catalogue([], definitions[:1], [], 'c'*40, index)[0]
+        standalone = fixture_discover(standalone_rows, {})[0]
+        standalone['processed_url'] = 'https://never-query.test/invented.gtfs.zip'
+        self.assertEqual(fixture_candidates(standalone), [url], 'a stale processed URL cannot bypass explicit absent-file evidence')
+        self.assertEqual({e['id']: e['status'] for e in entries}, {'mdb_owner': 'pending', 'xx_reference': 'source_alias', 'xx_bikes': 'non_timetable', 'xx_unknown': 'retry_pending'})
+        for entry in entries:
+            if entry['status'] == 'pending': continue
+            self.assertEqual(fixture_candidates(entry), [])
+            self.assertEqual(entry['processed_url'], '')
+            with patch.object(pipeline, 'get', side_effect=AssertionError('No request permitted')):
+                with self.assertRaisesRegex(ValueError, 'not acquisition eligible'):
+                    pipeline.compile_entry(entry, self.root/'cache', self.root/'out', '2026-10-05', None, 1_000_000, pipeline.PROFILES)
+        source = self.root/'catalogue.json'; source.write_text(json.dumps(rows))
+        calls = []
+        def compile_fixture(entry, cache, output, date, graph, max_bytes, profiles, *args):
+            calls.append(entry['id'])
+            return pipeline.compile_entry(entry, cache, output, date, graph, max_bytes, profiles)
+        with patch.object(pipeline, 'compile_entry_isolated', side_effect=compile_fixture):
+            for shard in range(2):
+                argv = ['global-service-frequency.py', '--catalogue', str(source), '--cache', str(self.root/'cache'),
+                        '--output', str(self.root/'out'), '--date', '2026-10-05', '--shards', '2', '--shard', str(shard)]
+                with patch.object(sys, 'argv', argv), patch('sys.stdout', new_callable=io.StringIO): pipeline.main()
+        self.assertEqual(calls, ['mdb_owner'])
+        self.assertTrue(held['requests'])
+        outputs = list((self.root/'out'/'feeds').glob('*.json.gz'))
+        self.assertEqual([p.name for p in outputs], ['mdb_owner.json.gz'])
+        all_entries = [e for i in range(2) for e in json.loads((self.root/'out'/f'inventory-{i}.json').read_text())['entries']]
+        self.assertEqual(len(all_entries), 4)
+        self.assertEqual(next(e for e in all_entries if e['id'] == 'xx_reference')['status'], 'source_alias')
+        import os, subprocess
+        # Merge real cross-shard outcomes; this acquisition fixture intentionally
+        # supplies no OSM graph, so it makes no map-geometry coverage claim.
+        program = "import{mergeInventories}from'./scripts/assemble-global-frequency.mjs';import{readFileSync}from'node:fs';const root=process.argv[1];console.log(JSON.stringify(mergeInventories([0,1].map(i=>JSON.parse(readFileSync(root+'/inventory-'+i+'.json','utf8')))).counts))"
+        assembly = subprocess.run([os.environ.get('ATLAS_TEST_NODE', 'node'), '--input-type=module', '-e', program, str(self.root/'out')], cwd=pipeline.ROOT, capture_output=True, text=True)
+        self.assertEqual(assembly.returncode, 0, assembly.stdout+assembly.stderr)
+        self.assertEqual(json.loads(assembly.stdout), {'compiled': 1, 'non_timetable': 1, 'source_alias': 1, 'retry_pending': 1})
+
+    def test_malformed_resolution_and_alias_targets_fail_closed(self):
+        base = {'filename': 'x.gtfs.zip', 'source': 'https://operator.test/feed', 'delivery': 'direct', 'lineage': [{'catalogue': 'mobility-database', 'id': 'known', 'source': 'https://operator.test/feed', 'url': pipeline.registry.MOBILITY_CSV, 'status': '', 'authentication_type': ''}]}
+        for value in [[], 'schedule', {'schema': 2}, {'schema': 1, 'state': 'schedule', 'specs': ['gbfs'], 'declarations': []}, {'schema': 1, 'state': 'non_timetable_format', 'specs': ['gtfs'], 'declarations': []},
+                      {'schema': 1, 'state': 'schedule', 'specs': ['gtfs'], 'declarations': [], 'processed_filename': '../escape.zip'}]:
+            with self.subTest(value=value):
+                entry = fixture_discover([{**base, 'source_resolution': value}], {})[0]
+                self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
+                self.assertEqual(fixture_candidates(entry), [])
+        state = {'schema': 1, 'state': 'schedule', 'specs': ['gtfs'], 'declarations': [],
+                 'processed_filename': None, 'acquisition_alias_of': 'missing', 'alias_source_sha256': 'a'*64}
+        entry = fixture_discover([{**base, 'source_resolution': state}], {})[0]
+        self.assertEqual(entry['reason_code'], 'ambiguous_source_reference')
+        self.assertEqual(fixture_candidates(entry), [])
+
+    def test_reference_alias_requires_compatible_owner_policy_and_full_candidate_set(self):
+        url = 'https://public.test/feed.zip'
+        index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
+            'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+        definition = ('xx', {'name': 'reference', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static', 'skip': True}, 'https://github.test/pin/xx.json')
+        rows = fixture_build_catalogue([], [definition], [{'id': 'owner', 'data_type': 'gtfs', 'urls.direct_download': url, 'location.country_code': 'CN'}], 'b'*40, index)[0]
+        entries = {e['id']: e for e in fixture_discover(rows, {})}
+        self.assertEqual(entries['mdb_owner']['reason_code'], 'provider_policy')
+        self.assertEqual(entries['xx_reference']['reason_code'], 'ambiguous_source_reference')
+        self.assertIn('incompatible acquisition policy', entries['xx_reference']['reason'])
+        self.assertEqual(fixture_candidates(entries['xx_reference']), [])
+        ordinary = ('xx', {'name': 'reference', 'type': 'http', 'url': 'https://independent.test/rail.zip'}, 'https://github.test/pin/xx.json')
+        rows = fixture_build_catalogue([], [ordinary, definition], [{'id': 'owner', 'data_type': 'gtfs', 'urls.direct_download': url}], 'b'*40, index)[0]
+        entry = next(e for e in fixture_discover(rows, {}) if e['id'] == 'xx_reference')
+        self.assertEqual(entry['status'], 'pending')
+        self.assertIn('https://independent.test/rail.zip', fixture_candidates(entry))
+        self.assertEqual(entry['processed_url'], pipeline.PROCESSED+'xx_reference.gtfs.zip')
+        self.assertIsNone(entry['catalogue']['source_resolution']['acquisition_alias_of'])
+
+    def test_reference_override_does_not_erase_inherited_authorization(self):
+        url = 'https://private.test/feed.zip'
+        index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs',
+            'authorization': {'type': 'header', 'param_name': 'Authorization'}, 'urls': {'static_current': url}},
+            'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+        definition = ('xx', {'name': 'reference', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static',
+            'url-override': 'https://override.test/feed.zip'}, 'https://github.test/pin/xx.json')
+        rows = fixture_build_catalogue([], [definition], [], 'b'*40, index)[0]
+        entry = fixture_discover(rows, {})[0]
+        self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
+        self.assertEqual(fixture_candidates(entry), [])
+        self.assertEqual(rows[0]['source_resolution']['declarations'][0]['resolution']['state'], 'authorization_required')
+        rows = fixture_build_catalogue([{'filename': 'xx_reference.gtfs.zip', 'source': url}], [definition], [], 'b'*40, index)[0]
+        entry = fixture_discover(rows, {})[0]
+        self.assertEqual(fixture_candidates(entry), [pipeline.PROCESSED+'xx_reference.gtfs.zip'])
+
+    def test_authenticated_mobility_reference_requires_distinct_public_static_evidence(self):
+        private = 'https://private.test/feed.zip'; public = 'https://public.test/rail.zip'
+        definition = ('xx', {'name': 'rail', 'type': 'mobility-database', 'mdb-id': 'private'}, 'https://github.test/pin/xx.json')
+        mobility = [{'id': 'private', 'data_type': 'gtfs', 'urls.direct_download': private, 'urls.authentication_type': '1'}]
+        rows = fixture_build_catalogue([], [definition], mobility, 'b'*40)[0]
+        entry = fixture_discover(rows, {})[0]
+        self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
+        self.assertEqual(fixture_candidates(entry), [])
+        for source in [public, private]:
+            ordinary = ('xx', {'name': 'rail', 'type': 'http', 'url': source}, 'https://github.test/pin/xx.json')
+            rows = fixture_build_catalogue([], [definition, ordinary], mobility, 'b'*40)[0]
+            entry = fixture_discover(rows, {})[0]
+            self.assertNotIn(private, fixture_candidates(entry))
+            self.assertEqual(entry['status'], 'pending' if source == public else 'retry_pending')
+            if source == public:
+                self.assertIn(public, fixture_candidates(entry))
+        rows = fixture_build_catalogue([{'filename': 'xx_rail.gtfs.zip', 'source': private}], [definition], mobility, 'b'*40)[0]
+        entry = fixture_discover(rows, {})[0]
+        self.assertEqual(fixture_candidates(entry), [pipeline.PROCESSED+'xx_rail.gtfs.zip'])
+
+    def test_multiple_static_reference_identities_in_malformed_schema_fail_closed(self):
+        import copy, hashlib
+        url = 'https://public.test/rail.zip'
+        index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
+            'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+        definition = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static'}, 'https://github.test/pin/xx.json')
+        row = fixture_build_catalogue([], [definition], [], 'b'*40, index)[0][0]
+        other = copy.deepcopy(row['source_resolution']['declarations'][0]); other['id'] = 'b'*64; other['reference_id'] = 'other'
+        other['resolution']['endpoints'][0].update(url='https://other.test/rail.zip', url_sha256=hashlib.sha256(b'https://other.test/rail.zip').hexdigest())
+        row['source_resolution']['declarations'].append(other)
+        entry = fixture_discover([row], {})[0]
+        self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
+        self.assertEqual(fixture_candidates(entry), [])
+
+    def test_reference_access_and_companion_matrix(self):
+        static_url = 'https://public.test/rail.zip'; override = 'https://override.test/rail.zip'
+        for required in [False, True]:
+            for options in [{}, {'url-override': override}, {'url-override': override, 'api-key': 'fixture-secret'},
+                            {'url-override': 'https://fixture-user:fixture-password@override.test/rail.zip'}]:
+                with self.subTest(required=required, option_names=list(options)):
+                    feed = {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': static_url}}
+                    if required:
+                        feed['authorization'] = {'type': 'header', 'param_name': 'Authorization'}
+                    index = {'state': 'available', 'by_id': {'static': [{'feed': feed,
+                        'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+                    definition = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static', **options}, 'https://github.test/pin/xx.json')
+                    row = fixture_build_catalogue([], [definition], [], 'b'*40, index)[0][0]
+                    entry = fixture_discover([row], {})[0]
+                    credentialed = required or 'api-key' in options or 'fixture-password' in options.get('url-override', '')
+                    self.assertEqual(entry['status'], 'retry_pending' if credentialed else 'pending')
+                    self.assertEqual(bool(fixture_candidates(entry)), not credentialed)
+                    for secret in ['fixture-user', 'fixture-password', 'fixture-secret']:
+                        self.assertNotIn(secret, json.dumps(row))
+        for auth in ['', '0', 'none', '1', '2']:
+            definition = ('xx', {'name': 'rail', 'type': 'mobility-database', 'mdb-id': 'known'}, 'https://github.test/pin/xx.json')
+            rows = fixture_build_catalogue([], [definition], [{'id': 'known', 'data_type': 'gtfs', 'urls.direct_download': static_url, 'urls.authentication_type': auth}], 'b'*40)[0]
+            entry = fixture_discover(rows, {})[0]
+            self.assertEqual(entry['status'], 'pending' if auth in ('', '0', 'none') else 'retry_pending')
+        for first in ['static', 'rt']:
+            feeds = {'static': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': static_url}},
+                     'rt': {'id': 'rt', 'spec': 'gtfs-rt', 'authorization': {'type': 'header', 'param_name': 'Authorization'},
+                            'urls': {'realtime_trip_updates': 'https://private.test/rt'}}}
+            index = {'state': 'available', 'by_id': {key: [{'feed': feed, 'url': 'https://github.test/pin/data.json',
+                'pointer': '/feeds/'+str(i), 'blob_sha': 'a'*40}] for i, (key, feed) in enumerate(feeds.items())}}
+            definitions = [('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': key}, 'https://github.test/pin/xx.json')
+                for key in [first, 'rt' if first == 'static' else 'static']]
+            entry = fixture_discover(fixture_build_catalogue([], definitions, [], 'b'*40, index)[0], {})[0]
+            self.assertEqual(entry['status'], 'pending')
+            self.assertIn(static_url, fixture_candidates(entry))
+            self.assertNotIn('https://private.test/rt', fixture_candidates(entry))
+
+    def test_static_identity_option_and_selection_matrix(self):
+        import copy, hashlib
+        url = 'https://public.test/rail.zip'
+        index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
+            'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+        definition = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static'}, 'https://github.test/pin/xx.json')
+        baseline = fixture_build_catalogue([], [definition], [], 'b'*40, index)[0][0]
+        for case in ['identical_occurrence', 'different_id_same_url', 'different_options', 'different_url',
+                     'missing_selection', 'unknown_selection', 'malformed_selection']:
+            for independently_published in [False, True]:
+                with self.subTest(case=case, independently_published=independently_published):
+                    row = copy.deepcopy(baseline)
+                    if independently_published:
+                        add_published_lineage(row, url)
+                    resolution = row['source_resolution']; other = copy.deepcopy(resolution['declarations'][0])
+                    if case == 'different_id_same_url': other['id'] = 'b'*64
+                    if case == 'different_options': other['definition']['sha256'] = 'b'*64
+                    if case == 'different_url': other['resolution']['endpoints'][0].update(url='https://different.test/rail.zip', url_sha256=hashlib.sha256(b'https://different.test/rail.zip').hexdigest())
+                    if case == 'missing_selection': resolution['selected_static_declaration'] = None
+                    elif case == 'unknown_selection': resolution['selected_static_declaration'] = 'missing'
+                    elif case == 'malformed_selection': resolution['selected_static_declaration'] = []
+                    else: resolution['declarations'].append(other)
+                    entry = fixture_discover([row], {})[0]
+                    valid = case == 'identical_occurrence' or case == 'missing_selection' and independently_published
+                    self.assertEqual(entry['status'], 'pending' if valid else 'retry_pending')
+                    self.assertEqual(bool(fixture_candidates(entry)), valid)
+
+    def test_ordinary_access_options_do_not_hide_static_format_or_publish_secrets(self):
+        ordinary = ('xx', {'name': 'rail', 'type': 'http', 'url': 'https://private.test/static',
+            'http-options': {'headers': {'Ocp-Apim-Subscription-Key': 'fixture-secret'}}}, 'https://github.test/pin/xx.json')
+        rt = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'rt'}, 'https://github.test/pin/xx.json')
+        index = {'state': 'available', 'by_id': {'rt': [{'feed': {'id': 'rt', 'spec': 'gtfs-rt',
+            'authorization': {'type': 'header', 'param_name': 'Authorization'}, 'urls': {'realtime_trip_updates': 'https://private.test/rt'}},
+            'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+        row = fixture_build_catalogue([], [ordinary, rt], [], 'b'*40, index)[0][0]
+        entry = fixture_discover([row], {})[0]
+        self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
+        self.assertEqual(row['source_resolution']['specs'], ['gtfs', 'gtfs-rt'])
+        self.assertEqual(fixture_candidates(entry), [])
+        self.assertNotIn('fixture-secret', json.dumps(row))
+        self.assertEqual(row['source_resolution']['ordinary_static_declarations'][0]['access_state'], 'review_required')
+
+    def test_complete_reference_schema_consistency_before_selection(self):
+        import copy
+        url = 'https://public.test/rail.zip'
+        index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
+            'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+        definition = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static'}, 'https://github.test/pin/xx.json')
+        baseline = fixture_build_catalogue([], [definition], [], 'b'*40, index)[0][0]
+        for case in ['duplicate_stale_hash', 'duplicate_role_stale_hash', 'contradictory_authorization', 'unknown_non_companion', 'conflicting_non_companion', 'conflicting_rt_companion', 'null_lineage', 'missing_lineage']:
+            for published in [False, True]:
+                with self.subTest(case=case, published=published):
+                    row = copy.deepcopy(baseline); resolution = row['source_resolution']; declaration = resolution['declarations'][0]
+                    if published:
+                        add_published_lineage(row, url)
+                    if case == 'duplicate_stale_hash':
+                        other = copy.deepcopy(declaration); other['resolution']['endpoints'][0]['url'] = 'https://different.test/rail.zip'
+                        resolution['declarations'].append(other)
+                    elif case == 'duplicate_role_stale_hash':
+                        other = copy.deepcopy(declaration['resolution']['endpoints'][0]); other['url'] = 'https://different.test/rail.zip'
+                        declaration['resolution']['endpoints'].append(other)
+                    elif case == 'contradictory_authorization':
+                        declaration['resolution']['state'] = 'authorization_required'; resolution['selected_static_declaration'] = None
+                    elif case in ('unknown_non_companion', 'conflicting_non_companion', 'conflicting_rt_companion'):
+                        other = copy.deepcopy(declaration); other['id'] = 'b'*64; other['reference_id'] = 'missing'
+                        other['resolution'] = {'state': 'missing_reference' if case == 'unknown_non_companion' else 'conflicting_reference',
+                            'specs': ['gtfs-rt'] if case == 'conflicting_rt_companion' else [], 'endpoints': []}
+                        resolution['declarations'].append(other)
+                    elif case == 'null_lineage': row['lineage'] = None
+                    elif case == 'missing_lineage': row.pop('lineage')
+                    entry = fixture_discover([row], {})[0]
+                    valid = case in ('missing_lineage', 'conflicting_rt_companion') or case == 'unknown_non_companion' and published
+                    self.assertEqual(entry['status'], 'pending' if valid else 'retry_pending')
+                    self.assertEqual(bool(fixture_candidates(entry)), valid)
+
+    def test_alias_rejects_authenticated_owner_without_changing_owner(self):
+        import copy
+        url = 'https://public.test/feed.zip'
+        index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
+            'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+        definition = ('xx', {'name': 'reference', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static', 'skip': True}, 'https://github.test/pin/xx.json')
+        for auth in ['0', '1', '2']:
+            mobility = [{'id': 'owner', 'data_type': 'gtfs', 'urls.direct_download': url, 'urls.authentication_type': auth}]
+            standalone = fixture_build_catalogue([], [], mobility, 'b'*40, index)[0][0]
+            owner_before = fixture_discover([copy.deepcopy(standalone)], {})[0]
+            rows = fixture_build_catalogue([], [definition], mobility, 'b'*40, index)[0]
+            entries = {e['id']: e for e in fixture_discover(rows, {})}
+            self.assertEqual(entries['mdb_owner'], owner_before)
+            self.assertEqual(entries['mdb_owner']['catalogue'], standalone)
+            self.assertEqual(entries['xx_reference']['status'], 'source_alias' if auth == '0' else 'retry_pending')
+            self.assertEqual(fixture_candidates(entries['xx_reference']), [])
+
+    def test_alias_owner_literal_numbers_match_discovery_without_owner_mutation(self):
+        import copy
+        literals = ['0', '0.0', '0e0', '-0.0', '1e-400', 'null', '"0"', '"none"',
+                    '0.5', '-0.5', '1', '1e309', '-1e309', 'false', 'true', '[]', '["0"]', '{}']
+        for position, literal in enumerate(literals):
+            with self.subTest(literal=literal):
+                rows = alias_owner_literal_fixture(literal)
+                for current in [rows, pipeline.published_metadata(rows)]:
+                    owner = next(row for row in current if row.get('delivery') == 'direct')
+                    before = copy.deepcopy(owner)
+                    standalone = fixture_discover([copy.deepcopy(owner)], {})[0]
+                    entries = {e['id']: e for e in fixture_discover(current, {})}
+                    self.assertEqual(entries['mdb_owner'], standalone)
+                    self.assertEqual(owner, before)
+                    self.assertEqual(entries['xx_reference']['status'], 'source_alias' if position < 8 else 'retry_pending')
+                    self.assertEqual(fixture_candidates(entries['mdb_owner']), fixture_candidates(standalone))
+        # The equivalence is confined to owner compatibility, not static proof.
+        self.assertFalse(pipeline.registry.references.public_authentication(0.0))
+
+    def test_missing_skip_and_unproven_original_do_not_borrow_published_proof(self):
+        import copy
+        url = 'https://public.test/rail.zip'
+        index = {'state': 'available', 'by_id': {'static': [{'feed': {'id': 'static', 'spec': 'gtfs', 'urls': {'static_current': url}},
+            'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+        definition = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'static'}, 'https://github.test/pin/xx.json')
+        baseline = fixture_build_catalogue([], [definition], [], 'b'*40, index)[0][0]
+        processed = pipeline.PROCESSED+'xx_rail.gtfs.zip'
+        for published in [False, True]:
+            row = copy.deepcopy(baseline); row['source_resolution']['declarations'][0].pop('upstream_skip')
+            if published: add_published_lineage(row, url)
+            entry = fixture_discover([row], {})[0]
+            self.assertEqual(fixture_candidates(entry), [processed, url] if published else [])
+            row['source_resolution']['processed_filename'] = None
+            entry = fixture_discover([row], {})[0]
+            self.assertEqual(fixture_candidates(entry), [url], 'missing processing eligibility does not erase the proven public original')
+        row = copy.deepcopy(baseline); row['source_resolution']['selected_static_declaration'] = None
+        add_published_lineage(row, url)
+        row['source'] = 'https://unproven.test/unverified.zip'
+        entry = fixture_discover([row], {})[0]
+        self.assertEqual(entry['status'], 'pending')
+        self.assertEqual(fixture_candidates(entry), [processed, url])
+        # A stale asserted hash cannot make the unproven URL an original-source proof.
+        row['lineage'][-1]['source_sha256'] = __import__('hashlib').sha256(row['source'].encode()).hexdigest()
+        self.assertEqual(fixture_candidates(fixture_discover([row], {})[0]), [processed, url])
+
+    def test_publication_lineage_requires_complete_row_bound_identity(self):
+        import copy
+        row = {'filename': 'xx_proven.gtfs.zip', 'source': '', 'delivery': 'transitous', 'lineage': [],
+            'source_resolution': {'schema': 1, 'state': 'schedule', 'specs': ['gtfs'], 'declarations': [],
+                                  'processed_filename': 'xx_proven.gtfs.zip'}}
+        add_published_lineage(row, '')
+        processed = pipeline.PROCESSED + row['filename']
+        self.assertEqual(fixture_candidates(fixture_discover([row], {})[0]), [processed])
+        changes = [(field, None, True) for field in ['catalogue', 'id', 'url', 'source']]
+        changes += [('id', 'different.gtfs.zip', False), ('source', 17, False), ('source', 'http://bad host/feed', False)]
+        changes += [('url', value, False) for value in [row['catalogue_url']+'?fake=1', row['catalogue_url']+'#fake',
+            row['catalogue_url'].replace('github.com/', 'github.com.example/'), row['catalogue_url'].replace('github.com/', 'github.com:443/'),
+            row['catalogue_url'].replace('github.com/', 'userinfo@github.com/'), 'https://github.com/public-transport/transitous/blob/main/wrong.json']]
+        for field, value, remove in changes:
+            with self.subTest(field=field, value=value):
+                bad = copy.deepcopy(row)
+                if remove: bad['lineage'][0].pop(field)
+                else: bad['lineage'][0][field] = value
+                entry = fixture_discover([bad], {})[0]
+                self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
+                self.assertEqual(fixture_candidates(entry), [])
+        wrong = copy.deepcopy(row); wrong['catalogue_url'] += '?wrong=1'
+        self.assertEqual(fixture_candidates(fixture_discover([wrong], {})[0]), [])
+        public = copy.deepcopy(row); public['source'] = 'https://unproven.test/feed'
+        public['lineage'] = []; add_published_lineage(public, 'https://public.test/proven')
+        self.assertEqual(fixture_candidates(fixture_discover([public], {})[0]), [processed, 'https://public.test/proven'])
+        mobility = copy.deepcopy(row); mobility['source_resolution']['processed_filename'] = None
+        mobility['source'] = 'https://public.test/mobility'
+        mobility['lineage'] = [{'catalogue':'mobility-database','id':'known','url':pipeline.registry.MOBILITY_CSV,
+            'source':mobility['source'],'status':'','authentication_type':'0'}]
+        self.assertEqual(fixture_candidates(fixture_discover([mobility], {})[0]), [mobility['source']])
+        for field in mobility['lineage'][0]:
+            bad = copy.deepcopy(mobility); bad['lineage'][0].pop(field)
+            self.assertEqual(fixture_candidates(fixture_discover([bad], {})[0]), [])
+
+    def test_reference_lineage_projection_holds_without_changing_legacy_rows(self):
+        import copy
+        baseline = self.projection_fixture()
+        add_published_lineage(baseline, 'https://public.test/static')
+        for nested in [False, True]:
+            row = copy.deepcopy(baseline)
+            if nested: row['lineage'][-1]['source'] = {'authorization': {'value': 'synthetic-lineage-marker'}}
+            else: row['lineage'][-1]['authorization'] = {'value': 'synthetic-lineage-marker'}
+            prepared = pipeline.registry.prepare_catalogue_row(row)
+            self.assertNotIn('synthetic-lineage-marker', json.dumps(prepared))
+            self.assertEqual(prepared['source_resolution']['state'], 'unresolved')
+            self.assertEqual(pipeline.registry.prepare_catalogue_row(prepared), prepared)
+            self.assertEqual(fixture_candidates(fixture_discover([row], {})[0]), [])
+            for status in ['pending','retry_pending','excluded','non_timetable','compiled','source_alias']:
+                published = pipeline.published_metadata({'status':status,'catalogue':row,'source':{'catalogue_attribution':row}})
+                self.assertNotIn('synthetic-lineage-marker', json.dumps(published))
+                self.assertEqual(pipeline.published_metadata(published), published)
+        legacy = copy.deepcopy(baseline); legacy.pop('source_resolution')
+        legacy['lineage'][-1]['unrelated_fixture_field'] = 'ordinary-fixture'
+        self.assertEqual(pipeline.registry.references.project_row(legacy), legacy)
+
+    def projection_fixture(self):
+        ordinary = ('xx', {'name': 'rail', 'type': 'http', 'url': 'https://public.test/static'}, 'https://github.test/pin/xx.json')
+        rt = ('xx', {'name': 'rail', 'type': 'transitland-atlas', 'transitland-atlas-id': 'rt'}, 'https://github.test/pin/xx.json')
+        index = {'state': 'available', 'by_id': {'rt': [{'feed': {'id': 'rt', 'spec': 'gtfs-rt',
+            'authorization': {'type': 'header', 'param_name': 'Authorization', 'info_url': 'https://provider.test/docs'},
+            'urls': {'realtime_trip_updates': 'https://private.test/rt'}},
+            'url': 'https://github.test/pin/data.json', 'pointer': '/feeds/0', 'blob_sha': 'a'*40}]}}
+        return fixture_build_catalogue([], [ordinary, rt], [], 'b'*40, index)[0][0]
+
+    def test_complete_ordinary_schema_before_public_proof(self):
+        import copy
+        baseline = self.projection_fixture()
+        mutations = [(field, None, True) for field in ['type', 'spec', 'url', 'url_sha256', 'access_state', 'upstream_skip', 'definition']]
+        mutations += [('definition', {key: value for key, value in baseline['source_resolution']['ordinary_static_declarations'][0]['definition'].items() if key != missing}, False) for missing in ['url', 'pointer', 'sha256']]
+        mutations += [('definition', [], False), ('definition', {'url': 17, 'pointer': {}, 'sha256': None}, False),
+                      ('url_sha256', 'invalid', False), ('upstream_skip', 'not-a-bool', False), ('type', [], False)]
+        for field, value, remove in mutations:
+            with self.subTest(field=field, remove=remove):
+                row = copy.deepcopy(baseline); ordinary = row['source_resolution']['ordinary_static_declarations'][0]
+                if remove: ordinary.pop(field)
+                else: ordinary[field] = value
+                row['source_resolution']['processed_filename'] = None
+                entry = fixture_discover([row], {})[0]
+                self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
+                self.assertEqual(fixture_candidates(entry), [])
+        self.assertEqual(fixture_candidates(fixture_discover([baseline], {})[0]),
+            [pipeline.PROCESSED+'xx_rail.gtfs.zip', 'https://public.test/static'])
+
+    def test_unprojected_reference_payloads_never_enter_staged_or_published_metadata(self):
+        import copy
+        marker = 'synthetic-reference-projection-marker'
+        paths = [('declarations', 0, 'resolution', 'endpoints', 0, 'authorization', 'value'),
+                 ('declarations', 0, 'resolution', 'endpoints', 0, 'authorization', 'headers'),
+                 ('declarations', 0, 'api-key'), ('declarations', 0, 'definition', 'headers'),
+                 ('credentials',), ('ordinary_static_declarations', 0, 'authorization')]
+        baseline = self.projection_fixture()
+        for path in paths:
+            with self.subTest(path=path):
+                row = copy.deepcopy(baseline); target = row['source_resolution']
+                for key in path[:-1]: target = target[key]
+                target[path[-1]] = {'synthetic_marker': marker}
+                entry = fixture_discover([row], {})[0]
+                self.assertEqual(entry['reason_code'], 'unresolved_source_reference')
+                self.assertNotIn(marker, json.dumps(entry), 'staging must not retain unsupported values even when held')
+                for status in ['pending', 'retry_pending', 'excluded', 'non_timetable', 'compiled']:
+                    published = pipeline.published_metadata({'status': status, 'catalogue': row})
+                    self.assertNotIn(marker, json.dumps(published))
+                    self.assertEqual(published['catalogue']['source_resolution']['reason'], 'invalid_reference_metadata')
+                    self.assertEqual(pipeline.published_metadata(published), published)
+        for metadata in [None, [], {**baseline['source_resolution'], 'declarations': baseline['source_resolution']['declarations'] * 65},
+                         {**baseline['source_resolution'], 'reason': '😀' * 80}]:
+            projected = pipeline.registry.references.project_metadata(metadata)
+            self.assertEqual(projected['state'], 'unresolved')
+            self.assertTrue(pipeline.registry.references.metadata_shape_valid(projected))
+            self.assertEqual(pipeline.registry.references.project_metadata(projected), projected)
+        safe = pipeline.published_metadata({'catalogue': baseline})
+        auth = safe['catalogue']['source_resolution']['declarations'][0]['resolution']['endpoints'][0]['authorization']
+        self.assertEqual(auth['parameter_name'], 'Authorization')
+        self.assertEqual(auth['info_url'], 'https://provider.test/docs')
+        self.assertEqual(pipeline.published_metadata(safe), safe)
+
+    def reference_lifecycle_entry(self, url, held=None):
+        index={'state':'available','by_id':{'static':[{'feed':{'id':'static','spec':'gtfs','urls':{'static_current':url}},
+            'url':'https://github.test/pin/data.json','pointer':'/feeds/0','blob_sha':'a'*40}]}}
+        definition=('xx',{'name':'rail','type':'transitland-atlas','transitland-atlas-id':'static','skip':True},'https://github.test/xx.json')
+        row=pipeline.registry.build_catalogue([],[definition],[],'b'*40,index)[0][0]
+        if held:self.add_lifecycle_hold(row,held)
+        return pipeline.discover([row],{})[0]
+
+    def add_lifecycle_hold(self,row,url,access='authorization_required'):
+        row['source_resolution']['ordinary_static_declarations'].append({'type':'http','spec':'gtfs','url':url,
+            'url_sha256':pipeline.source_url_fingerprint(url),'access_state':access,'upstream_skip':True,
+            'definition':{'url':'https://github.test/xx.json','pointer':'/sources/1','sha256':'c'*64}})
+
+    def test_reference_holds_stop_initial_range_full_and_conditional_redirects(self):
+        for phase in ['initial','range','full','conditional']:
+            with self.subTest(phase=phase):
+                a,ah=self.server(self.archive());b,bh=self.server(self.archive());entry=self.reference_lifecycle_entry(a,b)
+                if phase=='initial':
+                    ah['redirect']=b
+                    with self.assertRaises(pipeline.SourceRetrievalError) as failure:
+                        pipeline.fetch_alternative(entry,self.root/(phase+'.zip'),1000000)
+                    self.assertEqual(failure.exception.attempts[0]['code'],'source_access_hold')
+                elif phase in ('range','full'):
+                    checked=pipeline.CheckedRequests(entry,a)
+                    remote=pipeline.RemoteZip(a,1000000,policy=checked.policy,checked_requests=checked)
+                    ah['redirect']=b
+                    with self.assertRaises(pipeline.SourceAccessHold):
+                        remote.range(0,1) if phase=='range' else remote.download()
+                else:
+                    cache=self.root/'conditional-cache';output=self.root/'conditional-out';cache.mkdir()
+                    pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                    ah['redirect']=b
+                    with self.assertRaises(pipeline.SourceRetrievalError):
+                        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                self.assertEqual(bh['requests'],[],'held hop must fail before its socket request')
+
+    def test_reference_redirect_hold_preserves_a_genuinely_public_fallback(self):
+        a,ah=self.server(self.archive());b,bh=self.server(self.archive());c,ch=self.server(self.archive());ah['redirect']=b.replace('/feed.zip','/%66eed.zip')
+        entry=self.reference_lifecycle_entry(a,b);row=entry['catalogue']
+        row['lineage'].append({'catalogue':'mobility-database','id':'fallback','url':pipeline.registry.MOBILITY_CSV,
+            'source':c,'status':'','authentication_type':'0'})
+        self.assertEqual(pipeline.source_candidates(entry),[a,c])
+        meta,attempts=pipeline.fetch_alternative(entry,self.root/'fallback.zip',1000000)
+        self.assertEqual(bh['requests'],[]);self.assertTrue(ch['requests'])
+        self.assertEqual(attempts[0]['code'],'source_access_hold')
+        self.assertEqual(meta['download_url_sha256'],pipeline.source_url_fingerprint(c))
+        self.assertTrue(pipeline.request_receipt_valid(meta['request_provenance'],c))
+
+    def test_checked_redirect_chain_blocks_new_holds_and_unknown_old_cache(self):
+        import copy
+        from urllib.error import URLError
+        for held_part in ['terminal','intermediate','old_missing','malformed','artifact_tamper']:
+            with self.subTest(held_part=held_part):
+                a,ah=self.server(self.archive());b,bh=self.server(self.archive());c,ch=self.server(self.archive())
+                ah['redirect']=b;bh['redirect']=c
+                entry=self.reference_lifecycle_entry(a);cache=self.root/('cache-'+held_part);cache.mkdir();output=self.root/('out-'+held_part)
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                meta_path=cache/'xx_rail.meta.json';archive_path=cache/'xx_rail.zip';meta=json.loads(meta_path.read_text())
+                self.assertEqual(len(meta['request_provenance']['endpoints']),3)
+                self.add_lifecycle_hold(entry['catalogue'],b if held_part=='intermediate' else c)
+                if held_part=='old_missing':meta.pop('request_provenance')
+                elif held_part=='malformed':meta['request_provenance']['unknown']='synthetic-cache-marker'
+                elif held_part=='artifact_tamper':archive_path.write_bytes(archive_path.read_bytes()+b'synthetic-tail')
+                meta_path.write_text(json.dumps(meta));before=meta_path.read_bytes();archive_before=archive_path.read_bytes();target_requests=len(ch['requests'])
+                with patch.object(pipeline,'get',side_effect=URLError('offline fixture')):
+                    with self.assertRaises(pipeline.SourceRetrievalError) as failed:
+                        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                self.assertIn('source_cache_identity_unresolved' if held_part in ('old_missing','malformed','artifact_tamper') else 'source_cache_access_hold',{a['code'] for a in failed.exception.attempts})
+                self.assertEqual(pipeline.classify_failure(failed.exception)[0],'unresolved_source_cache_identity' if held_part in ('old_missing','malformed','artifact_tamper') else 'source_access_review')
+                self.assertEqual(meta_path.read_bytes(),before);self.assertEqual(archive_path.read_bytes(),archive_before)
+                self.assertEqual(len(ch['requests']),target_requests,'offline cache rejection is not a new held-target request')
+                self.assertNotIn('synthetic-cache-marker',str(failed.exception))
+
+    def test_public_reference_cache_without_receipt_requires_fresh_evidence(self):
+        from urllib.error import URLError
+        url,_=self.server(self.archive());entry=self.reference_lifecycle_entry(url)
+        cache=self.root/'legacy-reference';cache.mkdir();output=self.root/'legacy-reference-out'
+        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        path=cache/'xx_rail.meta.json';meta=json.loads(path.read_text());meta.pop('request_provenance');path.write_text(json.dumps(meta))
+        before=path.read_bytes();archive=(cache/'xx_rail.zip').read_bytes()
+        with patch.object(pipeline,'get',side_effect=URLError('offline fixture')):
+            with self.assertRaises(pipeline.SourceRetrievalError) as failed:
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        self.assertEqual(pipeline.classify_failure(failed.exception)[0],'unresolved_source_cache_identity')
+        self.assertEqual(path.read_bytes(),before);self.assertEqual((cache/'xx_rail.zip').read_bytes(),archive)
+        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        self.assertEqual(result['status'],'compiled');self.assertFalse(result['source'].get('offline_cached',False))
+        self.assertTrue(pipeline.request_receipt_valid(json.loads(path.read_text())['request_provenance'],url))
+
+    def test_reference_terminal_binds_conditional_and_range_validators(self):
+        for phase in ['conditional_public_200','conditional_changed_304','range','full']:
+            with self.subTest(phase=phase):
+                a,ah=self.server(self.archive());b,bh=self.server(self.archive());c,ch=self.server(self.archive());ah['redirect']=b
+                entry=self.reference_lifecycle_entry(a)
+                if phase.startswith('conditional'):
+                    cache=self.root/phase;cache.mkdir();output=self.root/(phase+'-out')
+                    pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                    ah['redirect']=c
+                    if phase.endswith('304'):ch['force_304']=True
+                    if phase.endswith('304'):
+                        with self.assertRaises(pipeline.SourceRetrievalError) as failed:
+                            pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                        self.assertIn('source_identity_changed',{a['code'] for a in failed.exception.attempts})
+                    else:
+                        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                        self.assertEqual(result['acquisition_metrics'].get('conditional_not_modified',0),0)
+                        receipt=json.loads((cache/'xx_rail.meta.json').read_text())['request_provenance']
+                        self.assertEqual(receipt['terminal_resource_sha256'],pipeline.request_resource_hash(c))
+                    self.assertTrue(all(pair==(None,None) for pair in ch['conditional_requests']))
+                else:
+                    checked=pipeline.CheckedRequests(entry,a)
+                    remote=pipeline.RemoteZip(a,1000000,policy=checked.policy,checked_requests=checked)
+                    ah['redirect']=c
+                    with self.assertRaises(pipeline.SourceIdentityChanged):
+                        remote.range(0,1) if phase=='range' else remote.download()
+                    self.assertTrue(all(value is None for value in ch['range_validators']))
+
+    def test_reference_receipts_are_bounded_secret_free_and_cover_no_rail(self):
+        url,held=self.server(self.archive(rail=False));entry=self.reference_lifecycle_entry(url)
+        cache=self.root/'no-rail-receipt';cache.mkdir()
+        result=pipeline.compile_entry(entry,cache,self.root/'no-rail-out','2026-10-05',None,1000000,pipeline.PROFILES)
+        self.assertEqual(result['status'],'no_rail')
+        receipt=json.loads((cache/'xx_rail.meta.json').read_text())['request_provenance']
+        self.assertEqual(receipt['artifact_kind'],'routes');self.assertTrue(pipeline.request_receipt_valid(receipt,url))
+        checked=pipeline.CheckedRequests(entry,'https://public.test/feed?region=synthetic-private-value')
+        checked.policy('https://public.test/feed?region=synthetic-private-value');checked.response('https://public.test/feed?region=synthetic-private-value')
+        safe=checked.receipt(b'fixture');self.assertNotIn('synthetic-private-value',json.dumps(safe))
+        self.assertTrue(pipeline.request_receipt_valid(safe,'https://public.test/feed?region=synthetic-private-value'))
+        for n in range(pipeline.MAX_CHECKED_ENDPOINTS-1):checked.policy('https://public.test/'+str(n))
+        with self.assertRaisesRegex(ValueError,'endpoint budget'):checked.policy('https://public.test/overflow')
+
+    def test_reference_cache_metadata_reader_is_bounded_and_does_not_echo_invalid_bytes(self):
+        from urllib.error import URLError
+        for metadata in [b'{synthetic-cache-private-marker', b'[]', b' '* (pipeline.MAX_REFERENCE_CACHE_METADATA_BYTES+1)]:
+            url,_=self.server(self.archive());entry=self.reference_lifecycle_entry(url)
+            cache=self.root/('metadata-'+str(len(metadata)));cache.mkdir();output=cache/'out'
+            pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+            path=cache/'xx_rail.meta.json';path.write_bytes(metadata);archive=(cache/'xx_rail.zip').read_bytes()
+            with patch.object(pipeline,'get',side_effect=URLError('offline fixture')):
+                with self.assertRaises(pipeline.SourceRetrievalError) as failed:
+                    pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+            self.assertEqual(pipeline.classify_failure(failed.exception)[0],'unresolved_source_cache_identity')
+            self.assertNotIn('synthetic-cache-private-marker',str(failed.exception))
+            self.assertEqual(path.read_bytes(),metadata);self.assertEqual((cache/'xx_rail.zip').read_bytes(),archive)
+
+    def test_reference_receipt_commits_only_successful_retry_chains(self):
+        a,ah=self.server(self.archive());b,bh=self.server(self.archive());failed,fh=self.server(self.archive())
+        ah['redirect_sequence']=[failed];ah['redirect']=b;fh['retry_after']='0'
+        entry=self.reference_lifecycle_entry(a);cache=self.root/'retry-chains';cache.mkdir();output=cache/'out'
+        with patch.object(pipeline.time,'sleep'):
+            pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        receipt=json.loads((cache/'xx_rail.meta.json').read_text())['request_provenance']
+        identities={e['url_sha256'] for e in receipt['endpoints']}
+        self.assertEqual(identities,{pipeline.source_url_fingerprint(a),pipeline.source_url_fingerprint(b)})
+        self.assertTrue(fh['requests'],'the failed hop was observed but supplied no accepted archive bytes')
+        self.add_lifecycle_hold(entry['catalogue'],failed);failed_count=len(fh['requests'])
+        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        self.assertEqual(result['status'],'compiled');self.assertEqual(len(fh['requests']),failed_count)
+
+    def test_reference_same_terminal_304_preserves_checked_hop_history(self):
+        from urllib.error import URLError
+        a,ah=self.server(self.archive());b,bh=self.server(self.archive());c,ch=self.server(self.archive());ah['redirect']=b;bh['redirect']=c
+        entry=self.reference_lifecycle_entry(a);cache=self.root/'same-terminal';cache.mkdir();output=self.root/'same-terminal-out'
+        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        before=json.loads((cache/'xx_rail.meta.json').read_text())['request_provenance'];ah['redirect']=c
+        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        self.assertEqual(result['acquisition_metrics']['conditional_not_modified'],1)
+        after=json.loads((cache/'xx_rail.meta.json').read_text())['request_provenance']
+        self.assertEqual(after['artifact_sha256'],before['artifact_sha256']);self.assertEqual(len(after['endpoints']),3)
+        self.assertTrue(all(pair==(None,None) for pair in ah['conditional_requests']))
+        self.assertIn(('"one"',None),ch['conditional_requests'])
+        self.add_lifecycle_hold(entry['catalogue'],b)
+        with patch.object(pipeline,'get',side_effect=URLError('offline fixture')):
+            with self.assertRaises(pipeline.SourceRetrievalError) as failed:
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        self.assertIn('source_cache_access_hold',{a['code'] for a in failed.exception.attempts})
+
+    def test_reference_redirect_resource_and_redacted_uncertainty_controls(self):
+        for query,redacted,allowed in [('one',False,False),('two',False,True),('two',True,False)]:
+            with self.subTest(query=query,redacted=redacted):
+                a,ah=self.server(self.archive());b,bh=self.server(self.archive());ah['redirect']=b+'?region='+query+'#redirect'
+                held=b+'?region=one#declared';entry=self.reference_lifecycle_entry(a,held)
+                if redacted:entry['catalogue']['source_resolution']['ordinary_static_declarations'][0]['url']=pipeline.registry.references.reference_display_url(held)
+                if allowed:
+                    with pipeline.get(a,policy=lambda target:pipeline.source_policy(entry,target)) as response:response.read()
+                    self.assertTrue(bh['requests'])
+                else:
+                    with self.assertRaises(pipeline.SourceAccessHold):pipeline.get(a,policy=lambda target:pipeline.source_policy(entry,target))
+                    self.assertEqual(bh['requests'],[])
+
+    def test_versioned_resource_syntax_vectors_and_legacy_terms_compatibility(self):
+        refs = pipeline.registry.references
+        vectors = json.loads((Path(__file__).parent/'fixtures/service-frequency/resource-syntax-v2.json').read_text())
+        self.assertEqual(refs.RESOURCE_NORMALIZATION, vectors['normalization'])
+        for case in vectors['canonical']:
+            self.assertEqual(list(refs.resource_key(case['url'])), case['key'])
+        for case in vectors['pairs']:
+            with self.subTest(case=case):
+                self.assertTrue(refs.reference_url_valid(case['a']) and refs.reference_url_valid(case['b']))
+                self.assertEqual(refs.resource_key(case['a']) == refs.resource_key(case['b']), case['equal'])
+                self.assertNotEqual(pipeline.source_url_fingerprint(case['a']), pipeline.source_url_fingerprint(case['b']))
+        for url in vectors['invalid']:
+            self.assertIsNone(refs.resource_key(url))
+            entry = self.reference_lifecycle_entry('https://public.test/feed')
+            with patch.object(pipeline,'resolve_public_addresses') as dns:
+                with self.assertRaises(pipeline.UnsafeSourceURL): pipeline.get(url,policy=lambda target:pipeline.source_policy(entry,target))
+                dns.assert_not_called()
+        # Existing global terms decisions keep their prior lexical contract.
+        held, other = 'https://public.test/%66eed', 'https://public.test/feed'
+        legacy = {'catalogue':{},'denied_source_urls':[held]}
+        self.assertNotEqual(pipeline.acquisition_url_key(held), pipeline.acquisition_url_key(other))
+        pipeline.source_policy(legacy,other)
+        with self.assertRaises(pipeline.SourcePolicyError): pipeline.source_policy(legacy,held)
+
+    def test_resource_syntax_holds_candidates_and_current_cache_identities(self):
+        vectors = json.loads((Path(__file__).parent/'fixtures/service-frequency/resource-syntax-v2.json').read_text())
+        path = self.root/'syntax-cache.zip'; data = self.archive(); path.write_bytes(data)
+        for case in vectors['pairs']:
+            with self.subTest(case=case):
+                entry = self.reference_lifecycle_entry(case['a'])
+                checked = pipeline.CheckedRequests(entry,case['a']);checked.begin();checked.policy(case['a']);checked.response(case['a'])
+                receipt = checked.receipt(data)
+                self.add_lifecycle_hold(entry['catalogue'],case['b'])
+                self.assertEqual(bool(pipeline.source_candidates(entry)),not case['equal'])
+                self.assertEqual(pipeline.reference_cache_state(entry,{'request_provenance':receipt},path,case['a']), 'held' if case['equal'] else 'verified')
+                if case['equal']:
+                    with patch.object(pipeline,'resolve_public_addresses') as dns:
+                        with self.assertRaises(pipeline.SourceAccessHold): pipeline.get(case['a'],policy=lambda url:pipeline.source_policy(entry,url))
+                        dns.assert_not_called()
+
+    def test_resource_syntax_holds_redirects_and_binds_equivalent_terminals(self):
+        for phase in ['initial','range','full','conditional']:
+            a,ah=self.server(self.archive());b,bh=self.server(self.archive())
+            target=b.replace('/feed.zip','/a%2fb');held=b.replace('/feed.zip','/a%2Fb')
+            entry=self.reference_lifecycle_entry(a,held)
+            if phase=='initial':
+                ah['redirect']=target
+                with self.assertRaises(pipeline.SourceRetrievalError):pipeline.fetch_alternative(entry,self.root/'blocked.zip',1000000)
+            elif phase in ('range','full'):
+                checked=pipeline.CheckedRequests(entry,a);remote=pipeline.RemoteZip(a,1000000,policy=checked.policy,checked_requests=checked)
+                ah['redirect']=target
+                with self.assertRaises(pipeline.SourceAccessHold):remote.range(0,1) if phase=='range' else remote.download()
+            else:
+                cache=self.root/'syntax-conditional';cache.mkdir();output=cache/'out'
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                ah['redirect']=target
+                with self.assertRaises(pipeline.SourceRetrievalError):pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+            self.assertEqual(bh['requests'],[])
+        a,ah=self.server(self.archive());b,bh=self.server(self.archive())
+        first=b.replace('/feed.zip','/region/../a%2Fb');second=b.replace('/feed.zip','/a%2fb')
+        ah['redirect']=first;entry=self.reference_lifecycle_entry(a);cache=self.root/'syntax-equivalent';cache.mkdir();output=cache/'out'
+        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        ah['redirect']=second
+        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        self.assertEqual(result['acquisition_metrics']['conditional_not_modified'],1)
+        receipt=json.loads((cache/'xx_rail.meta.json').read_text())['request_provenance']
+        self.assertEqual(receipt['schema'],2);self.assertEqual(receipt['resource_normalization'],'http-resource-syntax-v2')
+        self.assertEqual({e['url_sha256'] for e in receipt['endpoints']},{pipeline.source_url_fingerprint(x) for x in [a,first,second]})
+        self.assertIn(('"one"',None),bh['conditional_requests'])
+
+    def test_schema_one_receipts_are_strictly_validated_without_new_identity_authority(self):
+        import copy
+        from urllib.error import URLError
+        for mode in ['public_offline','held','extra_old','bad_old_hash','unknown_current','fresh']:
+            a,ah=self.server(self.archive());b,bh=self.server(self.archive())
+            terminal=b.replace('/feed.zip','/a%2fb')+'?selector=synthetic-value%3a'
+            ah['redirect']=terminal;entry=self.reference_lifecycle_entry(a)
+            cache=self.root/('syntax-schema1-'+mode);cache.mkdir();output=cache/'out'
+            pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+            meta_path=cache/'xx_rail.meta.json';meta=json.loads(meta_path.read_text());old=meta['request_provenance']
+            old['schema']=1;old.pop('resource_normalization');urls={pipeline.source_url_fingerprint(x):x for x in [a,terminal]}
+            old['terminal_resource_sha256']=pipeline.request_resource_hash(terminal,legacy=True)
+            for endpoint in old['endpoints']:
+                endpoint['resource_sha256']=pipeline.request_resource_hash(urls[endpoint['url_sha256']],legacy=True)
+                endpoint['visible_resource_sha256']=pipeline.request_resource_hash(endpoint['url'],legacy=True)
+            self.assertTrue(pipeline.request_receipt_valid(old,a))
+            if mode=='held':self.add_lifecycle_hold(entry['catalogue'],terminal.replace('%2f','%2F').replace('%3a','%3A'))
+            elif mode=='extra_old':old['unexpected']='synthetic'
+            elif mode=='bad_old_hash':old['endpoints'][0]['visible_resource_sha256']='0'*64
+            elif mode=='unknown_current':old['schema']=2;old['resource_normalization']='unknown'
+            meta_path.write_text(json.dumps(meta));before_meta=meta_path.read_bytes();before_archive=(cache/'xx_rail.zip').read_bytes();old_copy=copy.deepcopy(old)
+            if mode=='fresh':
+                result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                current=json.loads(meta_path.read_text())['request_provenance']
+                self.assertEqual(current['schema'],2);self.assertEqual(current['resource_normalization'],'http-resource-syntax-v2')
+                self.assertEqual(result['acquisition_metrics'].get('conditional_not_modified',0),0)
+            else:
+                with patch.object(pipeline,'get',side_effect=URLError('offline fixture')):
+                    if mode=='public_offline':
+                        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                        after=json.loads(meta_path.read_text());self.assertTrue(result['source']['offline_cached'])
+                        self.assertEqual(after['request_provenance'],old_copy)
+                        self.assertEqual(after['checked'],meta['checked']);self.assertEqual(after['retrieved'],meta['retrieved'])
+                    else:
+                        with self.assertRaises(pipeline.SourceRetrievalError) as failed:pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                        self.assertEqual(pipeline.classify_failure(failed.exception)[0],'unresolved_source_cache_identity')
+                        self.assertEqual(meta_path.read_bytes(),before_meta)
+                self.assertEqual((cache/'xx_rail.zip').read_bytes(),before_archive)
+
+    def policy_receipt(self, urls, data, version=2):
+        ends=[{'url':pipeline.redacted_source_url(url),'url_sha256':pipeline.source_url_fingerprint(url),
+            'resource_sha256':pipeline.request_resource_hash(url,legacy=version==1),
+            'visible_resource_sha256':pipeline.request_resource_hash(pipeline.redacted_source_url(url),legacy=version==1)} for url in urls]
+        return {'schema':version,**({'resource_normalization':pipeline.registry.references.RESOURCE_NORMALIZATION} if version==2 else {}),
+            'candidate_sha256':pipeline.source_url_fingerprint(urls[0]),'terminal_resource_sha256':ends[-1]['resource_sha256'],
+            'artifact_kind':'archive','artifact_sha256':pipeline.hashlib.sha256(data).hexdigest(),
+            'endpoints':list({x['url_sha256']:x for x in ends}.values())}
+
+    def test_reference_cache_policy_checks_every_endpoint_before_schema_one_compatibility(self):
+        import copy
+        data=self.archive();path=self.root/'policy-matrix.zip';path.write_bytes(data)
+        a='https://candidate.test/feed';b='https://public.test/feed';c='https://terminal.test/feed'
+        for version in [1,2]:
+            for position in ['candidate','intermediate','terminal']:
+                urls=[a,b,c];index={'candidate':0,'intermediate':1,'terminal':2}[position]
+                entry=self.reference_lifecycle_entry(a)
+                receipt=self.policy_receipt(urls,data,version);meta={'request_provenance':receipt}
+                self.assertEqual(pipeline.reference_cache_state(entry,meta,path,a),'legacy_public_unverified' if version==1 else 'verified')
+                entry['denied_source_urls']=[urls[index]]
+                self.assertEqual(pipeline.reference_cache_state(entry,meta,path,a),'policy_blocked')
+                entry['denied_source_urls']=[None,'not a URL',urls[index]]
+                self.assertEqual(pipeline.reference_cache_state(entry,meta,path,a),'policy_blocked','malformed unrelated entries cannot remove a valid denial')
+                entry['denied_source_urls']=None
+                self.assertEqual(pipeline.reference_cache_state(entry,meta,path,a),'policy_unverified')
+                entry.pop('denied_source_urls');urls[index]='https://provider.ru/feed';candidate=urls[0]
+                receipt=self.policy_receipt(urls,data,version)
+                self.assertEqual(pipeline.reference_cache_state(entry,{'request_provenance':receipt},path,candidate),'policy_blocked')
+                self.assertEqual(path.read_bytes(),data)
+            row=self.reference_lifecycle_entry(a)
+            self.assertEqual(pipeline.reference_cache_state(row,{},path,a),'destination_unverified')
+            self.assertEqual(pipeline.reference_cache_state({'catalogue':{}},{},path,a),'legacy')
+
+    def test_reference_cache_query_policy_uncertainty_preserves_lexical_semantics(self):
+        import copy
+        data=self.archive();path=self.root/'policy-query.zip';path.write_bytes(data);a='https://candidate.test/feed'
+        cases=[
+            ('https://public.test/feed','https://PUBLIC.test:443/feed#fragment','policy_blocked'),
+            ('https://public.test/feed?','https://public.test/feed#fragment','policy_blocked'),
+            ('https://public.test/a%2fb','https://public.test/a%2Fb','eligible'),
+            ('https://public.test/a/../feed','https://public.test/feed','eligible'),
+            ('https://public.test/feed?mode=synthetic-one','https://public.test/feed?mode=synthetic-one','policy_blocked'),
+            ('https://public.test/feed?mode=synthetic-one','https://PUBLIC.test:443/feed?mode=synthetic-one#fragment','policy_unverified'),
+            ('https://public.test/feed?mode=synthetic-one','https://public.test/feed?mode=synthetic-two','policy_unverified'),
+            ('https://public.test/feed?mode=synthetic-one','https://other.test/feed?mode=synthetic-two','eligible'),
+            ('https://public.test/feed?mode=synthetic-one','https://public.test/other?mode=synthetic-two','eligible'),
+            ('https://public.test/feed?mode=synthetic-one','https://public.test/feed?other=synthetic-two','eligible'),
+            ('https://public.test/feed?a=one&b=two','https://public.test/feed?b=two&a=one','eligible'),
+            ('https://public.test/feed?a=one&a=two','https://public.test/feed?a=two&a=one','policy_unverified'),
+            ('https://public.test/feed?%6dode=one','https://public.test/feed?mode=one','policy_unverified'),
+            ('https://public.test/feed?flag','https://public.test/feed?flag=','policy_unverified'),
+            ('https://public.test/feed?mode=one','https://public.test/feed?'+('&'.join('x'+str(i)+'=v' for i in range(129))),'policy_unverified'),
+            ('https://public.test/feed?mode=one','https://other.test/feed?'+('&'.join('x'+str(i)+'=v' for i in range(129))),'eligible')]
+        for version in [1,2]:
+            for target,denied,expected in cases:
+                receipt=self.policy_receipt([a,target],data,version);entry=self.reference_lifecycle_entry(a);entry['denied_source_urls']=[denied]
+                state=pipeline.reference_cache_state(entry,{'request_provenance':receipt},path,a)
+                self.assertEqual(state,('legacy_public_unverified' if version==1 else 'verified') if expected=='eligible' else expected)
+            original='https://public.test/feed?mode=synthetic-one'
+            entry=self.reference_lifecycle_entry(original);entry['denied_source_urls']=['https://public.test/feed?mode=synthetic-two']
+            receipt=self.policy_receipt([original],data,version)
+            self.assertEqual(pipeline.reference_cache_state(entry,{'request_provenance':receipt},path,original),'legacy_public_unverified' if version==1 else 'verified','an available raw original preserves genuinely distinct values')
+            # A retained candidate hash cannot stand in for a different endpoint.
+            changed=copy.deepcopy(receipt);other=self.policy_receipt(['https://different.test/feed?mode=one'],data,version)['endpoints'][0]
+            other['url_sha256']=pipeline.source_url_fingerprint(original);changed['endpoints']=[other];changed['terminal_resource_sha256']=other['resource_sha256']
+            self.assertTrue(pipeline.request_receipt_valid(changed,original))
+            self.assertEqual(pipeline.reference_cache_state(entry,{'request_provenance':changed},path,original),'invalid')
+            entry['denied_source_urls']=[original]
+            changed=copy.deepcopy(receipt);changed['endpoints'][0]['resource_sha256']='0'*64;changed['terminal_resource_sha256']='0'*64
+            self.assertEqual(pipeline.reference_cache_state(entry,{'request_provenance':changed},path,original),'invalid')
+
+    def test_changed_reference_cache_policy_never_resurrects_bytes_after_outage(self):
+        from urllib.error import URLError
+        for version in [1,2]:
+            for mode in ['denied','uncertain','missing','allowed','fallback']:
+                a,ah=self.server(self.archive());b,bh=self.server(self.archive());c,ch=self.server(self.archive())
+                target=b+('?mode=synthetic-one' if mode=='uncertain' else '');ah['redirect']=target
+                entry=self.reference_lifecycle_entry(a);cache=self.root/f'policy-outage-{version}-{mode}';cache.mkdir();output=cache/'out'
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                meta_path=cache/'xx_rail.meta.json';meta=json.loads(meta_path.read_text());archive=(cache/'xx_rail.zip').read_bytes()
+                meta['request_provenance']=self.policy_receipt([a,target],archive,version)
+                if mode=='missing':meta.pop('request_provenance')
+                elif mode=='uncertain':entry['denied_source_urls']=[b+'?mode=synthetic-two']
+                elif mode!='allowed':entry['denied_source_urls']=[target]
+                else:entry['denied_source_urls']=[b.replace('/feed.zip','/different.zip')]
+                meta_path.write_text(json.dumps(meta));before_meta=meta_path.read_bytes();before_compiled=(output/'feeds/xx_rail.json.gz').read_bytes()
+                get=pipeline.get;seen=[]
+                def offline(url,headers=None,**kwargs):
+                    seen.append((url,dict(headers or {})))
+                    if mode=='fallback' and url==c:return get(url,headers,**kwargs)
+                    raise URLError('synthetic offline fixture')
+                if mode=='fallback':entry['catalogue']['lineage'].append({'catalogue':'mobility-database','id':'fallback','url':pipeline.registry.MOBILITY_CSV,'source':c,'status':'','authentication_type':'0'})
+                with patch.object(pipeline,'get',side_effect=offline):
+                    if mode in ('allowed','fallback'):
+                        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                        self.assertEqual(result['status'],'compiled')
+                        self.assertEqual(bool(result['source'].get('offline_cached')),mode=='allowed')
+                    else:
+                        with self.assertRaises(pipeline.SourceRetrievalError) as failed:pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                        expected={'denied':'source_cache_policy_restriction','uncertain':'unresolved_source_cache_policy','missing':'unresolved_source_cache_identity'}[mode]
+                        self.assertEqual(pipeline.classify_failure(failed.exception),(expected,'retrieval'))
+                        self.assertNotIn('synthetic-one',json.dumps(failed.exception.attempts));self.assertNotIn('synthetic-two',json.dumps(failed.exception.attempts))
+                        self.assertEqual(meta_path.read_bytes(),before_meta);self.assertEqual((output/'feeds/xx_rail.json.gz').read_bytes(),before_compiled)
+                if mode!='fallback':self.assertEqual((cache/'xx_rail.zip').read_bytes(),archive)
+                if mode!='allowed':self.assertTrue(all('If-None-Match' not in headers and 'If-Modified-Since' not in headers for _,headers in seen))
+                if mode=='fallback':self.assertEqual(json.loads(meta_path.read_text())['download_url_sha256'],pipeline.source_url_fingerprint(c))
+
+    def test_provider_policy_changed_after_mocked_checked_cache_is_not_offline_permission(self):
+        from urllib.error import URLError
+        data=self.archive();a='https://candidate.test/feed';target='https://provider.ru/feed'
+        class Response(io.BytesIO):
+            status=200
+            url=target
+            headers={'ETag':'"synthetic"','Content-Length':str(len(data))}
+        def synthetic_get(url,headers=None,**kwargs):
+            kwargs['policy'](url);kwargs['policy'](target)
+            return Response(data)
+        for version in [1,2]:
+            entry=self.reference_lifecycle_entry(a);cache=self.root/f'provider-policy-{version}';cache.mkdir();output=cache/'out'
+            with patch.object(pipeline,'EXCLUDED',set()),patch.object(pipeline,'get',side_effect=synthetic_get):
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+            path=cache/'xx_rail.zip';meta_path=cache/'xx_rail.meta.json';meta=json.loads(meta_path.read_text())
+            meta['request_provenance']=self.policy_receipt([a,target],path.read_bytes(),version);meta_path.write_text(json.dumps(meta));before=meta_path.read_bytes()
+            self.assertEqual(pipeline.reference_cache_state(entry,meta,path,a),'policy_blocked')
+            with patch.object(pipeline,'get',side_effect=URLError('synthetic outage')):
+                with self.assertRaises(pipeline.SourceRetrievalError) as failed:pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+            self.assertEqual(pipeline.classify_failure(failed.exception)[0],'source_cache_policy_restriction');self.assertEqual(meta_path.read_bytes(),before)
+            self.assertEqual(path.read_bytes(),data)
+
+    def test_reference_userinfo_grammar_and_safe_projection(self):
+        import copy
+        refs=pipeline.registry.references
+        vectors=json.loads((Path(__file__).parent/'fixtures/service-frequency/resource-syntax-v2.json').read_text())['userinfo_admission']
+        baseline=self.projection_fixture()
+        for url in vectors['unsupported']:
+            self.assertFalse(refs.reference_url_valid(url));self.assertIsNone(refs.resource_key(url))
+            row=copy.deepcopy(baseline);row['source']=url;row['source_sha256']=pipeline.source_url_fingerprint(url)
+            ordinary=row['source_resolution']['ordinary_static_declarations'][0]
+            ordinary.update(url=url,url_sha256=row['source_sha256'])
+            for value in [pipeline.registry.prepare_catalogue_row(row),pipeline.published_metadata(row)]:
+                self.assertEqual(value['source_resolution']['state'],'unresolved')
+                self.assertEqual(value['source_sha256'],row['source_sha256'])
+                self.assertNotIn('synthetic-user',json.dumps(value));self.assertNotIn('synthetic-pass',json.dumps(value))
+                entry=fixture_discover([value],{})[0]
+                self.assertEqual(fixture_candidates(entry),[])
+            self.assertEqual(pipeline.published_metadata(pipeline.published_metadata(row)),pipeline.published_metadata(row))
+        for url in vectors['supported']:
+            self.assertTrue(refs.reference_url_valid(url));self.assertIsNotNone(refs.resource_key(url))
+        self.assertEqual(fixture_candidates(fixture_discover([baseline],{})[0]),[pipeline.PROCESSED+'xx_rail.gtfs.zip','https://public.test/static'])
+
+    def test_reference_userinfo_metadata_does_not_hide_independent_public_source(self):
+        private='https://synthetic-user:synthetic-pass@private.test/rail.zip';public='https://public.test/rail.zip'
+        index={'state':'available','by_id':{'static':[{'feed':{'id':'static','spec':'gtfs','urls':{'static_current':private}},
+            'url':'https://github.test/pin/data.json','pointer':'/feeds/0','blob_sha':'a'*40}]}}
+        definition=('xx',{'name':'rail','type':'transitland-atlas','transitland-atlas-id':'static'},'https://github.test/pin/xx.json')
+        for independent in [False,True]:
+            definitions=[definition]+([('xx',{'name':'rail','type':'http','url':public},'https://github.test/pin/xx.json')] if independent else [])
+            row=fixture_build_catalogue([],definitions,[],'b'*40,index)[0][0]
+            entry=fixture_discover([row],{})[0]
+            self.assertEqual(entry['status'],'pending' if independent else 'retry_pending')
+            self.assertEqual(fixture_candidates(entry),[pipeline.PROCESSED+'xx_rail.gtfs.zip',public] if independent else [])
+            self.assertEqual(row['source_resolution']['declarations'][0]['resolution']['state'],'malformed_reference')
+            self.assertNotIn('synthetic-user',json.dumps(row));self.assertNotIn('synthetic-pass',json.dumps(row))
+
+    def test_userinfo_receipts_and_transport_never_gain_authority(self):
+        import copy
+        refs=pipeline.registry.references
+        vectors=json.loads((Path(__file__).parent/'fixtures/service-frequency/resource-syntax-v2.json').read_text())['userinfo_admission']
+        public='https://public.test/feed';entry=self.reference_lifecycle_entry(public)
+        data=b'synthetic archive bytes';path=self.root/'userinfo-cache.zip';path.write_bytes(data)
+        for version in [1,2]:
+            endpoint=pipeline.request_endpoint(public)
+            if version==1:
+                endpoint['resource_sha256']=endpoint['visible_resource_sha256']=pipeline.request_resource_hash(public,legacy=True)
+            receipt={'schema':version,**({'resource_normalization':refs.RESOURCE_NORMALIZATION} if version==2 else {}),
+                'candidate_sha256':pipeline.source_url_fingerprint(public),'terminal_resource_sha256':endpoint['resource_sha256'],
+                'artifact_kind':'archive','artifact_sha256':pipeline.hashlib.sha256(data).hexdigest(),'endpoints':[endpoint]}
+            self.assertTrue(pipeline.request_receipt_valid(receipt,public))
+            self.assertEqual(pipeline.reference_cache_state(entry,{'request_provenance':receipt},path,public),'legacy_public_unverified' if version==1 else 'verified')
+            for url in vectors['unsupported']:
+                for position in ['candidate','intermediate','terminal']:
+                    changed=copy.deepcopy(receipt);candidate=url if position=='candidate' else public
+                    if position=='candidate':changed['candidate_sha256']=pipeline.source_url_fingerprint(url)
+                    else:
+                        bad={**endpoint,'url':url,'url_sha256':pipeline.source_url_fingerprint(url)}
+                        changed['endpoints'].insert(0 if position=='intermediate' else len(changed['endpoints']),bad)
+                    self.assertFalse(pipeline.request_receipt_valid(changed,candidate))
+                    self.assertEqual(pipeline.reference_cache_state(entry,{'request_provenance':changed},path,candidate),'invalid')
+                with patch.object(pipeline,'resolve_public_addresses') as dns:
+                    with self.assertRaises(pipeline.UnsafeSourceURL):pipeline.get(url,policy=lambda u:pipeline.source_policy(entry,u))
+                    dns.assert_not_called()
+        self.assertEqual(path.read_bytes(),data)
+
+    def test_reference_host_admission_preserves_supported_keys_and_legacy_transport(self):
+        refs=pipeline.registry.references
+        vectors=json.loads((Path(__file__).parent/'fixtures/service-frequency/resource-syntax-v2.json').read_text())['host_admission']
+        for url in vectors['supported']:
+            self.assertTrue(refs.reference_url_valid(url));self.assertTrue(refs.resource_host_supported(url))
+            key=refs.legacy_resource_key(url);host=key[1]
+            if ':' in host:host=pipeline.ipaddress.IPv6Address(host).compressed
+            self.assertEqual(refs.resource_key(url),(key[0],host,key[2],key[3],key[5]))
+        for url in vectors['unsupported']:
+            self.assertFalse(refs.reference_url_valid(url));self.assertFalse(refs.resource_host_supported(url));self.assertIsNone(refs.resource_key(url))
+        for host in ['001.002.003.004','01.02.03.04','0x01020304','16909060','1.2.772','００１.００２.００３.００４']:
+            url='http://'+host+'/feed'
+            parsed,effective,port=pipeline.parse_acquisition_url(url)
+            self.assertEqual(effective,host.encode('idna').decode('ascii'))
+            self.assertEqual(pipeline.acquisition_url_key(url),refs.legacy_resource_key(url))
+            pipeline.source_policy({'catalogue':{}},url)  # Legacy admission is unchanged.
+        # Syntax admission does not override the global public-address boundary.
+        self.assertFalse(pipeline.public_address('127.0.0.1'))
+
+    def test_reference_numeric_redirects_stop_before_dns_and_keep_public_fallback(self):
+        unsupported=['001.002.003.004','0x01020304','16909060','1.2.772','００１.００２.００３.００４']
+        for host in unsupported:
+            entry=self.reference_lifecycle_entry('https://public.test/feed')
+            with patch.object(pipeline,'resolve_public_addresses') as dns:
+                with self.assertRaises(pipeline.UnsafeSourceURL):pipeline.get('http://'+host+'/feed',policy=lambda url:pipeline.source_policy(entry,url))
+                dns.assert_not_called()
+        for phase in ['initial','range','full','conditional','fallback']:
+            a,ah=self.server(self.archive());c,ch=self.server(self.archive());entry=self.reference_lifecycle_entry(a,'http://1.2.3.4/feed')
+            target='http://001.002.003.004/feed'
+            if phase in ('initial','fallback'):
+                ah['redirect']=target
+                if phase=='fallback':entry['catalogue']['lineage'].append({'catalogue':'mobility-database','id':'fallback','url':pipeline.registry.MOBILITY_CSV,'source':c,'status':'','authentication_type':'0'})
+            elif phase in ('range','full'):
+                checked=pipeline.CheckedRequests(entry,a);remote=pipeline.RemoteZip(a,1000000,policy=checked.policy,checked_requests=checked);ah['redirect']=target
+            else:
+                cache=self.root/'numeric-conditional';cache.mkdir();output=cache/'out'
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES);ah['redirect']=target
+            with patch.object(pipeline,'resolve_public_addresses',wraps=pipeline.resolve_public_addresses) as dns:
+                if phase=='fallback':
+                    meta,attempts=pipeline.fetch_alternative(entry,self.root/'numeric-fallback.zip',1000000)
+                    self.assertEqual(meta['download_url_sha256'],pipeline.source_url_fingerprint(c));self.assertTrue(ch['requests'])
+                    self.assertEqual(attempts[0]['code'],'unsafe_source_url')
+                elif phase=='initial':
+                    with self.assertRaises(pipeline.SourceRetrievalError):pipeline.fetch_alternative(entry,self.root/'numeric-blocked.zip',1000000)
+                elif phase in ('range','full'):
+                    with self.assertRaises(pipeline.UnsafeSourceURL):remote.range(0,1) if phase=='range' else remote.download()
+                else:
+                    with self.assertRaises(pipeline.SourceRetrievalError):pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                self.assertTrue(all(call.args[0]=='127.0.0.1' for call in dns.call_args_list))
+
+    def test_historical_numeric_host_receipts_cannot_regain_cache_authority(self):
+        import copy
+        from urllib.error import URLError
+        def prior_receipt(urls,data,version):
+            def old_hash(url):
+                key=pipeline.registry.references.legacy_resource_key(url)
+                # These controlled prior URLs use plain /feed paths and query
+                # values; the frozen v2 key only removed the empty params slot.
+                return pipeline.registry.references.digest(key if version==1 else key[:4]+(key[5],))
+            endpoints=[{'url':pipeline.redacted_source_url(url),'url_sha256':pipeline.source_url_fingerprint(url),
+                'resource_sha256':old_hash(url),'visible_resource_sha256':old_hash(pipeline.redacted_source_url(url))} for url in urls]
+            return {'schema':version,**({'resource_normalization':'http-resource-syntax-v2'} if version==2 else {}),
+                'candidate_sha256':pipeline.source_url_fingerprint(urls[0]),'terminal_resource_sha256':old_hash(urls[-1]),
+                'artifact_kind':'archive','artifact_sha256':pipeline.hashlib.sha256(data).hexdigest(),'endpoints':endpoints}
+        for version in [1,2]:
+            for position in ['candidate','intermediate','terminal']:
+                a,ah=self.server(self.archive());entry=self.reference_lifecycle_entry(a)
+                cache=self.root/f'numeric-cache-{version}-{position}';cache.mkdir();output=cache/'out'
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                path=cache/'xx_rail.zip';meta_path=cache/'xx_rail.meta.json';data=path.read_bytes();meta=json.loads(meta_path.read_text())
+                bad='http://001.002.003.004/feed?selector=synthetic-value'
+                urls=[bad,a] if position=='candidate' else [a,bad,a] if position=='intermediate' else [a,bad]
+                # Deduplicate a repeated candidate/terminal just as the producer.
+                receipt=prior_receipt(urls,data,version);receipt['endpoints']=list({x['url_sha256']:x for x in receipt['endpoints']}.values())
+                self.assertFalse(pipeline.request_receipt_valid(receipt,urls[0]))
+                meta['request_provenance']=receipt;meta['download_url']=pipeline.redacted_source_url(urls[0]);meta['download_url_sha256']=pipeline.source_url_fingerprint(urls[0]);meta_path.write_text(json.dumps(meta));before=meta_path.read_bytes()
+                self.assertEqual(pipeline.reference_cache_state(entry,meta,path,urls[0]),'invalid')
+                with patch.object(pipeline,'get',side_effect=URLError('offline fixture')):
+                    with self.assertRaises(pipeline.SourceRetrievalError) as failed:pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                self.assertEqual(pipeline.classify_failure(failed.exception)[0],'unresolved_source_cache_identity')
+                self.assertEqual(path.read_bytes(),data);self.assertEqual(meta_path.read_bytes(),before)
+                if position=='candidate':
+                    evidence=next(x for x in failed.exception.attempts if x['code']=='source_cache_identity_unresolved')
+                    self.assertEqual(evidence['url'],'');self.assertNotIn('url_sha256',evidence)
+                    result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                    self.assertEqual(result['status'],'compiled')
+                    current=json.loads(meta_path.read_text())
+                    self.assertEqual(current['download_url_sha256'],pipeline.source_url_fingerprint(a))
+                    self.assertTrue(pipeline.request_receipt_valid(current['request_provenance'],a))
+
+    def test_unmatched_receipt_diagnosis_does_not_change_legacy_outage(self):
+        from urllib.error import URLError
+        url,_=self.server(self.archive())
+        entry=pipeline.discover([{'filename':'xx_rail.gtfs.zip','source':url,'delivery':'direct'}],{})[0]
+        cache=self.root/'legacy-unmatched-receipt';cache.mkdir();output=cache/'out'
+        pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        meta_path=cache/'xx_rail.meta.json';meta=json.loads(meta_path.read_text());archive=(cache/'xx_rail.zip').read_bytes()
+        historical='http://001.002.003.004/feed'
+        meta.update(download_url=historical,download_url_sha256=pipeline.source_url_fingerprint(historical),request_provenance={'schema':2})
+        meta_path.write_text(json.dumps(meta));before=meta_path.read_bytes()
+        with patch.object(pipeline,'get',side_effect=URLError('offline fixture')):
+            with self.assertRaises(pipeline.SourceRetrievalError) as failed:pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        self.assertEqual(pipeline.classify_failure(failed.exception)[0],'source_retrieval_error')
+        self.assertEqual({x['code'] for x in failed.exception.attempts},{'connection_error'})
+        self.assertEqual(meta_path.read_bytes(),before);self.assertEqual((cache/'xx_rail.zip').read_bytes(),archive)
 
     def test_retry_after_receipts_survive_two_runs_without_early_requests(self):
         from email.utils import formatdate
@@ -1115,6 +2184,30 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual(len(record['source_attempts']),2)
         self.assertEqual(record['next_action'],'repair_or_find_feed_url')
 
+    def test_cache_policy_failures_keep_explicit_durable_retry_actions(self):
+        from contextlib import redirect_stdout
+        for error_type, expected_code in [(pipeline.CachePolicyBlocked, 'source_cache_policy_restriction'),
+                                          (pipeline.CachePolicyUnresolved, 'unresolved_source_cache_policy')]:
+            with self.subTest(code=expected_code):
+                row = self.reference_lifecycle_entry('https://public.test/static')['catalogue']
+                catalogue = self.root / (expected_code + '.json')
+                catalogue.write_text(json.dumps([row]))
+                output = self.root / (expected_code + '-out')
+                attempts = [pipeline.source_attempt(row['source'], error_type())]
+                with patch('sys.argv', ['global-service-frequency.py', '--catalogue', str(catalogue),
+                           '--cache', str(self.root / 'policy-main-cache'), '--output', str(output), '--date', '2026-10-05']), \
+                     patch.object(pipeline, 'compile_entry_isolated', side_effect=pipeline.SourceRetrievalError(attempts)), \
+                     redirect_stdout(io.StringIO()):
+                    pipeline.main()
+                inventory = json.loads((output / 'inventory-0.json').read_text())
+                self.assertEqual(inventory['counts'], {'retry_pending': 1})
+                record = inventory['entries'][0]
+                self.assertEqual(record['reason_code'], expected_code)
+                self.assertEqual(record['failure_stage'], 'retrieval')
+                self.assertTrue(record['retry_eligible'])
+                self.assertEqual(record['next_action'], 'refresh_from_permitted_source_or_review_cache_policy')
+                self.assertEqual(record['source_attempts'], attempts)
+
     def test_retry_after_parses_seconds_dates_past_and_invalid_values(self):
         from email.utils import formatdate
         now = 1791536400.0
@@ -1228,6 +2321,10 @@ class GlobalFrequency(unittest.TestCase):
                 range_value=self.headers.get('Range');held['requests'].append(range_value)
                 validator=self.headers.get('If-Range');held['range_validators'].append(validator)
                 held['conditional_requests'].append((self.headers.get('If-None-Match'),self.headers.get('If-Modified-Since')))
+                if held.get('redirect_sequence'):
+                    self.send_response(302);self.send_header('Location',held['redirect_sequence'].pop(0));self.end_headers();return
+                if held.get('force_304'):
+                    self.send_response(304);self.end_headers();return
                 if held.get('redirect'):
                     self.send_response(302);self.send_header('Location',held['redirect']);self.end_headers();return
                 if held.get('retry_after'):
