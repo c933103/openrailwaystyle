@@ -10,6 +10,7 @@ import { JSDOM } from 'jsdom';
 import * as model from '../styles/map-model.mjs';
 import * as draw from '../styles/draw.mjs';
 import * as departuresModule from '../styles/departures.mjs';
+import * as departuresUiModule from '../styles/departures-ui.mjs';
 import * as elevationModule from '../styles/elevation.mjs';
 import * as contextFeatures from '../styles/context.mjs';
 import * as cjkFontFeatures from '../styles/cjk-font.mjs';
@@ -214,7 +215,10 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const bundles = new vm.SyntheticModule(Object.keys(tileBundleModule),function(){for(const [key,value] of Object.entries(tileBundleModule))this.setExport(key,value);},{context});
   const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
   const recovery = new vm.SyntheticModule(Object.keys(railRecoveryModule),function(){for(const [key,value] of Object.entries(railRecoveryModule))this.setExport(key,key==='createRailProviderRecovery'&&recoveryClock?(map,options)=>value(map,{...options,...recoveryClock}):value);},{context});
-  await app.link(specifier => specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  const departuresUi = new vm.SyntheticModule(Object.keys(departuresUiModule), function() {
+    for (const [key,value] of Object.entries(departuresUiModule)) this.setExport(key,value);
+  }, {context});
+  await app.link(specifier => specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   if(cacheOnlyLibraries)await Promise.allSettled([app.namespace.__testLibraryLoads,app.namespace.__testLegacyStyle]);
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
@@ -667,10 +671,23 @@ test('equal-width service details expire even after the inspected route leaves l
     assert.equal(scheduled?.delay,1001,'the open panel keeps its expiry when the route leaves the viewport');
     stamp=2001;scheduled.fn();
     assert.doesNotMatch(doc.getElementById('detail-content').textContent,/2\/h\/direction/);
-    assert.match(doc.getElementById('detail-content').textContent,/Frequency unavailable/);
+    assert.match(doc.getElementById('detail-content').textContent,/No matched frequency profile/);
     assert.equal(errors.length,0);
     window.dispatchEvent(new window.Event('pagehide'));
   }finally{dom.window.close();}
+});
+test('mixed timetable and headway details name each source, period definition and terms link',async()=>{
+ const catalog=JSON.parse(await readFile(new URL('../styles/service-headways.json',import.meta.url),'utf8'));
+ const timetable={properties:{frequency_source:'Full timetable',frequency_url:'https://example.test/timetable-terms',frequency_checked:'2026-10-05',frequency_definition:'Agency-local 07:00–09:00',frequency_date:'2026-10-05',frequency_credit:'Timetable operator',frequency_license:'CC0',frequency_until:20},profiles:{am:{rate:4,quality:'scheduled'}}};
+ const properties=frequencyModule.frequencyBundle([{ref:'ISL',network:'港鐵 MTR',kind:'subway'}],[[[114.12,22.28],[114.13,22.29]]],catalog,[timetable],1000)[0];
+ const {dom,window,maps,errors}=await start({search:'?mode=service',frequencyClock:{now:()=>1000,setTimer:()=>0,clearTimer:()=>{}}});
+ try{
+  const map=maps[0],doc=window.document;map.handlers['style.load']();map.project=([lng,lat])=>({x:500+lng*100,y:400+lat*100});
+  map.rendered=[{source:'serviceRoutes',sourceLayer:'service_routes',layer:{id:'service-routes'},properties:{...properties,id:'relation-10',ref:'ISL',kind:'subway',i:0,n:1},geometry:{type:'LineString',coordinates:[[0,0],[1,0]]}}];
+  map.handlers.click({point:{x:550,y:400},lngLat:{lng:.5,lat:0}});
+  const panel=doc.getElementById('detail-content');assert.match(panel.textContent,/Full timetable · Morning peak/);assert.match(panel.textContent,/MTR published average headways · Evening peak, Off-peak/);assert.match(panel.textContent,/clock windows are not supplied/);
+  const links=[...panel.querySelectorAll('a')].filter(a=>a.textContent==='Frequency source and terms').map(a=>a.href);assert.deepEqual(links,[timetable.properties.frequency_url,catalog.source.url]);assert.equal(errors.length,0);
+ }finally{dom.window.close();}
 });
 test('app starts with the MapLibre 5 API and enables map controls', async () => {
   const {dom,window,maps,errors} = await start();
