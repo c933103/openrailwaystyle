@@ -18,7 +18,7 @@ test('reconciled catalogue fixtures run inside the isolated PR test process',()=
   const push=workflow.split('  push:\n')[1].split('  workflow_dispatch:')[0];
   const pr=workflow.split('  pull_request:\n')[1].split('permissions:')[0];
   for(const trigger of [push,pr]){
-    for(const source of ['scripts/frequency_catalogue.py','scripts/frequency_retry.py'])assert.ok(trigger.includes(source));
+    for(const source of ['scripts/frequency_catalogue.py','scripts/frequency_retry.py','scripts/frequency_references.py','scripts/frequency_publication.py','scripts/frequency-reference-schema.json','scripts/frequency-reference-metadata.mjs'])assert.ok(trigger.includes(source));
   }
   assert.ok(pr.includes("'tests/*frequency*'"));
   assert.ok(pr.includes('docs/service-frequency.md'));
@@ -170,4 +170,22 @@ test('PR and push concurrency cannot replace or cancel a production refresh',()=
     assert.equal(vm.runInNewContext(cancel,{github:{event_name:event}}),
       ['pull_request','push'].includes(event));
   }
+});
+
+test('reference metadata is fetched at the immutable gitlink without upstream executables',()=>{
+  assert.match(workflow,/scripts\/frequency_references\.py/);
+  assert.match(workflow,/ls-tree "\$transitous_ref" transitland-atlas/);
+  assert.match(workflow,/fetch --quiet --depth=1 --filter=blob:none origin "\$transitland_ref"/);
+  assert.match(workflow,/test "\$\(git -C catalogue\/transitland rev-parse HEAD\)" = "\$transitland_ref"/);
+  assert.match(workflow,/--transitland-feeds-directory "\$transitland_feeds" --transitland-ref "\$transitland_ref"/);
+  assert.doesNotMatch(workflow,/git submodule update|src\/fetch\.py/);
+  assert.match(workflow,/unavailable-transitland-feeds/);
+});
+
+test('publication membership uses a secret-free catalogue artifact and explicit worker input',async()=>{
+  const workflow=await readFile(new URL('../.github/workflows/service-frequency.yml',import.meta.url),'utf8');
+  assert.equal((workflow.match(/--publication-index catalogue\/publication-index\.json/g)||[]).length,3);
+  assert.match(workflow,/catalogue\/publication-index\.json\n/);
+  const uploaded=workflow.split('name: worldwide-frequency-catalogue')[1].split('retention-days:')[0];
+  assert.doesNotMatch(uploaded,/license\.json|mobility\.csv/);
 });
