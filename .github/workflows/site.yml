@@ -79,8 +79,12 @@ jobs:
       - name: Check JavaScript syntax
         run: node --check styles/app.mjs
       - name: Check public station search and CORS
+        if: github.event_name != 'pull_request'
         continue-on-error: true
         run: node scripts/check-search-api.mjs
+      - name: Check station search and CORS with offline PR fixtures
+        if: github.event_name == 'pull_request'
+        run: node --test tests/search-api.test.mjs
       - name: Wait for initial snapshot build
         run: |
           for attempt in $(seq 1 40); do
@@ -254,11 +258,9 @@ jobs:
           name: railway-world-site
           path: styles
           compression-level: 0
-  # The browser checks, in parallel jobs of a few checks each, one at a time
-  # in a shared browser within a job (scripts/run-browser-checks.mjs), with
-  # provider tiles cached per job for a week (scripts/browser.mjs). Two at
-  # once on one runner slowed the timing-sensitive platform checks until
-  # they failed, and gained nothing once the jobs run in parallel.
+  # Browser checks use synthetic responses for every external provider.
+  # The shared browser transport rejects unmocked egress before requests leave.
+  # Actual first-party local/deployed assets are still read and checked.
   browser:
     name: browser (${{ matrix.group }})
     needs: [plan, validate]
@@ -269,7 +271,6 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     env:
-      BROWSER_TILE_CACHE: ${{ github.workspace }}/.browser-tiles
       GROUP: ${{ matrix.group }}
       CHECKS: ${{ matrix.checks }}
       PREPARE: ${{ matrix.prepare }}
@@ -285,32 +286,23 @@ jobs:
           path: styles
       - name: Install test browser
         run: npx playwright install --with-deps chromium
-      - name: Restore browser tile cache
-        uses: actions/cache/restore@v4
-        with:
-          path: .browser-tiles
-          key: browser-tiles-v1-${{ matrix.group }}-${{ github.run_id }}
-          restore-keys: browser-tiles-v1-${{ matrix.group }}-
+      - name: Install WebKit for Safari installation checks
+        if: matrix.group == 'controls' && contains(matrix.checks, 'check-pwa-install-browser.mjs')
+        run: npx playwright install --with-deps webkit
       - name: Start test server
-        run: |
-          rm -f .browser-tiles/.changed
-          node scripts/serve.mjs &
+        run: node scripts/serve.mjs &
       # Real dated feeds are test fixtures, never a production city list;
       # this job's copy of the site is discarded afterwards.
       - name: Prepare check data
         if: matrix.prepare != ''
         run: bash -c "$PREPARE"
+      - name: Verify Safari installation help in WebKit
+        if: matrix.group == 'controls' && contains(matrix.checks, 'check-pwa-install-browser.mjs')
+        env:
+          ATLAS_PWA_ENGINE: webkit
+        run: node scripts/check-pwa-install-browser.mjs
       - name: Run browser checks
         run: node scripts/run-browser-checks.mjs --concurrency 1 --label "$GROUP" $CHECKS
-      - name: Prune browser tile cache
-        if: success() && hashFiles('.browser-tiles/.changed') != ''
-        run: node scripts/browser.mjs prune .browser-tiles
-      - name: Save browser tile cache
-        if: success() && hashFiles('.browser-tiles/.changed') != ''
-        uses: actions/cache/save@v4
-        with:
-          path: .browser-tiles
-          key: browser-tiles-v1-${{ matrix.group }}-${{ github.run_id }}
       - name: Save browser review
         if: always()
         uses: actions/upload-artifact@v4
@@ -391,7 +383,7 @@ jobs:
             for(const encoding of ['identity','gzip, deflate, br, zstd, identity']) {
               for(let attempt=0;attempt<12;attempt++) {
                 try {
-                  const response=await fetch(base+key+'.pbf.gz',{headers:{'Accept-Encoding':encoding},signal:AbortSignal.timeout(20000)});
+                  const response=await fetch(base+key+'.pbf.gz',{redirect:'error',headers:{'Accept-Encoding':encoding},signal:AbortSignal.timeout(20000)});
                   assert.equal(response.status,200);
                   assert.deepEqual(decode(Buffer.from(await response.arrayBuffer())),expected);
                   console.log('PASS: exact deployed vector tile',key,encoding);
@@ -407,18 +399,12 @@ jobs:
           node-version: '22'
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
-      - name: Verify the published map in Chromium
+      # Exercise the deployed app's renderer against synthetic railway tiles;
+      # do not make automated calls to the public OpenRailwayMap tile provider.
+      - name: Verify published map with local railway fixture
         env:
           MAP_BASE_URL: ${{ steps.deployment.outputs.page_url }}
-        run: node scripts/check-map-browser.mjs
-      - name: Verify published planning context
-        env:
-          MAP_BASE_URL: ${{ steps.deployment.outputs.page_url }}
-        run: node scripts/check-planning-browser.mjs
-      - name: Verify published transport and destinations
-        env:
-          MAP_BASE_URL: ${{ steps.deployment.outputs.page_url }}
-        run: node scripts/check-context-browser.mjs
+        run: node scripts/check-orm-fixture-browser.mjs
       - name: Save published map screenshots
         if: always()
         uses: actions/upload-artifact@v4

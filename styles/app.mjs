@@ -1,27 +1,29 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261005-departures2';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261005-departures2';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261005-departures2';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261005-departures2';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261005-departures2';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261005-departures2';
+import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261009-install-icon-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261009-install-icon-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261009-install-icon-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261009-install-icon-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261009-install-icon-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261009-install-icon-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261005-departures2';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261005-departures2';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261005-departures2';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261005-departures2';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261005-departures2';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261005-departures2';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261005-departures2';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261005-departures2';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261005-departures2';
-import { installWatchGesture } from './watch-map.mjs?v=20261005-departures2';
-import { createBundleReader } from './tile-bundles.mjs?v=20261005-departures2';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261009-install-icon-1';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261009-install-icon-1';
+import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261009-install-icon-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261009-install-icon-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261009-install-icon-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261009-install-icon-1';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261009-install-icon-1';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261009-install-icon-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261009-install-icon-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261009-install-icon-1';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261009-install-icon-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261009-install-icon-1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
 // label code load in the background (index.html reports a failure to load
 // this module itself).
 document.body.dataset.appStarted = 'true';
+installPwaInstall({window, document});
 // Installable as an app (manifest.webmanifest); the service worker keeps the
 // app's own files for opening without a connection.
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register(new URL('sw.js', import.meta.url)).catch(() => {});
@@ -49,17 +51,93 @@ const status = $('map-status');
 let legendHelpOpen = false;
 let platformLengths,frequencyExpiry;
 let powerFacilities;
+let railRecovery, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261005-departures2';
-const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261009-install-icon-1';
+// An old active worker can save this new page before its replacement has
+// installed. If that update is interrupted, only old first-party/CDN copies
+// may be available offline. Read exact saved responses without contacting the
+// CDN; first visits and successful upgrades use the first-party files below.
+async function cachedLegacyLibrary(name) {
+  // Match scripts/browser-libraries.mjs. Cache Storage is not a trusted source
+  // of executable bytes: verify each pinned distribution before using it as
+  // a same-origin blob or stylesheet, and fail closed without Web Crypto.
+  const library = {
+    'maplibre-js': {local: 'vendor/maplibre-gl-5.24.0.js', url: 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js', sha256: '45a9b07a9189ce56054c620a947ccf41e291e58c95e9b61533b740aaa65ee5cb'},
+    'maplibre-css': {local: 'vendor/maplibre-gl-5.24.0.css', url: 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css', sha256: 'ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732'},
+    'pmtiles-js': {local: 'vendor/pmtiles-4.2.1.js', url: 'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js', sha256: 'afc49d216fd24c0a3c0ff3cd2e0c62d6cdaf062854c3dced778dcab168824f79'},
+  }[name];
+  if (!library || !window.caches || !window.crypto?.subtle) return null;
+  try {
+    const names = (await window.caches.keys()).filter(key => /^atlas-shell-\d+$/.test(key));
+    names.sort((a,b) => Number(b.split('-').at(-1)) - Number(a.split('-').at(-1)));
+    for (const key of names) {
+      const cache = await window.caches.open(key);
+      if (!await cache.match(new URL('./', import.meta.url).href)) continue;
+      const urls = [...(name === 'maplibre-js' ? [new URL(MAPLIBRE_BACKPORT.target, import.meta.url).href] : []),
+        new URL(library.local, import.meta.url).href, library.url];
+      for (const url of urls) {
+        const response = await cache.match(url);
+        if (!response?.ok || response.type === 'opaque') continue;
+        const type = (response.headers.get('content-type') || '').split(';')[0].trim();
+        if (!(name.endsWith('-css') ? /^text\/css$/i.test(type) : /^(?:text|application)\/(?:x-)?(?:java|ecma)script$/i.test(type))) continue;
+        const digest = await window.crypto.subtle.digest('SHA-256', await response.clone().arrayBuffer());
+        const sha256 = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+        if (name === 'maplibre-js' && sha256 === MAPLIBRE_BACKPORT.sha256) return response;
+        if (sha256 !== library.sha256) continue;
+        if (name === 'maplibre-js') {
+          // Never execute the old distribution, even when its hash is genuine.
+          const patched = await backportMapLibre524(await response.arrayBuffer(), window.crypto.subtle);
+          return new Response(patched, {headers: {'content-type': 'text/javascript'}});
+        }
+        return response;
+      }
+    }
+  } catch {}
+  return null;
+}
+const appendLibraryScript = src => new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
-  script.onerror = () => reject(new Error('Map libraries could not load. Check your connection and reload.'));
+  script.onerror = () => {script.remove(); reject(new Error('Map libraries could not load. Check your connection and reload.'));};
   document.head.append(script);
 });
+async function loadScript(src, global, legacy) {
+  if (window[global]) return;
+  try { await appendLibraryScript(src); }
+  catch (error) {
+    const saved = await cachedLegacyLibrary(legacy);
+    if (!saved) throw error;
+    const blob = URL.createObjectURL(new Blob([await saved.blob()], {type: 'text/javascript'}));
+    try { await appendLibraryScript(blob); }
+    finally { URL.revokeObjectURL(blob); }
+  }
+}
+let legacyStyle;
+const mapStyleReady = link => {
+  // A blocked stylesheet can leave a non-null sheet whose rules are
+  // inaccessible. Only readable rules establish that this local CSS loaded.
+  try { return Boolean(link?.sheet?.cssRules.length); } catch { return false; }
+};
+function restoreCachedMapStyle() {
+  return legacyStyle ||= (async () => {
+    const link = $('maplibre-css');
+    if (!link || mapStyleReady(link)) return;
+    const saved = await cachedLegacyLibrary('maplibre-css');
+    if (!saved || mapStyleReady(link)) return;
+    const style = document.createElement('style');
+    style.textContent = await saved.text();
+    link.after(style);
+  })();
+}
+// The link's error may precede module execution, so check its sheet now as
+// well as listening for a later failure. Both copies have the same pinned
+// version; a slow successful first-party link can safely finish afterwards.
+$('maplibre-css')?.addEventListener('error', () => restoreCachedMapStyle().catch(() => {}), {once: true});
+restoreCachedMapStyle().catch(() => {});
 const libraries = Promise.all([
-  loadScript('https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js', 'maplibregl'),
-  loadScript('https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js', 'pmtiles'),
+  loadScript(new URL('vendor/maplibre-gl-5.24.0-atlas.1.js', import.meta.url).href, 'maplibregl', 'maplibre-js'),
+  loadScript(new URL('vendor/pmtiles-4.2.1.js', import.meta.url).href, 'pmtiles', 'pmtiles-js'),
   loadScript(new URL(`vendor/maplibre-contour.js?v=${assetVersion}`, import.meta.url).href, 'mlcontour'),
 ]);
 const labels = import(`./vendor/tile-labels.js?v=${assetVersion}`);
@@ -108,7 +186,7 @@ function cjkMeasure(){
   })().catch(()=>null);
   return probeMeasure;
 }
-function refreshCjkFont(){if(ready)reloadLanguage();else if(map)cjkFontRefresh=true;}
+function refreshCjkFont(){updateDetailGlyphs();if(ready)reloadLanguage();else if(map)cjkFontRefresh=true;}
 function ensureCjkChoice(script){
   if(cjkChoices.has(script))return;
   cjkChoices.set(script,null);
@@ -122,8 +200,8 @@ function ensureCjkChoice(script){
     if(choice?.family&&cjkScript(settings.language)===script)refreshCjkFont();
   });
 }
-// The packaged Chinese font is fetched only when Han labels are actually
-// drawn and the installed Chinese font misses some character set. Japanese
+// The packaged Chinese font is fetched only when Han labels or feature
+// details are shown and the installed font misses some character set. Japanese
 // and Korean keep their installed fonts: the packaged ones are Chinese designs.
 function loadCjkFont(script){
   const choice=cjkChoices.get(script);
@@ -152,6 +230,103 @@ ensureCjkChoice(cjkScript(settings.language));
 // applies: often Japanese shapes for Chinese names (e.g. 门). Give the canvas
 // the label language whenever MapLibre sets up one of these fonts.
 const CANVAS_LANG = {'zh-Hans':'zh-CN', 'zh-Hant':'zh-TW', ja:'ja', ko:'ko'};
+const DETAIL_CJK_CHARACTER = String.raw`[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}]`;
+// The neutral Bopomofo tone can precede its syllable; other tones follow it.
+const DETAIL_CJK_START = `(?:${DETAIL_CJK_CHARACTER}|˙(?=\\p{Script=Bopomofo}))`;
+const detailRunPattern = separators => new RegExp(`${DETAIL_CJK_START}(?:${DETAIL_CJK_CHARACTER}|[\\p{Mark}ーｰﾞﾟ゛゜ˉˊˇˋ˙˪˫]|${separators}+(?=${DETAIL_CJK_START}))*`, 'gu');
+// Internal separators and line numbers belong to the CJK name when followed
+// by another CJK character. Latin letters and line breaks remain boundaries.
+const DETAIL_GLYPH_RUNS = detailRunPattern(String.raw`[\p{Punctuation}\p{Space_Separator}\p{Number}]`);
+const DETAIL_LANGUAGE_HINTS = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]|˙?\p{Script=Bopomofo}/gu;
+const DETAIL_CONNECTORS = /[\p{Punctuation}\p{Space_Separator}\p{Number}]+/gu;
+const detailGlyphHints = text => [
+  /[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(text) && 'ja',
+  /\p{Script=Hangul}/u.test(text) && 'ko',
+  /\p{Script=Bopomofo}/u.test(text) && 'zh-TW',
+].filter(Boolean);
+const detailGlyphLanguage = text => detailGlyphHints(text)[0] || CANVAS_LANG[cjkScript(settings.language)];
+function splitDetailGlyphLanguages(run) {
+  if (detailGlyphHints(run[0]).length < 2) return [run];
+  const parts = [];
+  let start = 0, previousEnd = 0, previousLanguage;
+  const append = end => {
+    const part = [run[0].slice(start, end)]; part.index = run.index + start; parts.push(part);
+  };
+  for (const hint of run[0].matchAll(DETAIL_LANGUAGE_HINTS)) {
+    const language = detailGlyphLanguage(hint[0]);
+    if (previousLanguage && language !== previousLanguage) {
+      const gap = run[0].slice(previousEnd, hint.index);
+      const connectors = [...gap.matchAll(DETAIL_CONNECTORS)];
+      // A slash/semicolon separates aliases. Otherwise the first connector
+      // keeps the next name's leading Han with its identified language.
+      const separator = connectors.find(part => /[\/／;；]/u.test(part[0])) || connectors[0];
+      const end = separator ? previousEnd + separator.index : hint.index;
+      append(end);
+      start = separator ? end + separator[0].length : hint.index;
+    }
+    previousEnd = hint.index + hint[0].length; previousLanguage = language;
+  }
+  append(run[0].length); return parts;
+}
+function detailGlyphRuns(text) {
+  // Split aliases at their language boundary, retaining spaces within each
+  // complete name instead of labeling isolated Han words independently.
+  return [...text.matchAll(DETAIL_GLYPH_RUNS)].flatMap(splitDetailGlyphLanguages);
+}
+const detailFontObserver = new MutationObserver(updateDetailGlyphs);
+// CJK text in feature details shares the map's chosen family. Kana or Hangul
+// identifies a mixed name's language; Han-only names use the map's language
+// for system glyph fallback. Both styles stay on CJK runs so installed fonts
+// cannot also replace Latin UI text.
+function updateDetailGlyphs() {
+  const panel = $('detail-content');
+  const family = cjkFont(settings.language).replace(/,\s*sans-serif\s*$/, '');
+  const fontFamily = `${family},system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif`;
+  // Only CJK runs need a regional language for glyph fallback. Fixed English
+  // UI and Latin text keep their inherited language for assistive technology.
+  // Disconnect while wrapping our own text to avoid observing ourselves.
+  detailFontObserver.disconnect();
+  try {
+    for (const span of panel.querySelectorAll('[data-cjk-glyphs]')) {
+      const runs = detailGlyphRuns(span.textContent);
+      if (runs.length === 1 && runs[0][0] === span.textContent) {
+        span.lang = detailGlyphLanguage(span.textContent); span.style.fontFamily = fontFamily;
+      }
+      else span.replaceWith(...span.childNodes);
+    }
+    const walker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT), nodes = [];
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (node.parentElement?.namespaceURI === 'http://www.w3.org/1999/xhtml' && !node.parentElement.closest('[data-cjk-glyphs]')) nodes.push(node);
+    }
+    for (const node of nodes) {
+      const runs = detailGlyphRuns(node.data);
+      if (!runs.length) continue;
+      const fragment = document.createDocumentFragment();
+      let offset = 0;
+      for (const run of runs) {
+        fragment.append(node.data.slice(offset, run.index));
+        const span = document.createElement('span');
+        span.dataset.cjkGlyphs = ''; span.lang = detailGlyphLanguage(run[0]); span.style.fontFamily = fontFamily; span.textContent = run[0];
+        fragment.append(span); offset = run.index + run[0].length;
+      }
+      fragment.append(node.data.slice(offset)); node.replaceWith(fragment);
+    }
+  } finally {
+    // All renderers share this container, including asynchronous departures
+    // and nearby names. Existing text-node edits need the same treatment.
+    detailFontObserver.observe(panel, {childList:true, subtree:true, characterData:true});
+  }
+  loadDetailFonts();
+}
+function loadDetailFonts() {
+  if ($('details').hidden) return;
+  const text = $('detail-content').textContent;
+  if (/\p{Script=Han}/u.test(text)) loadCjkFont(cjkScript(settings.language));
+  const blocks = rareHanBlocks(text);
+  if (blocks.size) void rareHanFonts.ensure(blocks);
+}
+updateDetailGlyphs();
 // MapLibre may draw glyphs on an OffscreenCanvas, whose context is another class.
 for (const context of [window.CanvasRenderingContext2D?.prototype, window.OffscreenCanvasRenderingContext2D?.prototype]) {
   const font = context && Object.getOwnPropertyDescriptor(context, 'font');
@@ -169,7 +344,7 @@ function whenReady(action) {
   if (ready) action();
   else pendingView = action;
 }
-const errors = new Set();
+const errors = new Map();
 const textNode = (tag, value, className) => {
   const el = document.createElement(tag); el.textContent = value;
   if (className) el.className = className;
@@ -462,6 +637,7 @@ function applySettings() {
   renderLegend();
   if (ready) { scheduleLegend(); scheduleNearbyTransport();updateMajorStations();platformLengths?.update();powerFacilities?.(); }
   frequencyExpiry?.update();
+  if (ready) wakeRailRecovery();
 }
 let attribution, attributionStateCleanup, controlLayout, servedBuild;
 function codeAttribution() {
@@ -893,12 +1069,22 @@ function applyUnits() {
   map.getSource('seabedContours')?.setTiles(style.sources.seabedContours.tiles);
   map.getSource('seabedContoursClose')?.setTiles(style.sources.seabedContoursClose.tiles);
 }
+const mapErrorMessage = () => railRecovery?.hasFailures()
+  ? 'OpenRailwayMap railway tiles are unavailable. Retrying automatically; some lines may be missing.'
+  : 'Some map data could not load. Check your connection or reload to retry.';
 function updateStatus() {
-  if (errors.size) {
-    status.classList.add('error'); status.textContent = 'Some map data could not load. Check your connection or reload to retry.'; return;
+  const railFailed = railRecovery?.hasFailures(); // prune before reconciling ownership
+  for (const [id, error] of errors) {
+    if (error.recoveryOwned && !railRecovery?.hasSourceFailure(id, error.source)) errors.delete(id);
+  }
+  if (errors.size || railFailed) {
+    status.classList.add('error'); status.textContent = mapErrorMessage(); return;
   }
   status.classList.remove('error');
   status.textContent = map.getZoom() < 4 ? 'Worldwide coverage · click a line' : 'Explore the rail network · click a line or station';
+  // Early source events may precede style.load; status text is safe then,
+  // but rendered-feature queries require the style to be ready.
+  if (!ready) return;
   // Visible diagnostics make source availability inspectable without exposing
   // internal map objects or relying on a generic "loaded" flag.
   const features = map.queryRenderedFeatures();
@@ -947,6 +1133,11 @@ function localizeStyle(style) {
     if(source?.type!=='vector')continue;
     if(/^https?:\/\//.test(source.url||''))source.url=`atlastext://${source.url}`;
     if(Array.isArray(source.tiles))source.tiles=source.tiles.map(t=>/^https?:\/\//.test(t)?`atlastext://${t}`:t);
+  }
+  // Known rail metadata is local; only visible tiles enter the shared queue.
+  // Include unlabelled overview/platform sources, not only text sources.
+  for (const source of Object.values(style.sources)) {
+    if (source.type === 'vector' && source.url?.startsWith(ORM+'/')) source.url='atlasrail://'+source.url;
   }
   unitStyle(style);
   styleLanguage = settings.language;
@@ -1390,24 +1581,63 @@ async function initialize() {
     else if (drawing.multiPoint && !drawing.paused) { event.preventDefault(); drawing.finish(); }
   });
   const action = pendingDraw; pendingDraw = undefined; action?.();
+  let recoveryRemoved = false, recoveryStatusPending = false;
+  railRecovery = createRailProviderRecovery(map, {provider: ORM, onChange: () => {
+    // Timer-driven retirement also changes status. Defer/coalesce notifications
+    // so source handlers finish their error bookkeeping before reconciliation.
+    if (recoveryRemoved || recoveryStatusPending) return;
+    recoveryStatusPending = true;
+    queueMicrotask(() => { recoveryStatusPending = false; if (!recoveryRemoved) updateStatus(); });
+  }});
+  wakeRailRecovery = () => { if (!recoveryRemoved) { railRecovery.wake(); updateStatus(); } };
+  // Keep the pre-existing finite retry for non-rail metadata providers; only
+  // OpenRailwayMap uses demand-driven failed-tile retries with prolonged backoff.
+  const otherMetadataRetries = new Map();
+  document.addEventListener('visibilitychange', wakeRailRecovery);
+  window.addEventListener('online', wakeRailRecovery);
+  map.on('moveend', wakeRailRecovery);
+  map.on('remove', () => {recoveryRemoved=true;document.removeEventListener('visibilitychange',wakeRailRecovery);window.removeEventListener('online',wakeRailRecovery);railRecovery.dispose();labelProtocols.dispose?.();});
   map.on('error', e => {
     // Panning and replacing language sources intentionally cancel old tiles.
     if (e.error?.name === 'AbortError' || /^AbortError$|operation was aborted/i.test(e.error?.message || '')) return;
     // Log text as well as the object: errors passed back from map workers
     // carry no stack, and plain logs of them show only "Error".
     console.error('Map resource error:', e.sourceId || 'map', e.error?.message || String(e.error), e.error);
-    errors.add(e.sourceId || 'resource');
-    status.classList.add('error'); status.textContent = 'Some map data could not load. Check your connection or reload to retry.';
-    // A failed tile is requested again when next needed, but a source whose
-    // metadata request failed stays empty for good: retry it a few times.
-    const source = e.sourceId && !e.tile && map.getSource(e.sourceId), attempt = metadataRetries.get(e.sourceId) || 0;
-    if (source?.url && typeof source.setUrl === 'function' && !source.loaded?.() && attempt < 3) {
-      metadataRetries.set(e.sourceId, attempt + 1);
-      setTimeout(() => { const current = map.getSource(e.sourceId); if (current?.url && !current.loaded?.()) current.setUrl(current.url); }, [5000, 15000, 45000][attempt]);
+    const railError = railRecovery.noteError(e);
+    const id = e.sourceId || 'resource', instance = e.sourceId && map.getSource(e.sourceId), previous = errors.get(id);
+    // A retryable error cannot take ownership of a nonretryable error on the
+    // same source instance; pruning must not erase that independent failure.
+    errors.set(id, {source:instance, recoveryOwned:railError && (!previous || previous.source !== instance || previous.recoveryOwned)});
+    updateStatus();
+    // Demand-driven recovery handles failed railway metadata and tiles.
+    // Preserve the existing three source-metadata retries for unrelated map
+    // providers. A deliberate provider 403 is not retried as an outage.
+    const source=e.sourceId && !e.tile && map.getSource(e.sourceId);
+    const attempt=otherMetadataRetries.get(e.sourceId)||0;
+    if (!railError && source?.url && !source.url.includes(new URL(ORM).host) &&
+      typeof source.setUrl==='function' && !source.loaded?.() && attempt<3) {
+      otherMetadataRetries.set(e.sourceId,attempt+1);
+      setTimeout(()=>{
+        const current=map.getSource(e.sourceId);
+        if(current?.url&&!current.loaded?.())current.setUrl(current.url);
+      },[5000,15000,45000][attempt]);
     }
   });
-  const metadataRetries = new Map();
-  map.on('sourcedata', e => { if (e.isSourceLoaded && e.sourceId) { errors.delete(e.sourceId); metadataRetries.delete(e.sourceId); } });
+  map.on('sourcedata', e => {
+    const recovered = railRecovery.noteSourceData(e);
+    // MapLibre also reports isSourceLoaded after errors settle. Require actual
+    // success, and keep a source's error until all its failed tiles recover.
+    const successful = e.sourceDataType === 'metadata' || e.tile?.state === 'loaded';
+    let cleared = false;
+    if (e.sourceId && (recovered || successful && e.isSourceLoaded) &&
+      !railRecovery.failedSourceIds().includes(e.sourceId)) {
+      cleared = errors.delete(e.sourceId);
+      otherMetadataRetries.delete(e.sourceId);
+    }
+    // Refresh after BOTH recovery state and app bookkeeping change. A callback
+    // inside noteSourceData would observe stale errors; idle may never arrive.
+    if (recovered || cleared) updateStatus();
+  });
   // Apply settings as soon as the style is in place, not at MapLibre's
   // 'load', which waits for every initial tile: zoomed out that is dozens of
   // large overview tiles, and a source whose metadata request fails never
@@ -1425,7 +1655,7 @@ async function initialize() {
   };
   if (map.isStyleLoaded?.()) styleReady(); else map.once('style.load', styleReady);
   map.on('idle', updateStatus);
-  platformLengths=createPlatformLengths(map,{geometry:createPlatformTileGeometry({tileURL:()=>map.getSource('platforms')?.tiles?.[0],decode:async data=>(await labels).platformTilePieces(data,'standard_railway_platforms')}),active:()=>ready&&settings.mode==='infrastructure'&&settings.labels&&settings.background!=='satellite',onLength:(id,length)=>{if(length>0&&['platformEdges','platformLengths'].includes(currentFeature?.source)&&String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);},onPlatform:(id)=>{if(['platforms','platformNumbers'].includes(currentFeature?.source)&&String(currentFeature.properties.id)===id)showDetails(currentFeature);}});
+  platformLengths=createPlatformLengths(map,{geometry:createPlatformTileGeometry({tileURL:()=>{const url=map.getSource('platforms')?.tiles?.[0];return url&&unwrap(url);},decode:async data=>(await labels).platformTilePieces(data,'standard_railway_platforms')}),active:()=>ready&&settings.mode==='infrastructure'&&settings.labels&&settings.background!=='satellite',onLength:(id,length)=>{if(length>0&&['platformEdges','platformLengths'].includes(currentFeature?.source)&&String(osmObject(currentFeature)?.id)===id)showDetails(currentFeature);},onPlatform:(id)=>{if(['platforms','platformNumbers'].includes(currentFeature?.source)&&String(currentFeature.properties.id)===id)showDetails(currentFeature);}});
   map.on('moveend',()=>platformLengths.update());
   map.on('remove',()=>platformLengths.destroy());
   let platformFramePending=false;
@@ -1537,6 +1767,7 @@ function reloadLanguage() {
   select.addEventListener('change',()=>{
     settings.language=select.value;
     ensureCjkChoice(cjkScript(settings.language));
+    updateDetailGlyphs();
     if(ready) reloadLanguage();
     saveSettings();
   });

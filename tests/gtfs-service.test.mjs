@@ -102,3 +102,59 @@ test('a summary-only pass reports the same feed summary without building feature
   const full=timetableFeatures([feed],now),summary=timetableFeatures([feed],now,{summaryOnly:true});
   assert.deepEqual(summary,{summary:full.summary});
 });
+
+test('feed windows stay unevaluated for empty or entirely unmapped JSON feeds',()=>{
+  for(const segments of [[],[{...feed.segments[0],geometry:null}],[{...feed.segments[0],geometry:[[24,60]]}]]){
+    const variant=structuredClone(feed);variant.profiles=null;variant.segments=structuredClone(segments);
+    for(const summaryOnly of [false,true]){
+      const result=timetableFeatures([variant],now,{summaryOnly});
+      assert.equal(result.summary[0].mappedRoutes,0);assert.equal(result.summary[0].availableSegments,0);
+    }
+  }
+});
+
+test('first window evaluation preserves preceding route, agency and segment-profile errors',()=>{
+  for(const summaryOnly of [false,true]){
+    for(const key of ['routes','agencies']){
+      const variant=structuredClone(feed);variant[key]=[];variant.profiles=null;
+      assert.throws(()=>timetableFeatures([variant],now,{summaryOnly}),/Broken route\/agency/);
+    }
+    const variant=structuredClone(feed);variant.segments[0].profiles=null;variant.profiles.am.start=null;
+    assert.throws(()=>timetableFeatures([variant],now,{summaryOnly}),{name:'TypeError',message:/convert undefined or null to object/i});
+  }
+});
+
+test('first mapped segment still validates feed windows after skipped geometry',()=>{
+  const variant=structuredClone(feed);variant.profiles.am.start=null;
+  variant.segments.unshift({...structuredClone(variant.segments[0]),geometry:null});
+  for(const summaryOnly of [false,true])assert.throws(()=>timetableFeatures([variant],now,{summaryOnly}),{name:'TypeError',message:/slice/});
+});
+
+test('initialized feed windows do not skip later segment validation',()=>{
+  for(const summaryOnly of [false,true]){
+    const variant=structuredClone(feed);variant.segments.push({...structuredClone(variant.segments[0]),profiles:null});
+    assert.throws(()=>timetableFeatures([variant],now,{summaryOnly}),{name:'TypeError',message:/convert undefined or null to object/i});
+    variant.segments[1].route_id='missing';
+    assert.throws(()=>timetableFeatures([variant],now,{summaryOnly}),/Broken route\/agency/);
+  }
+});
+
+test('each JSON feed retains its own windows and agency timezone',()=>{
+  const other=structuredClone(feed);other.source.id='second';other.profiles.am={start:'10:15:00',end:'11:45:00'};other.agencies[0].agency_timezone='America/New_York';
+  const original=structuredClone([feed,other]),full=timetableFeatures([feed,other],now);
+  const first=full.local.find(f=>f.properties.id==='gtfs:fixture:r').properties;
+  const second=full.local.find(f=>f.properties.id==='gtfs:second:r').properties;
+  assert.match(first.frequency_definition,/Europe\/Helsinki.*am: 07:00–09:00/);
+  assert.match(second.frequency_definition,/America\/New_York.*am: 10:15–11:45/);
+  assert.deepEqual(timetableFeatures([feed,other],now,{summaryOnly:true}),{summary:full.summary});
+  assert.deepEqual([feed,other],original);
+});
+
+test('empty feed windows remain valid across repeated segments',()=>{
+  const variant=structuredClone(feed);variant.profiles={};variant.segments.push(structuredClone(variant.segments[0]));
+  const original=structuredClone(variant),full=timetableFeatures([variant],now);
+  assert.match(full.local[0].properties.frequency_definition,/\): \. Counts/);
+  assert.equal(full.summary[0].availableSegments,2);
+  assert.deepEqual(timetableFeatures([variant],now,{summaryOnly:true}),{summary:full.summary});
+  assert.deepEqual(variant,original);
+});

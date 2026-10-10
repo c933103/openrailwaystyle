@@ -4,22 +4,193 @@
 // (service-routes.mjs). Only one feed is held at a time.
 import {readFile,readdir,mkdir,writeFile,rm} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
+import {createHash} from 'node:crypto';
+import {isDeepStrictEqual} from 'node:util';
 import {timetableFeatures} from './gtfs-service.mjs';
 import {readFrequencyFeed} from './read-frequency-feed.mjs';
+import {projectReferenceRow,referenceUrlValid,referenceDisplayUrl,referenceResourceKey} from './frequency-reference-metadata.mjs';
+// Publication-only display URLs. Acquisition/cache identities and inputs stay
+// unchanged. The sibling <field>_sha256 is SHA-256 of the exact original UTF-8
+// URL, not the redacted display or a canonicalized endpoint. This is an audit
+// fingerprint, not encryption; provider paths and parameter names remain public.
+const urlFingerprint=value=>createHash('sha256').update(value,'utf8').digest('hex');
+const urlStart=/^(?:[a-z][a-z0-9+.-]*:(?:\/|\\\/){1,2}|https?%3a(?:%2f){1,2}|\/\/)/i;
+const urlInText=/(?:[a-z][a-z0-9+.-]*:(?:\/|\\\/){1,2}|https?%3a(?:%2f){1,2}|\/\/)[^\s<>"'`]+/gi;
+export function redactedSourceUrl(value){
+  try{
+    let decoded=value.replace(/\\\//g,'/');
+    if(/^https?%3a/i.test(decoded))decoded=decodeURIComponent(decoded);
+    if(/[\u0000-\u0020\u007f]/.test(decoded))return '[invalid source URL]';
+    const relative=decoded.startsWith('//'),url=new URL(relative?'https:'+decoded:decoded);
+    if(!url.hostname)return '[invalid source URL]';
+    // Keep an already publication-safe IPv6 spelling byte-for-byte. WHATWG
+    // compression would otherwise detach a recoverable URL from its raw hash.
+    if(url.hostname.startsWith('[')&&referenceUrlValid(decoded)&&referenceDisplayUrl(decoded)===decoded)return decoded;
+    url.username='';url.password='';url.hash='';
+    const names=[...url.searchParams.keys()];
+    url.search='';
+    for(const name of names)url.searchParams.append(/^[A-Za-z0-9_.-]{1,80}$/.test(name)?name:'parameter','[redacted]');
+    return relative?url.href.slice('https:'.length):url.href;
+  }catch{return '[invalid source URL]';}
+}
+function redactText(value){
+  // An entire URL may contain malformed whitespace. Fail closed rather than
+  // leaving a credential suffix outside a token matched inside diagnostic prose.
+  if(urlStart.test(value))return redactedSourceUrl(value);
+  return value.replace(urlInText,url=>redactedSourceUrl(url));
+}
+export function publishedMetadata(value,referenceContext=false){
+  if(typeof value==='string')return referenceContext&&referenceUrlValid(value)?referenceDisplayUrl(value):redactText(value);
+  if(Array.isArray(value))return value.map(item=>publishedMetadata(item,referenceContext));
+  if(!value||typeof value!=='object')return value;
+  // Unusual URL-keyed audit maps must not collapse two raw identities onto
+  // the same redacted key. Ordinary schema and accounting keys are unchanged.
+  const publicKey=key=>{const redacted=redactText(key);return redacted===key?key:`[sha256:${urlFingerprint(key)}] ${redacted}`;};
+  value=projectReferenceRow(value);
+  const result=Object.fromEntries(Object.entries(value).map(([key,item])=>[publicKey(key),publishedMetadata(item,referenceContext||key==='source_resolution'||key==='lineage'&&Object.hasOwn(value,'source_resolution'))]));
+  for(const [key,item] of Object.entries(value)){
+    if(typeof item==='string'&&urlStart.test(item)){
+      const hashKey=publicKey(key)+'_sha256';
+      // Earlier pipeline stages may already have redacted a display URL while
+      // retaining its original fingerprint. Never replace it with a display hash.
+      if(!/^[a-f0-9]{64}$/.test(result[hashKey]||''))result[hashKey]=urlFingerprint(item);
+    }else if(Array.isArray(item)&&item.some(x=>typeof x==='string'&&urlStart.test(x))){
+      const hashKey=publicKey(key)+'_sha256';
+      if(!Array.isArray(result[hashKey]))result[hashKey]=item.map(x=>typeof x==='string'&&urlStart.test(x)?urlFingerprint(x):null);
+    }
+  }
+  return result;
+}
 // Outcome totals always come from the entries themselves: each shard's own
 // counts cover only that shard.
 export const countStatuses=entries=>{const counts={};for(const entry of entries)counts[entry.status]=(counts[entry.status]||0)+1;return counts;};
+export const countOutcomeReasons=entries=>{
+  const counts={};
+  for(const entry of entries){
+    if(!['excluded','failed','retry_pending','non_timetable','source_alias'].includes(entry.status))continue;
+    const reason=entry.reason_code||'unclassified';
+    counts[reason]=(counts[reason]||0)+1;
+  }
+  return counts;
+};
+const sourceBindings=row=>{
+  if(!referenceUrlValid(row?.source))return null;
+  const values=[row,...(Array.isArray(row?.lineage)?row.lineage:[])],result=new Set();
+  for(const item of values){
+    if(typeof item?.source!=='string'||!/^https?:\/\//i.test(item.source))continue;
+    if(!referenceUrlValid(item.source))return null;
+    const actual=urlFingerprint(item.source),stored=item.source_sha256??actual;
+    if(!/^[a-f0-9]{64}$/.test(stored))return null;
+    if(stored!==actual){
+      const query=[...new URLSearchParams(item.source.split('#',1)[0].split('?').slice(1).join('?'))];
+      if(!query.length||query.some(([,value])=>value!=='[redacted]'))return null;
+    }
+    const resource=referenceResourceKey(referenceDisplayUrl(item.source));
+    if(!resource)return null;
+    result.add(JSON.stringify([stored,...resource]));
+  }
+  return [...result].sort();
+};
+const sourceFingerprints=row=>sourceBindings(row)?.map(value=>JSON.parse(value)[0]);
+// A shape-valid schedule label is not the alias's own public acquisition proof.
+const roleSpecs={static_current:'gtfs',realtime_trip_updates:'gtfs-rt',realtime_vehicle_positions:'gtfs-rt',realtime_alerts:'gtfs-rt',gbfs_auto_discovery:'gbfs'};
+const publicAuth=value=>value==null||(typeof value==='string'||Number.isInteger(value))&&['','0','none'].includes(String(value).trim().toLowerCase());
+const rawResource=value=>{const key=referenceResourceKey(value);return key===null?null:JSON.stringify(key);};
+const visibleResource=value=>referenceUrlValid(value)?rawResource(referenceDisplayUrl(value)):null;
+const redactedQuery=value=>referenceUrlValid(value)&&[...new URLSearchParams(value.split('#',1)[0].split('?').slice(1).join('?'))].some(([,v])=>v==='[redacted]');
+const itemHashes=(item,key)=>new Set([item?.[key+'_sha256'],typeof item?.[key]==='string'?urlFingerprint(item[key]):null].filter(value=>/^[a-f0-9]{64}$/.test(value||'')));
+const heldAliasResource=(row,item,key)=>{
+  const value=item?.[key];if(!referenceUrlValid(value))return false;
+  const hashes=itemHashes(item,key),own=itemHashes(row,'source');
+  if([...hashes].some(hash=>own.has(hash)))return true;
+  const actual=rawResource(value),candidate=rawResource(row.source);
+  if(actual!==null&&actual===candidate)return true;
+  return (redactedQuery(value)||redactedQuery(row.source))&&visibleResource(value)===visibleResource(row.source);
+};
+const referenceStaticProof=row=>{
+  const resolution=row?.source_resolution;
+  if(!resolution||resolution.schema!==1||resolution.state!=='schedule'||!resolution.specs?.includes('gtfs')||row.access_review||rawResource(row.source)===null)return false;
+  const declarations=resolution.declarations??[],ordinary=resolution.ordinary_static_declarations??[],statics=[],options=new Map();
+  const companion=d=>!(d.resolution.specs??[]).includes('gtfs')&&((d.resolution.specs??[]).length>0||['gtfs-rt','gbfs'].includes(d.declared_spec));
+  for(const declaration of declarations){
+    const r=declaration.resolution,endpoints=r.endpoints??[];
+    if(typeof declaration.upstream_skip!=='boolean')return false;
+    if(!['resolved','authorization_required','transport_options_required','metadata_unavailable','conflicting_reference','missing_reference','malformed_reference','unsupported_type'].includes(r.state))return false;
+    if(!companion(declaration)){
+      if(r.state==='conflicting_reference')return false;
+      const value=JSON.stringify([declaration.definition.sha256,r.state,r.specs,declaration.upstream_skip,endpoints]);
+      if(options.has(declaration.id)&&options.get(declaration.id)!==value)return false;
+      options.set(declaration.id,value);
+    }
+    if(new Set(endpoints.map(e=>e.role)).size!==endpoints.length)return false;
+    for(const endpoint of endpoints){
+      if(roleSpecs[endpoint.role]!==endpoint.spec||!r.specs.includes(endpoint.spec)||endpoint.authorization&&endpoint.access_state!=='authorization_required')return false;
+      if(endpoint.spec==='gtfs'){
+        statics.push([declaration,endpoint]);
+        if(endpoint.access_state!=='public_declared'&&(heldAliasResource(row,endpoint,'url')||heldAliasResource(row,endpoint,'declared_url')))return false;
+      }
+    }
+    if(endpoints.length){
+      const expected=endpoints.some(e=>e.access_state==='authorization_required')?'authorization_required':endpoints.some(e=>e.access_state==='review_required')?'transport_options_required':'resolved';
+      if(r.state!==expected)return false;
+    }
+  }
+  for(const item of ordinary)if(item.access_state!=='public_declared'&&heldAliasResource(row,item,'url'))return false;
+  for(const item of row.lineage??[])if(item.catalogue==='mobility-database'&&!publicAuth(item.authentication_type)&&heldAliasResource(row,item,'source'))return false;
+  if(new Set(statics.map(([d])=>d.id)).size!==1||new Set(statics.map(([,e])=>e.url)).size!==1||new Set(statics.map(([,e])=>e.url_sha256)).size!==1)return false;
+  const selected=statics.filter(([d,e])=>d.id===resolution.selected_static_declaration&&d.resolution.state==='resolved'&&e.access_state==='public_declared');
+  if(!selected.length)return false;
+  if(resolution.acquisition_alias_of&&(selected.some(([d])=>d.upstream_skip!==true)||ordinary.some(item=>item.access_state==='public_declared'&&item.upstream_skip===false&&['http','ftp'].includes(item.type))))return false;
+  const binding=sourceBindings(row);
+  if(!binding||!selected.every(([,e])=>isDeepStrictEqual(sourceBindings({source:e.url,source_sha256:e.url_sha256}),binding)))return false;
+  const independent=ordinary.some(item=>item.access_state==='public_declared'&&isDeepStrictEqual(sourceBindings({source:item.url,source_sha256:item.url_sha256}),binding))||
+    (row.lineage??[]).some(item=>item.catalogue==='mobility-database'&&publicAuth(item.authentication_type)&&isDeepStrictEqual(sourceBindings(item),binding));
+  if(!independent&&declarations.some(d=>!['resolved','authorization_required'].includes(d.resolution.state)&&!companion(d)))return false;
+  return true;
+};
+const ownerMetadataCompatible=row=>{
+  const lineage=row?.lineage??[];
+  return row?.lineage!==null&&Array.isArray(lineage)&&lineage.length<=64&&lineage.every(item=>item&&typeof item==='object'&&!Array.isArray(item)&&
+    (item.catalogue!=='mobility-database'||publicAuth(item.authentication_type)));
+};
 export function mergeInventories(inventories){
   if(!inventories.length)throw new Error('No worldwide inventory');
   const first=inventories[0],ids=new Set(),shards=new Set(),entries=[];
   for(const inventory of inventories){
-    for(const field of ['schema','shards','catalogue_sha256','catalogue_entries','service_date'])if(inventory[field]!==first[field])throw new Error(`Inconsistent inventory ${field}`);
+    for(const field of ['schema','shards','catalogue_url','catalogue_sha256','catalogue_entries','service_date'])if(inventory[field]!==first[field])throw new Error(`Inconsistent inventory ${field}`);
+    if(!isDeepStrictEqual(inventory.catalogue_provenance,first.catalogue_provenance))throw new Error('Inconsistent inventory catalogue_provenance');
     if(shards.has(inventory.shard))throw new Error('Duplicate shard');shards.add(inventory.shard);
-    for(const entry of inventory.entries){if(ids.has(entry.id))throw new Error('Duplicate feed');ids.add(entry.id);entries.push(entry);}
+    for(const raw of inventory.entries){
+      if(ids.has(raw.id))throw new Error('Duplicate feed');ids.add(raw.id);
+      // Reconcile the graph that can actually be published, never raw alias
+      // links whose owner/state would disappear at the projection boundary.
+      const entry=raw.catalogue&&Object.hasOwn(raw.catalogue,'source_resolution')?
+        {...raw,catalogue:projectReferenceRow(raw.catalogue)}:raw;
+      entries.push(entry);
+    }
   }
   if(shards.size!==first.shards||ids.size!==first.catalogue_entries)throw new Error('Incomplete worldwide scan; refusing to publish a partial shard collection');
+  const byId=new Map(entries.map(entry=>[entry.id,entry]));
+  for(const entry of entries){
+    if(entry.status!=='source_alias')continue;
+    const resolution=entry.catalogue?.source_resolution,target=byId.get(resolution?.acquisition_alias_of),targetResolution=target?.catalogue?.source_resolution;
+    if(!referenceStaticProof(entry.catalogue)||resolution?.schema!==1||resolution.state!=='schedule'||!resolution.specs?.includes('gtfs')||!target||target.id===entry.id||target.status==='source_alias'||
+        targetResolution?.acquisition_alias_of||target.catalogue?.delivery!=='direct'||!ownerMetadataCompatible(target.catalogue)||
+        (targetResolution&&!referenceStaticProof(target.catalogue))||
+        target.catalogue?.access_review||resolution.processed_filename!=null||
+        !isDeepStrictEqual(sourceFingerprints(entry.catalogue),[resolution.alias_source_sha256])||
+        !isDeepStrictEqual(sourceFingerprints(target.catalogue),[resolution.alias_source_sha256])||
+        !isDeepStrictEqual(sourceBindings(entry.catalogue),sourceBindings(target.catalogue))||
+        !/^[a-f0-9]{64}$/.test(resolution.alias_source_sha256||'')||
+        resolution.alias_source_sha256!==target.catalogue?.source_sha256||entry.output||target.status==='excluded'||
+        target.status==='non_timetable'||['source_access_review','unresolved_source_reference','ambiguous_source_reference','missing_source_url'].includes(target.reason_code))
+      throw new Error('Invalid static source alias target');
+  }
   entries.sort((a,b)=>a.id.localeCompare(b.id));
-  return {...first,shard:undefined,counts:countStatuses(entries),entries};
+  // Old shards never bound their origins to this catalogue. Keep them readable
+  // without retroactively certifying the old single-URL attribution.
+  return {...first,catalogue_provenance:first.catalogue_provenance??{schema:1,kind:'legacy-unverified',sources:[]},
+    shard:undefined,counts:countStatuses(entries),entries};
 }
 export async function pruneFrequencyOutputs(directory,entries){
   const wanted=new Set(entries.filter(e=>e.status==='compiled').map(e=>e.output));
@@ -29,30 +200,48 @@ export async function pruneFrequencyOutputs(directory,entries){
 }
 export async function assemble(directory){
   const names=(await readdir(directory)).filter(n=>/^inventory-\d+\.json$/.test(n));
-  const inventory=mergeInventories(await Promise.all(names.map(async name=>JSON.parse(await readFile(join(directory,name),'utf8')))));
+  const shards=await Promise.all(names.map(async name=>JSON.parse(await readFile(join(directory,name),'utf8'))));
+  const inventory=mergeInventories(shards);
+  // Snapshot artifacts include staged shard copies as well as inventory.json.
+  // Apply the same publication boundary to every copy, including held rows.
+  await Promise.all(names.map((name,i)=>writeFile(join(directory,name),JSON.stringify(publishedMetadata(shards[i]))+'\n')));
   await pruneFrequencyOutputs(directory,inventory.entries);
   const tileRoot=join(directory,'tiles');await rm(tileRoot,{recursive:true,force:true});await mkdir(tileRoot,{recursive:true});
   const summary=[];
   for(const entry of inventory.entries){
     if(entry.status!=='compiled')continue;
     const feed=await readFrequencyFeed(join(directory,entry.output));
-    if(feed.source.id!==entry.id||feed.source.sha256!==entry.sha256||feed.source.service_date!==inventory.service_date)throw new Error(`Unverified feed ${entry.id}`);
+    if(feed.source.id!==entry.id||feed.source.sha256!==entry.sha256||feed.source.service_date!==inventory.service_date)throw new Error(`Unverified feed ${redactText(entry.id)}`);
     // No tiles are built, so a feed's size no longer fails it here.
     const data=timetableFeatures([feed],Date.now(),{summaryOnly:true});
     summary.push(...data.summary);
-    console.log(entry.id,feed.routes.length,'rail services');
+    console.log(redactText(entry.id),feed.routes.length,'rail services');
   }
   if(!summary.some(f=>f.mappedRoutes>0))throw new Error('Worldwide scan produced no mapped rail services; inspect inventory failures');
   await pruneFrequencyOutputs(directory,inventory.entries);
   // Totals recounted from the entries, as published.
-  const counts=countStatuses(inventory.entries);inventory.counts=counts;
-  const manifest={schema:3,service_date:inventory.service_date,catalogue_url:inventory.catalogue_url,catalogue_sha256:inventory.catalogue_sha256,catalogue_entries:inventory.catalogue_entries,
-    countries_scanned:[...new Set(inventory.entries.map(e=>e.country))].sort(),counts,feeds:summary,tiles:0,
-    scope:'Whole worldwide catalogue scanned. Compiled timetables are kept for matching to OSM routes and draw no lines; failed, excluded, unshaped and expired sources are explicitly reported. Coverage is not complete worldwide.'};
+  const counts=countStatuses(inventory.entries);
+  const reasonCounts=countOutcomeReasons(inventory.entries);
+  const countrySet=filter=>[...new Set(inventory.entries.filter(filter).map(e=>e.country).filter(Boolean))].sort();
+  const compiledById=new Map(inventory.entries.filter(e=>e.status==='compiled').map(e=>[e.id,e]));
+  const countriesMapped=[...new Set(summary.filter(f=>f.mappedRoutes>0).map(f=>compiledById.get(f.id)?.country).filter(Boolean))].sort();
+  inventory.counts=counts;
+  inventory.reason_codes=reasonCounts;
+  const manifest=publishedMetadata({schema:3,service_date:inventory.service_date,catalogue_url:inventory.catalogue_url,catalogue_sha256:inventory.catalogue_sha256,catalogue_entries:inventory.catalogue_entries,
+    catalogue_provenance:inventory.catalogue_provenance,
+    countries_scanned:countrySet(()=>true),
+    countries_compiled:countrySet(e=>e.status==='compiled'),
+    countries_with_mapped_feed:countriesMapped,
+    reason_codes:reasonCounts,
+    counts,feeds:summary,tiles:0,
+    scope:'Whole worldwide catalogue scanned. Compiled timetables are kept for matching to OSM routes and draw no lines; failed, excluded, unshaped and expired sources are explicitly reported. Coverage is not complete worldwide.'});
   await writeFile(join(tileRoot,'index.json'),JSON.stringify({tiles:[]}));
   await writeFile(join(directory,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
-  await writeFile(join(directory,'inventory.json'),JSON.stringify(inventory,null,2)+'\n');
-  console.log(JSON.stringify({catalogue:manifest.catalogue_entries,counts,countries:manifest.countries_scanned.length,mappedFeeds:summary.filter(f=>f.mappedRoutes>0).length}));
+  await writeFile(join(directory,'inventory.json'),JSON.stringify(publishedMetadata(inventory),null,2)+'\n');
+  console.log(JSON.stringify(publishedMetadata({catalogue:manifest.catalogue_entries,counts,
+    countriesScanned:manifest.countries_scanned.length,countriesCompiled:manifest.countries_compiled.length,
+    countriesWithMappedFeed:manifest.countries_with_mapped_feed.length,
+    mappedFeeds:summary.filter(f=>f.mappedRoutes>0).length,reasonCodes:reasonCounts})));
   return manifest;
 }
 if(process.argv[1]&&resolve(process.argv[1])===resolve(new URL(import.meta.url).pathname))await assemble(process.argv[2]||'frequency-output');

@@ -1,3 +1,4 @@
+import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {launchBrowser} from './browser.mjs';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
@@ -8,6 +9,7 @@ await mkdir('browser-review',{recursive:true});
 try {
  for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]) {
   const page=await browser.newPage({viewport:{width,height},hasTouch:kind==='mobile',deviceScaleFactor:kind==='mobile'?2.625:1,serviceWorkers:'block'});
+  await installEmptyMapProviders(page.context(),base,{firstParty:'network'});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base+'?relief=0&inactive=0#3/35/135',{waitUntil:'domcontentloaded'});
   await page.waitForSelector('body[data-map-ready="true"]',{state:'attached',timeout:90000});

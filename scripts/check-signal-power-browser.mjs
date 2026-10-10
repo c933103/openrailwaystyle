@@ -1,4 +1,6 @@
+import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {launchBrowser} from './browser.mjs';
+import {ormVectorFixture} from './orm-vector-fixture.mjs';
 import {readFile, mkdir} from 'node:fs/promises';
 import {gzipSync} from 'node:zlib';
 import assert from 'node:assert/strict';
@@ -84,16 +86,16 @@ function archiveFor(index,z=18) {
 const archive=archiveFor(basemapIndex);
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==','base64');
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
-const runtime=process.env.ATLAS_BROWSER_RUNTIME,glyphFile=process.env.ATLAS_BROWSER_GLYPHS;
+const glyphFile=process.env.ATLAS_BROWSER_GLYPHS;
 const deadline=setTimeout(()=>{console.error('Signal and power checks exceeded ten minutes');process.exit(1);},600000);deadline.unref();
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 await mkdir('browser-review',{recursive:true});
 try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]) {
   const page=await browser.newPage({viewport:{width,height},hasTouch:kind==='mobile',deviceScaleFactor:2,serviceWorkers:'block'});setDefaultTimeout(page,60000);
+  await installEmptyMapProviders(page.context(),base,{firstParty:'network'});
   const errors=[];let supplyRequests=0;page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{if(message.type()==='error'){console.error(kind,message.text());if(message.text().startsWith('Map resource error:'))errors.push(message.text());}});
   await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(kind,options){return original.call(this,kind,/^webgl2?$/.test(kind)?{...options,preserveDrawingBuffer:true}:options);};});
-  if(runtime)await page.route('https://cdn.jsdelivr.net/npm/**',async route=>{const path=new URL(route.request().url()).pathname,local=path.includes('maplibre-gl')?'maplibre-gl/dist/'+path.split('/').at(-1):'pmtiles/dist/pmtiles.js';await route.fulfill({body:await readFile(`${runtime}/${local}`),contentType:path.endsWith('.css')?'text/css':'text/javascript'});});
   await page.route('https://tuiles.enliberte.fr/planet.pmtiles',route=>{
     const range=/bytes=(\d+)-(\d+)/.exec(route.request().headers().range||''),start=range?+range[1]:0,end=Math.min(range?+range[2]:archive.length-1,archive.length-1);
     return route.fulfill({status:range?206:200,body:archive.subarray(start,end+1),contentType:'application/octet-stream',headers:range?{'Content-Range':`bytes ${start}-${end}/${archive.length}`,'Accept-Ranges':'bytes'}:{}});
@@ -110,13 +112,15 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
   });
   await page.route('https://openrailwaymap.app/**',async route=>{
     const path=new URL(route.request().url()).pathname;
+    const direct=ormVectorFixture(path,indexes);
+    if(direct)return route.fulfill(direct);
     if(path.startsWith('/api/feature/'))await route.fulfill({status:404,body:''});
     else await route.fulfill({json:{tilejson:'3.0.0',tiles:[`${base}review-signal-power${path}/{z}/{x}/{y}.pbf`],minzoom:0,maxzoom:22}});
   });
-  await page.route('**/review-signal-power/**',async route=>{
-    const match=/review-signal-power\/([^/]+)\/(\d+)\/(\d+)\/(\d+)\.pbf/.exec(route.request().url());assert.ok(match);
-    const [,layer,z,x,y]=match,tile=indexes[layer]?.getTile(+z,+x,+y);
-    await route.fulfill({body:tile?Buffer.from(vtpbf.fromGeojsonVt({[layer]:tile},{version:2})):Buffer.alloc(0),contentType:'application/x-protobuf'});
+  await page.route('**/review-signal-power/**',route=>{
+    const response=ormVectorFixture(new URL(route.request().url()).pathname.split('/review-signal-power')[1],indexes);
+    assert.ok(response,'Recognized local fixture tile URL');
+    return route.fulfill(response);
   });
   await page.route('https://tiles.maps.eox.at/**',route=>route.fulfill({body:png,contentType:'image/png'}));
   await page.goto(base+'?mode=control&language=en&autoGlobe=0&relief=0&stations=0&names=0&inactive=0&trackCounts=0&transport=0&destinations=1&constraints=0#18/0/0.0007',{waitUntil:'domcontentloaded'});

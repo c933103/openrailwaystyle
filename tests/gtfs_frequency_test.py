@@ -15,6 +15,58 @@ CONFIG = {'source':{'id':'fixture'},'profiles':{'am':{'start':'07:00:00','end':'
 
 
 class GTFSFrequency(unittest.TestCase):
+    def test_time_padding_preserves_optional_and_extended_hour_values(self):
+        for value, expected in [(None, None), ('', None), (' 6:57:00', 25020),
+                                ('6:57:00 ', 25020), ('\t24:01:02\t', 86462),
+                                (' 103:00:00 ', 370800)]:
+            with self.subTest(value=value):
+                self.assertEqual(compiler.seconds(value), expected)
+
+    def test_time_padding_does_not_accept_empty_or_malformed_times(self):
+        for value in [' ', '\t', '6: 57:00', '6:57: 00', '6:60:00', '6:57:60',
+                      '-18:31:25', '+6:57:00', '6:57', 'n/a']:
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError) as error:
+                    compiler.seconds(value)
+                self.assertEqual(str(error.exception), f'Invalid GTFS time {value!r}')
+
+    def test_padded_departure_and_frequency_times_preserve_profiles(self):
+        patterns = {'t': [('A', '00:00:00'), ('B', '00:30:00'), ('C', '00:40:00')]}
+        for exact in ['0', '1']:
+            with self.subTest(exact_times=exact):
+                frequency = [{'trip_id': 't', 'start_time': '07:00:00',
+                              'end_time': '09:00:00', 'headway_secs': '600',
+                              'exact_times': exact}]
+                path = self.feed(patterns, patterns, frequency)
+                before = compiler.compile_feed(path, CONFIG, '2026-10-05')
+                with zipfile.ZipFile(path) as z:
+                    files = {name: z.read(name) for name in z.namelist()}
+                files['frequencies.txt'] = files['frequencies.txt'].replace(
+                    b'07:00:00', b' 7:00:00 ').replace(b'09:00:00', b' 9:00:00 ')
+                for value in [b'00:00:00', b'00:30:00', b'00:40:00']:
+                    files['stop_times.txt'] = files['stop_times.txt'].replace(
+                        value, b' ' + value + b' ')
+                with zipfile.ZipFile(path, 'w') as z:
+                    for name, data in files.items():
+                        z.writestr(name, data)
+                after = compiler.compile_feed(path, CONFIG, '2026-10-05')
+                self.assertEqual(after['segments'], before['segments'])
+                self.assertEqual(after['source']['calendar_audit'],
+                                 before['source']['calendar_audit'])
+
+    def test_whitespace_only_departure_remains_explicitly_invalid(self):
+        patterns = {'t': [('A', '08:00:00'), ('B', '08:10:00')]}
+        path = self.feed(patterns, patterns)
+        with zipfile.ZipFile(path) as z:
+            files = {name: z.read(name) for name in z.namelist()}
+        files['stop_times.txt'] = files['stop_times.txt'].replace(b'08:00:00', b' ')
+        with zipfile.ZipFile(path, 'w') as z:
+            for name, data in files.items():
+                z.writestr(name, data)
+        # Treating this as an absent value would break max(known) downstream.
+        with self.assertRaisesRegex(ValueError, 'Invalid GTFS time'):
+            compiler.compile_feed(path, CONFIG, '2026-10-05')
+
     def test_future_rail_calendars_without_feed_start_are_unknown_not_zero(self):
         patterns={'t':[('A','08:00:00'),('B','08:10:00')]}
         for added in [False,True]:
@@ -214,6 +266,7 @@ class GTFSFrequency(unittest.TestCase):
         import http.server
         import threading
         import contextlib
+        from unittest.mock import patch
         module_spec=importlib.util.spec_from_file_location('global_frequency',Path(__file__).parent.parent/'scripts/global-service-frequency.py')
         global_compiler=importlib.util.module_from_spec(module_spec);module_spec.loader.exec_module(global_compiler)
         patterns={'t':[('A','08:00:00'),('B','08:10:00')]}
@@ -240,9 +293,36 @@ class GTFSFrequency(unittest.TestCase):
                     return {'id':ident,'name':ident,'country':'FI','status':'pending','processed_url':url+'/'+ident+'.zip',
                             'catalogue':{'source':url,'spdx_license_identifier':'CC0-1.0'}}
                 args=(cache,output,'2026-10-05',None,1_000_000,CONFIG['profiles'])
-                with self.assertRaisesRegex(RuntimeError,'retained stop-row budget'):
-                    global_compiler.compile_entry_isolated(entry('bad'),*args,max_seconds=10,max_memory_bytes=256*1024*1024)
-                result=global_compiler.compile_entry_isolated(entry('good'),*args,max_seconds=10,max_memory_bytes=256*1024*1024)
+                # Production's unchanged subprocess entry must reject catalogue
+                # loopback even when that catalogue asks for fixture access.
+                untrusted = {**entry('good'), 'allow_private': True, 'test_mode': True}
+                with self.assertRaises(global_compiler.SourceRetrievalError) as denied:
+                    global_compiler.compile_entry_isolated(untrusted,*args,max_seconds=10,max_memory_bytes=256*1024*1024)
+                self.assertEqual({item['code'] for item in denied.exception.attempts}, {'unsafe_source_url'})
+                # Bootstrap belongs only to this test. Retain a real child process,
+                # the real compile_one path, and its memory/time limits; inject only
+                # this server's exact port, never an environment/catalogue opt-in.
+                run = global_compiler.subprocess.run
+                bootstrap = """
+import importlib.util, socket, sys
+spec = importlib.util.spec_from_file_location('fixture_compiler', sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+def fixture_addresses(host, port):
+    if host != '127.0.0.1' or port != int(sys.argv[4]):
+        raise AssertionError('Unexpected network destination in offline child fixture')
+    return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, (host, port))]
+module.resolve_public_addresses = fixture_addresses
+sys.exit(module.compile_one(sys.argv[2], sys.argv[3]))
+"""
+                def fixture_child(command, **kwargs):
+                    self.assertEqual(command[2], '--compile-one')
+                    return run([command[0], '-c', bootstrap, command[1], command[3], command[4],
+                                str(server.server_port)], **kwargs)
+                with patch.object(global_compiler.subprocess, 'run', side_effect=fixture_child):
+                    with self.assertRaisesRegex(RuntimeError,'retained stop-row budget'):
+                        global_compiler.compile_entry_isolated(entry('bad'),*args,max_seconds=10,max_memory_bytes=256*1024*1024)
+                    result=global_compiler.compile_entry_isolated(entry('good'),*args,max_seconds=10,max_memory_bytes=256*1024*1024)
                 self.assertEqual(result['status'],'compiled')
                 self.assertTrue((output/result['output']).exists())
         finally:

@@ -21,18 +21,27 @@ import {createHash} from 'node:crypto';
 import {readdir, readFile} from 'node:fs/promises';
 import {dirname, join, normalize} from 'node:path';
 
-// Longest first within a group, no job much longer than the station and map
-// checks, which take the longest (about 13 minutes each) and get jobs of
-// their own. The world-frequency check replaces the service
-// data with fixtures, so it runs alone after `prepare`.
+// Public OpenRailwayMap tile downloads are prohibited in automated checks.
+// Keep real-data geographic audits available for self-hosted, loopback-only
+// OpenRailwayMap installations, but NEVER dispatch them on public CI.
+// A fixture integration check validates live Atlas code against local tile
+// responses without contacting the public tile server.
+export const LOCAL_ORM_CHECKS = [
+  'check-major-stations-browser.mjs',
+  'check-map-browser.mjs',
+  'check-context-browser.mjs',
+  'check-planning-browser.mjs',
+];
+
+// The world-frequency check replaces service data with fixtures, so it still
+// runs alone after `prepare`. Every check uses synthetic external providers.
 export const GROUPS = [
-  {group: 'stations', checks: ['check-major-stations-browser.mjs']},
-  {group: 'map', checks: ['check-map-browser.mjs']},
-  {group: 'context', checks: ['check-context-browser.mjs', 'check-planning-browser.mjs', 'check-bathymetry-browser.mjs', 'check-globe-browser.mjs', 'check-polar-browser.mjs']},
-  {group: 'controls', checks: ['check-map-controls-browser.mjs', 'check-build-browser.mjs', 'check-watch-browser.mjs', 'check-service-frequency-browser.mjs']},
+  {group: 'rail-fixture', checks: ['check-deployed-fixture-browser.mjs', 'check-orm-fixture-browser.mjs', 'check-rail-overview-browser.mjs']},
+  {group: 'context', checks: ['check-bathymetry-browser.mjs', 'check-globe-browser.mjs', 'check-polar-browser.mjs']},
+  {group: 'controls', checks: ['check-network-guard-browser.mjs', 'check-map-controls-browser.mjs', 'check-build-browser.mjs', 'check-watch-browser.mjs', 'check-service-frequency-browser.mjs', 'check-first-party-assets-browser.mjs', 'check-pwa-install-browser.mjs']},
   {group: 'infrastructure', checks: ['check-signal-power-browser.mjs', 'check-platform-browser.mjs', 'check-infrastructure-browser.mjs']},
   {group: 'platforms', checks: ['check-platform-stations-browser.mjs']},
-  {group: 'frequency', checks: ['check-world-frequency-browser.mjs'], prepare: 'node scripts/rebuild-service-frequency.mjs styles/data/service-routes /tmp/frequency-fixture-credits.html --fixtures'},
+  {group: 'frequency', checks: ['check-world-frequency-browser.mjs', 'check-service-geometry-browser.mjs'], prepare: 'node scripts/rebuild-service-frequency.mjs styles/data/service-routes /tmp/frequency-fixture-credits.html --fixtures'},
 ];
 export const VALIDATED_CONTEXT = 'site/browser-checks';
 

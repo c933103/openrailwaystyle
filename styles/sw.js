@@ -7,25 +7,55 @@
 // so a newer module is never paired with an older one it depends on. A new
 // page is shown only once every file of its version is saved. Other files
 // come from the network first, the saved copy only when it fails. The map
-// libraries from the CDN are kept too: their addresses carry the version, so
-// a saved copy never goes stale and is used first. Map tiles and data files
+// libraries are hosted with this page and included in the same complete shell.
+// Their filenames pin the library version, so cached old/new app versions
+// cannot overwrite one another's dependency bytes. Map tiles and data files
 // are not handled here.
-const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}14`, KEEP_VERSIONS = 2;
+const PREFIX = 'atlas-shell-', CACHE = `${PREFIX}24`, KEEP_VERSIONS = 2;
 const FONT_CACHE='atlas-label-fonts-v1';
-// Shell 14 refreshes the merged modules while migrate() keeps the previous app's
-// versioned modules. Stored user settings are not touched.
+// Shell 24 selects the hash-pinned MapLibre attribution backport and keeps
+// older open tabs working without any new legacy request.
+// Stored user settings are not touched.
 // Keep in step with loadScript in app.mjs and the stylesheet in index.html.
-const LIBRARIES = ['https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js', 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css', 'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js'];
-const SHELL = /\/(app\.css|[\w-]+\.mjs|vendor\/[\w-]+\.js|world\.style\.json|major-stations\.geojson|manifest\.webmanifest|atlas-icon[\w-]*\.(?:png|svg))$/;
+const LIBRARIES = ['vendor/maplibre-gl-5.24.0-atlas.1.js', 'vendor/maplibre-gl-5.24.0.css', 'vendor/pmtiles-4.2.1.js'];
+const LEGACY_LIBRARIES = {
+  'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css': 'ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732',
+  'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js': 'afc49d216fd24c0a3c0ff3cd2e0c62d6cdaf062854c3dced778dcab168824f79',
+};
+// Historical pages use plain script tags without SRI. Their v5 API remains
+// compatible, so future requests to either old JS URL receive verified fixed
+// bytes. Do not migrate original executable JS into the replacement cache.
+const MAPLIBRE_PATCHED = new URL('vendor/maplibre-gl-5.24.0-atlas.1.js', self.registration.scope).href;
+const MAPLIBRE_PATCHED_SHA256 = '46dc2971db363b0c7efa1d9ae6035d26c872c7110a3384aaec379ff281e0f223';
+const LEGACY_MAPLIBRE = new Set([
+  new URL('vendor/maplibre-gl-5.24.0.js', self.registration.scope).href,
+  'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js',
+]);
+const legacyMapLibre = url => LEGACY_MAPLIBRE.has(url.origin + url.pathname);
+const SHELL = /\/(app\.css|[\w-]+\.mjs|vendor\/[\w.-]+\.(?:js|css)|world\.style\.json|major-stations\.geojson|manifest\.webmanifest|atlas-icon[\w-]*\.(?:png|svg))$/;
 // Saved at installation, so an app installed on the first visit (before this
 // worker controlled the page) also opens offline.
-const PRECACHE = ['./', 'app.css', 'app.mjs', 'bathymetry.mjs', 'map-model.mjs', 'layer-semantics.mjs', 'map-controls.mjs', 'platform-length.mjs', 'context.mjs', 'cjk-font.mjs', 'rare-han.mjs', 'crossing-tags.mjs', 'power-facilities.mjs', 'draw.mjs', 'elevation.mjs', 'dem-repair.mjs', 'globe-drag.mjs', 'keyboard-pan.mjs', 'watch-map.mjs', 'tile-bundles.mjs', 'service-frequency.mjs', 'departures.mjs', 'polar.mjs', 'track-count.mjs', 'track-tiles.mjs', 'han-region.mjs', 'han-region-data.mjs', 'loading-gauge-list.mjs', 'axle-load.mjs', 'vendor/tile-labels.js', 'vendor/track-worker.js', 'vendor/polar-layer.js', 'vendor/maplibre-contour.js', 'vendor/dem-worker.js', 'vendor/depth-worker.js', 'world.style.json', 'major-stations.geojson', 'manifest.webmanifest', 'atlas-icon.svg', 'atlas-icon-192.png', 'atlas-icon-512.png', 'atlas-icon-maskable-512.png', 'atlas-icon-touch-180.png'];
+const PRECACHE = ['./', ...LIBRARIES, 'app.css', 'app.mjs', 'bathymetry.mjs', 'map-model.mjs', 'layer-semantics.mjs', 'map-controls.mjs', 'rail-provider-recovery.mjs', 'platform-length.mjs', 'context.mjs', 'cjk-font.mjs', 'rare-han.mjs', 'crossing-tags.mjs', 'power-facilities.mjs', 'draw.mjs', 'elevation.mjs', 'dem-repair.mjs', 'globe-drag.mjs', 'keyboard-pan.mjs', 'watch-map.mjs', 'tile-bundles.mjs', 'service-frequency.mjs', 'departures.mjs', 'polar.mjs', 'track-count.mjs', 'track-tiles.mjs', 'han-region.mjs', 'han-region-data.mjs', 'loading-gauge-list.mjs', 'axle-load.mjs', 'vendor/tile-labels.js', 'vendor/track-worker.js', 'vendor/polar-layer.js', 'vendor/maplibre-contour.js', 'vendor/dem-worker.js', 'vendor/depth-worker.js', 'world.style.json', 'major-stations.geojson', 'manifest.webmanifest', 'atlas-icon.svg', 'atlas-icon-192.png', 'atlas-icon-512.png', 'atlas-icon-maskable-512.png', 'atlas-icon-touch-180.png'];
 
 // The version the page asks for, read from its module script.
 const pageVersion = html => html.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1] ?? null;
 const versioned = (key, version) => `${key}?v=${encodeURIComponent(version)}`;
 // The versions kept (saveVersion), newest first.
 const keptVersions = cache => cache.match(new URL('__versions', self.registration.scope).href).then(r => r ? r.json() : []).catch(() => []);
+// Compatibility responses must match the same immutable byte pins as
+// app.mjs and scripts/browser-libraries.mjs before they are migrated or served.
+async function verifiedLegacyLibrary(cache, url, expected = LEGACY_LIBRARIES[url]) {
+  if (!expected || !self.crypto?.subtle) return null;
+  try {
+    const response = await cache.match(url);
+    if (!response?.ok || response.type === 'opaque') return null;
+    const type = (response.headers.get('content-type') || '').split(';')[0].trim();
+    if (!(url.endsWith('.css') ? /^text\/css$/i.test(type) : /^(?:text|application)\/(?:x-)?(?:java|ecma)script$/i.test(type))) return null;
+    const digest = await self.crypto.subtle.digest('SHA-256', await response.clone().arrayBuffer());
+    const sha256 = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    return sha256 === expected ? response : null;
+  } catch { return null; }
+}
 // Saves every file of one version, all fetched now (so they match each
 // other), under both the plain and the versioned address; then drops the
 // files of other versions. Throws if any file fails, keeping what was there.
@@ -77,6 +107,17 @@ async function migrate(cache, version) {
     keep = [...new Set([version, ...keep, ...(await versions(old)), ...(pageOf ? [pageOf] : [])])].slice(0, KEEP_VERSIONS);
     for (const request of await old.keys()) {
       const url = new URL(request.url), v = url.searchParams.get('v');
+      if (legacyMapLibre(url)) continue;
+      // Older tabs may still request original CSS/PMTiles CDN URLs after the
+      // new worker claims it. Transfer only copies already saved; CDN access
+      // is never required for installation or for this compatibility path.
+      if (Object.hasOwn(LEGACY_LIBRARIES, request.url)) {
+        if (!await verifiedLegacyLibrary(cache, request.url)) {
+          const response = await verifiedLegacyLibrary(old, request.url);
+          if (response) await cache.put(request.url, response);
+        }
+        continue;
+      }
       if (url.origin !== location.origin || !SHELL.test(url.pathname)) continue;
       const key = v !== null ? request.url : pageOf && versioned(url.origin + url.pathname, pageOf);
       if (!key || !keep.includes(v ?? pageOf) || await cache.match(key)) continue;
@@ -96,23 +137,10 @@ self.addEventListener('install', event => event.waitUntil((async () => {
   if (!response.ok) throw new Error(`page returned ${response.status}`);
   const version = pageVersion(await response.clone().text());
   if (!version) throw new Error('page names no version');
-  // The libraries are fetched before anything is saved, so a library that
-  // fails to load leaves the cache as it was: the worker in place keeps a
-  // page that only asks for the libraries it knows. Fetched with CORS (the
-  // CDN allows any origin) so that an error status can be seen and fails the
-  // installation; the saved copy also serves the page's plain script and
-  // stylesheet requests.
-  const libraries = await Promise.all(LIBRARIES.map(async url => {
-    if (await cache.match(url)) return null;
-    const library = await fetch(url, {mode: 'cors'});
-    if (!library.ok) throw new Error(`${url} returned ${library.status}`);
-    // Release the installing worker's network slot before fetching the shell.
-    await library.clone().arrayBuffer();
-    return [url, library];
-  }));
+  // App modules and version-pinned map libraries succeed together. A blocked
+  // third-party CDN cannot prevent the new shell from becoming available.
   await saveVersion(cache, version, response);
   await migrate(cache, version);
-  for (const entry of libraries) if (entry) await cache.put(...entry);
   await self.skipWaiting();
 })()));
 self.addEventListener('activate', event => event.waitUntil((async () => {
@@ -123,15 +151,16 @@ self.addEventListener('activate', event => event.waitUntil((async () => {
 })()));
 self.addEventListener('fetch', event => {
   const request = event.request, url = new URL(request.url);
-  if (request.method === 'GET' && LIBRARIES.includes(request.url)) {
+  if (request.method === 'GET' && legacyMapLibre(url)) {
+    event.respondWith(caches.open(CACHE).then(async cache =>
+      await verifiedLegacyLibrary(cache, MAPLIBRE_PATCHED, MAPLIBRE_PATCHED_SHA256) || Response.error()));
+    return;
+  }
+  if (request.method === 'GET' && Object.hasOwn(LEGACY_LIBRARIES, request.url)) {
     event.respondWith(caches.open(CACHE).then(async cache => {
-      const saved = await cache.match(request.url);
-      if (saved) return saved;
-      // Only a successful copy is kept; otherwise the page's own request.
-      const response = await fetch(request.url, {mode: 'cors'}).catch(() => null);
-      if (!response?.ok) return fetch(request);
-      await cache.put(request.url, response.clone());
-      return response;
+      // Compatibility for old open pages only. An absent legacy copy must
+      // not cause a new CDN download, even when the browser is online.
+      return await verifiedLegacyLibrary(cache, request.url) || Response.error();
     }));
     return;
   }
@@ -158,6 +187,10 @@ self.addEventListener('fetch', event => {
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const plain = request.mode === 'navigate' ? new URL('./', self.registration.scope).href : url.origin + url.pathname;
+    if (version === null && LIBRARIES.some(path => new URL(path, self.registration.scope).href === plain)) {
+      const saved = await cache.match(plain);
+      if (saved) return saved;
+    }
     // A file of a saved version is the same file for good (a changed file
     // gets a new version), so it comes from the saved copy: a page then
     // always gets its own version's files, even the saved page shown when

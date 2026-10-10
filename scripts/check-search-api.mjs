@@ -4,6 +4,7 @@ const url = new URL(SEARCH_API);
 url.searchParams.set('q', 'London');
 url.searchParams.set('limit', '1');
 const response = await fetch(url, {
+  redirect:'error', // Never let this small search probe redirect into provider tiles.
   headers: {'User-Agent':'OpenRailwayStyle deployment check (https://github.com/c933103/openrailwaystyle)'},
   signal:AbortSignal.timeout(20000),
 });

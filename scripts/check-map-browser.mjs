@@ -1,11 +1,15 @@
 import {launchBrowser} from './browser.mjs';
+import {WUHAN_ZOOMS,checkWuhanRailZoom} from './wuhan-rail-browser.mjs';
+// This audit needs real geographic railway geometry. It must only read
+// self-hosted OpenRailwayMap tiles; the shared browser helper enforces this.
+if (!process.env.ATLAS_TEST_ORM_URL) throw new Error('Full geographic browser audit requires ATLAS_TEST_ORM_URL pointing to a local OpenRailwayMap instance (not the public tile server)');
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {waitUntil,setDefaultTimeout} from './wait-until.mjs';
 // A hang guard only: every wait below has its own timeout. The whole check
 // already takes about nine minutes on CI's software renderer.
-// Twenty minutes: with an empty provider tile cache (scripts/browser.mjs)
-// every request goes to the network, and runs took up to fifteen.
+// The full local-data audit can still take up to fifteen minutes on
+// software rendering. It is excluded from public CI.
 const deadline=setTimeout(()=>{console.error('Browser validation exceeded twenty minutes');process.exit(1);},1200000);deadline.unref();
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1365,height:900},deviceScaleFactor:1});
@@ -80,16 +84,6 @@ async function moveTo(zoom,lng,lat){
 const errors=[],requests=[],pendingRequests=new Set();
 page.on('pageerror', e=>errors.push(e.message));
 const requestStart=new Map();
-const wuhanRailResponses=[];
-page.on('response',response=>{
-  if (!/openrailwaymap\.app\/(railway_line_high|speed_railway_line_low)\/[678]\//.test(response.url())) return;
-  const headers=response.headers();
-  wuhanRailResponses.push({url:response.url(),status:response.status(),ms:Date.now()-(requestStart.get(response.request())||Date.now()),bytes:headers['content-length']||null,cache:headers['x-cache-status']||null});
-});
-page.on('requestfailed',request=>{
-  if (/openrailwaymap\.app\/(railway_line_high|speed_railway_line_low)\/[678]\//.test(request.url()))
-    wuhanRailResponses.push({url:request.url(),failed:request.failure()?.errorText||'network error',ms:Date.now()-(requestStart.get(request)||Date.now())});
-});
 page.on('request',req=>{
   requests.push(req.url());requestStart.set(req,Date.now());
   // Cancelling a count terminates its worker. Chromium can omit the finish
@@ -340,64 +334,17 @@ try{
     return (map.getSource('stations') && map.isSourceLoaded('stations')) && map.queryRenderedFeatures().some(f=>f.source==='stations' && f.properties.atlas_language==='zh-Hant' && /\p{Script=Hangul}/u.test(f.properties.name||'') && /\p{Script=Han}/u.test(f.properties.atlas_name||''));
   },undefined,{timeout:120000});
   console.log('PASS: Chinese language selects recorded ideographic names for Korean stations');
-  // The CI tile cache retains 204 (empty) responses for seven days.
-  // Probe Wuhan's provider tiles from the network, not another run's cached
-  // success/emptiness; keep the existing cache for unrelated regions.
-  await page.route(url=>/openrailwaymap\.app\/(?:railway_line_high|speed_railway_line_low)\/(?:6\/(?:51|52|53)\/(?:25|26|27)|7\/(?:103|104|105)\/(?:51|52|53)|8\/(?:208|209|210)\/(?:104|105|106))(?:\?|$)/.test(url.href),route=>route.continue());
-  console.log('Checking exact Wuhan railway coverage at zooms 6, 7 and 8');
+  // Keep Wuhan centred at each side of the overview/detail hand-off. This
+  // audit only uses independently hosted tiles through the shared network guard.
+  await page.locator('[data-mode="infrastructure"]').click();
   await page.selectOption('#language','zh-Hans');
-  // The broad regional China screenshot includes Wuhan near its western edge, but
-  // station-label presence and source-loaded flags alone cannot prove that
-  // the z6 overview -> z7 detailed railway hand-off actually draws tracks.
-  // Inspect the city centre at three integer zooms, on the first visit to
-  // each zoom. A reported blank z7 should be distinguishable from a blank
-  // provider tile, a failed request, or a style filter hiding nonempty data.
-  for (const zoom of [6, 7, 8]) {
-    const layer=zoom<7?'speed-overview':'speed-tracks';
-    const source=zoom<7?'speed':'railway';
-    await moveTo(zoom,114.305,30.593);
-    await waitUntil(page,async ({zoom,source})=>{
-      const {map}=await import(document.querySelector('script[type="module"]').src);
-      return Math.abs(map.getZoom()-zoom)<0.01
-        && Math.abs(map.getCenter().lng-114.305)<0.01
-        && Math.abs(map.getCenter().lat-30.593)<0.01
-        && !map.isMoving()
-        && map.getSource(source) && map.isSourceLoaded(source);
-    },{zoom,source},{timeout:120000});
-    const nearby=async()=>page.evaluate(async ({layer,source})=>{
-      const {map}=await import(document.querySelector('script[type="module"]').src);
-      const centre=map.project([114.305,30.593]),radius=95;
-      const rect=[[centre.x-radius,centre.y-radius],[centre.x+radius,centre.y+radius]];
-      const lines=map.queryRenderedFeatures(rect,{layers:[layer]});
-      const sourceFeatures=map.querySourceFeatures(source,{sourceLayer:source==='speed'?'speed_railway_line_low':'railway_line_high'});
-      return {
-        zoom:map.getZoom(),source,layer,sourceLoaded:map.isSourceLoaded(source),
-        nearbyRenderedLines:lines.length,nearbyPresentRail:lines.filter(f=>f.properties.feature==='rail' && (!f.properties.state||f.properties.state==='present')).length,
-        sourceFeatures:sourceFeatures.length,
-        sourceTypes:[...new Set(sourceFeatures.map(f=>f.properties.feature))].slice(0,15)
-      };
-    },{layer,source});
-    let report=await nearby();
-    if (!report.nearbyPresentRail) {
-      try {
-        await waitUntil(page,async ({layer})=>{
-          const {map}=await import(document.querySelector('script[type="module"]').src);
-          const centre=map.project([114.305,30.593]),radius=95;
-          return map.queryRenderedFeatures([[centre.x-radius,centre.y-radius],[centre.x+radius,centre.y+radius]],{layers:[layer]})
-            .some(f=>f.properties.feature==='rail' && (!f.properties.state||f.properties.state==='present'));
-        },{layer},{timeout:30000});
-      } catch {}
-      report=await nearby();
-    }
+  for(const zoom of WUHAN_ZOOMS) {
+    const report=await checkWuhanRailZoom(page,zoom);
     console.log('WUHAN_RAIL_ZOOM',JSON.stringify(report));
-    if(zoom===7) {
-      console.log('WUHAN_RAIL_PROVIDER',JSON.stringify(wuhanRailResponses.filter(r=>/\/(6|7|8)\/((104|105|52)\/)?/.test(r.url)).slice(-35)));
-      console.log('WUHAN_RAIL_REQUESTS',JSON.stringify(requests.filter(url=>url.includes('/railway_line_high/7/')).slice(-25)));
-      await page.screenshot({path:'browser-review/wuhan-z7.jpg',type:'jpeg',quality:55});
-    }
-    assert.ok(report.nearbyPresentRail>0,`Wuhan must render mapped main lines at z${zoom}, not merely report a loaded source: ${JSON.stringify(report)}`);
+    await page.screenshot({path:`browser-review/wuhan-z${zoom}.jpg`,type:'jpeg',quality:55});
   }
   console.log('Checking China regional map');
+  await page.selectOption('#language','zh-Hans');
   await moveTo(7,116.4,30.5);
   await waitUntil(page,async()=>{
     const {map}=await import(document.querySelector('script[type="module"]').src);
