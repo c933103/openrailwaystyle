@@ -157,8 +157,11 @@ node scripts/check-signal-power-browser.mjs
 node scripts/check-globe-browser.mjs
 ```
 
-The fixture test verifies actual railway-line rendering near Wuhan at zoom
-levels 6 and 7 with **synthetic**, provider-shaped vector tiles. Platform,
+The fixture test verifies city-centred Infrastructure railway-line rendering near
+Wuhan at zoom levels 6, 7 and 8 with **synthetic**, provider-shaped vector tiles,
+including a negative control with decoded geometry filtered out of the active layer.
+The same diagnostic runs in the self-hosted geographic audit and distinguishes
+missing provider geometry from loaded lines that fail to render. Platform,
 signal and power tests also use generated geometry. Bathymetry uses a generated
 PMTiles ocean/island mask and a Terrarium shallow-shelf/deep-basin PNG, exercising
 the real archive client, DEM worker and depth worker. Latin labels use a local

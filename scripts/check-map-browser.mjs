@@ -1,4 +1,5 @@
 import {launchBrowser} from './browser.mjs';
+import {WUHAN_ZOOMS,checkWuhanRailZoom} from './wuhan-rail-browser.mjs';
 // This audit needs real geographic railway geometry. It must only read
 // self-hosted OpenRailwayMap tiles; the shared browser helper enforces this.
 if (!process.env.ATLAS_TEST_ORM_URL) throw new Error('Full geographic browser audit requires ATLAS_TEST_ORM_URL pointing to a local OpenRailwayMap instance (not the public tile server)');
@@ -333,6 +334,15 @@ try{
     return (map.getSource('stations') && map.isSourceLoaded('stations')) && map.queryRenderedFeatures().some(f=>f.source==='stations' && f.properties.atlas_language==='zh-Hant' && /\p{Script=Hangul}/u.test(f.properties.name||'') && /\p{Script=Han}/u.test(f.properties.atlas_name||''));
   },undefined,{timeout:120000});
   console.log('PASS: Chinese language selects recorded ideographic names for Korean stations');
+  // Keep Wuhan centred at each side of the overview/detail hand-off. This
+  // audit only uses independently hosted tiles through the shared network guard.
+  await page.locator('[data-mode="infrastructure"]').click();
+  await page.selectOption('#language','zh-Hans');
+  for(const zoom of WUHAN_ZOOMS) {
+    const report=await checkWuhanRailZoom(page,zoom);
+    console.log('WUHAN_RAIL_ZOOM',JSON.stringify(report));
+    await page.screenshot({path:`browser-review/wuhan-z${zoom}.jpg`,type:'jpeg',quality:55});
+  }
   console.log('Checking China regional map');
   await page.selectOption('#language','zh-Hans');
   await moveTo(7,116.4,30.5);
@@ -346,34 +356,6 @@ try{
     const {map}=await import(document.querySelector('script[type="module"]').src);
     return map.queryRenderedFeatures().filter(f=>f.layer.id.startsWith('station-') && f.properties.atlas_language==='zh-Hans').length>5;
   },'Completed Chinese view must retain station labels');
-  // A loaded source and legible stations alone do not establish that the
-  // operating railway geometry rendered. Probe Wuhan on the actual map at
-  // z7, where the overview stops and the high-detail provider takes over.
-  const wuhan=await page.evaluate(async()=>{
-    const {map}=await import(document.querySelector('script[type="module"]').src);
-    const point=map.project([114.305,30.593]);
-    const layer=map.getLayer('infrastructure-tracks');
-    const tracks=layer && map.queryRenderedFeatures([[point.x-95,point.y-95],[point.x+95,point.y+95]],
-      {layers:['infrastructure-tracks']}).filter(f=>f.source==='railway' && ['LineString','MultiLineString'].includes(f.geometry.type));
-    return {zoom:map.getZoom(), infrastructureLayer:layer?.id, source:layer?.source, sourceLayer:layer?.['source-layer'],
-      infrastructureVisibility:map.getLayoutProperty('infrastructure-tracks','visibility'),
-      speedVisibility:map.getLayoutProperty('speed-tracks','visibility'),
-      providerSourceLoaded:map.isSourceLoaded('railway'),
-      providerSourceFeatures:map.querySourceFeatures('railway',{sourceLayer:'railway_line_high'}).length,
-      rendered:tracks?.length||0};
-  });
-  // Only the active Infrastructure layer can satisfy this check. A Speed,
-  // Owner or Axle layer accidentally left visible must never mask a bug.
-  assert.ok(Math.abs(wuhan.zoom-7)<0.01 && wuhan.source==='railway' &&
-    wuhan.sourceLayer==='railway_line_high' && wuhan.infrastructureVisibility!=='none' &&
-    wuhan.speedVisibility==='none', 'Wuhan test must use visible Infrastructure tracks: '+JSON.stringify(wuhan));
-  // Missing provider source features and source features that fail to render
-  // are different diagnostics. Neither is proof that isSourceLoaded suffices.
-  assert.ok(wuhan.rendered>0,
-    (wuhan.providerSourceFeatures===0 ? 'WUHAN_PROVIDER_DATA_ABSENT: no provider railway geometry was decoded' :
-      'WUHAN_TRACKS_NOT_RENDERED: provider railway geometry exists in visible tiles but Wuhan has no painted tracks')+
-    ' at zoom 7; '+JSON.stringify(wuhan));
-  console.log('PASS: Wuhan zoom-7 Infrastructure railway geometry',wuhan.rendered,'rendered line features');
   assert.equal(await page.locator('#map-status.error').count(),0,'Cancelled old requests must not leave a load-failure warning');
   const china=await page.screenshot({path:'browser-review/china-z7.jpg',type:'jpeg',quality:45});
   console.log('CHINA_IMAGE_START'+china.toString('base64')+'CHINA_IMAGE_END');
