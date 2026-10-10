@@ -140,6 +140,28 @@ test('large way lookups decode each distinct property group once and share its i
  const decoded=decodeLoadingGauges(encodeLoadingGauges(rows),value=>{parsed++;return Object.freeze(JSON.parse(value));});
  assert.equal(parsed,1);assert.equal(decoded.size,4096);assert.equal(decoded.get(1),decoded.get(4096));assert.ok(Object.isFrozen(decoded.get(1)));
 });
+test('country names have one collision-managed layer including non-ISO records', () => {
+  const countries=style.layers.filter(l=>l.id.startsWith('country_label'));
+  assert.deepEqual(countries.map(l=>l.id),['country_label']);
+  const [country]=countries;
+  assert.ok(country.layout['text-padding']>=8);
+  const allows=properties=>featureFilter(country.filter).filter({zoom:6},{type:1,properties});
+  assert.ok(allows({class:'country',iso_a2:'LI',name:'Liechtenstein'}));
+  assert.ok(allows({class:'country',name:'Liechtenstein'}));
+  assert.equal(allows({class:'state',name:'Vaduz'}),false);
+});
+
+test('independent world/regional rail geography is drawn under thematic tracks', () => {
+  assert.ok(style.sources.railBackbone.url.startsWith('https://'));
+  assert.ok(!style.sources.railBackbone.url.includes('openrailwaymap.app'));
+  const backbone=style.layers.filter(l=>l.id.startsWith('rail-backbone-'));
+  assert.deepEqual(backbone.map(l=>l['source-layer']),['railroads','railroads_north_america']);
+  const firstThematic=style.layers.findIndex(l=>l.id==='infrastructure-branch-overview');
+  assert.ok(backbone.every(l=>l.minzoom===4&&l.maxzoom===7&&style.layers.indexOf(l)<firstThematic));
+  assert.ok(backbone.every(l=>l.paint['line-color']==='#728783'&&l.paint['line-dasharray']));
+  for(const l of backbone)assert.ok(!l.filter,'generalized geometry must not invent speed, power, gauge or service attributes');
+});
+
 test('regional station dots survive name collision and begin before level crossings', () => {
   const visible = (layer, zoom, properties) => zoom >= layer.minzoom && (layer.maxzoom === undefined || zoom < layer.maxzoom) && featureFilter(layer.filter).filter({zoom}, {type:1,properties});
   const layers = style.layers.filter(l => l.id.startsWith('station-'));
