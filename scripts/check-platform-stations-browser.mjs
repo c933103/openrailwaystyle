@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import geojsonvt from 'geojson-vt';
 import {waitUntil} from './wait-until.mjs';
 import {platformExtent} from '../styles/platform-length.mjs';
+import {stationScFontReady} from './platform-font-ready.mjs';
 
 // Complete OSM platform areas from the three reported stations, encoded with
 // the provider's real tile contract (typed identity/name, no ref or length).
@@ -99,11 +100,28 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
   console.log(`PASS: ${kind} ${station.name}, complete area lengths, recorded numbers and visible end labels at zoom 22`);
  }
  if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();
- await page.selectOption('#language','zh-Hans');
- await page.waitForFunction(()=>window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Microsoft YaHei')||window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Noto Sans SC'),undefined,{timeout:30000});
+ // Hold the real candidate-font responses to reproduce selection still being
+ // pending after the global fallback already names SC. No elapsed-time guess.
+ const scFont=new URL('fonts/atlas-cjk-sc-v1.woff2',base).href;
+ let releaseScFonts;
+ const scFontsReleased=new Promise(resolve=>{releaseScFonts=resolve;});
+ const holdScFont=async route=>{await scFontsReleased;return route.fallback();};
+ await page.route(scFont,holdScFont);
+ // Handle an early page/setup failure even before this request is awaited.
+ const scRequest=page.waitForRequest(scFont,{timeout:30000}).then(()=>null,error=>error);
+ try{
+  await page.selectOption('#language','zh-Hans');
+  const requestError=await scRequest;if(requestError)throw requestError;
+  await page.waitForFunction(()=>window.reviewMap.isStyleLoaded()&&window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Noto Sans SC'),undefined,{timeout:30000});
+  assert.equal(await page.evaluate(stationScFontReady),false,'global SC candidates must not release the draw while selection is gated');
+ }finally{releaseScFonts();await page.unroute(scFont,holdScFont);}
+ await page.waitForFunction(stationScFontReady,undefined,{timeout:30000});
  await drawHan();
  await page.waitForFunction(()=>document.fonts.check('24px "Atlas CJK SC"')&&window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Atlas CJK SC'),undefined,{timeout:30000});
  await checkGlyphs('SC');
+ // Source work can make current-style readiness false again after glyphs pass.
+ // Sample the complete predicate in the bounded wait, not in a later assertion.
+ await page.waitForFunction(stationScFontReady,undefined,{timeout:30000});
  const counts=new Map();for(const id of requests)counts.set(id,(counts.get(id)||0)+1);assert.ok([...counts.values()].every(n=>n===1),'pans, zooms and font/style changes reuse measuring tiles');
  assert.deepEqual(errors,[]);console.log(`PASS: ${kind} both packaged CJK fonts load without blocking startup`);await page.close();
 }}finally{await browser.close();}
