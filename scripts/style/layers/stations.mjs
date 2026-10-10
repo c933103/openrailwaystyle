@@ -69,7 +69,7 @@ export function stationLayers(curatedFilter) {
     names.push({
       id: `station-${source}-${tier}-names`, type: 'symbol', source, 'source-layer': layer, minzoom, maxzoom,
       filter: ['all', filter,...(source==='stations'?[]:[source==='stationMed'?['any',['>=',['zoom'],7],curatedFilter]:curatedFilter]), ...(source === 'stations' ? [stationSelection, stationFeatures] : source === 'stationMed' ? [zoom6Small] : [stationSelection])],
-      layout: stationText,
+      layout: {...stationText, 'text-optional': false},
       paint: stationInk,
     });
   }
@@ -77,7 +77,7 @@ export function stationLayers(curatedFilter) {
   for(const tier of [6,5,4,3])names.push({
    id:`station-major-${tier}-names`,type:'symbol',source:'stationMajor',minzoom:tier,maxzoom:7,
    filter:['==',['get','tier'],tier],
-   layout:{...stationText,'text-padding':['step',['zoom'],MAJOR_STATION_DENSITY[0].padding,...MAJOR_STATION_DENSITY.slice(1).flatMap(({zoom,padding})=>[zoom,padding])],'symbol-sort-key':['get','rank']},paint:stationInk,
+   layout:{...stationText,'text-padding':['step',['zoom'],MAJOR_STATION_DENSITY[0].padding,...MAJOR_STATION_DENSITY.slice(1).flatMap(({zoom,padding})=>[zoom,padding])],'symbol-sort-key':['get','rank'],'text-optional':false},paint:stationInk,
   });
   // Locations begin before level crossings (zoom 5), initially from the
   // curated global points at zoom 3. The provider overview/detail tiles then
