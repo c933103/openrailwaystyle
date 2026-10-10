@@ -1,5 +1,6 @@
 import {launchBrowser} from './browser.mjs';
 import {createResponseCache} from './browser-response-cache.mjs';
+import {fetchLoopbackNoRedirect, localOrmAuditTarget} from './browser.mjs';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {chooseName} from '../styles/map-model.mjs';
@@ -8,6 +9,7 @@ const beforeTiers=JSON.parse(await readFile(new URL('../tests/fixtures/stations-
 const beforeProvider=JSON.parse(await readFile(new URL('../tests/fixtures/stations-before-curation.json',import.meta.url),'utf8'));
 const densityData=JSON.parse(await readFile(new URL('../styles/major-stations.geojson',import.meta.url),'utf8'));
 for(const f of densityData.features)Object.assign(f.properties,{atlas_name:chooseName(f.properties,'en'),atlas_language:'en'});
+if (!process.env.ATLAS_TEST_ORM_URL) throw new Error('The full station-density check requires a self-hosted OpenRailwayMap instance (ATLAS_TEST_ORM_URL); it must not fetch public tiles in automation');
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 await mkdir('browser-review',{recursive:true});
 try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
@@ -19,13 +21,17 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  context.on('request',r=>{if(!/\/vendor\/track-worker\.js(?:\?|$)/.test(r.url()))pendingRequests.add(r);});
  context.on('requestfinished',r=>pendingRequests.delete(r));
  context.on('requestfailed',r=>pendingRequests.delete(r));
- // Both maps receive identical provider bytes, including the underzoomed
- // zoom-7 children used at zoom 6. Fetch only tiles the test views request.
+ // Both maps receive identical responses from the explicitly configured local
+ // provider. Never fetch public provider tiles directly, even on a cache miss.
  const stationResponse=createResponseCache();
  await context.route(/\/standard_railway_text_stations_(?:low|med)(?:\/|$)/,async route=>{
   const url=route.request().url();
-  try {await route.fulfill(await stationResponse(route));}
-  catch(error){console.error('Station tile unavailable:',url,error.message);await route.abort().catch(()=>{});}
+  try {
+   // Public provider URLs are rewritten to the configured local instance,
+   // while TileJSON-advertised loopback URLs remain direct local requests.
+   const target=localOrmAuditTarget(url);
+   await route.fulfill(await stationResponse(target,()=>fetchLoopbackNoRedirect(route,target)));
+  } catch(error){console.error('Station tile unavailable:',url,error.message);await route.abort().catch(()=>{});}
  });
  // Match the other WebGL checks' capture budget. The touch viewport renders
  // at DPR 2.625 and can still be finishing real tiles after label placement.

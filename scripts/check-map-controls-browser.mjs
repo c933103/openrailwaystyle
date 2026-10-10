@@ -7,10 +7,11 @@ import {readFile, mkdir, writeFile} from 'node:fs/promises';
 import {waitUntil} from './wait-until.mjs';
 import {clickVisibleControl} from './click-visible-control.mjs';
 import {rendererFixture} from './browser-renderer-fixture.mjs';
+import {readMapRenderState} from './map-render-state.mjs';
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const style=JSON.parse(await readFile('styles/world.style.json','utf8'));
 style.sources.stationMajor.data={type:'FeatureCollection',features:[]};
-const renderer=await rendererFixture();
+const renderer=await rendererFixture(base);
 const browser=await launchBrowser({headless:true,...(process.env.BROWSER_PATH?{executablePath:process.env.BROWSER_PATH}:{}),args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const context=await browser.newContext({viewport:{width:1365,height:900},serviceWorkers:'block'});
 const page=await context.newPage();
@@ -18,6 +19,7 @@ const page=await context.newPage();
 // runner, and page evaluation waits for them.
 page.setDefaultTimeout(30000);
 const errors=[],results=[],pending=new Set(),requestFailures=[];
+const fixtureTiles={},settlements=[];
 page.on('request',r=>pending.add(r));
 page.on('requestfinished',r=>pending.delete(r));
 page.on('requestfailed',r=>{pending.delete(r);requestFailures.push({url:r.url(),error:r.failure()?.errorText});});
@@ -43,7 +45,12 @@ await context.route('**/*',async route=>{
     return route.continue();
   }
   if(/\.(png|jpg|jpeg)$/.test(path))return route.fulfill({contentType:'image/png',body:png});
-  if(/\/\d+\/\d+\/\d+(?:\.pbf)?$|\/fonts\//.test(path))return route.fulfill({contentType:'application/x-protobuf',body:Buffer.alloc(0)});
+  if(/\/\d+\/\d+\/\d+(?:\.pbf)?$|\/fonts\//.test(path)){
+    const key=`${url.origin}/${path.split('/')[1]}`,stats=fixtureTiles[key]??={started:0,fulfilled:0,peak:0,maxMs:0},start=Date.now();
+    stats.started++;stats.peak=Math.max(stats.peak,stats.started-stats.fulfilled);
+    await route.fulfill({contentType:'application/x-protobuf',body:Buffer.alloc(0)});
+    stats.fulfilled++;stats.maxMs=Math.max(stats.maxMs,Date.now()-start);return;
+  }
   return route.fulfill({json:{tilejson:'3.0.0',minzoom:0,maxzoom:16,tiles:['https://fixture.invalid/{z}/{x}/{y}']}});
 });
 const cookie=async()=>JSON.parse(decodeURIComponent((await context.cookies()).find(c=>c.name==='atlas_settings')?.value||'%7B%7D'));
@@ -51,6 +58,8 @@ const opened=()=>page.locator('.maplibregl-ctrl-attrib').evaluate(e=>e.classList
 // Settling, not speed, is checked here: at the largest More detail scale a
 // small CI runner can take about 15 seconds to load and place everything.
 async function waitForMapIdle(){
+  const start=Date.now();
+  try{
   await waitUntil(page,async()=>{
     const{map}=await import(document.querySelector('script[type="module"]').src);
     await new Promise(resolve=>{map.once('idle',()=>resolve());map.triggerRepaint();});
@@ -58,6 +67,7 @@ async function waitForMapIdle(){
     return map.loaded()&&map.areTilesLoaded()&&!map.isMoving()
       && canvas.width===Math.floor(container.clientWidth*ratio)&&canvas.height===Math.floor(container.clientHeight*ratio);
   },null,{timeout:60000});
+  }finally{settlements.push({after:results.at(-1)?.name??'startup',ms:Date.now()-start,pending:pending.size});}
 }
 async function ready(){
   await page.waitForSelector('body[data-map-ready="true"]');
@@ -164,8 +174,14 @@ try{
   console.error(error.stack);console.error('UI_PAGE_ERRORS',JSON.stringify(errors));
   console.error('UI_PENDING_REQUESTS',JSON.stringify([...pending].map(r=>r.url())));
   console.error('UI_REQUEST_FAILURES',JSON.stringify(requestFailures));
+  console.error('UI_FIXTURE_TILES',JSON.stringify(fixtureTiles));
+  const sourceState=await readMapRenderState(page);
+  console.error('UI_SOURCE_STATE',JSON.stringify(sourceState));
+  await mkdir('browser-review',{recursive:true});
+  await writeFile('browser-review/map-controls-source-state.json',JSON.stringify(sourceState,null,2));
   console.error('UI_GEOMETRY',JSON.stringify(await geometry().catch(()=>null)));
   await mkdir('browser-review',{recursive:true});await page.screenshot({path:'browser-review/map-controls-failure.png',timeout:5000}).catch(()=>{});throw error;
 } finally{
-  await mkdir('browser-review',{recursive:true});await writeFile('browser-review/map-controls.json',JSON.stringify(results,null,2));await browser.close();
+  await mkdir('browser-review',{recursive:true});await writeFile('browser-review/map-controls.json',JSON.stringify(results,null,2));
+  await writeFile('browser-review/map-controls-settlement.json',JSON.stringify({fixtureResponse:{status:200,contentType:'application/x-protobuf',bytes:0},fixtureTiles,settlements},null,2));await browser.close();
 }

@@ -1,4 +1,7 @@
 import {launchBrowser} from './browser.mjs';
+// This audit needs real geographic railway geometry. It must only read
+// self-hosted OpenRailwayMap tiles; the shared browser helper enforces this.
+if (!process.env.ATLAS_TEST_ORM_URL) throw new Error('Full geographic browser audit requires ATLAS_TEST_ORM_URL pointing to a local OpenRailwayMap instance (not the public tile server)');
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {waitUntil,setDefaultTimeout} from './wait-until.mjs';

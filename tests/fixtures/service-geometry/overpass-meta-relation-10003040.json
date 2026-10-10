@@ -1,0 +1,612 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-10-07T04:09:50Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+    {
+      "type": "relation",
+      "id": 10003040,
+      "timestamp": "2026-06-12T01:19:51Z",
+      "version": 25,
+      "members": [
+        {
+          "type": "node",
+          "ref": 264382680,
+          "role": "stop_entry_only"
+        },
+        {
+          "type": "way",
+          "ref": 659925555,
+          "role": "platform_entry_only"
+        },
+        {
+          "type": "node",
+          "ref": 26065592,
+          "role": "stop"
+        },
+        {
+          "type": "way",
+          "ref": 659924328,
+          "role": "platform"
+        },
+        {
+          "type": "node",
+          "ref": 836868918,
+          "role": "stop"
+        },
+        {
+          "type": "way",
+          "ref": 70055533,
+          "role": "platform"
+        },
+        {
+          "type": "node",
+          "ref": 6774018366,
+          "role": "stop"
+        },
+        {
+          "type": "way",
+          "ref": 722161562,
+          "role": "platform"
+        },
+        {
+          "type": "node",
+          "ref": 6774089993,
+          "role": "stop"
+        },
+        {
+          "type": "way",
+          "ref": 196800866,
+          "role": "platform"
+        },
+        {
+          "type": "node",
+          "ref": 6774080170,
+          "role": "stop"
+        },
+        {
+          "type": "way",
+          "ref": 722164766,
+          "role": "platform"
+        },
+        {
+          "type": "node",
+          "ref": 6725198576,
+          "role": "stop"
+        },
+        {
+          "type": "way",
+          "ref": 196385705,
+          "role": "platform"
+        },
+        {
+          "type": "node",
+          "ref": 7844013734,
+          "role": "stop"
+        },
+        {
+          "type": "way",
+          "ref": 165739989,
+          "role": "platform"
+        },
+        {
+          "type": "node",
+          "ref": 1274088769,
+          "role": "stop"
+        },
+        {
+          "type": "way",
+          "ref": 42918748,
+          "role": "platform"
+        },
+        {
+          "type": "way",
+          "ref": 291750284,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 970974537,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 32884479,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 4949285,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 285114440,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 285114437,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 4937479,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 310971691,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 26502877,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 5182697,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 5182698,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 5182696,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 17748002,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 17747987,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 37875162,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 8585267,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 8585243,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 8585245,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 8585244,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 37393229,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 37393230,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 719442269,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 2526598,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 155023844,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 722161563,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 155023843,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 23680975,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 24773088,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 24773089,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 5050118,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 5050127,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 5050121,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 5035359,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 440450853,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 644552185,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 644552186,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 224207265,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 196385698,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 1117153026,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 196385693,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 196701402,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 196701401,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 715583587,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 715583585,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 191649744,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 440449442,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 191649743,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 174852320,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 1158545545,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 229103529,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 440449438,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 380339164,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 164521112,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 1528642541,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 164521035,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 431656852,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 722210670,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 164521064,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 164521086,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 164507181,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 164507322,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 236680734,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 164507233,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 164507413,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 236681753,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 236681999,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 236683252,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 621581169,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 236684780,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 161752038,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 161752031,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 940687934,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 621581182,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 174852314,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 800772163,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 109496089,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 109496104,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 109496103,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 161752025,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 1322557737,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 754554897,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 416535497,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 1322557734,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 174843582,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 360591623,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 1528215403,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 26269376,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 1528215410,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 622738802,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 1528636472,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 784223965,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 1528643816,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 604032349,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 1321502915,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 1528215405,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 1528636470,
+          "role": ""
+        },
+        {
+          "type": "way",
+          "ref": 42918736,
+          "role": ""
+        }
+      ],
+      "tags": {
+        "brand": "Southern",
+        "colour": "#90268f",
+        "duration": "0:43",
+        "from": "Epsom",
+        "interval": "00:30",
+        "name": "Southern: Epsom → London Bridge",
+        "network": "National Rail",
+        "network:wikidata": "Q26334",
+        "opening_hours": "Mo-Fr 05:45-22:45; Sa 06:45-22:45; Su off",
+        "operator": "Greater Thameslink Railway",
+        "public_transport:version": "2",
+        "ref": "SN3.6",
+        "route": "train",
+        "service": "commuter",
+        "to": "London Bridge",
+        "type": "route",
+        "wheelchair": "yes"
+      }
+    }
+  ]
+}

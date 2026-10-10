@@ -39,7 +39,13 @@ async function collect(box, depth = 0) {
       } catch (error) { throw new Error(`Network: ${error.message}`); }
       downloaded += Buffer.byteLength(text);
       if (downloaded > 1_500_000_000) throw new Error('Historic area download budget exceeded');
-      if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 160)}`);
+      if (!response.ok) {
+        const error = new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 160)}`);
+        // Keep the budget-checked body for classification, non-enumerable so
+        // logging an uncaught error does not dump the full response.
+        Object.defineProperty(error, 'responseBody', {value:text});
+        throw error;
+      }
       try { json = JSON.parse(text); } catch (error) { throw new Error(`Invalid response: ${error.message}`); }
       heritageFeatures(json);
     } catch (error) { failure = error; }
@@ -50,7 +56,7 @@ async function collect(box, depth = 0) {
     }
     json = undefined;
     console.warn(box.join(','), failure.message);
-    const next = heritageFailure(failure.message, attempt, depth);
+    const next = heritageFailure(failure, attempt, depth);
     if (next === 'fail') throw failure;
     if (next === 'split') { split = true; break; }
   }
