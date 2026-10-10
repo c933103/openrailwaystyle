@@ -292,7 +292,7 @@ function matchPattern(input) {
     const operator = readField(candidate, 'operator_binding');
     const sameOperator = operator?.feed_id === source.feed_id && operator.agency_id === pattern.agency_id;
     const refMatches = id(pattern.route_ref) && readField(candidate.osm.tags, 'ref') === pattern.route_ref;
-    const relevantOperator = sameOperator && (exact.length > 0 || refMatches);
+    const relevantOperator = sameOperator && bound(operator) && (exact.length > 0 || refMatches);
     const fallback = sameOperator && refMatches && bound(operator);
     if (previous) blockers.push(['stale', 'route_binding_source_mismatch']);
     if (operator?.feed_id === source.feed_id && !bound(operator)) blockers.push(['stale', 'operator_binding_source_mismatch']);

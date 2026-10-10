@@ -1044,3 +1044,48 @@ test('old-only station mappings withhold stale while unused same-source mappings
     assert.equal(output.frequency_status, 'not_evaluated');
   }
 });
+
+test('stale operator statuses cannot override their source mismatch beside exact current routes', () => {
+  for (const state of ['verified', 'conflict', 'unknown']) for (const refMatches of [false, true]) for (const exact of [false, true]) {
+    const input = fixture(), candidate = input.candidates[0];
+    candidate.operator_binding = {feed_id: 'feed', source_sha256: 'b'.repeat(64), agency_id: 'A', status: state};
+    if (!exact) candidate.route_bindings = [];
+    if (!refMatches) candidate.osm = captureOsmServiceEvidence(relation({tags: {route: 'train', ref: 'other'}}), snapshot);
+    const output = matchTimetablePattern(input);
+    assert.equal(output.status, 'stale', `${state}/ref=${refMatches}/exact=${exact}`);
+    assert.deepEqual(output.reasons, ['operator_binding_source_mismatch']);
+    assert.equal(output.frequency_status, 'not_evaluated');
+    assert.equal(output.profiles, undefined);
+  }
+});
+
+test('current operator conflicts and independent current conflicts retain priority', () => {
+  for (const refMatches of [false, true]) for (const state of ['verified', 'conflict', 'unknown']) {
+    const input = fixture(), candidate = input.candidates[0];
+    candidate.operator_binding = {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: state};
+    if (!refMatches) candidate.osm = captureOsmServiceEvidence(relation({tags: {route: 'train', ref: 'other'}}), snapshot);
+    assert.equal(status(input), {verified: 'verified', conflict: 'conflicting', unknown: 'missing_evidence'}[state], `${state}/${refMatches}`);
+  }
+  for (const kind of ['route', 'candidate', 'variant', 'station']) for (const reverse of [false, true]) {
+    const input = fixture(), candidate = input.candidates[0];
+    candidate.operator_binding = {feed_id: 'feed', source_sha256: 'b'.repeat(64), agency_id: 'A', status: 'conflict'};
+    if (kind === 'route') candidate.route_bindings[0].status = 'conflict';
+    if (kind === 'candidate') candidate.status = 'conflict';
+    if (kind === 'variant') candidate.variants[0].status = 'conflict';
+    if (kind === 'station') input.crosswalk[0].status = 'conflict';
+    const unrelated = structuredClone(fixture().candidates[0]);
+    unrelated.service_id = 'other'; unrelated.route_bindings[0].feed_id = 'other';
+    input.candidates.push(unrelated);
+    if (reverse) input.candidates.reverse();
+    assert.equal(status(input), 'conflicting', `${kind}/${reverse}`);
+  }
+});
+
+test('unrelated operator scopes never manufacture a current operator conflict', () => {
+  for (const feed_id of ['feed', 'other']) for (const agency_id of ['A', 'other']) for (const source_sha256 of [sha, 'b'.repeat(64)]) {
+    if (feed_id === 'feed' && agency_id === 'A' && source_sha256 === sha) continue;
+    const input = fixture();
+    input.candidates[0].operator_binding = {feed_id, source_sha256, agency_id, status: 'conflict'};
+    assert.equal(status(input), feed_id === 'feed' && source_sha256 !== sha ? 'stale' : 'verified', `${feed_id}/${agency_id}/${source_sha256}`);
+  }
+});
