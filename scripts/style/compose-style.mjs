@@ -29,7 +29,7 @@ export function composeStyle({majorStationData, curatedFilter}) {
     ...context.areas, ...constraints.areas, ...buildingLayers,
     ...context.lines, ...constraints.lines,
     ...contourLayers, ...baseLines, ...contourLabels,
-    ...rail.overviewPrefix, ...roads.roads, ...rail.overview,
+    ...rail.backbone, ...rail.overviewPrefix, ...roads.roads, ...rail.overview,
     ...rail.structures, ...infrastructure.street,
     ...rail.infrastructureTracks, ...rail.thematic, ...rail.details,
     ...lifecycle.lines, ...rail.values,
