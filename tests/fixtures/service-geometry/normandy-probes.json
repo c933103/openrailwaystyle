@@ -1,0 +1,445 @@
+{
+  "schema": 1,
+  "interpolation": "Linear interpolation in Web Mercator, along the actual compiled segment as rendered by vector tiles. Fraction is measured from the terminal endpoint; no invented segment or station pair.",
+  "compiledSha256": "7e96edecf52cb72663149e2e4385ea51bcc31ea8c438c46558b98042bbd542b0",
+  "terminals": [
+    {
+      "terminal": "saint-lazare",
+      "endpoint": [
+        2.325331,
+        48.876244
+      ],
+      "negativeProbes": [
+        {
+          "id": "saint-lazare-historical-segment-33-z9",
+          "segmentIndex": 33,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.0807298945600223,
+            48.90378222743838
+          ],
+          "zooms": [
+            9
+          ],
+          "fractionFromTerminal": 0.09151,
+          "minimumClearanceMeters": 1400
+        },
+        {
+          "id": "saint-lazare-historical-segment-33-z12",
+          "segmentIndex": 33,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.294565414560026,
+            48.87970855367729
+          ],
+          "zooms": [
+            12
+          ],
+          "fractionFromTerminal": 0.01151,
+          "minimumClearanceMeters": 250
+        },
+        {
+          "id": "saint-lazare-historical-segment-33-z16",
+          "segmentIndex": 33,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.319156499359991,
+            48.876939338012754
+          ],
+          "zooms": [
+            16
+          ],
+          "fractionFromTerminal": 0.00231,
+          "minimumClearanceMeters": 60
+        },
+        {
+          "id": "saint-lazare-historical-segment-75-z9",
+          "segmentIndex": 75,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.0815465749199973,
+            48.90682064612664
+          ],
+          "zooms": [
+            9
+          ],
+          "fractionFromTerminal": 0.11641,
+          "minimumClearanceMeters": 1400
+        },
+        {
+          "id": "saint-lazare-historical-segment-75-z12",
+          "segmentIndex": 75,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.295153750920008,
+            48.88002999369523
+          ],
+          "zooms": [
+            12
+          ],
+          "fractionFromTerminal": 0.01441,
+          "minimumClearanceMeters": 250
+        },
+        {
+          "id": "saint-lazare-historical-segment-75-z16",
+          "segmentIndex": 75,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.3190274941200357,
+            48.87703485233904
+          ],
+          "zooms": [
+            16
+          ],
+          "fractionFromTerminal": 0.00301,
+          "minimumClearanceMeters": 60
+        },
+        {
+          "id": "saint-lazare-historical-segment-133-z9",
+          "segmentIndex": 133,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.1230279273200097,
+            48.97075208906574
+          ],
+          "zooms": [
+            9
+          ],
+          "fractionFromTerminal": 0.16431,
+          "minimumClearanceMeters": 1400
+        },
+        {
+          "id": "saint-lazare-historical-segment-133-z12",
+          "segmentIndex": 133,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.292691145719999,
+            48.89150416481632
+          ],
+          "zooms": [
+            12
+          ],
+          "fractionFromTerminal": 0.02651,
+          "minimumClearanceMeters": 250
+        },
+        {
+          "id": "saint-lazare-historical-segment-133-z16",
+          "segmentIndex": 133,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.3202706529200157,
+            48.87861017740248
+          ],
+          "zooms": [
+            16
+          ],
+          "fractionFromTerminal": 0.00411,
+          "minimumClearanceMeters": 60
+        },
+        {
+          "id": "saint-lazare-historical-segment-145-z9",
+          "segmentIndex": 145,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.081243507780016,
+            48.905863148994946
+          ],
+          "zooms": [
+            9
+          ],
+          "fractionFromTerminal": 0.20761,
+          "minimumClearanceMeters": 1400
+        },
+        {
+          "id": "saint-lazare-historical-segment-145-z12",
+          "segmentIndex": 145,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.29498613138,
+            48.87992719698829
+          ],
+          "zooms": [
+            12
+          ],
+          "fractionFromTerminal": 0.02581,
+          "minimumClearanceMeters": 250
+        },
+        {
+          "id": "saint-lazare-historical-segment-145-z16",
+          "segmentIndex": 145,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.318970452180025,
+            48.87701605252025
+          ],
+          "zooms": [
+            16
+          ],
+          "fractionFromTerminal": 0.00541,
+          "minimumClearanceMeters": 60
+        },
+        {
+          "id": "saint-lazare-historical-segment-163-z9",
+          "segmentIndex": 163,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.093828137460008,
+            48.9351871488936
+          ],
+          "zooms": [
+            9
+          ],
+          "fractionFromTerminal": 0.27331,
+          "minimumClearanceMeters": 1400
+        },
+        {
+          "id": "saint-lazare-historical-segment-163-z12",
+          "segmentIndex": 163,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.2853425248600274,
+            48.88643046865706
+          ],
+          "zooms": [
+            12
+          ],
+          "fractionFromTerminal": 0.04721,
+          "minimumClearanceMeters": 250
+        },
+        {
+          "id": "saint-lazare-historical-segment-163-z16",
+          "segmentIndex": 163,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.3191391814600024,
+            48.87782140933378
+          ],
+          "zooms": [
+            16
+          ],
+          "fractionFromTerminal": 0.00731,
+          "minimumClearanceMeters": 60
+        },
+        {
+          "id": "saint-lazare-historical-segment-172-z9",
+          "segmentIndex": 172,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.086118579790025,
+            48.91996474661014
+          ],
+          "zooms": [
+            9
+          ],
+          "fractionFromTerminal": 0.38461,
+          "minimumClearanceMeters": 1400
+        },
+        {
+          "id": "saint-lazare-historical-segment-172-z12",
+          "segmentIndex": 172,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.2978341041900308,
+            48.88127154057119
+          ],
+          "zooms": [
+            12
+          ],
+          "fractionFromTerminal": 0.04421,
+          "minimumClearanceMeters": 250
+        },
+        {
+          "id": "saint-lazare-historical-segment-172-z16",
+          "segmentIndex": 172,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.3189807781900242,
+            48.87740512131092
+          ],
+          "zooms": [
+            16
+          ],
+          "fractionFromTerminal": 0.01021,
+          "minimumClearanceMeters": 60
+        }
+      ]
+    },
+    {
+      "terminal": "montparnasse",
+      "endpoint": [
+        2.320514,
+        48.84117
+      ],
+      "negativeProbes": [
+        {
+          "id": "montparnasse-historical-segment-95-z9",
+          "segmentIndex": 95,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.0739244950000284,
+            48.83030960238361
+          ],
+          "zooms": [
+            9
+          ],
+          "fractionFromTerminal": 0.14501,
+          "minimumClearanceMeters": 1400
+        },
+        {
+          "id": "montparnasse-historical-segment-95-z12",
+          "segmentIndex": 95,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.2941392449999967,
+            48.840008504508624
+          ],
+          "zooms": [
+            12
+          ],
+          "fractionFromTerminal": 0.01551,
+          "minimumClearanceMeters": 250
+        },
+        {
+          "id": "montparnasse-historical-segment-95-z16",
+          "segmentIndex": 95,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.3201568949999967,
+            48.84115427393531
+          ],
+          "zooms": [
+            16
+          ],
+          "fractionFromTerminal": 0.00021,
+          "minimumClearanceMeters": 60
+        },
+        {
+          "id": "montparnasse-historical-segment-110-z9",
+          "segmentIndex": 110,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.074792621580002,
+            48.82375535455258
+          ],
+          "zooms": [
+            9
+          ],
+          "fractionFromTerminal": 0.17661,
+          "minimumClearanceMeters": 1400
+        },
+        {
+          "id": "montparnasse-historical-segment-110-z12",
+          "segmentIndex": 110,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.292395382380022,
+            48.83917749777641
+          ],
+          "zooms": [
+            12
+          ],
+          "fractionFromTerminal": 0.02021,
+          "minimumClearanceMeters": 250
+        },
+        {
+          "id": "montparnasse-historical-segment-110-z16",
+          "segmentIndex": 110,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.320082690179987,
+            48.84113943772428
+          ],
+          "zooms": [
+            16
+          ],
+          "fractionFromTerminal": 0.00031,
+          "minimumClearanceMeters": 60
+        },
+        {
+          "id": "montparnasse-historical-segment-156-z9",
+          "segmentIndex": 156,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.077119861500023,
+            48.81310268948526
+          ],
+          "zooms": [
+            9
+          ],
+          "fractionFromTerminal": 0.25611,
+          "minimumClearanceMeters": 1400
+        },
+        {
+          "id": "montparnasse-historical-segment-156-z12",
+          "segmentIndex": 156,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.2886677715000303,
+            48.83749850477049
+          ],
+          "zooms": [
+            12
+          ],
+          "fractionFromTerminal": 0.03351,
+          "minimumClearanceMeters": 250
+        },
+        {
+          "id": "montparnasse-historical-segment-156-z16",
+          "segmentIndex": 156,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.320124356500031,
+            48.841125080317795
+          ],
+          "zooms": [
+            16
+          ],
+          "fractionFromTerminal": 0.00041,
+          "minimumClearanceMeters": 60
+        },
+        {
+          "id": "montparnasse-historical-segment-185-z9",
+          "segmentIndex": 185,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.2168603102900306,
+            48.815718474914156
+          ],
+          "zooms": [
+            9
+          ],
+          "fractionFromTerminal": 0.56141,
+          "minimumClearanceMeters": 1400
+        },
+        {
+          "id": "montparnasse-historical-segment-185-z12",
+          "segmentIndex": 185,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.3105790058900197,
+            48.83873108353742
+          ],
+          "zooms": [
+            12
+          ],
+          "fractionFromTerminal": 0.05381,
+          "minimumClearanceMeters": 250
+        },
+        {
+          "id": "montparnasse-historical-segment-185-z16",
+          "segmentIndex": 185,
+          "routeId": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+          "point": [
+            2.3201059654900007,
+            48.841069834983344
+          ],
+          "zooms": [
+            16
+          ],
+          "fractionFromTerminal": 0.00221,
+          "minimumClearanceMeters": 60
+        }
+      ]
+    }
+  ]
+}

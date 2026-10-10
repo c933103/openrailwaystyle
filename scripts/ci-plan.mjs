@@ -36,12 +36,12 @@ export const LOCAL_ORM_CHECKS = [
 // The world-frequency check replaces service data with fixtures, so it still
 // runs alone after `prepare`. Every check uses synthetic external providers.
 export const GROUPS = [
-  {group: 'rail-fixture', checks: ['check-deployed-fixture-browser.mjs', 'check-orm-fixture-browser.mjs', 'check-rail-overview-browser.mjs']},
+  {group: 'rail-fixture', checks: ['check-deployed-fixture-browser.mjs', 'check-orm-fixture-browser.mjs', 'check-rail-overview-browser.mjs', 'check-overview-markers-browser.mjs']},
   {group: 'context', checks: ['check-bathymetry-browser.mjs', 'check-globe-browser.mjs', 'check-polar-browser.mjs']},
   {group: 'controls', checks: ['check-network-guard-browser.mjs', 'check-map-controls-browser.mjs', 'check-build-browser.mjs', 'check-watch-browser.mjs', 'check-service-frequency-browser.mjs', 'check-first-party-assets-browser.mjs', 'check-pwa-install-browser.mjs', 'check-departures-browser.mjs']},
   {group: 'infrastructure', checks: ['check-signal-power-browser.mjs', 'check-platform-browser.mjs', 'check-infrastructure-browser.mjs']},
   {group: 'platforms', checks: ['check-platform-stations-browser.mjs']},
-  {group: 'frequency', checks: ['check-world-frequency-browser.mjs', 'check-service-geometry-browser.mjs', 'check-timetable-frequency-browser.mjs'], prepare: 'node scripts/rebuild-service-frequency.mjs styles/data/service-routes /tmp/frequency-fixture-credits.html --fixtures'},
+  {group: 'frequency', checks: ['check-world-frequency-browser.mjs', 'check-service-geometry-browser.mjs', 'check-paris-service-geometry-browser.mjs', 'check-normandy-service-geometry-browser.mjs', 'check-timetable-frequency-browser.mjs'], prepare: 'node scripts/rebuild-service-frequency.mjs styles/data/service-routes /tmp/frequency-fixture-credits.html --fixtures'},
 ];
 export const VALIDATED_CONTEXT = 'site/browser-checks';
 

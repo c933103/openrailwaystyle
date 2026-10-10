@@ -566,6 +566,13 @@ function updateMajorStations(){
   const visible=data.features.filter(f=>{const [lon,lat]=f.geometry.coordinates,l=lon+360*Math.round((centre-lon)/360);return l>=west&&l<=east&&lat>=south&&lat<=north;});
   const visibleIDs=new Set(visible.map(f=>f.id));
   const wanted=visible.filter(f=>(f.properties.tier??7)<=Math.floor(zoom));
+  if(generation!==majorStationGeneration||!ready||language!==settings.language||source!==map.getSource('stationMajor'))return;
+  // Publish locations immediately, before provider requests or rare-Han fonts
+  // settle. Only already-renderable names from this language may be reused.
+  const existing=new Map((majorStationSearchData?.language===language?majorStationSearchData.features:[]).map(f=>[f.id,f]));
+  const points=data.features.map(f=>existing.get(f.id)||(visibleIDs.has(f.id)?{...f,properties:{...f.properties,name:'',atlas_name:''}}:null)).filter(Boolean);
+  majorStationSearchData={type:'FeatureCollection',language,features:points};
+  source.setData({type:'FeatureCollection',features:points});
   const named=await Promise.all(wanted.map(f=>majorStationName(f,language).catch(()=>null)));
   if(generation!==majorStationGeneration||!ready||language!==settings.language||source!==map.getSource('stationMajor'))return;
   const names=new Map(wanted.map((f,i)=>[f.id,named[i]]));
@@ -587,8 +594,8 @@ function updateMajorStations(){
   source.setData({type:'FeatureCollection',features});
  }).catch(error=>console.warn('Major station names unavailable:',error.message));
 }
-// An open curated station's panel follows a language change on its own,
-// whether or not the overview currently shows that hub.
+// Selecting an unnamed curated dot resolves only that hub. The same guarded
+// path follows language changes, even outside the overview's label tier.
 function renameOpenMajorStation(){
  const open=currentFeature;
  const curatedData=majorStationsPromise||(majorStationData&&Promise.resolve(majorStationData));
@@ -596,7 +603,9 @@ function renameOpenMajorStation(){
  stationTileURL ||= map.getSource('stations')?.tiles?.[0]?.replace(/^atlasstation:\/\/[^/]+\//,'');
  if(!stationTileURL)return;
  const language=settings.language;
+ if(open.properties?.atlas_language===language&&open.properties?.atlas_name)return;
  curatedData.then(data=>{
+  if(currentFeature!==open||language!==settings.language||$('details').hidden)return;
   const curated=data.features.find(f=>f.properties.id===open.properties?.id);
   return curated&&majorStationName(curated,language).then(p=>{
    if(!p||currentFeature!==open||language!==settings.language||$('details').hidden)return;
@@ -852,7 +861,9 @@ function showDepartures(panel, feature) {
   const section = document.createElement('section'); section.className = 'departures';
   section.append(textNode('h3', 'Departures'), textNode('p', 'Loading departures…', 'small'));
   panel.append(section);
-  const key = `${lat.toFixed(5)},${lon.toFixed(5)}`;
+  // Matching uses names as well as position. A deferred hub's unnamed lookup
+  // must not mask its later named result for the rest of the cache minute.
+  const key = `${lat.toFixed(5)},${lon.toFixed(5)}:${JSON.stringify([...new Set(names)].sort())}`;
   let board = departureBoards.get(key);
   if (!board || Date.now() - board.at > 60_000) {
     board = {at: Date.now(), promise: stationDepartures({lat, lon, names}, {signal: AbortSignal.timeout(15000)})};
@@ -1716,6 +1727,7 @@ async function initialize() {
     features[0].properties = properties.atlas_han ? properties : {...properties, ...locate(event.lngLat.lng, event.lngLat.lat)};
     features[0].clickLngLat = event.lngLat;
     showDetails(features[0]);
+    renameOpenMajorStation();
   });
   // A full feature query on every mouse move is slow in dense areas and made
   // mouse panning stall. Skip it while dragging or moving, query only the

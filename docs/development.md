@@ -4,7 +4,11 @@
 
 ## Prerequisites
 
-Use Node.js 22 (the version used in CI), npm, Git, Python 3 and pip. The commands
+Use Node.js 22.22.2 or newer in the 22.x line (the line used in CI), npm, Git,
+Python 3 and pip. Node.js 24.15.0 or newer in 24.x and Node.js 26 or newer are
+also supported by the pinned DOM test dependency. The package engine range and
+`.npmrc` reject unsupported runtimes during installation. Keep lifecycle scripts
+disabled with `npm ci --ignore-scripts`, as in CI. The commands
 below use a POSIX shell. Viewing the map requires an internet connection and a
 WebGL-capable browser; external tiles are not bundled for offline use.
 
@@ -168,6 +172,13 @@ external providers, so the Hong Kong positive rendering assertion remains intact
 checks use the same synthetic railway fixture against the published page. They
 test rendering integration, **not real-world railway geometry or live tile
 availability**, which must be assessed separately.
+
+The [Paris Service geometry acceptance](service-paris-acceptance.md) runs two
+fixture-only gates against the current production renderer and line layer. They
+preserve pinned OSM positives and reject both synthetic and authentic archived
+Normandy timetable geometry across all 28 profiles. The original archives and
+source dates stay unchanged; publication metadata uses the current safe URL and
+lineage projection. These gates do not certify live geographic coverage.
 
 Service-worker installation/upgrade tests in `tests/sw-install.test.mjs` and
 `tests/startup.test.mjs` execute the actual old/new worker sources with synthetic

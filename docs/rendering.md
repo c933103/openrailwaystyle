@@ -240,3 +240,20 @@ on hover, and expandable explanations for touch and keyboard users.
 The Power view adds dedicated railway supply facilities independently of
 transport and destination context settings. See [railway energy supplies](power-facilities.md)
 for supported tags, zooms, lifecycle treatment and source limitations.
+
+### Overview marker acceptance
+
+Curated hub points are published before their eligible names or rare-Han fonts
+settle. Selecting a below-tier, unnamed hub requests only that hub's existing
+zoom-8 name candidates (one tile and four neighbours, with shared tile caching).
+Closing the panel, selecting another feature, or changing language prevents a
+stale result from replacing the current details. Departure matching is cached
+by the supplied names as well as position, so an earlier unnamed lookup cannot
+mask the selected hub's later provider name.
+
+`check-overview-markers-browser.mjs` uses the production station and backbone
+layers with the real MapLibre renderer and synthetic, fixture-only geometry.
+It checks marker continuity at zooms 3, 4, 5, 6, 7, 8 and 12 while names collide,
+and the two backbone layers' zoom-4–6 window. It does not establish worldwide
+station completeness or live provider availability. The curated/regional source
+limits and the separate complete station-point work in issue #175 still apply.
