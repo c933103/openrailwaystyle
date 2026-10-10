@@ -28,7 +28,7 @@ test('metadata normalization preserves script, permits typography, and never mat
  f.agencies[0].agency_name='';assert.equal(apply(table(),[f]).sections.length,0);
 });
 test('duplicate feeds agree without doubling trains; conflicting observations are withheld',()=>{
- const a=feed(),b=feed();b.source.id='second';b.source.sha256='b'.repeat(64);
+ const a=feed(),b=feed();b.source.id='second';a.source.input_signature=b.source.input_signature='c'.repeat(64);
  const agreed=apply(table(),[a,b]);assert.equal(agreed.records[0].profiles.am.rate,10);assert.equal(agreed.records[0].properties.frequency_sources,'jp-metro;second');
  b.segments[0].profiles.am={forward_tph:30,backward_tph:30,display_tph:30,quality:'scheduled'};
  const conflict=apply(table(),[a,b]);assert.equal(conflict.sections.length,2);assert.equal(conflict.matching.conflictingSections,1);
@@ -126,11 +126,18 @@ test('agency ID abbreviations require matching declared name initials; light rai
 });
 test('equal AM counts cannot hide conflicting hours or agency timezones',()=>{
  for(const change of [f=>f.segments[0].profiles.h08={forward_tph:99,backward_tph:99,display_tph:99,quality:'scheduled'},f=>f.agencies[0].agency_timezone='Europe/London']){
-  const a=feed(),b=feed();b.source.id='second';change(b);const artifact=apply(table(),[a,b]);assert.ok(artifact.matching.conflictingSections>0);
+  const a=feed(),b=feed();a.source.input_signature=b.source.input_signature='c'.repeat(64);b.source.id='second';change(b);const artifact=apply(table(),[a,b]);assert.ok(artifact.matching.conflictingSections>0);
  }
 });
 
 test('reference punctuation preserves distinct service identities',()=>{
  const t=table(),f=feed();t.routes.get('r10').evidence.view.ref='G-1';f.routes[0].route_short_name='G1';
  assert.equal(apply(t,[f]).sections.length,0);f.routes[0].route_short_name='G-1';assert.equal(apply(t,[f]).sections.length,3);
+});
+
+test('equal rates do not establish duplicate trains across different source archives or compilations',()=>{
+ for(const change of [f=>f.source.sha256='b'.repeat(64),f=>f.source.input_signature='d'.repeat(64),f=>delete f.source.input_signature,f=>f.routes[0].source_route_ids=['unrelated-original-route']]){
+  const a=feed(),b=feed();a.source.input_signature=b.source.input_signature='c'.repeat(64);b.source.id='second';change(b);
+  const result=apply(table(),[a,b]);assert.equal(result.sections.length,0);assert.equal(result.matching.conflictingSections,3);assert.equal(result.feeds.length,0);
+ }
 });

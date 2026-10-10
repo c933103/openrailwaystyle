@@ -34,9 +34,11 @@ Rates attach separately to each original OSM edge. Every sampled interior point
 and both ends must lie within a served timetable interval, with compatible
 alignment; counts cannot extend beyond a short working's terminus. An OSM edge
 crossing a rate boundary is withheld, rather than receiving one branch's rate.
-Distinct same-feed route records are not summed or collapsed. Overlapping feeds
-can supply the same measurement once only when every profile, date, timezone
-and counting definition agrees; conflicting measurements stay unavailable.
+Distinct same-feed route records are not summed or collapsed. Duplicate feeds can supply a measurement once only when their original ZIP
+hash, compiler input signature, agency and original route scope agree, along
+with every profile, date, timezone and counting definition. Equal rates from
+different archives or compilations do not prove duplicate trains: unresolved
+overlap and conflicting measurements stay unavailable.
 The pipeline retains its calendar, overnight, hourly and headway semantics.
 Each section binds to its OSM coordinates, service identity and memberships;
 changed bindings are withheld at the site rebuild. Coverage and conflicts are

@@ -155,7 +155,7 @@ export function createTimetableMatcher(table,{now=Date.now()}={}){
           const result=select({geometry:lines[line].slice(edge,edge+2)},lookup);if(!result)continue;
           const key=`${way.id}:${group.route.relation}:${line}:${edge}`;
           if(!observations.has(key))observations.set(key,{way:way.id,relation:group.route.relation,line,edge,binding,values:[]});
-          observations.get(key).values.push({result,source:feed.source.id,route:route.route_id,archive:feed.source.sha256});
+          observations.get(key).values.push({result,source:feed.source.id,route:route.route_id,archive:feed.source.sha256,signature:feed.source.input_signature,scope:hash([agency.agency_id,[...new Set([route.route_id,...(route.source_route_ids||[])])].sort()])});
           if(result.properties.frequency_until*1000>=now&&Object.keys(result.profiles).length){applied.add(route.route_id);summary.availableSegments++;}
         }
       }
@@ -170,7 +170,8 @@ export function createTimetableMatcher(table,{now=Date.now()}={}){
       const values=item.values.filter(v=>v.result.properties.frequency_until*1000>=now);
       if(!values.length)continue;
       const perSource=Map.groupBy(values,v=>v.source);
-      const conflict=[...perSource.values()].some(v=>new Set(v.map(x=>x.route)).size>1)||new Set(values.map(v=>measurement(v.result))).size>1;
+      const duplicateEvidence=values.every(v=>/^[a-f0-9]{64}$/.test(v.archive||'')&&/^[a-f0-9]{64}$/.test(v.signature||''))&&new Set(values.map(v=>hash([v.archive,v.signature,v.scope]))).size===1;
+      const conflict=[...perSource.values()].some(v=>new Set(v.map(x=>x.route)).size>1)||perSource.size>1&&!duplicateEvidence||new Set(values.map(v=>measurement(v.result))).size>1;
       if(conflict){conflicts++;continue;}
       const result=structuredClone(values.reduce((a,b)=>a.result.properties.frequency_until<=b.result.properties.frequency_until?a:b).result);
       const sources=[...new Set(values.map(v=>v.source))].sort();
