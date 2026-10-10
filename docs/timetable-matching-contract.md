@@ -53,6 +53,10 @@ identity uses the configured feed ID and exact ZIP SHA-256, not a public URL.
   link, timezone, validity, current/future/expired state, applicable service dates,
   ordered departure offsets and unexpanded frequency intervals with `exact_times`.
   Blank time remains `null`; a departure beyond 24:00 retains the full offset.
+  Collector and matcher require nondecreasing known departures across null gaps
+  and non-overlapping frequency intervals. Equal departures and adjacent intervals
+  are valid; interval input order is unrestricted and is never rewritten. These
+  semantic checks follow the existing dense-array, record and numeric bounds.
   Each complete observation also has a content fingerprint binding its pattern,
   calendar state and validity to the exact feed revision and reference date.
   The matcher validates every bounded pattern and observation, all pattern

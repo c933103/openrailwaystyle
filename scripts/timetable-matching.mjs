@@ -126,11 +126,22 @@ function patternSchema(pattern) {
   return record(pattern, patternFields) && digest(pattern.id) && id(pattern.source_route_id) && id(pattern.compiled_route_id) && id(pattern.agency_id) && nullableId(pattern.route_ref) && nullableId(pattern.shape_id) && [null, '0', '1'].includes(pattern.direction_id) && array(pattern.calls, 512) && pattern.calls.length >= 2 &&
     pattern.calls.every(call => record(call, callFields) && id(call.stop_id) && id(call.station_id) && ['0', '1', '2', '3'].includes(call.pickup_type) && ['0', '1', '2', '3'].includes(call.drop_off_type));
 }
+// Called only after the dense 512-departure/128-interval schema checks below.
+// Match the collector's semantics without changing supplied interval order.
+function observationTimes(row) {
+  let previous = -1;
+  for (const departure of row.departures) if (departure !== null) {
+    if (departure < previous) return false;
+    previous = departure;
+  }
+  const intervals = [...row.frequencies].sort((a, b) => a.start - b.start);
+  return intervals.every((interval, index) => index === 0 || interval.start >= intervals[index - 1].end);
+}
 function observationSchema(row, patterns) {
   return record(row, observationFields) && digest(row.id) && id(row.trip_id) && id(row.service_id) && digest(row.pattern_id) && patterns.has(row.pattern_id) && id(row.timezone) && Number.isFinite(row.valid_until) && ['current', 'future', 'expired'].includes(row.calendar_state) &&
     array(row.active_service_dates, 367) && row.active_service_dates.every(calendarDate) &&
     array(row.departures, 512) && row.departures.length === patterns.get(row.pattern_id).calls.length && row.departures.every(value => value === null || offset(value)) &&
-    array(row.frequencies, 128) && row.frequencies.every(frequency => record(frequency, ['start', 'end', 'headway_secs', 'exact_times']) && offset(frequency.start) && offset(frequency.end) && frequency.end > frequency.start && positive(frequency.headway_secs) && ['0', '1'].includes(frequency.exact_times)) && digest(row.fingerprint);
+    array(row.frequencies, 128) && row.frequencies.every(frequency => record(frequency, ['start', 'end', 'headway_secs', 'exact_times']) && offset(frequency.start) && offset(frequency.end) && frequency.end > frequency.start && positive(frequency.headway_secs) && ['0', '1'].includes(frequency.exact_times)) && digest(row.fingerprint) && observationTimes(row);
 }
 function inspectOsm(osm, snapshot, budget) {
   if (!record(osm, osmFields) || osm.schema !== 1 || osm.status !== 'captured' || !array(osm.reasons, 0) || !positive(osm.relation_id) || !positive(osm.version) || !instant(osm.timestamp) || !instant(osm.snapshot) || Date.parse(osm.timestamp) > Date.parse(osm.snapshot) || !capturedTags(osm.tags) || !digest(osm.fingerprint)) return ['missing_evidence', 'missing_osm_declaration'];

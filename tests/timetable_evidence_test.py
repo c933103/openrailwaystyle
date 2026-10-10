@@ -207,6 +207,35 @@ class TimetableEvidence(unittest.TestCase):
         result = compiler.compile_feed(path, {**fixtures.CONFIG, 'matching_evidence': True}, '2026-10-05', geometry=True)
         self.assertNotIn('matching_evidence', result)
 
+    def test_observation_semantics_match_shared_javascript_vectors(self):
+        vectors = json.loads((Path(__file__).parent / 'fixtures/service-frequency/timetable-observation-semantics.json').read_text())['cases']
+        def clock(value):
+            return '' if value is None else f'{value // 3600}:{value // 60 % 60:02}:{value % 60:02}'
+        for vector in vectors:
+            for reverse_stops in [False, True]:
+                for reverse_intervals in [False, True]:
+                    with self.subTest(vector=vector['id'], reverse_stops=reverse_stops, reverse_intervals=reverse_intervals):
+                        routes = {'R': {'agency_id': 'A', 'route_short_name': 'R'}}
+                        trips = {'t': {'route_id': 'R', 'service_id': 'W', 'direction_id': '0', '_calendar_until': 2000000000, '_calendar_expired': False, '_calendar_future': False}}
+                        rows = [{'stop_id': f's{i}', 'stop_sequence': str(i), 'departure_time': clock(value)} for i, value in enumerate(vector['departures'])]
+                        stops = {row['stop_id']: {'stop_lat': '60', 'stop_lon': '24'} for row in rows}
+                        intervals = [{'start_time': clock(row['start']), 'end_time': clock(row['end']), 'headway_secs': str(row['headway_secs']), 'exact_times': row['exact_times']} for row in vector['frequencies']]
+                        if reverse_stops: rows.reverse()
+                        if reverse_intervals: intervals.reverse()
+                        source = {'id': 'feed', 'sha256': 'a' * 64, 'service_date': '2026-10-05', 'valid_until': 2000000000}
+                        sidecar = evidence.build_evidence(source, evidence.capture_identity(routes, trips), trips, {'t': rows}, stops, {'t': intervals}, {}, {'A': {'agency_timezone': 'Europe/Helsinki'}}, compiler.seconds)
+                        reason = vector['collector_reason']
+                        self.assertEqual(sidecar['status'], 'incomplete' if reason else 'captured')
+                        if reason:
+                            self.assertEqual(sidecar['reasons'], [reason])
+                            for key in ['patterns', 'observations', 'stops']:
+                                self.assertEqual(sidecar[key], [])
+                        else:
+                            observation = sidecar['observations'][0]
+                            self.assertEqual(observation['departures'], vector['departures'])
+                            expected = list(reversed(vector['frequencies'])) if reverse_intervals else vector['frequencies']
+                            self.assertEqual(observation['frequencies'], expected)
+
 
 if __name__ == '__main__':
     unittest.main()

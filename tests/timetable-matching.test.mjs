@@ -1089,3 +1089,47 @@ test('unrelated operator scopes never manufacture a current operator conflict', 
     assert.equal(status(input), feed_id === 'feed' && source_sha256 !== sha ? 'stale' : 'verified', `${feed_id}/${agency_id}/${source_sha256}`);
   }
 });
+
+const observationSemantics = JSON.parse(readFileSync(new URL('./fixtures/service-frequency/timetable-observation-semantics.json', import.meta.url), 'utf8')).cases;
+function observationInput(vector) {
+  const input = fixture(), pattern = input.evidence.patterns[0], candidate = input.candidates[0];
+  pattern.calls = vector.departures.map((_, index) => ({stop_id: `s${index}`, station_id: `s${index}`, pickup_type: '0', drop_off_type: '0'}));
+  const {id, ...definition} = pattern;
+  pattern.id = hash(['feed', sha, definition]); input.pattern_id = pattern.id;
+  Object.assign(input.evidence.observations[0], {pattern_id: pattern.id, departures: [...vector.departures], frequencies: structuredClone(vector.frequencies)});
+  candidate.osm = captureOsmServiceEvidence(relation({members: [...pattern.calls.map((_, index) => ({type: 'node', ref: index + 1, role: 'stop'})), {type: 'way', ref: 100, role: ''}]}), snapshot);
+  candidate.variants[0].stations = pattern.calls.map((_, index) => `node:${index + 1}`);
+  input.crosswalk = pattern.calls.map((call, index) => ({feed_id: 'feed', source_sha256: sha, station_id: call.station_id, osm_station_id: `node:${index + 1}`, status: 'verified', osm_snapshot: snapshot}));
+  return sealObservations(input);
+}
+for (const kind of ['departures', 'frequencies']) test(`resealed observation ${kind} obey the collector's temporal invariants`, () => {
+  for (const vector of observationSemantics.filter(value => value.kind === kind)) for (const reverseIntervals of [false, true]) for (const placement of ['selected', 'other', 'expired-other']) for (const reverseObservations of [false, true]) {
+    const input = observationInput({...vector, departures: vector.departures.map((_, index) => index * 600), frequencies: []});
+    if (placement !== 'selected') addOtherSourcePattern(input);
+    const observation = input.evidence.observations[placement === 'selected' ? 0 : 1];
+    observation.departures = [...vector.departures]; observation.frequencies = structuredClone(vector.frequencies);
+    if (reverseIntervals) observation.frequencies.reverse();
+    if (placement === 'expired-other') { observation.calendar_state = 'expired'; observation.valid_until = 0; }
+    if (reverseObservations) input.evidence.observations.reverse();
+    sealObservations(input);
+    const before = structuredClone(input), output = matchTimetablePattern(input);
+    assert.equal(output.status, vector.collector_reason ? 'missing_evidence' : 'verified', `${vector.id}/${reverseIntervals}/${placement}/${reverseObservations}`);
+    if (vector.collector_reason) assert.deepEqual(output.reasons, ['invalid_observation_schema']);
+    assert.equal(output.frequency_status, 'not_evaluated');
+    assert.equal(output.profiles, undefined);
+    assert.deepEqual(input, before, 'semantic validation never reorders or repairs the supplied evidence');
+  }
+});
+
+test('temporal semantics retain dense-array and existing observation caps', () => {
+  const frequencies = Array.from({length: 128}, (_, index) => ({start: index * 600, end: (index + 1) * 600, headway_secs: 60, exact_times: '0'})).reverse();
+  const input = observationInput({departures: Array(512).fill(0), frequencies});
+  assert.equal(status(input), 'verified', '512 equal known calls and 128 reverse-ordered adjacent intervals remain supported');
+  input.evidence.observations[0].frequencies.push({start: 128 * 600, end: 129 * 600, headway_secs: 60, exact_times: '0'});
+  sealObservations(input); assert.equal(status(input), 'missing_evidence', '129 intervals still exceed the cap');
+  input.evidence.observations[0].frequencies.pop(); delete input.evidence.observations[0].frequencies[3];
+  assert.equal(status(input), 'missing_evidence', 'a frequency hole is not nonoverlapping evidence');
+  input.evidence.observations[0].frequencies = [];
+  delete input.evidence.observations[0].departures[3];
+  assert.equal(status(input), 'missing_evidence', 'a departure hole is not a legitimate unknown null');
+});
