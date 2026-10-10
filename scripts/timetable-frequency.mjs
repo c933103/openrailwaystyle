@@ -122,7 +122,7 @@ function select(edge,lookup){
     if(!records.length||new Set(records.map(measurement)).size!==1)return null;
     const chosen=records.reduce((a,b)=>a.properties.frequency_until<=b.properties.frequency_until?a:b);
     if(selected&&measurement(selected)!==measurement(chosen))return null;
-    selected=chosen;
+    if(!selected||chosen.properties.frequency_until<selected.properties.frequency_until)selected=chosen;
   }
   // A shared endpoint may touch the next interval, but the selected profile
   // must itself reach both ends. Coverage by a different profile is insufficient.

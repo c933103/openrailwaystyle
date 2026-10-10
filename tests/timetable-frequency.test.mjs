@@ -152,6 +152,11 @@ test('a narrow interior rate interval cannot fall between spatial samples',()=>{
  f.segments.unshift({...base,geometry:[[139.70595,35.68],[139.71,35.68]]},middle,{...base,geometry:[[139.7,35.68],[139.7059,35.68]]});
  assert.ok(!apply(t,[f]).sections.some(s=>s.way===4));
 });
+test('equal counts across intervals retain the earliest branch expiry on an OSM edge',()=>{
+ const t=table(),way=structuredClone(t.ways.get(1));way.id=4;way.geometry.lines=[[[139.7,35.68],[139.72,35.68]]];t.ways.set(4,way);t.routes.get('r10').evidence.eligible.push(4);
+ const f=feed();f.segments[1].profiles=structuredClone(f.segments[0].profiles);f.segments[0].valid_until=now/1000-1;
+ const artifact=apply(t,[f]);assert.ok(!artifact.sections.some(s=>s.way===4));assert.ok(artifact.sections.some(s=>s.way===2),'the independently current branch remains available');
+});
 test('secondary grouped relations retain localized operators and feed-scoped route IDs',()=>{
  const add=(t,id,tags)=>{
   const extra={type:'relation',id,tags:{route:'subway',ref:'G',name:'銀座線',network:'東京メトロ',colour:'#f39700',...tags},members:[1,2,3].map(ref=>({type:'way',ref,role:''}))};
