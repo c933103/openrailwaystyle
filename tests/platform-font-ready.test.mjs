@@ -5,10 +5,11 @@ import {stationScFontReady} from '../scripts/platform-font-ready.mjs';
 
 // Exercise the same serialized callback Playwright runs, without Node globals
 // or closure values accidentally making an invalid browser callback pass.
-const evaluate = window => vm.runInNewContext(`(${stationScFontReady})()`, {window});
+const evaluate = (window, options) => vm.runInNewContext(`(${stationScFontReady})(options)`, {window, options});
 const station = fonts => ({id: 'station-major-label', type: 'symbol', layout: {'text-font': fonts}});
 const state = (fonts, {loaded = true, layers = [station(fonts)]} = {}) => ({reviewMap: {
   isStyleLoaded: () => loaded,
+  loaded: () => loaded,
   getStyle: () => ({layers}),
   style: {glyphManager: {localIdeographFontFamily: '"Noto Sans SC","Microsoft YaHei",sans-serif'}},
 }});
@@ -44,6 +45,22 @@ test('packaged SC readiness can change while the explicit font stack stays uncha
   loaded = true;
   assert.equal(evaluate(window), true, 'the complete predicate recovers without changing fonts');
   assert.equal(window.reviewMap.getStyle().layers[0].layout['text-font'], fonts);
+});
+
+test('final SC readiness waits for renderer work without delaying the pre-draw font check', () => {
+  for (const family of ['Noto Sans SC', 'Atlas CJK SC']) {
+    const window = state(['Noto Sans Bold', family, 'Atlas Rare Han']);
+    let mapLoaded = false;
+    window.reviewMap.loaded = () => mapLoaded;
+    assert.equal(evaluate(window), true, 'the original pre-draw predicate stays unchanged');
+    assert.equal(evaluate(window, {requireMapLoaded: true}), false, 'loaded fonts alone do not complete queued renderer work');
+    mapLoaded = true;
+    assert.equal(evaluate(window, {requireMapLoaded: true}), true, 'drained renderer work releases the final check');
+    mapLoaded = false;
+    assert.equal(evaluate(window, {requireMapLoaded: true}), false, 'new pending work closes the final gate again');
+  }
+  assert.equal(evaluate(state(['Atlas CJK TC']), {requireMapLoaded: true}), false, 'renderer completion does not replace the SC font requirement');
+  assert.equal(evaluate(state(['Atlas CJK SC'], {loaded: false}), {requireMapLoaded: true}), false, 'renderer completion does not replace current-style readiness');
 });
 
 test('SC readiness requires an exact family element in the station symbol layer', () => {
