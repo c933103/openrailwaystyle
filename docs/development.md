@@ -169,6 +169,13 @@ checks use the same synthetic railway fixture against the published page. They
 test rendering integration, **not real-world railway geometry or live tile
 availability**, which must be assessed separately.
 
+The [Paris Service geometry acceptance](service-paris-acceptance.md) runs two
+fixture-only gates against the current production renderer and line layer. They
+preserve pinned OSM positives and reject both synthetic and authentic archived
+Normandy timetable geometry across all 28 profiles. The original archives and
+source dates stay unchanged; publication metadata uses the current safe URL and
+lineage projection. These gates do not certify live geographic coverage.
+
 Service-worker installation/upgrade tests in `tests/sw-install.test.mjs` and
 `tests/startup.test.mjs` execute the actual old/new worker sources with synthetic
 fetch/cache implementations. The browser matrix has always blocked registered

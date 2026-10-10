@@ -131,6 +131,11 @@ test('every browser check launches through the shared helper', async () => {
       // This orchestration check delegates both URL cases to the guarded checker.
       assert.match(source,/new URL\('\.\/check-orm-fixture-browser\.mjs',import.meta.url\)/);
       assert.match(source,/spawn\(process.execPath,\[check\]/);
+    }else if(name==='check-normandy-service-geometry-browser.mjs'){
+      assert.match(source,/from '\.\/check-paris-service-geometry-browser\.mjs'/,name);
+      assert.match(source,/await checkParisServiceGeometryBrowser\(/,name);
+      assert.ok(scripts.includes('check-paris-service-geometry-browser.mjs'),
+        'delegated Paris checker is checked for its shared helper import');
     }else assert.match(source, /import \{launchBrowser\} from '\.\/browser\.mjs';/, name);
     assert.doesNotMatch(source, /chromium\.launch\(/, name);
   }

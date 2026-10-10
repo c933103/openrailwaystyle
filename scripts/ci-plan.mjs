@@ -41,7 +41,7 @@ export const GROUPS = [
   {group: 'controls', checks: ['check-network-guard-browser.mjs', 'check-map-controls-browser.mjs', 'check-build-browser.mjs', 'check-watch-browser.mjs', 'check-service-frequency-browser.mjs', 'check-first-party-assets-browser.mjs', 'check-pwa-install-browser.mjs', 'check-departures-browser.mjs']},
   {group: 'infrastructure', checks: ['check-signal-power-browser.mjs', 'check-platform-browser.mjs', 'check-infrastructure-browser.mjs']},
   {group: 'platforms', checks: ['check-platform-stations-browser.mjs']},
-  {group: 'frequency', checks: ['check-world-frequency-browser.mjs', 'check-service-geometry-browser.mjs', 'check-timetable-frequency-browser.mjs'], prepare: 'node scripts/rebuild-service-frequency.mjs styles/data/service-routes /tmp/frequency-fixture-credits.html --fixtures'},
+  {group: 'frequency', checks: ['check-world-frequency-browser.mjs', 'check-service-geometry-browser.mjs', 'check-paris-service-geometry-browser.mjs', 'check-normandy-service-geometry-browser.mjs', 'check-timetable-frequency-browser.mjs'], prepare: 'node scripts/rebuild-service-frequency.mjs styles/data/service-routes /tmp/frequency-fixture-credits.html --fixtures'},
 ];
 export const VALIDATED_CONTEXT = 'site/browser-checks';
 
