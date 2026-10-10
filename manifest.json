@@ -1,0 +1,133 @@
+{
+  "generated": "2026-10-10T22:01:54.057Z",
+  "lines": 289000,
+  "tiles": 1540,
+  "tileBytes": 11881487,
+  "zooms": [
+    4,
+    9
+  ],
+  "stages": [
+    {
+      "name": "japan",
+      "label": "Japan",
+      "completed": "2026-10-04T09:05:44Z",
+      "inProgress": false,
+      "lines": 16573
+    },
+    {
+      "name": "east-asia",
+      "label": "Koreas, Taiwan, Hong Kong, Macau and Guangdong",
+      "completed": "2026-10-04T12:51:23Z",
+      "inProgress": false,
+      "lines": 5755
+    },
+    {
+      "name": "china",
+      "label": "Rest of China",
+      "completed": "2026-10-04T21:56:31Z",
+      "inProgress": false,
+      "lines": 24377
+    },
+    {
+      "name": "russia",
+      "label": "Russia",
+      "completed": "2026-10-05T01:15:44Z",
+      "inProgress": false,
+      "lines": 5799
+    },
+    {
+      "name": "europe-a",
+      "label": "Turkey, Cyprus and Caucasus",
+      "completed": "2026-10-06T02:07:27Z",
+      "inProgress": false,
+      "lines": 1646
+    },
+    {
+      "name": "europe-b",
+      "label": "Spain, Portugal, Andorra, UK and Ireland",
+      "completed": "2026-10-06T22:47:56Z",
+      "inProgress": false,
+      "lines": 26426
+    },
+    {
+      "name": "europe-c",
+      "label": "Iceland, Denmark, Norway and Sweden",
+      "completed": "2026-10-07T06:28:22Z",
+      "inProgress": false,
+      "lines": 6562
+    },
+    {
+      "name": "europe-d",
+      "label": "Finland, Baltic states, Belarus, Ukraine and Moldova",
+      "completed": "2026-10-07T23:18:57Z",
+      "inProgress": false,
+      "lines": 4096
+    },
+    {
+      "name": "europe-e",
+      "label": "Italy, former Yugoslavia, Greece, Bulgaria and Romania",
+      "completed": "2026-10-08T06:39:12Z",
+      "inProgress": false,
+      "lines": 27664
+    },
+    {
+      "name": "europe-f",
+      "label": "France and Benelux",
+      "completed": "2026-10-08T23:33:35Z",
+      "inProgress": false,
+      "lines": 19799
+    },
+    {
+      "name": "europe-g",
+      "label": "Remaining Europe",
+      "completed": "2026-10-09T06:42:16Z",
+      "inProgress": false,
+      "lines": 65825
+    },
+    {
+      "name": "india",
+      "label": "India",
+      "completed": "2026-10-09T18:31:09Z",
+      "inProgress": false,
+      "lines": 6457
+    },
+    {
+      "name": "asia",
+      "label": "Rest of Asia",
+      "completed": "2026-10-10T06:22:52Z",
+      "inProgress": false,
+      "lines": 4747
+    },
+    {
+      "name": "north-america",
+      "label": "US and Canada",
+      "completed": "2026-10-10T13:03:15Z",
+      "inProgress": false,
+      "lines": 62263
+    },
+    {
+      "name": "americas",
+      "label": "Rest of the Americas",
+      "completed": "2026-10-10T21:59:27Z",
+      "inProgress": false,
+      "lines": 6322
+    },
+    {
+      "name": "world",
+      "label": "Rest of the world",
+      "completed": null,
+      "inProgress": false,
+      "lines": 0
+    }
+  ],
+  "run": {
+    "stage": "americas",
+    "requests": 2,
+    "downloadedBytes": 7625683
+  },
+  "source": "https://overpass-api.de/api/interpreter",
+  "query": "way[railway~\"^(rail|narrow_gauge)$\"][usage=branch][!service] and way[railway=subway][!service], by region",
+  "license": "ODbL-1.0",
+  "description": "OpenStreetMap operating branch lines (usage=branch) for zooms 4–6 and metro lines (railway=subway) for zooms 7–9, where OpenRailwayMap shows neither."
+}
