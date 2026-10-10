@@ -685,3 +685,14 @@ test('userinfo projection sanitizes held shard copies and compiled attribution',
     assert.deepEqual(await readFile(join(root,'feeds/rail.json.gz')),raw,'historical payload bytes stay unchanged');
   }finally{await rm(root,{recursive:true,force:true});}
 });
+
+test('cache policy restrictions and uncertainty remain explicit retryable outcomes',()=>{
+  const entries=[{id:'restricted',status:'retry_pending',reason_code:'source_cache_policy_restriction'},
+    {id:'uncertain',status:'retry_pending',reason_code:'unresolved_source_cache_policy'},
+    {id:'legacy',status:'retry_pending',reason_code:'source_retrieval_error'}];
+  for(const schema of [2,3]){
+    const merged=mergeInventories([{schema,shards:1,shard:0,catalogue_sha256:'fixture',catalogue_entries:3,service_date:'2026-10-05',entries}]);
+    assert.deepEqual(merged.counts,{retry_pending:3});
+    assert.deepEqual(countOutcomeReasons(merged.entries),{source_retrieval_error:1,source_cache_policy_restriction:1,unresolved_source_cache_policy:1});
+  }
+});

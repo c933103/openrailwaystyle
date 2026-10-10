@@ -246,6 +246,14 @@ class CacheIdentityUnresolved(ValueError):
     """Old archive destination evidence is unavailable, invalid or now held."""
 
 
+class CachePolicyBlocked(ValueError):
+    """A retained destination is restricted by current policy; no new request."""
+
+
+class CachePolicyUnresolved(ValueError):
+    """Hidden historical identity cannot establish current policy eligibility."""
+
+
 class SourcePolicyError(ValueError):
     """A particular endpoint is prohibited by an existing source rule."""
 
@@ -723,18 +731,67 @@ def request_receipt_valid(value, candidate):
     return value['candidate_sha256'] in identities and value['terminal_resource_sha256'] in resources
 
 
+def reference_cache_policy_state(entry, receipt, candidate):
+    """Recheck existing lexical policy without treating a display as an original."""
+    policy = {'denied_source_urls': entry.get('denied_source_urls', [])}
+    candidate_hash = source_url_fingerprint(candidate)
+    unresolved = False
+    for endpoint in receipt['endpoints']:
+        display = endpoint['url']
+        if blocked({'source': display}): return 'policy_blocked'
+        try:
+            if endpoint['url_sha256'] == candidate_hash:
+                # Only an available, exactly bound original supplies raw query
+                # values. A copied retained hash cannot invent that binding.
+                if (display != redacted_source_url(candidate) or endpoint['resource_sha256'] !=
+                        request_resource_hash(candidate, legacy=receipt['schema'] == 1)):
+                    return 'invalid'
+                source_policy(policy, candidate)
+            elif not urlparse(display).query:
+                source_policy(policy, display)
+            else:
+                visible_key = acquisition_url_key(display)
+                if visible_key[0] == 'invalid':
+                    unresolved = True
+                    continue
+                for denied in policy['denied_source_urls']:
+                    # Keep malformed configuration entries' existing live
+                    # comparison behavior; still inspect every valid denial.
+                    denied_key = acquisition_url_key(denied)
+                    if denied_key[0] == 'invalid': continue
+                    if endpoint['url_sha256'] == source_url_fingerprint(denied):
+                        if (display != redacted_source_url(denied) or endpoint['resource_sha256'] !=
+                                request_resource_hash(denied, legacy=receipt['schema'] == 1)):
+                            return 'invalid'
+                        return 'policy_blocked'
+                    if visible_key[:-1] != denied_key[:-1]: continue
+                    visible_denied = redacted_source_url(denied)
+                    if (visible_denied == '[invalid source URL]' or
+                            acquisition_url_key(visible_denied) == visible_key):
+                        unresolved = True
+        except SourcePolicyError:
+            return 'policy_blocked'
+        except (TypeError, ValueError, UnicodeError):
+            # A comparison/representation budget failure cannot prove that no
+            # restriction matches. Never reconstruct a hidden query value.
+            unresolved = True
+    return 'policy_unverified' if unresolved else 'eligible'
+
+
 def reference_cache_state(entry, meta, path, candidate):
     row = entry.get('catalogue') or {}
     if 'source_resolution' not in row: return 'legacy'
     receipt = meta.get('request_provenance')
     held = registry.references.withheld_static_identities(row)
-    if receipt is None: return 'destination_unverified' if held else 'legacy_public_unverified'
+    if receipt is None: return 'destination_unverified'
     if not candidate or not request_receipt_valid(receipt,candidate): return 'invalid'
     if receipt['artifact_kind']!='archive' or not path.is_file(): return 'invalid'
     digest=hashlib.sha256()
     with path.open('rb') as stream:
         while chunk:=stream.read(1048576):digest.update(chunk)
     if digest.hexdigest()!=receipt['artifact_sha256']: return 'invalid'
+    policy_state = reference_cache_policy_state(entry, receipt, candidate)
+    if policy_state != 'eligible': return policy_state
     if receipt['schema'] == 1:
         # Old hashes certify only the historical lexical identity contract.
         return 'destination_unverified' if held else 'legacy_public_unverified'
@@ -764,6 +821,12 @@ def source_attempt(url, error):
     elif isinstance(error, CacheIdentityUnresolved):
         return {'url':redacted_source_url(url),'url_sha256':source_url_fingerprint(url),
             'code':'source_cache_identity_unresolved','message':'Cached destination evidence is unavailable or invalid; reuse paused'}
+    elif isinstance(error, CachePolicyBlocked):
+        return {'url':redacted_source_url(url),'url_sha256':source_url_fingerprint(url),
+            'code':'source_cache_policy_blocked','message':'Recorded cached destination is restricted by current source policy; reuse paused'}
+    elif isinstance(error, CachePolicyUnresolved):
+        return {'url':redacted_source_url(url),'url_sha256':source_url_fingerprint(url),
+            'code':'source_cache_policy_unresolved','message':'Cached destination identity cannot establish current source-policy eligibility; reuse paused'}
     elif isinstance(error, SourcePolicyError):
         code = 'source_policy'
     elif isinstance(error, UnsafeSourceURL):
@@ -1119,7 +1182,8 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
         attempts.append({'url':'','code':'source_cache_identity_unresolved',
             'message':'Cached source no longer matches supported current candidates; reuse paused'})
     if path.exists() and cached_url and not cache_eligible:
-        attempts.append(source_attempt(cached_url,CacheAccessHold() if cache_state=='held' else CacheIdentityUnresolved()))
+        problem = {'held':CacheAccessHold,'policy_blocked':CachePolicyBlocked,'policy_unverified':CachePolicyUnresolved}.get(cache_state,CacheIdentityUnresolved)
+        attempts.append(source_attempt(cached_url,problem()))
     checked = CheckedRequests(entry,cached_url,meta['request_provenance']['terminal_resource_sha256']) if cache_state=='verified' else None
     if cached_url:
         meta['download_url'] = redacted_source_url(cached_url)
@@ -1352,6 +1416,10 @@ def classify_failure(error):
         codes = {x['code'] for x in error.attempts}
         if 'source_cache_identity_unresolved' in codes:
             return 'unresolved_source_cache_identity', 'retrieval'
+        if 'source_cache_policy_blocked' in codes:
+            return 'source_cache_policy_restriction', 'retrieval'
+        if 'source_cache_policy_unresolved' in codes:
+            return 'unresolved_source_cache_policy', 'retrieval'
         if codes & {'source_access_hold','source_cache_access_hold'}:
             return 'source_access_review', 'retrieval'
         if 'source_identity_changed' in codes:
@@ -1487,6 +1555,7 @@ def main():
                          'next_action': ('repair_or_find_feed_url' if code in ('source_http_404', 'missing_source_url')
                                          else 'review_source_access_or_declared_public_alternative' if code == 'source_access_review'
                                          else 'refresh_from_public_source_or_review_cache_provenance' if code == 'unresolved_source_cache_identity'
+                                         else 'refresh_from_permitted_source_or_review_cache_policy' if code in ('source_cache_policy_restriction', 'unresolved_source_cache_policy')
                                          else 'refresh_from_public_source_or_review_source_identity' if code == 'source_reference_identity_changed'
                                          else 'retry_source_or_repair_compiler'),
                          'source_attempts': error.attempts if isinstance(error, SourceRetrievalError) else []}

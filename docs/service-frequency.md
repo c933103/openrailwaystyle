@@ -712,10 +712,12 @@ revalidation, offline fallback or compiled-output reuse.
 Old or malformed reference receipts do not manufacture destination proof. An old
 cache with access-held alternatives stays on disk but cannot be reused without
 sufficient destination evidence. This is explicit cache-provenance uncertainty,
-not a claim of a new unauthorized request during offline reuse. An older public
-cache without holds can remain usable during an outage without adding a receipt
-or advancing `checked`/`retrieved`; a fresh successful representation establishes
-its new receipt. Legacy/direct-owner behavior remains unchanged. No raw archive
+not a claim of a new unauthorized request during offline reuse. A reference cache
+without a receipt is destination-unverified and cannot be
+reused, including when the row has no declared access hold. Normal permitted
+refresh or public fallback can establish a new receipt; unsuccessful refresh
+keeps the old bytes without advancing `checked`/`retrieved`. Legacy/direct-owner
+behavior remains unchanged. No raw archive
 purge or rewrite of historical destination evidence is introduced.
 
 Assembly also validates an alias's own semantic public-static proof after safe
@@ -760,7 +762,8 @@ publication displays are unchanged; normalized compatibility alone cannot replac
 the original-hash checks required for alias ownership or establish authenticity.
 
 Schema-1 receipts retain their prior lexical identity rules. Strict old shape,
-candidate/display/hash and artifact validation must pass before compatibility;
+candidate/display/hash, artifact and current source-policy validation must pass
+before compatibility;
 unknown versions/normalizers and malformed receipts remain invalid. Valid old
 receipts are destination-unverified when the row has held static identities.
 Without holds, a valid public historical archive can remain usable offline, but
@@ -801,3 +804,18 @@ invalid graph retains an unresolved hold after safe projection. Literal or
 encoded `@` in path/query and fragment-only public URLs remain supported.
 Historical/current receipt admission already rejects credential-bearing
 authorities; supported identity hashes and schema markers are unchanged.
+
+Before reference cache revalidation or offline reuse, every retained candidate,
+intermediate and terminal must also satisfy current provider and exact-source
+policy. This check precedes schema-1 compatibility. An available raw candidate
+must match its recorded display/resource binding; a query-free endpoint retains
+its existing lexical-policy identity. Hidden query values are never reconstructed.
+If safe visible evidence cannot exclude a relevant current denial, reuse remains
+policy-unverified. Supported public receipts remain reusable when every policy
+restriction is demonstrably excluded, and permitted fresh alternatives remain
+available. Confirmed cached restrictions use `source_cache_policy_restriction`;
+unknown policy eligibility uses `unresolved_source_cache_policy`. These are
+retriable cache outcomes, not observed requests, HTTP failures or feed exclusions.
+Existing global lexical reviewed-terms semantics and legacy-owner cache handling
+are unchanged. No original archive or historical receipt is purged or rewritten
+when reuse fails.

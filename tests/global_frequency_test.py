@@ -575,17 +575,21 @@ class GlobalFrequency(unittest.TestCase):
                 self.assertEqual(len(ch['requests']),target_requests,'offline cache rejection is not a new held-target request')
                 self.assertNotIn('synthetic-cache-marker',str(failed.exception))
 
-    def test_public_legacy_reference_cache_stays_usable_without_minting_receipt(self):
+    def test_public_reference_cache_without_receipt_requires_fresh_evidence(self):
         from urllib.error import URLError
         url,_=self.server(self.archive());entry=self.reference_lifecycle_entry(url)
         cache=self.root/'legacy-reference';cache.mkdir();output=self.root/'legacy-reference-out'
         pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
         path=cache/'xx_rail.meta.json';meta=json.loads(path.read_text());meta.pop('request_provenance');path.write_text(json.dumps(meta))
+        before=path.read_bytes();archive=(cache/'xx_rail.zip').read_bytes()
         with patch.object(pipeline,'get',side_effect=URLError('offline fixture')):
-            result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
-        self.assertTrue(result['source']['offline_cached']);after=json.loads(path.read_text())
-        self.assertNotIn('request_provenance',after)
-        self.assertEqual(after['checked'],meta['checked']);self.assertEqual(after['retrieved'],meta['retrieved'])
+            with self.assertRaises(pipeline.SourceRetrievalError) as failed:
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        self.assertEqual(pipeline.classify_failure(failed.exception)[0],'unresolved_source_cache_identity')
+        self.assertEqual(path.read_bytes(),before);self.assertEqual((cache/'xx_rail.zip').read_bytes(),archive)
+        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+        self.assertEqual(result['status'],'compiled');self.assertFalse(result['source'].get('offline_cached',False))
+        self.assertTrue(pipeline.request_receipt_valid(json.loads(path.read_text())['request_provenance'],url))
 
     def test_reference_terminal_binds_conditional_and_range_validators(self):
         for phase in ['conditional_public_200','conditional_changed_304','range','full']:
@@ -796,6 +800,135 @@ class GlobalFrequency(unittest.TestCase):
                         self.assertEqual(pipeline.classify_failure(failed.exception)[0],'unresolved_source_cache_identity')
                         self.assertEqual(meta_path.read_bytes(),before_meta)
                 self.assertEqual((cache/'xx_rail.zip').read_bytes(),before_archive)
+
+    def policy_receipt(self, urls, data, version=2):
+        ends=[{'url':pipeline.redacted_source_url(url),'url_sha256':pipeline.source_url_fingerprint(url),
+            'resource_sha256':pipeline.request_resource_hash(url,legacy=version==1),
+            'visible_resource_sha256':pipeline.request_resource_hash(pipeline.redacted_source_url(url),legacy=version==1)} for url in urls]
+        return {'schema':version,**({'resource_normalization':pipeline.registry.references.RESOURCE_NORMALIZATION} if version==2 else {}),
+            'candidate_sha256':pipeline.source_url_fingerprint(urls[0]),'terminal_resource_sha256':ends[-1]['resource_sha256'],
+            'artifact_kind':'archive','artifact_sha256':pipeline.hashlib.sha256(data).hexdigest(),
+            'endpoints':list({x['url_sha256']:x for x in ends}.values())}
+
+    def test_reference_cache_policy_checks_every_endpoint_before_schema_one_compatibility(self):
+        import copy
+        data=self.archive();path=self.root/'policy-matrix.zip';path.write_bytes(data)
+        a='https://candidate.test/feed';b='https://public.test/feed';c='https://terminal.test/feed'
+        for version in [1,2]:
+            for position in ['candidate','intermediate','terminal']:
+                urls=[a,b,c];index={'candidate':0,'intermediate':1,'terminal':2}[position]
+                entry=self.reference_lifecycle_entry(a)
+                receipt=self.policy_receipt(urls,data,version);meta={'request_provenance':receipt}
+                self.assertEqual(pipeline.reference_cache_state(entry,meta,path,a),'legacy_public_unverified' if version==1 else 'verified')
+                entry['denied_source_urls']=[urls[index]]
+                self.assertEqual(pipeline.reference_cache_state(entry,meta,path,a),'policy_blocked')
+                entry['denied_source_urls']=[None,'not a URL',urls[index]]
+                self.assertEqual(pipeline.reference_cache_state(entry,meta,path,a),'policy_blocked','malformed unrelated entries cannot remove a valid denial')
+                entry['denied_source_urls']=None
+                self.assertEqual(pipeline.reference_cache_state(entry,meta,path,a),'policy_unverified')
+                entry.pop('denied_source_urls');urls[index]='https://provider.ru/feed';candidate=urls[0]
+                receipt=self.policy_receipt(urls,data,version)
+                self.assertEqual(pipeline.reference_cache_state(entry,{'request_provenance':receipt},path,candidate),'policy_blocked')
+                self.assertEqual(path.read_bytes(),data)
+            row=self.reference_lifecycle_entry(a)
+            self.assertEqual(pipeline.reference_cache_state(row,{},path,a),'destination_unverified')
+            self.assertEqual(pipeline.reference_cache_state({'catalogue':{}},{},path,a),'legacy')
+
+    def test_reference_cache_query_policy_uncertainty_preserves_lexical_semantics(self):
+        import copy
+        data=self.archive();path=self.root/'policy-query.zip';path.write_bytes(data);a='https://candidate.test/feed'
+        cases=[
+            ('https://public.test/feed','https://PUBLIC.test:443/feed#fragment','policy_blocked'),
+            ('https://public.test/feed?','https://public.test/feed#fragment','policy_blocked'),
+            ('https://public.test/a%2fb','https://public.test/a%2Fb','eligible'),
+            ('https://public.test/a/../feed','https://public.test/feed','eligible'),
+            ('https://public.test/feed?mode=synthetic-one','https://public.test/feed?mode=synthetic-one','policy_blocked'),
+            ('https://public.test/feed?mode=synthetic-one','https://PUBLIC.test:443/feed?mode=synthetic-one#fragment','policy_unverified'),
+            ('https://public.test/feed?mode=synthetic-one','https://public.test/feed?mode=synthetic-two','policy_unverified'),
+            ('https://public.test/feed?mode=synthetic-one','https://other.test/feed?mode=synthetic-two','eligible'),
+            ('https://public.test/feed?mode=synthetic-one','https://public.test/other?mode=synthetic-two','eligible'),
+            ('https://public.test/feed?mode=synthetic-one','https://public.test/feed?other=synthetic-two','eligible'),
+            ('https://public.test/feed?a=one&b=two','https://public.test/feed?b=two&a=one','eligible'),
+            ('https://public.test/feed?a=one&a=two','https://public.test/feed?a=two&a=one','policy_unverified'),
+            ('https://public.test/feed?%6dode=one','https://public.test/feed?mode=one','policy_unverified'),
+            ('https://public.test/feed?flag','https://public.test/feed?flag=','policy_unverified'),
+            ('https://public.test/feed?mode=one','https://public.test/feed?'+('&'.join('x'+str(i)+'=v' for i in range(129))),'policy_unverified'),
+            ('https://public.test/feed?mode=one','https://other.test/feed?'+('&'.join('x'+str(i)+'=v' for i in range(129))),'eligible')]
+        for version in [1,2]:
+            for target,denied,expected in cases:
+                receipt=self.policy_receipt([a,target],data,version);entry=self.reference_lifecycle_entry(a);entry['denied_source_urls']=[denied]
+                state=pipeline.reference_cache_state(entry,{'request_provenance':receipt},path,a)
+                self.assertEqual(state,('legacy_public_unverified' if version==1 else 'verified') if expected=='eligible' else expected)
+            original='https://public.test/feed?mode=synthetic-one'
+            entry=self.reference_lifecycle_entry(original);entry['denied_source_urls']=['https://public.test/feed?mode=synthetic-two']
+            receipt=self.policy_receipt([original],data,version)
+            self.assertEqual(pipeline.reference_cache_state(entry,{'request_provenance':receipt},path,original),'legacy_public_unverified' if version==1 else 'verified','an available raw original preserves genuinely distinct values')
+            # A retained candidate hash cannot stand in for a different endpoint.
+            changed=copy.deepcopy(receipt);other=self.policy_receipt(['https://different.test/feed?mode=one'],data,version)['endpoints'][0]
+            other['url_sha256']=pipeline.source_url_fingerprint(original);changed['endpoints']=[other];changed['terminal_resource_sha256']=other['resource_sha256']
+            self.assertTrue(pipeline.request_receipt_valid(changed,original))
+            self.assertEqual(pipeline.reference_cache_state(entry,{'request_provenance':changed},path,original),'invalid')
+            entry['denied_source_urls']=[original]
+            changed=copy.deepcopy(receipt);changed['endpoints'][0]['resource_sha256']='0'*64;changed['terminal_resource_sha256']='0'*64
+            self.assertEqual(pipeline.reference_cache_state(entry,{'request_provenance':changed},path,original),'invalid')
+
+    def test_changed_reference_cache_policy_never_resurrects_bytes_after_outage(self):
+        from urllib.error import URLError
+        for version in [1,2]:
+            for mode in ['denied','uncertain','missing','allowed','fallback']:
+                a,ah=self.server(self.archive());b,bh=self.server(self.archive());c,ch=self.server(self.archive())
+                target=b+('?mode=synthetic-one' if mode=='uncertain' else '');ah['redirect']=target
+                entry=self.reference_lifecycle_entry(a);cache=self.root/f'policy-outage-{version}-{mode}';cache.mkdir();output=cache/'out'
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                meta_path=cache/'xx_rail.meta.json';meta=json.loads(meta_path.read_text());archive=(cache/'xx_rail.zip').read_bytes()
+                meta['request_provenance']=self.policy_receipt([a,target],archive,version)
+                if mode=='missing':meta.pop('request_provenance')
+                elif mode=='uncertain':entry['denied_source_urls']=[b+'?mode=synthetic-two']
+                elif mode!='allowed':entry['denied_source_urls']=[target]
+                else:entry['denied_source_urls']=[b.replace('/feed.zip','/different.zip')]
+                meta_path.write_text(json.dumps(meta));before_meta=meta_path.read_bytes();before_compiled=(output/'feeds/xx_rail.json.gz').read_bytes()
+                get=pipeline.get;seen=[]
+                def offline(url,headers=None,**kwargs):
+                    seen.append((url,dict(headers or {})))
+                    if mode=='fallback' and url==c:return get(url,headers,**kwargs)
+                    raise URLError('synthetic offline fixture')
+                if mode=='fallback':entry['catalogue']['lineage'].append({'catalogue':'mobility-database','id':'fallback','url':pipeline.registry.MOBILITY_CSV,'source':c,'status':'','authentication_type':'0'})
+                with patch.object(pipeline,'get',side_effect=offline):
+                    if mode in ('allowed','fallback'):
+                        result=pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                        self.assertEqual(result['status'],'compiled')
+                        self.assertEqual(bool(result['source'].get('offline_cached')),mode=='allowed')
+                    else:
+                        with self.assertRaises(pipeline.SourceRetrievalError) as failed:pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+                        expected={'denied':'source_cache_policy_restriction','uncertain':'unresolved_source_cache_policy','missing':'unresolved_source_cache_identity'}[mode]
+                        self.assertEqual(pipeline.classify_failure(failed.exception),(expected,'retrieval'))
+                        self.assertNotIn('synthetic-one',json.dumps(failed.exception.attempts));self.assertNotIn('synthetic-two',json.dumps(failed.exception.attempts))
+                        self.assertEqual(meta_path.read_bytes(),before_meta);self.assertEqual((output/'feeds/xx_rail.json.gz').read_bytes(),before_compiled)
+                if mode!='fallback':self.assertEqual((cache/'xx_rail.zip').read_bytes(),archive)
+                if mode!='allowed':self.assertTrue(all('If-None-Match' not in headers and 'If-Modified-Since' not in headers for _,headers in seen))
+                if mode=='fallback':self.assertEqual(json.loads(meta_path.read_text())['download_url_sha256'],pipeline.source_url_fingerprint(c))
+
+    def test_provider_policy_changed_after_mocked_checked_cache_is_not_offline_permission(self):
+        from urllib.error import URLError
+        data=self.archive();a='https://candidate.test/feed';target='https://provider.ru/feed'
+        class Response(io.BytesIO):
+            status=200
+            url=target
+            headers={'ETag':'"synthetic"','Content-Length':str(len(data))}
+        def synthetic_get(url,headers=None,**kwargs):
+            kwargs['policy'](url);kwargs['policy'](target)
+            return Response(data)
+        for version in [1,2]:
+            entry=self.reference_lifecycle_entry(a);cache=self.root/f'provider-policy-{version}';cache.mkdir();output=cache/'out'
+            with patch.object(pipeline,'EXCLUDED',set()),patch.object(pipeline,'get',side_effect=synthetic_get):
+                pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+            path=cache/'xx_rail.zip';meta_path=cache/'xx_rail.meta.json';meta=json.loads(meta_path.read_text())
+            meta['request_provenance']=self.policy_receipt([a,target],path.read_bytes(),version);meta_path.write_text(json.dumps(meta));before=meta_path.read_bytes()
+            self.assertEqual(pipeline.reference_cache_state(entry,meta,path,a),'policy_blocked')
+            with patch.object(pipeline,'get',side_effect=URLError('synthetic outage')):
+                with self.assertRaises(pipeline.SourceRetrievalError) as failed:pipeline.compile_entry(entry,cache,output,'2026-10-05',None,1000000,pipeline.PROFILES)
+            self.assertEqual(pipeline.classify_failure(failed.exception)[0],'source_cache_policy_restriction');self.assertEqual(meta_path.read_bytes(),before)
+            self.assertEqual(path.read_bytes(),data)
 
     def test_reference_userinfo_grammar_and_safe_projection(self):
         import copy
@@ -2050,6 +2183,30 @@ class GlobalFrequency(unittest.TestCase):
         self.assertEqual(record['reason_code'],'source_http_404')
         self.assertEqual(len(record['source_attempts']),2)
         self.assertEqual(record['next_action'],'repair_or_find_feed_url')
+
+    def test_cache_policy_failures_keep_explicit_durable_retry_actions(self):
+        from contextlib import redirect_stdout
+        for error_type, expected_code in [(pipeline.CachePolicyBlocked, 'source_cache_policy_restriction'),
+                                          (pipeline.CachePolicyUnresolved, 'unresolved_source_cache_policy')]:
+            with self.subTest(code=expected_code):
+                row = self.reference_lifecycle_entry('https://public.test/static')['catalogue']
+                catalogue = self.root / (expected_code + '.json')
+                catalogue.write_text(json.dumps([row]))
+                output = self.root / (expected_code + '-out')
+                attempts = [pipeline.source_attempt(row['source'], error_type())]
+                with patch('sys.argv', ['global-service-frequency.py', '--catalogue', str(catalogue),
+                           '--cache', str(self.root / 'policy-main-cache'), '--output', str(output), '--date', '2026-10-05']), \
+                     patch.object(pipeline, 'compile_entry_isolated', side_effect=pipeline.SourceRetrievalError(attempts)), \
+                     redirect_stdout(io.StringIO()):
+                    pipeline.main()
+                inventory = json.loads((output / 'inventory-0.json').read_text())
+                self.assertEqual(inventory['counts'], {'retry_pending': 1})
+                record = inventory['entries'][0]
+                self.assertEqual(record['reason_code'], expected_code)
+                self.assertEqual(record['failure_stage'], 'retrieval')
+                self.assertTrue(record['retry_eligible'])
+                self.assertEqual(record['next_action'], 'refresh_from_permitted_source_or_review_cache_policy')
+                self.assertEqual(record['source_attempts'], attempts)
 
     def test_retry_after_parses_seconds_dates_past_and_invalid_values(self):
         from email.utils import formatdate
