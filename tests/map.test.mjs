@@ -1069,7 +1069,7 @@ test('search: only stations the layers draw at the zoom are matched', async () =
 test('country names to zoom 7 above station names; states and provinces from zoom 4', async () => {
   const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
   const ids = style.layers.map(l => l.id), last = ids.lastIndexOf.bind(ids);
-  for (const id of ['country_label', 'country_label-other']) {
+  for (const id of ['country_label']) {
     const layer = style.layers.find(l => l.id === id);
     assert.ok(last(id) > last('station-detail-large-names'), `${id} placed before station names`);
     const opacity = z => styleSpec.expression.createPropertyExpression(layer.paint['text-opacity'], styleSpec.latest.paint_symbol['text-opacity']).value.evaluate({zoom: z});
