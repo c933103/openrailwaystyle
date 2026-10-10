@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
-import {readFile} from 'node:fs/promises';
+import {readFile, mkdtemp, mkdir, writeFile, rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import vm from 'node:vm';
 import {build} from 'esbuild';
@@ -16,6 +18,31 @@ const response = (status = 200, bytes = 'shared fixture') => ({
   status: () => status, headers: () => ({}), body: async () => Buffer.from(bytes),
 });
 const changed = {dataType: 'source', sourceDataType: 'content', sourceDataChanged: true};
+
+test('the actual audit initializes reused invalidation evidence before clean runs and browser-launch failures', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'station-density-evidence-'));
+  t.after(() => rm(directory, {recursive: true, force: true}));
+  const artifact = join(directory, 'browser-review/stations-desktop-density-invalidated.json');
+  await mkdir(join(directory, 'browser-review'));
+  const source = await readFile(new URL('../scripts/check-major-stations-browser.mjs', import.meta.url), 'utf8');
+  const start = Math.min(source.indexOf("await mkdir('browser-review'"), source.indexOf('const browser=await launchBrowser'));
+  const end = source.indexOf('try{for', start);assert.ok(start > 0 && end > start);
+  const initialize = new vm.Script(`(async()=>{${source.slice(start, end)}})()`);
+  for (const failLaunch of [false, true, false]) {
+    await writeFile(artifact, JSON.stringify([{region: 'previous run', attempt: 2}]));
+    const run = initialize.runInNewContext({
+      mkdir: (path, options) => mkdir(join(directory, path), options),
+      writeFile: (path, ...args) => writeFile(join(directory, path), ...args),
+      launchBrowser: async () => {
+        assert.deepEqual(JSON.parse(await readFile(artifact, 'utf8')), [], 'clear old evidence before launching');
+        if (failLaunch) throw new Error('controlled browser launch failure');
+        return {};
+      },
+    });
+    if (failLaunch) await assert.rejects(run, /controlled browser launch failure/);else await run;
+    assert.deepEqual(JSON.parse(await readFile(artifact, 'utf8')), [], 'a clean run needs no discard callback to clear old records');
+  }
+});
 
 function pageFixture({mode = 'normal', tiles = false} = {}) {
   const events = new EventEmitter();

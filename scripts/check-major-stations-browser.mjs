@@ -11,8 +11,11 @@ const beforeProvider=JSON.parse(await readFile(new URL('../tests/fixtures/statio
 const densityData=JSON.parse(await readFile(new URL('../styles/major-stations.geojson',import.meta.url),'utf8'));
 for(const f of densityData.features)Object.assign(f.properties,{atlas_name:chooseName(f.properties,'en'),atlas_language:'en'});
 if (!process.env.ATLAS_TEST_ORM_URL) throw new Error('The full station-density check requires a self-hosted OpenRailwayMap instance (ATLAS_TEST_ORM_URL); it must not fetch public tiles in automation');
-const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 await mkdir('browser-review',{recursive:true});
+// A reused output directory must never attribute an earlier run's discarded
+// pairs to this run, including a clean run or a browser-launch failure.
+await writeFile('browser-review/stations-desktop-density-invalidated.json','[]\n');
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  const context=await browser.newContext({viewport:{width,height},hasTouch:kind==='mobile',deviceScaleFactor:kind==='mobile'?2.625:1,serviceWorkers:'block'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  const reportResource=msg=>{if(['warning','error'].includes(msg.type()))console.log('STATION_RESOURCE',msg.text().slice(0,1200));};
