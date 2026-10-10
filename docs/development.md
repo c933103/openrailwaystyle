@@ -4,7 +4,11 @@
 
 ## Prerequisites
 
-Use Node.js 22 (the version used in CI), npm, Git, Python 3 and pip. The commands
+Use Node.js 22.22.2 or newer in the 22.x line (the line used in CI), npm, Git,
+Python 3 and pip. Node.js 24.15.0 or newer in 24.x and Node.js 26 or newer are
+also supported by the pinned DOM test dependency. The package engine range and
+`.npmrc` reject unsupported runtimes during installation. Keep lifecycle scripts
+disabled with `npm ci --ignore-scripts`, as in CI. The commands
 below use a POSIX shell. Viewing the map requires an internet connection and a
 WebGL-capable browser; external tiles are not bundled for offline use.
 
