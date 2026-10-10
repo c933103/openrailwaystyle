@@ -10,6 +10,7 @@ from collections import Counter
 import csv
 import hashlib
 import io
+import importlib.util
 import json
 from pathlib import Path
 import re
@@ -18,6 +19,13 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 TRANSITOUS_LICENSES = "https://github.com/public-transport/transitous/blob/main/website/data/license.json"
 TRANSITOUS_FEEDS = "https://github.com/public-transport/transitous/tree/main/feeds"
 MOBILITY_CSV = "https://files.mobilitydatabase.org/feeds_v2.csv"
+
+_reference_spec = importlib.util.spec_from_file_location('frequency_references', Path(__file__).with_name('frequency_references.py'))
+references = importlib.util.module_from_spec(_reference_spec)
+_reference_spec.loader.exec_module(references)
+_publication_spec = importlib.util.spec_from_file_location('frequency_publication', Path(__file__).with_name('frequency_publication.py'))
+publication = importlib.util.module_from_spec(_publication_spec)
+_publication_spec.loader.exec_module(publication)
 
 
 def access_review_url(url):
@@ -70,6 +78,7 @@ def prepare_catalogue_row(row):
     No unsigned URL is invented by removing a signature. A future source-specific
     review may replace the input with an independently declared public endpoint.
     """
+    row = references.project_row(row)
     lineage = row.get('lineage') if isinstance(row.get('lineage'), list) else []
     acquisition_items = [row]+[item for item in lineage if isinstance(item, dict)]
     current_pairs = {(item.get('source'), item.get('source_sha256')) for item in acquisition_items
@@ -237,10 +246,11 @@ def catalogue_sources(transitous_ref):
             TRANSITOUS_FEEDS.replace('/main/', '/' + transitous_ref + '/'), MOBILITY_CSV]
 
 
-def build_catalogue(licences, feed_sources, mobility_rows, transitous_ref=None):
+def build_catalogue(licences, feed_sources, mobility_rows, transitous_ref=None, reference_index=None, definition_metadata=None, publication_context=None):
     """feed_sources: (region, source, pinned source-list URL) tuples."""
     licence_url, feeds_url, _ = catalogue_sources(transitous_ref) if transitous_ref is not None else [
         TRANSITOUS_LICENSES, TRANSITOUS_FEEDS, MOBILITY_CSV]
+    feed_sources, mobility_rows = list(feed_sources), list(mobility_rows)
     rows = {}
     by_mdb = {}
     by_url = {}
@@ -267,6 +277,8 @@ def build_catalogue(licences, feed_sources, mobility_rows, transitous_ref=None):
         if evidence is not None and evidence not in row["rights_evidence"]:
             row["rights_evidence"].append(evidence)
 
+    # Retain the established filename universe. For references, these are only
+    # compatibility keys; format and acquisition authority are resolved below.
     for region, item, source_list_url in feed_sources:
         if not isinstance(item, dict) or item.get("spec", "gtfs") not in ("gtfs", ""):
             counts["non_schedule"] += 1
@@ -297,7 +309,7 @@ def build_catalogue(licences, feed_sources, mobility_rows, transitous_ref=None):
                "url": source_list_url, "source": direct, "mdb_id": mdb}
         ev = licence_evidence(item.get("license"), "transitous-feeds", source_list_url)
         append(row, lin, ev)
-        counts["transitous_schedule_source"] += 1
+        counts["legacy_transitous_candidate_sources"] += 1
 
     for original in mobility_rows:
         m = compact_mobility(original)
@@ -340,21 +352,50 @@ def build_catalogue(licences, feed_sources, mobility_rows, transitous_ref=None):
     counts["without_terms_evidence"] = len(rows) - counts["with_terms_evidence"]
     counts["with_source_link"] = sum(bool(row.get("source")) for row in rows.values())
     prepared = [prepare_catalogue_row(rows[key]) for key in sorted(rows)]
+    # Resolve only after forming the legacy universe, preserving old owners and
+    # identities instead of silently swallowing newly matched Mobility rows.
+    prepared, reference_counts = references.apply_references(prepared, feed_sources,
+        mobility_rows, compact_mobility, reference_index, licence_evidence, definition_metadata, publication_context)
+    prepared = [prepare_catalogue_row(row) for row in prepared]
+    counts.update(reference_counts)
     counts['pending_access_review'] = sum(bool(row.get('access_review')) for row in prepared)
+    counts['with_source_link'] = sum(bool(row.get('source')) for row in prepared)
+    counts['with_terms_evidence'] = sum(bool(row.get('rights_evidence')) for row in prepared)
+    counts['without_terms_evidence'] = len(prepared) - counts['with_terms_evidence']
     return prepared, dict(counts)
 
 
-def read_transitous(directory, ref, input_hashes=None):
-    for path in sorted(Path(directory).glob("*.json")):
+def read_transitous(directory, ref, input_hashes=None, definition_metadata=None):
+    paths = []
+    for scanned, path in enumerate(Path(directory).iterdir(), 1):
+        if scanned > references.MAX_FILES:
+            raise ValueError('Transitous metadata file limit')
+        if path.suffix == '.json':
+            paths.append(path)
+    paths.sort()
+    total, records = 0, 0
+    for path in paths:
         region = path.stem
-        data = path.read_bytes()
+        if path.is_symlink() or not path.is_file():
+            raise ValueError('Invalid Transitous metadata file')
+        with path.open('rb') as stream:
+            data = stream.read(references.MAX_FILE_BYTES + 1)
+        total += len(data)
+        if len(data) > references.MAX_FILE_BYTES or total > references.MAX_TOTAL_BYTES:
+            raise ValueError('Transitous metadata byte limit')
         if input_hashes is not None:
             input_hashes[path.name] = hashlib.sha256(data).hexdigest()
         obj = json.loads(data)
         if not isinstance(obj, dict) or not isinstance(obj.get("sources"), list):
             raise ValueError("Invalid Transitous source list: " + str(path))
         url = "https://github.com/public-transport/transitous/blob/" + ref + "/feeds/" + path.name
+        if definition_metadata is not None:
+            definition_metadata[url] = {'file_sha256': hashlib.sha256(data).hexdigest(),
+                'blob_sha': hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()}
         for entry in obj["sources"]:
+            records += 1
+            if records > references.MAX_RECORDS or len(json.dumps(entry, ensure_ascii=False).encode()) > references.MAX_RECORD_BYTES:
+                raise ValueError('Transitous metadata record limit')
             yield region, entry, url
 
 
@@ -364,30 +405,52 @@ def main():
     parser.add_argument("--feeds-directory", type=Path, required=True)
     parser.add_argument("--transitous-ref", required=True)
     parser.add_argument("--mobility-csv", type=Path, required=True)
+    parser.add_argument("--transitland-feeds-directory", type=Path)
+    parser.add_argument("--transitland-ref")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--publication-index", type=Path, help="Secret-free pinned licence membership artifact")
     args = parser.parse_args()
     try:
         sources = catalogue_sources(args.transitous_ref)
     except ValueError as error:
         parser.error(str(error))
-    licence_data = args.licences.read_bytes()
+    if bool(args.transitland_feeds_directory) != bool(args.transitland_ref):
+        parser.error('--transitland-feeds-directory and --transitland-ref must be supplied together')
+    try:
+        reference_index = (references.read_transitland(args.transitland_feeds_directory, args.transitland_ref)
+                           if args.transitland_ref else references.unavailable())
+    except ValueError as error:
+        parser.error(str(error))
+    if args.transitland_ref:
+        sources.append(references.pinned_url(args.transitland_ref))
+    with args.licences.open('rb') as stream:
+        licence_data = stream.read(publication.MAX_INPUT_BYTES + 1)
+    publication_index = publication.build_index(licence_data, sources[0])
+    publication_context = publication.Context(publication_index)
     mobility_data = args.mobility_csv.read_bytes()
     mobility = list(csv.DictReader(io.StringIO(mobility_data.decode("utf-8-sig"), newline="")))
-    feed_hashes = {}
+    feed_hashes, definition_metadata = {}, {}
     rows, counts = build_catalogue(json.loads(licence_data),
-        read_transitous(args.feeds_directory, args.transitous_ref, feed_hashes), mobility, args.transitous_ref)
+        read_transitous(args.feeds_directory, args.transitous_ref, feed_hashes, definition_metadata), mobility, args.transitous_ref, reference_index, definition_metadata, publication_context)
     # Exact parsed feed files: SHA-256 of the sorted compact filename -> SHA-256
     # JSON map (UTF-8 with JSON's default ASCII escaping), not the mutable branch.
     feeds_digest = hashlib.sha256(json.dumps(feed_hashes, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     data = (json.dumps(rows, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
     args.output.write_bytes(data)
-    report = {"schema": 2, "catalogue_sha256": hashlib.sha256(data).hexdigest(),
+    index_data = publication.encoded(publication_index) + b'\n'
+    index_path = args.publication_index or args.report.with_name('publication-index.json')
+    index_path.write_bytes(index_data)
+    report = {"schema": 4, "publication_index": {"sha256": publication.sha(index_data), "records": len(publication_index['records'])}, "catalogue_sha256": hashlib.sha256(data).hexdigest(),
         "transitous_ref": args.transitous_ref, "sources": sources,
+        "transitland_ref": args.transitland_ref,
+        "transitland_state": reference_index['state'],
+        "transitland_reason": reference_index['reason'],
         "input_sha256": {"transitous_licences": hashlib.sha256(licence_data).hexdigest(),
                          "transitous_feeds": feeds_digest,
-                         "mobility_csv": hashlib.sha256(mobility_data).hexdigest()},
+                         "mobility_csv": hashlib.sha256(mobility_data).hexdigest(),
+                         "transitland_feeds": reference_index["sha256"]},
         "counts": counts,
         "note": "Metadata and overlaps only; legal eligibility and rail schedules are assessed downstream."}
     args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")

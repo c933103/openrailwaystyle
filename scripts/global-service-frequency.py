@@ -93,7 +93,7 @@ def blocked(row):
     return None
 
 
-def discover(rows, rules):
+def discover(rows, rules, publication_context=None):
     """Inventory each normalized feed; unknown catalogue rights are not denials."""
     out, seen = [], set()
     # Rules belong to the trusted local configuration, never catalogue lineage.
@@ -131,6 +131,8 @@ def discover(rows, rules):
         if ident in seen:
             raise ValueError('Duplicate catalogue ID '+ident)
         seen.add(ident)
+        resolution = row.get('source_resolution') or {}
+        reference_state = registry.references.resolution_state(row, publication_context)
         rights = registry.usage_rights(row)
         policy_reason = blocked(row)
         if row.get('access_review'):
@@ -141,19 +143,62 @@ def discover(rows, rules):
         elif rights['prohibitions']:
             status, reason_code = 'excluded', 'source_terms_prohibit_derived_use'
             reason = '; '.join(item['basis'] for item in rights['prohibitions'])
+        elif reference_state == 'non_timetable_format':
+            status, reason_code = 'non_timetable', 'non_timetable_format'
+            reason = 'Pinned reference metadata describes a non-timetable format'
+        elif reference_state in ('unresolved', 'ambiguous', 'invalid'):
+            status, reason_code = 'retry_pending', ('ambiguous_source_reference' if reference_state == 'ambiguous' else 'unresolved_source_reference')
+            reason = 'Source reference metadata is incomplete, invalid or conflicting; acquisition paused'
+            if reference_state == 'unresolved' and registry.references.uncertain_static_resources(row):
+                reason = 'Original identity of a redacted access-held source is unavailable; compatible acquisition paused'
+        elif reference_state == 'schedule' and resolution.get('acquisition_alias_of'):
+            status, reason_code = 'source_alias', 'duplicate_static_source'
+            reason = 'Exact static source is retained under another existing acquisition owner'
         elif row.get('delivery') == 'direct' and (not isinstance(row.get('source'), str) or not row.get('source')):
             status, reason, reason_code = 'retry_pending', 'Original GTFS URL unresolved', 'missing_source_url'
         else:
             status, reason, reason_code = 'pending', '', ''
         out.append({'id': ident, 'status': status, 'reason': reason,
                     'reason_code': reason_code, 'retry_eligible': status == 'retry_pending',
-                    'failure_stage': 'discovery' if reason_code in ('missing_source_url', 'source_access_review') else '',
-                    'next_action': 'review_source_access_or_declared_public_alternative' if reason_code == 'source_access_review' else '',
+                    'failure_stage': 'discovery' if reason_code in ('missing_source_url', 'source_access_review', 'non_timetable_format', 'unresolved_source_reference', 'ambiguous_source_reference', 'duplicate_static_source') else '',
+                    'next_action': ('review_source_access_or_declared_public_alternative' if reason_code == 'source_access_review' else 'resolve_catalogue_reference' if reason_code in ('unresolved_source_reference', 'ambiguous_source_reference') else ''),
                     'terms': rights, 'denied_source_urls': denied_sources,
                     'country': row.get('country_code', ''),
                     'name': row.get('human_name', ident), 'catalogue': row,
-                    'processed_url': (row.get('source', '') if row.get('delivery') == 'direct'
-                                      else PROCESSED+quote(row['filename']))})
+                    'processed_url': ('' if reference_state is not None and
+                        (reference_state != 'schedule' or not registry.references.processed_available(row, publication_context)) else
+                        row.get('source', '') if row.get('delivery') == 'direct' else PROCESSED+quote(row['filename']))})
+    for entry in out:
+        if (entry['status'] == 'pending' and 'source_resolution' in entry['catalogue']
+                and not source_candidates(entry, publication_context)):
+            entry.update(status='retry_pending', reason_code='unresolved_source_reference',
+                reason='No independently evidenced public acquisition candidate; acquisition paused',
+                retry_eligible=True, failure_stage='discovery', next_action='resolve_catalogue_reference', processed_url='')
+            if registry.references.uncertain_static_resources(entry['catalogue']):
+                entry['reason'] = 'Original identity of a redacted access-held source is unavailable; compatible acquisition paused'
+    by_id = {entry['id']: entry for entry in out}
+    for entry in out:
+        if entry['status'] != 'source_alias':
+            continue
+        resolution = entry['catalogue']['source_resolution']
+        target = by_id.get(resolution['acquisition_alias_of'])
+        target_row = target['catalogue'] if target else {}
+        source = target_row.get('source')
+        target_resolution = target_row.get('source_resolution')
+        target_resolution = target_resolution if isinstance(target_resolution, dict) else {}
+        if (not target or target['id'] == entry['id'] or target_row.get('delivery') != 'direct'
+                or target_resolution.get('acquisition_alias_of') or target['status'] != 'pending'
+                or not registry.references.alias_owner_metadata_compatible(target_row)
+                or not source_candidates(target, publication_context)
+                # Legacy owner Mobility auth is decided by the alias-only
+                # compatibility contract above, without changing owner policy.
+                or ('source_resolution' in target_row and registry.references.withheld_static_identities(target_row))
+                or not registry.references.alias_source_bindings(entry['catalogue'])
+                or registry.references.alias_source_bindings(entry['catalogue']) != registry.references.alias_source_bindings(target_row)
+                or not isinstance(source, str) or hashlib.sha256(source.encode()).hexdigest() != resolution['alias_source_sha256']):
+            entry.update(status='retry_pending', reason_code='ambiguous_source_reference',
+                reason='Static source alias target is missing, changed or has incompatible acquisition policy; acquisition paused',
+                retry_eligible=True, failure_stage='discovery', next_action='resolve_catalogue_reference')
     return sorted(out, key=lambda x: x['id'])
 
 
@@ -185,11 +230,42 @@ class UnsafeSourceURL(ValueError):
     """An acquisition target does not meet the public HTTP(S) boundary."""
 
 
+class SourceAccessHold(UnsafeSourceURL):
+    """Declared row access requirements, not an observed HTTP denial or terms ban."""
+
+
+class SourceIdentityChanged(UnsafeSourceURL):
+    """A changed public terminal cannot validate bytes from the prior resource."""
+
+
+class CacheAccessHold(ValueError):
+    """A recorded historical destination is now held; no new request is implied."""
+
+
+class CacheIdentityUnresolved(ValueError):
+    """Old archive destination evidence is unavailable, invalid or now held."""
+
+
+class CachePolicyBlocked(ValueError):
+    """A retained destination is restricted by current policy; no new request."""
+
+
+class CachePolicyUnresolved(ValueError):
+    """Hidden historical identity cannot establish current policy eligibility."""
+
+
 class SourcePolicyError(ValueError):
     """A particular endpoint is prohibited by an existing source rule."""
 
 
 def source_policy(entry, url):
+    row = entry.get('catalogue') or {}
+    if 'source_resolution' in row:
+        if registry.references.resource_key(url) is None:
+            raise UnsafeSourceURL('Invalid reference request resource identity')
+        if (row.get('access_review') or not registry.references.metadata_shape_valid(row['source_resolution'])
+                or registry.references.source_withheld(row, url)):
+            raise SourceAccessHold('Declared source access hold prevents this request')
     if blocked({'source': url}):
         raise SourcePolicyError('excluded provider domain')
     key = acquisition_url_key(url)
@@ -226,7 +302,8 @@ def acquisition_url_key(url):
         parsed, host, port = parse_acquisition_url(url)
     except ValueError:
         return ('invalid', url)
-    return parsed.scheme, host, port, parsed.path or '/', parsed.params, parsed.query
+    # Preserve existing global reviewed-terms matching for legacy owners.
+    return registry.references.legacy_resource_key(url) or ('invalid', url)
 
 
 def public_address(value):
@@ -322,13 +399,14 @@ class AcquiredResponse:
         self.close()
 
 
-def urlopen(request, timeout=45, *, policy=None, retry_state=None):
+def urlopen(request, timeout=45, *, policy=None, retry_state=None, validator_resource_sha256=None, request_evidence=None):
     """Public-only HTTP transport with pinned DNS, TLS identity and checked hops.
 
     Ignore environment proxies and implicit urllib auth/redirect handlers.
     HTTPS still verifies certificates/SNI against the original hostname.
     """
     url, headers = request.full_url, dict(request.header_items())
+    if request_evidence is not None: request_evidence.begin()
     for hop in range(6):
         parsed, host, port = parse_acquisition_url(url)
         if policy:
@@ -349,7 +427,11 @@ def urlopen(request, timeout=45, *, policy=None, retry_state=None):
                 path += '?' + parsed.query
             if retry_state is not None:
                 retry_state.metrics['http_requests'] += 1
-            connection.request('GET', path, headers={**headers, 'Connection': 'close'})
+            request_headers = headers
+            if validator_resource_sha256 is not None and request_resource_hash(url) != validator_resource_sha256:
+                request_headers = {key:value for key,value in headers.items()
+                    if key.lower() not in ('if-none-match','if-modified-since','if-range')}
+            connection.request('GET', path, headers={**request_headers, 'Connection': 'close'})
             response = AcquiredResponse(connection.getresponse(), connection, url)
         except Exception:
             connection.close()
@@ -376,7 +458,7 @@ def urlopen(request, timeout=45, *, policy=None, retry_state=None):
         return response
 
 
-def get(url, headers=None, *, policy=None, retry_state=None):
+def get(url, headers=None, *, policy=None, retry_state=None, validator_resource_sha256=None, request_evidence=None):
     """Bounded retry for transport outages; never loop on permanent HTTP 404."""
     parse_acquisition_url(url)
     if retry_state is not None:
@@ -386,7 +468,9 @@ def get(url, headers=None, *, policy=None, retry_state=None):
     request = Request(url, headers={'User-Agent': 'RailwayAtlas-frequency/1.0 (+https://github.com/c933103/openrailwaystyle)', **(headers or {})})
     for attempt in range(3):
         try:
-            response = urlopen(request, timeout=45, policy=policy, retry_state=retry_state)
+            options = {'validator_resource_sha256':validator_resource_sha256} if validator_resource_sha256 is not None else {}
+            if request_evidence is not None: options['request_evidence']=request_evidence
+            response = urlopen(request, timeout=45, policy=policy, retry_state=retry_state, **options)
             try:
                 if retry_state is not None:
                     retry_state.clear(url)
@@ -436,20 +520,31 @@ def get(url, headers=None, *, policy=None, retry_state=None):
             time.sleep(float(2 ** attempt))
 
 
-def source_candidates(entry):
+def source_candidates(entry, publication_context=None):
     """Distinct public source endpoints, processed first, originals as fallback."""
     row = entry.get('catalogue') or {}
+    reference_state = registry.references.resolution_state(row, publication_context)
+    if reference_state is not None and (reference_state != 'schedule'
+            or row['source_resolution'].get('acquisition_alias_of')):
+        return []
     lineage = row.get('lineage') if isinstance(row.get('lineage'), list) else []
     if row.get('access_review') or any(registry.access_review_url(url) for url in
             [row.get('source'), entry.get('processed_url')]+[x.get('source') for x in lineage if isinstance(x, dict)]):
         return []
     if blocked(row) or (entry.get('terms') or registry.usage_rights(row))['prohibitions']:
         return []
-    values = [entry.get('processed_url'), row.get('source')]
+    processed = entry.get('processed_url')
+    if reference_state is not None:
+        processed = PROCESSED+quote(row['filename']) if registry.references.processed_available(row, publication_context) else ''
+    values = [processed, row.get('source')]
     values.extend(x.get('source') for x in lineage if isinstance(x, dict))
+    allowed = registry.references.evidenced_static_identities(row, publication_context) if reference_state is not None else None
     urls, seen = [], set()
     for url in values:
-        if not isinstance(url, str) or url in seen:
+        if (not isinstance(url, str) or url in seen or (allowed is not None and url != processed
+                and hashlib.sha256(url.encode()).hexdigest() not in allowed)):
+            continue
+        if reference_state is not None and registry.references.source_withheld(row, url):
             continue
         try:
             parse_acquisition_url(url)
@@ -496,18 +591,21 @@ def redacted_diagnostic(value):
     return URL_IN_TEXT.sub(lambda match: redacted_source_url(match[0]), value)
 
 
-def published_metadata(value):
+def published_metadata(value, reference_context=False):
     """Redact diagnostic copies; never use display URLs as acquisition inputs."""
     if isinstance(value, str):
-        return redacted_diagnostic(value)
+        return (registry.references.reference_display_url(value) if reference_context and registry.references.reference_url_valid(value)
+                else redacted_diagnostic(value))
     if isinstance(value, list):
-        return [published_metadata(item) for item in value]
+        return [published_metadata(item, reference_context) for item in value]
     if not isinstance(value, dict):
         return value
     def public_key(key):
         display = redacted_diagnostic(key)
         return key if display == key else '[sha256:'+source_url_fingerprint(key)+'] '+display
-    result = {public_key(key): published_metadata(item) for key, item in value.items()}
+    value = registry.references.project_row(value)
+    result = {public_key(key): published_metadata(item, reference_context or key == 'source_resolution'
+        or key == 'lineage' and 'source_resolution' in value) for key, item in value.items()}
     for key, item in value.items():
         hash_key = public_key(key)+'_sha256'
         if isinstance(item, str) and URL_START.match(item):
@@ -547,6 +645,164 @@ class SourceRetrievalError(RuntimeError):
         super().__init__('Source endpoints unavailable or unusable: ' + summary[:1900])
 
 
+MAX_CHECKED_ENDPOINTS = 64
+MAX_REFERENCE_CACHE_METADATA_BYTES = 1024 * 1024
+
+
+def request_resource_hash(url, *, legacy=False):
+    key = (registry.references.legacy_resource_key if legacy else registry.references.resource_key)(url)
+    if key is None: raise UnsafeSourceURL('Invalid request resource identity')
+    return registry.references.digest(key)
+
+
+def request_endpoint(url):
+    display = redacted_source_url(url)
+    if len(display) > 4096 or display == '[invalid source URL]':
+        raise ValueError('Request provenance URL budget exceeded')
+    return {'url':display, 'url_sha256':source_url_fingerprint(url),
+        'resource_sha256':request_resource_hash(url),
+        'visible_resource_sha256':request_resource_hash(display)}
+
+
+class CheckedRequests:
+    """Producer-owned bounded receipt for checked hops, never raw access values."""
+    def __init__(self, entry, candidate, terminal=None):
+        self.entry, self.candidate = entry, source_url_fingerprint(candidate)
+        self.terminal = terminal
+        self.endpoints, self.pending = {}, {}
+
+    def begin(self):
+        # Retried failed chains did not supply the accepted representation.
+        self.pending = {}
+
+    def policy(self, url):
+        source_policy(self.entry, url)  # Before DNS/connect at every hop.
+        endpoint = request_endpoint(url)
+        self.pending[endpoint['url_sha256']] = endpoint
+        if len(self.endpoints.keys() | self.pending.keys()) > MAX_CHECKED_ENDPOINTS:
+            raise ValueError('Request provenance endpoint budget exceeded')
+
+    def response(self, url):
+        resource = request_resource_hash(url)
+        if self.terminal is not None and resource != self.terminal:
+            raise SourceIdentityChanged('Feed terminal resource changed during validation')
+        if source_url_fingerprint(url) not in self.pending:
+            raise ValueError('Response has no checked request identity')
+        self.endpoints.update(self.pending)
+        self.terminal = resource
+
+    def receipt(self, data, kind='archive'):
+        if self.terminal is None: raise ValueError('Missing checked terminal resource')
+        return {'schema':2, 'resource_normalization':registry.references.RESOURCE_NORMALIZATION,
+            'candidate_sha256':self.candidate, 'terminal_resource_sha256':self.terminal,
+            'artifact_kind':kind, 'artifact_sha256':hashlib.sha256(data).hexdigest(),
+            'endpoints':list(self.endpoints.values())}
+
+
+def request_receipt_valid(value, candidate):
+    fields = {'schema','candidate_sha256','terminal_resource_sha256','artifact_kind','artifact_sha256','endpoints'}
+    # Historical hashes do not grant authority to an unsupported host spelling.
+    if not registry.references.resource_host_supported(candidate): return False
+    if not isinstance(value,dict) or type(value.get('schema')) is not int or value['schema'] not in (1,2): return False
+    legacy = value['schema'] == 1
+    if not legacy:
+        fields.add('resource_normalization')
+        if value.get('resource_normalization') != registry.references.RESOURCE_NORMALIZATION: return False
+    endpoint_fields = {'url','url_sha256','resource_sha256','visible_resource_sha256'}
+    is_hash = lambda value:isinstance(value,str) and re.fullmatch('[a-f0-9]{64}',value) is not None
+    if (set(value)!=fields
+            or value['candidate_sha256']!=source_url_fingerprint(candidate)
+            or value['artifact_kind'] not in ('archive','routes') or not is_hash(value['artifact_sha256'])
+            or not is_hash(value['terminal_resource_sha256']) or not isinstance(value['endpoints'],list)
+            or not 1 <= len(value['endpoints']) <= MAX_CHECKED_ENDPOINTS): return False
+    identities = set(); resources = set()
+    for item in value['endpoints']:
+        if (not isinstance(item,dict) or set(item)!=endpoint_fields or not isinstance(item['url'],str)
+                or not 0 < len(item['url']) <= 4096 or item['url']!=redacted_source_url(item['url'])
+                or not registry.references.resource_host_supported(item['url'])
+                or any(not is_hash(item[key]) for key in endpoint_fields-{'url'})): return False
+        try:
+            if item['visible_resource_sha256']!=request_resource_hash(item['url'],legacy=legacy): return False
+        except ValueError: return False
+        # A URL without hidden query values retains a recomputable resource key.
+        if not urlparse(item['url']).query and item['resource_sha256']!=item['visible_resource_sha256']: return False
+        if item['url_sha256'] in identities: return False
+        identities.add(item['url_sha256']); resources.add(item['resource_sha256'])
+    return value['candidate_sha256'] in identities and value['terminal_resource_sha256'] in resources
+
+
+def reference_cache_policy_state(entry, receipt, candidate):
+    """Recheck existing lexical policy without treating a display as an original."""
+    policy = {'denied_source_urls': entry.get('denied_source_urls', [])}
+    candidate_hash = source_url_fingerprint(candidate)
+    unresolved = False
+    for endpoint in receipt['endpoints']:
+        display = endpoint['url']
+        if blocked({'source': display}): return 'policy_blocked'
+        try:
+            if endpoint['url_sha256'] == candidate_hash:
+                # Only an available, exactly bound original supplies raw query
+                # values. A copied retained hash cannot invent that binding.
+                if (display != redacted_source_url(candidate) or endpoint['resource_sha256'] !=
+                        request_resource_hash(candidate, legacy=receipt['schema'] == 1)):
+                    return 'invalid'
+                source_policy(policy, candidate)
+            elif not urlparse(display).query:
+                source_policy(policy, display)
+            else:
+                visible_key = acquisition_url_key(display)
+                if visible_key[0] == 'invalid':
+                    unresolved = True
+                    continue
+                for denied in policy['denied_source_urls']:
+                    # Keep malformed configuration entries' existing live
+                    # comparison behavior; still inspect every valid denial.
+                    denied_key = acquisition_url_key(denied)
+                    if denied_key[0] == 'invalid': continue
+                    if endpoint['url_sha256'] == source_url_fingerprint(denied):
+                        if (display != redacted_source_url(denied) or endpoint['resource_sha256'] !=
+                                request_resource_hash(denied, legacy=receipt['schema'] == 1)):
+                            return 'invalid'
+                        return 'policy_blocked'
+                    if visible_key[:-1] != denied_key[:-1]: continue
+                    visible_denied = redacted_source_url(denied)
+                    if (visible_denied == '[invalid source URL]' or
+                            acquisition_url_key(visible_denied) == visible_key):
+                        unresolved = True
+        except SourcePolicyError:
+            return 'policy_blocked'
+        except (TypeError, ValueError, UnicodeError):
+            # A comparison/representation budget failure cannot prove that no
+            # restriction matches. Never reconstruct a hidden query value.
+            unresolved = True
+    return 'policy_unverified' if unresolved else 'eligible'
+
+
+def reference_cache_state(entry, meta, path, candidate):
+    row = entry.get('catalogue') or {}
+    if 'source_resolution' not in row: return 'legacy'
+    receipt = meta.get('request_provenance')
+    held = registry.references.withheld_static_identities(row)
+    if receipt is None: return 'destination_unverified'
+    if not candidate or not request_receipt_valid(receipt,candidate): return 'invalid'
+    if receipt['artifact_kind']!='archive' or not path.is_file(): return 'invalid'
+    digest=hashlib.sha256()
+    with path.open('rb') as stream:
+        while chunk:=stream.read(1048576):digest.update(chunk)
+    if digest.hexdigest()!=receipt['artifact_sha256']: return 'invalid'
+    policy_state = reference_cache_policy_state(entry, receipt, candidate)
+    if policy_state != 'eligible': return policy_state
+    if receipt['schema'] == 1:
+        # Old hashes certify only the historical lexical identity contract.
+        return 'destination_unverified' if held else 'legacy_public_unverified'
+    resources={registry.references.digest(key) for key in registry.references.withheld_static_resources(row)}
+    uncertain={registry.references.digest(key) for key in registry.references.uncertain_static_resources(row)}
+    for endpoint in receipt['endpoints']:
+        if (endpoint['url_sha256'] in held or endpoint['resource_sha256'] in resources
+                or endpoint['visible_resource_sha256'] in uncertain): return 'held'
+    return 'verified'
+
+
 def source_attempt(url, error):
     """Structured evidence of a particular endpoint failing, not feed exclusion."""
     code = 'other_source_error'
@@ -555,7 +811,23 @@ def source_attempt(url, error):
                 'code': 'retry_after_pending', 'message': 'Source Retry-After deadline has not elapsed',
                 'retry_after_not_before': error.not_before, 'http_status': error.status,
                 'deferred_endpoint_sha256': error.fingerprint}
-    if isinstance(error, SourcePolicyError):
+    if isinstance(error, SourceAccessHold):
+        code = 'source_access_hold'
+    elif isinstance(error, SourceIdentityChanged):
+        code = 'source_identity_changed'
+    elif isinstance(error, CacheAccessHold):
+        return {'url':redacted_source_url(url),'url_sha256':source_url_fingerprint(url),
+            'code':'source_cache_access_hold','message':'Previously checked cached destination is now access-held; reuse paused'}
+    elif isinstance(error, CacheIdentityUnresolved):
+        return {'url':redacted_source_url(url),'url_sha256':source_url_fingerprint(url),
+            'code':'source_cache_identity_unresolved','message':'Cached destination evidence is unavailable or invalid; reuse paused'}
+    elif isinstance(error, CachePolicyBlocked):
+        return {'url':redacted_source_url(url),'url_sha256':source_url_fingerprint(url),
+            'code':'source_cache_policy_blocked','message':'Recorded cached destination is restricted by current source policy; reuse paused'}
+    elif isinstance(error, CachePolicyUnresolved):
+        return {'url':redacted_source_url(url),'url_sha256':source_url_fingerprint(url),
+            'code':'source_cache_policy_unresolved','message':'Cached destination identity cannot establish current source-policy eligibility; reuse paused'}
+    elif isinstance(error, SourcePolicyError):
         code = 'source_policy'
     elif isinstance(error, UnsafeSourceURL):
         code = 'unsafe_source_url'
@@ -665,22 +937,26 @@ def valid_cached_archive(path, meta, candidates, max_age_days=30):
         return False
 
 
-def fetch_alternative(entry, path, max_bytes, skip=(), *, retry_state=None):
+def fetch_alternative(entry, path, max_bytes, skip=(), *, retry_state=None, publication_context=None):
     """Fallback to another real published schedule, without inventing data.
 
     Cache writes only after a valid ZIP has been downloaded. Each upstream
     failure stays attached to the resulting source entry for investigation.
     """
     attempts, unsafe_urls = [], set()
-    for url in source_candidates(entry):
+    for url in source_candidates(entry, publication_context):
         if url in skip:
             continue
         try:
-            remote = RemoteZip(url, max_bytes, policy=lambda target: source_policy(entry, target), retry_state=retry_state)
+            checked = CheckedRequests(entry,url) if 'source_resolution' in (entry.get('catalogue') or {}) else None
+            remote = RemoteZip(url, max_bytes, policy=checked.policy if checked else lambda target: source_policy(entry, target),
+                retry_state=retry_state, checked_requests=checked)
             # Keep the cheap preflight: bus-only GTFS must not download its
             # entire stop_times/shapes archive or consume a compile slot.
-            if not routes_have_rail(remote.table('routes.txt')):
+            routes = remote.table('routes.txt')
+            if not routes_have_rail(routes):
                 return {
+                    **({'request_provenance':checked.receipt(routes,'routes')} if checked else {}),
                     'no_rail': True, 'download_url': redacted_source_url(url),
                     'download_url_sha256': source_url_fingerprint(url),
                     'etag': remote.etag, 'last_modified': remote.last_modified,
@@ -694,6 +970,7 @@ def fetch_alternative(entry, path, max_bytes, skip=(), *, retry_state=None):
             temporary.write_bytes(data)
             temporary.replace(path)
             return {
+                **({'request_provenance':checked.receipt(data)} if checked else {}),
                 'etag': remote.etag, 'last_modified': remote.last_modified,
                 'download_url': redacted_source_url(url), 'download_url_sha256': source_url_fingerprint(url),
                 'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()
@@ -712,10 +989,13 @@ class RemoteZip:
     identity validator prevents joining byte ranges from different revisions.
     ZIP64 is supported by the full-download fallback, not guessed offsets.
     """
-    def __init__(self, url, max_bytes, *, policy=None, retry_state=None):
+    def __init__(self, url, max_bytes, *, policy=None, retry_state=None, checked_requests=None):
         self.url, self.max_bytes, self.policy, self.retry_state = url, max_bytes, policy, retry_state
+        self.checked_requests = checked_requests
         self.full, self.identity = None, None
-        with get(url, {'Range': 'bytes=-65557'}, policy=self.policy, retry_state=self.retry_state) as response:
+        with get(url, {'Range': 'bytes=-65557'}, policy=self.policy, retry_state=self.retry_state,
+                **({'request_evidence':self.checked_requests} if self.checked_requests else {})) as response:
+            if self.checked_requests: self.checked_requests.response(response.url)
             self.etag=response.headers.get('ETag')
             self.last_modified=response.headers.get('Last-Modified')
             self.identity = self.etag or self.last_modified
@@ -776,7 +1056,9 @@ class RemoteZip:
         headers = {'Range': f'bytes={begin}-{end}'}
         if self.range_validator:
             headers['If-Range'] = self.range_validator
-        with get(self.url, headers, policy=self.policy, retry_state=self.retry_state) as response:
+        with get(self.url, headers, policy=self.policy, retry_state=self.retry_state,
+                **({'validator_resource_sha256':self.checked_requests.terminal,'request_evidence':self.checked_requests} if self.checked_requests else {})) as response:
+            if self.checked_requests: self.checked_requests.response(response.url)
             if response.status != 206:
                 raise ValueError('Feed changed during range reads, or ranges unavailable')
             identity = response.headers.get('ETag') or response.headers.get('Last-Modified')
@@ -825,7 +1107,9 @@ class RemoteZip:
 
     def download(self):
         if self.full is None:
-            with get(self.url, policy=self.policy, retry_state=self.retry_state) as response:
+            with get(self.url, policy=self.policy, retry_state=self.retry_state,
+                    **({'request_evidence':self.checked_requests} if self.checked_requests else {})) as response:
+                if self.checked_requests: self.checked_requests.response(response.url)
                 identity = response.headers.get('ETag') or response.headers.get('Last-Modified')
                 if self.identity and identity != self.identity:
                     raise ValueError('Feed changed during full download')
@@ -861,23 +1145,58 @@ def file_hash(path):
     return digest.hexdigest()
 
 
-def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_seconds=600, *, retry_state=None):
+def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_seconds=600, *, retry_state=None, publication_context=None):
     ident, row = entry['id'], entry['catalogue']
+    reference_state = registry.references.resolution_state(row, publication_context)
+    if reference_state is not None and (reference_state != 'schedule'
+            or row['source_resolution'].get('acquisition_alias_of')):
+        raise ValueError('Source reference is not acquisition eligible')
     if retry_state is None:
         retry_state = retry.RetryAfterCache(cache)
     path, meta_path = cache/(ident+'.zip'), cache/(ident+'.meta.json')
     # 304 from the same successful source may reuse cache. A 404 or transient
     # outage MUST fall through to other known originals, not reject the feed.
-    meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
+    invalid_cache_metadata = False
+    if reference_state is not None and meta_path.exists():
+        try:
+            with meta_path.open('rb') as stream: metadata_bytes = stream.read(MAX_REFERENCE_CACHE_METADATA_BYTES+1)
+            if len(metadata_bytes)>MAX_REFERENCE_CACHE_METADATA_BYTES: raise ValueError('Reference cache metadata budget exceeded')
+            meta = registry.publication.parsed(metadata_bytes)
+            if not isinstance(meta,dict): raise ValueError('Invalid reference cache metadata')
+        except (OSError,ValueError,TypeError,UnicodeError,RecursionError):
+            meta,invalid_cache_metadata = {},True
+    else:
+        meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
     headers = {'If-None-Match': meta['etag']} if meta.get('etag') else {'If-Modified-Since':meta['last_modified']} if meta.get('last_modified') else {}
     fresh, attempted, attempts, unsafe_urls = False, set(), [], set()
-    cached_url = cached_source_url(meta, source_candidates(entry), entry.get('processed_url'))
+    cached_url = cached_source_url(meta, source_candidates(entry, publication_context), entry.get('processed_url'))
+    cache_state = reference_cache_state(entry,meta,path,cached_url) if cached_url else 'unavailable'
+    if invalid_cache_metadata: cache_state='invalid'
+    cache_eligible = cache_state in ('legacy','legacy_public_unverified','verified')
+    if invalid_cache_metadata and path.exists() and not cached_url:
+        candidates = source_candidates(entry,publication_context)
+        attempts.append(source_attempt(candidates[0] if candidates else '',CacheIdentityUnresolved()))
+    elif reference_state is not None and path.exists() and not cached_url and 'request_provenance' in meta:
+        # No original URL can be reconstructed from a historical display. Keep
+        # diagnosis explicit without fabricating a request or its fingerprint.
+        attempts.append({'url':'','code':'source_cache_identity_unresolved',
+            'message':'Cached source no longer matches supported current candidates; reuse paused'})
+    if path.exists() and cached_url and not cache_eligible:
+        problem = {'held':CacheAccessHold,'policy_blocked':CachePolicyBlocked,'policy_unverified':CachePolicyUnresolved}.get(cache_state,CacheIdentityUnresolved)
+        attempts.append(source_attempt(cached_url,problem()))
+    checked = CheckedRequests(entry,cached_url,meta['request_provenance']['terminal_resource_sha256']) if cache_state=='verified' else None
     if cached_url:
         meta['download_url'] = redacted_source_url(cached_url)
         meta['download_url_sha256'] = source_url_fingerprint(cached_url)
-    if path.exists() and headers and cached_url in source_candidates(entry):
+    if (path.exists() and headers and cache_state in ('legacy','verified')
+            and cached_url in source_candidates(entry, publication_context)):
         try:
-            with get(cached_url, headers, policy=lambda target: source_policy(entry, target), retry_state=retry_state) as response:
+            with get(cached_url, headers, policy=checked.policy if checked else lambda target: source_policy(entry, target), retry_state=retry_state,
+                    **({'validator_resource_sha256':checked.terminal,'request_evidence':checked} if checked else {})) as response:
+                # A new 200 representation may establish a new public terminal.
+                if checked:
+                    checked.terminal = None
+                    checked.response(response.url)
                 data = RemoteZip.read_bounded(type('Budget', (), {'max_bytes': max_bytes})(), response)
                 # Never replace a previously usable ZIP with an error page or
                 # malformed archive returned as HTTP 200.
@@ -886,7 +1205,8 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
                 temporary = path.with_suffix('.download.tmp')
                 temporary.write_bytes(data)
                 temporary.replace(path)
-                meta = {'etag': response.headers.get('ETag'), 'last_modified':response.headers.get('Last-Modified'),
+                meta = {**({'request_provenance':checked.receipt(data)} if checked else {}),
+                        'etag': response.headers.get('ETag'), 'last_modified':response.headers.get('Last-Modified'),
                         'download_url': redacted_source_url(cached_url),
                         'download_url_sha256': source_url_fingerprint(cached_url),
                         'retrieved': dt.datetime.now(dt.timezone.utc).date().isoformat()}
@@ -894,10 +1214,18 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
         except HTTPError as error:
             if error.code == 304:
                 error.close()
-                retry_state.metrics['conditional_not_modified'] += 1
                 try:
                     # A validator confirms origin identity, not that an older
                     # local cache passed today's complete metadata checks.
+                    if checked:
+                        checked.response(error.url)
+                        # Merge checked revalidation hops into the historical
+                        # chain without claiming they produced the old bytes.
+                        receipt=meta['request_provenance']
+                        combined={item['url_sha256']:item for item in receipt['endpoints']}
+                        combined.update(checked.endpoints)
+                        if len(combined)>MAX_CHECKED_ENDPOINTS: raise ValueError('Request provenance endpoint budget exceeded')
+                        receipt['endpoints']=list(combined.values())
                     if not meta.get('no_rail'):
                         with source_archive(path) as archive:
                             archive_has_rail(archive)
@@ -905,9 +1233,13 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
                     meta['download_url_sha256'] = source_url_fingerprint(cached_url)
                     meta.pop('offline_cached', None)
                     meta.pop('recovered_source_errors', None)
+                    retry_state.metrics['conditional_not_modified'] += 1
                     fresh = True
                 except (OSError, ValueError, zipfile.BadZipFile) as invalid:
-                    attempted.add(cached_url)
+                    # Retry an unconditionally fetched public representation;
+                    # changed-terminal 304 never certifies previous bytes.
+                    if not checked: attempted.add(cached_url)
+                    if isinstance(invalid, SourceIdentityChanged): unsafe_urls.add(cached_url)
                     attempts.append(source_attempt(cached_url, invalid))
             else:
                 attempted.add(cached_url)
@@ -919,13 +1251,13 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
             attempts.append(source_attempt(cached_url, error))
     if not fresh:
         try:
-            meta, more_attempts = fetch_alternative(entry, path, max_bytes, skip=attempted, retry_state=retry_state)
+            meta, more_attempts = fetch_alternative(entry, path, max_bytes, skip=attempted, retry_state=retry_state, publication_context=publication_context)
             attempts.extend(more_attempts)
         except SourceRetrievalError as error:
             attempts.extend(error.attempts)
             unsafe_urls.update(error._unsafe_urls)
-            safe_cache_urls = [url for url in source_candidates(entry) if url not in unsafe_urls]
-            if valid_cached_archive(path, meta, safe_cache_urls):
+            safe_cache_urls = [url for url in source_candidates(entry, publication_context) if url not in unsafe_urls]
+            if cache_eligible and valid_cached_archive(path, meta, safe_cache_urls):
                 # Continue compiling using the last successfully retrieved
                 # ZIP. Never advance its 'checked' or 'retrieved' timestamps.
                 meta['offline_cached'] = True
@@ -957,7 +1289,7 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     signature=hashlib.sha256(json.dumps({'catalogue':row,'profiles':profiles,'denied_source_urls':entry.get('denied_source_urls', []),
         'graph':file_hash(str(graph)) if graph else None,
-        'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['global-service-frequency.py','frequency_catalogue.py','gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()
+        'compiler':[file_hash(str(ROOT/'scripts'/name)) for name in ['global-service-frequency.py','frequency_catalogue.py','frequency_references.py','frequency_publication.py','frequency-reference-schema.json','gtfs-frequency.py','gtfs-shapes.py','gtfs-rail-paths.py']]},sort_keys=True).encode()).hexdigest()
     destination = output/'feeds'/(ident+'.json.gz')
     if destination.exists():
         with gzip.open(destination, 'rt') as file:
@@ -1028,11 +1360,12 @@ def compile_entry(entry, cache, output, date, graph, max_bytes, profiles, max_se
 
 
 def compile_entry_isolated(entry, cache, output, date, graph, max_bytes, profiles,
-                           max_seconds=600, max_memory_bytes=3_000_000_000):
+                           max_seconds=600, max_memory_bytes=3_000_000_000, publication_context=None):
     """Keep a failed feed's memory/CPU budget separate from its worldwide shard."""
     payload={'entry':entry,'cache':str(cache),'output':str(output),'date':date,
              'graph':str(graph) if graph else None,'max_bytes':max_bytes,
-             'profiles':profiles,'max_seconds':max_seconds,'max_memory_bytes':max_memory_bytes}
+             'profiles':profiles,'max_seconds':max_seconds,'max_memory_bytes':max_memory_bytes,
+             'publication_context':publication_context.worker_record(entry.get('catalogue') or {}) if publication_context is not None else None}
     with tempfile.TemporaryDirectory(prefix='frequency-compile-') as folder:
         request, response = Path(folder)/'request.json', Path(folder)/'response.json'
         request.write_text(json.dumps(payload))
@@ -1056,6 +1389,7 @@ def compile_entry_isolated(entry, cache, output, date, graph, max_bytes, profile
 def compile_one(request, response):
     import resource
     payload=json.loads(Path(request).read_text())
+    payload['publication_context'] = registry.publication.from_worker(payload.get('publication_context'))
     limit=payload.pop('max_memory_bytes')
     resource.setrlimit(resource.RLIMIT_AS,(limit,limit))
     for key in ['cache','output']:
@@ -1080,6 +1414,16 @@ def classify_failure(error):
     """Annotate the unresolved failure; it remains eligible for future attempts."""
     if isinstance(error, SourceRetrievalError):
         codes = {x['code'] for x in error.attempts}
+        if 'source_cache_identity_unresolved' in codes:
+            return 'unresolved_source_cache_identity', 'retrieval'
+        if 'source_cache_policy_blocked' in codes:
+            return 'source_cache_policy_restriction', 'retrieval'
+        if 'source_cache_policy_unresolved' in codes:
+            return 'unresolved_source_cache_policy', 'retrieval'
+        if codes & {'source_access_hold','source_cache_access_hold'}:
+            return 'source_access_review', 'retrieval'
+        if 'source_identity_changed' in codes:
+            return 'source_reference_identity_changed', 'retrieval'
         if codes == {'retry_after_pending'}:
             return 'source_retry_after', 'retrieval'
         if codes == {'http_404'}:
@@ -1112,32 +1456,50 @@ def classify_failure(error):
     return 'compile_error', 'compilation'
 
 
-def catalogue_provenance(report_path, catalogue_hash, catalogue_entries, local):
+def catalogue_provenance(report_path, catalogue_hash, catalogue_entries, local, report=None):
     """Bind reconciled provenance to these exact input bytes, never guess it."""
     if report_path is None:
         return {'schema': 1, 'kind': 'local-unverified' if local else 'transitous-licences',
                 'sources': [] if local else [CATALOGUE]}
-    report = json.loads(report_path.read_text())
-    if (not isinstance(report, dict) or report.get('schema') != 2
+    if report is None:
+        report = registry.publication.read_report(report_path)
+    if (not isinstance(report, dict) or report.get('schema') not in (2, 3, 4)
             or report.get('catalogue_sha256') != catalogue_hash
             or not isinstance(report.get('counts'), dict)
             or report['counts'].get('merged_entries') != catalogue_entries):
         raise ValueError('Catalogue report does not match the input catalogue')
     sources = registry.catalogue_sources(report.get('transitous_ref'))
+    reference_provenance = {}
+    if report['schema'] >= 3:
+        ref, state, reason = report.get('transitland_ref'), report.get('transitland_state'), report.get('transitland_reason')
+        if ref is not None:
+            sources.append(registry.references.pinned_url(ref))
+        if state not in ('available', 'unavailable') or not isinstance(reason, str) or reason not in registry.references.METADATA_REASONS:
+            raise ValueError('Catalogue report has invalid reference input state')
+        reference_provenance = {'transitland_ref': ref, 'transitland_state': state, 'transitland_reason': reason}
     hashes = report.get('input_sha256')
     if (report.get('sources') != sources or not isinstance(hashes, dict)
             or any(not isinstance(hashes.get(key), str) or not re.fullmatch(r'[a-f0-9]{64}', hashes[key])
                    for key in ('transitous_licences', 'transitous_feeds', 'mobility_csv'))):
         raise ValueError('Catalogue report is missing pinned input identities')
+    keys = ['transitous_licences', 'transitous_feeds', 'mobility_csv']
+    if report['schema'] >= 3:
+        digest = hashes.get('transitland_feeds')
+        if ((reference_provenance['transitland_state'] == 'available' and
+                (reference_provenance['transitland_ref'] is None or not isinstance(digest, str) or not re.fullmatch('[a-f0-9]{64}', digest)))
+                or (reference_provenance['transitland_state'] == 'unavailable' and digest is not None)):
+            raise ValueError('Catalogue report has invalid reference input identity')
+        keys.append('transitland_feeds')
     # Copy only the public provenance schema, not arbitrary report metadata.
-    return {'schema': 1, 'kind': 'reconciled', 'transitous_ref': report['transitous_ref'],
-            'sources': sources, 'input_sha256': {key: hashes[key] for key in ('transitous_licences', 'transitous_feeds', 'mobility_csv')}}
+    return {'schema': 2 if report['schema'] >= 3 else 1, 'kind': 'reconciled', 'transitous_ref': report['transitous_ref'],
+            'sources': sources, 'input_sha256': {key: hashes[key] for key in keys}, **reference_provenance}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--catalogue', help='Local catalogue for offline reproduction; default downloads worldwide registry')
     parser.add_argument('--catalogue-report', type=Path, help='Matching reconciliation report with pinned upstream identities')
+    parser.add_argument('--publication-index', type=Path, help='Explicit secret-free membership artifact from the catalogue producer')
     parser.add_argument('--rules', type=Path, default=ROOT/'styles/data-src/frequency-source-rules.json')
     parser.add_argument('--cache', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
@@ -1154,20 +1516,29 @@ def main():
         parser.error('Invalid shard or byte budget')
     if args.catalogue_report and not args.catalogue:
         parser.error('--catalogue-report requires --catalogue')
+    if args.publication_index and not args.catalogue_report:
+        parser.error('--publication-index requires --catalogue-report')
     dt.date.fromisoformat(args.date)
     args.cache.mkdir(parents=True, exist_ok=True)
     data = Path(args.catalogue).read_bytes() if args.catalogue else get(CATALOGUE).read()
     catalogue_hash = hashlib.sha256(data).hexdigest()
     rules = json.loads(args.rules.read_text())
-    entries = discover(json.loads(data), rules)
-    provenance = catalogue_provenance(args.catalogue_report, catalogue_hash, len(entries), bool(args.catalogue))
+    rows = json.loads(data)
+    report = registry.publication.read_report(args.catalogue_report) if args.catalogue_report else None
+    provenance = catalogue_provenance(args.catalogue_report, catalogue_hash, len(rows), bool(args.catalogue), report)
+    publication_context, publication_state = registry.publication.read_context(args.publication_index, report)
+    if args.publication_index or args.catalogue_report:
+        provenance['publication_context'] = {'state': publication_state}
+        if publication_context is not None:
+            provenance['publication_context']['index_sha256'] = file_hash(str(args.publication_index))
+    entries = discover(rows, rules, publication_context)
     previous_path = args.output/f'inventory-{args.shard}.json'
     outcomes = []
     def save():
-        atomic_json(previous_path, {'schema': 2, 'catalogue_url': None if args.catalogue else CATALOGUE, 'catalogue_sha256': catalogue_hash,
+        atomic_json(previous_path, {'schema': 3, 'catalogue_url': None if args.catalogue else CATALOGUE, 'catalogue_sha256': catalogue_hash,
             'catalogue_provenance': published_metadata(provenance),
             'catalogue_entries': len(entries), 'service_date': args.date, 'shard': args.shard, 'shards': args.shards,
-            'scope': 'Every GTFS feed in the worldwide catalogue; no city allow-list',
+            'scope': 'Worldwide timetable discovery plus explicit source-reference outcomes; no city allow-list',
             'counts': dict(Counter(x['status'] for x in outcomes)),
             'reason_codes': dict(Counter(x.get('reason_code') or 'none' for x in outcomes)),
             'entries': published_metadata(outcomes)})
@@ -1176,12 +1547,16 @@ def main():
             continue
         if entry['status'] == 'pending' and not args.inventory_only:
             try:
-                entry = compile_entry_isolated(entry, args.cache, args.output, args.date, args.rail_graph, args.max_feed_bytes, rules.get('profiles', PROFILES), args.max_compile_seconds, args.max_compile_memory_bytes)
+                entry = compile_entry_isolated(entry, args.cache, args.output, args.date, args.rail_graph, args.max_feed_bytes, rules.get('profiles', PROFILES), args.max_compile_seconds, args.max_compile_memory_bytes, publication_context)
             except Exception as error:
                 code, stage = classify_failure(error)
                 entry = {**entry, 'status': 'retry_pending', 'reason': redacted_diagnostic(f'{type(error).__name__}: {error}'),
                          'reason_code': code, 'failure_stage': stage, 'retry_eligible': True,
                          'next_action': ('repair_or_find_feed_url' if code in ('source_http_404', 'missing_source_url')
+                                         else 'review_source_access_or_declared_public_alternative' if code == 'source_access_review'
+                                         else 'refresh_from_public_source_or_review_cache_provenance' if code == 'unresolved_source_cache_identity'
+                                         else 'refresh_from_permitted_source_or_review_cache_policy' if code in ('source_cache_policy_restriction', 'unresolved_source_cache_policy')
+                                         else 'refresh_from_public_source_or_review_source_identity' if code == 'source_reference_identity_changed'
                                          else 'retry_source_or_repair_compiler'),
                          'source_attempts': error.attempts if isinstance(error, SourceRetrievalError) else []}
                 entry['acquisition_metrics'] = getattr(error, 'acquisition_metrics', {})

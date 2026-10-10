@@ -1,0 +1,741 @@
+{
+  "schema": 1,
+  "node_limit": 20000,
+  "character_limit": 4194304,
+  "depth_limit": 16,
+  "shapes": {
+    "definition": {
+      "kind": "object",
+      "fields": {
+        "url": {
+          "kind": "string",
+          "max": 4096,
+          "min": 1,
+          "format": "url"
+        },
+        "pointer": {
+          "kind": "string",
+          "max": 80,
+          "min": 1,
+          "pattern": "/sources/[0-9]+"
+        },
+        "sha256": {
+          "kind": "string",
+          "max": 64,
+          "min": 64,
+          "pattern": "[a-f0-9]{64}"
+        },
+        "file_sha256": {
+          "kind": "string",
+          "max": 64,
+          "min": 64,
+          "pattern": "[a-f0-9]{64}"
+        },
+        "blob_sha": {
+          "kind": "string",
+          "max": 40,
+          "min": 40,
+          "pattern": "[a-f0-9]{40}"
+        }
+      },
+      "required": [
+        "url",
+        "pointer",
+        "sha256"
+      ]
+    },
+    "authorization": {
+      "kind": "object",
+      "fields": {
+        "type": {
+          "kind": "string",
+          "max": 80,
+          "min": 1
+        },
+        "parameter_name": {
+          "kind": "string",
+          "max": 80,
+          "min": 1,
+          "pattern": "[A-Za-z0-9_.-]+"
+        },
+        "info_url": {
+          "kind": "string",
+          "max": 4096,
+          "min": 1,
+          "format": "url"
+        }
+      },
+      "required": [
+        "type"
+      ]
+    },
+    "endpoint": {
+      "kind": "object",
+      "fields": {
+        "role": {
+          "kind": "enum",
+          "values": [
+            "static_current",
+            "realtime_trip_updates",
+            "realtime_vehicle_positions",
+            "realtime_alerts",
+            "gbfs_auto_discovery"
+          ]
+        },
+        "spec": {
+          "kind": "enum",
+          "values": [
+            "gtfs",
+            "gtfs-rt",
+            "gbfs"
+          ]
+        },
+        "url": {
+          "kind": "string",
+          "max": 4096,
+          "min": 1,
+          "format": "url"
+        },
+        "url_sha256": {
+          "kind": "string",
+          "max": 64,
+          "min": 64,
+          "pattern": "[a-f0-9]{64}"
+        },
+        "url_origin": {
+          "kind": "enum",
+          "values": [
+            "metadata",
+            "url_override"
+          ]
+        },
+        "access_state": {
+          "kind": "enum",
+          "values": [
+            "public_declared",
+            "authorization_required",
+            "review_required"
+          ]
+        },
+        "declared_url": {
+          "kind": "string",
+          "max": 4096,
+          "min": 1,
+          "format": "url"
+        },
+        "declared_url_sha256": {
+          "kind": "string",
+          "max": 64,
+          "min": 64,
+          "pattern": "[a-f0-9]{64}"
+        },
+        "authorization": {
+          "ref": "authorization"
+        }
+      },
+      "required": [
+        "role",
+        "spec",
+        "url",
+        "url_sha256",
+        "url_origin",
+        "access_state"
+      ]
+    },
+    "resolution": {
+      "kind": "object",
+      "fields": {
+        "state": {
+          "kind": "enum",
+          "values": [
+            "resolved",
+            "authorization_required",
+            "transport_options_required",
+            "metadata_unavailable",
+            "conflicting_reference",
+            "missing_reference",
+            "malformed_reference",
+            "unsupported_type"
+          ]
+        },
+        "specs": {
+          "kind": "array",
+          "max": 3,
+          "item": {
+            "kind": "enum",
+            "values": [
+              "gtfs",
+              "gtfs-rt",
+              "gbfs"
+            ]
+          }
+        },
+        "endpoints": {
+          "kind": "array",
+          "max": 5,
+          "item": {
+            "ref": "endpoint"
+          }
+        },
+        "metadata_url": {
+          "kind": "string",
+          "max": 4096,
+          "min": 1,
+          "format": "url"
+        },
+        "metadata_pointer": {
+          "kind": "string",
+          "max": 4096,
+          "min": 0
+        },
+        "metadata_blob_sha": {
+          "kind": "string",
+          "max": 40,
+          "min": 40,
+          "pattern": "[a-f0-9]{40}"
+        },
+        "metadata_spec": {
+          "kind": "string",
+          "max": 80,
+          "min": 0
+        },
+        "metadata_spec_mismatch": {
+          "kind": "boolean"
+        },
+        "declared_spec_mismatch": {
+          "kind": "boolean"
+        },
+        "spec_precedence": {
+          "kind": "enum",
+          "values": [
+            "endpoint_roles_legacy_rt_label"
+          ]
+        },
+        "unsupported_options": {
+          "kind": "array",
+          "max": 2,
+          "item": {
+            "kind": "enum",
+            "values": [
+              "http-options",
+              "function"
+            ]
+          }
+        }
+      },
+      "required": [
+        "state",
+        "specs",
+        "endpoints"
+      ]
+    },
+    "licence": {
+      "kind": "object",
+      "fields": {
+        "spdx_identifier": {
+          "kind": "string",
+          "max": 4096,
+          "min": 0
+        },
+        "url": {
+          "kind": "string",
+          "max": 4096,
+          "min": 0
+        }
+      },
+      "required": []
+    },
+    "declaration": {
+      "kind": "object",
+      "fields": {
+        "id": {
+          "kind": "string",
+          "max": 64,
+          "min": 64,
+          "pattern": "[a-f0-9]{64}"
+        },
+        "type": {
+          "kind": "enum",
+          "values": [
+            "transitland-atlas",
+            "mobility-database"
+          ]
+        },
+        "reference_id": {
+          "kind": "string",
+          "max": 4096,
+          "min": 0
+        },
+        "declared_spec": {
+          "kind": "string",
+          "max": 80,
+          "min": 0,
+          "nullable": true
+        },
+        "definition": {
+          "ref": "definition"
+        },
+        "upstream_skip": {
+          "kind": "boolean"
+        },
+        "upstream_skip_reason": {
+          "kind": "string",
+          "max": 4096,
+          "min": 0
+        },
+        "resolution": {
+          "ref": "resolution"
+        },
+        "url_override": {
+          "kind": "string",
+          "max": 4096,
+          "min": 1,
+          "format": "url"
+        },
+        "url_override_sha256": {
+          "kind": "string",
+          "max": 64,
+          "min": 64,
+          "pattern": "[a-f0-9]{64}"
+        },
+        "licence": {
+          "ref": "licence"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "reference_id",
+        "definition",
+        "resolution"
+      ]
+    },
+    "ordinary": {
+      "kind": "object",
+      "fields": {
+        "type": {
+          "kind": "string",
+          "max": 80,
+          "min": 1
+        },
+        "spec": {
+          "kind": "enum",
+          "values": [
+            "gtfs"
+          ]
+        },
+        "url": {
+          "kind": "string",
+          "max": 4096,
+          "min": 1,
+          "format": "url"
+        },
+        "url_sha256": {
+          "kind": "string",
+          "max": 64,
+          "min": 64,
+          "pattern": "[a-f0-9]{64}"
+        },
+        "access_state": {
+          "kind": "enum",
+          "values": [
+            "public_declared",
+            "authorization_required",
+            "review_required"
+          ]
+        },
+        "upstream_skip": {
+          "kind": "boolean"
+        },
+        "definition": {
+          "ref": "definition"
+        }
+      },
+      "required": [
+        "type",
+        "spec",
+        "url",
+        "url_sha256",
+        "access_state",
+        "upstream_skip",
+        "definition"
+      ]
+    },
+    "root": {
+      "kind": "object",
+      "fields": {
+        "schema": {
+          "kind": "integer",
+          "value": 1
+        },
+        "state": {
+          "kind": "enum",
+          "values": [
+            "schedule",
+            "non_timetable_format",
+            "unresolved",
+            "ambiguous"
+          ]
+        },
+        "specs": {
+          "kind": "array",
+          "max": 3,
+          "item": {
+            "kind": "enum",
+            "values": [
+              "gtfs",
+              "gtfs-rt",
+              "gbfs"
+            ]
+          }
+        },
+        "identity_state": {
+          "kind": "string",
+          "max": 80,
+          "min": 0
+        },
+        "selected_static_declaration": {
+          "kind": "string",
+          "max": 64,
+          "min": 64,
+          "pattern": "[a-f0-9]{64}",
+          "nullable": true
+        },
+        "acquisition_alias_of": {
+          "kind": "string",
+          "max": 256,
+          "min": 1,
+          "pattern": "[A-Za-z0-9_.-]+",
+          "nullable": true
+        },
+        "processed_filename": {
+          "kind": "string",
+          "max": 4096,
+          "min": 1,
+          "nullable": true
+        },
+        "processed_basis": {
+          "kind": "string",
+          "max": 80,
+          "min": 0
+        },
+        "declarations": {
+          "kind": "array",
+          "max": 64,
+          "item": {
+            "ref": "declaration"
+          }
+        },
+        "ordinary_static_declarations": {
+          "kind": "array",
+          "max": 64,
+          "item": {
+            "ref": "ordinary"
+          }
+        },
+        "alias_source_sha256": {
+          "kind": "string",
+          "max": 64,
+          "min": 64,
+          "pattern": "[a-f0-9]{64}"
+        },
+        "companion_resolution_incomplete": {
+          "kind": "boolean"
+        },
+        "reason": {
+          "kind": "string",
+          "max": 80,
+          "min": 0
+        },
+        "publication_evidence": {
+          "ref": "publication_evidence"
+        }
+      },
+      "required": [
+        "schema",
+        "state",
+        "specs",
+        "declarations"
+      ]
+    },
+    "lineage_safe": {
+      "kind": "object",
+      "fields": {
+        "catalogue": {
+          "kind": "string",
+          "min": 1,
+          "max": 80
+        },
+        "id": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096
+        },
+        "url": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096,
+          "format": "url"
+        },
+        "source": {
+          "kind": "string",
+          "min": 0,
+          "max": 4096,
+          "format": "url_or_empty"
+        },
+        "mdb_id": {
+          "kind": "string",
+          "min": 0,
+          "max": 4096
+        },
+        "status": {
+          "kind": "string",
+          "min": 0,
+          "max": 80
+        },
+        "authentication_type": {
+          "kind": "string",
+          "min": 0,
+          "max": 80
+        }
+      },
+      "required": []
+    },
+    "lineage_licence": {
+      "kind": "object",
+      "fields": {
+        "catalogue": {
+          "kind": "enum",
+          "values": [
+            "transitous-licence"
+          ]
+        },
+        "id": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096
+        },
+        "url": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096,
+          "format": "url"
+        },
+        "source": {
+          "kind": "string",
+          "min": 0,
+          "max": 4096,
+          "format": "url_or_empty"
+        }
+      },
+      "required": [
+        "catalogue",
+        "id",
+        "url",
+        "source"
+      ]
+    },
+    "lineage_feeds": {
+      "kind": "object",
+      "fields": {
+        "catalogue": {
+          "kind": "enum",
+          "values": [
+            "transitous-feeds"
+          ]
+        },
+        "id": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096
+        },
+        "url": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096,
+          "format": "url"
+        },
+        "source": {
+          "kind": "string",
+          "min": 0,
+          "max": 4096,
+          "format": "url_or_empty"
+        },
+        "mdb_id": {
+          "kind": "string",
+          "min": 0,
+          "max": 4096
+        }
+      },
+      "required": [
+        "catalogue",
+        "id",
+        "url",
+        "source",
+        "mdb_id"
+      ]
+    },
+    "lineage_mobility": {
+      "kind": "object",
+      "fields": {
+        "catalogue": {
+          "kind": "enum",
+          "values": [
+            "mobility-database"
+          ]
+        },
+        "id": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096
+        },
+        "url": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096,
+          "format": "url"
+        },
+        "source": {
+          "kind": "string",
+          "min": 0,
+          "max": 4096,
+          "format": "url_or_empty"
+        },
+        "status": {
+          "kind": "string",
+          "min": 0,
+          "max": 80
+        },
+        "authentication_type": {
+          "kind": "string",
+          "min": 0,
+          "max": 80
+        }
+      },
+      "required": [
+        "catalogue",
+        "id",
+        "url",
+        "source",
+        "status",
+        "authentication_type"
+      ]
+    },
+    "lineage_atlas": {
+      "kind": "object",
+      "fields": {
+        "catalogue": {
+          "kind": "enum",
+          "values": [
+            "transitland-atlas"
+          ]
+        },
+        "id": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096
+        },
+        "url": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096,
+          "format": "url"
+        },
+        "source": {
+          "kind": "string",
+          "min": 0,
+          "max": 4096,
+          "format": "url_or_empty"
+        },
+        "source_sha256": {
+          "kind": "string",
+          "min": 64,
+          "max": 64,
+          "pattern": "[a-f0-9]{64}"
+        }
+      },
+      "required": [
+        "catalogue",
+        "id",
+        "url",
+        "source",
+        "source_sha256"
+      ]
+    },
+    "publication_evidence": {
+      "kind": "object",
+      "fields": {
+        "input_sha256": {
+          "kind": "string",
+          "min": 64,
+          "max": 64,
+          "pattern": "[a-f0-9]{64}"
+        },
+        "record_sha256": {
+          "kind": "string",
+          "min": 64,
+          "max": 64,
+          "pattern": "[a-f0-9]{64}"
+        },
+        "source_sha256": {
+          "kind": "string",
+          "min": 64,
+          "max": 64,
+          "pattern": "[a-f0-9]{64}"
+        },
+        "filename": {
+          "kind": "string",
+          "min": 1,
+          "max": 4096
+        },
+        "pointer": {
+          "kind": "string",
+          "min": 2,
+          "max": 9,
+          "pattern": "/(?:0|[1-9][0-9]{0,7})"
+        }
+      },
+      "required": [
+        "input_sha256",
+        "record_sha256",
+        "source_sha256",
+        "filename",
+        "pointer"
+      ]
+    }
+  },
+  "invalid": {
+    "schema": 1,
+    "state": "unresolved",
+    "specs": [],
+    "identity_state": "invalid_schema",
+    "selected_static_declaration": null,
+    "acquisition_alias_of": null,
+    "processed_filename": null,
+    "processed_basis": "invalid_schema",
+    "declarations": [],
+    "ordinary_static_declarations": [],
+    "reason": "invalid_reference_metadata"
+  },
+  "url_grammar": {
+    "description": "Bounded ASCII HTTP(S) URIs without userinfo. IDNs use punycode; non-ASCII components use percent encoding. DNS names, canonical IPv4 and bracketed IPv6 are supported; no DNS or network lookup.",
+    "pattern": "https?://(\\[[0-9A-Fa-f:.]+\\]|[A-Za-z0-9_-]+(?:\\.[A-Za-z0-9_-]+)*\\.?)(?::([0-9]{1,5}))?(?:[/?#][A-Za-z0-9._~!$&'()*+,;=:@/?#%\\[\\]-]*)?",
+    "label_pattern": "[A-Za-z0-9_](?:[A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?",
+    "numeric_label_pattern": "(?:[0-9]+|0[xX][0-9A-Fa-f]+)",
+    "max_length": 4096,
+    "max_host_length": 253,
+    "max_port": 65535,
+    "max_query_fields": 128
+  },
+  "lineage": {
+    "shapes": {
+      "transitous-licence": "lineage_licence",
+      "transitous-feeds": "lineage_feeds",
+      "mobility-database": "lineage_mobility",
+      "transitland-atlas": "lineage_atlas"
+    },
+    "transitous_origin_pattern": "https://github\\.com/public-transport/transitous/blob/(?:[a-f0-9]{40}|main)/website/data/license\\.json",
+    "mobility_origin": "https://files.mobilitydatabase.org/feeds_v2.csv",
+    "max_records": 64
+  }
+}
