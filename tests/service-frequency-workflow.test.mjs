@@ -32,7 +32,7 @@ test('production consumes the same normalized catalogue and publishes no per-fee
     assert.match(job(name),/--catalogue-report catalogue\/catalogue-report\.json/);
   }
   assert.match(globalFixtures,/frequency_provenance_test\.py/);
-  assert.match(job('publish'),/tar -czf frequency-snapshot\.tar\.gz -C frequency-output manifest\.json inventory\.json tiles/);
+  assert.match(job('publish'),/tar -czf frequency-snapshot\.tar\.gz -C frequency-output manifest\.json inventory\.json profiles\.json\.gz tiles/);
   assert.doesNotMatch(job('publish'),/tar .*\bfeeds\b/);
 });
 
@@ -126,7 +126,7 @@ test('PR fixture command exercises compiler, assembly, streaming and service sem
   assert.match(validate,/ip link set lo up/);
   assert.match(validate,/exec setpriv --reuid="\$1" --regid="\$2" --init-groups --no-new-privs/);
   assert.match(validate,/"\$3" --test/);
-  for(const file of ['global-frequency','gtfs-frequency','gtfs-service','read-frequency-feed','pbf-utf8','service-frequency','service-routes','frequency-credits','service-frequency-workflow']){
+  for(const file of ['global-frequency','gtfs-frequency','gtfs-service','read-frequency-feed','pbf-utf8','service-frequency','timetable-frequency','service-routes','frequency-credits','service-frequency-workflow']){
     assert.ok(validate.includes(`tests/${file}.test.mjs`),`${file} must run`);
   }
   assert.doesNotMatch(validate,/curl |git (?:fetch|clone)|actions\/(?:cache|download-artifact)|\|\| true/);

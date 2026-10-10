@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261010-train-schedules-1';
+import { MODES } from './map-model.mjs?v=20261010-matched-frequency-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;

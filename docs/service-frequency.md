@@ -13,16 +13,43 @@ persist in shared links. Unknown is not zero.
 
 ## Station departures and frequency coverage
 
-The station departure board and the Service view's frequency widths have
-different data paths. `styles/departures.mjs` asks Transitous for a nearby
-station's upcoming trains. `scripts/rebuild-service-frequency.mjs` currently
-applies only the audited published headways in `styles/service-headways.json`
-to the cached OSM routes. Although the worldwide pipeline compiles timetable
-profiles, this rebuild deliberately does not match those profiles to OSM
-routes yet (tracked in #111). A usable Ginza Line departure board therefore
-does not currently give its mapped line a frequency profile. A subdued line
-means **no matched frequency profile**, not that no timetable exists. A
-limited list of upcoming departures is not an all-day, peak or off-peak rate.
+The station departure board asks Transitous for upcoming trains. Frequency
+widths use complete, calendar-aware timetable counts for dated agency-local
+windows. A short departure list cannot establish peak or all-day frequency.
+The worldwide assembly now matches those compiled counts to existing OSM
+service sections and publishes `profiles.json.gz`; the site rebuild applies
+that artifact to its cached OSM routes. Timetable geometry supplies matching
+evidence only and never becomes a displayed line.
+
+Matching requires compatible rail modes, a declared operator/network and
+reference or name, plus coverage of the supplied timetable path by the OSM
+service. A feed-scoped `gtfs:route_id` can also establish the declared identity.
+Names are normalized for Unicode typography; arbitrary agency IDs are not
+operator names. A spelled-out agency acronym is accepted only when the feed
+uses that exact acronym as its agency ID. Tram/light-rail modes share a compatible
+family. Different candidates remain ambiguous. These are corroborated source
+declarations, not independent certification of upstream metadata.
+
+Rates attach separately to each original OSM edge. Every sampled interior point
+and both ends must lie within a served timetable interval, with compatible
+alignment; counts cannot extend beyond a short working's terminus. An OSM edge
+crossing a rate boundary is withheld, rather than receiving one branch's rate.
+Distinct same-feed route records are not summed or collapsed. Overlapping feeds
+can supply the same measurement once only when every profile, date, timezone
+and counting definition agrees; conflicting measurements stay unavailable.
+The pipeline retains its calendar, overnight, hourly and headway semantics.
+Each section binds to its OSM coordinates, service identity and memberships;
+changed bindings are withheld at the site rebuild. Coverage and conflicts are
+reported in `frequency-manifest.json`.
+
+Matching remains conservative and partial: unsupported shapes, paths outside
+the OSM snapshot, unresolved operator aliases and conflicting source structures
+remain gaps under #111. The spatial comparison uses 50 m sampling and a 120 m
+maximum lateral tolerance, requires at least 500 m of supplied path, and rejects
+very long edges, polar paths and antimeridian jumps. It does not certify exact
+physical track identity or a complete station crosswalk. A subdued line means
+**no current matched frequency profile** for that section and period; it can
+still have an independently available departure board.
 
 Each departure expands its complete trip using the opaque Transitous `tripId`
 retained through within-list and cross-feed reconciliation. The viewer uses
@@ -99,9 +126,9 @@ queued/running production refresh. Existing path filters remain precise:
 docs/test-only changes can trigger PR fixtures but not the frequency push
 workflow; ordinary site/unit CI is unchanged. Scheduled and explicitly requested
 refreshes retain the eight-shard pipeline, budgets,
-inventory gates and caches. Processing keeps raw GTFS ZIPs in runner caches. Assembled snapshots publish manifest and inventory rather than
-per-feed derived archives; this release is not a substitute for future
-internal route matching, which is tracked in #111. Site maps draw only OSM
+inventory gates and caches. Processing keeps raw GTFS ZIPs in runner caches. Assembled snapshots publish OSM-bound section-count aggregates, manifest and
+inventory rather than per-feed derived archives. Further source/station
+reconciliation and coverage remain tracked in #111. Site maps draw only OSM
 routes, and never draw raw GTFS shape copies.
 
 All entries have inspectable status and a reason code. `excluded` applies
@@ -202,8 +229,8 @@ a 1,500-second outer subprocess deadline. Each source has at most eight
 candidate URLs; each HTTP operation has at most three attempts with 45-second
 connection/read timeouts. Retry-After waits above eight seconds defer that retrieval rather than
 sleeping in the worker. Assembly retains its 90-minute job ceiling, 5.5 GB Node
-heap and complete-inventory checks. The public release contains only the
-aggregate manifest, inventory and tiles, not per-feed derived archives.
+heap and complete-inventory checks. The public release contains the OSM-bound section aggregate,
+manifest, inventory and empty standalone tile index, not per-feed archives.
 
 ### Retained explicit Retry-After deadlines
 
@@ -318,15 +345,16 @@ and northern shapes cannot alter each other's 200 m acceptance threshold.
 If geometry compilation exceeds its budget, a separately bounded timetable-only
 pass retains the source frequencies with an explicit geometry timeout audit.
 Unmatched routes retain their computed parent-station-pair frequency data and
-stops in the downloadable dataset, with no map geometry. If any active trip in a
+stops in the internal matching cache, with no map geometry. If any active trip in a
 route remains unmapped, the route's mapped frequency is unknown, avoiding an
 undercount from its successfully matched subset.
 
 Calendar/direction route IDs are consolidated only with the same agency,
 reference/name, mode and colour **and connected served stations**. Disconnected
 networks with the same name stay separate. Original IDs remain in metadata.
-Matching timetable routes to OpenStreetMap routes is not yet implemented (#111);
-proximity alone will not be enough to reconcile them.
+Timetable-to-OSM section matching uses the identity and path corroboration
+described above; proximity alone never establishes a match. Remaining station
+identity, source and variant reconciliation gaps are tracked in #111.
 Explicit `R-Bus` replacement platforms are excluded; other misclassified replacement
 services depend on upstream route typing and appear in source audit limitations.
 
@@ -394,7 +422,8 @@ python3 scripts/global-service-frequency.py --catalogue /path/to/catalogue.json 
   --catalogue-report /path/to/catalogue-report.json \
   --cache /path/to/gtfs-cache --output /path/to/frequency-output \
   --date 2026-10-12 --rail-graph /path/to/published/branch-lines.ndjson.gz
-node scripts/assemble-global-frequency.mjs /path/to/frequency-output
+node scripts/assemble-global-frequency.mjs /path/to/frequency-output \
+  /path/to/published/service-routes.ndjson.gz
 ```
 
 `--inventory-only` records eligibility without requesting feeds; `--shard N
@@ -403,7 +432,9 @@ assembly. The manifest fixes catalogue/input hashes and actual outcomes.
 
 For a published snapshot, `python3 scripts/load-frequency-snapshot.py` followed
 by `node scripts/rebuild-service-frequency.mjs` rebuilds the OSM service tiles
-with published headways and writes the manifest (including the covered frequency
-periods) and credits; the snapshot's feeds add no lines. `npm run build` and
+with matched timetable counts and published headways, verifies each OSM section
+binding and writes the manifest (including covered periods) and source credits.
+The snapshot's feeds add no lines. `npm run build` and
 `npm test` validate the app. `--fixtures` is reserved for the browser regression
-check that timetable fixtures draw nothing.
+checks that only existing OSM services draw, with matched fixture counts applied
+where the OSM snapshot corroborates their identity and paths.

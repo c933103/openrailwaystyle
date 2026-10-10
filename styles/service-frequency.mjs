@@ -42,16 +42,18 @@ export function profileBundle(records) {
   }
   return out;
 }
-export function frequencyBundle(routes, lines, catalog) {
-  const until=Date.parse(catalog.source.checked+'T00:00:00Z')/1000+catalog.source.review_after_days*86400;
-  const records=routes.map(route=>{
+export function frequencyBundle(routes, lines, catalog, timetables=[]) {
+  const until=catalog?Date.parse(catalog.source.checked+'T00:00:00Z')/1000+catalog.source.review_after_days*86400:0;
+  const records=routes.map((route,i)=>{
+    if(timetables[i])return timetables[i];
     const r=matchHeadway(route,lines,catalog);if(!r)return null;
     return {properties:{frequency_id:r.id,frequency_source:catalog.source.name,frequency_url:catalog.source.url,frequency_checked:catalog.source.checked,frequency_quality:catalog.source.quality,frequency_definition:catalog.source.period_definition,frequency_until:until},
       profiles:Object.fromEntries(FREQUENCY_PROFILES.map(p=>[p,r.profiles[p]?.minutes?{rate:60/r.profiles[p].minutes[1],high:60/r.profiles[p].minutes[0],headway:r.profiles[p].reported,quality:'headway_estimate'}:{}]))};
   });
   // Unknown peers must retain the source expiry so known routes in a mixed
   // OSM bundle remain usable; unknown width is still the baseline.
-  return profileBundle(records.map(r=>r||{properties:{frequency_until:records.some(Boolean)?until:0},profiles:{}}));
+  const expiry=Math.min(...records.filter(Boolean).map(r=>r.properties.frequency_until));
+  return profileBundle(records.map(r=>r||{properties:{frequency_until:Number.isFinite(expiry)?expiry:0},profiles:{}}));
 }
 const legacyOffset=['*',['-',['get','i'],['/',['-',['get','n'],1],2]],3.5];
 const zoomScale=value=>['interpolate',['linear'],['zoom'],7,['*',value,2/3.5],12,value,16,['*',value,5/3.5]];

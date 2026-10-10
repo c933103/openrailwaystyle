@@ -11,6 +11,7 @@ on:
       - scripts/gtfs-rail-paths.py
       - scripts/assemble-global-frequency.mjs
       - scripts/read-frequency-feed.mjs
+      - scripts/timetable-frequency.mjs
       - scripts/gtfs-service.mjs
       - scripts/service-routes.mjs
       - styles/pbf-utf8.mjs
@@ -45,6 +46,7 @@ on:
       - scripts/gtfs-rail-paths.py
       - scripts/assemble-global-frequency.mjs
       - scripts/read-frequency-feed.mjs
+      - scripts/timetable-frequency.mjs
       - scripts/gtfs-service.mjs
       - scripts/service-routes.mjs
       - styles/pbf-utf8.mjs
@@ -87,6 +89,7 @@ jobs:
               tests/read-frequency-feed.test.mjs \
               tests/pbf-utf8.test.mjs \
               tests/service-frequency.test.mjs \
+              tests/timetable-frequency.test.mjs \
               tests/service-routes.test.mjs \
               tests/frequency-credits.test.mjs \
               tests/service-frequency-workflow.test.mjs
@@ -202,8 +205,21 @@ jobs:
           pattern: worldwide-frequency-shard-*
           path: frequency-output
           merge-multiple: true
+      - name: Load the published OSM service snapshot for timetable matching
+        run: |
+          mkdir -p osm-services
+          status=0
+          git ls-remote --exit-code --heads origin service-data || status=$?
+          if [ "$status" = 0 ]; then
+            git fetch --depth=1 origin service-data
+            git show FETCH_HEAD:service-routes.ndjson.gz > osm-services/service-routes.ndjson.gz
+          elif [ "$status" = 2 ]; then
+            python3 -c "import gzip; gzip.open('osm-services/service-routes.ndjson.gz','wb').close()"
+          else
+            exit "$status"
+          fi
       - name: Validate complete inventory and assemble bounded tile batches
-        run: node --max-old-space-size=5500 scripts/assemble-global-frequency.mjs frequency-output
+        run: node --max-old-space-size=5500 scripts/assemble-global-frequency.mjs frequency-output osm-services/service-routes.ndjson.gz
       - uses: actions/upload-artifact@v4
         with:
           name: worldwide-frequency-snapshot
@@ -229,14 +245,14 @@ jobs:
         run: |
           # Per-feed derived archives are intermediate matching caches, not
           # redistributable website assets. Publish only aggregate outputs.
-          tar -czf frequency-snapshot.tar.gz -C frequency-output manifest.json inventory.json tiles
+          tar -czf frequency-snapshot.tar.gz -C frequency-output manifest.json inventory.json profiles.json.gz tiles
           # One data release, with the current snapshot. No force pushes or
           # changes to other workers' snapshot branches or application PRs.
           status=0
           gh api "repos/$GH_REPO/releases/tags/service-frequency-data" > /tmp/frequency-release.json 2>/tmp/frequency-release-error || status=$?
           if [ "$status" != 0 ]; then
             if ! grep -q '404' /tmp/frequency-release-error; then cat /tmp/frequency-release-error; exit "$status"; fi
-            gh release create service-frequency-data --title 'Worldwide service-frequency data' --notes 'Aggregate worldwide timetable coverage metadata and inventory; per-feed derived archives are not redistributed.'
+            gh release create service-frequency-data --title 'Worldwide service-frequency data' --notes 'Matched OSM section-frequency aggregates, coverage metadata and inventory; per-feed derived archives are not redistributed.'
           fi
           gh release upload service-frequency-data frequency-snapshot.tar.gz frequency-output/manifest.json frequency-output/inventory.json --clobber
           gh workflow run site.yml --ref main

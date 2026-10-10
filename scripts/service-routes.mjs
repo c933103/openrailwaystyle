@@ -58,7 +58,7 @@ export function routeOf(rel) {
   // operator to scope the reference.
   const scope = t.network || t.operator || '';
   return {key: [kind, scope, ref, colour(t.colour), ref && scope ? '' : label].join('|'), kind,
-    ref, label, colour: colour(t.colour), network: t.network || '', operator: t.operator || '', relation: rel.id, names};
+    ref, label, colour: colour(t.colour), network: t.network || '', operator: t.operator || '', relation: rel.id, names, ...(Object.keys(t).some(k=>k.startsWith('gtfs:')||/^(operator|network):/.test(k))?{timetable:{feed:t['gtfs:feed']||t['gtfs:source']||'',routeIds:String(t['gtfs:route_id']||'').split(';').filter(Boolean),operators:Object.entries(t).filter(([k])=>/^(operator|network):/.test(k)).map(([,v])=>v)}}:{})};
 }
 
 // From an Overpass response: the routes (by key) and the track ways with the
@@ -440,18 +440,22 @@ export function joinLines(lines) {
 // own: a GTFS route is often an individual train service, and a feed's
 // "shapes" can be bare stop-to-stop chords. Frequencies only ever attach to
 // these routes (headways).
-export function buildTiles({routes, ways}, {headways} = {}) {
+export function buildTiles({routes, ways}, {headways, timetables} = {}) {
   const out = new Map(), sets = [[new Map(), MIN_ZOOM, LOCAL_MIN_ZOOM - 1, r => !LOCAL_KINDS.includes(r.kind)], [new Map(), LOCAL_MIN_ZOOM, MAX_ZOOM, () => true]];
   const service = serviceRoutes({routes, ways});
   for (const way of ways.values()) {
     // A route once, whichever of its relations run here.
     const all = [...new Set(wayRoutes(way, routes).map(key => service.get(key)).filter(Boolean))]
       .sort((a, b) => ORDER[a.kind] - ORDER[b.kind] || a.ref.localeCompare(b.ref, 'en', {numeric: true}) || a.label.localeCompare(b.label));
-    const lines = drawnLines(way).map(orient);
+    const original = drawnLines(way), sections = timetables?.get(way.id);
+    // Only split at existing OSM vertices. Timetable shapes never supply a
+    // coordinate, route ID, eligibility or offset slot to the renderer.
+    const parts=sections?.length ? original.flatMap((line,l)=>line.slice(1).map((b,e)=>({lines:[orient([line[e],b])],records:new Map(sections.filter(s=>s.line===l&&s.edge===e).map(s=>[s.relation,s.record]))}))) : [{lines:original.map(orient),records:new Map()}];
+    for(const {lines,records} of parts){
     if (!lines.length) continue;
     for (const [groups, , , shown] of sets) {
       const list = all.filter(shown);
-      const frequency = headways ? frequencyBundle(list, lines, headways) : null;
+      const frequency = headways || records.size ? frequencyBundle(list, lines, headways, list.map(r=>records.get(r.relation))) : null;
       // Names as name and name:xx, as the map's other labels, so they follow
       // the label language.
       list.forEach((route, i) => {
@@ -465,6 +469,7 @@ export function buildTiles({routes, ways}, {headways} = {}) {
         groups.get(key).lines.push(...lines);
       });
     }
+  }
   }
   for (const set of sets) {
     const [groups, minZoom, maxZoom] = set;
