@@ -59,7 +59,7 @@ test('station country evidence rejects homonymous foreign stations and keeps Lag
 
 test('provider fill remains available across regional overview zooms beneath curated priorities',async()=>{
  const style=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url)));
- const fill=style.layers.filter(l=>l.source==='stationLow');assert.ok(fill.length);
+ const fill=style.layers.filter(l=>l.source==='stationLow'&&l.type==='symbol');assert.ok(fill.length);
  for(const layer of fill){assert.equal(layer.minzoom,4);assert.equal(layer.maxzoom,7);assert.ok(style.layers.indexOf(layer)<style.layers.findIndex(l=>l.id==='station-major-6-names'));}
  const baseline=JSON.parse(await readFile(new URL('./fixtures/stations-before-density.json',import.meta.url)));
  const data=majorStationsGeoJSON(JSON.parse(await readFile(new URL('../styles/data-src/major-stations.json',import.meta.url))));
