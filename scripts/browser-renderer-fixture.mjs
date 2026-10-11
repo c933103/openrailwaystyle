@@ -14,6 +14,13 @@ const referenceIndex=JSON.stringify({schema:1,complete:true,generation:reference
 const referenceManifest={schema:1,complete:true,generation:referenceGeneration,minzoom:0,maxzoom:6,
  license:'ODbL-1.0',wayCount:1,oldestSource:'2026-10-09T20:00:00Z',newestSource:'2026-10-09T20:00:00Z',
  sources:Array.from({length:8},()=>({source:'empty synthetic UI wire fixture'})),indexSha256:hash(referenceIndex)};
+export function emptyReferenceFixture(path){
+ if(!path.includes('/data/mainline-reference/'))return null;
+ if(path.endsWith('/manifest.json'))return {json:referenceManifest};
+ if(path.endsWith('/index.json'))return {contentType:'application/json',body:referenceIndex};
+ if(path.endsWith('.pbf.gz'))return {contentType:'application/octet-stream',body:referenceEmpty};
+ return null;
+}
 
 // The UI suite uses the real production renderer, not a renderer mock. Serve
 // exactly the same built, verified bytes to isolated renderer tests. Production
@@ -51,9 +58,7 @@ export async function installEmptyMapProviders(context, base, {firstParty = 'fix
       if(firstParty === 'network') return route.continue();
       if(path.endsWith('/major-stations.geojson'))return route.fulfill({json:{type:'FeatureCollection',features:[]}});
       if(path.endsWith('/world.style.json'))return route.fulfill({json:style});
-      if(path.endsWith('/data/mainline-reference/manifest.json'))return route.fulfill({json:referenceManifest});
-      if(path.includes('/data/mainline-reference/')&&path.endsWith('/index.json'))return route.fulfill({contentType:'application/json',body:referenceIndex});
-      if(path.includes('/data/mainline-reference/')&&path.endsWith('.pbf.gz'))return route.fulfill({contentType:'application/octet-stream',body:referenceEmpty});
+      const reference=emptyReferenceFixture(path);if(reference)return route.fulfill(reference);
       if(path.includes('/data/polar/'))return route.fulfill({status:404,body:''});
       if(path.includes('/data/'))return route.fulfill({json:{tiles:[],features:[],countries:{}}});
       return route.continue();

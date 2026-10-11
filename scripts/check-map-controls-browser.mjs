@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import {readFile, mkdir, writeFile} from 'node:fs/promises';
 import {waitUntil} from './wait-until.mjs';
 import {clickVisibleControl} from './click-visible-control.mjs';
-import {rendererFixture} from './browser-renderer-fixture.mjs';
+import {rendererFixture,emptyReferenceFixture} from './browser-renderer-fixture.mjs';
 import {readMapRenderState} from './map-render-state.mjs';
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const style=JSON.parse(await readFile('styles/world.style.json','utf8'));
@@ -40,6 +40,7 @@ await context.route('**/*',async route=>{
   if(url.href.startsWith(base)){
     if(path.endsWith('/major-stations.geojson'))return route.fulfill({json:{type:'FeatureCollection',features:[]}});
     if(path.endsWith('/world.style.json'))return route.fulfill({json:style});
+    const reference=emptyReferenceFixture(path);if(reference)return route.fulfill(reference);
     if(path.includes('/data/polar/'))return route.fulfill({status:404,body:''});
     if(path.includes('/data/'))return route.fulfill({json:{tiles:[],features:[],countries:{}}});
     return route.continue();

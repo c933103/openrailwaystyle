@@ -14,7 +14,7 @@ on:
     - cron: '19 3 3 * *'
   push:
     branches: [main]
-    paths: &reference_paths ['.github/workflows/mainline-reference.yml', 'scripts/**/*.mjs', 'scripts/*.py', 'styles/*.mjs', 'styles/index.html', 'styles/app.css', 'styles/world.style.json', 'package.json', 'package-lock.json']
+    paths: &reference_paths ['.github/workflows/mainline-reference.yml', 'scripts/**/*.mjs', 'scripts/*.py', 'styles/**/*.mjs', 'styles/**/*.js', 'styles/index.html', 'styles/app.css', 'styles/world.style.json', 'package.json', 'package-lock.json']
   pull_request:
     paths: *reference_paths
 permissions:
@@ -235,11 +235,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run site.yml --ref main
-      - name: Rerun a timed-out or failed matching PR site check after preview publication
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/site.yml/runs?event=pull_request&head_sha=$PR_HEAD_SHA" --jq '[.workflow_runs[] | select(.status == "completed" and (.conclusion == "failure" or .conclusion == "timed_out"))][0].id // empty')
-          if [ -n "$run" ]; then gh run rerun "$run" --failed; fi

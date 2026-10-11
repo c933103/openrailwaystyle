@@ -1,9 +1,9 @@
-import {readFile} from 'node:fs/promises';
-import {resolve,dirname,relative} from 'node:path';
+import {readFile,readdir} from 'node:fs/promises';
+import {resolve,dirname,relative,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {sha256} from './mainline-coverage.mjs';
 // Deployment accepts only data built and browser-checked with these inputs.
-// Documentation-only and unrelated application edits can reuse that result.
+// Documentation-only and unrelated orchestration edits can reuse that result.
 export const REFERENCE_INPUTS=Object.freeze([
  '.github/workflows/mainline-reference.yml','package.json','package-lock.json',
  'scripts/acquire-mainline-extract.py','scripts/plan-mainline-acquisition.py',
@@ -19,8 +19,23 @@ export const REFERENCE_INPUTS=Object.freeze([
  'styles/map-controls.mjs','styles/vector-tile-validation.mjs','styles/pbf-utf8.mjs',
  'styles/mainline-reference.mjs','styles/world.style.json','styles/app.mjs','styles/index.html','styles/app.css',
 ]);
+async function nativeStyleInputs(root,dir='styles'){
+ const files=[];
+ for(const entry of await readdir(resolve(root,dir),{withFileTypes:true})){
+  const path=join(dir,entry.name);
+  // These contain generated bundles and published snapshots, rather than
+  // authored inputs. Build commit metadata must not change data provenance.
+  if(path==='styles/vendor'||path==='styles/data')continue;
+  if(entry.isDirectory())files.push(...await nativeStyleInputs(root,path));
+  else if(entry.isFile()&&/\.(?:mjs|js)$/.test(entry.name))files.push(path);
+ }
+ return files;
+}
 export async function referenceInputDigest(root=process.cwd()){
- const entries=new Map(),queue=[...REFERENCE_INPUTS];root=resolve(root);
+ root=resolve(root);
+ // Include authored browser entries even when a build driver or template
+ // literal loads them without a static import (workers, labels, polar layer).
+ const entries=new Map(),queue=[...REFERENCE_INPUTS,...await nativeStyleInputs(root)];
  while(queue.length){
   const path=queue.pop();if(entries.has(path))continue;
   const bytes=await readFile(resolve(root,path));entries.set(path,sha256(bytes));

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile,mkdtemp,mkdir,writeFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {join,dirname} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {VectorTile} from '@mapbox/vector-tile';
@@ -12,7 +12,8 @@ import {mainlineRegion,mainlineTiles,MAINLINE_LAYER} from '../scripts/mainline-o
 import {sha256,MAINLINE_REGIONS,MAINLINE_CONTROLS,validateMainlineSources,segmentInBox,auditMainlineCoverage} from '../scripts/mainline-coverage.mjs';
 import {referenceTileKey,createReferenceReader,decompressReference} from '../styles/mainline-reference.mjs';
 import {layerVisibility} from '../styles/layer-semantics.mjs';
-import {referenceInputDigest,matchingReferenceInputs} from '../scripts/mainline-provenance.mjs';
+import {REFERENCE_INPUTS,referenceInputDigest,matchingReferenceInputs} from '../scripts/mainline-provenance.mjs';
+import {emptyReferenceFixture} from '../scripts/browser-renderer-fixture.mjs';
 import {retainMainlineGeneration} from '../scripts/retain-mainline-generation.mjs';
 const way=(id,a,b,nodes,tags={railway:'rail',usage:'main'})=>({type:'way',id,version:2,nodes,tags,
  geometry:[a,b].map(([lon,lat])=>({lon,lat}))});
@@ -85,6 +86,34 @@ test('deployment rejects stale build inputs and refresh retains the previous imm
   assert.equal(await readFile(join(current,'generations',generation,'0','0','0.pbf.gz'),'utf8'),'immutable tile bytes');
   await assert.rejects(readFile(join(current,'generations',generation,'ways.ndjson.gz.part-0000')),/ENOENT/);
  }finally{await rm(dir,{recursive:true,force:true})}
+});
+test('browser bundle entries, computed imports and service worker changes invalidate provenance',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'atlas-native-inputs-'));
+ const entries=['track-worker','tile-labels','depth-worker','dem-worker','polar-layer'].map(name=>`styles/${name}.mjs`);
+ entries.push('styles/sw.js','styles/workers/future-entry.mjs');
+ try{
+  for(const path of [...REFERENCE_INPUTS,...entries]){await mkdir(dirname(join(root,path)),{recursive:true});await writeFile(join(root,path),'export {};\n')}
+  const baseline=await referenceInputDigest(root);
+  for(const path of entries){
+   await writeFile(join(root,path),'export const changed=true;\n');
+   assert.notEqual(await referenceInputDigest(root),baseline,path);
+   await writeFile(join(root,path),'export {};\n');
+  }
+  for(const path of ['styles/vendor/tile-labels.js','styles/data/generated.mjs']){
+   await mkdir(dirname(join(root,path)),{recursive:true});await writeFile(join(root,path),'generated build metadata');
+  }
+  assert.equal(await referenceInputDigest(root),baseline,'generated bundles and snapshots cannot contaminate authored-input provenance');
+ }finally{await rm(root,{recursive:true,force:true})}
+});
+test('empty UI fixtures satisfy the reference wire contract without certifying OSM coverage',async()=>{
+ assert.equal(emptyReferenceFixture('/data/lifecycle/index.json'),null);
+ const reader=createReferenceReader({root:'https://atlas.invalid/data/mainline-reference/',fetcher:async url=>{
+  const response=emptyReferenceFixture(new URL(url).pathname);
+  return response?new Response(response.json?JSON.stringify(response.json):response.body):new Response('',{status:404});
+ }});
+ assert.equal((await reader.tile('6/31/30')).byteLength,0,'verified absent index entry is empty');
+ assert.deepEqual(new Uint8Array(await reader.tile('0/0/0')),new Uint8Array([26,0]));
+ assert.equal(reader.statistics().assetRequests,3);
 });
 test('real Tokyo light rail is not falsely promoted into the mainline reference',async()=>{
  const raw=JSON.parse(await readFile('tests/fixtures/service-geometry/overpass-meta-way-4853887.json'));

@@ -45,8 +45,7 @@ requires and verifies the complete generation before deployment. A SHA-256
 fingerprint binds the published result to acquisition, compiler and renderer
 acceptance inputs. Site readiness waits for that fingerprint and pins the
 verified data commit, so an older branch cannot satisfy a changed build.
-Preview publication reruns a failed or timed-out matching site check; its
-readiness job also allows six hours rather than timing out during acquisition.
+The site readiness job allows six hours rather than timing out during acquisition.
 For builds that outlast that window, a trusted default-branch completion
 workflow retries failed/timed-out site checks for the same current open PR
 head, including forks and manually dispatched previews. It reads only GitHub
