@@ -129,7 +129,7 @@ export function searchResults(facilities, places) {
 }
 // Map background: the drawn base map, satellite imagery alone, or imagery
 // under the railways (hybrid).
-export const BACKGROUNDS = ['map', 'satellite', 'hybrid', 'carto'];
+export const BACKGROUNDS = ['map', 'satellite', 'hybrid', 'carto', 'soviet'];
 // Standard OSM tiles: ordinary browser caching, no offline/prefetch support.
 export const CARTO_TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge', 'loading', 'service', 'owner', 'axle'];
