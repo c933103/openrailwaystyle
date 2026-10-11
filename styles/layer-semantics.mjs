@@ -103,9 +103,10 @@ export function layerVisibility(layer, settings) {
   // suppress competing modern place labels, and always place bathymetry over
   // sea areas. Rail tracks, nodes and their selected labels stay on top.
   if (settings.background === 'soviet' && !runtime) {
-    if (semantics['atlas:base-map'] && layer.type === 'symbol' && layer.source === 'openmaptiles') visible = false;
-    if (layer.id === 'terrain-bathymetry') visible = true;
-    else if (semantics['atlas:terrain']) visible = false;
+    // Apply declared layer roles, never hardcoded IDs or provider names.
+    // This survives layer/source renames and cached metadata migrations.
+    if (semantics['atlas:base-map'] && semantics['atlas:localize'] && layer.type === 'symbol') visible = false;
+    if (semantics['atlas:terrain']) visible = layer.type === 'raster';
   }
   if (semantics['atlas:hide-backgrounds']?.includes(settings.background)) visible = false;
   return visible;
