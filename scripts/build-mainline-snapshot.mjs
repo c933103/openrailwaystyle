@@ -1,12 +1,15 @@
 import {createReadStream} from 'node:fs';
-import {mkdir,readFile,writeFile,readdir} from 'node:fs/promises';
-import {createGunzip,gzipSync} from 'node:zlib';
+import {mkdir,readFile,writeFile,open} from 'node:fs/promises';
+import {createGunzip,createGzip,gunzipSync} from 'node:zlib';
+import {Readable} from 'node:stream';
+import {VectorTile} from '@mapbox/vector-tile';
+import Pbf from 'pbf';
 import {createInterface} from 'node:readline';
 import {join,dirname,resolve} from 'node:path';
 import {performance} from 'node:perf_hooks';
-import {normalizeMainlineWay,mainlineTiles} from './mainline-overview.mjs';
+import {normalizeMainlineWay,mainlineTiles,MAINLINE_LAYER} from './mainline-overview.mjs';
 import {mainlineChains} from './mainline-chains.mjs';
-import {sha256,validateMainlineSources,auditMainlineCoverage,MAINLINE_REGIONS} from './mainline-coverage.mjs';
+import {sha256,validateMainlineSources,auditMainlineCoverage,MAINLINE_REGIONS,featureInBox} from './mainline-coverage.mjs';
 const [input,output]=process.argv.slice(2);
 if(!input||!output||resolve(input)===resolve(output))throw Error('Expected separate input/output directories');
 const start=performance.now(),sources=[],byId=new Map();
@@ -39,16 +42,46 @@ validateMainlineSources(sources);
 const features=[...byId.values()].sort((a,b)=>a.id-b.id),audit=auditMainlineCoverage(features);
 if(!features.length)throw Error('Empty worldwide railway reference');
 const chained=mainlineChains(features),result=mainlineTiles(chained.features,{allowChains:true});
-const generation=sha256(JSON.stringify(sources.map(s=>[s.region,s.pbfSha256]))).slice(0,24);
+const tileDetails=[...result.tiles].map(([key,bytes])=>({key,bytes:bytes.length,sha256:sha256(bytes)}));
+if(tileDetails.reduce((n,t)=>n+t.bytes,0)>256*1024**2)throw Error('Reference tile-set exceeds publication bandwidth budget');
+const generation=sha256(JSON.stringify([sources.map(s=>[s.region,s.pbfSha256]),tileDetails])).slice(0,24);
+// Independent source-vs-tile audit: retained source ways are not proof that
+// the simplifier emitted their corresponding chain in any low zoom tile.
+const byZoom=new Map();
+for(const [key,bytes] of result.tiles){
+ const z=Number(key.split('/')[0]);if(!byZoom.has(z))byZoom.set(z,new Set());
+ const layer=new VectorTile(new Pbf(gunzipSync(bytes))).layers[MAINLINE_LAYER];
+ for(let i=0;i<layer.length;i++)byZoom.get(z).add(layer.feature(i).properties.id);
+}
+for(const control of audit){
+ const candidates=chained.features.filter(f=>f.properties.classification!=='branch'&&featureInBox(f,control.box));
+ control.chainIdsByZoom={};
+ for(let z=0;z<=6;z++){
+  const ids=candidates.filter(f=>byZoom.get(z)?.has(f.properties.id)).map(f=>f.properties.id);
+  if(!ids.length)throw Error(`OSM source exists but tile geometry is missing: ${control.name} z${z}`);
+  control.chainIdsByZoom[z]=ids.slice(0,16);
+ }
+}
 const target=join(output,'generations',generation);await mkdir(target,{recursive:true});
-const tileDetails=[];
 for(const [key,bytes] of result.tiles){
  const path=join(target,key+'.pbf.gz');await mkdir(dirname(path),{recursive:true});await writeFile(path,bytes);
- tileDetails.push({key,bytes:bytes.length,sha256:sha256(bytes)});
 }
 await writeFile(join(target,'index.json'),JSON.stringify({schema:1,generation,complete:true,tiles:tileDetails})+'\n');
-await writeFile(join(target,'membership.ndjson.gz'),gzipSync(chained.membership.map(m=>JSON.stringify(m)).join('\n')+'\n'));
-await writeFile(join(target,'ways.ndjson.gz'),gzipSync(features.map(f=>JSON.stringify(f)).join('\n')+'\n'));
+// GitHub rejects blobs over 100 MB. Archive exact source membership in small
+// ordered parts and stream compression without a worldwide JSON string.
+async function archive(name,rows){
+ const compressed=Readable.from((function*(){for(const row of rows)yield JSON.stringify(row)+'\n'})()).pipe(createGzip());
+ const parts=[];let part,partSize=0,total=0,number=0;
+ try{for await(const chunk of compressed){
+  if(!part){const path=`${name}.ndjson.gz.part-${String(number++).padStart(4,'0')}`;parts.push(path);part=await open(join(target,path),'w');partSize=0}
+  await part.writeFile(chunk);partSize+=chunk.length;total+=chunk.length;
+  if(total>512*1024**2)throw Error('Source archive exceeds publication size budget');
+  if(partSize>=40*1024**2){await part.close();part=undefined}
+ }}finally{await part?.close()}
+ return {parts,bytes:total};
+}
+const archives={membership:await archive('membership',chained.membership),ways:await archive('ways',features)};
+if(archives.membership.bytes+archives.ways.bytes>512*1024**2)throw Error('Combined reference source archives exceed publication size budget');
 await writeFile(join(target,'coverage-audit.json'),JSON.stringify(audit,null,2)+'\n');
 const classes={};for(const f of features)classes[f.properties.classification]=(classes[f.properties.classification]||0)+1;
 const manifest={...result.manifest,complete:true,generation,coverage:'all eight Geofabrik continent extracts; complete OSM ways',
@@ -58,8 +91,9 @@ const manifest={...result.manifest,complete:true,generation,coverage:'all eight 
  controls:audit.map(({feature,...c})=>({...c,osmId:feature.properties.id,osmVersion:feature.properties.osm_version})),
  downloadedBytes:sources.reduce((n,s)=>n+s.pbfBytes,0),tileBytes:tileDetails.reduce((n,t)=>n+t.bytes,0),
  largestTileBytes:Math.max(...tileDetails.map(t=>t.bytes)),buildSeconds:(performance.now()-start)/1000,
- peakRssBytes:process.resourceUsage().maxRSS*1024,
+ peakRssBytes:process.resourceUsage().maxRSS*1024,archives,
  indexSha256:sha256(await readFile(join(target,'index.json'))),
- acquisitionRequests:sources.length*3,providerTileRequests:0};
+ acquisitionRequests:sources.length*3,providerTileRequests:0,
+ coverageByZoom:result.manifest.drawnFeaturesByZoom};
 await writeFile(join(output,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 console.log('MAINLINE_REFERENCE',JSON.stringify(manifest));

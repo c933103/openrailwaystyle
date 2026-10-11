@@ -56,7 +56,10 @@ export function normalizeMainlineWay(element){
  const version=element.version;
  if(!Number.isSafeInteger(version)||version<1)throw new Error(`OSM mainline ${element.id} missing version`);
  const rank=tags.highspeed==='yes'?0:tags.usage==='main'?1:tags.usage==='branch'?3:2;
+ const bbox=distinct.reduce((b,p)=>[Math.min(b[0],p[0]),Math.min(b[1],p[1]),Math.max(b[2],p[0]),Math.max(b[3],p[1])],
+   [180,90,-180,-90]);
  return {type:'Feature',id:element.id,
+   bbox,
    properties:{id:`way-${element.id}`,osm_id:String(element.id),osm_version:version,
      feature:tags.railway,usage:tags.usage||'',classification:tags.usage||'unknown',highspeed:tags.highspeed==='yes',
      highspeed_tag:text(tags.highspeed),osm_timestamp:text(element.timestamp),
@@ -92,7 +95,7 @@ export function mainlineTiles(features,{maxWays=3000000,maxTileBytes=MAX_TILE_BY
    if(!f||f.type!=='Feature'||!Number.isSafeInteger(f.id)||
       f.geometry?.type!=='LineString'&&f.geometry?.type!=='MultiLineString'||
       seen.has(f.id)||!f.properties||!(f.properties.id===`way-${f.id}`||
-        allowChains&&/^chain-[a-f0-9]{64}$/.test(f.properties.id)))
+        allowChains&&/^chain-[a-f0-9]{13}$/.test(f.properties.id)))
      throw new Error('Invalid or duplicate mainline source way');
    seen.add(f.id);
  }
@@ -110,7 +113,9 @@ export function mainlineTiles(features,{maxWays=3000000,maxTileBytes=MAX_TILE_BY
      if(!tile?.features?.length)continue;
      const encoded=vtpbf.fromGeojsonVt({[MAINLINE_LAYER]:tile},{version:2,extent:4096});
      if(encoded.byteLength>maxTileBytes)throw new Error(`Mainline tile z${z}/${x}/${y} exceeded limit`);
-     output.set(`${z}/${x}/${y}`,gzipSync(encoded,{level:6}));
+     const zipped=gzipSync(encoded,{level:6});
+     if(zipped.length>2*1024**2)throw Error(`Compressed mainline tile z${z}/${x}/${y} exceeded limit`);
+     output.set(`${z}/${x}/${y}`,zipped);
      included+=tile.features.length;
    }
    counter[z]=included;

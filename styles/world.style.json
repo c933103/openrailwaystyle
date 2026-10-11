@@ -116,6 +116,16 @@
       "maxzoom": 10,
       "attribution": "<a href=\"https://www.naturalearthdata.com/\">Natural Earth (public domain)</a> · <a href=\"https://papers.reearth.land/\">Re:Earth Papers</a>"
     },
+    "railReference": {
+      "type": "vector",
+      "tiles": [
+        "mainlinetiles://{z}/{x}/{y}"
+      ],
+      "minzoom": 0,
+      "maxzoom": 6,
+      "promoteId": "id",
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors, ODbL</a>"
+    },
     "trackCounts": {
       "type": "vector",
       "tiles": [
@@ -8566,6 +8576,188 @@
         "atlas:semantics-version": 1,
         "atlas:group": "railway",
         "atlas:category": "railroads_north_america",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "rail-reference-branch",
+      "type": "line",
+      "source": "railReference",
+      "source-layer": "atlas_mainline_overview",
+      "minzoom": 3,
+      "maxzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "classification"
+        ],
+        "branch"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": [
+          "-",
+          3,
+          [
+            "get",
+            "rank"
+          ]
+        ]
+      },
+      "paint": {
+        "line-color": "#93999c",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          1,
+          6,
+          1.3,
+          8,
+          1.7
+        ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "atlas_mainline_overview",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "rail-reference-unknown",
+      "type": "line",
+      "source": "railReference",
+      "source-layer": "atlas_mainline_overview",
+      "maxzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "classification"
+        ],
+        "unknown"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": [
+          "-",
+          3,
+          [
+            "get",
+            "rank"
+          ]
+        ]
+      },
+      "paint": {
+        "line-color": "#93999c",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          1,
+          6,
+          1.3,
+          8,
+          1.7
+        ],
+        "line-dasharray": [
+          2,
+          1
+        ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "atlas_mainline_overview",
+        "atlas:views": [],
+        "atlas:settings": [],
+        "atlas:initial-hidden": false,
+        "atlas:base-map": false,
+        "atlas:terrain": false,
+        "atlas:runtime": false,
+        "atlas:background": null,
+        "atlas:hide-backgrounds": [],
+        "atlas:localize": false
+      }
+    },
+    {
+      "id": "rail-reference-main",
+      "type": "line",
+      "source": "railReference",
+      "source-layer": "atlas_mainline_overview",
+      "maxzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "classification"
+        ],
+        "main"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "line-sort-key": [
+          "-",
+          3,
+          [
+            "get",
+            "rank"
+          ]
+        ]
+      },
+      "paint": {
+        "line-color": "#70777b",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          1,
+          6,
+          1.3,
+          8,
+          1.7
+        ]
+      },
+      "metadata": {
+        "atlas:semantics-version": 1,
+        "atlas:group": "railway",
+        "atlas:category": "atlas_mainline_overview",
         "atlas:views": [],
         "atlas:settings": [],
         "atlas:initial-hidden": false,

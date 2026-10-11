@@ -61,6 +61,18 @@ export function createRailwayLayers() {
     paint:{'line-color':'#728783','line-width':['interpolate',['linear'],['zoom'],4,1,6,1.2,7,1.5],
       'line-opacity':0.8,'line-dasharray':[2,2]},
   });
+  // Atlas OSM geometry is independent of every live thematic provider.
+  // Hold its z6 tiles through the z7 detail handoff; detail paints above it.
+  // Neutral styles encode only directly mapped usage, never speed/power/etc.
+  for(const [kind,color,dash,minzoom] of [['branch','#93999c',null,3],
+    ['unknown','#93999c',[2,1],undefined],['main','#70777b',null,undefined]]) groups.backbone.push({
+    id:`rail-reference-${kind}`,type:'line',source:'railReference',
+    'source-layer':'atlas_mainline_overview',...(minzoom===undefined?{}:{minzoom}),maxzoom:8,
+    filter:['==',['get','classification'],kind],
+    layout:{'line-cap':'round','line-join':'round','line-sort-key':['-',3,['get','rank']]},
+    paint:{'line-color':color,'line-width':['interpolate',['linear'],['zoom'],0,1,6,1.3,8,1.7],
+      ...(dash?{'line-dasharray':dash}:{})},
+  });
   // Branch lines at zooms 4–7 are split the same way (the overview width).
   const branchHalfWidth = ['interpolate', ['linear'], ['zoom'], 4, ['case', isDual, 0.575, 1.15], 7, ['case', isDual, 0.9, 1.8]];
   const branchDualOffset = sign => ['interpolate', ['linear'], ['zoom'], 4, ['case', isDual, 0.2875 * sign, 0], 7, ['case', isDual, 0.45 * sign, 0]];

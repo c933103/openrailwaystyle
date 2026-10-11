@@ -34,13 +34,13 @@ export function mainlineChains(features){
     next=choices?.length===2?choices.find(f=>remaining.has(f)):null;enter=exit;
    }
    const key='chain-'+sha256(JSON.stringify(members.map(m=>[m.id,m.version]).sort(([a],[b])=>a.localeCompare(b))));
-   const id=parseInt(key.slice(6,19),16);
+   const id=parseInt(key.slice(6,19),16),reference='chain-'+key.slice(6,19);
    if(ids.has(id))throw Error('Reference chain numeric ID collision');ids.add(id);
    const p=first.properties;
-   chains.push({type:'Feature',id,properties:{id:key,feature:p.feature,
+   chains.push({type:'Feature',id,properties:{id:reference,feature:p.feature,
     classification:p.classification,highspeed_tag:p.highspeed_tag,rank:p.rank,osm_way_count:members.length},
     geometry:members.length===1?first.geometry:{type:'LineString',coordinates:points}});
-   membership.push({id:key,ways:members});
+   membership.push({id:reference,contentSha256:key.slice(6),ways:members});
   }
  }
  return {features:chains,membership};

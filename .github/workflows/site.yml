@@ -10,6 +10,25 @@ concurrency:
   group: pages-${{ github.head_ref && format('refs/heads/{0}', github.head_ref) || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
+  reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require the complete independent worldwide mainline source
+        env:
+          REFERENCE_BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref == 'feat/world-mainline-overview-source-20261011' && 'mainline-preview-186' || 'mainline-data' }}
+        run: |
+          set -eu
+          for attempt in $(seq 1 175); do
+            status=0
+            git ls-remote --exit-code --heads origin "$REFERENCE_BRANCH" >/dev/null || status=$?
+            if [ "$status" = 0 ]; then exit 0; fi
+            if [ "$status" != 2 ]; then exit "$status"; fi
+            sleep 60
+          done
+          echo 'No complete worldwide mainline reference has been published.'
+          exit 1
   facilities:
     runs-on: ubuntu-latest
     timeout-minutes: 120
@@ -53,7 +72,7 @@ jobs:
   # deploy job. On main it also decides whether this exact code and data
   # already passed the browser checks in its pull request.
   validate:
-    needs: facilities
+    needs: [facilities, reference]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -111,6 +130,15 @@ jobs:
           python scripts/unpack-snapshot.py /tmp/lifecycle.pmtiles
           node scripts/build-overview-tiles.mjs
           cat lifecycle-data/lifecycle.geojson.gz.part-* > styles/data/lifecycle.geojson.gz
+      - name: Load and verify the complete independently acquired railway reference
+        env:
+          REFERENCE_BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref == 'feat/world-mainline-overview-source-20261011' && 'mainline-preview-186' || 'mainline-data' }}
+        run: |
+          set -eu
+          git fetch --depth=1 origin "$REFERENCE_BRANCH"
+          mkdir -p styles/data/mainline-reference
+          git archive FETCH_HEAD | tar -x -C styles/data/mainline-reference
+          node scripts/verify-mainline-snapshot.mjs styles/data/mainline-reference
       # Rare Han glyph slices (styles/rare-han.mjs): Jigmo's Plane 2 and 3
       # fonts in 256-character WOFF2 files, about 20 MB. The build script pins
       # the release and its SHA-256, so its own hash keys the cache.
@@ -287,7 +315,7 @@ jobs:
       - name: Install test browser
         run: npx playwright install --with-deps chromium
       - name: Install WebKit for Safari installation and timetable checks
-        if: contains(matrix.checks, 'check-pwa-install-browser.mjs') || contains(matrix.checks, 'check-departures-browser.mjs') || contains(matrix.checks, 'check-timetable-frequency-browser.mjs')
+        if: contains(matrix.checks, 'check-pwa-install-browser.mjs') || contains(matrix.checks, 'check-departures-browser.mjs') || contains(matrix.checks, 'check-timetable-frequency-browser.mjs') || contains(matrix.checks, 'check-mainline-reference-browser.mjs')
         run: npx playwright install --with-deps webkit
       - name: Start test server
         run: node scripts/serve.mjs &
@@ -399,6 +427,12 @@ jobs:
           node-version: '22'
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
+      - name: Install Safari engine for deployed reference verification
+        run: npx playwright install --with-deps webkit
+      - name: Verify deployed independent OSM geometry with live overview unavailable
+        env:
+          MAP_BASE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: node scripts/check-mainline-reference-browser.mjs --published
       # Exercise the deployed app's renderer against synthetic railway tiles;
       # do not make automated calls to the public OpenRailwayMap tile provider.
       - name: Verify published map with local railway fixture

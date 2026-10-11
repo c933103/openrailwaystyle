@@ -10,7 +10,7 @@ on:
     - cron: '19 3 3 * *'
   push:
     branches: [main, feat/world-mainline-overview-source-20261011]
-    paths: ['.github/workflows/mainline-reference.yml', 'scripts/acquire-mainline-extract.py']
+    paths: ['.github/workflows/mainline-reference.yml', 'scripts/acquire-mainline-extract.py', 'scripts/build-mainline-snapshot.mjs', 'scripts/mainline-overview.mjs', 'scripts/mainline-chains.mjs', 'scripts/mainline-coverage.mjs', 'scripts/verify-mainline-snapshot.mjs']
 permissions:
   contents: read
 concurrency:
@@ -86,6 +86,24 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=6144
         run: node scripts/build-mainline-snapshot.mjs mainline-input mainline-output
+      - name: Verify the exact generation and renderer before publication
+        run: |
+          node scripts/verify-mainline-snapshot.mjs mainline-output
+          npm run build
+          mkdir -p styles/data/mainline-reference
+          cp -r mainline-output/. styles/data/mainline-reference/
+          npx playwright install --with-deps chromium webkit
+          node scripts/serve.mjs &
+          node scripts/check-mainline-reference-browser.mjs --published
+      - name: Save source and browser acceptance diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mainline-reference-diagnostics
+          path: |
+            browser-review
+            mainline-output/manifest.json
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         with:
           name: mainline-reference-${{ needs.plan.outputs.date }}

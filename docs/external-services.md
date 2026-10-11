@@ -1,5 +1,10 @@
 # External provider conditions: OpenRailwayMap (issue #138)
 
+The independent OSM reference pipeline for #181 uses dated Geofabrik PBF
+exports and local Osmium filtering. Its acquisition policy, bounds,
+attribution, failure states and exact-source acceptance are documented in
+[mainline-reference.md](mainline-reference.md). It never fetches ORM tiles.
+
 Reviewed on 2026-10-07. This is an audit of the published terms for the
 **public OpenRailwayMap service hosted at `openrailwaymap.app`**, not a legal
 interpretation of every third-party data source used by Railway Atlas.

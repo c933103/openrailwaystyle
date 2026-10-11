@@ -47,8 +47,10 @@ export function segmentInBox(a,b,[w,s,e,n]){
  return true;
 }
 export function featureInBox(f,box){
+ if(f.bbox&&(f.bbox[2]<box[0]||f.bbox[0]>box[2]||f.bbox[3]<box[1]||f.bbox[1]>box[3]))return false;
  const lines=f.geometry.type==='LineString'?[f.geometry.coordinates]:f.geometry.coordinates;
- return lines.some(points=>points.slice(1).some((b,i)=>segmentInBox(points[i],b,box)));
+ for(const points of lines)for(let i=1;i<points.length;i++)if(segmentInBox(points[i-1],points[i],box))return true;
+ return false;
 }
 export function auditMainlineCoverage(features){
  return MAINLINE_CONTROLS.map(c=>{
