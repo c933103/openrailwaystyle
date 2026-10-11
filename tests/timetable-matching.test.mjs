@@ -278,6 +278,8 @@ test('resealed observation timezones require supported case-sensitive IANA names
 function changeOtherAgency(input, agency) {
   const pattern = input.evidence.patterns[1], previous = pattern.id;
   pattern.agency_id = agency;
+  pattern.source_route_id = `route-${agency}`;
+  pattern.compiled_route_id = pattern.source_route_id;
   const {id, ...definition} = pattern;
   pattern.id = hash([input.evidence.source.feed_id, input.evidence.source.sha256, definition]);
   for (const row of input.evidence.observations) if (row.pattern_id === previous) row.pattern_id = pattern.id;
@@ -317,6 +319,141 @@ test('source validity retains the collector maximum and historical zero floor', 
   const ordinary = addOtherSourcePattern(fixture()); ordinary.evidence.observations[0].valid_until--;
   sealObservations(ordinary);
   assert.equal(status(ordinary), 'verified', 'the maximum may belong to a different pattern');
+});
+
+
+function resealPattern(input, index) {
+  const pattern = input.evidence.patterns[index], previous = pattern.id;
+  const {id, ...definition} = pattern;
+  pattern.id = hash([input.evidence.source.feed_id, input.evidence.source.sha256, definition]);
+  if (input.pattern_id === previous) input.pattern_id = pattern.id;
+  for (const row of input.evidence.observations) if (row.pattern_id === previous) row.pattern_id = pattern.id;
+  return sealObservations(input);
+}
+
+test('one source route retains stable agency reference and compiled identity', () => {
+  for (const field of ['agency_id', 'route_ref', 'compiled_route_id']) for (const selected of [true, false]) for (const reverse of [false, true]) {
+    const input = addOtherSourcePattern(fixture()), index = selected ? 0 : 1;
+    input.evidence.patterns[index][field] = field === 'agency_id' ? 'B' : 'Q';
+    resealPattern(input, index);
+    // Supply an otherwise successful operator/ref path for the altered selected
+    // route; an unselected genuine route declaration must still block it.
+    const target = input.evidence.patterns[0];
+    input.candidates[0].route_bindings = [];
+    input.candidates[0].operator_binding = {feed_id: 'feed', source_sha256: sha, agency_id: target.agency_id, status: 'verified'};
+    input.candidates[0].osm = captureOsmServiceEvidence(relation({tags: {route: 'train', ref: target.route_ref}}), snapshot);
+    if (reverse) input.evidence.patterns.reverse();
+    const before = structuredClone(input), output = matchTimetablePattern(input);
+    assert.deepEqual(output.reasons, ['inconsistent_source_route'], `${field}/${selected}/${reverse}`);
+    assert.deepEqual(input, before);
+  }
+});
+
+test('one source stop retains one station parent within loops and across patterns', () => {
+  for (const placement of ['loop', 'other']) for (const reverse of [false, true]) {
+    const input = fixture();
+    if (placement === 'other') addOtherSourcePattern(input);
+    input.evidence.patterns[0].calls[0] = {stop_id: 'a', station_id: 'p', pickup_type: '0', drop_off_type: '0'};
+    if (placement === 'loop') input.evidence.patterns[0].calls[1] = {stop_id: 'a', station_id: 'q', pickup_type: '0', drop_off_type: '0'};
+    else input.evidence.patterns[1].calls[0].station_id = 'q';
+    for (let i = 0; i < input.evidence.patterns.length; i++) resealPattern(input, i);
+    input.crosswalk[0].station_id = 'p';
+    if (placement === 'loop') input.crosswalk[1].station_id = 'q';
+    if (reverse) input.evidence.patterns.reverse();
+    const before = structuredClone(input), output = matchTimetablePattern(input);
+    assert.deepEqual(output.reasons, ['inconsistent_stop_parent'], `${placement}/${reverse}`);
+    assert.deepEqual(input, before);
+  }
+});
+
+test('a captured station parent remains a root when also called as a stop', () => {
+  for (const cycle of [false, true]) {
+    const input = fixture();
+    Object.assign(input.evidence.patterns[0].calls[0], {stop_id: 'a', station_id: 'b'});
+    Object.assign(input.evidence.patterns[0].calls[1], {stop_id: 'b', station_id: cycle ? 'a' : 'c'});
+    resealPattern(input, 0);
+    input.crosswalk[0].station_id = 'b'; input.crosswalk[1].station_id = cycle ? 'a' : 'c';
+    assert.deepEqual(matchTimetablePattern(input).reasons, ['nested_station_parent']);
+  }
+});
+
+test('canonical route identities cannot mix agencies or form alias chains', () => {
+  for (const kind of ['agency', 'chain', 'cycle']) {
+    const input = addOtherSourcePattern(fixture()), other = input.evidence.patterns[1];
+    other.source_route_id = 'other';
+    if (kind === 'agency') other.agency_id = 'B';
+    else {
+      input.evidence.patterns[0].compiled_route_id = 'other';
+      other.compiled_route_id = kind === 'chain' ? 'third' : 'R';
+      resealPattern(input, 0);
+    }
+    resealPattern(input, 1);
+    assert.deepEqual(matchTimetablePattern(input).reasons, [kind === 'agency' ? 'inconsistent_compiled_agency' : 'noncanonical_route_alias'], kind);
+  }
+});
+
+test('legitimate platform loops root calls and canonical aliases remain distinct', () => {
+  const input = fixture(), pattern = input.evidence.patterns[0];
+  pattern.calls = [
+    {stop_id: 'a', station_id: 'p', pickup_type: '0', drop_off_type: '1'},
+    {stop_id: 'p', station_id: 'p', pickup_type: '1', drop_off_type: '0'},
+    {stop_id: 'a', station_id: 'p', pickup_type: '0', drop_off_type: '0'},
+    {stop_id: 'b', station_id: 'b', pickup_type: '0', drop_off_type: '0'},
+  ];
+  input.evidence.observations[0].departures = [0, 0, 600, 1200]; resealPattern(input, 0);
+  input.candidates[0].osm = captureOsmServiceEvidence(relation({members: [{type: 'node', ref: 1, role: 'stop'}, {type: 'node', ref: 1, role: 'stop'}, {type: 'node', ref: 1, role: 'stop'}, {type: 'node', ref: 2, role: 'stop'}, {type: 'way', ref: 100, role: ''}]}), snapshot);
+  input.candidates[0].variants[0].stations = ['node:1', 'node:1', 'node:1', 'node:2'];
+  input.crosswalk[0].station_id = 'p';
+  addOtherSourcePattern(input);
+  input.evidence.patterns[1].source_route_id = 'other';
+  input.evidence.patterns[1].route_ref = ' R ';
+  input.evidence.patterns[1].direction_id = '1';
+  input.evidence.patterns[1].shape_id = 'branch';
+  resealPattern(input, 1);
+  const before = structuredClone(input);
+  assert.equal(status(input), 'verified', 'source aliases can retain different raw refs, directions and shapes');
+  assert.deepEqual(input, before, 'repeated served stations are not deduplicated');
+  input.evidence.patterns.reverse(); input.evidence.observations.reverse();
+  assert.equal(status(input), 'verified');
+});
+
+
+test('actual collector canonical aliases preserve platform loops and root station calls', () => {
+  const run = spawnSync('python3', ['-c', `
+import sys,json,zipfile
+sys.path.insert(0,'tests')
+import gtfs_frequency_test as f
+case=f.GTFSFrequency()
+try:
+    patterns={'loop':[('A','08:00:00'),('B','08:10:00'),('A','08:20:00')], 'root':[('P','09:00:00'),('B','09:10:00')]}
+    path=case.feed(patterns,patterns)
+    with zipfile.ZipFile(path) as z: files={name:z.read(name) for name in z.namelist()}
+    files['routes.txt']=b'route_id,route_type,agency_id,route_short_name\\na,1,A, R \\nb,1,A,R\\n'
+    files['trips.txt']=b'trip_id,route_id,service_id,direction_id\\nloop,a,W,0\\nroot,b,W,1\\n'
+    files['stops.txt']=b'stop_id,stop_name,stop_lat,stop_lon,parent_station\\nA,Platform,60,24,P\\nB,Station B,60.01,24,\\nP,Root station,60,24,\\n'
+    with zipfile.ZipFile(path,'w') as z:
+        for name,data in files.items(): z.writestr(name,data)
+    print(json.dumps(f.compiler.compile_feed(path,{**f.CONFIG,'canonical_routes':True},'2026-10-05',matching_evidence=True)['matching_evidence']))
+finally: case.doCleanups()
+`], {encoding: 'utf8'});
+  assert.equal(run.status, 0, run.stderr);
+  const evidence = JSON.parse(run.stdout);
+  assert.equal(evidence.status, 'captured');
+  assert.deepEqual(new Set(evidence.patterns.map(p => p.compiled_route_id)), new Set(['a']));
+  assert.deepEqual(new Set(evidence.patterns.map(p => p.source_route_id)), new Set(['a', 'b']));
+  assert.deepEqual(new Set(evidence.patterns.map(p => p.route_ref)), new Set([' R ', 'R']));
+  const input = fixture(), selected = evidence.patterns.find(p => p.source_route_id === 'a');
+  const bound = {feed_id: evidence.source.feed_id, source_sha256: evidence.source.sha256, status: 'verified'};
+  input.evidence = evidence; input.pattern_id = selected.id;
+  Object.assign(input.context, {feed_id: bound.feed_id, source_sha256: bound.source_sha256});
+  input.candidates[0].route_bindings = [{...bound, route_id: 'a'}];
+  input.candidates[0].osm = captureOsmServiceEvidence(relation({members: [{type: 'node', ref: 1, role: 'stop'}, {type: 'way', ref: 100, role: ''}, {type: 'node', ref: 2, role: 'stop'}, {type: 'node', ref: 1, role: 'stop'}]}), snapshot);
+  input.candidates[0].variants[0].stations = ['node:1', 'node:2', 'node:1'];
+  input.crosswalk = ['P', 'B'].map((station_id, i) => ({...bound, station_id, osm_station_id: `node:${i + 1}`, osm_snapshot: snapshot}));
+  const before = structuredClone(input);
+  assert.equal(status(input), 'verified'); assert.deepEqual(input, before);
+  input.evidence.patterns.reverse(); input.evidence.observations.reverse();
+  assert.equal(status(input), 'verified');
 });
 
 test('committed matcher benchmark is bound to the current measured sources', () => {

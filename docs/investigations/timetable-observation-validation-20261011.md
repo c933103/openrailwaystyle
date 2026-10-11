@@ -1,6 +1,7 @@
-# Bounded observation/source contract comparison, 2026-10-11
+# Bounded source/observation/identity comparison, 2026-10-11
 
-Scope: the source and observation records emitted by `gtfs-frequency.py` and
+Scope: source and observation records plus cross-pattern identities emitted by
+`gtfs-frequency.py` and
 `timetable_evidence.py`, compared with the offline matcher in PR #168. This is
 not a provider audit, live acquisition, production activation or proof that a
 resealed record came from the claimed ZIP. Existing source pins and separately
@@ -49,6 +50,40 @@ service, future service and removal-only calendars. The original dense-array,
 work-limit, hash-integrity and 17 prior-finding regressions remain in the suite.
 The source-work adversary now uses valid zones and enough bounded observations
 to exercise the same byte limit rather than an invalid filler timezone.
+
+## Cross-pattern identity extension
+
+The next review identified stable route metadata and stop-parent identity gaps.
+The comparison was extended only to their related captured keys:
+
+| Record/key | Collector contract | Verifier coverage |
+| --- | --- | --- |
+| Pattern `id` | Complete pattern definition hashed with feed/revision. | Bounded exact shape, unique digest and recomputation before cross-record use. |
+| `source_route_id` | One uniquely keyed original route supplies agency and raw reference; one alias mapping supplies compiled ID. | Every repeated source route must retain the same agency, nullable raw reference and compiled ID. An unselected genuine declaration blocks a conflicting selected fallback. |
+| `compiled_route_id` | Canonical groups share agency and terminate at one representative route; without consolidation it equals the source ID. | All source aliases using a compiled ID agree on agency. If that representative also has a captured source pattern, its mapping must terminate at itself; alias chains and cycles are rejected. A representative with no captured trips is not spuriously required to have a pattern. |
+| `agency_id` | Original route agency, with the existing single-agency fallback. | Bounded per-pattern identity, stable source/compiled route agency and one exact timezone string across all agency observations. |
+| `route_ref` | Original nullable short-name string, not the canonical route's display name. | Exact nullable bounded field and stability within one source route. Different canonical aliases can preserve whitespace differences or different raw refs; no normalization or cross-alias ref equality is imposed. |
+| `direction_id`, `shape_id` | Trip-specific direction/shape, even for one route. | Existing enums/nullable strings and hashes; different patterns may legitimately retain different values. No cross-pattern equality is imposed. |
+| Calls `stop_id -> station_id` | One uniquely keyed stop supplies its parent, or itself when it has no parent. | Every occurrence retains the same parent across calls/patterns, including unselected ones and loops. Several platforms may share a parent. |
+| Station parent roots | Retaining a stop also retains its parent; a parent with another parent makes capture incomplete. | If a station ID also occurs as a called stop, it must map to itself. Nested chains and cycles are rejected, without requiring every station to be called directly. |
+| Call `pickup_type`, `drop_off_type` | Per-occurrence access, not stop-global metadata. | Existing exact enums, hashes and selected-service semantics. Calls at the same stop may have different access modes. |
+| Trip and calendar keys | Distinct trip hashes; one calendar ID supplies one active-date list. | Existing trip uniqueness, pattern observation coverage, source-scoped hashes and same-service date consistency remain intact. Different trip extents can still produce different validity/state. |
+
+Separate pre-fix cases reproduced false verification for conflicting source
+route metadata, conflicting parents within a loop, nested station parents and
+cross-agency canonical aliases. A separate run of the prior matcher also
+confirmed false verification for canonical alias chains and cycles. Regressions
+also cover repeated source routes
+in either pattern order, altered selected/unselected definitions, canonical
+alias chains/cycles, shared station parents, differing per-call access, repeated
+served stops and legitimate alias metadata. An actual Python compiler fixture
+merges two connected source routes with raw refs ` R ` and `R`, preserves their
+original IDs, and verifies a repeated-platform loop plus a root-station call.
+
+The comparison deliberately does not reconstruct canonicalization's omitted
+route mode/colour, route-long-name fallback or disconnected-component history.
+Those fields are not retained in this sidecar. It also does not validate unused
+retained-stop metadata as a new source of station matching authority.
 
 ## Explicit limits and intentional differences
 

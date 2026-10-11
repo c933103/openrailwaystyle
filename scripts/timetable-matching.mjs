@@ -221,12 +221,33 @@ function matchPattern(input) {
   // them. The single source budget covers every canonicalization/hash input.
   const sourceWork = workBudget('source_work_limit'), patterns = new Map(), observationIds = new Set(), observedPatterns = new Set(), selectedObservations = [];
   const agencyTimezones = new Map(), serviceDates = new Map();
+  const sourceRoutes = new Map(), compiledAgencies = new Map(), stopParents = new Map(), stationRoots = new Set();
   let maximumValidity = 0;
   for (const pattern of evidence.patterns) {
     if (!patternSchema(pattern)) return result('missing_evidence', 'invalid_pattern');
     const {id: ignored, ...definition} = pattern;
     if (patterns.has(pattern.id) || hashText(sourceWork.encode([source.feed_id, source.sha256, definition])) !== pattern.id) return result('conflicting', 'pattern_fingerprint_mismatch');
+    const routeMetadata = [pattern.agency_id, pattern.route_ref, pattern.compiled_route_id];
+    if (sourceRoutes.has(pattern.source_route_id) && !same(sourceRoutes.get(pattern.source_route_id), routeMetadata)) return result('missing_evidence', 'inconsistent_source_route');
+    if (compiledAgencies.has(pattern.compiled_route_id) && compiledAgencies.get(pattern.compiled_route_id) !== pattern.agency_id) return result('missing_evidence', 'inconsistent_compiled_agency');
+    sourceRoutes.set(pattern.source_route_id, routeMetadata);
+    compiledAgencies.set(pattern.compiled_route_id, pattern.agency_id);
+    for (const call of pattern.calls) {
+      if (stopParents.has(call.stop_id) && stopParents.get(call.stop_id) !== call.station_id) return result('missing_evidence', 'inconsistent_stop_parent');
+      stopParents.set(call.stop_id, call.station_id);
+      stationRoots.add(call.station_id);
+    }
     patterns.set(pattern.id, pattern);
+  }
+  // Canonical aliases terminate at a root route when that source route has
+  // captured trips. A route with no trips need not appear as a source pattern.
+  for (const [, , compiled] of sourceRoutes.values()) {
+    if (sourceRoutes.has(compiled) && sourceRoutes.get(compiled)[2] !== compiled) return result('missing_evidence', 'noncanonical_route_alias');
+  }
+  // A retained parent may also be called directly, but it cannot itself have
+  // another parent. Repeated platform/station calls remain in their own order.
+  for (const station of stationRoots) {
+    if (stopParents.has(station) && stopParents.get(station) !== station) return result('missing_evidence', 'nested_station_parent');
   }
   for (const observation of evidence.observations) {
     if (!observationSchema(observation, patterns, source.service_date)) return result('missing_evidence', 'invalid_observation_schema');

@@ -286,6 +286,15 @@ These bounded cross-record checks run before selection and keep array order
 independent. The [field-by-field comparison](investigations/timetable-observation-validation-20261011.md)
 records the exact scope, regressions and limits of this review.
 
+Repeated source-route IDs must preserve agency, raw reference and compiled-route
+identity across all patterns. Compiled aliases agree on agency and terminate
+at their representative when it is present as a source pattern. Repeated stop
+IDs preserve one station parent; a parent that is itself called must remain a
+root, preventing nested chains and cycles. These checks retain repeated calls,
+shared parents, loops and per-call access differences. Canonical aliases can
+retain different raw references, directions and shapes; an actual collector
+fixture covers their combined loop/root-station behavior.
+
 ### Outcomes
 
 - `verified`: exactly one reviewed service/section/direction variant satisfies
@@ -367,14 +376,14 @@ bounded; they do not justify enabling it across the production registry yet.
 The same report records fresh, serial Node 24.19.0 matcher processes over a
 controlled 10,000-observation, 2-pattern, 5,825,261-byte sidecar produced from the
 240,000-stop-row/28-profile fixture. Across three repetitions, the valid identity
-case took a median 177.037 ms; an unbound alternative was withheld in 182.021 ms.
-Median peak process RSS was 82,744 and 82,116 KiB respectively. These elapsed
+case took a median 181.481 ms; an unbound alternative was withheld in 219.493 ms.
+Median peak process RSS was 82,904 and 82,968 KiB respectively. These elapsed
 times cover matching after parsing/preparation; RSS includes startup, parsing
 and fixture preparation and is not a matcher-only allocation measurement.
 
 The source-work adversary and candidate-reference adversary returned explicit
-work-limit outcomes in median 60.993 and 184.935 ms, with median peak process RSS
-87,884 and 101,420 KiB. The source adversary fails during all-pattern validation
+work-limit outcomes in median 60.676 and 224.212 ms, with median peak process RSS
+87,992 and 101,944 KiB. The source adversary fails during all-pattern validation
 before reaching the ordinary observation scan, so its lower elapsed time is not
 a speed improvement. The script publishes only aggregate measurements and
 source hashes, never the temporary synthetic sidecar or ZIP. Compiler and
@@ -383,7 +392,8 @@ worldwide resource savings.
 
 These matcher measurements bind the exact source hashes recorded in the report,
 including served-role, active-date, captured-member, observation-validity,
-timezone and source-consistency validation. The prior Node 22.23.3 measurements
+timezone, source-consistency and cross-pattern identity validation. The prior
+Node 22.23.3 measurements
 are retained under
 `historical_matcher_measurements`; they are not current-source performance
 evidence. Runtime/environment differences prevent a controlled speed or memory
