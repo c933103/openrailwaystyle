@@ -1,0 +1,145 @@
+{
+  "observedAt": "2026-10-11T01:10:58Z",
+  "source": "569957c3e23b0d28f6fe35316a815c646edd9cfd",
+  "tree": "475b514b01bb7acea579a16c8b2525440a66f6b1",
+  "main": "caf03eb96f7cb32859c4e522179fbd8abac4f989",
+  "testedMerge": {
+    "sha": "4cea42189ae819bd542f8b86c5494ba8188fe003",
+    "tree": "475b514b01bb7acea579a16c8b2525440a66f6b1",
+    "parents": [
+      "caf03eb96f7cb32859c4e522179fbd8abac4f989",
+      "569957c3e23b0d28f6fe35316a815c646edd9cfd"
+    ]
+  },
+  "codeReview": {
+    "comment": 6104016103,
+    "url": "https://github.com/c933103/openrailwaystyle/pull/173#issuecomment-6104016103",
+    "reviewedCommit": "569957c3e2",
+    "result": "Didn't find any major issues."
+  },
+  "ci": {
+    "run": 38100263380,
+    "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38100263380",
+    "head": "569957c3e23b0d28f6fe35316a815c646edd9cfd",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 114354578065,
+        "name": "facilities",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114354578130,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114354595638,
+        "name": "validate",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114355401375,
+        "name": "browser (infrastructure)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114355401385,
+        "name": "browser (controls)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114355401393,
+        "name": "browser (platforms)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114355401416,
+        "name": "browser (rail-fixture)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114355401434,
+        "name": "browser (frequency)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114355401452,
+        "name": "browser (context)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114356491729,
+        "name": "browser-checks",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114356508240,
+        "name": "record",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114356509089,
+        "name": "deploy",
+        "status": "completed",
+        "conclusion": "skipped"
+      }
+    ]
+  },
+  "nativeHostedSummary": [
+    "2026-10-11T01:00:54.0760485Z # tests 1044",
+    "2026-10-11T01:00:54.0760660Z # pass 1044",
+    "2026-10-11T01:00:54.0760745Z # fail 0",
+    "2026-10-11T01:00:54.0761119Z # duration_ms 95646.22959",
+    "2026-10-11T01:00:54.2797153Z # fail 0"
+  ],
+  "reviewThreads": [
+    {
+      "id": "PRRT_kwDOUj3h3c6rAUlX",
+      "resolved": true
+    },
+    {
+      "id": "PRRT_kwDOUj3h3c6rAUlb",
+      "resolved": true
+    },
+    {
+      "id": "PRRT_kwDOUj3h3c6rAUlc",
+      "resolved": true
+    },
+    {
+      "id": "PRRT_kwDOUj3h3c6rIlgS",
+      "resolved": true
+    },
+    {
+      "id": "PRRT_kwDOUj3h3c6rIqH6",
+      "resolved": true
+    },
+    {
+      "id": "PRRT_kwDOUj3h3c6rIqH8",
+      "resolved": true
+    },
+    {
+      "id": "PRRT_kwDOUj3h3c6rIvBx",
+      "resolved": true
+    }
+  ],
+  "limits": [
+    "Code and normal CI gates satisfied; parent retains final merge/deployment authority.",
+    "PR deployment skipped. Actual deployed assets have not been verified for this head.",
+    "Five name candidates means logical z8 tiles, not a hard five-wire-request cap; existing language fallbacks still apply.",
+    "Branch-protection read returned integration403; repository rulesets returned an empty list. No security-specific job exists in the checked-in workflow.",
+    "Curated/regional overview is not complete worldwide station-point coverage; issue175 stays open."
+  ]
+}
