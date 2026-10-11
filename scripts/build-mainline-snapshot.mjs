@@ -9,6 +9,7 @@ import {join,dirname,resolve} from 'node:path';
 import {performance} from 'node:perf_hooks';
 import {normalizeMainlineWay,mainlineTiles,MAINLINE_LAYER} from './mainline-overview.mjs';
 import {mainlineChains} from './mainline-chains.mjs';
+import {referenceInputDigest} from './mainline-provenance.mjs';
 import {sha256,validateMainlineSources,auditMainlineCoverage,MAINLINE_REGIONS,featureInBox} from './mainline-coverage.mjs';
 const [input,output]=process.argv.slice(2);
 if(!input||!output||resolve(input)===resolve(output))throw Error('Expected separate input/output directories');
@@ -84,7 +85,7 @@ const archives={membership:await archive('membership',chained.membership),ways:a
 if(archives.membership.bytes+archives.ways.bytes>512*1024**2)throw Error('Combined reference source archives exceed publication size budget');
 await writeFile(join(target,'coverage-audit.json'),JSON.stringify(audit,null,2)+'\n');
 const classes={};for(const f of features)classes[f.properties.classification]=(classes[f.properties.classification]||0)+1;
-const manifest={...result.manifest,complete:true,generation,coverage:'all eight Geofabrik continent extracts; complete OSM ways',
+const manifest={...result.manifest,complete:true,generation,inputSha256:await referenceInputDigest(),coverage:'all eight Geofabrik continent extracts; complete OSM ways',
  sourceDate:sources[0].date,oldestSource:new Date(Math.min(...sources.map(s=>Date.parse(s.sourceTimestamp)))).toISOString(),
  newestSource:new Date(Math.max(...sources.map(s=>Date.parse(s.sourceTimestamp)))).toISOString(),
  generated:new Date().toISOString(),sources,wayCount:features.length,chainCount:chained.features.length,classifications:classes,
@@ -93,7 +94,7 @@ const manifest={...result.manifest,complete:true,generation,coverage:'all eight 
  largestTileBytes:Math.max(...tileDetails.map(t=>t.bytes)),buildSeconds:(performance.now()-start)/1000,
  peakRssBytes:process.resourceUsage().maxRSS*1024,archives,
  indexSha256:sha256(await readFile(join(target,'index.json'))),
- acquisitionRequests:sources.length*3,providerTileRequests:0,
+ fullAcquisitionRequests:sources.length*4,providerTileRequests:0,
  coverageByZoom:result.manifest.drawnFeaturesByZoom};
 await writeFile(join(output,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 console.log('MAINLINE_REFERENCE',JSON.stringify(manifest));

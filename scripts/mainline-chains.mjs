@@ -20,11 +20,15 @@ export function mainlineChains(features){
   const starts=rows.filter(f=>!linked(f)||[end(f,0),end(f,1)].some(n=>nodes.get(n)?.length!==2));
   for(const first of [...starts,...rows]){
    if(!remaining.has(first))continue;
-   const members=[],points=[];
+   const members=[],points=[],bbox=[180,90,-180,-90];
    let next=first,enter=linked(first)&&nodes.get(end(first,0))?.length===2&&
       nodes.get(end(first,1))?.length!==2?end(first,1):end(first,0);
    while(next&&remaining.has(next)){
     remaining.delete(next);members.push({id:next.properties.id,version:next.properties.osm_version});
+    const b=next.bbox;
+    if(!b)throw Error('Missing normalized OSM bounding box');
+    bbox[0]=Math.min(bbox[0],b[0]);bbox[1]=Math.min(bbox[1],b[1]);
+    bbox[2]=Math.max(bbox[2],b[2]);bbox[3]=Math.max(bbox[3],b[3]);
     if(!linked(next)){points.push(...(next.geometry.type==='LineString'?next.geometry.coordinates:[]));break}
     const reverse=end(next,1)===enter,coords=reverse?[...next.geometry.coordinates].reverse():next.geometry.coordinates;
     if(points.length&&JSON.stringify(points.at(-1))!==JSON.stringify(coords[0]))
@@ -37,7 +41,7 @@ export function mainlineChains(features){
    const id=parseInt(key.slice(6,19),16),reference='chain-'+key.slice(6,19);
    if(ids.has(id))throw Error('Reference chain numeric ID collision');ids.add(id);
    const p=first.properties;
-   chains.push({type:'Feature',id,properties:{id:reference,feature:p.feature,
+   chains.push({type:'Feature',id,bbox,properties:{id:reference,feature:p.feature,
     classification:p.classification,highspeed_tag:p.highspeed_tag,rank:p.rank,osm_way_count:members.length},
     geometry:members.length===1?first.geometry:{type:'LineString',coordinates:points}});
    membership.push({id:reference,contentSha256:key.slice(6),ways:members});

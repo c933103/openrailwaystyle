@@ -35,21 +35,30 @@ consistent source timestamps, complete geometry, indexed tile digests, actual
 OSM acceptance controls and passing renderer checks. Partial downloads never
 replace the previous live generation. The draft PR stages only
 `mainline-preview-186`; reviewed main uses `mainline-data`. Site assembly
-requires and verifies the complete generation before deployment.
+requires and verifies the complete generation before deployment. A SHA-256
+fingerprint binds the published result to acquisition, compiler and renderer
+acceptance inputs. Site readiness waits for that fingerprint and pins the
+verified data commit, so an older branch cannot satisfy a changed build.
 
 The runtime pins the generation named in its manifest. Only an absent tile in
 the verified complete index is empty. A manifest/index error, timeout, HTTP
 failure, changed digest, oversized tile or decompression failure remains an
 error. The independent layer cannot clear an OpenRailwayMap outage state.
+Publication retains the preceding generation's immutable render URLs for
+one additional refresh; older source archives remain in their Git commits.
+Sites omit archival source parts and serve only runtime assets and audits.
 
 ## Bounded acquisition and measurements
 
 Each source is downloaded once per dated checkpoint, with two concurrent
 continent jobs maximum. A PBF is limited to 48 GiB, a generation to 144 GiB of
-PBF downloads, an exported continent to 4 GiB uncompressed, and the complete
+PBF downloads, checked with eight HEAD requests before downloading any body.
+Each continent is constrained to its planned byte count, including cached
+exports. An exported continent is limited to 4 GiB uncompressed, and the complete
 tile set to 256 MiB compressed. Each tile is limited to 8 MiB decoded / 2 MiB
 compressed. Source archives are split into approximately 40 MiB blobs; combined
-source archives and tiles must remain below the Pages publication budget.
+source archives are limited to 512 MiB; two-generation publication is limited
+to 1 GiB. Only current and previous render tiles are copied into the site.
 Completed filtered exports are cached across retries; raw continental PBFs
 are deleted after filtering. A monthly scheduled refresh avoids a daily
 world download. A missing dated export fails explicitly instead of silently

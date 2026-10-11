@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
+import {readFile,mkdtemp,mkdir,writeFile,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
@@ -9,6 +11,8 @@ import {mainlineRegion,mainlineTiles,MAINLINE_LAYER} from '../scripts/mainline-o
 import {sha256,MAINLINE_REGIONS,validateMainlineSources,segmentInBox,auditMainlineCoverage} from '../scripts/mainline-coverage.mjs';
 import {referenceTileKey,createReferenceReader,decompressReference} from '../styles/mainline-reference.mjs';
 import {layerVisibility} from '../styles/layer-semantics.mjs';
+import {referenceInputDigest,matchingReferenceInputs} from '../scripts/mainline-provenance.mjs';
+import {retainMainlineGeneration} from '../scripts/retain-mainline-generation.mjs';
 const way=(id,a,b,nodes,tags={railway:'rail',usage:'main'})=>({type:'way',id,version:2,nodes,tags,
  geometry:[a,b].map(([lon,lat])=>({lon,lat}))});
 const source=r=>mainlineRegion({elements:r});
@@ -29,6 +33,7 @@ test('joins use actual OSM topology and preserve every way/version, including re
  const rows=source([way(1,[0,0],[1,0],[10,11]),way(2,[2,0],[1,0],[12,11]),way(3,[2,0],[3,0],[12,13])]);
  const result=mainlineChains(rows);assert.equal(result.features.length,1);
  assert.deepEqual(result.features[0].geometry.coordinates,[[0,0],[1,0],[2,0],[3,0]]);
+ assert.deepEqual(result.features[0].bbox,[0,0,3,0]);
  assert.deepEqual(result.membership[0].ways.map(w=>[w.id,w.version]),[['way-1',2],['way-2',2],['way-3',2]]);
  assert.deepEqual(mainlineChains([...rows].reverse()),result,'input order cannot change published IDs');
  const cycles=mainlineChains(source([way(1,[0,0],[1,0],[10,11]),way(2,[1,0],[0,0],[11,10])]));
@@ -39,6 +44,24 @@ test('joins use actual OSM topology and preserve every way/version, including re
  assert.equal(fork.features.length,3,'do not guess a route through a junction');
  const different=mainlineChains(source([way(1,[0,0],[1,0],[10,11]),way(2,[1,0],[2,0],[11,12],{railway:'rail'})]));
  assert.equal(different.features.length,2,'unknown usage stays distinct from mapped mainline');
+});
+test('deployment rejects stale build inputs and refresh retains the previous immutable tile URL',async()=>{
+ const digest=await referenceInputDigest();assert.match(digest,/^[a-f0-9]{64}$/);
+ assert.equal(matchingReferenceInputs({complete:true,inputSha256:digest},digest),true);
+ assert.equal(matchingReferenceInputs({complete:true,inputSha256:'b'.repeat(64)},digest),false);
+ assert.equal(matchingReferenceInputs({complete:false,inputSha256:digest},digest),false);
+ const dir=await mkdtemp(join(tmpdir(),'mainline-refresh-'));
+ try{
+  const previous=join(dir,'previous'),current=join(dir,'current'),generation='a'.repeat(24);
+  const old=join(previous,'generations',generation,'0','0');await mkdir(old,{recursive:true});await mkdir(current);
+  await writeFile(join(previous,'manifest.json'),JSON.stringify({complete:true,generation}));
+  await writeFile(join(current,'manifest.json'),JSON.stringify({complete:true,generation:'b'.repeat(24)}));
+  await writeFile(join(old,'0.pbf.gz'),'immutable tile bytes');
+  await writeFile(join(previous,'generations',generation,'ways.ndjson.gz.part-0000'),'archive');
+  await retainMainlineGeneration(previous,current);
+  assert.equal(await readFile(join(current,'generations',generation,'0','0','0.pbf.gz'),'utf8'),'immutable tile bytes');
+  await assert.rejects(readFile(join(current,'generations',generation,'ways.ndjson.gz.part-0000')),/ENOENT/);
+ }finally{await rm(dir,{recursive:true,force:true})}
 });
 test('real Tokyo light rail is not falsely promoted into the mainline reference',async()=>{
  const raw=JSON.parse(await readFile('tests/fixtures/service-geometry/overpass-meta-way-4853887.json'));

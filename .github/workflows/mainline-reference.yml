@@ -10,7 +10,7 @@ on:
     - cron: '19 3 3 * *'
   push:
     branches: [main, feat/world-mainline-overview-source-20261011]
-    paths: ['.github/workflows/mainline-reference.yml', 'scripts/acquire-mainline-extract.py', 'scripts/build-mainline-snapshot.mjs', 'scripts/mainline-overview.mjs', 'scripts/mainline-chains.mjs', 'scripts/mainline-coverage.mjs', 'scripts/verify-mainline-snapshot.mjs']
+    paths: ['.github/workflows/mainline-reference.yml', 'scripts/*mainline*', 'scripts/browser.mjs', 'scripts/browser-renderer-fixture.mjs', 'styles/mainline-reference.mjs', 'styles/world.style.json', 'package.json', 'package-lock.json']
 permissions:
   contents: read
 concurrency:
@@ -21,7 +21,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       date: ${{ steps.plan.outputs.date }}
+      sizes: ${{ steps.budget.outputs.sizes }}
     steps:
+      - uses: actions/checkout@v4
       - id: plan
         env:
           REQUESTED: ${{ inputs.source_date }}
@@ -33,6 +35,9 @@ jobs:
           d.date.fromisoformat(date)
           with open(os.environ['GITHUB_OUTPUT'],'a') as f: f.write('date='+date+'\n')
           PY
+      - name: Check the full worldwide download budget before acquiring any PBF
+        id: budget
+        run: python scripts/plan-mainline-acquisition.py '${{ steps.plan.outputs.date }}'
   extract:
     needs: plan
     runs-on: ubuntu-latest
@@ -58,7 +63,28 @@ jobs:
           sudo apt-get install -y osmium-tool
       - name: Download one dated extract, verify checksum and export complete ways
         if: steps.cache.outputs.cache-hit != 'true'
-        run: python scripts/acquire-mainline-extract.py '${{ matrix.region }}' '${{ needs.plan.outputs.date }}' extract-output
+        env:
+          PLANNED_BYTES: ${{ fromJSON(needs.plan.outputs.sizes)[matrix.region] }}
+          SOURCE_REGION: ${{ matrix.region }}
+          SOURCE_DATE: ${{ needs.plan.outputs.date }}
+        run: |
+          python - <<'PY'
+          import importlib.util, os
+          from pathlib import Path
+          spec=importlib.util.spec_from_file_location('acquire','scripts/acquire-mainline-extract.py')
+          acquire=importlib.util.module_from_spec(spec);spec.loader.exec_module(acquire)
+          acquire.MAX_PBF_BYTES=min(acquire.MAX_PBF_BYTES,int(os.environ['PLANNED_BYTES']))
+          acquire.acquire(os.environ['SOURCE_REGION'],os.environ['SOURCE_DATE'],Path('extract-output'))
+          PY
+      - name: Require the planned byte bound for new and cached exports
+        env:
+          PLANNED_BYTES: ${{ fromJSON(needs.plan.outputs.sizes)[matrix.region] }}
+        run: |
+          python - <<'PY'
+          import json, os
+          source=json.load(open('extract-output/source.json'))
+          if source['pbfBytes']>int(os.environ['PLANNED_BYTES']): raise ValueError('Source grew beyond the worldwide cost plan')
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: mainline-source-${{ matrix.region }}
@@ -124,6 +150,16 @@ jobs:
           git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          status=0
+          git ls-remote --exit-code --heads origin "$PUBLISH_BRANCH" >/dev/null || status=$?
+          if [ "$status" = 0 ]; then
+            git fetch --depth=1 origin "$PUBLISH_BRANCH"
+            mkdir /tmp/mainline-previous
+            git archive FETCH_HEAD | tar -x -C /tmp/mainline-previous
+            node "$GITHUB_WORKSPACE/scripts/retain-mainline-generation.mjs" /tmp/mainline-previous "$GITHUB_WORKSPACE/mainline-output"
+          elif [ "$status" != 2 ]; then
+            exit "$status"
+          fi
           git checkout --orphan "$PUBLISH_BRANCH"
           cp -r "$GITHUB_WORKSPACE/mainline-output/." .
           git add .
