@@ -1,0 +1,571 @@
+diff --git a/docs/user-guide.md b/docs/user-guide.md
+index 78236e6..3a0ad9f 100644
+--- a/docs/user-guide.md
++++ b/docs/user-guide.md
+@@ -20,6 +20,14 @@ platforms conflict, the platform attached to the later predicted departure is
+ used, with a consistent choice for equal times. This also cannot establish which
+ platform update is newest. Ambiguous matches between different boards remain separate.
+ 
++If a selected stop’s departure board fails while another loads, usable departures
++remain visible with an incomplete-load warning. The same warning appears when the
++successful boards return no upcoming rail departures; this is not a complete empty
++result. Reopening or redrawing a station within the existing one-minute cache keeps
++that status. After the cache expires, opening the board again checks the selected
++stops afresh. This status describes those requests only, not worldwide timetable
++coverage or the map’s separately matched frequency profiles.
++
+ Bare numeric departure labels are omitted from the line-name badge unless the
+ source also supplies a nonempty, nonnumeric long route name. Surrounding whitespace
+ and decimal digits in other scripts follow the same rule. Meaningful text and
+diff --git a/scripts/check-departures-browser.mjs b/scripts/check-departures-browser.mjs
+index 87e2c05..b077b2d 100644
+--- a/scripts/check-departures-browser.mjs
++++ b/scripts/check-departures-browser.mjs
+@@ -55,15 +55,16 @@ try {
+       await page.waitForSelector('body[data-map-ready="true"]',{timeout:60000});
+       // Supply one mapped station to the actual production click handler.
+       // All station-detail and departure rendering remains production code.
+-      await page.evaluate(async()=>{
++      const openStation = async (name = 'Suehirocho') => page.evaluate(async name=>{
+         const {map}=await import(document.querySelector('script[type="module"]').src);
+         const original=map.queryRenderedFeatures;
+         map.queryRenderedFeatures=()=>[{source:'stationMajor',kind:'station',layer:{id:'station-major'},
+-          properties:{name:'Suehirocho',station:'subway',station_size:'small'},
++          properties:{name,station:'subway',station_size:'small'},
+           geometry:{type:'Point',coordinates:[139.77,35.7]}}];
+         try{map.fire('click',{point:{x:500,y:500},lngLat:{lng:139.77,lat:35.7}});}
+         finally{map.queryRenderedFeatures=original;}
+-      });
++      }, name);
++      await openStation();
+       await page.locator('.departure-trip').first().waitFor();
+       assert.equal(await page.locator('.departure-trip').count(),3);
+       assert.equal(requests.filter(p=>p.endsWith('/trip')).length,0,'board does not prefetch complete schedules');
+@@ -102,6 +103,103 @@ try {
+       assert.deepEqual(errors,[]);
+       await page.screenshot({path:`browser-review/departures-${engine}.png`});
+       console.log(`${engine}: station board, mouse selection, full trip, keyboard, cache, retry, and missing identity passed; ${requests.length} fixture requests.`);
++      // Partial board failures must survive the production cache and renderer.
++      // All responses below are synthetic; the loopback transport guard remains.
++      const boardRequests = [];
++      let boardName, boardOrder = ['a', 'b'], boardTimes = [], boardFailed = ['b'];
++      await context.route('https://api.transitous.org/api/v1/**', route => {
++        const url = new URL(route.request().url()); boardRequests.push(url.pathname);
++        if (url.pathname.endsWith('/reverse-geocode')) return route.fulfill({json: boardOrder.map(id =>
++          ({type:'STOP', name:boardName, id, lat:35.7, lon:139.77, modes:['SUBWAY']}))});
++        assert.equal(url.pathname, '/api/v1/stoptimes', 'board never prefetches schedules or retries');
++        assert.equal(url.searchParams.get('n'), '30');
++        return boardFailed.includes(url.searchParams.get('stopId'))
++          ? route.fulfill({status:503, json:{error:'synthetic private provider response'}})
++          : route.fulfill({json:{stopTimes:boardTimes}});
++      });
++      await page.evaluate(() => {
++        window.__departureFixtureNow = Date.now();
++        Date.now = () => window.__departureFixtureNow;
++      });
++      const waitBoard = () => page.waitForFunction(() =>
++        document.querySelector('.departures') && !document.querySelector('.departures').textContent.includes('Loading departures…'));
++      const row = {mode:'SUBWAY', displayName:'G', headsign:'Fixture terminus', tripId:'fixture-partial',
++        realTime:false, place:stop('Central','a')};
++      for (const order of [['a','b'], ['b','a']]) for (const withRows of [false, true]) {
++        boardName = `Partial ${order.join('')} ${withRows ? 'rows' : 'empty'}`;
++        boardOrder = order; boardTimes = withRows ? [row] : []; boardFailed = ['b'];
++        const before = boardRequests.length;
++        await openStation(boardName); await waitBoard();
++        assert.equal(boardRequests.length - before, 3);
++        assert.equal(await page.locator('.departure-warning').textContent(), 'Some departures could not load. The board may be incomplete.');
++        assert.equal(await page.locator('.departure-list > li').count(), Number(withRows));
++        assert.doesNotMatch(await page.locator('.departures').textContent(), /No rail departures|No published timetable|synthetic private/);
++        assert.equal(await page.locator('.departures button').count(), 0, 'no board retry button');
++        if (order[0] === 'a') await page.screenshot({path:`browser-review/departures-partial-${withRows ? 'rows' : 'empty'}-${engine}.png`});
++        await page.locator('#details-close').click();
++        boardFailed = [];
++        await openStation(boardName); await waitBoard();
++        assert.equal(await page.locator('.departure-warning').count(), 1, 'reopening keeps cached partial status');
++        assert.equal(boardRequests.length - before, 3, 'reopening does not add provider requests');
++        await page.locator('#language').selectOption(withRows ? 'ja' : 'en');
++        await waitBoard();
++        assert.equal(await page.locator('.departure-warning').count(), 1, 'settings redraw retains the warning');
++        assert.equal(boardRequests.length - before, 3);
++        await page.evaluate(() => {window.__departureFixtureNow += 60_001;});
++        assert.equal(boardRequests.length - before, 3, 'expiry alone never triggers an automatic retry');
++        await openStation(boardName); await waitBoard();
++        assert.equal(boardRequests.length - before, 6);
++        assert.equal(await page.locator('.departure-warning').count(), 0, 'normal expiry and opening establishes recovery');
++        assert.equal(await page.locator('.departure-list > li').count(), Number(withRows));
++        if (!withRows) assert.match(await page.locator('.departures').textContent(), /No rail departures in the published timetable soon/);
++      }
++      boardName = 'All boards unavailable'; boardFailed = ['a','b']; boardTimes = [];
++      const beforeFailed = boardRequests.length;
++      await openStation(boardName); await waitBoard();
++      assert.match(await page.locator('.departures').textContent(), /Departures could not load. Try again later./);
++      assert.equal(boardRequests.length - beforeFailed, 3);
++      boardFailed = [];
++      await openStation(boardName); await waitBoard();
++      assert.equal(boardRequests.length - beforeFailed, 6, 'all-failed result is evicted for a normal reopening');
++      assert.match(await page.locator('.departures').textContent(), /No rail departures in the published timetable soon/);
++      boardName = 'No matching timetable'; boardOrder = [];
++      await openStation(boardName); await waitBoard();
++      assert.match(await page.locator('.departures').textContent(), /No published timetable covers this station/);
++      assert.deepEqual(errors, []);
++      console.log(`${engine}: partial-empty and partial-rows in both source orders, close/reopen, settings redraw, bounded cached requests, expiry recovery, all-failed eviction and unmatched passed; ${boardRequests.length} intercepted board fixture requests.`);
++      for (const withRows of [false, true]) {
++        let release, requested;
++        const held = new Promise(resolve => {release = resolve;});
++        const started = new Promise(resolve => {requested = resolve;});
++        const closeRequests = [], name = `Close pending partial ${withRows ? 'rows' : 'empty'}`;
++        await context.route('https://api.transitous.org/api/v1/**', async route => {
++          const url = new URL(route.request().url()); closeRequests.push(url.pathname);
++          if (url.pathname.endsWith('/reverse-geocode')) return route.fulfill({json:['a','b'].map(id =>
++            ({type:'STOP', name, id, lat:35.7, lon:139.77, modes:['SUBWAY']}))});
++          assert.equal(url.pathname, '/api/v1/stoptimes');
++          if (url.searchParams.get('stopId') === 'b') {
++            requested(); await held;
++            return route.fulfill({status:503, json:{error:'synthetic private provider response'}});
++          }
++          return route.fulfill({json:{stopTimes:withRows ? [row] : []}});
++        });
++        await openStation(name); await started;
++        assert.match(await page.locator('.departures').textContent(), /Loading departures/);
++        await page.locator('#details-close').click();
++        assert.equal(await page.locator('#details').isHidden(), true);
++        release(); await waitBoard();
++        assert.equal(await page.locator('#details').isHidden(), true, 'late partial results cannot reopen the closed panel');
++        assert.equal(await page.locator('.departure-warning').textContent(), 'Some departures could not load. The board may be incomplete.');
++        assert.equal(closeRequests.length, 3);
++        await openStation(name); await waitBoard();
++        assert.equal(await page.locator('#details').isVisible(), true);
++        assert.equal(await page.locator('.departure-warning').count(), 1);
++        assert.equal(await page.locator('.departure-list > li').count(), Number(withRows));
++        assert.doesNotMatch(await page.locator('.departures').textContent(), /No rail departures|No published timetable|synthetic private/);
++        assert.equal(closeRequests.length, 3, 'reopening after a pending Close retains the cached partial result');
++      }
++      assert.deepEqual(errors, []);
++      console.log(`${engine}: Close during pending partial-empty and partial-rows, late settlement remaining hidden, and cached reopening passed; 6 intercepted fixture requests.`);
+       await context.close();
+     } finally {await browser.close();}
+   }
+diff --git a/styles/app.mjs b/styles/app.mjs
+index 5ab9a37..3f7a6cb 100644
+--- a/styles/app.mjs
++++ b/styles/app.mjs
+@@ -1,24 +1,24 @@
+-import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261011-power-legend-1';
+-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261011-power-legend-1';
+-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261011-power-legend-1';
+-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261011-power-legend-1';
+-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261011-power-legend-1';
+-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261011-power-legend-1';
++import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261011-departure-availability-1';
++import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261011-departure-availability-1';
++import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261011-departure-availability-1';
++import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261011-departure-availability-1';
++import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261011-departure-availability-1';
++import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261011-departure-availability-1';
+ 
+-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261011-power-legend-1';
+-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261011-power-legend-1';
+-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261011-power-legend-1';
+-import {departureItem} from './departures-ui.mjs?v=20261011-power-legend-1';
+-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261011-power-legend-1';
+-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261011-power-legend-1';
+-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261011-power-legend-1';
+-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261011-power-legend-1';
+-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261011-power-legend-1';
+-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261011-power-legend-1';
+-import { installWatchGesture } from './watch-map.mjs?v=20261011-power-legend-1';
+-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261011-power-legend-1';
+-import { createBundleReader } from './tile-bundles.mjs?v=20261011-power-legend-1';
+-import { createReferenceReader } from './mainline-reference.mjs?v=20261011-power-legend-1';
++import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261011-departure-availability-1';
++import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261011-departure-availability-1';
++import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261011-departure-availability-1';
++import {departureItem} from './departures-ui.mjs?v=20261011-departure-availability-1';
++import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261011-departure-availability-1';
++import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261011-departure-availability-1';
++import { installKeyboardPan } from './keyboard-pan.mjs?v=20261011-departure-availability-1';
++import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261011-departure-availability-1';
++import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261011-departure-availability-1';
++import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261011-departure-availability-1';
++import { installWatchGesture } from './watch-map.mjs?v=20261011-departure-availability-1';
++import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261011-departure-availability-1';
++import { createBundleReader } from './tile-bundles.mjs?v=20261011-departure-availability-1';
++import { createReferenceReader } from './mainline-reference.mjs?v=20261011-departure-availability-1';
+ 
+ const $ = id => document.getElementById(id);
+ // The controls work as soon as this small module runs; the map libraries and
+@@ -55,7 +55,7 @@ let platformLengths,frequencyExpiry;
+ let powerFacilities;
+ let railRecovery, wakeRailRecovery = () => {};
+ let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
+-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261011-power-legend-1';
++const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261011-departure-availability-1';
+ // An old active worker can save this new page before its replacement has
+ // installed. If that update is interrupted, only old first-party/CDN copies
+ // may be available offline. Read exact saved responses without contacting the
+@@ -892,11 +892,13 @@ function showDepartures(panel, feature) {
+     departureBoards.set(key, board);
+     board.promise.catch(() => departureBoards.delete(key));
+   }
+-  board.promise.then(({stops, rows}) => {
++  board.promise.then(({stops, rows, stopResults}) => {
+     if (!section.isConnected) return;
+     section.replaceChildren(textNode('h3', 'Departures'));
+-    if (!rows.length) section.append(textNode('p', stops.length ? 'No rail departures in the published timetable soon.' : 'No published timetable covers this station.', 'small'));
+-    else {
++    const partial = stopResults.some(result => result.status === 'rejected');
++    if (partial) section.append(textNode('p', 'Some departures could not load. The board may be incomplete.', 'small departure-warning'));
++    if (!rows.length && !partial) section.append(textNode('p', stops.length ? 'No rail departures in the published timetable soon.' : 'No published timetable covers this station.', 'small'));
++    if (rows.length) {
+       const live = rows.filter(r => r.live).length;
+       section.append(textNode('p', live ? `Live times for ${live} of ${rows.length} departures; the rest are timetabled.` : 'Timetabled times: no live data for these departures.', 'small'));
+       if (settings.serviceWidth === 'frequency') section.append(textNode('p', 'These departure timetables are available independently of the map’s matched frequency profiles.', 'small'));
+diff --git a/styles/cjk-font.mjs b/styles/cjk-font.mjs
+index e728fe6..9b87c25 100644
+--- a/styles/cjk-font.mjs
++++ b/styles/cjk-font.mjs
+@@ -1,4 +1,4 @@
+-import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261011-power-legend-1';
++import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261011-departure-availability-1';
+ // Which local font draws Han labels. Names mix scripts (a Simplified name in
+ // the Traditional view, Hong Kong or Macao characters, Japanese kanji, rare
+ // extension characters), and a font missing some of them makes the browser
+diff --git a/styles/departures-ui.mjs b/styles/departures-ui.mjs
+index b71ee40..45e405e 100644
+--- a/styles/departures-ui.mjs
++++ b/styles/departures-ui.mjs
+@@ -1,4 +1,4 @@
+-import {clock, trainSchedule} from './departures.mjs?v=20261011-power-legend-1';
++import {clock, trainSchedule} from './departures.mjs?v=20261011-departure-availability-1';
+ 
+ const node = (document, tag, text = '', className = '') => {
+   const element = document.createElement(tag);
+diff --git a/styles/departures.mjs b/styles/departures.mjs
+index 092b3e9..1e914c5 100644
+--- a/styles/departures.mjs
++++ b/styles/departures.mjs
+@@ -211,16 +211,18 @@ export function plannerLink(direction, place, name) {
+   return url.href;
+ }
+ 
+-// Fetch the board for a station: {stops, rows} (rows empty when no
+-// timetable covers it).
++// Fetch the selected stop boards for a station. Keep only safe per-stop
++// outcomes: fulfilled means that request loaded, not complete area coverage.
++// Empty rows alone do not establish that all selected boards loaded.
+ export async function stationDepartures(station, {signal, fetch: get = fetch} = {}) {
+   const json = async url => { const r = await get(url, {signal}); if (!r.ok) throw new Error(`Transitous returned ${r.status}`); return r.json(); };
+   const candidates = await json(`${TRANSITOUS_API}/reverse-geocode?place=${station.lat},${station.lon}&type=STOP`);
+   const stops = pickStops(Array.isArray(candidates) ? candidates : [], station);
+-  if (!stops.length) return {stops, rows: []};
++  if (!stops.length) return {stops, rows: [], stopResults: []};
+   // Each stop's board on its own: one feed failing keeps the other's.
+   const results = await Promise.allSettled(stops.map(s => json(`${TRANSITOUS_API}/stoptimes?stopId=${encodeURIComponent(s.id)}&n=30&mode=${[...RAIL_MODES].join(',')}`).then(d => d.stopTimes || [])));
+   const lists = results.filter(r => r.status === 'fulfilled').map(r => r.value);
+   if (!lists.length) throw results[0].reason;
+-  return {stops, rows: departureRows(lists)};
++  const stopResults = results.map((result, i) => ({stopId: stops[i].id, status: result.status}));
++  return {stops, rows: departureRows(lists), stopResults};
+ }
+diff --git a/styles/elevation.mjs b/styles/elevation.mjs
+index 28bc2c3..09d9bde 100644
+--- a/styles/elevation.mjs
++++ b/styles/elevation.mjs
+@@ -4,7 +4,7 @@
+ // (about 9.5 m a pixel at the equator) are finer than most of the source data.
+ // Their bad pixels are repaired as for the map (dem-repair.mjs), the finer
+ // zoom included.
+-import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261011-power-legend-1';
++import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261011-departure-availability-1';
+ export const ELEVATION_ZOOM = 14;
+ const TILE = 256, CACHE = 64;
+ 
+diff --git a/styles/index.html b/styles/index.html
+index 7e4f363..e4707c8 100644
+--- a/styles/index.html
++++ b/styles/index.html
+@@ -31,7 +31,7 @@
+   <meta name="apple-mobile-web-app-capable" content="yes">
+   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
+   <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
+-  <link href="app.css?v=20261011-power-legend-1" rel="stylesheet">
++  <link href="app.css?v=20261011-departure-availability-1" rel="stylesheet">
+ </head>
+ <body>
+   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
+@@ -219,6 +219,6 @@
+     }, true);
+   </script>
+   <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
+-  <script type="module" src="app.mjs?v=20261011-power-legend-1"></script>
++  <script type="module" src="app.mjs?v=20261011-departure-availability-1"></script>
+ </body>
+ </html>
+diff --git a/styles/layer-semantics.mjs b/styles/layer-semantics.mjs
+index 6e59ce8..44dfe0a 100644
+--- a/styles/layer-semantics.mjs
++++ b/styles/layer-semantics.mjs
+@@ -1,4 +1,4 @@
+-import { MODES } from './map-model.mjs?v=20261011-power-legend-1';
++import { MODES } from './map-model.mjs?v=20261011-departure-availability-1';
+ 
+ const VERSION = 1;
+ const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
+diff --git a/styles/map-model.mjs b/styles/map-model.mjs
+index 627e4d1..29b948f 100644
+--- a/styles/map-model.mjs
++++ b/styles/map-model.mjs
+@@ -1,6 +1,6 @@
+-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261011-power-legend-1';
++export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261011-departure-availability-1';
+ 
+-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261011-power-legend-1';
++export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261011-departure-availability-1';
+ // The provider normalizes maxspeed to km/h; speed_label retains source units
+ // and both directional values. Never infer a limit from railway class.
+ export const SPEED_BANDS = [
+diff --git a/tests/departure-availability.test.mjs b/tests/departure-availability.test.mjs
+new file mode 100644
+index 0000000..8f1fc46
+--- /dev/null
++++ b/tests/departure-availability.test.mjs
+@@ -0,0 +1,182 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {readFile} from 'node:fs/promises';
++import vm from 'node:vm';
++import {JSDOM} from 'jsdom';
++import {stationDepartures, departureRows, plannerLink, TRANSITOUS_SOURCES} from '../styles/departures.mjs';
++import {departureItem} from '../styles/departures-ui.mjs';
++
++const station = {lat: 0, lon: 0, names: ['Central']};
++const stop = id => ({type: 'STOP', id, name: 'Central', lat: 0, lon: 0, modes: ['REGIONAL_RAIL']});
++const observation = {mode: 'REGIONAL_RAIL', displayName: 'R7', headsign: 'Harbour',
++  tripId: 'fixture-trip', routeId: 'fixture-route',
++  place: {stopId: 'a', departure: '2099-01-01T12:00:00Z', scheduledDeparture: '2099-01-01T12:00:00Z', tz: 'UTC'}};
++const failure = new Error('synthetic private error text must not appear in result or UI');
++function fixture({order = ['a', 'b'], failed = [], times = [], failureKind = 'network'} = {}) {
++  const calls = [], before = structuredClone(times);
++  return {calls, before, fetch: async (url, options) => {
++    calls.push({url: new URL(url), options});
++    if (url.includes('/reverse-geocode')) return {ok: true, json: async () => order.map(stop)};
++    const id = new URL(url).searchParams.get('stopId');
++    if (failed.includes(id)) {
++      if (failureKind === 'http') return {ok: false, status: 503};
++      if (failureKind === 'json') return {ok: true, json: async () => {throw failure;}};
++      if (failureKind === 'abort') throw new DOMException('Synthetic abort', 'AbortError');
++      throw failure;
++    }
++    return {ok: true, json: async () => ({stopTimes: times})};
++  }};
++}
++const statuses = board => Object.fromEntries(board.stopResults.map(r => [r.stopId, r.status]));
++
++for (const order of [['a', 'b'], ['b', 'a']]) for (const times of [[], [observation]]) {
++  test(`partial ${times.length ? 'rows' : 'empty'} preserves safe per-stop outcomes in ${order} order`, async () => {
++    for (const failureKind of ['network', 'http', 'json', 'abort']) {
++      const feed = fixture({order, times, failed: ['b'], failureKind}), signal = new AbortController().signal;
++      const board = await stationDepartures(station, {fetch: feed.fetch, signal});
++      assert.deepEqual(board.stops, order.map(stop));
++      assert.deepEqual(statuses(board), {a: 'fulfilled', b: 'rejected'});
++      assert.deepEqual(board.stopResults.map(r => Object.keys(r)), [['stopId', 'status'], ['stopId', 'status']]);
++      assert.deepEqual(board.rows, departureRows([times]));
++      assert.deepEqual(times, feed.before, 'source observations stay unchanged');
++      assert.equal(JSON.stringify(board).includes(failure.message), false);
++      assert.equal(feed.calls.length, 3, 'one lookup and the existing two stop requests, with no retry');
++      assert.ok(feed.calls.every(call => call.options.signal === signal));
++      assert.ok(feed.calls.slice(1).every(call => call.url.searchParams.get('n') === '30'));
++    }
++  });
++}
++
++test('complete empty and populated results retain both successful stop outcomes', async () => {
++  for (const times of [[], [observation]]) {
++    const feed = fixture({times});
++    const board = await stationDepartures(station, {fetch: feed.fetch});
++    assert.deepEqual(statuses(board), {a: 'fulfilled', b: 'fulfilled'});
++    assert.deepEqual(board.rows, departureRows([times, times]), 'existing identity reconciliation is unchanged');
++  }
++});
++
++test('no matching stops, selected-stop limit, and all-failed behavior remain bounded', async () => {
++  const none = fixture({order: []});
++  assert.deepEqual(await stationDepartures(station, {fetch: none.fetch}), {stops: [], rows: [], stopResults: []});
++  assert.equal(none.calls.length, 1);
++  const many = fixture({order: ['a', 'b', 'c']});
++  assert.equal((await stationDepartures(station, {fetch: many.fetch})).stopResults.length, 2);
++  assert.equal(many.calls.length, 3);
++  for (const order of [['a', 'b'], ['b', 'a']]) {
++    const failed = fixture({order, failed: order});
++    await assert.rejects(stationDepartures(station, {fetch: failed.fetch}), error => error === failure);
++    assert.equal(failed.calls.length, 3);
++  }
++});
++
++// Execute the production renderer and cache against a real DOM, with only its
++// external dependencies injected. The actual stationDepartures parser is used.
++const app = await readFile(new URL('../styles/app.mjs', import.meta.url), 'utf8');
++const renderer = app.slice(app.indexOf('const departureBoards = new Map();'), app.indexOf('// Level-crossing equipment'));
++function boardDom(feed) {
++  const dom = new JSDOM('<div id="panel"></div>'), document = dom.window.document;
++  let now = 1000;
++  const context = vm.createContext({document, AbortSignal, departureItem, plannerLink, TRANSITOUS_SOURCES,
++    Date: {now: () => now}, settings: {language: 'en'}, displayName: p => p.name,
++    stationDepartures: (station, options) => stationDepartures(station, {...options, fetch: (...args) => feed.current.fetch(...args)}),
++    textNode: (tag, text, className = '') => {
++      const node = document.createElement(tag); node.textContent = text; node.className = className; return node;
++    }});
++  const {showDepartures, departureBoards} = vm.runInContext(`${renderer}\n({showDepartures, departureBoards})`, context);
++  const panel = document.querySelector('#panel');
++  return {dom, panel, departureBoards, advance: ms => {now += ms;},
++    show: (name = 'Central') => {
++      panel.replaceChildren();
++      showDepartures(panel, {properties: {name}, geometry: {coordinates: [0, 0]}});
++    },
++    settle: async () => {
++      await Promise.allSettled([...departureBoards.values()].map(board => board.promise));
++      await new Promise(resolve => setImmediate(resolve));
++    }};
++}
++const partialMessage = 'Some departures could not load. The board may be incomplete.';
++for (const times of [[], [observation]]) test(`DOM preserves cached partial ${times.length ? 'rows' : 'empty'} and normal expiry establishes recovery`, async () => {
++  const feed = {current: fixture({failed: ['b'], times})}, view = boardDom(feed);
++  try {
++    view.show(); await view.settle();
++    assert.equal(view.panel.querySelector('.departure-warning').textContent, partialMessage);
++    assert.equal(view.panel.querySelectorAll('.departure-list > li').length, times.length);
++    assert.doesNotMatch(view.panel.textContent, /No rail departures|No published timetable|synthetic private/);
++    assert.equal(view.panel.querySelectorAll('button').length, 0, 'no board retry button added');
++    const previous = feed.current;
++    feed.current = fixture({times});
++    view.advance(60_000); view.show(); await view.settle();
++    assert.equal(view.panel.querySelector('.departure-warning').textContent, partialMessage);
++    assert.equal(previous.calls.length, 3); assert.equal(feed.current.calls.length, 0);
++    view.advance(1); view.show(); await view.settle();
++    assert.equal(view.panel.querySelector('.departure-warning'), null);
++    assert.equal(view.panel.querySelectorAll('.departure-list > li').length, times.length);
++    if (!times.length) assert.match(view.panel.textContent, /No rail departures in the published timetable soon/);
++    assert.equal(feed.current.calls.length, 3, 'a normal post-expiry opening loads each selected board once');
++    view.show(); await view.settle(); assert.equal(feed.current.calls.length, 3);
++  } finally {view.dom.window.close();}
++});
++
++test('DOM keeps all-failed rejection, eviction, and no-matching-stop messages', async () => {
++  const feed = {current: fixture({failed: ['a', 'b']})}, view = boardDom(feed);
++  try {
++    view.show(); await view.settle();
++    assert.match(view.panel.textContent, /Departures could not load\. Try again later\./);
++    assert.doesNotMatch(view.panel.textContent, /No rail departures|No published timetable|synthetic private/);
++    assert.equal(view.departureBoards.size, 0, 'fully failed requests are evicted as before');
++    feed.current = fixture({order: []});
++    view.show(); await view.settle();
++    assert.match(view.panel.textContent, /No published timetable covers this station/);
++    assert.equal(feed.current.calls.length, 1);
++  } finally {view.dom.window.close();}
++});
++
++test('detached DOM results cannot overwrite a newly opened station section', async () => {
++  const feed = {current: fixture({failed: ['b'], times: [observation]})}, view = boardDom(feed);
++  try {
++    view.show(); const detached = view.panel.firstChild;
++    view.show(); await view.settle();
++    assert.equal(detached.isConnected, false);
++    assert.match(detached.textContent, /Loading departures/);
++    assert.equal(view.panel.querySelector('.departure-warning').textContent, partialMessage);
++    assert.equal(feed.current.calls.length, 3, 'concurrent redraw shares the in-flight result');
++  } finally {view.dom.window.close();}
++});
++
++for (const times of [[], [observation]]) test(`late partial ${times.length ? 'rows' : 'empty'} cannot replace a newer station result`, async () => {
++  let release, started;
++  const held = new Promise(resolve => {release = resolve;});
++  const requested = new Promise(resolve => {started = resolve;});
++  const previous = fixture({failed: ['b'], times});
++  const feed = {current: {fetch: async (...args) => {
++    const url = new URL(args[0]);
++    if (url.pathname.endsWith('/stoptimes') && url.searchParams.get('stopId') === 'b') {
++      started(); await held;
++    }
++    return previous.fetch(...args);
++  }}};
++  const view = boardDom(feed);
++  try {
++    view.show('Previous station'); await requested;
++    const detached = view.panel.firstChild, previousPromise = [...view.departureBoards.values()][0].promise;
++    feed.current = fixture();
++    view.show('Newer station');
++    const currentPromise = [...view.departureBoards.values()][1].promise;
++    await currentPromise; await new Promise(resolve => setImmediate(resolve));
++    const currentSection = view.panel.firstChild, currentText = view.panel.textContent;
++    assert.match(currentText, /No rail departures in the published timetable soon/);
++    assert.equal(detached.isConnected, false);
++    release(); await previousPromise; await view.settle();
++    assert.equal(view.panel.firstChild, currentSection);
++    assert.equal(view.panel.textContent, currentText, 'late status and rows cannot overwrite the newer selection');
++    assert.match(detached.textContent, /Loading departures/);
++    assert.equal(view.panel.querySelector('.departure-warning'), null);
++    assert.equal(previous.calls.length, 3); assert.equal(feed.current.calls.length, 3);
++    view.show('Previous station'); await view.settle();
++    assert.equal(view.panel.querySelector('.departure-warning').textContent, partialMessage);
++    assert.equal(view.panel.querySelectorAll('.departure-list > li').length, times.length);
++    assert.equal(previous.calls.length, 3); assert.equal(feed.current.calls.length, 3,
++      'reopening the old station uses its own cached partial result');
++  } finally {release(); view.dom.window.close();}
++});
+diff --git a/tests/departures.test.mjs b/tests/departures.test.mjs
+index 6249043..b4af4b6 100644
+--- a/tests/departures.test.mjs
++++ b/tests/departures.test.mjs
+@@ -98,7 +98,7 @@ test('journey links and the station board request', async () => {
+   const urls = [];
+   const fetch = async url => { urls.push(url); return {ok:true, json: async () => url.includes('reverse-geocode') ? [stop('Austin','hk-MTR-AUS',22.30447,114.16666,['SUBWAY'])] : {stopTimes: []}}; };
+   const board = await stationDepartures({lat:22.3046, lon:114.1660, names:['Austin']}, {fetch});
+-  assert.deepEqual(board, {stops:[stop('Austin','hk-MTR-AUS',22.30447,114.16666,['SUBWAY'])], rows:[]});
++  assert.deepEqual(board, {stops:[stop('Austin','hk-MTR-AUS',22.30447,114.16666,['SUBWAY'])], rows:[], stopResults:[{stopId:'hk-MTR-AUS', status:'fulfilled'}]});
+   assert.deepEqual(urls, ['https://api.transitous.org/api/v1/reverse-geocode?place=22.3046,114.166&type=STOP', 'https://api.transitous.org/api/v1/stoptimes?stopId=hk-MTR-AUS&n=30&mode=HIGHSPEED_RAIL,LONG_DISTANCE,NIGHT_RAIL,REGIONAL_FAST_RAIL,REGIONAL_RAIL,SUBURBAN,RAIL,METRO,SUBWAY,TRAM,FUNICULAR,CABLE_CAR']);
+ });
+ 
+diff --git a/tests/startup.test.mjs b/tests/startup.test.mjs
+index 36bcefa..4f41fbc 100644
+--- a/tests/startup.test.mjs
++++ b/tests/startup.test.mjs
+@@ -185,7 +185,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels =
+   }, {context});
+   // Departures without the network; a test may supply a delayed local board.
+   const departures = new vm.SyntheticModule(Object.keys(departuresModule), function() {
+-    for (const [key,value] of Object.entries(departuresModule)) this.setExport(key, key === 'stationDepartures' ? departureLoader || (async () => ({stops: [], rows: []})) : value);
++    for (const [key,value] of Object.entries(departuresModule)) this.setExport(key, key === 'stationDepartures' ? departureLoader || (async () => ({stops: [], rows: [], stopResults: []})) : value);
+   }, {context});
+   const globe = new vm.SyntheticModule(['installGlobeDrag','allowPolarCentres','readoutZoom','viewHash','parseViewHash'], function() { this.setExport('installGlobeDrag', () => ({sync() {}, justDragged: () => false, pan: () => false})); this.setExport('allowPolarCentres', () => ({refresh() {}}));this.setExport('readoutZoom',zoom=>zoom);this.setExport('viewHash',globeModule.viewHash);this.setExport('parseViewHash',globeModule.parseViewHash);  }, {context});
+   const keyboard = new vm.SyntheticModule(['installKeyboardPan'], function() { this.setExport('installKeyboardPan', () => {}); }, {context});
+@@ -602,7 +602,7 @@ test('rare Han in infobox body values and later departure text loads only the di
+   map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
+   assert.equal(doc.getElementById('details').hidden,false,'the infobox opens without waiting for a font');
+   assert.equal(panel.querySelector('h2').textContent,'Central');await waitForSlice('2a7');
+-  completeBoard({stops:[{id:'fixture:central'}],rows:[{line:'R',headsign:'Destination \u{2A800}',departure:0,tz:'UTC',mode:'RAIL'}]});
++  completeBoard({stops:[{id:'fixture:central'}],stopResults:[{stopId:'fixture:central',status:'fulfilled'}],rows:[{line:'R',headsign:'Destination \u{2A800}',departure:0,tz:'UTC',mode:'RAIL'}]});
+   await waitForSlice('2a8');
+   const headsign=panel.querySelector('.departure-headsign');assert.equal(headsign.textContent,'Destination \u{2A800}');
+   assert.equal(headsign.firstChild.data,'Destination ');assert.equal(headsign.closest('[lang]')?.lang,'en');
+@@ -936,7 +936,7 @@ async function deferredHubHarness({tier=7,metadata=true,stationProtocol=true}={}
+  const pending=[],departures=[];
+  const state=await start({search:'?language=en#3/40.75/-74',fetcher:async()=>({ok:true,status:200,json:async()=>structuredClone(input)}),
+   stationTile:stationProtocol?(url,language)=>new Promise((resolve,reject)=>pending.push({url,language,resolve,reject})):undefined,
+-  departureLoader:async station=>{departures.push(structuredClone(station));return {stops:[],rows:[]};}});
++  departureLoader:async station=>{departures.push(structuredClone(station));return {stops:[],rows:[],stopResults:[]};}});
+  const map=state.maps[0],getSource=map.getSource.bind(map);
+  const stationSource=metadata?{tiles:['atlasstation://en/https://tiles.test/stations/{z}/{x}/{y}']}:{};
+  map.getSource=id=>id==='stations'?stationSource:getSource(id);
+diff --git a/tests/sw-install.test.mjs b/tests/sw-install.test.mjs
+index b03c44f..0f105f1 100644
+--- a/tests/sw-install.test.mjs
++++ b/tests/sw-install.test.mjs
+@@ -164,7 +164,7 @@ test('a complete replacement keeps the previous version and revised icons availa
+ });
+ 
+ test('the current departure release refreshes cached code while previous tabs retain their version', async () => {
+-  const previousVersion = '20261011-mainline-reference-1';
++  const previousVersion = '20261011-power-legend-1';
+   const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
+   const currentVersion = page.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
+   assert.ok(currentVersion, 'the actual page declares its asset version');

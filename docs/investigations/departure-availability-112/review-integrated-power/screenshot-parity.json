@@ -1,0 +1,26 @@
+[
+  {
+    "device": "desktop",
+    "phase": "active",
+    "sha256": "5fe57704fdd3fb165fc34176dd60bf19af6514a4cba7083e83e9c275bf0c2938",
+    "matchesAcceptedReviewScreenshot": true
+  },
+  {
+    "device": "desktop",
+    "phase": "former",
+    "sha256": "cf8fca3108359bebd7c88daa961fb7d097293eae608fccc39bc7f07a6230cc5f",
+    "matchesAcceptedReviewScreenshot": true
+  },
+  {
+    "device": "mobile",
+    "phase": "active",
+    "sha256": "559b6b77069b116d344fd75743c82af442c63220f227601f0de92d483a8e177e",
+    "matchesAcceptedReviewScreenshot": true
+  },
+  {
+    "device": "mobile",
+    "phase": "former",
+    "sha256": "df082236257bc4c8df7f0112f19101c6af2ffb38af6532994031af51a568717b",
+    "matchesAcceptedReviewScreenshot": true
+  }
+]

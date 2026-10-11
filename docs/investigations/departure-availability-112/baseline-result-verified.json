@@ -1,0 +1,194 @@
+{
+  "sourceCommit": "8c1d2607068f0f3c0cce7e9e721fca1deaa07ee0",
+  "sourceBlob": "092b3e9c580e0bad06c7b15922574df9d7b72e62",
+  "noExternalFetch": true,
+  "observed": {
+    "allEmpty": {
+      "result": {
+        "stops": [
+          {
+            "type": "STOP",
+            "modes": [
+              "REGIONAL_RAIL"
+            ],
+            "lat": 0,
+            "lon": 0,
+            "id": "a",
+            "name": "Central"
+          },
+          {
+            "type": "STOP",
+            "modes": [
+              "REGIONAL_RAIL"
+            ],
+            "lat": 0.001,
+            "lon": 0,
+            "id": "b",
+            "name": "Central"
+          }
+        ],
+        "rows": []
+      },
+      "requestCount": 3
+    },
+    "partialEmpty": {
+      "result": {
+        "stops": [
+          {
+            "type": "STOP",
+            "modes": [
+              "REGIONAL_RAIL"
+            ],
+            "lat": 0,
+            "lon": 0,
+            "id": "a",
+            "name": "Central"
+          },
+          {
+            "type": "STOP",
+            "modes": [
+              "REGIONAL_RAIL"
+            ],
+            "lat": 0.001,
+            "lon": 0,
+            "id": "b",
+            "name": "Central"
+          }
+        ],
+        "rows": []
+      },
+      "requestCount": 3
+    },
+    "partialEmptyReversed": {
+      "result": {
+        "stops": [
+          {
+            "type": "STOP",
+            "modes": [
+              "REGIONAL_RAIL"
+            ],
+            "lat": 0,
+            "lon": 0,
+            "id": "a",
+            "name": "Central"
+          },
+          {
+            "type": "STOP",
+            "modes": [
+              "REGIONAL_RAIL"
+            ],
+            "lat": 0.001,
+            "lon": 0,
+            "id": "b",
+            "name": "Central"
+          }
+        ],
+        "rows": []
+      },
+      "requestCount": 3
+    },
+    "allWithRows": {
+      "result": {
+        "stops": [
+          {
+            "type": "STOP",
+            "modes": [
+              "REGIONAL_RAIL"
+            ],
+            "lat": 0,
+            "lon": 0,
+            "id": "a",
+            "name": "Central"
+          },
+          {
+            "type": "STOP",
+            "modes": [
+              "REGIONAL_RAIL"
+            ],
+            "lat": 0.001,
+            "lon": 0,
+            "id": "b",
+            "name": "Central"
+          }
+        ],
+        "rows": [
+          {
+            "departure": 1791744218837,
+            "scheduled": 1791744218837,
+            "tz": "UTC",
+            "line": "R",
+            "headsign": "Airport",
+            "tripId": "trip",
+            "stopId": "a",
+            "tripScheduled": 1791744218837,
+            "tripEvent": "departure",
+            "color": null,
+            "textColor": null,
+            "track": "",
+            "live": false,
+            "delay": null,
+            "cancelled": false,
+            "mode": "REGIONAL_RAIL"
+          }
+        ]
+      },
+      "requestCount": 3
+    },
+    "partialWithRows": {
+      "result": {
+        "stops": [
+          {
+            "type": "STOP",
+            "modes": [
+              "REGIONAL_RAIL"
+            ],
+            "lat": 0,
+            "lon": 0,
+            "id": "a",
+            "name": "Central"
+          },
+          {
+            "type": "STOP",
+            "modes": [
+              "REGIONAL_RAIL"
+            ],
+            "lat": 0.001,
+            "lon": 0,
+            "id": "b",
+            "name": "Central"
+          }
+        ],
+        "rows": [
+          {
+            "departure": 1791744218837,
+            "scheduled": 1791744218837,
+            "tz": "UTC",
+            "line": "R",
+            "headsign": "Airport",
+            "tripId": "trip",
+            "stopId": "a",
+            "tripScheduled": 1791744218837,
+            "tripEvent": "departure",
+            "color": null,
+            "textColor": null,
+            "track": "",
+            "live": false,
+            "delay": null,
+            "cancelled": false,
+            "mode": "REGIONAL_RAIL"
+          }
+        ]
+      },
+      "requestCount": 3
+    },
+    "allFailed": {
+      "error": "Transitous returned 503",
+      "requestCount": 3
+    }
+  },
+  "indistinguishable": {
+    "partialEmptyFromAllEmpty": true,
+    "partialRowsFromCompleteRows": true
+  },
+  "note": "Assertions characterize existing faulty status loss; they are not fixed-behavior acceptance tests."
+}

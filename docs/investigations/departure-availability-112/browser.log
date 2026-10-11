@@ -1,0 +1,21 @@
+chromium: station board, mouse selection, full trip, keyboard, cache, retry, and missing identity passed; 5 fixture requests.
+chromium: partial-empty and partial-rows in both source orders, close/reopen, settings redraw, bounded cached requests, expiry recovery, all-failed eviction and unmatched passed; 31 intercepted board fixture requests.
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+browserType.launch: Executable doesn't exist at [existing-browser-installation]/webkit-2215/pw_run.sh
+╔═════════════════════════════════════════════════════════════════════════╗
+║ Looks like Playwright Test or Playwright was just installed or updated. ║
+║ Please run the following command to download new browsers:              ║
+║                                                                         ║
+║     npx playwright install                                              ║
+║                                                                         ║
+║ <3 Playwright Team                                                      ║
+╚═════════════════════════════════════════════════════════════════════════╝
+    at launchBrowser ([candidate]/scripts/browser.mjs:35:42)
+    at [candidate]/scripts/check-departures-browser.mjs:13:27 {
+  name: 'Error'
+}
+
+Node.js v24.19.0

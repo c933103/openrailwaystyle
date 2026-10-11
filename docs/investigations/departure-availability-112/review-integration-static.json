@@ -1,0 +1,32 @@
+{
+  "baselineTree": "e370563398815d9eb05d9aceb44f9af848047161",
+  "unchangedAcceptedFilesVerified": 429,
+  "changedFiles": 14,
+  "originalReviewedFilesIdentical": 11,
+  "threeOverlappingFilesOnlyExpectedChanges": true,
+  "assetVersions": {
+    "styles/app.mjs": [
+      "20261011-departure-availability-1"
+    ],
+    "styles/departures-ui.mjs": [
+      "20261011-departure-availability-1"
+    ],
+    "styles/cjk-font.mjs": [
+      "20261011-departure-availability-1"
+    ],
+    "styles/elevation.mjs": [
+      "20261011-departure-availability-1"
+    ],
+    "styles/layer-semantics.mjs": [
+      "20261011-departure-availability-1"
+    ],
+    "styles/map-model.mjs": [
+      "20261011-departure-availability-1"
+    ],
+    "styles/index.html": [
+      "20261011-departure-availability-1"
+    ]
+  },
+  "sourcePatchSha256": "6ce4571f556931296807b0cb4051d78b07bc5c89d5e8bb6ffb3cbad35f678295",
+  "sourceManifestSha256": "43ef19f12aebb4d3fa27457ede90afa2b61d7eced9f68846ba78978cb3739268"
+}
