@@ -95,9 +95,18 @@ export function layerVisibility(layer, settings) {
   const background = semantics['atlas:background'];
   if (background === 'carto') visible = settings.background === 'carto';
   else if (background === 'satellite') visible = ['satellite', 'hybrid'].includes(settings.background);
+  else if (background === 'soviet') visible = settings.background === 'soviet';
   else if (settings.background === 'satellite' && !runtime) visible = false;
   else if (settings.background === 'hybrid' && semantics['atlas:base-map']) visible = false;
   else if (settings.background === 'carto' && semantics['atlas:base-map'] && !semantics['atlas:terrain']) visible = false;
+  // Keep the cartographic land fills beneath missing historic raster tiles,
+  // suppress competing modern place labels, and always place bathymetry over
+  // sea areas. Rail tracks, nodes and their selected labels stay on top.
+  if (settings.background === 'soviet' && !runtime) {
+    if (semantics['atlas:base-map'] && layer.type === 'symbol' && layer.source === 'openmaptiles') visible = false;
+    if (layer.id === 'terrain-bathymetry') visible = true;
+    else if (semantics['atlas:terrain']) visible = false;
+  }
   if (semantics['atlas:hide-backgrounds']?.includes(settings.background)) visible = false;
   return visible;
 }
