@@ -47,6 +47,10 @@ acceptance inputs. Site readiness waits for that fingerprint and pins the
 verified data commit, so an older branch cannot satisfy a changed build.
 Preview publication reruns a failed or timed-out matching site check; its
 readiness job also allows six hours rather than timing out during acquisition.
+For builds that outlast that window, a trusted default-branch completion
+workflow retries failed/timed-out site checks for the same current open PR
+head, including forks and manually dispatched previews. It reads only GitHub
+metadata; it never checks out fork code or executes an artifact.
 
 The runtime pins the generation named in its manifest. Only an absent tile in
 the verified complete index is empty. A manifest/index error, timeout, HTTP

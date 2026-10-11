@@ -1,0 +1,44 @@
+name: Resume site checks after railway reference completion
+on:
+  workflow_run:
+    workflows: ['Build worldwide OSM railway reference']
+    types: [completed]
+permissions:
+  actions: write
+  pull-requests: read
+concurrency:
+  group: mainline-site-retry-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+jobs:
+  retry:
+    if: github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # workflow_run uses this trusted default-branch definition. Never check
+      # out a fork, download artifacts, or execute source-run code here.
+      - name: Retry failed site checks for the exact current open PR head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ github.event.workflow_run.id }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -eu
+          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          verified=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" --jq 'select(.conclusion == "success" and .name == "Build worldwide OSM railway reference" and (.event == "pull_request" or .event == "workflow_dispatch")) | .head_sha')
+          [ "$verified" = "$SOURCE_SHA" ]
+          # Fork workflow_run payloads can omit pull_requests. Resolve the
+          # current PR from trusted repository metadata instead.
+          prs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" --jq '.[] | select(.head.sha == env.SOURCE_SHA) | .number')
+          [ -n "$prs" ] || exit 0
+          runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/site.yml/runs?event=pull_request&head_sha=$SOURCE_SHA&per_page=100" --jq '.workflow_runs[] | select(.status == "completed" and (.conclusion == "failure" or .conclusion == "timed_out")) | .id')
+          for run in $runs; do
+            current=false
+            for pr in $prs; do
+              head=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pr" --jq 'select(.state == "open") | .head.sha')
+              if [ "$head" = "$SOURCE_SHA" ]; then current=true; break; fi
+            done
+            [ "$current" = true ] || exit 0
+            gh run rerun "$run" --failed --repo "$GITHUB_REPOSITORY"
+          done
