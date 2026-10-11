@@ -1,3 +1,5 @@
+import {getLayerSemantics} from './layer-semantics.mjs?v=20261011-soviet-preview-2';
+
 // EXPERIMENTAL background adapter. Not part of the published style until the
 // raster host's third-party usage terms and attribution are confirmed.
 // We request only onscreen tiles on explicit user selection: no prefetch,
@@ -27,6 +29,16 @@ export function installSovietStyle(style){
   const water=style.layers.findIndex(l=>l.id==='water');
   if(seabed<0||water<0||seabed<=water)
     throw new Error('Seabed must remain above historical raster but beneath rail overlays');
+  // Modern fills, roads and boundaries above this insertion point would cover
+  // the scans. Hide only those basemap overlays in Soviet mode, leaving the
+  // land/water fallback below, bathymetry and every railway layer in place.
+  // Record semantic policy rather than renaming/reordering the shared layers.
+  for(const layer of style.layers.slice(seabed)){
+    const semantics=getLayerSemantics(layer);
+    if(semantics['atlas:base-map']&&!semantics['atlas:terrain'])
+      layer.metadata={...semantics,...layer.metadata,
+        'atlas:hide-backgrounds':[...new Set([...(semantics['atlas:hide-backgrounds']||[]),'soviet'])]};
+  }
   style.sources.sovietTopo={...SOVIET_SOURCE,tiles:[...SOVIET_SOURCE.tiles]};
   style.layers.splice(seabed,0,{
     id:SOVIET_LAYER,type:'raster',source:'sovietTopo',

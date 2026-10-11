@@ -1405,6 +1405,42 @@ test('entering watch mode deactivates hidden drawing and measurement input',asyn
   } finally {dom.window.close();}
 });
 
+test('Soviet raster failures clear immediately on every other background and ignore late failures',async()=>{
+ const {dom,window,maps}=await start({search:'?background=soviet'});
+ try{
+  const map=maps[0],doc=window.document,status=doc.getElementById('map-status');
+  map.handlers['style.load']();
+  const choose=background=>doc.querySelector(`[data-background="${background}"]`).click();
+  const fail=message=>map.handlers.error({sourceId:'sovietTopo',tile:{state:'errored'},error:new Error(message)});
+  for(const background of ['map','carto','satellite','hybrid'])for(const message of ['HTTP 404','CORS failure','network failure']){
+   choose('soviet');fail(message);
+   assert.equal(status.classList.contains('error'),true,'active raster failures are visible');
+   choose(background);
+   assert.equal(status.classList.contains('error'),false,background+' clears the optional failure without idle or source success');
+   fail('late '+message);
+   assert.equal(status.classList.contains('error'),false,background+' ignores a late hidden-source error');
+   choose('soviet');
+   assert.equal(status.classList.contains('error'),false,'returning to Soviet does not restore a stale failure');
+  }
+ }finally{maps[0]?.handlers.remove();dom.window.close();}
+});
+
+test('deselecting Soviet preserves unrelated map failures until their source actually recovers',async()=>{
+ const {dom,window,maps}=await start({search:'?background=soviet'});
+ try{
+  const map=maps[0],doc=window.document,status=doc.getElementById('map-status');map.handlers['style.load']();
+  for(const sourceId of ['sovietTopo','openmaptiles'])map.handlers.error({sourceId,tile:{state:'errored'},error:new Error('fixture failure')});
+  doc.querySelector('[data-background="map"]').click();
+  assert.equal(status.classList.contains('error'),true,'only the Soviet error is retired');
+  map.handlers.sourcedata({sourceId:'sovietTopo',tile:{state:'loaded'},isSourceLoaded:true});
+  assert.equal(status.classList.contains('error'),true,'late Soviet success cannot clear unrelated errors');
+  map.handlers.sourcedata({sourceId:'openmaptiles',isSourceLoaded:true});
+  assert.equal(status.classList.contains('error'),true,'loaded flag alone is not unrelated recovery');
+  map.handlers.sourcedata({sourceId:'openmaptiles',tile:{state:'loaded'},isSourceLoaded:true});
+  assert.equal(status.classList.contains('error'),false);
+ }finally{maps[0]?.handlers.remove();dom.window.close();}
+});
+
 function recoveryClock() {
   const timers = new Map(), retries = [];
   let next = 0;

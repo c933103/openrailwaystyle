@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {readSettings} from '../styles/map-model.mjs';
-import {layerVisibility} from '../styles/layer-semantics.mjs';
+import {BACKGROUNDS,MODES,readSettings} from '../styles/map-model.mjs';
+import {getLayerSemantics,layerVisibility} from '../styles/layer-semantics.mjs';
 import {installSovietStyle,SOVIET_SOURCE,SOVIET_LAYER,SOVIET_TILE_ORIGIN} from '../styles/soviet-topo.mjs';
 
 const baseStyle=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url),'utf8'));
@@ -68,4 +68,42 @@ test('fifth selector and historical coverage warning are present',async()=>{
  assert.match(html,/tiles\.nakarte\.me|NaKarte/);
  const sw=await readFile(new URL('../styles/sw.js',import.meta.url),'utf8');
  assert.match(sw,/'soviet-topo\.mjs'/);
+});
+
+test('modern basemap overlays cannot cover scans and all other backgrounds retain their order and visibility',()=>{
+ const style=source(),raster=style.layers.findIndex(l=>l.id===SOVIET_LAYER);
+ const layers=style.layers.filter(l=>l.id!==SOVIET_LAYER);
+ assert.deepEqual(layers.map(l=>l.id),baseStyle.layers.map(l=>l.id),'original layer order is unchanged');
+ for(const [index,layer] of style.layers.entries()){
+  const semantics=getLayerSemantics(layer);
+  if(index>raster&&semantics['atlas:base-map']&&!semantics['atlas:terrain'])
+   assert.equal(layerVisibility(layer,testSettings('soviet')),false,layer.id+' must not cover a scan');
+ }
+ for(const id of ['background','landuse-residential','landcover_grass','landcover_wood','water'])
+  assert.equal(layerVisibility(style.layers.find(l=>l.id===id),testSettings('soviet')),true,id+' remains below missing tiles');
+ for(const background of BACKGROUNDS.filter(bg=>bg!=='soviet'))for(const mode of MODES)for(const enabled of [false,true]){
+  const settings=testSettings(background,{mode,relief:enabled,stations:enabled,labels:enabled,names:enabled,inactive:enabled,transport:enabled,destinations:enabled,constraints:enabled});
+  for(const [index,layer] of layers.entries())
+   assert.equal(layerVisibility(layer,settings),layerVisibility(baseStyle.layers[index],settings),`${background}/${mode}/${enabled}: ${layer.id}`);
+ }
+ for(const mode of MODES)for(const enabled of [false,true]){
+  const settings=testSettings('soviet',{mode,stations:enabled,labels:enabled,names:enabled,inactive:enabled});
+  for(const [index,layer] of layers.entries()){
+   const semantics=getLayerSemantics(layer);
+   if(!semantics['atlas:base-map']&&!semantics['atlas:background'])
+    assert.equal(layerVisibility(layer,settings),layerVisibility(baseStyle.layers[index],{...settings,background:'map'}),`${mode}/${enabled}: retain ${layer.id}`);
+  }
+ }
+});
+
+test('scan overlay suppression respects declared roles and cached legacy metadata',()=>{
+ for(const legacy of [false,true]){
+  const style=structuredClone(baseStyle);
+  if(legacy)for(const layer of style.layers)delete layer.metadata;
+  const landuse=style.layers.find(l=>l.id==='landuse');
+  if(!legacy){landuse.id='renamed-land-fill';landuse.source='renamed-basemap';}
+  installSovietStyle(style);
+  assert.equal(layerVisibility(landuse,testSettings('soviet')),false);
+  assert.equal(layerVisibility(landuse,testSettings('map')),true);
+ }
 });

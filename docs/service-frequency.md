@@ -954,6 +954,10 @@ returns a failed step and never exposes a partially built successful stage. No r
 input directory is used as an upload fallback. Fixed-schema diagnosis retains
 statuses, reason codes, retry instructions and bounded redacted source attempts;
 raw exception strings and rejected metadata values are not diagnostic payloads.
+Worker validation failures identify the affected feed only when its ID belongs
+to the independently verified catalogue. The same fixed reason code and safe ID
+appear in the job log, so a failed stage no longer requires downloading its
+diagnostic artifact merely to discover the validation category.
 Statuses, reasons, actions and attempt categories use explicit producer vocabularies
 (with bounded HTTP status codes); unrecognized values become fixed unknowns.
 Receipt producers and consumers enforce exact field sets, current catalogue/date/
@@ -966,7 +970,13 @@ Defaults cap compressed and expanded bytes at 3,000,000,000 each, address space
 at 3,000,000,000 bytes and wall time at 600 seconds. Gzip headers are limited to
 64 KiB; one member is required, with no concatenated members or trailing bytes.
 The decoder counts expansion incrementally and the writer creates a new
-deterministic derivative without inherited header metadata. Decoded timetable, geometry, profiles,
+deterministic derivative without inherited header metadata. The expanded JSON
+is parsed and rewritten one top-level array record at a time; a national feed's
+complete geometry/profile object tree is never accumulated. Strict duplicate-key,
+finite-number, UTF-8 and JSON grammar checks apply to every record, including
+unknown fields. Source binding and required array checks still apply to the whole
+document. One exceptionally large record can still exhaust the unchanged memory
+budget. Decoded timetable, geometry, profiles,
 route/trip/agency identifiers and licence/rights content stay unchanged outside
 the declared publication metadata/URL fields. These finite budgets can reject an
 oversized or malformed input and do not certify all production feeds fit.
@@ -975,3 +985,31 @@ The trusted workflow supplies the producer outcome, and cache restore does not
 include inventory checkpoints. CLI outcomes/receipts are not cryptographic
 invocation proofs. Same-bound historical feeds can be staged without being
 misrepresented as newly acquired. No provider request is part of staging.
+
+Refresh `38126301219` (reference date `2026-10-12`) failed shard 7 staging with
+`feed_memory_limit`; its diagnostic receipt marks the compiler successful and the
+682-entry inventory complete (60 compiled feeds). That receipt predates per-feed
+failure IDs, so it does not establish which feed exhausted memory. A bounded
+offline reproduction with 40,000 geometry/profile records (9.7 MB expanded JSON)
+failed the former whole-document parser under a 96 MB address-space cap and
+passes record streaming under the same cap. This demonstrates the allocation
+defect without claiming a replay of the unavailable failed production feed.
+
+The seven successful shard artifacts and canonical catalogue from that run must
+remain unchanged. Offline validation checked all seven receipts, catalogue
+bindings and current file hashes: 4,807 outcomes including 306 compiled feeds;
+the original partition assigns the remaining 682 entries to shard 7.
+A recovery must use their original catalogue/report/index,
+date and eight-shard partition, obtain and stage only missing shard 7, then pass
+all ordinary receipt/sidecar, complete-inventory, assembly and snapshot checks.
+Rerunning the original failed job uses its original code, so it cannot apply a
+later staging fix. A fresh unrestricted worldwide refresh is unnecessary for
+recovery; publication remains unverified until a complete recovered run succeeds.
+
+## Offline matching prerequisite
+
+The [timetable identity evidence and matching contract](timetable-matching-contract.md)
+provides bounded, opt-in capture and a pure fixture-tested decision contract. It
+is not enabled in production and does not apply timetable frequencies to OSM or
+change route geometry. Compiled or geometry-bearing feed counts are not verified
+OSM-match counts.
