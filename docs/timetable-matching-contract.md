@@ -183,7 +183,10 @@ so the matcher can withhold a near-limit sidecar even when capture succeeded.
 Each check holds at most one schema-bounded record beyond its running byte cap;
 there is no unbounded recursive hashing or output copying. OSM capture itself is bounded to 10,000 members, 512 served members
 and 32 identity tags, scanning at most 256 raw tag keys before withholding
-capture. Pattern, call, observation, source-envelope and captured-OSM records have explicit
+capture. Missing raw relation tags default to an empty record; explicitly present
+non-record values (including null, false, zero and an empty string) withhold
+capture rather than becoming missing assertions. Pattern, call, observation,
+source-envelope and captured-OSM records have explicit
 bounded field whitelists before canonical hashing; nested/oversized values or
 unsupported extra fields are rejected rather than recursively traversed or
 copied to results. Route, operator and station assertions also require complete bounded record
@@ -298,7 +301,9 @@ fixture covers their combined loop/root-station behavior.
 
 A shared service calendar also retains one missing-end marker and, per exact
 zone, one normalized end anchor after its reconstructed trip extent is removed
-at integer-millisecond precision. Its expired day buckets must precede all
+at integer-millisecond precision. Supplied boundaries must already round-trip
+exactly through integer milliseconds; validation does not round sub-millisecond
+evidence into a supported value. Its expired day buckets must precede all
 non-expired buckets. Current/future state agrees among non-expired observations;
 expired precedence can legitimately hide the future flag on shorter trips.
 Actual feed-end, historical, DST and anchored-frequency fixtures exercise these
@@ -387,14 +392,14 @@ bounded; they do not justify enabling it across the production registry yet.
 The same report records fresh, serial Node 24.19.0 matcher processes over a
 controlled 10,000-observation, 2-pattern, 5,825,261-byte sidecar produced from the
 240,000-stop-row/28-profile fixture. Across three repetitions, the valid identity
-case took a median 361.815 ms; an unbound alternative was withheld in 206.402 ms.
-Median peak process RSS was 84,236 and 84,092 KiB respectively. These elapsed
+case took a median 173.768 ms; an unbound alternative was withheld in 213.610 ms.
+Median peak process RSS was 83,936 and 83,828 KiB respectively. These elapsed
 times cover matching after parsing/preparation; RSS includes startup, parsing
 and fixture preparation and is not a matcher-only allocation measurement.
 
 The source-work adversary and candidate-reference adversary returned explicit
-work-limit outcomes in median 67.646 and 250.721 ms, with median peak process RSS
-88,072 and 102,524 KiB. The source adversary fails during all-pattern validation
+work-limit outcomes in median 64.293 and 249.936 ms, with median peak process RSS
+88,236 and 102,764 KiB. The source adversary fails during all-pattern validation
 before reaching the ordinary observation scan, so its lower elapsed time is not
 a speed improvement. The script publishes only aggregate measurements and
 source hashes, never the temporary synthetic sidecar or ZIP. Compiler and

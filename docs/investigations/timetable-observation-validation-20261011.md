@@ -131,6 +131,28 @@ canonical alias, loop and root-station controls run against the corrected matche
 The retained evidence does not authenticate the original ZIP or restore omitted
 calendar rules, route colours/modes or source provenance.
 
+## Precision and explicit raw-tag correction
+
+The next exact-head Code review identified two distinct gaps:
+
+- A resealed observation boundary such as `2000000000.0004` was rounded before
+  consistency comparison. The matcher now requires the supplied value to equal
+  its integer-millisecond round trip. Selected and unselected observations are
+  covered, with whole-second/millisecond controls and historical negative epochs.
+  An actual collector arithmetic control covers 72 boundaries across years
+  1, 42, 1950, 2024, 2038 and 9999, four timezones and three service extents.
+- Explicit malformed raw relation tags (`null`, `false`, `0`, `""`, and other
+  non-record values) were treated as if absent. Only a genuinely absent own tags
+  field now defaults to an empty record. Empty plain/null-prototype records stay
+  accepted; explicit malformed or hidden malformed fields withhold capture.
+  A reviewed exact route binding cannot revive that incomplete capture.
+
+Both regressions were reproduced before correction and include unchanged-input
+assertions. This correction also integrates main commit
+`6778a0fc48678cffe602f9e81c60d75dfd3e2de7` (PR #144): its five browser-test and
+development-documentation files are preserved byte-for-byte from main. They do
+not overlap the matcher corrections. The combined tree is tested before publication.
+
 ## Explicit limits and intentional differences
 
 - The pinned name catalog comes from the installed Python `tzdata` package's

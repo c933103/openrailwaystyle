@@ -602,6 +602,70 @@ test('canonical connections include all calls and transitive route bridges', () 
   input.evidence.patterns.reverse(); input.evidence.observations.reverse(); assert.equal(status(input), 'verified');
 });
 
+
+test('resealed validity must already have exact millisecond precision', () => {
+  for (const historical of [false, true]) for (const placement of ['selected', 'other']) for (const [fraction, valid] of [[0, true], [0.001, true], [0.002, true], [0.999, true], [0.0004, false], [0.0006, false], [0.0014, false], [0.9999, false]]) {
+    const input = fixture(), base = historical ? -600000000 : 2000000000;
+    if (historical) {
+      const date = '1950-01-01', snap = `${date}T00:00:00Z`;
+      input.evidence.source.service_date = date; input.context.service_date = date;
+      input.context.osm_snapshot = snap; input.now = Date.parse(snap) / 1000;
+      input.evidence.observations[0].active_service_dates = [date];
+      input.candidates[0].osm = captureOsmServiceEvidence(relation({timestamp: snap}), snap);
+      input.crosswalk.forEach(row => { row.osm_snapshot = snap; });
+    }
+    input.evidence.observations[0].valid_until = base;
+    if (placement === 'other') addOtherSourcePattern(input);
+    input.evidence.observations[placement === 'selected' ? 0 : 1].valid_until = base + fraction;
+    input.evidence.source.valid_until = Math.max(0, ...input.evidence.observations.map(row => row.valid_until));
+    sealObservations(input);
+    const before = structuredClone(input), output = matchTimetablePattern(input);
+    assert.equal(output.status, valid ? 'verified' : 'missing_evidence', `${historical}/${placement}/${fraction}`);
+    if (!valid) assert.deepEqual(output.reasons, ['invalid_observation_validity']);
+    assert.deepEqual(input, before, 'sub-millisecond evidence is not rounded or repaired');
+  }
+});
+
+test('real collector boundary arithmetic round-trips at milliseconds across supported years', () => {
+  const run = spawnSync('python3', ['-c', `
+import sys,json,datetime as dt
+from zoneinfo import ZoneInfo
+sys.path.insert(0,'tests')
+import gtfs_frequency_test as f
+print(json.dumps([f.compiler.service_start(dt.date(year,12,30),ZoneInfo(zone))+extent-.001
+    for year in [1,42,1950,2024,2038,9999]
+    for zone in ['UTC','Europe/Helsinki','America/New_York','Pacific/Chatham']
+    for extent in [86400,90600,365*86400]]))
+`], {encoding: 'utf8'});
+  assert.equal(run.status, 0, run.stderr);
+  const values = JSON.parse(run.stdout); assert.equal(values.length, 72);
+  for (const value of values) {
+    const milliseconds = Math.round(value * 1000);
+    assert.equal(Number.isSafeInteger(milliseconds), true);
+    assert.equal(milliseconds / 1000, value, String(value));
+  }
+});
+
+test('raw OSM tags default only when absent and reject explicit malformed values', () => {
+  const missing = relation(); delete missing.tags;
+  for (const raw of [missing, relation({tags: {}}), relation({tags: Object.create(null)})]) {
+    const captured = captureOsmServiceEvidence(raw, snapshot);
+    assert.equal(captured.status, 'captured');
+    const input = fixture(); input.candidates[0].osm = captured;
+    assert.equal(status(input), 'verified', 'a reviewed exact route binding may coexist with genuinely absent tags');
+  }
+  for (const tags of [null, false, 0, '', undefined, NaN, [], 'not-tags', 1, true]) {
+    const raw = relation({tags}), before = structuredClone(raw), captured = captureOsmServiceEvidence(raw, snapshot);
+    assert.equal(captured.status, 'incomplete', `${String(tags)}/${typeof tags}`);
+    assert.deepEqual(captured.reasons, ['invalid_tags']);
+    assert.deepEqual(raw, before);
+    const input = fixture(); input.candidates[0].osm = captured;
+    assert.equal(status(input), 'missing_evidence', 'an exact binding cannot revive malformed capture');
+  }
+  const hidden = relation(); Object.defineProperty(hidden, 'tags', {value: null, enumerable: false});
+  assert.equal(captureOsmServiceEvidence(hidden, snapshot).status, 'incomplete', 'a present hidden field is not silently replaced');
+});
+
 test('committed matcher benchmark is bound to the current measured sources', () => {
   const report = JSON.parse(readFileSync(new URL('../docs/investigations/timetable-evidence-benchmark-20261009.json', import.meta.url), 'utf8'));
   for (const path of ['scripts/timetable-matching.mjs', 'scripts/timetable-timezones.mjs', 'scripts/benchmark-timetable-matching.mjs']) {

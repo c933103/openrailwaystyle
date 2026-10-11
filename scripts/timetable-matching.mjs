@@ -91,7 +91,7 @@ export function captureOsmServiceEvidence(relation, snapshot) {
   if (!ownFields(relation, ['type', 'id', 'version', 'timestamp', 'members']) || relation.type !== 'relation' || !positive(relation.id) || !positive(relation.version) || !instant(relation.timestamp) ||
       !instant(snapshot) || Date.parse(relation.timestamp) > Date.parse(snapshot)) return incomplete('unverified_revision');
   if (!array(relation.members, 10000) || relation.members.some(m => !ownFields(m, ['type', 'ref', 'role']) || !['node', 'way', 'relation'].includes(m.type) || !positive(m.ref) || typeof m.role !== 'string' || m.role.length > 64 || Buffer.byteLength(m.role) > 64)) return incomplete('incomplete_members');
-  const rawTags = readField(relation, 'tags') || {}, selected = [];
+  const rawTags = Object.hasOwn(relation, 'tags') ? readField(relation, 'tags') : {}, selected = [];
   if (!plain(rawTags)) return incomplete('invalid_tags');
   let scanned = 0;
   for (const key in rawTags) {
@@ -313,7 +313,7 @@ function matchPattern(input) {
       // exact at millisecond precision throughout its supported date range.
       const milliseconds = Math.round(observation.valid_until * 1000);
       const endAnchor = milliseconds - Math.max(86400, extent) * 1000;
-      if (!Number.isSafeInteger(milliseconds) || !Number.isSafeInteger(endAnchor)) return result('missing_evidence', 'invalid_observation_validity');
+      if (!Number.isSafeInteger(milliseconds) || milliseconds / 1000 !== observation.valid_until || !Number.isSafeInteger(endAnchor)) return result('missing_evidence', 'invalid_observation_validity');
       if (calendar.endAnchors.has(observation.timezone) && calendar.endAnchors.get(observation.timezone) !== endAnchor) return result('missing_evidence', 'inconsistent_service_end');
       calendar.endAnchors.set(observation.timezone, endAnchor);
     }
