@@ -7,7 +7,7 @@ const canonical = value => Array.isArray(value) ? value.map(canonical) : value &
 const canonicalText = value => JSON.stringify(canonical(value));
 const hashText = text => createHash('sha256').update(text).digest('hex');
 const hash = value => hashText(canonicalText(value));
-const id = value => typeof value === 'string' && value.length > 0 && value.length <= 1024 && Buffer.byteLength(value) <= 1024;
+const id = value => typeof value === 'string' && value.isWellFormed() && value.length > 0 && value.length <= 1024 && Buffer.byteLength(value) <= 1024;
 const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 function calendarDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d\d-\d\d$/.test(value)) return false;
@@ -163,6 +163,43 @@ function observationValidity(row, source) {
     (row.calendar_state !== 'future' || row.active_service_dates.length === 0) &&
     (row.calendar_state !== 'expired' || !row.active_service_dates.includes(source.service_date));
 }
+// Reconstruct the compiler's trip extent from retained fields. A missing
+// first departure keeps frequency anchoring unknown, exactly as in the compiler.
+function observationExtent(row) {
+  let extent = 0;
+  for (const value of row.departures) if (value !== null) extent = Math.max(extent, value);
+  if (row.departures[0] !== null) {
+    const anchor = extent - row.departures[0];
+    for (const interval of row.frequencies) extent = Math.max(extent, interval.end + anchor);
+  }
+  return extent;
+}
+function canonicalConnectivity(patterns) {
+  const groups = new Map();
+  const find = (parents, id) => {
+    let root = id;
+    while (parents.get(root) !== root) root = parents.get(root);
+    while (id !== root) { const next = parents.get(id); parents.set(id, root); id = next; }
+    return root;
+  };
+  for (const pattern of patterns.values()) {
+    let group = groups.get(pattern.compiled_route_id);
+    if (!group) { group = {parents: new Map(), stations: new Map()}; groups.set(pattern.compiled_route_id, group); }
+    const source = pattern.source_route_id;
+    if (!group.parents.has(source)) group.parents.set(source, source);
+    for (const call of pattern.calls) {
+      if (group.stations.has(call.station_id)) {
+        const left = find(group.parents, source), right = find(group.parents, group.stations.get(call.station_id));
+        if (left !== right) group.parents.set(left, right);
+      } else group.stations.set(call.station_id, source);
+    }
+  }
+  for (const [compiled, group] of groups) {
+    const root = find(group.parents, compiled);
+    for (const source of group.parents.keys()) if (find(group.parents, source) !== root) return false;
+  }
+  return true;
+}
 function inspectOsm(osm, snapshot, budget) {
   if (!record(osm, osmFields) || osm.schema !== 1 || osm.status !== 'captured' || !array(osm.reasons, 0) || !positive(osm.relation_id) || !positive(osm.version) || !instant(osm.timestamp) || !instant(osm.snapshot) || Date.parse(osm.timestamp) > Date.parse(osm.snapshot) || !capturedTags(osm.tags) || !digest(osm.fingerprint)) return ['missing_evidence', 'missing_osm_declaration'];
   if (!array(osm.served_members, 512) || !array(osm.track_members, 10000) || osm.served_members.length + osm.track_members.length > 10000) return ['missing_evidence', 'invalid_service_sections'];
@@ -220,7 +257,7 @@ function matchPattern(input) {
   // Check all source content bindings before using any identity field to exclude
   // them. The single source budget covers every canonicalization/hash input.
   const sourceWork = workBudget('source_work_limit'), patterns = new Map(), observationIds = new Set(), observedPatterns = new Set(), selectedObservations = [];
-  const agencyTimezones = new Map(), serviceDates = new Map();
+  const agencyTimezones = new Map(), serviceDates = new Map(), serviceCalendars = new Map();
   const sourceRoutes = new Map(), compiledAgencies = new Map(), stopParents = new Map(), stationRoots = new Set();
   let maximumValidity = 0;
   for (const pattern of evidence.patterns) {
@@ -239,11 +276,15 @@ function matchPattern(input) {
     }
     patterns.set(pattern.id, pattern);
   }
-  // Canonical aliases terminate at a root route when that source route has
-  // captured trips. A route with no trips need not appear as a source pattern.
-  for (const [, , compiled] of sourceRoutes.values()) {
-    if (sourceRoutes.has(compiled) && sourceRoutes.get(compiled)[2] !== compiled) return result('missing_evidence', 'noncanonical_route_alias');
+  // Empty routes cannot connect to another canonical component. Every target
+  // referenced by a captured trip is therefore itself a captured source route.
+  for (const [sourceId, [, , compiled]] of sourceRoutes) {
+    if (!sourceRoutes.has(compiled)) return result('missing_evidence', 'missing_canonical_route');
+    // Captured UTF-8 byte ordering matches Python's Unicode code-point min(),
+    // unlike JavaScript's UTF-16 ordering for non-BMP source IDs.
+    if (sourceRoutes.get(compiled)[2] !== compiled || Buffer.compare(Buffer.from(compiled), Buffer.from(sourceId)) > 0) return result('missing_evidence', 'noncanonical_route_alias');
   }
+  if (!canonicalConnectivity(patterns)) return result('missing_evidence', 'disconnected_canonical_routes');
   // A retained parent may also be called directly, but it cannot itself have
   // another parent. Repeated platform/station calls remain in their own order.
   for (const station of stationRoots) {
@@ -260,6 +301,31 @@ function matchPattern(input) {
     if (serviceDates.has(observation.service_id) && !same(serviceDates.get(observation.service_id), observation.active_service_dates)) return result('missing_evidence', 'inconsistent_service_dates');
     agencyTimezones.set(agency, observation.timezone);
     serviceDates.set(observation.service_id, observation.active_service_dates);
+    const extent = observationExtent(observation), missingEnd = observation.valid_until === 0;
+    let calendar = serviceCalendars.get(observation.service_id);
+    if (!calendar) {
+      calendar = {missingEnd, future: null, maximumExpiredDays: -1, minimumOtherDays: Infinity, endAnchors: new Map()};
+      serviceCalendars.set(observation.service_id, calendar);
+    }
+    if (calendar.missingEnd !== missingEnd) return result('missing_evidence', 'inconsistent_service_end');
+    if (!missingEnd) {
+      // The collector's integral-second anchor/extent and -0.001 boundary are
+      // exact at millisecond precision throughout its supported date range.
+      const milliseconds = Math.round(observation.valid_until * 1000);
+      const endAnchor = milliseconds - Math.max(86400, extent) * 1000;
+      if (!Number.isSafeInteger(milliseconds) || !Number.isSafeInteger(endAnchor)) return result('missing_evidence', 'invalid_observation_validity');
+      if (calendar.endAnchors.has(observation.timezone) && calendar.endAnchors.get(observation.timezone) !== endAnchor) return result('missing_evidence', 'inconsistent_service_end');
+      calendar.endAnchors.set(observation.timezone, endAnchor);
+    }
+    const days = Math.floor(extent / 86400);
+    if (observation.calendar_state === 'expired') calendar.maximumExpiredDays = Math.max(calendar.maximumExpiredDays, days);
+    else {
+      calendar.minimumOtherDays = Math.min(calendar.minimumOtherDays, days);
+      const future = observation.calendar_state === 'future';
+      if (calendar.future !== null && calendar.future !== future) return result('missing_evidence', 'inconsistent_service_future_state');
+      calendar.future = future;
+    }
+    if (calendar.maximumExpiredDays >= calendar.minimumOtherDays) return result('missing_evidence', 'inconsistent_service_expiry_state');
     maximumValidity = Math.max(maximumValidity, observation.valid_until);
     observationIds.add(observation.id);
     observedPatterns.add(observation.pattern_id);

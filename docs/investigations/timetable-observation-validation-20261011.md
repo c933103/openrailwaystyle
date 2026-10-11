@@ -25,8 +25,8 @@ reviewed identity/crosswalk assertions remain necessary.
 | `service_id` | Original bounded calendar ID. A single `active` map produces identical date lists for every trip using that ID. | Bounded field/fingerprint; newly checked same-service date-list consistency, independent of observation order. Different calendars may have different dates. |
 | `pattern_id` | Content-bound retained pattern reference. | Complete digest, existing validated pattern, matching departure/call count, fingerprint and complete pattern observation coverage. |
 | `timezone` | Exact agency timezone string; the compiler constructs `ZoneInfo` before capture. A single agency emits one string. | Newly enforced exact IANA 2026d zone/link catalog and same-agency string consistency. Different agencies may use different zones. No case folding or numeric-offset reinterpretation. |
-| `valid_until` | Trip calendar boundary from local-noon-minus-12-hours plus trip extent, or zero when no end exists. | Finite, source upper bound, zero-sentinel semantics and selection expiry. The matcher does not reconstruct absent calendar start/end data. |
-| `calendar_state` | Expired takes precedence, then future, otherwise current, relative to the reference date and trip extent. | Exact enum/fingerprint; zero requires expired/no dates, future requires no lookback dates, expired cannot include the reference date. Real overnight/DST fixtures retain current service after the final active date; empty-date current observations remain valid. |
+| `valid_until` | Trip calendar boundary from local-noon-minus-12-hours plus trip extent, or zero when no end exists. | Finite, source upper bound, zero-sentinel semantics and selection expiry. Shared service/exact-zone normalized end anchors and missing-end markers must agree. This establishes consistency, not independent source-calendar truth. |
+| `calendar_state` | Expired takes precedence, then future, otherwise current, relative to the reference date and trip extent. | Exact enum/fingerprint; zero requires expired/no dates, future requires no lookback dates, expired cannot include the reference date. Non-expired observations of one service agree on current/future state. Expired-state buckets must all precede non-expired extent-day buckets. Real overnight/DST fixtures retain current service after the final active date; empty-date current observations remain valid. |
 | `active_service_dates` | Sorted unique active dates from the supplied reference-day lookback, shared by service ID. | Dense cap 367, real Gregorian dates, strict ascending uniqueness, inclusive 366-day/reference-date window, state consistency, newly checked same-service consistency. No sorting or dropping supplied dates. |
 | `departures` | One nullable offset per ordered call; known values nondecreasing, integers from 0 through 366 days. | Dense cap 512, call-count equality, null distinction, safe integer range and nondecreasing known values across null gaps. Repeated departures remain valid. |
 | `frequencies` | At most 128 unexpanded intervals with start/end/headway/exact-times. | Dense exact records; bounded start/end, strict end-after-start, positive safe-integer headway, exact enum, non-overlap. Adjacent or reverse-ordered disjoint intervals remain valid and are not rewritten. |
@@ -60,7 +60,7 @@ The comparison was extended only to their related captured keys:
 | --- | --- | --- |
 | Pattern `id` | Complete pattern definition hashed with feed/revision. | Bounded exact shape, unique digest and recomputation before cross-record use. |
 | `source_route_id` | One uniquely keyed original route supplies agency and raw reference; one alias mapping supplies compiled ID. | Every repeated source route must retain the same agency, nullable raw reference and compiled ID. An unselected genuine declaration blocks a conflicting selected fallback. |
-| `compiled_route_id` | Canonical groups share agency and terminate at one representative route; without consolidation it equals the source ID. | All source aliases using a compiled ID agree on agency. If that representative also has a captured source pattern, its mapping must terminate at itself; alias chains and cycles are rejected. A representative with no captured trips is not spuriously required to have a pattern. |
+| `compiled_route_id` | Canonical groups share agency and terminate at one representative route; without consolidation it equals the source ID. | Every referenced compiled ID must be a captured source route and terminate at itself. Aliases agree on agency, use the minimum Unicode code-point source ID, and form a station-connected component using all retained calls. Empty routes form isolated components and cannot be representatives for another route with trips. |
 | `agency_id` | Original route agency, with the existing single-agency fallback. | Bounded per-pattern identity, stable source/compiled route agency and one exact timezone string across all agency observations. |
 | `route_ref` | Original nullable short-name string, not the canonical route's display name. | Exact nullable bounded field and stability within one source route. Different canonical aliases can preserve whitespace differences or different raw refs; no normalization or cross-alias ref equality is imposed. |
 | `direction_id`, `shape_id` | Trip-specific direction/shape, even for one route. | Existing enums/nullable strings and hashes; different patterns may legitimately retain different values. No cross-pattern equality is imposed. |
@@ -80,10 +80,56 @@ served stops and legitimate alias metadata. An actual Python compiler fixture
 merges two connected source routes with raw refs ` R ` and `R`, preserves their
 original IDs, and verifies a repeated-platform loop plus a root-station call.
 
-The comparison deliberately does not reconstruct canonicalization's omitted
-route mode/colour, route-long-name fallback or disconnected-component history.
-Those fields are not retained in this sidecar. It also does not validate unused
+The comparison does not require separate compiled groups to merge merely
+because they overlap: route mode/colour and long-name fallback are omitted.
+Connectivity is checked within each asserted canonical group using all calls,
+including nonserved timepoints and transitive bridges. It also does not validate unused
 retained-stop metadata as a new source of station matching authority.
+
+## Independent boundary and canonicalization verification
+
+The frozen-head [independent baseline](timetable-collector-baseline-20261011.json)
+records false verification at `43e9ab098875c2082d409752f668609e3b06ae0e` for
+conflicting shared-calendar end boundaries, mixed missing-end markers,
+contradictory expiry at identical extents, nonminimum canonical roots and
+unconnected canonical aliases. The reproducible fixture generator is
+`tests/fixtures/service-frequency/collector-invariant-controls.py`; its controls
+and adversaries are now assertions in
+`tests/timetable-collector-consistency.test.mjs`. The fixtures are synthetic,
+compiled locally and contain no provider data.
+
+Together with the two subsequent Code findings, the correction requires:
+
+- Every compiled target is a captured source route. The earlier allowance for
+  an absent representative was mistaken: a route without trips has no served
+  stations and cannot connect to a component containing another route. A
+  lower-sorting empty route in the actual canonicalization fixture proves it
+  cannot become another route's representative.
+- Each asserted alias group is station-connected and selects Python's minimum
+  source ID. Well-formed UTF-8 ordering is used rather than JavaScript UTF-16
+  order, with a non-BMP/BMP boundary regression. Repeated calls, shared parents,
+  nonserved calls and transitive bridges remain supported.
+- Trip extent is reconstructed from known departures and frequency end plus
+  stop-time anchor only when the first departure is known, matching the compiler.
+  Same-service/exact-zone boundaries agree after subtracting `max(86400, extent)`
+  in integer milliseconds. Missing-end zero markers agree for the whole service.
+  Unsafe millisecond values are withheld; historical negative epochs remain valid.
+- Same-service expiry has a monotonic day-bucket threshold:
+  `max(expired buckets) < min(non-expired buckets)`. Equal-bucket contradictions
+  are rejected. Shorter trips may expire while longer trips remain applicable.
+- Non-expired observations of one service agree on current versus future state.
+  Expired rows do not expose the hidden future flag. An actual collector fixture
+  with feed end October 4 and reference October 5 emits an expired 8-hour trip
+  and future 25-hour trip for the same later-starting calendar, while another
+  25-hour service remains current. That legitimate precedence case is preserved.
+- Bounded identity strings must be well-formed Unicode encodable as UTF-8. Real
+  accented/non-BMP IDs remain accepted; lone surrogates that Python cannot encode
+  can no longer pass through JavaScript replacement encoding.
+
+Historical, spring/fall DST, overnight, inactive-date, anchored-frequency,
+canonical alias, loop and root-station controls run against the corrected matcher.
+The retained evidence does not authenticate the original ZIP or restore omitted
+calendar rules, route colours/modes or source provenance.
 
 ## Explicit limits and intentional differences
 

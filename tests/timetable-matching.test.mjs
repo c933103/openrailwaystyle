@@ -428,7 +428,7 @@ try:
     patterns={'loop':[('A','08:00:00'),('B','08:10:00'),('A','08:20:00')], 'root':[('P','09:00:00'),('B','09:10:00')]}
     path=case.feed(patterns,patterns)
     with zipfile.ZipFile(path) as z: files={name:z.read(name) for name in z.namelist()}
-    files['routes.txt']=b'route_id,route_type,agency_id,route_short_name\\na,1,A, R \\nb,1,A,R\\n'
+    files['routes.txt']=b'route_id,route_type,agency_id,route_short_name\\n0,1,A,R\\na,1,A, R \\nb,1,A,R\\n'
     files['trips.txt']=b'trip_id,route_id,service_id,direction_id\\nloop,a,W,0\\nroot,b,W,1\\n'
     files['stops.txt']=b'stop_id,stop_name,stop_lat,stop_lon,parent_station\\nA,Platform,60,24,P\\nB,Station B,60.01,24,\\nP,Root station,60,24,\\n'
     with zipfile.ZipFile(path,'w') as z:
@@ -454,6 +454,152 @@ finally: case.doCleanups()
   assert.equal(status(input), 'verified'); assert.deepEqual(input, before);
   input.evidence.patterns.reverse(); input.evidence.observations.reverse();
   assert.equal(status(input), 'verified');
+});
+
+
+test('every compiled target is itself a captured source route', () => {
+  for (const other of [false, true]) {
+    const input = other ? addOtherSourcePattern(fixture()) : fixture();
+    for (let i = 0; i < input.evidence.patterns.length; i++) {
+      input.evidence.patterns[i].compiled_route_id = 'ghost'; resealPattern(input, i);
+    }
+    assert.deepEqual(matchTimetablePattern(input).reasons, ['missing_canonical_route']);
+  }
+});
+
+test('non-expired observations sharing a calendar cannot mix current and future state', () => {
+  for (const reverse of [false, true]) for (const futureIndex of [0, 1]) {
+    const input = addOtherSourcePattern(fixture());
+    for (const row of input.evidence.observations) { row.service_id = 'W'; row.active_service_dates = []; }
+    input.evidence.observations[futureIndex].calendar_state = 'future';
+    input.pattern_id = input.evidence.observations[1-futureIndex].pattern_id;
+    sealObservations(input);
+    if (reverse) input.evidence.observations.reverse();
+    const before = structuredClone(input);
+    assert.deepEqual(matchTimetablePattern(input).reasons, ['inconsistent_service_future_state']);
+    assert.deepEqual(input, before);
+  }
+});
+
+test('collector expired precedence preserves a future calendar at an overnight feed boundary', () => {
+  const run = spawnSync('python3', ['-c', `
+import sys,json,zipfile,datetime as dt
+from zoneinfo import ZoneInfo
+sys.path.insert(0,'tests')
+import gtfs_frequency_test as f
+case=f.GTFSFrequency()
+try:
+    patterns={'current':[('A','25:00:00'),('B','25:10:00')], 'future':[('A','25:00:00'),('B','25:10:00')], 'expired':[('A','08:00:00'),('B','08:10:00')]}
+    path=case.feed(patterns,patterns)
+    with zipfile.ZipFile(path) as z: files={name:z.read(name) for name in z.namelist()}
+    files['feed_info.txt']=b'feed_start_date,feed_end_date\\n20260101,20261004\\n'
+    files['calendar.txt']=b'service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\\nNOW,1,1,1,1,1,1,1,20260101,20261231\\nLATER,1,1,1,1,1,1,1,20261006,20261231\\n'
+    files['trips.txt']=b'trip_id,route_id,service_id,direction_id,shape_id\\ncurrent,R,NOW,0,current\\nfuture,R,LATER,0,future\\nexpired,R,LATER,0,expired\\n'
+    with zipfile.ZipFile(path,'w') as z:
+        for name,data in files.items():z.writestr(name,data)
+    evidence=f.compiler.compile_feed(path,f.CONFIG,'2026-10-05',matching_evidence=True)['matching_evidence']
+    print(json.dumps({'evidence':evidence,'now':f.compiler.service_start(dt.date(2026,10,5),ZoneInfo('Europe/Helsinki'))}))
+finally:case.doCleanups()
+`], {encoding: 'utf8'});
+  assert.equal(run.status, 0, run.stderr);
+  const {evidence, now} = JSON.parse(run.stdout), observations = Object.fromEntries(evidence.observations.map(row => [row.trip_id, row]));
+  assert.equal(evidence.status, 'captured');
+  assert.equal(observations.future.service_id, observations.expired.service_id);
+  assert.equal(observations.future.calendar_state, 'future');
+  assert.equal(observations.expired.calendar_state, 'expired');
+  assert.deepEqual(observations.future.active_service_dates, []);
+  assert.deepEqual(observations.expired.active_service_dates, []);
+  const input = fixture(), snap = new Date(now * 1000).toISOString();
+  const bound = {feed_id: evidence.source.feed_id, source_sha256: evidence.source.sha256, status: 'verified'};
+  input.evidence = evidence; input.pattern_id = observations.current.pattern_id; input.now = now;
+  Object.assign(input.context, {feed_id: bound.feed_id, source_sha256: bound.source_sha256, osm_snapshot: snap});
+  input.candidates[0].route_bindings = [{...bound, route_id: 'R'}];
+  input.candidates[0].osm = captureOsmServiceEvidence(relation({timestamp: snap}), snap);
+  input.crosswalk = ['A', 'B'].map((station_id, i) => ({...bound, station_id, osm_station_id: `node:${i+1}`, osm_snapshot: snap}));
+  assert.equal(status(input), 'verified', 'expired takes precedence and does not expose the shared future flag');
+  input.evidence.observations.reverse();
+  assert.equal(status(input), 'verified');
+});
+
+
+test('one service calendar retains a shared end boundary and missing-end marker', () => {
+  for (const kind of ['different-boundary', 'missing-end']) for (const reverse of [false, true]) {
+    const input = addOtherSourcePattern(fixture());
+    for (const row of input.evidence.observations) { row.service_id = 'W'; row.active_service_dates = []; }
+    if (kind === 'different-boundary') { input.evidence.observations[0].valid_until += 86400; input.evidence.source.valid_until += 86400; }
+    else Object.assign(input.evidence.observations[1], {calendar_state: 'expired', valid_until: 0});
+    sealObservations(input); if (reverse) input.evidence.observations.reverse();
+    assert.deepEqual(matchTimetablePattern(input).reasons, ['inconsistent_service_end'], `${kind}/${reverse}`);
+  }
+});
+
+test('shared-calendar expiry state follows increasing trip extent day buckets', () => {
+  for (const otherDays of [0, 2]) {
+    const input = addOtherSourcePattern(fixture());
+    for (const row of input.evidence.observations) { row.service_id = 'W'; row.active_service_dates = []; }
+    const current = input.evidence.observations[0], expired = input.evidence.observations[1];
+    current.departures = [0, 90000];
+    expired.departures = [0, otherDays * 86400 + 600]; expired.calendar_state = 'expired';
+    const anchor = input.evidence.source.valid_until - 3 * 86400;
+    current.valid_until = anchor + 90000; expired.valid_until = anchor + Math.max(86400, expired.departures[1]);
+    input.evidence.source.valid_until = Math.max(current.valid_until, expired.valid_until); sealObservations(input);
+    if (otherDays === 0) assert.equal(status(input), 'verified', 'short expired/long current is a valid boundary ordering');
+    else assert.deepEqual(matchTimetablePattern(input).reasons, ['inconsistent_service_expiry_state']);
+  }
+  const equal = addOtherSourcePattern(fixture());
+  for (const row of equal.evidence.observations) { row.service_id = 'W'; row.active_service_dates = []; }
+  equal.evidence.observations[1].calendar_state = 'expired'; sealObservations(equal);
+  assert.deepEqual(matchTimetablePattern(equal).reasons, ['inconsistent_service_expiry_state']);
+});
+
+test('canonical aliases choose the minimum captured root and stay station-connected', () => {
+  for (const kind of ['nonminimum', 'disconnected']) {
+    const input = addOtherSourcePattern(fixture()), other = input.evidence.patterns[1];
+    other.source_route_id = 'other';
+    if (kind === 'nonminimum') {
+      input.evidence.patterns[0].compiled_route_id = 'other'; other.compiled_route_id = 'other'; resealPattern(input, 0);
+    } else {
+      other.calls = ['c', 'd'].map(stop_id => ({stop_id, station_id: stop_id, pickup_type: '0', drop_off_type: '0'}));
+    }
+    resealPattern(input, 1);
+    assert.deepEqual(matchTimetablePattern(input).reasons, [kind === 'nonminimum' ? 'noncanonical_route_alias' : 'disconnected_canonical_routes']);
+  }
+});
+
+test('captured UTF-8 identity strings preserve real Unicode and reject lone surrogates', () => {
+  for (const [value, valid] of [['R🚆', true], ['𐀀', true], ['é', true], ['\ud800', false], ['\udfff', false], ['x\ud800y', false]]) {
+    const input = fixture(); input.evidence.patterns[0].route_ref = value; resealPattern(input, 0);
+    assert.equal(status(input), valid ? 'verified' : 'missing_evidence');
+  }
+});
+
+
+test('canonical minimum follows Unicode code points rather than UTF-16 units', () => {
+  const input = addOtherSourcePattern(fixture()), minimum = '\ue000', larger = '😀';
+  input.evidence.patterns[0].source_route_id = minimum;
+  input.evidence.patterns[1].source_route_id = larger;
+  for (let index = 0; index < 2; index++) { input.evidence.patterns[index].compiled_route_id = minimum; resealPattern(input, index); }
+  input.candidates[0].route_bindings[0].route_id = minimum;
+  assert.equal(status(input), 'verified');
+  for (let index = 0; index < 2; index++) { input.evidence.patterns[index].compiled_route_id = larger; resealPattern(input, index); }
+  assert.deepEqual(matchTimetablePattern(input).reasons, ['noncanonical_route_alias']);
+});
+
+test('canonical connections include all calls and transitive route bridges', () => {
+  const input = fixture();
+  input.evidence.patterns[0].source_route_id = 'a'; input.evidence.patterns[0].compiled_route_id = 'a'; resealPattern(input, 0);
+  input.candidates[0].route_bindings[0].route_id = 'a';
+  for (const [source, stations] of [['b', ['b', 'c']], ['c', ['c', 'd']]]) {
+    const pattern = {...structuredClone(input.evidence.patterns[0]), source_route_id: source, shape_id: source,
+      calls: stations.map(stop_id => ({stop_id, station_id: stop_id, pickup_type: '1', drop_off_type: '1'}))};
+    const {id, ...definition} = pattern; pattern.id = hash(['feed', sha, definition]); input.evidence.patterns.push(pattern);
+    input.evidence.observations.push({...structuredClone(input.evidence.observations[0]), id: hash(['feed', sha, source]), trip_id: source, pattern_id: pattern.id});
+  }
+  sealObservations(input);
+  const before = structuredClone(input);
+  assert.equal(status(input), 'verified', 'the producer includes nonserved timepoints and transitive connections');
+  assert.deepEqual(input, before);
+  input.evidence.patterns.reverse(); input.evidence.observations.reverse(); assert.equal(status(input), 'verified');
 });
 
 test('committed matcher benchmark is bound to the current measured sources', () => {
@@ -658,7 +804,7 @@ test('a current observation cannot be relinked to revive an expired pattern', ()
   const current = {...structuredClone(expired), shape_id: 'current-branch'};
   const {id, ...definition} = current; current.id = hash(['feed', sha, definition]);
   input.evidence.patterns.push(current);
-  input.evidence.observations.push({...structuredClone(input.evidence.observations[0]), id: hash(['feed', sha, 'current']), trip_id: 'current', pattern_id: current.id, calendar_state: 'current', valid_until: 2000000000});
+  input.evidence.observations.push({...structuredClone(input.evidence.observations[0]), id: hash(['feed', sha, 'current']), trip_id: 'current', service_id: 'current-calendar', pattern_id: current.id, calendar_state: 'current', valid_until: 2000000000});
   sealObservations(input);
   assert.equal(status(input), 'stale');
   input.evidence.observations[1].pattern_id = expired.id;

@@ -287,13 +287,24 @@ independent. The [field-by-field comparison](investigations/timetable-observatio
 records the exact scope, regressions and limits of this review.
 
 Repeated source-route IDs must preserve agency, raw reference and compiled-route
-identity across all patterns. Compiled aliases agree on agency and terminate
-at their representative when it is present as a source pattern. Repeated stop
+identity across all patterns. Compiled aliases agree on agency, terminate
+at a captured representative, select the minimum Unicode code-point source ID
+and remain station-connected through all calls, including transitive bridges. Repeated stop
 IDs preserve one station parent; a parent that is itself called must remain a
 root, preventing nested chains and cycles. These checks retain repeated calls,
 shared parents, loops and per-call access differences. Canonical aliases can
 retain different raw references, directions and shapes; an actual collector
 fixture covers their combined loop/root-station behavior.
+
+A shared service calendar also retains one missing-end marker and, per exact
+zone, one normalized end anchor after its reconstructed trip extent is removed
+at integer-millisecond precision. Its expired day buckets must precede all
+non-expired buckets. Current/future state agrees among non-expired observations;
+expired precedence can legitimately hide the future flag on shorter trips.
+Actual feed-end, historical, DST and anchored-frequency fixtures exercise these
+boundaries. A lower-sorting route with no trips cannot represent another route:
+it has no served stations to connect to that component. The independent frozen
+baseline and executable regressions are linked from the field comparison.
 
 ### Outcomes
 
@@ -376,14 +387,14 @@ bounded; they do not justify enabling it across the production registry yet.
 The same report records fresh, serial Node 24.19.0 matcher processes over a
 controlled 10,000-observation, 2-pattern, 5,825,261-byte sidecar produced from the
 240,000-stop-row/28-profile fixture. Across three repetitions, the valid identity
-case took a median 181.481 ms; an unbound alternative was withheld in 219.493 ms.
-Median peak process RSS was 82,904 and 82,968 KiB respectively. These elapsed
+case took a median 361.815 ms; an unbound alternative was withheld in 206.402 ms.
+Median peak process RSS was 84,236 and 84,092 KiB respectively. These elapsed
 times cover matching after parsing/preparation; RSS includes startup, parsing
 and fixture preparation and is not a matcher-only allocation measurement.
 
 The source-work adversary and candidate-reference adversary returned explicit
-work-limit outcomes in median 60.676 and 224.212 ms, with median peak process RSS
-87,992 and 101,944 KiB. The source adversary fails during all-pattern validation
+work-limit outcomes in median 67.646 and 250.721 ms, with median peak process RSS
+88,072 and 102,524 KiB. The source adversary fails during all-pattern validation
 before reaching the ordinary observation scan, so its lower elapsed time is not
 a speed improvement. The script publishes only aggregate measurements and
 source hashes, never the temporary synthetic sidecar or ZIP. Compiler and
