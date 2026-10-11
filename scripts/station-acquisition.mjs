@@ -34,7 +34,7 @@ export function stationRegionQuery(box){
    ...['train','subway','light_rail','tram','monorail','funicular']
      .map(mode=>`nwr[public_transport=station][${mode}=yes](${bounds});`),
  ];
- return `[out:json][timeout:120][maxsize:67108864];(${queries.join('')});out body center qt;`;
+ return `[out:json][timeout:120][maxsize:67108864];(${queries.join('')});out meta center qt;`;
 }
 export function centerInside(box,s){
  const {lat,lon}=s;
@@ -95,15 +95,24 @@ export function applyStationRegion(state,records,region,json){
  // their actual geometry (concave/multipart OSM objects). Keep these records
  // wherever found and deduplicate globally using their typed OSM identity.
  // Nodes use strict half-open geographic ownership to avoid edge ambiguity.
- const additions=parseStationRegion(json,{maxElements:MAX_QUERY_ELEMENTS})
+ const additions=parseStationRegion(json,{maxElements:MAX_QUERY_ELEMENTS,requireVersion:true})
    .filter(p=>p.osm_type!=='node'||centerInside(region,p));
- // Never silently replace an independently fetched object with changed
- // coordinates from another region, or a saved record with conflicting tags.
+ // Ways and relations may occur in several regional queries. A source
+ // object can change while a worldwide crawl is in progress. OSM version is
+ // authoritative: keep the highest version observed, rather than stalling on
+ // the changed tags/coordinates or silently accepting the last response.
  const byId=new Map(records.map(r=>[r.id,r]));
  for(const next of additions){
    const prior=byId.get(next.id);
-   if(prior&&JSON.stringify(prior)!==JSON.stringify(next))
-     throw new Error(`Conflicting station across regions: ${next.id}`);
+   if(prior){
+     const previousVersion=prior.osm_version??0;
+     if(next.osm_version < previousVersion)continue;
+     if(next.osm_version===previousVersion){
+       if(JSON.stringify(prior)!==JSON.stringify(next))
+         throw new Error(`OSM station ${next.id} differs at identical version`);
+       continue;
+     }
+   }
    byId.set(next.id,next);
  }
  if(byId.size>MAX_STATION_RECORDS)throw new Error('Station inventory over configured limit');
