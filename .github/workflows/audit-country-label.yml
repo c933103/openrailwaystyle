@@ -1,0 +1,54 @@
+name: Diagnose Liechtenstein country labels (bounded single-point check)
+on:
+  push:
+    branches: [investigate/country-label-li-20261011]
+    paths: ['.github/workflows/audit-country-label.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Inspect exactly three tiles in the public PMTiles basemap
+        run: |
+          node --input-type=module <<'JS'
+          import {PMTiles} from 'pmtiles';
+          import {VectorTile} from '@mapbox/vector-tile';
+          import Pbf from 'pbf';
+          const url='https://tuiles.enliberte.fr/planet.pmtiles';
+          const pm=new PMTiles(url);
+          const lon=9.5457, lat=47.1486;
+          const keys=['id','name','name:en','name:zh','name:zh-Hant','name:zh-Hans','name:zh-HK','name:zh-TW','name:nonlatin','name:latin','name_int','iso_a2','class','rank'];
+          const listed=[];
+          for(const z of [5,6,7]){
+            const n=2**z;
+            const x=Math.floor((lon+180)/360*n);
+            const y=Math.floor((1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*n);
+            const tile=await pm.getZxy(z,x,y);
+            if(!tile){console.log('MISSING_TILE',z,x,y);continue;}
+            const bytes=new Uint8Array(tile.data);
+            if(bytes.byteLength>2_000_000)throw Error('Unexpectedly large map tile');
+            const vt=new VectorTile(new Pbf(bytes)), places=vt.layers.place;
+            console.log('TILE',z,x,y,'bytes',bytes.length,'places',places?.length||0);
+            if(!places)continue;
+            for(let i=0;i<Math.min(places.length,20000);i++){
+              const f=places.feature(i),p=f.properties;
+              if(p.class!=='country')continue;
+              const name=keys.map(k=>String(p[k]||'')).join(' ');
+              if(!/Liechtenstein|列支敦|^LI\b/i.test(name))continue;
+              const properties=Object.fromEntries(keys.filter(k=>Object.hasOwn(p,k)).map(k=>[k,p[k]]));
+              const sample={z,x,y,featureId:f.id,properties};
+              listed.push(sample);
+              console.log('COUNTRY_FEATURE',JSON.stringify(sample));
+            }
+          }
+          console.log('MATCHING_COUNTRY_FEATURES',listed.length);
+          if(!listed.length)throw Error('No Liechtenstein country point found: inspect source coverage');
+          JS
