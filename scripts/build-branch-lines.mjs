@@ -13,7 +13,7 @@ import {gzipSync, gunzipSync} from 'node:zlib';
 import {STAGES, MIN_ZOOM, MAX_ZOOM, migrateBranchState, migrateBranchDownloads, retireBranchEurope, branchStageOwner, buildTiles, partQuery, quarters, readTable, toFeatures, writeTable} from './branch-lines.mjs';
 
 import {selectDownloadStage} from './download-stages.mjs';
-import {describeOverpassError} from './overpass-errors.mjs';
+import {describeOverpassError, workflowWarning} from './overpass-errors.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const previous = process.env.PREVIOUS_DATA ? new URL(`file://${process.env.PREVIOUS_DATA.replace(/\/?$/, '/')}`) : null;
@@ -67,6 +67,7 @@ console.log(`Stage ${stage.name} (${stage.label}): ${current.pending.length} reg
 
 const BUDGET = Symbol('budget');
 async function overpass(query) {
+  let lastFailure;
   for (let attempt = 0; attempt < 5; attempt++) {
     // A quiet interval between requests, growing after each failure.
     await new Promise(r => setTimeout(r, attempt ? 60000 * attempt : requests ? 15000 : 0));
@@ -92,14 +93,15 @@ async function overpass(query) {
       if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 200)}`);
       return toFeatures(JSON.parse(text));
     } catch (error) {
-      console.warn(`Overpass attempt ${attempt + 1}/5: ${describeOverpassError(error)}`);
+      lastFailure = describeOverpassError(error);
+      console.warn(`Overpass attempt ${attempt + 1}/5: ${lastFailure}`);
       // A busy server calls for waiting; a query that ran out of time or
       // memory calls for a smaller area (null); anything else, try again.
       if (/Dispatcher|too busy|rate_limited|HTTP 429|HTTP 503/i.test(error.message)) continue;
       if (/timed? ?out|timeout|memory|maxsize|HTTP 504|Unexpected end|JSON/i.test(error.message)) return null;
     }
   }
-  throw new Error('Overpass stayed unavailable; see bounded attempt diagnostics');
+  throw new Error(`Overpass stayed unavailable: ${lastFailure}`);
 }
 
 let fetchedBoxes = 0, splitBoxes = 0, stopped = null;
@@ -157,7 +159,7 @@ if (!fetchedBoxes && !splitBoxes && stopped) {
 current.lastAttempt = {at: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
   status: !current.pending?.length ? 'acquired' : fetchedBoxes ? 'partial' : 'deferred',
   reason: stopped, fetchedBoxes, splitBoxes, requests, downloadedBytes: downloaded};
-if (current.lastAttempt.status === 'deferred') console.warn(`::warning::${stage.name} acquisition deferred: ${stopped}`);
+if (current.lastAttempt.status === 'deferred') console.warn(workflowWarning(`${stage.name} acquisition deferred: ${stopped}`));
 if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY,
   `### ${stage.name}: ${current.lastAttempt.status}\n${fetchedBoxes} fetched boxes; ${current.pending?.length || 0} pending. ${stopped || ''}\n`);
 

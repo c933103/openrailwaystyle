@@ -14,3 +14,7 @@ export function describeOverpassError(error) {
   const message = String(error?.message || 'Unknown Overpass error').replace(/[\r\n]/g, ' ').slice(0,300);
   return message + (codes.size ? ` [${[...codes].sort().join(', ')}]` : '');
 }
+
+// Untrusted provider messages must stay data in Actions annotations.
+export const workflowWarning = message => '::warning::' + String(message)
+  .replace(/%/g,'%25').replace(/\r/g,'%0D').replace(/\n/g,'%0A');

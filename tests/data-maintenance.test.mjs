@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {STAGES, selectDownloadStage} from '../scripts/download-stages.mjs';
-import {describeOverpassError} from '../scripts/overpass-errors.mjs';
+import {describeOverpassError, workflowWarning} from '../scripts/overpass-errors.mjs';
 import {maintainDataWorkflows, removedDiagnosticWorkflows} from '../scripts/maintain-data-workflows.mjs';
 
 const at = '2026-10-11T00:00:00Z';
@@ -32,6 +32,7 @@ test('transport diagnostics expose nested codes and bound cyclic aggregate error
   const result = describeOverpassError(new TypeError('fetch failed',{cause}));
   assert.equal(result,'fetch failed [ENETUNREACH, ETIMEDOUT]');
   assert.equal(describeOverpassError(new Error('HTTP 503: too busy')),'HTTP 503: too busy');
+  assert.equal(workflowWarning('busy%0A\r\n::other::'), '::warning::busy%250A%0D%0A::other::');
 });
 const workflows = [
   {id:1,path:'.github/workflows/pr71-rebuild.yml',state:'active'},

@@ -49,6 +49,7 @@ test('zero-byte transport outage persists a deferred attempt, unchanged geometry
   assert.equal(acquired.stages.japan.completed,null);
   assert.equal(acquired.stages.japan.pending.length,1);
   assert.equal(acquired.stages.japan.lastAttempt.status,'deferred');
+  assert.match(acquired.stages.japan.lastAttempt.reason,/ENETUNREACH/);
   assert.equal(acquired.stages.japan.lastAttempt.requests,5);
   assert.equal(acquired.stages.japan.lastAttempt.downloadedBytes,0);
   assert.equal((await result.read('manifest.json')).run.status,'deferred');
