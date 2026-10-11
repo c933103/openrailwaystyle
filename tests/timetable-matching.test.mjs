@@ -53,6 +53,35 @@ test('resealed served members require the exact roles emitted by capture', () =>
   assert.deepEqual(captured.served_members.map(member => member.role), allowed);
 });
 
+test('resealed active service dates preserve the collector reference window and strict order', () => {
+  const shift = (date, days) => new Date(Date.parse(`${date}T00:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
+  for (const reference of ['2026-10-05', '2024-03-01', '0042-03-01']) {
+    const oldest = shift(reference, -366), previous = shift(reference, -1);
+    const cases = [
+      [[], true], [[reference], true], [[oldest, previous, reference], true],
+      [Array.from({length: 367}, (_, index) => shift(reference, index - 366)), true],
+      [[reference, reference], false], [[reference, previous], false],
+      [[shift(reference, 1)], false], [[shift(reference, -367)], false],
+      [['9999-12-31'], false],
+    ];
+    for (const [dates, valid] of cases) for (const placement of ['selected', 'other', 'expired-other']) {
+      const input = fixture();
+      input.evidence.source.service_date = reference; input.context.service_date = reference;
+      input.evidence.observations[0].active_service_dates = [reference];
+      if (placement !== 'selected') addOtherSourcePattern(input);
+      const row = input.evidence.observations[placement === 'selected' ? 0 : 1];
+      row.active_service_dates = [...dates];
+      if (placement === 'expired-other') { row.calendar_state = 'expired'; row.valid_until = 0; }
+      sealObservations(input);
+      const before = structuredClone(input), output = matchTimetablePattern(input);
+      assert.equal(output.status, valid ? 'verified' : 'missing_evidence', `${reference}/${JSON.stringify(dates)}/${placement}`);
+      if (!valid) assert.deepEqual(output.reasons, ['invalid_observation_schema']);
+      assert.equal(output.frequency_status, 'not_evaluated');
+      assert.deepEqual(input, before, 'date validation neither reorders nor drops observations');
+    }
+  }
+});
+
 test('offline compiler evidence fixtures and existing-output compatibility', () => {
   const run = spawnSync('python3', ['-m', 'unittest', 'discover', '-s', 'tests', '-p', 'timetable_evidence_test.py'], {encoding: 'utf8'});
   assert.equal(run.status, 0, run.stdout + run.stderr);

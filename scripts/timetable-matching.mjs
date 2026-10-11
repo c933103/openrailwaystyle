@@ -138,9 +138,16 @@ function observationTimes(row) {
   const intervals = [...row.frequencies].sort((a, b) => a.start - b.start);
   return intervals.every((interval, index) => index === 0 || interval.start >= intervals[index - 1].end);
 }
-function observationSchema(row, patterns) {
+// The collector includes only its reference service day and at most 366 prior
+// days, sorted uniquely. Use that historical reference, never the wall clock.
+function observationDates(dates, serviceDate) {
+  const earliest = Date.parse(`${serviceDate}T00:00:00Z`) - 366 * 86400000;
+  return dates.every((date, index) => date <= serviceDate && Date.parse(`${date}T00:00:00Z`) >= earliest &&
+    (index === 0 || dates[index - 1] < date));
+}
+function observationSchema(row, patterns, serviceDate) {
   return record(row, observationFields) && digest(row.id) && id(row.trip_id) && id(row.service_id) && digest(row.pattern_id) && patterns.has(row.pattern_id) && id(row.timezone) && Number.isFinite(row.valid_until) && ['current', 'future', 'expired'].includes(row.calendar_state) &&
-    array(row.active_service_dates, 367) && row.active_service_dates.every(calendarDate) &&
+    array(row.active_service_dates, 367) && row.active_service_dates.every(calendarDate) && observationDates(row.active_service_dates, serviceDate) &&
     array(row.departures, 512) && row.departures.length === patterns.get(row.pattern_id).calls.length && row.departures.every(value => value === null || offset(value)) &&
     array(row.frequencies, 128) && row.frequencies.every(frequency => record(frequency, ['start', 'end', 'headway_secs', 'exact_times']) && offset(frequency.start) && offset(frequency.end) && frequency.end > frequency.start && positive(frequency.headway_secs) && ['0', '1'].includes(frequency.exact_times)) && digest(row.fingerprint) && observationTimes(row);
 }
@@ -207,7 +214,7 @@ function matchPattern(input) {
     patterns.set(pattern.id, pattern);
   }
   for (const observation of evidence.observations) {
-    if (!observationSchema(observation, patterns)) return result('missing_evidence', 'invalid_observation_schema');
+    if (!observationSchema(observation, patterns, source.service_date)) return result('missing_evidence', 'invalid_observation_schema');
     const {fingerprint, ...definition} = observation;
     if (observationIds.has(observation.id) || hashText(sourceWork.encode([source.feed_id, source.sha256, observation.trip_id])) !== observation.id || hashText(sourceWork.encode([source.feed_id, source.sha256, source.service_date, definition])) !== fingerprint) return result('conflicting', 'observation_fingerprint_mismatch');
     observationIds.add(observation.id);
