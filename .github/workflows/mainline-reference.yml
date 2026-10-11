@@ -75,7 +75,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: extract-output
-          key: mainline-extract-v1-${{ matrix.region }}-${{ needs.plan.outputs.date }}-${{ hashFiles('scripts/acquire-mainline-extract.py') }}
+          key: mainline-extract-v1-${{ matrix.region }}-${{ needs.plan.outputs.date }}-${{ hashFiles('scripts/acquire-mainline-extract.py') }}-${{ fromJSON(needs.plan.outputs.checksums)[matrix.region] }}
       - name: Reuse a completed continent artifact before requesting another PBF body
         if: steps.cache.outputs.cache-hit != 'true' && fromJSON(needs.plan.outputs.checkpoints)[matrix.region].artifact
         uses: actions/download-artifact@v4
