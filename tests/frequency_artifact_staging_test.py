@@ -3,6 +3,7 @@ import copy
 import gzip
 import hashlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -100,6 +101,84 @@ class ArtifactStaging(unittest.TestCase):
         result=json.loads(gzip.decompress((self.args.output/'feeds/fixture.json.gz').read_bytes()))
         self.assertEqual(result['segments'],self.feed['segments'])
         self.assertEqual(stage.digest(self.args.input/'feeds/fixture.json.gz'),original)
+    def test_record_streaming_fits_a_cap_that_rejected_whole_feed_parsing(self):
+        # 9.7 MB expanded, 40,000 profile/geometry records. The old read_json
+        # worker failed with feed_memory_limit at this same 96 MB cap.
+        self.feed['segments']=[self.feed['segments'][0]]*40000
+        path=self.args.input/'feeds/fixture.json.gz'
+        with gzip.open(path,'wt',encoding='utf-8') as output:
+            json.dump(self.feed,output,separators=(',',':'))
+        original=stage.digest(path);self.args.max_feed_memory_bytes=96_000_000
+        self.assertEqual(stage.run(self.args),0)
+        result=json.loads(gzip.decompress((self.args.output/'feeds/fixture.json.gz').read_bytes()))
+        self.assertEqual(result['segments'],self.feed['segments'])
+        self.assertEqual(stage.digest(path),original)
+    def test_streaming_matches_producer_projection_and_deterministic_gzip(self):
+        # Source last, unknown arrays/scalars, escaped keys/strings and a value
+        # that crosses the reader boundary must all use the existing projection.
+        value={**{key:item for key,item in self.feed.items() if key!='source'},
+            'unknown':[None,True,1.25,{'nested':['comma, bracket] quote" slash\\ 鉄道']}],
+            'escaped"key':['鉄道'*30000], 'empty':[], 'number':123,
+            'source':self.feed['source']}
+        value['routes'][0]['route_url']='https://u:synthetic@public.example.test/?token=synthetic'
+        value['routes'][0]['route_url_sha256']='e'*64
+        plain=self.root/'plain.json';plain.write_text(json.dumps(value,ensure_ascii=False),encoding='utf-8')
+        expected=self.root/'expected.json.gz';p.write_feed(expected,value)
+        actual=self.root/'actual.json.gz'
+        request={'id':'fixture','sha256':'c'*64,'service_date':self.args.date}
+        stage.rewrite_feed(plain,actual,request)
+        self.assertEqual(actual.read_bytes(),expected.read_bytes())
+        for size in (1,2,7,64):
+            with self.subTest(chunk=size):
+                reader=stage.FeedJSON(io.StringIO(json.dumps({'x':['鉄道', '\\"', {'y':[]}]})),size)
+                self.assertEqual(reader.value(),{'x':['鉄道','\\"',{'y':[]}]})
+                self.assertEqual(reader.whitespace(),'')
+    def test_streaming_rejects_malformed_json_in_every_record_and_field(self):
+        request={'id':'fixture','sha256':'c'*64,'service_date':self.args.date}
+        valid=json.dumps(self.feed,separators=(',',':'))
+        bad=[
+            valid+'{}',valid[:-1]+',}',valid.replace('"segments":[','"segments":[,',1),
+            valid.replace('"segments":[','"segments":[NaN,',1),
+            valid.replace('"segments":[','"segments":[1e309,',1),
+            valid.replace('"segments":[','"segments":[{"x":1,"x":2},',1),
+            valid.replace('"segments":[','"segments":[[1,]],"discard":[',1),
+            valid.replace('"schema":1','"schema":1,"schema":1',1),
+            valid.replace('"segments":[','"segments":[true false,',1),
+            valid.replace('"segments":[','"segments":["bad\nstring",',1),
+            valid.replace('"segments":[','"segments":[{"x":[1,2}},',1),
+            valid.replace('"schema":1,','"schema":1\u00a0,',1),
+        ]
+        plain=self.root/'plain.json'
+        for data in bad:
+            with self.subTest(data=data[:80]):
+                plain.write_text(data,encoding='utf-8')
+                with self.assertRaises(stage.StageError) as error:
+                    stage.rewrite_feed(plain,self.root/'invalid.gz',request)
+                self.assertEqual(str(error.exception),'invalid_json')
+    def test_streaming_rejects_missing_or_wrong_required_containers(self):
+        request={'id':'fixture','sha256':'c'*64,'service_date':self.args.date}
+        plain=self.root/'plain.json'
+        for key in ('source','agencies','routes','segments'):
+            for replacement in ('missing',None,True,{},'text'):
+                if key=='source' and replacement=={}:continue
+                with self.subTest(key=key,replacement=replacement):
+                    value={**self.feed}
+                    if replacement=='missing':value.pop(key)
+                    else:value[key]=replacement
+                    stage.write_json(plain,value)
+                    with self.assertRaises(stage.StageError) as error:
+                        stage.rewrite_feed(plain,self.root/'invalid.gz',request)
+                    self.assertEqual(str(error.exception),'invalid_feed_shape')
+    def test_worker_failure_reports_only_verified_feed_id_and_safe_reason(self):
+        self.feed['source']['sha256']='d'*64;self.save_feed()
+        errors=io.StringIO()
+        with patch.object(sys,'stderr',errors):receipt=self.failure('feed_identity_mismatch')
+        self.assertEqual(receipt['feed_id'],'fixture')
+        self.assertEqual(errors.getvalue(),'frequency_stage_failed: feed_identity_mismatch feed=fixture\n')
+        self.args.diagnostics=self.root/'diagnostic-untrusted'
+        receipt=stage.diagnose(self.args,'synthetic-unpublished-lineage-marker',self.ctx,MARKER)
+        self.assertNotIn('feed_id',receipt)
+        self.assertEqual(receipt['reason_code'],'stage_validation_failed')
     def test_missing_inventory(self):
         (self.args.input/'inventory-0.json').unlink();self.assertEqual(self.failure('inventory_missing')['inventory_state'],'missing')
     def test_partial_inventory(self):
@@ -169,6 +248,10 @@ class ArtifactStaging(unittest.TestCase):
     def test_overflowed_nonfinite_json_is_rejected_before_serialization(self):
         path=self.args.input/'feeds/fixture.json.gz'
         path.write_bytes(gzip.compress(b'{"source":{},"unrelated":1e309}'))
+        self.failure('invalid_json')
+    def test_streaming_rejects_invalid_utf8_even_in_unknown_fields(self):
+        path=self.args.input/'feeds/fixture.json.gz'
+        path.write_bytes(gzip.compress(json.dumps(self.feed).encode()[:-1]+b',"unknown":"\xff"}'))
         self.failure('invalid_json')
     def test_mid_stage_failure_removes_partial_derivative(self):
         original=(self.args.input/'feeds/fixture.json.gz').read_bytes()
