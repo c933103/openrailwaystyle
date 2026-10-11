@@ -26,8 +26,10 @@ export function stationPoint(element){
  const hasRailMode=['train','subway','light_rail','tram','monorail','funicular'].some(k=>tags[k]==='yes');
  if(!isRail && !(tags.public_transport==='station'&&hasRailMode))return null;
  // A historical or future mapped station is not an operating-station dot.
- if(INVALID_LIFECYCLE.some(k=>RETIRED.has(tags[k])||tags.railway===k||
-   typeof tags[k+':railway']==='string'))return null;
+ // An active railway=station may carry a proposed:railway or
+ // abandoned:railway tag describing *other* infrastructure. Such lifecycle
+ // tags must not override the active station's directly mapped railway tag.
+ if(INVALID_LIFECYCLE.some(k=>RETIRED.has(tags[k])||tags.railway===k))return null;
  const point=element.type==='node'?element:element.center;
  const lat=point?.lat,lon=point?.lon;
  if(!Number.isFinite(lat)||!Number.isFinite(lon)||lat < -90||lat>90||lon < -180||lon>180)
