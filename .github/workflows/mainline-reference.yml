@@ -31,6 +31,7 @@ jobs:
     outputs:
       date: ${{ steps.plan.outputs.date }}
       sizes: ${{ steps.budget.outputs.sizes }}
+      checksums: ${{ steps.budget.outputs.checksums }}
       checkpoints: ${{ steps.checkpoints.outputs.checkpoints }}
     steps:
       - uses: actions/checkout@v4
@@ -90,16 +91,15 @@ jobs:
           SOURCE_REGION: ${{ matrix.region }}
           SOURCE_DATE: ${{ needs.plan.outputs.date }}
           PLANNED_BYTES: ${{ fromJSON(needs.plan.outputs.sizes)[matrix.region] }}
+          PLANNED_MD5: ${{ fromJSON(needs.plan.outputs.checksums)[matrix.region] }}
         run: |
           python - <<'PY'
-          import hashlib,json,os,shutil
+          import importlib.util,os,shutil
           from pathlib import Path
-          root=Path('extract-output');valid=False
-          if (root/'source.json').is_file():
-            s=json.loads((root/'source.json').read_text());p=root/'ways.geojsonseq.gz'
-            valid=(s.get('complete') is True and s.get('region')==os.environ['SOURCE_REGION'] and s.get('date')==os.environ['SOURCE_DATE'] and
-              0<s.get('pbfBytes',0)<=int(os.environ['PLANNED_BYTES']) and p.is_file() and 0<p.stat().st_size<=1024**3 and p.stat().st_size==s.get('exportBytes') and
-              hashlib.file_digest(p.open('rb'),'sha256').hexdigest()==s.get('exportSha256'))
+          spec=importlib.util.spec_from_file_location('plan','scripts/plan-mainline-acquisition.py')
+          plan=importlib.util.module_from_spec(spec);spec.loader.exec_module(plan)
+          root=Path('extract-output')
+          valid=plan.validate_checkpoint(root,os.environ['SOURCE_REGION'],os.environ['SOURCE_DATE'],int(os.environ['PLANNED_BYTES']),os.environ['PLANNED_MD5'])
           if not valid and root.exists(): shutil.rmtree(root)
           with open(os.environ['GITHUB_OUTPUT'],'a') as output: output.write('valid='+str(valid).lower()+'\n')
           print('Completed dated checkpoint reused:',valid)
@@ -128,11 +128,12 @@ jobs:
       - name: Require the planned byte bound for new and cached exports
         env:
           PLANNED_BYTES: ${{ fromJSON(needs.plan.outputs.sizes)[matrix.region] }}
+          PLANNED_MD5: ${{ fromJSON(needs.plan.outputs.checksums)[matrix.region] }}
         run: |
           python - <<'PY'
           import json, os
           source=json.load(open('extract-output/source.json'))
-          if source['pbfBytes']>int(os.environ['PLANNED_BYTES']): raise ValueError('Source grew beyond the worldwide cost plan')
+          if source['pbfBytes']!=int(os.environ['PLANNED_BYTES']) or source['sourceMd5']!=os.environ['PLANNED_MD5']: raise ValueError('Dated source changed after worldwide planning')
           PY
       - uses: actions/upload-artifact@v4
         with:

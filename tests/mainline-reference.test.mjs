@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile,mkdtemp,mkdir,writeFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {spawnSync} from 'node:child_process';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
@@ -19,6 +20,28 @@ const source=r=>mainlineRegion({elements:r});
 const sources=()=>MAINLINE_REGIONS.map(region=>({schema:1,complete:true,region,date:'2026-10-09',license:'ODbL-1.0',
  url:`https://download.geofabrik.de/${region}-261009.osm.pbf`,sourceTimestamp:'2026-10-09T20:00:00Z',
  pbfBytes:100,pbfSha256:'a'.repeat(64),exportBytes:100,exportSha256:'b'.repeat(64)}));
+test('cached extracts reject changed dated PBF sizes and same-size checksum replacements',()=>{
+ const result=spawnSync('python',['-c',`
+import importlib.util, tempfile, json, hashlib
+from pathlib import Path
+spec=importlib.util.spec_from_file_location('plan','scripts/plan-mainline-acquisition.py')
+plan=importlib.util.module_from_spec(spec);spec.loader.exec_module(plan)
+with tempfile.TemporaryDirectory() as directory:
+ root=Path(directory);body=b'verified railway export';(root/'ways.geojsonseq.gz').write_bytes(body)
+ source=dict(complete=True,region='asia',date='2026-10-09',pbfBytes=100,sourceMd5='a'*32,
+  exportBytes=len(body),exportSha256=hashlib.sha256(body).hexdigest())
+ (root/'source.json').write_text(json.dumps(source))
+ assert plan.validate_checkpoint(root,'asia','2026-10-09',100,'a'*32)
+ assert not plan.validate_checkpoint(root,'asia','2026-10-09',101,'a'*32)
+ assert not plan.validate_checkpoint(root,'asia','2026-10-09',100,'b'*32)
+ assert not plan.validate_checkpoint(root,'asia','2026-10-08',100,'a'*32)
+ (root/'ways.geojsonseq.gz').write_bytes(b'corrupt railway export')
+ assert not plan.validate_checkpoint(root,'asia','2026-10-09',100,'a'*32)
+ (root/'source.json').write_text('{broken')
+ assert not plan.validate_checkpoint(root,'asia','2026-10-09',100,'a'*32)
+`],{encoding:'utf8'});
+ assert.equal(result.status,0,result.stderr);
+});
 test('continent validation never certifies a missing, duplicated, changed-age or unpermitted source',()=>{
  const good=sources();assert.equal(validateMainlineSources(good),true);
  assert.throws(()=>validateMainlineSources(good.slice(1)),/Missing/);

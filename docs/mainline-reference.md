@@ -61,16 +61,16 @@ Sites omit archival source parts and serve only runtime assets and audits.
 
 Each source is downloaded once per dated checkpoint, with two concurrent
 continent jobs maximum. A PBF is limited to 48 GiB, a generation to 144 GiB of
-PBF downloads, checked with eight HEAD requests before downloading any body.
-Each continent is constrained to its planned byte count, including cached
-exports. An exported continent is limited to 4 GiB uncompressed, and the complete
+PBF downloads, checked with eight HEAD requests and eight bounded MD5-sidecar
+reads before downloading any PBF body. Each continent must match the planned
+byte count and provider checksum, including cached exports. An exported continent is limited to 4 GiB uncompressed, and the complete
 tile set to 256 MiB compressed. Each tile is limited to 8 MiB decoded / 2 MiB
 compressed. Source archives are split into approximately 40 MiB blobs; combined
 source archives are limited to 512 MiB; two-generation publication is limited
 to 1 GiB. Only current and previous render tiles are copied into the site.
 Completed filtered exports are cached across retries and recovered from
 same-acquirer Actions artifacts across branch cache scopes. Date, region,
-size and export SHA-256 are revalidated before reuse. Superseded PR builds
+exact PBF size, current provider MD5 and export SHA-256 are revalidated before reuse. Superseded PR builds
 are cancelled. Raw continental PBFs
 are deleted after filtering. A monthly scheduled refresh avoids a daily
 world download; relevant source, renderer or application changes also trigger
