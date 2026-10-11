@@ -11,7 +11,7 @@ on:
     - cron: '11 3-23/6 * * *'
   push:
     branches: [main]
-    paths: ['scripts/download-stages.mjs', 'scripts/overpass-errors.mjs', 'scripts/maintain-data-workflows.mjs', 'scripts/build-service-routes.mjs', 'scripts/service-routes.mjs', 'scripts/service-geometry.mjs', 'scripts/service-geometry-health.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs', '.github/workflows/service-routes.yml']
+    paths: ['scripts/download-stages.mjs', 'scripts/overpass-errors.mjs', 'scripts/maintain-data-workflows.mjs', 'scripts/service-acquisition-trigger.mjs', '.github/workflows/service-frequency.yml', 'scripts/build-service-routes.mjs', 'scripts/service-routes.mjs', 'scripts/service-geometry.mjs', 'scripts/service-geometry-health.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs', '.github/workflows/service-routes.yml']
 permissions:
   contents: write
   actions: write
@@ -48,8 +48,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Select service acquisition independently of maintenance
+        id: acquire
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: node scripts/service-acquisition-trigger.mjs
       - run: npm ci --ignore-scripts --no-audit --no-fund
+        if: steps.acquire.outputs.enabled == 'true'
       - name: Load the previous table
+        if: steps.acquire.outputs.enabled == 'true'
         run: |
           # Exit status 2 means no such branch (the first run); any other
           # failure stops the run, so an unreachable remote never leads to a
@@ -65,6 +73,7 @@ jobs:
             exit 1
           fi
       - name: Fetch the next region from OpenStreetMap
+        if: steps.acquire.outputs.enabled == 'true'
         id: build
         run: |
           if [ -f /tmp/previous-service/state.json ]; then export PREVIOUS_DATA=/tmp/previous-service; fi
