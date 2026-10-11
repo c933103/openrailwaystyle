@@ -24,7 +24,9 @@ If a selected stop’s departure board fails while another loads, usable departu
 remain visible with an incomplete-load warning. The same warning appears when the
 successful boards return no upcoming rail departures; this is not a complete empty
 result. Reopening or redrawing a station within the existing one-minute cache keeps
-that status. After the cache expires, opening the board again checks the selected
+that status, including when a translated label changes. Cache identity follows the
+mapped object or scoped source identifier where available, with raw names as a
+fallback; resolving an unnamed station still allows a new named lookup. After the cache expires, opening the board again checks the selected
 stops afresh. This status describes those requests only, not worldwide timetable
 coverage or the map’s separately matched frequency profiles.
 
