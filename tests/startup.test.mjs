@@ -185,7 +185,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   }, {context});
   // Departures without the network; a test may supply a delayed local board.
   const departures = new vm.SyntheticModule(Object.keys(departuresModule), function() {
-    for (const [key,value] of Object.entries(departuresModule)) this.setExport(key, key === 'stationDepartures' ? departureLoader || (async () => ({stops: [], rows: []})) : value);
+    for (const [key,value] of Object.entries(departuresModule)) this.setExport(key, key === 'stationDepartures' ? departureLoader || (async () => ({stops: [], rows: [], stopResults: []})) : value);
   }, {context});
   const globe = new vm.SyntheticModule(['installGlobeDrag','allowPolarCentres','readoutZoom','viewHash','parseViewHash'], function() { this.setExport('installGlobeDrag', () => ({sync() {}, justDragged: () => false, pan: () => false})); this.setExport('allowPolarCentres', () => ({refresh() {}}));this.setExport('readoutZoom',zoom=>zoom);this.setExport('viewHash',globeModule.viewHash);this.setExport('parseViewHash',globeModule.parseViewHash);  }, {context});
   const keyboard = new vm.SyntheticModule(['installKeyboardPan'], function() { this.setExport('installKeyboardPan', () => {}); }, {context});
@@ -602,7 +602,7 @@ test('rare Han in infobox body values and later departure text loads only the di
   map.handlers.click({point:{x:500,y:400},lngLat:{lng:0,lat:0}});
   assert.equal(doc.getElementById('details').hidden,false,'the infobox opens without waiting for a font');
   assert.equal(panel.querySelector('h2').textContent,'Central');await waitForSlice('2a7');
-  completeBoard({stops:[{id:'fixture:central'}],rows:[{line:'R',headsign:'Destination \u{2A800}',departure:0,tz:'UTC',mode:'RAIL'}]});
+  completeBoard({stops:[{id:'fixture:central'}],stopResults:[{stopId:'fixture:central',status:'fulfilled'}],rows:[{line:'R',headsign:'Destination \u{2A800}',departure:0,tz:'UTC',mode:'RAIL'}]});
   await waitForSlice('2a8');
   const headsign=panel.querySelector('.departure-headsign');assert.equal(headsign.textContent,'Destination \u{2A800}');
   assert.equal(headsign.firstChild.data,'Destination ');assert.equal(headsign.closest('[lang]')?.lang,'en');
@@ -936,7 +936,7 @@ async function deferredHubHarness({tier=7,metadata=true,stationProtocol=true}={}
  const pending=[],departures=[];
  const state=await start({search:'?language=en#3/40.75/-74',fetcher:async()=>({ok:true,status:200,json:async()=>structuredClone(input)}),
   stationTile:stationProtocol?(url,language)=>new Promise((resolve,reject)=>pending.push({url,language,resolve,reject})):undefined,
-  departureLoader:async station=>{departures.push(structuredClone(station));return {stops:[],rows:[]};}});
+  departureLoader:async station=>{departures.push(structuredClone(station));return {stops:[],rows:[],stopResults:[]};}});
  const map=state.maps[0],getSource=map.getSource.bind(map);
  const stationSource=metadata?{tiles:['atlasstation://en/https://tiles.test/stations/{z}/{x}/{y}']}:{};
  map.getSource=id=>id==='stations'?stationSource:getSource(id);

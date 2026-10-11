@@ -1,24 +1,24 @@
-import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261011-power-legend-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261011-power-legend-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261011-power-legend-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261011-power-legend-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261011-power-legend-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261011-power-legend-1';
+import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261011-departure-availability-2';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261011-departure-availability-2';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261011-departure-availability-2';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261011-departure-availability-2';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261011-departure-availability-2';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261011-departure-availability-2';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261011-power-legend-1';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261011-power-legend-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261011-power-legend-1';
-import {departureItem} from './departures-ui.mjs?v=20261011-power-legend-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261011-power-legend-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261011-power-legend-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261011-power-legend-1';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261011-power-legend-1';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261011-power-legend-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261011-power-legend-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261011-power-legend-1';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261011-power-legend-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261011-power-legend-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261011-power-legend-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261011-departure-availability-2';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261011-departure-availability-2';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261011-departure-availability-2';
+import {departureItem} from './departures-ui.mjs?v=20261011-departure-availability-2';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261011-departure-availability-2';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261011-departure-availability-2';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261011-departure-availability-2';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261011-departure-availability-2';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261011-departure-availability-2';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261011-departure-availability-2';
+import { installWatchGesture } from './watch-map.mjs?v=20261011-departure-availability-2';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261011-departure-availability-2';
+import { createBundleReader } from './tile-bundles.mjs?v=20261011-departure-availability-2';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261011-departure-availability-2';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -55,7 +55,7 @@ let platformLengths,frequencyExpiry;
 let powerFacilities;
 let railRecovery, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261011-power-legend-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261011-departure-availability-2';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -877,26 +877,44 @@ function showServiceDetails(feature) {
 // data, and journey links. Fetched once a minute at most per station (the
 // panel is redrawn when settings change).
 const departureBoards = new Map();
+function departureBoardKey(feature, names) {
+  const p = feature.properties, object = osmObject(feature);
+  const id = [p.id, p.osm_id, feature.id].find(value =>
+    (typeof value === 'string' && value !== '') || (typeof value === 'number' && Number.isFinite(value)));
+  const rawNames = [p.name, p.full_name].filter(Boolean);
+  const fallbackNames = rawNames.length ? rawNames : Object.entries(p)
+    .filter(([key, value]) => key.startsWith('name:') && value).map(([, value]) => value);
+  const identity = object ? ['osm', object.type, object.id] :
+    ['source', feature.source ?? null, feature.sourceLayer ?? null, id ??
+      [...new Set(fallbackNames.length ? fallbackNames : names)].sort()];
+  // Translation changes presentation, not station identity. Keep a separate
+  // unnamed lookup so resolving a deferred hub can still improve stop matching.
+  // A known OSM object survives coordinate quantization across map sources.
+  // Scoped or missing IDs still need the exact point to avoid local-ID aliases.
+  return JSON.stringify([identity, object ? null : feature.geometry.coordinates, names.length > 0]);
+}
 function showDepartures(panel, feature) {
   const p = feature.properties, [lon, lat] = feature.geometry.coordinates;
   const names = [displayName(p, settings.language), p.name, p.localized_name, p['name:en'], p.full_name].filter(Boolean);
   const section = document.createElement('section'); section.className = 'departures';
   section.append(textNode('h3', 'Departures'), textNode('p', 'Loading departures…', 'small'));
   panel.append(section);
-  // Matching uses names as well as position. A deferred hub's unnamed lookup
-  // must not mask its later named result for the rest of the cache minute.
-  const key = `${lat.toFixed(5)},${lon.toFixed(5)}:${JSON.stringify([...new Set(names)].sort())}`;
+  // Matching names stay local to the request; translated redraws reuse its
+  // outcome until expiry rather than bypassing the per-station cache.
+  const key = departureBoardKey(feature, names);
   let board = departureBoards.get(key);
   if (!board || Date.now() - board.at > 60_000) {
     board = {at: Date.now(), promise: stationDepartures({lat, lon, names}, {signal: AbortSignal.timeout(15000)})};
     departureBoards.set(key, board);
     board.promise.catch(() => departureBoards.delete(key));
   }
-  board.promise.then(({stops, rows}) => {
+  board.promise.then(({stops, rows, stopResults}) => {
     if (!section.isConnected) return;
     section.replaceChildren(textNode('h3', 'Departures'));
-    if (!rows.length) section.append(textNode('p', stops.length ? 'No rail departures in the published timetable soon.' : 'No published timetable covers this station.', 'small'));
-    else {
+    const partial = stopResults.some(result => result.status === 'rejected');
+    if (partial) section.append(textNode('p', 'Some departures could not load. The board may be incomplete.', 'small departure-warning'));
+    if (!rows.length && !partial) section.append(textNode('p', stops.length ? 'No rail departures in the published timetable soon.' : 'No published timetable covers this station.', 'small'));
+    if (rows.length) {
       const live = rows.filter(r => r.live).length;
       section.append(textNode('p', live ? `Live times for ${live} of ${rows.length} departures; the rest are timetabled.` : 'Timetabled times: no live data for these departures.', 'small'));
       if (settings.serviceWidth === 'frequency') section.append(textNode('p', 'These departure timetables are available independently of the map’s matched frequency profiles.', 'small'));

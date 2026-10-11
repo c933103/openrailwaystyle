@@ -55,15 +55,16 @@ try {
       await page.waitForSelector('body[data-map-ready="true"]',{timeout:60000});
       // Supply one mapped station to the actual production click handler.
       // All station-detail and departure rendering remains production code.
-      await page.evaluate(async()=>{
+      const openStation = async (name = 'Suehirocho', properties = {}) => page.evaluate(async ({name, properties})=>{
         const {map}=await import(document.querySelector('script[type="module"]').src);
         const original=map.queryRenderedFeatures;
         map.queryRenderedFeatures=()=>[{source:'stationMajor',kind:'station',layer:{id:'station-major'},
-          properties:{name:'Suehirocho',station:'subway',station_size:'small'},
+          properties:{name,station:'subway',station_size:'small',...properties},
           geometry:{type:'Point',coordinates:[139.77,35.7]}}];
         try{map.fire('click',{point:{x:500,y:500},lngLat:{lng:139.77,lat:35.7}});}
         finally{map.queryRenderedFeatures=original;}
-      });
+      }, {name, properties});
+      await openStation();
       await page.locator('.departure-trip').first().waitFor();
       assert.equal(await page.locator('.departure-trip').count(),3);
       assert.equal(requests.filter(p=>p.endsWith('/trip')).length,0,'board does not prefetch complete schedules');
@@ -102,6 +103,107 @@ try {
       assert.deepEqual(errors,[]);
       await page.screenshot({path:`browser-review/departures-${engine}.png`});
       console.log(`${engine}: station board, mouse selection, full trip, keyboard, cache, retry, and missing identity passed; ${requests.length} fixture requests.`);
+      // Partial board failures must survive the production cache and renderer.
+      // All responses below are synthetic; the loopback transport guard remains.
+      const boardRequests = [];
+      let boardName, boardOrder = ['a', 'b'], boardTimes = [], boardFailed = ['b'];
+      await context.route('https://api.transitous.org/api/v1/**', route => {
+        const url = new URL(route.request().url()); boardRequests.push(url.pathname);
+        if (url.pathname.endsWith('/reverse-geocode')) return route.fulfill({json: boardOrder.map(id =>
+          ({type:'STOP', name:boardName, id, lat:35.7, lon:139.77, modes:['SUBWAY']}))});
+        assert.equal(url.pathname, '/api/v1/stoptimes', 'board never prefetches schedules or retries');
+        assert.equal(url.searchParams.get('n'), '30');
+        return boardFailed.includes(url.searchParams.get('stopId'))
+          ? route.fulfill({status:503, json:{error:'synthetic private provider response'}})
+          : route.fulfill({json:{stopTimes:boardTimes}});
+      });
+      await page.evaluate(() => {
+        window.__departureFixtureNow = Date.now();
+        Date.now = () => window.__departureFixtureNow;
+      });
+      const waitBoard = () => page.waitForFunction(() =>
+        document.querySelector('.departures') && !document.querySelector('.departures').textContent.includes('Loading departures…'));
+      const row = {mode:'SUBWAY', displayName:'G', headsign:'Fixture terminus', tripId:'fixture-partial',
+        realTime:false, place:stop('Central','a')};
+      for (const order of [['a','b'], ['b','a']]) for (const withRows of [false, true]) {
+        boardName = `Partial ${order.join('')} ${withRows ? 'rows' : 'empty'}`;
+        boardOrder = order; boardTimes = withRows ? [row] : []; boardFailed = ['b'];
+        const translated = {id:`fixture-${boardName}`, 'name:en':`${boardName} English`, 'name:ja':`${boardName} 日本語`};
+        const before = boardRequests.length;
+        await openStation(boardName, translated); await waitBoard();
+        assert.equal(boardRequests.length - before, 3);
+        assert.equal(await page.locator('.departure-warning').textContent(), 'Some departures could not load. The board may be incomplete.');
+        assert.equal(await page.locator('.departure-list > li').count(), Number(withRows));
+        assert.doesNotMatch(await page.locator('.departures').textContent(), /No rail departures|No published timetable|synthetic private/);
+        assert.equal(await page.locator('.departures button').count(), 0, 'no board retry button');
+        if (order[0] === 'a') await page.screenshot({path:`browser-review/departures-partial-${withRows ? 'rows' : 'empty'}-${engine}.png`});
+        await page.locator('#details-close').click();
+        boardFailed = [];
+        await openStation(boardName, translated); await waitBoard();
+        assert.equal(await page.locator('.departure-warning').count(), 1, 'reopening keeps cached partial status');
+        assert.equal(boardRequests.length - before, 3, 'reopening does not add provider requests');
+        const language = (await page.locator('#language').inputValue()) === 'ja' ? 'en' : 'ja';
+        await page.locator('#language').selectOption(language);
+        await page.waitForFunction(name => document.querySelector('#detail-content h2')?.textContent === name, translated[`name:${language}`]);
+        await waitBoard();
+        assert.equal(new URL(await page.locator('.departure-links a').first().getAttribute('href')).searchParams.get('fromName'), translated[`name:${language}`], 'journey labels still follow the selected language');
+        assert.equal(await page.locator('.departure-warning').count(), 1, 'settings redraw retains the warning');
+        assert.equal(boardRequests.length - before, 3);
+        await page.evaluate(() => {window.__departureFixtureNow += 60_001;});
+        assert.equal(boardRequests.length - before, 3, 'expiry alone never triggers an automatic retry');
+        await openStation(boardName, translated); await waitBoard();
+        assert.equal(boardRequests.length - before, 6);
+        assert.equal(await page.locator('.departure-warning').count(), 0, 'normal expiry and opening establishes recovery');
+        assert.equal(await page.locator('.departure-list > li').count(), Number(withRows));
+        if (!withRows) assert.match(await page.locator('.departures').textContent(), /No rail departures in the published timetable soon/);
+      }
+      boardName = 'All boards unavailable'; boardFailed = ['a','b']; boardTimes = [];
+      const beforeFailed = boardRequests.length;
+      await openStation(boardName); await waitBoard();
+      assert.match(await page.locator('.departures').textContent(), /Departures could not load. Try again later./);
+      assert.equal(boardRequests.length - beforeFailed, 3);
+      boardFailed = [];
+      await openStation(boardName); await waitBoard();
+      assert.equal(boardRequests.length - beforeFailed, 6, 'all-failed result is evicted for a normal reopening');
+      assert.match(await page.locator('.departures').textContent(), /No rail departures in the published timetable soon/);
+      boardName = 'No matching timetable'; boardOrder = [];
+      await openStation(boardName); await waitBoard();
+      assert.match(await page.locator('.departures').textContent(), /No published timetable covers this station/);
+      assert.deepEqual(errors, []);
+      console.log(`${engine}: partial-empty and partial-rows in both source orders, close/reopen, settings redraw, bounded cached requests, expiry recovery, all-failed eviction and unmatched passed; ${boardRequests.length} intercepted board fixture requests.`);
+      for (const withRows of [false, true]) {
+        let release, requested;
+        const held = new Promise(resolve => {release = resolve;});
+        const started = new Promise(resolve => {requested = resolve;});
+        const closeRequests = [], name = `Close pending partial ${withRows ? 'rows' : 'empty'}`;
+        await context.route('https://api.transitous.org/api/v1/**', async route => {
+          const url = new URL(route.request().url()); closeRequests.push(url.pathname);
+          if (url.pathname.endsWith('/reverse-geocode')) return route.fulfill({json:['a','b'].map(id =>
+            ({type:'STOP', name, id, lat:35.7, lon:139.77, modes:['SUBWAY']}))});
+          assert.equal(url.pathname, '/api/v1/stoptimes');
+          if (url.searchParams.get('stopId') === 'b') {
+            requested(); await held;
+            return route.fulfill({status:503, json:{error:'synthetic private provider response'}});
+          }
+          return route.fulfill({json:{stopTimes:withRows ? [row] : []}});
+        });
+        await openStation(name); await started;
+        assert.match(await page.locator('.departures').textContent(), /Loading departures/);
+        await page.locator('#details-close').click();
+        assert.equal(await page.locator('#details').isHidden(), true);
+        release(); await waitBoard();
+        assert.equal(await page.locator('#details').isHidden(), true, 'late partial results cannot reopen the closed panel');
+        assert.equal(await page.locator('.departure-warning').textContent(), 'Some departures could not load. The board may be incomplete.');
+        assert.equal(closeRequests.length, 3);
+        await openStation(name); await waitBoard();
+        assert.equal(await page.locator('#details').isVisible(), true);
+        assert.equal(await page.locator('.departure-warning').count(), 1);
+        assert.equal(await page.locator('.departure-list > li').count(), Number(withRows));
+        assert.doesNotMatch(await page.locator('.departures').textContent(), /No rail departures|No published timetable|synthetic private/);
+        assert.equal(closeRequests.length, 3, 'reopening after a pending Close retains the cached partial result');
+      }
+      assert.deepEqual(errors, []);
+      console.log(`${engine}: Close during pending partial-empty and partial-rows, late settlement remaining hidden, and cached reopening passed; 6 intercepted fixture requests.`);
       await context.close();
     } finally {await browser.close();}
   }

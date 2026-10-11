@@ -163,33 +163,32 @@ test('a complete replacement keeps the previous version and revised icons availa
   assert.deepEqual(versions, ['new', 'old']);
 });
 
-test('the current departure release refreshes cached code while previous tabs retain their version', async () => {
-  const previousVersion = '20261011-mainline-reference-1';
+for (const previousVersion of ['20261011-power-legend-1', '20261011-departure-availability-1']) for (const file of ['app.mjs', 'departures.mjs']) test(`the current departure release refreshes ${file} from ${previousVersion} while previous tabs retain their version`, async () => {
   const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
   const currentVersion = page.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
   assert.ok(currentVersion, 'the actual page declares its asset version');
   assert.notEqual(currentVersion, previousVersion, 'the correction needs a fresh cache-first asset version');
-  const path = new URL('departures.mjs', scope).pathname;
+  const path = new URL(file, scope).pathname;
   const previousBytes = 'export const departureRelease = "before-correction";';
-  const currentBytes = readFileSync(new URL('../styles/departures.mjs', import.meta.url), 'utf8');
+  const currentBytes = readFileSync(new URL(`../styles/${file}`, import.meta.url), 'utf8');
   const old = startWorker({version: previousVersion, assetBodies: new Map([[path, previousBytes]])});
   await bounded(old.lifecycle('install'));
   await old.lifecycle('activate');
-  assert.equal(await (await old.request(`departures.mjs?v=${previousVersion}`)).text(), previousBytes);
+  assert.equal(await (await old.request(`${file}?v=${previousVersion}`)).text(), previousBytes);
 
   // The worker source and cache generation stay unchanged. Only the deployed
   // page and assets change, as on a normal visit after this release.
   const next = startWorker({version: currentVersion, stores: old.stores,
     assetBodies: new Map([[path, currentBytes]])});
   await bounded(next.request('./', true));
-  assert.ok(await (await next.request(`departures.mjs?v=${currentVersion}`)).text() === currentBytes,
-    'the current page must receive the corrected departure bytes, not the previous saved version');
+  assert.ok(await (await next.request(`${file}?v=${currentVersion}`)).text() === currentBytes,
+    'the current page must receive the corrected module bytes, not the previous saved version');
   assert.equal(next.requests.filter(url => new URL(url).pathname === path).length, 1,
-    'the new complete shell fetches departure code once');
+    'the new complete shell fetches this module once');
   next.setOffline();
-  assert.equal(await (await next.request(`departures.mjs?v=${previousVersion}`)).text(), previousBytes,
+  assert.equal(await (await next.request(`${file}?v=${previousVersion}`)).text(), previousBytes,
     'an older tab keeps its own module after the new shell is saved');
-  assert.ok(await (await next.request(`departures.mjs?v=${currentVersion}`)).text() === currentBytes,
+  assert.ok(await (await next.request(`${file}?v=${currentVersion}`)).text() === currentBytes,
     'the corrected module remains available offline');
 });
 
