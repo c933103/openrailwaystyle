@@ -1,0 +1,32 @@
+name: Inspect current OSM country-node names (single object)
+on:
+  push:
+    branches: [investigate/country-label-li-20261011]
+    paths: ['.github/workflows/audit-live-osm-li.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Compare live OSM tags against stale tile values
+        run: |
+          node --input-type=module <<'JS'
+          const url='https://api.openstreetmap.org/api/0.6/node/3696525426.json';
+          const res=await fetch(url,{signal:AbortSignal.timeout(20000),
+            headers:{'User-Agent':'RailwayAtlas-LI-single-object-audit/1.0 (+https://github.com/c933103/openrailwaystyle)'},
+            redirect:'error'});
+          if(!res.ok)throw new Error('OSM node not accessible: HTTP '+res.status);
+          const json=await res.json();
+          const node=json.elements?.find(e=>e.type==='node'&&e.id===3696525426);
+          if(!node)throw new Error('OSM returned no matching node');
+          const keys=['name:zh','name:zh-Hant','name:zh-Hans','name:zh-HK','name:zh-TW'];
+          const names=Object.fromEntries(keys.map(k=>[k,node.tags?.[k]??null]));
+          console.log('OSM_LIVE',JSON.stringify({id:node.id,version:node.version,timestamp:node.timestamp,
+            visible:node.visible,names}));
+          JS
