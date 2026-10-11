@@ -80,6 +80,10 @@ test('all known station points exist in every supported zoom; names are not a pl
 test('valid projection limits never silently clamp a polar station to a false position',()=>{
  assert.deepEqual(mercatorLocation(0,0,3),[4,4]);
  assert.ok(mercatorLocation(180,0,7)[0] < .0000001);
+ for(const z of [0,3,4,5,6,7]){
+   const n=2**z, bottom=mercatorLocation(0,-85.0511287798066,z)[1];
+   assert.ok(bottom>=0&&bottom<n,`z${z}: southernmost Mercator point must remain in a legal tile row`);
+ }
  assert.throws(()=>mercatorLocation(0,89,3),/Invalid/);
  assert.throws(()=>mercatorLocation(NaN,0,3),/Invalid/);
 });
