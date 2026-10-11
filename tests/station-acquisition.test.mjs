@@ -4,7 +4,7 @@ import {stationBaseRegions,stationRegionQuery,stationWorldCoverage,newStationAcq
  checkStationAcquisition,applyStationRegion,postponeStationRegion,splitStationRegion,
  centerInside,nextStationAcquisitionCycle} from '../scripts/station-acquisition.mjs';
 
-const node=(id,lon,lat)=>({type:'node',id,lon,lat,tags:{railway:'station',name:'Railway'}});
+const node=(id,lon,lat)=>({type:'node',id,lon,lat,version:1,timestamp:'2026-10-11T00:00:00Z',tags:{railway:'station',name:'Railway'}});
 
 test('world region coverage is a nonoverlapping exhaustive partition',()=>{
  const regions=stationBaseRegions();
@@ -24,7 +24,7 @@ test('station acquisition query targets exactly stations with rail-mode evidence
  const query=stationRegionQuery([0,0,45,45]);
  assert.ok(query.includes('nwr[railway~"^(station|halt|tram_stop)$"](0,0,45,45);'));
  assert.ok(query.includes('nwr[public_transport=station][subway=yes](0,0,45,45);'));
- assert.ok(query.includes('out body center qt;'));
+ assert.ok(query.includes('out meta center qt;'),'version metadata is required for overlapping source geometry');
  assert.ok(!query.includes('out geom;'),'only centre coords are required for mapped station points');
  assert.throws(()=>stationRegionQuery([-90,-181,90,181]),/Invalid/);
  assert.deepEqual(splitStationRegion([0,0,45,45]),[
@@ -44,7 +44,7 @@ test('verified regional responses checkpoint only their contained stations',()=>
   node(7,box[3],box[2]),
   // Intersecting OSM area: the reported bounding-box center is elsewhere.
   // Its source region still legitimately returns this geometry.
-  {type:'way',id:99,center:{lon:0,lat:0},
+  {type:'way',id:99,version:1,timestamp:'2026-10-11T00:00:00Z',center:{lon:0,lat:0},
     tags:{railway:'station',name:'Multi-region station facility'}},
  ]};
  const processed=applyStationRegion(state,records,box,response);
@@ -57,6 +57,28 @@ test('verified regional responses checkpoint only their contained stations',()=>
  assert.throws(()=>applyStationRegion(state,records,box,response),/Unexpected/);
  assert.throws(()=>applyStationRegion(state,records,state.pending[0].box,{elements:[],remark:'runtime error'}),/Incomplete/);
  assert.equal(state.completed.length,1,'invalid next response cannot advance checkpoint');
+});
+
+test('higher-version OSM station updates reconcile across overlapping region queries',()=>{
+ const initial=newStationAcquisition();
+ const first=initial.pending[0].box;
+ const source={type:'way',id:998,version:1,timestamp:'2026-10-10T00:00:00Z',
+   center:{lat:0,lon:0},tags:{railway:'station',name:'Station old'}};
+ let {state,records}=applyStationRegion(initial,[],first,{elements:[source]});
+ assert.equal(records[0].name,'Station old');
+ const second=state.pending[0].box;
+ const changed={...source,version:2,timestamp:'2026-10-11T00:00:00Z',
+   tags:{railway:'station',name:'Station updated'}};
+ ({state,records}=applyStationRegion(state,records,second,{elements:[changed]}));
+ assert.equal(records.length,1);
+ assert.equal(records[0].name,'Station updated');
+ assert.equal(records[0].osm_version,2);
+ ({state,records}=applyStationRegion(state,records,state.pending[0].box,{elements:[source]}));
+ assert.equal(records[0].osm_version,2,'older response cannot roll back a later station version');
+ assert.throws(()=>applyStationRegion(state,records,state.pending[0].box,{
+   elements:[{...changed,tags:{railway:'station',name:'Corrupted tag'}}]}),/identical version/);
+ assert.throws(()=>applyStationRegion(state,records,state.pending[0].box,{
+   elements:[{...changed,version:undefined}]}),/lacks version metadata/);
 });
 
 test('timed-out region subdivision preserves complete world topology and data',()=>{
