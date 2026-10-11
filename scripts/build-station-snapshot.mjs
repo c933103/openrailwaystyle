@@ -26,6 +26,14 @@ if(input){
   existing=true;
 }
 checkStationAcquisition(state,records);
+// A completed acquisition is the *previous* published generation. Start a
+// fresh independent crawl; the workflow never overwrites its public data
+// branch with an incomplete successor's checkpoint.
+let refreshStarted=false;
+if(!state.pending.length) {
+  if(!stationWorldCoverage(state.completed))throw new Error('Refusing refresh of incomplete station source');
+  state=newStationAcquisition();records=[];refreshStarted=true;
+}
 const pending=state.pending[0];
 const url=new URL(endpoint),query=pending&&stationRegionQuery(pending.box);
 let accepted=false,status='already complete',received=0;
@@ -94,3 +102,4 @@ if(complete){
 await publish('manifest.json',JSON.stringify(manifest,null,2)+'\n');
 console.log('STATION_SNAPSHOT',JSON.stringify(manifest));
 if(!existing)console.log('Initial snapshot: new independent station acquisition');
+if(refreshStarted)console.log('Refreshing station source in a new unpublished generation');
