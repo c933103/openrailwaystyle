@@ -14,7 +14,7 @@ on:
     - cron: '19 3 3 * *'
   push:
     branches: [main]
-    paths: &reference_paths ['.github/workflows/mainline-reference.yml', 'scripts/*mainline*', 'scripts/browser*.mjs', 'scripts/build-browser.mjs', 'scripts/maplibre-backport.mjs', 'styles/mainline-reference.mjs', 'styles/map-controls.mjs', 'styles/vector-tile-validation.mjs', 'styles/pbf-utf8.mjs', 'styles/world.style.json', 'package.json', 'package-lock.json']
+    paths: &reference_paths ['.github/workflows/mainline-reference.yml', 'scripts/**/*.mjs', 'scripts/*.py', 'styles/*.mjs', 'styles/index.html', 'styles/app.css', 'styles/world.style.json', 'package.json', 'package-lock.json']
   pull_request:
     paths: *reference_paths
 permissions:
@@ -144,6 +144,9 @@ jobs:
     needs: [plan, extract]
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    concurrency:
+      group: mainline-publication-${{ github.event.pull_request.number || inputs.preview_pr || 'production' }}
+      cancel-in-progress: false
     permissions:
       contents: write
       actions: write
@@ -193,8 +196,14 @@ jobs:
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         env:
           PUBLISH_BRANCH: ${{ github.ref == 'refs/heads/main' && 'mainline-data' || format('mainline-preview-{0}', github.event.pull_request.number || inputs.preview_pr) }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.preview_pr }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
+          if [ "$PUBLISH_BRANCH" != mainline-data ] && [ "$(gh pr view "$PR_NUMBER" --json state --jq .state)" != OPEN ]; then
+            echo 'PR is closed; retain diagnostics without recreating its preview.'
+            exit 0
+          fi
           mkdir /tmp/mainline-publish
           cd /tmp/mainline-publish
           git init -q

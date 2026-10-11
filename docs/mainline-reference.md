@@ -67,9 +67,13 @@ tile set to 256 MiB compressed. Each tile is limited to 8 MiB decoded / 2 MiB
 compressed. Source archives are split into approximately 40 MiB blobs; combined
 source archives are limited to 512 MiB; two-generation publication is limited
 to 1 GiB. Only current and previous render tiles are copied into the site.
-Completed filtered exports are cached across retries; raw continental PBFs
+Completed filtered exports are cached across retries and recovered from
+same-acquirer Actions artifacts across branch cache scopes. Date, region,
+size and export SHA-256 are revalidated before reuse. Superseded PR builds
+are cancelled. Raw continental PBFs
 are deleted after filtering. A monthly scheduled refresh avoids a daily
-world download. A missing dated export fails explicitly instead of silently
+world download; relevant source, renderer or application changes also trigger
+acceptance builds. A missing dated export fails explicitly instead of silently
 substituting a different date or source.
 
 The manifest measures acquisition bytes and seconds per continent, filtered

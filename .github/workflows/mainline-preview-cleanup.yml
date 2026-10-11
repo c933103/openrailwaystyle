@@ -9,6 +9,9 @@ jobs:
     # Fork builds use read-only artifacts and never create a preview ref.
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    concurrency:
+      group: mainline-publication-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
     steps:
       - name: Delete only this closed PR's generated data preview
         env:
