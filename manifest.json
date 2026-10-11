@@ -17,12 +17,12 @@
   "source": "OpenStreetMap",
   "license": "ODbL-1.0",
   "generation": "ba50701d76214af40d133a2f",
-  "inputSha256": "58f99144f5dcbe63fa774b0439830b7ca5693fb5b5b6bc5e3a4dd833751ded98",
+  "inputSha256": "99090edef081b867f736e1fc55955136e328736e27d611d7e09d386cd7a9c5a6",
   "coverage": "all eight Geofabrik continent extracts; complete OSM ways",
   "sourceDate": "2026-10-09",
   "oldestSource": "2026-10-09T20:21:04.000Z",
   "newestSource": "2026-10-09T20:21:04.000Z",
-  "generated": "2026-10-11T14:04:12.005Z",
+  "generated": "2026-10-11T14:18:46.498Z",
   "sources": [
     {
       "schema": 1,
@@ -61,7 +61,7 @@
       "processSeconds": 0.37168124999999463,
       "source": "OpenStreetMap via Geofabrik",
       "license": "ODbL-1.0",
-      "exportedWays": 1,
+      "exportedWays": 0,
       "referenceWays": 0
     },
     {
@@ -2927,8 +2927,8 @@
   "downloadedBytes": 85497264561,
   "tileBytes": 20503710,
   "largestTileBytes": 521959,
-  "buildSeconds": 133.027503738,
-  "peakRssBytes": 5245702144,
+  "buildSeconds": 192.48395584099998,
+  "peakRssBytes": 5246267392,
   "archives": {
     "membership": {
       "parts": [
@@ -2950,7 +2950,8 @@
   "normalizedWaysSha256": "fa23782463b9f0e412f2039e1187518eb4c12cd46aef03d3879b24f141633fe8",
   "membershipSha256": "06344f4dd1b2797b18be250d91c1926046f91ed9ef400a101d52fde0766d3d3a",
   "indexSha256": "ade8c67c8975c6ca05bab3eae693de713dc59e090bda3120c06384b7ec0993b8",
-  "fullAcquisitionRequests": 32,
+  "fullAcquisitionRequests": 40,
+  "preflightMetadataRequests": 16,
   "providerTileRequests": 0,
   "tileFeatureInstancesByZoom": {
     "0": 17391,
@@ -3042,15 +3043,15 @@
   },
   "rendererAcceptance": {
     "complete": true,
-    "path": "generations/ba50701d76214af40d133a2f/renderer-acceptance-2290467c19f0bf952631433836e505b2656e1efc7bfc3399913ea9469aa200a6.json",
-    "sha256": "2290467c19f0bf952631433836e505b2656e1efc7bfc3399913ea9469aa200a6",
+    "path": "generations/ba50701d76214af40d133a2f/renderer-acceptance-3d5f0ad64035a54b467547896009213e06fca2912b78e3a9b2c1362210e26336.json",
+    "sha256": "3d5f0ad64035a54b467547896009213e06fca2912b78e3a9b2c1362210e26336",
     "samples": 840,
     "appSamples": 18,
     "assetRequests": 1078,
-    "assetBytes": 62207143,
+    "assetBytes": 62207263,
     "timing": {
-      "medianMs": 337,
-      "p95Ms": 886
+      "medianMs": 345,
+      "p95Ms": 1320
     }
   }
 }
