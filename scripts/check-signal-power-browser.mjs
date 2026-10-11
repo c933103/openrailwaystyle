@@ -1,4 +1,4 @@
-import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
+import {installEmptyMapProviders,emptyReferenceFixture} from './browser-renderer-fixture.mjs';
 import {launchBrowser} from './browser.mjs';
 import {ormVectorFixture} from './orm-vector-fixture.mjs';
 import {readFile, mkdir} from 'node:fs/promises';
@@ -102,6 +102,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
   });
   if(glyphFile)await page.route('https://tuiles.enliberte.fr/fonts/**',async route=>route.fulfill({body:await readFile(glyphFile),contentType:'application/x-protobuf'}));
   await page.route('**/data/**',async route=>{
+    const reference=emptyReferenceFixture(new URL(route.request().url()).pathname);if(reference)return route.fulfill(reference);
     if(new URL(route.request().url()).pathname.endsWith('/data/traction/power/power-facilities.geojson')){supplyRequests++;await route.fulfill({json:supplies});return;}
     const path=new URL(route.request().url()).pathname,match=/\/data\/(.+)\/(index\.json|\d+\/\d+\/\d+\.pbf\.gz)$/.exec(path);
     if(!match){await route.fulfill({json:{tiles:[]}});return;}
