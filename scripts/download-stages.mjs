@@ -47,6 +47,18 @@ export const STAGES = [
     {box: [-35, -20, 37.5, 52], exclude: caucasus}, {box: [-50, 110, -11, 180]}, {box: [-50, -180, 0, -150]}]},
 ];
 
+// Give each unfinished stage a turn. A permanently busy or oversized region
+// must not monopolize all runs while later continents remain unqueried.
+// Last-attempt metadata is independent of completion and never clears queues.
+export function selectDownloadStage(state, {now = Date.now(), refreshDays = 14} = {}) {
+  const time = value => Number.isFinite(Date.parse(value)) ? Date.parse(value) : 0;
+  const unfinished = STAGES.filter(s => state.stages[s.name]?.pending?.length || !state.stages[s.name]?.completed);
+  if (unfinished.length) return unfinished.reduce((a, b) =>
+    time(state.stages[b.name]?.lastAttempt?.at) < time(state.stages[a.name]?.lastAttempt?.at) ? b : a);
+  const oldest = STAGES.reduce((a, b) => time(state.stages[b.name].completed) < time(state.stages[a.name].completed) ? b : a);
+  return now - time(state.stages[oldest.name].completed) >= refreshDays * 86400_000 ? oldest : null;
+}
+
 // Country filters must survive automatic subdivision. Use the
 // same selection construction for railway ways and urban route relations.
 export function partSelection(part, box, select) {

@@ -12,6 +12,21 @@ const job=name=>{
 };
 const globalFixtures=await readFile(new URL('./global-frequency.test.mjs',import.meta.url),'utf8');
 
+test('production catalogue installs locked Node dependencies before isolated mixed-runtime fixtures',()=>{
+  const catalogue=job('catalogue'),fixtures=catalogue.indexOf('Run offline source-eligibility');
+  assert.ok(catalogue.indexOf('uses: actions/setup-node@v4')>=0);
+  const dependencies=catalogue.indexOf('npm ci --ignore-scripts --no-audit --no-fund');
+  assert.ok(dependencies>=0 && dependencies<fixtures);
+  const isolated=catalogue.slice(fixtures,catalogue.indexOf('Pin actual Transitous'));
+  assert.match(isolated,/sudo unshare --net -- bash -euc/);
+  assert.match(isolated,/ip link set lo up/);
+  assert.match(isolated,/exec setpriv --reuid="\$1" --regid="\$2" --init-groups --no-new-privs/);
+  assert.match(isolated,/frequency_catalogue_test\.py/);
+  assert.match(isolated,/global_frequency_test\.py/);
+  assert.match(isolated,/result\.wasSuccessful\(\)/);
+  assert.doesNotMatch(isolated,/curl |git (?:clone|fetch)|\|\| true|continue-on-error/);
+});
+
 test('reconciled catalogue fixtures run inside the isolated PR test process',()=>{
   assert.match(job('validate-pr'),/tests\/global-frequency\.test\.mjs/);
   assert.match(globalFixtures,/'python3',\['-m','unittest','discover','-s','tests','-p','frequency_catalogue_test\.py'\]/);
