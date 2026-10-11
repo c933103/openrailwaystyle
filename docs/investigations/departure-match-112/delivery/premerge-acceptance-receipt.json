@@ -1,0 +1,59 @@
+{
+  "head": "76b222c5d147acf317129db20858532ed5af7076",
+  "tree": "64dd028fe4229f942f7ddca564955278aad1a7ef",
+  "pr": "https://github.com/c933103/openrailwaystyle/pull/192",
+  "merge": "f9bd326c6a2a3738daafd36a58a16f9a2251c5a8",
+  "codex": "https://github.com/c933103/openrailwaystyle/pull/192#issuecomment-6114338771",
+  "site": {
+    "id": 38178813786,
+    "conclusion": "success"
+  },
+  "reference": {
+    "id": 38178813733,
+    "conclusion": "success"
+  },
+  "browserGroups": [
+    {
+      "id": 114590525622,
+      "name": "browser (controls)",
+      "conclusion": "success"
+    },
+    {
+      "id": 114590525650,
+      "name": "browser (rail-fixture)",
+      "conclusion": "success"
+    },
+    {
+      "id": 114590525695,
+      "name": "browser (context)",
+      "conclusion": "success"
+    },
+    {
+      "id": 114590525712,
+      "name": "browser (platforms)",
+      "conclusion": "success"
+    },
+    {
+      "id": 114590525735,
+      "name": "browser (frequency)",
+      "conclusion": "success"
+    },
+    {
+      "id": 114590525744,
+      "name": "browser (infrastructure)",
+      "conclusion": "success"
+    }
+  ],
+  "departures": {
+    "job": 114590525622,
+    "engines": [
+      "chromium",
+      "webkit"
+    ],
+    "seconds": 33.9,
+    "status": "pass"
+  },
+  "combinedStatus": "success",
+  "unresolvedReviewThreads": 0,
+  "receiptCommentId": 6114635939
+}

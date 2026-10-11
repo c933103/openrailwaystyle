@@ -1,0 +1,7 @@
+2026-10-11T23:21:01.0255580Z [departures] chromium: station board, mouse selection, full trip, keyboard, cache, retry, and missing identity passed; 5 fixture requests.
+2026-10-11T23:21:13.2261220Z [departures] chromium: partial-empty and partial-rows in both source orders, close/reopen, translated redraw, expiry, all-failed eviction, empty/filtered no-match cache and malformed lookup recovery passed; 44 intercepted board fixture requests.
+2026-10-11T23:21:13.3986092Z [departures] chromium: Close during pending partial-empty and partial-rows, late settlement remaining hidden, and cached reopening passed; 6 intercepted fixture requests.
+2026-10-11T23:21:16.1210817Z [departures] webkit: station board, mouse selection, full trip, keyboard, cache, retry, and missing identity passed; 5 fixture requests.
+2026-10-11T23:21:20.2286085Z [departures] webkit: partial-empty and partial-rows in both source orders, close/reopen, translated redraw, expiry, all-failed eviction, empty/filtered no-match cache and malformed lookup recovery passed; 44 intercepted board fixture requests.
+2026-10-11T23:21:20.4391172Z [departures] webkit: Close during pending partial-empty and partial-rows, late settlement remaining hidden, and cached reopening passed; 6 intercepted fixture requests.
+2026-10-11T23:21:20.5227417Z PASS check-departures-browser.mjs in 23.6 s

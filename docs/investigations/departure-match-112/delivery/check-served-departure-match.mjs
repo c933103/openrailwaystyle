@@ -1,0 +1,41 @@
+import assert from 'node:assert/strict';
+import {readFile, writeFile, mkdir, copyFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {spawnSync} from 'node:child_process';
+import {resolve, join} from 'node:path';
+const root = resolve(process.argv[2] || '.');
+const out = resolve(process.argv[3] || 'browser-review/departure-match-served');
+const base = 'https://c933103.github.io/openrailwaystyle/';
+const version = '20261011-departure-match-1';
+const commit = 'f9bd326c6a2a3738daafd36a58a16f9a2251c5a8';
+await mkdir(join(out, 'styles'), {recursive:true});
+await mkdir(join(out, 'tests/fixtures'), {recursive:true});
+await copyFile(join(root, 'tests/fixtures/departure-unmatched-predecessor.json.gz'), join(out, 'tests/fixtures/departure-unmatched-predecessor.json.gz'));
+const files = ['index.html', 'app.mjs', 'departures.mjs', 'departures-ui.mjs', 'map-model.mjs', 'cjk-font.mjs', 'elevation.mjs', 'layer-semantics.mjs', 'app.css', 'sw.js'];
+const assets = [];
+for (const name of files) {
+  const path = name === 'index.html' ? '' : name + (name === 'sw.js' ? '' : `?v=${version}`);
+  const response = await fetch(base + path, {redirect:'error', signal:AbortSignal.timeout(30000)});
+  assert.equal(response.status, 200, name);
+  const bytes = Buffer.from(await response.arrayBuffer());
+  const expected = await readFile(join(root, 'styles', name));
+  assert.ok(bytes.equals(expected), `${name} must match the exact accepted merge bytes`);
+  await writeFile(join(out, 'styles', name), bytes);
+  assets.push({path, status:response.status, bytes:bytes.length, sha256:createHash('sha256').update(bytes).digest('hex'), matchesMergedSource:true});
+}
+const response = await fetch(base + 'vendor/tile-labels.js', {redirect:'error', signal:AbortSignal.timeout(30000)});
+assert.equal(response.status, 200, 'build information bundle');
+const bundle = await response.text();
+assert.ok(bundle.includes(commit), 'bundle identifies the exact accepted merge commit');
+assert.ok(bundle.includes(version), 'bundle identifies the corrected asset version');
+const app = await readFile(join(out, 'styles/app.mjs'), 'utf8');
+assert.ok(app.includes('No matching rail timetable stop was found within 400 m.'));
+assert.ok(!app.includes('No published timetable covers this station.'));
+// The challenge executes the fetched parser and uses synthetic responses only.
+const challenge = spawnSync(process.execPath, [join(root, 'docs/investigations/departure-match-112/review/review-contract.mjs'), out], {encoding:'utf8'});
+assert.equal(challenge.status, 0, challenge.stderr || challenge.stdout);
+const contract = JSON.parse(challenge.stdout);
+assert.equal(contract.cases, 36);
+const report = {observedAt:new Date().toISOString(), base, commit, version, assets, bundle:{bytes:Buffer.byteLength(bundle), sha256:createHash('sha256').update(bundle).digest('hex'), commitPresent:true, versionPresent:true}, independentContract:contract, scope:'First-party asset reads only, redirects rejected. Actual served parser exercised with synthetic fixtures; no live-provider traffic or local browser execution.'};
+await writeFile(join(out, 'served-verification.json'), JSON.stringify(report, null, 2) + '\n');
+console.log(JSON.stringify(report, null, 2));

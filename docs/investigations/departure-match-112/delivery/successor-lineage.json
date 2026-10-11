@@ -1,0 +1,10 @@
+{
+  "merge": "f9bd326c6a2a3738daafd36a58a16f9a2251c5a8",
+  "directSite": 38180813330,
+  "directReference": 38180813331,
+  "directReferenceAssembleJob": 114593057472,
+  "automaticSiteSuccessor": 38181652817,
+  "successorEvent": "workflow_dispatch",
+  "successorCreatedAt": "2026-10-11T22:45:02Z",
+  "scope": "Direct merge deployment and its reference-completion site successor only; no manual dispatch or unrelated scheduled runs."
+}

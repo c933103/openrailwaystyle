@@ -1,0 +1,108 @@
+{
+  "merge": "f9bd326c6a2a3738daafd36a58a16f9a2251c5a8",
+  "acceptedTree": "64dd028fe4229f942f7ddca564955278aad1a7ef",
+  "directSite": {
+    "id": 38180813330,
+    "conclusion": "success"
+  },
+  "directReference": {
+    "id": 38180813331,
+    "conclusion": "success"
+  },
+  "directDeploymentJob": {
+    "id": 114598109923,
+    "conclusion": "success",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/download-artifact@v4",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/configure-pages@v5",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/upload-pages-artifact@v3",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Deploy to GitHub Pages",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Verify deployed vector tile bytes",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/setup-node@v4",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run npm ci --ignore-scripts --no-audit --no-fund",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run npx playwright install --with-deps chromium",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Install Safari engine for deployed reference verification",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Verify deployed independent OSM geometry with live overview unavailable",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Verify published map with local railway fixture",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Save published map screenshots",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Run actions/setup-node@v4",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "automaticSuccessor": {
+    "id": 38181652817,
+    "conclusion": "success"
+  },
+  "scope": "Successor pinned to direct reference publication; unrelated runs excluded."
+}

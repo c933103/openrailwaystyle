@@ -1,0 +1,105 @@
+{
+  "merge": "f9bd326c6a2a3738daafd36a58a16f9a2251c5a8",
+  "acceptedTree": "64dd028fe4229f942f7ddca564955278aad1a7ef",
+  "version": "20261011-departure-match-1",
+  "directSite": {
+    "id": 38180813330,
+    "conclusion": "success"
+  },
+  "directReference": {
+    "id": 38180813331,
+    "conclusion": "success"
+  },
+  "automaticSuccessor": {
+    "id": 38181652817,
+    "event": "workflow_dispatch",
+    "conclusion": "success",
+    "createdAt": "2026-10-11T22:45:02Z"
+  },
+  "directDeploymentJob": 114598109923,
+  "successorDeploymentJob": 114602818818,
+  "successorControlsJob": 114601029055,
+  "successorJobs": [
+    {
+      "id": 114600177481,
+      "name": "plan",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 114600177608,
+      "name": "reference",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 114600177670,
+      "name": "facilities",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 114600214979,
+      "name": "validate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 114601029002,
+      "name": "browser (rail-fixture)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 114601029006,
+      "name": "browser (platforms)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 114601029014,
+      "name": "browser (infrastructure)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 114601029035,
+      "name": "browser (context)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 114601029055,
+      "name": "browser (controls)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 114601029061,
+      "name": "browser (frequency)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 114602804069,
+      "name": "browser-checks",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 114602818818,
+      "name": "deploy",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 114602819763,
+      "name": "record",
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  ],
+  "gate": "Complete: direct merge deployment and its reference-completion successor succeeded; both actual served-byte observations and 36-case contracts passed.",
+  "localBrowser": "Not run past launch; verified Unix-socket restriction respected. Hosted fixtures passed.",
+  "excluded": "Unrelated later scheduled runs; no manual workflow dispatch."
+}

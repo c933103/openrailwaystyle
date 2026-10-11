@@ -1,0 +1,91 @@
+{
+  "observedAt": "2026-10-11T23:28:18.415Z",
+  "base": "https://c933103.github.io/openrailwaystyle/",
+  "commit": "f9bd326c6a2a3738daafd36a58a16f9a2251c5a8",
+  "version": "20261011-departure-match-1",
+  "assets": [
+    {
+      "path": "",
+      "status": 200,
+      "bytes": 45802,
+      "sha256": "59fc3215bbb5892aa7b8d6b633db8b4cafab1443e4f84fdb42fd6f72176a2403",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "app.mjs?v=20261011-departure-match-1",
+      "status": 200,
+      "bytes": 155168,
+      "sha256": "a9f3a9c30c5dedc562f83650f80eb48e80800bf6a7e5e0fbea289e50d68207f1",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "departures.mjs?v=20261011-departure-match-1",
+      "status": 200,
+      "bytes": 15949,
+      "sha256": "f2075dfc0bdb58e444d80d7b3517e75d1855aa8c7837d216ef2f25750bb34338",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "departures-ui.mjs?v=20261011-departure-match-1",
+      "status": 200,
+      "bytes": 6975,
+      "sha256": "eb340c7c9c5d3385e9dce69bc79d9cd15081dbc54cbcff5f2d5cbe5064bf1ee7",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "map-model.mjs?v=20261011-departure-match-1",
+      "status": 200,
+      "bytes": 58891,
+      "sha256": "a39d84241814a26dc838eb81f71bb405e251847de87264e7fc14854ec5932a79",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "cjk-font.mjs?v=20261011-departure-match-1",
+      "status": 200,
+      "bytes": 4079,
+      "sha256": "8006357d54dc3f6c742d40b5d9b480243b49a39c5c5f3e6c4bc4bdcd55a785fe",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "elevation.mjs?v=20261011-departure-match-1",
+      "status": 200,
+      "bytes": 6814,
+      "sha256": "1ed1527bb80ed588069c4627d8822bbfe49b3cda67243e59beac1c5caa75fecd",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "layer-semantics.mjs?v=20261011-departure-match-1",
+      "status": 200,
+      "bytes": 6073,
+      "sha256": "887b7830f7ac03137dfe6b7fffa9290f33a09b569647fe528793ff6beee6c793",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "app.css?v=20261011-departure-match-1",
+      "status": 200,
+      "bytes": 23144,
+      "sha256": "736f338e7a855b7864802f0eaa7972a713650fe171bbad837156c6693416bc8b",
+      "matchesMergedSource": true
+    },
+    {
+      "path": "sw.js",
+      "status": 200,
+      "bytes": 14826,
+      "sha256": "bae6f897ca776163b097b00e6210ff35932aa073b19ad49b0788d2066e8a910c",
+      "matchesMergedSource": true
+    }
+  ],
+  "bundle": {
+    "bytes": 367632,
+    "sha256": "9e778bb42e42cd153e809b7f608e656b5778dfef90e8170ad362bf2dce67d0db",
+    "commitPresent": true,
+    "versionPresent": true
+  },
+  "independentContract": {
+    "status": "PASS",
+    "cases": 36,
+    "scope": "matching/399.999–400.001m boundary/two-stop cap/request parameters and signal/input immutability/non-array rejection/error identity/partial and all-failed controls",
+    "candidateSha256": "f2075dfc0bdb58e444d80d7b3517e75d1855aa8c7837d216ef2f25750bb34338"
+  },
+  "scope": "First-party asset reads only, redirects rejected. Actual served parser exercised with synthetic fixtures; no live-provider traffic or local browser execution."
+}
