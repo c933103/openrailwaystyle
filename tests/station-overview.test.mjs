@@ -27,7 +27,8 @@ test('actual OSM point and way identities are kept without fusing same-name stat
   node(38,139.767,35.681,{railway:'station','proposed:railway':'station'}),
  ]};
  const rows=parseStationRegion(response);
- assert.deepEqual(rows.map(p=>p.id),['node-31','node-32','node-33','node-34','way-31']);
+ assert.deepEqual(rows.map(p=>p.id),['node-31','node-32','node-33','node-34','node-38','way-31']);
+ assert.ok(rows.find(p=>p.id==='node-38'),'an active station may also have proposed:railway tags');
  assert.equal(rows.find(p=>p.id==='way-31').station,'subway');
  assert.equal(rows.find(p=>p.id==='node-31').name,'東京');
  assert.equal(rows.find(p=>p.id==='node-33').feature,'tram_stop');
