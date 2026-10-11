@@ -34,11 +34,16 @@ One source generation must include all eight dated continents, valid checksums,
 consistent source timestamps, complete geometry, indexed tile digests, actual
 OSM acceptance controls and passing renderer checks. Partial downloads never
 replace the previous live generation. The draft PR stages only
-`mainline-preview-186`; reviewed main uses `mainline-data`. Site assembly
+`mainline-preview-<PR number>` for each input-changing PR; reviewed main uses
+`mainline-data`. Unchanged inputs can reuse accepted production data. Fork
+pull requests can run source and renderer verification with a read-only token;
+publishing a preview requires a repository-owned reviewed branch. Site assembly
 requires and verifies the complete generation before deployment. A SHA-256
 fingerprint binds the published result to acquisition, compiler and renderer
 acceptance inputs. Site readiness waits for that fingerprint and pins the
 verified data commit, so an older branch cannot satisfy a changed build.
+Preview publication reruns a failed or timed-out matching site check; its
+readiness job also allows six hours rather than timing out during acquisition.
 
 The runtime pins the generation named in its manifest. Only an absent tile in
 the verified complete index is empty. A manifest/index error, timeout, HTTP
@@ -85,8 +90,13 @@ Milan, Warsaw, an Alpine crossing, Cape Town, Sydney, São Paulo and Kalgoorlie.
 These are regression controls, not the acquisition boundary. Source geometry
 and emitted tile chains are checked independently at z0–6. The browser checks
 the corresponding chain identities and painted pixels at z−0.1/0/3/4/5/6/7,
-in Mercator and globe views, with desktop Chromium, an Android-size Chromium
-viewport and WebKit. The Android profile is not a physical-device test.
+in Mercator and globe views, with desktop Chromium, a compact Android-width
+Chromium viewport and WebKit. These world views have 450-pixel map heights so
+the flat camera can actually reach negative zoom; a taller-than-world flat
+viewport otherwise clamps upward. Actual camera zoom is asserted. The Android
+profile is not a physical-device test. On the globe, exact source IDs are
+isolated before testing pixels because this renderer's feature query uses a
+planar approximation that can omit visible northern geometry.
 
 ```sh
 node scripts/build-mainline-snapshot.mjs mainline-input mainline-output

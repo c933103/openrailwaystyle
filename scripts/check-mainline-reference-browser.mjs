@@ -3,7 +3,8 @@ import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {gunzipSync} from 'node:zlib';
 import {launchBrowser} from './browser.mjs';
-import {rendererFixture} from './browser-renderer-fixture.mjs';
+import {rendererFixture,installEmptyMapProviders} from './browser-renderer-fixture.mjs';
+import {BROWSER_LIBRARIES} from './browser-libraries.mjs';
 import {MAINLINE_CONTROLS,MAINLINE_REGIONS,sha256} from './mainline-coverage.mjs';
 import {mainlineRegion,mainlineTiles} from './mainline-overview.mjs';
 const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
@@ -11,10 +12,14 @@ const published=process.argv.includes('--published');
 const style=published?await (await fetch(new URL('world.style.json',base))).json():JSON.parse(await readFile('styles/world.style.json'));
 const layers=style.layers.filter(l=>l.source==='railReference');assert.equal(layers.length,3);
 const readerModule=new URL('mainline-reference.mjs',base).href;
-const renderer=await rendererFixture(base),library=[...renderer.keys()].find(u=>/maplibre-gl.+\.js$/.test(u));
-const paths=new Map(),requests=[],samples=[],profiles=[];
+const renderer=published?new Map():await rendererFixture(base);
+const librarySpec=BROWSER_LIBRARIES.find(l=>l.package==='maplibre-gl'&&l.target.endsWith('.js'));
+const library=new URL(librarySpec.target,base).href;
+const paths=new Map(),requests=[],samples=[],profiles=[],appSamples=[];
 let controls,manifest;
 if(published){
+ const actualLibrary=Buffer.from(await (await fetch(library)).arrayBuffer());
+ assert.equal(sha256(actualLibrary),librarySpec.sha256,'Published renderer must match the reviewed pinned bytes');
  manifest=await (await fetch(new URL('data/mainline-reference/manifest.json',base))).json();
  assert.equal(manifest.complete,true);assert.equal(manifest.sources.length,8);
  const response=await fetch(new URL(`data/mainline-reference/generations/${manifest.generation}/coverage-audit.json`,base));
@@ -33,11 +38,24 @@ if(published){
  controls=MAINLINE_CONTROLS.map((c,i)=>({...c,chainIdsByZoom:Object.fromEntries(Array.from({length:7},(_,z)=>[z,[`way-${1000+i}`]]))}));
 }
 await mkdir('browser-review',{recursive:true});
-for(const profile of [{name:'desktop',engine:'chromium',width:800,height:600},
- {name:'android',engine:'chromium',width:360,height:640},
- {name:'safari',engine:'webkit',width:390,height:640}]){
+// Compact world viewports permit an actual negative Mercator camera zoom;
+// taller-than-world Mercator viewports clamp zoom upward in MapLibre.
+for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
+ {name:'android',engine:'chromium',width:360,height:450},
+ {name:'safari',engine:'webkit',width:390,height:450}]){
  const browser=await launchBrowser({engine:profile.engine}),page=await browser.newPage({viewport:{width:profile.width,height:profile.height}});
  if(!published)await page.route(library,route=>route.fulfill(renderer.get(library)));
+ if(profile.engine==='webkit'){
+  await page.addInitScript(()=>{
+   window.referenceBlobs=new Map();const create=URL.createObjectURL.bind(URL);
+   URL.createObjectURL=blob=>{const url=create(blob);referenceBlobs.set(url,blob);return url};
+  });
+  await page.route(`blob:${new URL(base).origin}/**`,async route=>{
+   const body=await page.evaluate(async url=>referenceBlobs.get(url)?.text()??null,route.request().url());
+   assert.notEqual(body,null,'Only actual recorded renderer Blob workers can be replayed');
+   return route.fulfill({body,contentType:'text/javascript'});
+  });
+ }
  if(!published)await page.route(new URL('data/mainline-reference/**',base).href,route=>{
   const key=route.request().url().split('/data/mainline-reference/')[1],body=paths.get(key);requests.push({key,bytes:body?.length||0});
   return body?route.fulfill({body,contentType:key.endsWith('.gz')?'application/octet-stream':'application/json'}):route.fulfill({status:404,body:''});
@@ -100,16 +118,46 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:600},
     return {ids:[...new Set(found.map(f=>f.properties.id))],painted,zoom:testMap.getZoom(),errors:sourceErrors.length};
    },expected);
    assert.ok(result.ids.length&&result.painted>0,`${profile.name} ${projection} ${c.name} z${zoom}: actual reference stroke must paint`);
+   assert.ok(Math.abs(result.zoom-zoom)<.001,`${profile.name} ${projection}: verify the actual camera zoom, not a clamped request`);
    samples.push({profile:profile.name,projection,name:c.name,zoom,latencyMs:Date.now()-started,ids:result.ids,painted:result.painted});
   }
   assert.ok(await page.evaluate(()=>sourceErrors.some(e=>e.source==='missingLive')),'reference success cannot conceal live provider outage');
-  profiles.push({profile:profile.name,...await page.evaluate(()=>referenceReader.statistics())});
+  profiles.push({...profile,...await page.evaluate(()=>referenceReader.statistics())});
   await page.screenshot({path:`browser-review/mainline-${profile.name}.png`});
  }finally{await browser.close()}
 }
 const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
+// Exercise the actual Atlas module and theme selection too. This catches a
+// missing protocol registration or a runtime visibility override that the
+// isolated renderer test cannot detect. External providers stay fixtures.
+{
+ const browser=await launchBrowser(),context=await browser.newContext({viewport:{width:1000,height:700}});
+ await installEmptyMapProviders(context,base,{firstParty:'network'});
+ const page=await context.newPage(),c=controls.find(c=>c.name==='Japan–Tokyo');
+ if(!published)await page.route(new URL('data/mainline-reference/**',base).href,route=>{
+  const key=route.request().url().split('/data/mainline-reference/')[1],body=paths.get(key);
+  return body?route.fulfill({body,contentType:key.endsWith('.gz')?'application/octet-stream':'application/json'}):route.fulfill({status:404,body:''});
+ });
+ await page.route('https://openrailwaymap.app/**',route=>route.fulfill({status:503,body:'explicit thematic-provider outage'}));
+ try{
+  await page.goto(base+'?language=en&relief=0&inactive=0&transport=0&destinations=0&constraints=0#6/35.68/139.75');
+  await page.waitForSelector('body[data-map-ready="true"]',{timeout:90000});
+  await page.evaluate(async()=>{window.atlasMap=(await import(document.querySelector('script[type="module"]').src)).map;});
+  for(const mode of ['infrastructure','speed','electrification','control','gauge','loading','axle','owner','service'])for(const zoom of [6,7]){
+   await page.locator(`[data-mode="${mode}"]`).click();
+   await page.evaluate(({center,zoom})=>{atlasMap.setProjection({type:'mercator'});atlasMap.jumpTo({center,zoom});},{center:c.center,zoom});
+   await page.waitForFunction(ids=>atlasMap.queryRenderedFeatures({layers:['rail-reference-main','rail-reference-unknown']})
+    .some(f=>ids.includes(f.properties.id)),c.chainIdsByZoom[6],{timeout:30000});
+   appSamples.push({mode,zoom,...await page.evaluate(ids=>({cameraZoom:atlasMap.getZoom(),
+    ids:[...new Set(atlasMap.queryRenderedFeatures({layers:['rail-reference-main','rail-reference-unknown']})
+     .filter(f=>ids.includes(f.properties.id)).map(f=>f.properties.id))]}),c.chainIdsByZoom[6])});
+  }
+  await page.waitForFunction(()=>document.getElementById('map-status').textContent.includes('OpenRailwayMap railway tiles are unavailable'),null,{timeout:30000});
+  await page.screenshot({path:'browser-review/mainline-actual-atlas-outage.png'});
+ }finally{await browser.close()}
+}
 const report={scope:published?'Actual published OSM generation; exact chain identities':'Synthetic renderer fixtures; no OSM completeness claim',
- generation:manifest.generation,samples,profiles,assetRequests:profiles.reduce((n,p)=>n+p.assetRequests,0),
+ generation:manifest.generation,samples,appSamples,profiles,assetRequests:profiles.reduce((n,p)=>n+p.assetRequests,0),
  requestBytes:profiles.reduce((n,p)=>n+p.assetBytes,0),
  timing:{medianMs:latencies[Math.floor(latencies.length*.5)],p95Ms:latencies[Math.floor(latencies.length*.95)]},providerRequests:0};
 await writeFile('browser-review/mainline-reference.json',JSON.stringify(report,null,2)+'\n');

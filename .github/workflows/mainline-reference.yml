@@ -6,15 +6,21 @@ on:
         description: 'Dated Geofabrik snapshot (YYYY-MM-DD); blank uses two days ago'
         type: string
         required: false
+      preview_pr:
+        description: 'PR number for a manually dispatched preview (required away from main)'
+        type: number
+        required: false
   schedule:
     - cron: '19 3 3 * *'
   push:
-    branches: [main, feat/world-mainline-overview-source-20261011]
-    paths: ['.github/workflows/mainline-reference.yml', 'scripts/*mainline*', 'scripts/browser.mjs', 'scripts/browser-renderer-fixture.mjs', 'styles/mainline-reference.mjs', 'styles/world.style.json', 'package.json', 'package-lock.json']
+    branches: [main]
+    paths: &reference_paths ['.github/workflows/mainline-reference.yml', 'scripts/*mainline*', 'scripts/browser*.mjs', 'scripts/build-browser.mjs', 'scripts/maplibre-backport.mjs', 'styles/mainline-reference.mjs', 'styles/map-controls.mjs', 'styles/vector-tile-validation.mjs', 'styles/pbf-utf8.mjs', 'styles/world.style.json', 'package.json', 'package-lock.json']
+  pull_request:
+    paths: *reference_paths
 permissions:
   contents: read
 concurrency:
-  group: mainline-reference-${{ github.ref }}
+  group: mainline-reference-${{ github.head_ref && format('refs/heads/{0}', github.head_ref) || github.ref }}
   cancel-in-progress: false
 jobs:
   plan:
@@ -27,10 +33,12 @@ jobs:
       - id: plan
         env:
           REQUESTED: ${{ inputs.source_date }}
+          PREVIEW_PR: ${{ github.event.pull_request.number || inputs.preview_pr }}
         run: |
           python - <<'PY'
           import datetime as d, os, re
           date=os.environ.get('REQUESTED') or str(d.datetime.now(d.timezone.utc).date()-d.timedelta(days=2))
+          if os.environ['GITHUB_REF']!='refs/heads/main' and not re.fullmatch(r'[1-9]\d*',os.environ.get('PREVIEW_PR','')): raise ValueError('Non-production builds require a PR number')
           if not re.fullmatch(r'\d{4}-\d{2}-\d{2}',date): raise ValueError('Invalid source date')
           d.date.fromisoformat(date)
           with open(os.environ['GITHUB_OUTPUT'],'a') as f: f.write('date='+date+'\n')
@@ -139,8 +147,9 @@ jobs:
       # The draft branch only stages inspectable data; it cannot replace
       # production. A reviewed merge imports the exact complete generation.
       - name: Publish complete reference generation atomically
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         env:
-          PUBLISH_BRANCH: ${{ github.ref == 'refs/heads/main' && 'mainline-data' || 'mainline-preview-186' }}
+          PUBLISH_BRANCH: ${{ github.ref == 'refs/heads/main' && 'mainline-data' || format('mainline-preview-{0}', github.event.pull_request.number || inputs.preview_pr) }}
         run: |
           set -eu
           mkdir /tmp/mainline-publish
@@ -170,3 +179,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run site.yml --ref main
+      - name: Rerun a timed-out or failed matching PR site check after preview publication
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/site.yml/runs?event=pull_request&head_sha=$PR_HEAD_SHA" --jq '[.workflow_runs[] | select(.status == "completed" and (.conclusion == "failure" or .conclusion == "timed_out"))][0].id // empty')
+          if [ -n "$run" ]; then gh run rerun "$run" --failed; fi
