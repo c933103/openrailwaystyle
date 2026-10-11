@@ -5,7 +5,7 @@ const [root,reportPath]=process.argv.slice(2);
 if(!root||!reportPath)throw Error('Expected snapshot directory and renderer acceptance report');
 const manifest=JSON.parse(await readFile(join(root,'manifest.json'))),bytes=await readFile(reportPath),report=JSON.parse(bytes);
 if(!manifest.complete||report.generation!==manifest.generation||
- report.scope!=='Actual published OSM generation; exact chain identities')throw Error('Synthetic or mismatched renderer evidence cannot certify OSM coverage');
+ report.scope!=='Actual OSM generation; exact chain identities')throw Error('Synthetic or mismatched renderer evidence cannot certify OSM coverage');
 const keys=new Set();
 for(const s of report.samples||[]){
  const control=manifest.controls.find(c=>c.name===s.name),z=Math.min(6,Math.max(0,Math.floor(s.zoom)));

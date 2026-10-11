@@ -164,7 +164,7 @@ const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
   await page.screenshot({path:'browser-review/mainline-actual-atlas-outage.png'});
  }finally{await page.evaluate(()=>window.atlasMap?.remove()).catch(()=>{});await browser.close()}
 }
-const report={scope:published?'Actual published OSM generation; exact chain identities':'Synthetic renderer fixtures; no OSM completeness claim',
+const report={scope:published?'Actual OSM generation; exact chain identities':'Synthetic renderer fixtures; no OSM completeness claim',assetBase:base,
  generation:manifest.generation,samples,appSamples,profiles,assetRequests:profiles.reduce((n,p)=>n+p.assetRequests,0),
  requestBytes:profiles.reduce((n,p)=>n+p.assetBytes,0),
  timing:{medianMs:latencies[Math.floor(latencies.length*.5)],p95Ms:latencies[Math.floor(latencies.length*.95)]},providerRequests:0};

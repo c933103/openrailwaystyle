@@ -117,6 +117,7 @@ jobs:
       contents: read
       statuses: read
       pull-requests: read
+      actions: read
     outputs:
       key: ${{ steps.key.outputs.key }}
       reused: ${{ steps.reuse.outputs.reused }}
