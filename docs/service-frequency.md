@@ -1005,3 +1005,11 @@ all ordinary receipt/sidecar, complete-inventory, assembly and snapshot checks.
 Rerunning the original failed job uses its original code, so it cannot apply a
 later staging fix. A fresh unrestricted worldwide refresh is unnecessary for
 recovery; publication remains unverified until a complete recovered run succeeds.
+
+## Offline matching prerequisite
+
+The [timetable identity evidence and matching contract](timetable-matching-contract.md)
+provides bounded, opt-in capture and a pure fixture-tested decision contract. It
+is not enabled in production and does not apply timetable frequencies to OSM or
+change route geometry. Compiled or geometry-bearing feed counts are not verified
+OSM-match counts.
