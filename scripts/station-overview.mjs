@@ -38,12 +38,15 @@ export function stationPoint(element){
  const mode=['subway','light_rail','monorail','tram','funicular','miniature','train']
    .find(k=>tags.station===k||tags[k]==='yes')|| (kind==='tram_stop'?'tram':'train');
  const text=v=>typeof v==='string'?Array.from(v).slice(0,256).join(''):'';
+ const version=Number.isSafeInteger(element.version)&&element.version>=1?element.version:null;
+ const updated=typeof element.timestamp==='string'&&Number.isFinite(Date.parse(element.timestamp))
+   ?element.timestamp:null;
  return {id:`${element.type}-${element.id}`,osm_type:element.type,osm_id:element.id,
    lon,lat,feature:kind,station:MODES.has(mode)?mode:'train',name:text(tags.name||tags['name:en']),
-   state:'present'};
+   state:'present',osm_version:version,osm_timestamp:updated};
 }
 
-export function parseStationRegion(json,{maxElements=250_000}={}){
+export function parseStationRegion(json,{maxElements=250_000,requireVersion=false}={}){
  if(!json||typeof json!=='object'||json.remark||!Array.isArray(json.elements)||
     json.elements.length>maxElements||!Number.isSafeInteger(maxElements)||maxElements<1)
    throw new Error('Incomplete or oversized station source response');
@@ -51,6 +54,8 @@ export function parseStationRegion(json,{maxElements=250_000}={}){
  for(const source of json.elements){
    const item=stationPoint(source);
    if(!item)continue;
+   if(requireVersion && item.osm_version===null)
+     throw new Error(`OSM object ${item.id} lacks version metadata`);
    const old=stations.get(item.id);
    if(old&&JSON.stringify(old)!==JSON.stringify(item))throw new Error(`Conflicting OSM station ${item.id}`);
    stations.set(item.id,item);
