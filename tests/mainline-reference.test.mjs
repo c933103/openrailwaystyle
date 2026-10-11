@@ -92,6 +92,8 @@ test('complete-index empty tiles differ from upstream failures and corrupt paylo
  const [a,b]=await Promise.all([reader.tile('0/0/0'),reader.tile('0/0/0')]);
  assert.deepEqual(new Uint8Array(a),new Uint8Array([26,0]));assert.notEqual(a,b);
  await reader.tile('0/0/0');assert.equal(f.requests.length,3,'metadata, index and one tile only');
+ assert.equal(reader.statistics().assetRequests,3);assert.equal(reader.statistics().decodedTileBytes,2);
+ assert.equal(reader.statistics().cachedTileBytes,2);assert.ok(reader.statistics().assetBytes>0);
  assert.equal((await reader.tile('6/31/30')).byteLength,0);
  assert.equal(f.requests.length,3,'known empty tile does not make any request');
  for(const state of ['missing','corrupt']){

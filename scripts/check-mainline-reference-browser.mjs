@@ -12,7 +12,7 @@ const style=published?await (await fetch(new URL('world.style.json',base))).json
 const layers=style.layers.filter(l=>l.source==='railReference');assert.equal(layers.length,3);
 const readerModule=new URL('mainline-reference.mjs',base).href;
 const renderer=await rendererFixture(base),library=[...renderer.keys()].find(u=>/maplibre-gl.+\.js$/.test(u));
-const paths=new Map(),requests=[],samples=[];
+const paths=new Map(),requests=[],samples=[],profiles=[];
 let controls,manifest;
 if(published){
  manifest=await (await fetch(new URL('data/mainline-reference/manifest.json',base))).json();
@@ -51,6 +51,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:600},
   await page.addScriptTag({url:library});
   await page.evaluate(async({layers,base,module})=>{
    const {createReferenceReader}=await import(module),reader=createReferenceReader({root:new URL('data/mainline-reference/',base)});
+   window.referenceReader=reader;window.referenceLayers=layers;
    maplibregl.addProtocol('mainlinetiles',async(p,c)=>({data:await reader.tile(p.url.slice('mainlinetiles://'.length),c.signal)}));
    window.testMap=new maplibregl.Map({container:'test-map',minZoom:-2,maxZoom:9,center:[139.75,35.68],zoom:6,fadeDuration:0,
     canvasContextAttributes:{preserveDrawingBuffer:true},style:{version:8,sources:{
@@ -62,13 +63,18 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:600},
   },{layers,base,module:readerModule});
   for(const projection of ['mercator','globe'])for(const c of controls)for(const zoom of [-.1,0,3,4,5,6,7]){
    const expected=c.chainIdsByZoom[Math.min(6,Math.max(0,Math.floor(zoom)))],started=Date.now();
-   await page.evaluate(({center,zoom,projection})=>{testMap.setProjection({type:projection});testMap.jumpTo({center,zoom});},
-    {center:c.center,zoom,projection});
-   try{await page.waitForFunction(expected=>testMap.queryRenderedFeatures({layers:['rail-reference-main','rail-reference-unknown']})
-    .some(f=>expected.includes(f.properties.id)),expected,{timeout:30000})}
+   await page.evaluate(({center,zoom,projection,expected})=>{
+    testMap.setProjection({type:projection});testMap.jumpTo({center,zoom});
+    // Globe queryRenderedFeatures uses a planar approximation in this pinned
+    // renderer. Isolate exact expected chains, then check their painted pixels.
+    for(const layer of referenceLayers)testMap.setFilter(layer.id,['all',layer.filter,['in',['get','id'],['literal',expected]]]);
+   },{center:c.center,zoom,projection,expected});
+   try{await page.waitForFunction(expected=>testMap.isSourceLoaded('railReference')&&
+    testMap.querySourceFeatures('railReference',{sourceLayer:'atlas_mainline_overview',filter:['in',['get','id'],['literal',expected]]}).length,
+    expected,{timeout:30000})}
    catch(error){
     const diagnostic=await page.evaluate(()=>({zoom:testMap.getZoom(),center:testMap.getCenter(),loaded:testMap.loaded(),
-     sourceLoaded:testMap.isSourceLoaded('railReference'),errors:sourceErrors,
+     sourceLoaded:testMap.isSourceLoaded('railReference'),errorCount:sourceErrors.length,errors:sourceErrors.filter(e=>e.source!=='missingLive').slice(-10),
      rendered:testMap.queryRenderedFeatures({layers:['rail-reference-main','rail-reference-unknown']}).slice(0,30).map(f=>({id:f.properties.id,properties:f.properties}))}));
     const failure={profile:profile.name,projection,name:c.name,zoom,expected,diagnostic};
     console.error('MAINLINE_RENDER_FAILURE',JSON.stringify(failure));
@@ -77,7 +83,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:600},
    }
    const result=await page.evaluate(async expected=>{
     await new Promise(resolve=>{testMap.once('render',resolve);testMap.triggerRepaint()});
-    const found=testMap.queryRenderedFeatures({layers:['rail-reference-main','rail-reference-unknown']}).filter(f=>expected.includes(f.properties.id));
+    const found=testMap.querySourceFeatures('railReference',{sourceLayer:'atlas_mainline_overview',filter:['in',['get','id'],['literal',expected]]});
     const canvas=testMap.getCanvas(),gl=canvas.getContext('webgl2');gl.finish();
     const scale=canvas.width/testMap.getContainer().clientWidth;let painted=0;
     for(const f of found){
@@ -97,12 +103,14 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:600},
    samples.push({profile:profile.name,projection,name:c.name,zoom,latencyMs:Date.now()-started,ids:result.ids,painted:result.painted});
   }
   assert.ok(await page.evaluate(()=>sourceErrors.some(e=>e.source==='missingLive')),'reference success cannot conceal live provider outage');
+  profiles.push({profile:profile.name,...await page.evaluate(()=>referenceReader.statistics())});
   await page.screenshot({path:`browser-review/mainline-${profile.name}.png`});
  }finally{await browser.close()}
 }
 const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
 const report={scope:published?'Actual published OSM generation; exact chain identities':'Synthetic renderer fixtures; no OSM completeness claim',
- generation:manifest.generation,samples,requests,requestBytes:requests.reduce((n,r)=>n+r.bytes,0),
+ generation:manifest.generation,samples,profiles,assetRequests:profiles.reduce((n,p)=>n+p.assetRequests,0),
+ requestBytes:profiles.reduce((n,p)=>n+p.assetBytes,0),
  timing:{medianMs:latencies[Math.floor(latencies.length*.5)],p95Ms:latencies[Math.floor(latencies.length*.95)]},providerRequests:0};
 await writeFile('browser-review/mainline-reference.json',JSON.stringify(report,null,2)+'\n');
 console.log('PASS: independent reference with unavailable thematic provider',JSON.stringify({samples:samples.length,timing:report.timing,generation:manifest.generation}));

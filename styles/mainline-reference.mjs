@@ -41,8 +41,9 @@ export async function decompressReference(data,maxBytes=MAX_DECODED){
 }
 export function createReferenceReader({root,fetcher=fetch,decompress=decompressReference,timeout=15000,maxCacheBytes=16*1024**2}){
  if(typeof decompress!=='function')throw Error('Missing bounded reference decompressor');
- const base=new URL(root),cache=new Map(),pending=new Map();let metadata,cachedBytes=0;
+ const base=new URL(root),cache=new Map(),pending=new Map();let metadata,cachedBytes=0,assetRequests=0,assetBytes=0,decodedTileBytes=0;
  async function read(path,maxBytes){
+  assetRequests++;
   const response=await fetcher(new URL(path,base),{redirect:'error',signal:AbortSignal.timeout(timeout)});
   if(!response.ok)throw Error(`OSM reference asset unavailable (HTTP ${response.status})`);
   const declared=Number(response.headers.get('content-length'));
@@ -55,6 +56,7 @@ export function createReferenceReader({root,fetcher=fetch,decompress=decompressR
   }}finally{reader.releaseLock()}}
   else{const bytes=new Uint8Array(await response.arrayBuffer());size=bytes.byteLength;chunks.push(bytes)}
   if(size>maxBytes)throw Error('Oversized OSM reference response');
+  assetBytes+=size;
   const result=new Uint8Array(size);let offset=0;for(const c of chunks){result.set(c,offset);offset+=c.byteLength}return result;
  }
  async function loadMetadata(){
@@ -76,10 +78,12 @@ export function createReferenceReader({root,fetcher=fetch,decompress=decompressR
    const raw=await decompress(zipped.buffer,MAX_DECODED);
    const data=raw instanceof ArrayBuffer?raw:raw.buffer.slice(raw.byteOffset,raw.byteOffset+raw.byteLength);
    if(data.byteLength>MAX_DECODED||!data.byteLength)throw Error('Invalid decoded OSM reference tile');
+   decodedTileBytes+=data.byteLength;
    cache.set(key,data);cachedBytes+=data.byteLength;
    while(cachedBytes>maxCacheBytes&&cache.size){const oldest=cache.keys().next().value;cachedBytes-=cache.get(oldest).byteLength;cache.delete(oldest)}
    return data;
   })().finally(()=>pending.delete(key)));
   const data=await pending.get(key);signal?.throwIfAborted();return data.slice(0);
- },async manifest(){metadata ||= loadMetadata().catch(error=>{metadata=undefined;throw error});return (await metadata).manifest}};
+ },statistics(){return {assetRequests,assetBytes,decodedTileBytes,cachedTileBytes:cachedBytes}},
+ async manifest(){metadata ||= loadMetadata().catch(error=>{metadata=undefined;throw error});return (await metadata).manifest}};
 }
