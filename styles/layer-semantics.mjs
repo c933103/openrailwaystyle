@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261010-rail-markers-1';
+import { MODES } from './map-model.mjs?v=20261011-soviet-preview-2';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
@@ -95,9 +95,19 @@ export function layerVisibility(layer, settings) {
   const background = semantics['atlas:background'];
   if (background === 'carto') visible = settings.background === 'carto';
   else if (background === 'satellite') visible = ['satellite', 'hybrid'].includes(settings.background);
+  else if (background === 'soviet') visible = settings.background === 'soviet';
   else if (settings.background === 'satellite' && !runtime) visible = false;
   else if (settings.background === 'hybrid' && semantics['atlas:base-map']) visible = false;
   else if (settings.background === 'carto' && semantics['atlas:base-map'] && !semantics['atlas:terrain']) visible = false;
+  // Keep the cartographic land fills beneath missing historic raster tiles,
+  // suppress competing modern place labels, and always place bathymetry over
+  // sea areas. Rail tracks, nodes and their selected labels stay on top.
+  if (settings.background === 'soviet' && !runtime) {
+    // Apply declared layer roles, never hardcoded IDs or provider names.
+    // This survives layer/source renames and cached metadata migrations.
+    if (semantics['atlas:base-map'] && semantics['atlas:localize'] && layer.type === 'symbol') visible = false;
+    if (semantics['atlas:terrain']) visible = layer.type === 'raster';
+  }
   if (semantics['atlas:hide-backgrounds']?.includes(settings.background)) visible = false;
   return visible;
 }

@@ -24,6 +24,7 @@ import * as watchModule from '../styles/watch-map.mjs';
 import * as railRecoveryModule from '../styles/rail-provider-recovery.mjs';
 import * as tileBundleModule from '../styles/tile-bundles.mjs';
 import * as layerSemantics from '../styles/layer-semantics.mjs';
+import * as sovietTopo from '../styles/soviet-topo.mjs';
 import {BROWSER_LIBRARIES} from '../scripts/browser-libraries.mjs';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
@@ -207,6 +208,9 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const powerModule = new vm.SyntheticModule(Object.keys(powerFacilities),function() {
     for (const [key,value] of Object.entries(powerFacilities)) this.setExport(key,value);
   },{context});
+  const soviet = new vm.SyntheticModule(Object.keys(sovietTopo), function(){
+    for(const [key,value] of Object.entries(sovietTopo))this.setExport(key,value);
+  }, {context});
   const semantics = new vm.SyntheticModule(Object.keys(layerSemantics), function() {
     for (const [key,value] of Object.entries(layerSemantics)) this.setExport(key,value);
   }, {context});
@@ -219,7 +223,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const departuresUi = new vm.SyntheticModule(Object.keys(departuresUiModule), function() {
     for (const [key,value] of Object.entries(departuresUiModule)) this.setExport(key,value);
   }, {context});
-  await app.link(specifier => specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  await app.link(specifier => specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('soviet-topo.mjs') ? soviet : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
   if(cacheOnlyLibraries)await Promise.allSettled([app.namespace.__testLibraryLoads,app.namespace.__testLegacyStyle]);
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
@@ -1399,6 +1403,42 @@ test('entering watch mode deactivates hidden drawing and measurement input',asyn
       watch.checked=false;watch.dispatchEvent(new window.Event('change'));assert.equal(tool.getAttribute('aria-pressed'),'false','returning to normal does not restore hidden editing');
     }
   } finally {dom.window.close();}
+});
+
+test('Soviet raster failures clear immediately on every other background and ignore late failures',async()=>{
+ const {dom,window,maps}=await start({search:'?background=soviet'});
+ try{
+  const map=maps[0],doc=window.document,status=doc.getElementById('map-status');
+  map.handlers['style.load']();
+  const choose=background=>doc.querySelector(`[data-background="${background}"]`).click();
+  const fail=message=>map.handlers.error({sourceId:'sovietTopo',tile:{state:'errored'},error:new Error(message)});
+  for(const background of ['map','carto','satellite','hybrid'])for(const message of ['HTTP 404','CORS failure','network failure']){
+   choose('soviet');fail(message);
+   assert.equal(status.classList.contains('error'),true,'active raster failures are visible');
+   choose(background);
+   assert.equal(status.classList.contains('error'),false,background+' clears the optional failure without idle or source success');
+   fail('late '+message);
+   assert.equal(status.classList.contains('error'),false,background+' ignores a late hidden-source error');
+   choose('soviet');
+   assert.equal(status.classList.contains('error'),false,'returning to Soviet does not restore a stale failure');
+  }
+ }finally{maps[0]?.handlers.remove();dom.window.close();}
+});
+
+test('deselecting Soviet preserves unrelated map failures until their source actually recovers',async()=>{
+ const {dom,window,maps}=await start({search:'?background=soviet'});
+ try{
+  const map=maps[0],doc=window.document,status=doc.getElementById('map-status');map.handlers['style.load']();
+  for(const sourceId of ['sovietTopo','openmaptiles'])map.handlers.error({sourceId,tile:{state:'errored'},error:new Error('fixture failure')});
+  doc.querySelector('[data-background="map"]').click();
+  assert.equal(status.classList.contains('error'),true,'only the Soviet error is retired');
+  map.handlers.sourcedata({sourceId:'sovietTopo',tile:{state:'loaded'},isSourceLoaded:true});
+  assert.equal(status.classList.contains('error'),true,'late Soviet success cannot clear unrelated errors');
+  map.handlers.sourcedata({sourceId:'openmaptiles',isSourceLoaded:true});
+  assert.equal(status.classList.contains('error'),true,'loaded flag alone is not unrelated recovery');
+  map.handlers.sourcedata({sourceId:'openmaptiles',tile:{state:'loaded'},isSourceLoaded:true});
+  assert.equal(status.classList.contains('error'),false);
+ }finally{maps[0]?.handlers.remove();dom.window.close();}
 });
 
 function recoveryClock() {

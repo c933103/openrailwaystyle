@@ -1,6 +1,6 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261010-rail-markers-1';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261011-soviet-preview-2';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261010-rail-markers-1';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261011-soviet-preview-2';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -129,7 +129,7 @@ export function searchResults(facilities, places) {
 }
 // Map background: the drawn base map, satellite imagery alone, or imagery
 // under the railways (hybrid).
-export const BACKGROUNDS = ['map', 'satellite', 'hybrid', 'carto'];
+export const BACKGROUNDS = ['map', 'satellite', 'hybrid', 'carto', 'soviet'];
 // Standard OSM tiles: ordinary browser caching, no offline/prefetch support.
 export const CARTO_TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 export const MODES = ['speed', 'infrastructure', 'electrification', 'control', 'gauge', 'loading', 'service', 'owner', 'axle'];
