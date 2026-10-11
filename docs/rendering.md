@@ -257,3 +257,10 @@ It checks marker continuity at zooms 3, 4, 5, 6, 7, 8 and 12 while names collide
 and the two backbone layers' zoom-4–6 window. It does not establish worldwide
 station completeness or live provider availability. The curated/regional source
 limits and the separate complete station-point work in issue #175 still apply.
+
+Provider overview dots suppress only the vetted OSM identities and aliases of
+points actually emitted in the curated GeoJSON. Provider names remain eligible.
+Label tiers, nearby coordinates, similar names and shared Wikidata alone do not
+remove another station's dot. At zoom 7 the curated layer ends and the provider
+marker resumes; zooming back below 7 restores the curated ownership. Candidates
+not emitted by the curated selection cannot suppress provider points.

@@ -4,7 +4,7 @@ import {present} from './railway-expressions.mjs';
 
 // MapLibre places symbols from top to bottom, so names retain their exact
 // importance-tier order independently of the platform and dot layers.
-export function stationLayers(curatedFilter) {
+export function stationLayers(curatedFilter, curatedMarkerFilter = ['literal',true]) {
   const platforms = [], dots = [], names = [];
   // Labels alone use collision placement. Station locations are real circle
   // layers, independent of the number of labels that fit at any zoom.
@@ -97,10 +97,12 @@ export function stationLayers(curatedFilter) {
   });
   const earlyRadius = ['interpolate',['linear'],['zoom'],3,1.4,5,1.9,7,2.5,12,3.2];
   const overviewPoints = ['all', current, ['==',['coalesce',['get','feature'],'station'],'station']];
+  // Suppress only provider dots whose identities already have a curated dot.
+  // At z7 the curated source ends, so the provider marker takes over.
   marker('station-stationLow-dots','stationLow','standard_railway_text_stations_low',4,6,
-    ['all',overviewPoints,curatedFilter],earlyRadius);
+    ['all',overviewPoints,curatedMarkerFilter],earlyRadius);
   marker('station-stationMed-dots','stationMed','standard_railway_text_stations_med',6,8,
-    ['all',overviewPoints,['any',['>=',['zoom'],7],curatedFilter]],earlyRadius);
+    ['all',overviewPoints,['any',['>=',['zoom'],7],curatedMarkerFilter]],earlyRadius);
   // The vetted overview set is small enough to draw every dot from zoom 3;
   // its selected tier remains a LABEL priority, not a location cutoff.
   marker('station-major-dots','stationMajor',null,3,7,
