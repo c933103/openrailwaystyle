@@ -17,6 +17,18 @@ export const POWER_FACILITY_KINDS = Object.freeze({
   water_tank: {label:'Steam locomotive water tank', group:'water', color:'#287bad', mark:'W', minzoom:13},
   water_crane: {label:'Steam locomotive water crane', group:'water', color:'#287bad', mark:'W', minzoom:13},
 });
+// Shared by the map's point layers and legend; the legend samples the detailed
+// marker size. Lifecycle changes only the fill, stroke and letter colour.
+export const POWER_FACILITY_SYMBOL = Object.freeze({paper:'#fffef8', radius:6.5, textSize:9, stroke:1.5, formerStroke:2});
+export const POWER_FACILITY_LEGEND = Object.freeze([
+  ['substation','Electricity supply'],
+  ['fuel','Train refuelling point (fuel type where mapped)'],
+  ['coaling_facility','Steam engine coaling'],
+  ['water_tank','Steam engine water'],
+].map(([kind,label]) => {
+  const {color,mark} = POWER_FACILITY_KINDS[kind];
+  return Object.freeze({symbol:'point',color,mark,label});
+}));
 const SUPPLIES = new Set(['fuel','coaling_facility','water_tower','water_tank','water_crane','power_supply','preheating']);
 const POWER_TYPES = new Set(['substation','plant','generator','converter','frequency_converter','transformer']);
 const STATES = ['construction','proposed','disused','abandoned','razed','demolished','removed'];

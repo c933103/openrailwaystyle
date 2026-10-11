@@ -1581,3 +1581,57 @@ test('timer retirement reconciles status after its transaction and queued notifi
   await new Promise(resolve=>setImmediate(resolve));assert.equal(f.status.textContent,before);assert.equal(f.clock.timers.size,0);
  }finally{f.close();}
 });
+
+// Issue #115: execute the actual application/legend against the controlled DOM.
+// No provider data or substitute renderer is needed to expose the line-swatch bug.
+test('Power legend shows facility point letters and preserves track samples across setting and view changes', async () => {
+  const {dom,window,errors} = await start({search:'?mode=electrification&inactive=0'});
+  try {
+    const doc = window.document, legend = doc.getElementById('legend');
+    const expected = [
+      ['substation','Electricity supply'],
+      ['fuel','Train refuelling point (fuel type where mapped)'],
+      ['coaling_facility','Steam engine coaling'],
+      ['water_tank','Steam engine water'],
+    ];
+    const checkPoints = former => {
+      const points = [...legend.querySelectorAll('.point-swatch')];
+      assert.equal(points.length,4,'E/F/C/W must use point samples, not empty line swatches');
+      for (const [index,[kind,label]] of expected.entries()) {
+        const point = points[index], definition = powerFacilities.POWER_FACILITY_KINDS[kind];
+        assert.equal(point.getAttribute('aria-hidden'),'true','visual letters do not duplicate the accessible label');
+        assert.equal(point.classList.contains('swatch'),false,'line CSS cannot flatten a point sample');
+        assert.equal(point.nextElementSibling.textContent,label);
+        const symbols = [...point.querySelectorAll('svg')];
+        assert.equal(symbols.length,former ? 2 : 1);
+        for (const [i,symbol] of symbols.entries()) {
+          assert.equal(symbol.querySelector('text').textContent,definition.mark);
+          assert.equal(symbol.querySelector('circle').getAttribute('fill'),i ? '#fffef8' : definition.color);
+          assert.equal(symbol.querySelector('circle').getAttribute('stroke'),i ? definition.color : '#fffef8');
+          assert.equal(symbol.querySelector('text').getAttribute('fill'),i ? definition.color : '#fffef8');
+        }
+      }
+      const line = label => [...legend.querySelectorAll('.legend-item')].find(row=>row.lastElementChild.textContent===label)?.firstElementChild;
+      for (const label of ['Not electrified','Unknown','Bridge','Tunnel']) assert.ok(line(label)?.classList.contains('swatch'),label);
+      assert.equal(line('Bridge').classList.contains('bridge'),true);
+      assert.equal(line('Tunnel').classList.contains('tunnel'),true);
+      assert.match(legend.querySelector('.legend-note').textContent,/Hollow markers identify planned or former facilities/);
+    };
+    checkPoints(false);
+    const inactive = doc.getElementById('inactive');inactive.checked=true;inactive.dispatchEvent(new window.Event('change'));
+    checkPoints(true);
+    assert.equal(legend.querySelectorAll('.pattern-swatch svg line').length,model.INACTIVE_STATES.length,'planned/former track patterns stay line samples');
+    const help=legend.querySelector('.legend-help');help.open=true;help.dispatchEvent(new window.Event('toggle'));
+    for (const mode of ['infrastructure','speed','control','gauge','loading','owner','service','axle']) {
+      doc.querySelector(`[data-mode="${mode}"]`).click();
+      assert.equal(legend.querySelectorAll('.point-swatch').length,0,`${mode} must not inherit power samples`);
+      assert.ok(legend.querySelector('.swatch.bridge'));
+    }
+    doc.querySelector('[data-mode="electrification"]').click();checkPoints(true);
+    assert.equal(legend.querySelector('.legend-help').open,true,'help disclosure survives a view change');
+    inactive.checked=false;inactive.dispatchEvent(new window.Event('change'));checkPoints(false);
+    doc.querySelector('[data-background="satellite"]').click();assert.equal(legend.hidden,true);
+    doc.querySelector('[data-background="carto"]').click();assert.equal(legend.hidden,false);checkPoints(false);
+    assert.deepEqual(errors,[]);
+  } finally {dom.window.close();}
+});

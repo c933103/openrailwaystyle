@@ -281,3 +281,26 @@ test('actual first-party worker migration serves fixed bytes to delayed old tabs
   cache.set(scope+'vendor/maplibre-gl-5.24.0-atlas.1.js',new Response(Buffer.concat([patchedMapLibre,Buffer.from(' ')]),{headers:{'content-type':'text/javascript'}}));
   assert.equal((await next.request('vendor/maplibre-gl-5.24.0.js')).type,'error','modified legacy first-party bytes must not execute');
 });
+
+// The preceding release already cached app/CSS/module bytes under this token.
+// New point samples must reach installed users without reusing those line keys.
+test('Power legend release upgrades the cached app, CSS and facility metadata together',async()=>{
+  const previous='20261011-departure-labels-1';
+  const html=readFileSync(new URL('../styles/index.html',import.meta.url),'utf8');
+  const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
+  assert.notEqual(version,previous,'changed legend bytes require a new release token');
+  const paths=['app.mjs','app.css','power-facilities.mjs'];
+  const assetBodies=new Map(paths.map(path=>[new URL(path,scope).pathname,readFileSync(new URL(`../styles/${path}`,import.meta.url),'utf8')]));
+  const old=startWorker({version:previous,assetBodies:new Map(paths.map(path=>[new URL(path,scope).pathname,`previous line-swatch ${path}`]))});
+  await bounded(old.lifecycle('install'));await old.lifecycle('activate');
+  const next=startWorker({version,stores:old.stores,assetBodies,rejectExternal:true});
+  // sw.js is unchanged: an already installed worker learns the new shell
+  // through navigation/saveVersion, without a replacement-worker install.
+  await bounded(next.request('./',true));next.setOffline();
+  for (const path of paths) {
+    assert.equal(await(await next.request(`${path}?v=${version}`)).text(),assetBodies.get(new URL(path,scope).pathname));
+    assert.equal(await(await next.request(`${path}?v=${previous}`)).text(),`previous line-swatch ${path}`,'old tabs retain coherent old bytes');
+    assert.ok(next.requests.includes(`${scope}${path}?v=${version}`),'the new version actually fetched replacement bytes');
+  }
+  assert.match(await(await next.request('./',true)).text(),new RegExp(version));
+});

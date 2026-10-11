@@ -1,24 +1,24 @@
-import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261011-departure-labels-1';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261011-departure-labels-1';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261011-departure-labels-1';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261011-departure-labels-1';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261011-departure-labels-1';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261011-departure-labels-1';
+import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261011-power-legend-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261011-power-legend-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261011-power-legend-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261011-power-legend-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261011-power-legend-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261011-power-legend-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261011-departure-labels-1';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261011-departure-labels-1';
-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261011-departure-labels-1';
-import {departureItem} from './departures-ui.mjs?v=20261011-departure-labels-1';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261011-departure-labels-1';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261011-departure-labels-1';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261011-departure-labels-1';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261011-departure-labels-1';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261011-departure-labels-1';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261011-departure-labels-1';
-import { installWatchGesture } from './watch-map.mjs?v=20261011-departure-labels-1';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261011-departure-labels-1';
-import { createBundleReader } from './tile-bundles.mjs?v=20261011-departure-labels-1';
-import { createReferenceReader } from './mainline-reference.mjs?v=20261011-departure-labels-1';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261011-power-legend-1';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261011-power-legend-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261011-power-legend-1';
+import {departureItem} from './departures-ui.mjs?v=20261011-power-legend-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261011-power-legend-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261011-power-legend-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261011-power-legend-1';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261011-power-legend-1';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261011-power-legend-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261011-power-legend-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261011-power-legend-1';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261011-power-legend-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261011-power-legend-1';
+import { createReferenceReader } from './mainline-reference.mjs?v=20261011-power-legend-1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -55,7 +55,7 @@ let platformLengths,frequencyExpiry;
 let powerFacilities;
 let railRecovery, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261011-departure-labels-1';
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261011-power-legend-1';
 // An old active worker can save this new page before its replacement has
 // installed. If that update is interrupted, only old first-party/CDN copies
 // may be available offline. Read exact saved responses without contacting the
@@ -413,6 +413,21 @@ function updateInView() {
   if (settings.mode === 'control' && counts.size > 12) rows.push(['transparent',`${counts.size-12} less common systems in view; zoom in for them`,'empty']);
   if (rows.join() !== inView.join()) { inView = rows; renderLegend(); }
 }
+function powerFacilitySwatch({color,mark}, includeFormer) {
+  const {paper,radius,textSize,stroke,formerStroke} = POWER_FACILITY_SYMBOL;
+  const sample = textNode('span', '', `point-swatch${includeFormer ? ' paired' : ''}`);
+  sample.setAttribute('aria-hidden','true');
+  for (const former of includeFormer ? [false,true] : [false]) {
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 16 16');
+    const circle=document.createElementNS(svg.namespaceURI,'circle');
+    for (const [key,value] of Object.entries({cx:8,cy:8,r:radius,fill:former?paper:color,stroke:former?color:paper,'stroke-width':former?formerStroke:stroke})) circle.setAttribute(key,value);
+    const letter=document.createElementNS(svg.namespaceURI,'text');
+    for (const [key,value] of Object.entries({x:8,y:8,'text-anchor':'middle','dominant-baseline':'central','font-size':textSize,'font-weight':700,fill:former?color:paper})) letter.setAttribute(key,value);
+    letter.textContent=mark;svg.append(circle,letter);sample.append(svg);
+  }
+  return sample;
+}
 function renderLegend() {
   const box = $('legend'); box.replaceChildren();
   const nothing = [['transparent', 'Nothing recorded in view', 'empty']];
@@ -437,12 +452,15 @@ function renderLegend() {
   else if (settings.mode !== 'infrastructure') rows.push([UNKNOWN_COLOR, 'Unknown']);
   rows.push(['#2356b6','Bridge','bridge'], ['#2356b6','Tunnel','tunnel']);
   if (settings.mode === 'control') rows.push(['#765484','Signal']);
-  if (settings.mode === 'electrification') rows.push(...[['substation','Electricity supply'],['fuel','Locomotive fuel'],['coaling_facility','Coal supply'],['water_tank','Steam locomotive water']].map(([kind,label]) => [POWER_FACILITY_KINDS[kind].color,label]));
+  if (settings.mode === 'electrification') rows.push(...POWER_FACILITY_LEGEND);
   if (settings.mode === 'infrastructure') rows.push(['#b68f55','Shared roadway','street-running'], ['#63332c','Level crossing','level-crossing'],['#765484','Signal'],['#167a78','Station entrance']);
   if (settings.inactive) rows.push(...INACTIVE_STATES.map(([state, color, label]) => [color, label, `inactive-${state}`]));
-  for (const [color, label, extra] of rows) {
+  // Existing track tuples become explicit line samples. Point categories keep
+  // their geometry metadata instead of losing it in a colour/label tuple.
+  for (const {symbol,color,label,extra,mark} of rows.map(row => Array.isArray(row) ? {symbol:'line',color:row[0],label:row[1],extra:row[2]} : row)) {
     const row = textNode('div', '', 'legend-item');
-    const swatch = textNode('span', '', `swatch ${extra || ''}`); swatch.style.setProperty('--swatch', color);
+    const swatch = symbol === 'point' ? powerFacilitySwatch({color,mark},settings.inactive) : textNode('span', '', `swatch ${extra || ''}`);
+    if (symbol === 'line') swatch.style.setProperty('--swatch', color);
     if (extra?.startsWith('inactive-')) {
       const pattern=LIFECYCLE_PATTERNS[extra.slice(9)];
       const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),line=document.createElementNS('http://www.w3.org/2000/svg','line');

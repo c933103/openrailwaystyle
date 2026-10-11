@@ -16,6 +16,15 @@ operator, voltage, frequency, contents and output where available. Former and
 planned supplies follow the existing planned/former infrastructure setting;
 former supplies have hollow markers. Text references follow the Labels setting.
 
+The legend uses the same circular E/F/C/W symbols, colours and lifecycle
+appearance as the map. With planned/former infrastructure enabled, a hollow
+sample appears beside each filled sample; the existing track-line keys remain
+separate. Its servicing labels are “Train refuelling point (fuel type where
+mapped)”, “Steam engine coaling” and “Steam engine water”. These legend categories
+share marker metadata with the mapped facilities; they do not establish a fuel
+or confirm that a facility is usable. The wider selection, wording and
+presentation audit remains open in [issue #115](https://github.com/c933103/openrailwaystyle/issues/115).
+
 The OpenRailwayMap `electrification_substation` source supplies traction
 substation footprints from zoom 13. Its import accepts polygon ways tagged
 `power=substation` and `substation=traction`; its tile properties contain only
