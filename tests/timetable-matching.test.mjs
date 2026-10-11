@@ -53,6 +53,58 @@ test('resealed served members require the exact roles emitted by capture', () =>
   assert.deepEqual(captured.served_members.map(member => member.role), allowed);
 });
 
+test('resealed served-member positions preserve strict relation order without deduplicating identities', () => {
+  for (const [positions, valid] of [[[0, 1], true], [[0, 9999], true], [[9998, 9999], true], [[0, 0], false], [[9999, 9999], false], [[2, 0], false], [[-1, 2], false], [[0, 10000], false], [[0, 1.5], false]]) for (const fallback of [false, true]) {
+    const input = fixture(), osm = input.candidates[0].osm;
+    if (fallback) {
+      input.candidates[0].route_bindings = [];
+      input.candidates[0].operator_binding = {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: 'verified'};
+    }
+    osm.served_members.forEach((member, index) => { member.position = positions[index]; });
+    osm.fingerprint = hash(Object.fromEntries(['relation_id', 'version', 'timestamp', 'snapshot', 'tags', 'served_members', 'track_members'].map(key => [key, osm[key]])));
+    const before = structuredClone(input), output = matchTimetablePattern(input);
+    assert.equal(output.status, valid ? 'verified' : 'missing_evidence', `${positions}/${fallback}`);
+    if (!valid) assert.deepEqual(output.reasons, ['invalid_service_members']);
+    assert.deepEqual(input, before, 'validation never sorts or repairs positions');
+  }
+  const input = fixture(), osm = input.candidates[0].osm;
+  osm.served_members.reverse();
+  osm.fingerprint = hash(Object.fromEntries(['relation_id', 'version', 'timestamp', 'snapshot', 'tags', 'served_members', 'track_members'].map(key => [key, osm[key]])));
+  assert.equal(status(input), 'missing_evidence', 'swapping records cannot preserve a captured member sequence');
+  const repeated = fixture();
+  repeated.candidates[0].osm = captureOsmServiceEvidence(relation({members: [...relation().members, {type: 'node', ref: 1, role: 'stop'}]}), snapshot);
+  assert.deepEqual(repeated.candidates[0].osm.served_members.map(member => [member.id, member.position]), [['node:1', 0], ['node:2', 2], ['node:1', 3]]);
+  assert.equal(status(repeated), 'verified', 'a station identity may genuinely recur at another relation position');
+});
+
+test('resealed track members retain collector uniqueness while raw repeated ways remain valid', () => {
+  const input = fixture(), osm = input.candidates[0].osm;
+  osm.track_members.push(100);
+  osm.fingerprint = hash(Object.fromEntries(['relation_id', 'version', 'timestamp', 'snapshot', 'tags', 'served_members', 'track_members'].map(key => [key, osm[key]])));
+  const before = structuredClone(input), output = matchTimetablePattern(input);
+  assert.equal(output.status, 'missing_evidence');
+  assert.deepEqual(output.reasons, ['invalid_service_members']);
+  assert.deepEqual(input, before);
+  const repeated = fixture();
+  repeated.candidates[0].osm = captureOsmServiceEvidence(relation({members: [...relation().members, {type: 'way', ref: 100, role: ''}]}), snapshot);
+  assert.deepEqual(repeated.candidates[0].osm.track_members, [100]);
+  assert.equal(status(repeated), 'verified');
+});
+
+test('resealed served and track members share the raw relation-member cap', () => {
+  const input = fixture(), tracks = Array.from({length: 9998}, (_, index) => ({type: 'way', ref: index + 100, role: ''}));
+  input.candidates[0].osm = captureOsmServiceEvidence(relation({members: [{type: 'node', ref: 1, role: 'stop'}, ...tracks, {type: 'node', ref: 2, role: 'stop'}]}), snapshot);
+  const osm = input.candidates[0].osm;
+  assert.equal(osm.served_members.length + osm.track_members.length, 10000);
+  assert.equal(status(input), 'verified', 'the complete 10,000-member captured boundary remains valid');
+  osm.track_members.push(20000);
+  osm.fingerprint = hash(Object.fromEntries(['relation_id', 'version', 'timestamp', 'snapshot', 'tags', 'served_members', 'track_members'].map(key => [key, osm[key]])));
+  const before = structuredClone(input), output = matchTimetablePattern(input);
+  assert.equal(output.status, 'missing_evidence', 'individually bounded sections cannot represent 10,001 distinct raw slots');
+  assert.deepEqual(output.reasons, ['invalid_service_sections']);
+  assert.deepEqual(input, before);
+});
+
 test('resealed active service dates preserve the collector reference window and strict order', () => {
   const shift = (date, days) => new Date(Date.parse(`${date}T00:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
   for (const reference of ['2026-10-05', '2024-03-01', '0042-03-01']) {

@@ -153,9 +153,10 @@ function observationSchema(row, patterns, serviceDate) {
 }
 function inspectOsm(osm, snapshot, budget) {
   if (!record(osm, osmFields) || osm.schema !== 1 || osm.status !== 'captured' || !array(osm.reasons, 0) || !positive(osm.relation_id) || !positive(osm.version) || !instant(osm.timestamp) || !instant(osm.snapshot) || Date.parse(osm.timestamp) > Date.parse(osm.snapshot) || !capturedTags(osm.tags) || !digest(osm.fingerprint)) return ['missing_evidence', 'missing_osm_declaration'];
-  if (!array(osm.served_members, 512) || !array(osm.track_members, 10000)) return ['missing_evidence', 'invalid_service_sections'];
+  if (!array(osm.served_members, 512) || !array(osm.track_members, 10000) || osm.served_members.length + osm.track_members.length > 10000) return ['missing_evidence', 'invalid_service_sections'];
   budget.references(osm.served_members.length + osm.track_members.length);
-  if (osm.served_members.some(member => !record(member, ['id', 'role', 'position']) || !typedId(member.id) || typeof member.role !== 'string' || member.role.length > 64 || Buffer.byteLength(member.role) > 64 || !servedRoles.has(member.role) || !Number.isSafeInteger(member.position) || member.position < 0 || member.position >= 10000) || osm.track_members.some(way => !positive(way))) return ['missing_evidence', 'invalid_service_members'];
+  if (osm.served_members.some((member, index) => !record(member, ['id', 'role', 'position']) || !typedId(member.id) || typeof member.role !== 'string' || member.role.length > 64 || Buffer.byteLength(member.role) > 64 || !servedRoles.has(member.role) || !Number.isSafeInteger(member.position) || member.position < 0 || member.position >= 10000 || (index > 0 && osm.served_members[index - 1].position >= member.position)) || osm.track_members.some(way => !positive(way))) return ['missing_evidence', 'invalid_service_members'];
+  if (new Set(osm.track_members).size !== osm.track_members.length) return ['missing_evidence', 'invalid_service_members'];
   const declaration = Object.fromEntries(['relation_id', 'version', 'timestamp', 'snapshot', 'tags', 'served_members', 'track_members'].map(key => [key, osm[key]]));
   if (hashText(budget.encode(declaration)) !== osm.fingerprint) return ['conflicting', 'osm_fingerprint_mismatch'];
   if (osm.snapshot !== snapshot) return ['stale', 'service_snapshot_mismatch'];
