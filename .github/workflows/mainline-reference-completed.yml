@@ -67,15 +67,24 @@ jobs:
             # Recheck the current attempt in case a maintainer already retried it.
             metadata=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run" --jq 'select(.event == "pull_request" and .status == "completed" and (.conclusion == "failure" or .conclusion == "timed_out") and (.run_attempt // 1) < 2)')
             [ -n "$metadata" ] || continue
-            missing=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/jobs?per_page=100" --jq '.jobs[] | select(.name == "reference" and (.conclusion == "failure" or .conclusion == "timed_out")) | .id')
+            jobs=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/jobs?per_page=100")
+            missing=$(printf '%s' "$jobs" | jq -r '.jobs[] | select(.name == "reference" and (.conclusion == "failure" or .conclusion == "timed_out")) | .id')
             [ -n "$missing" ] || continue
+            # A head SHA can have multiple tested bases. The failed site's
+            # own job metadata binds its required digest; stale source inputs
+            # must not consume the site's one permitted automatic retry.
+            expected=$(printf '%s' "$jobs" | jq -r '[.jobs[] | select(.name == "reference" and (.conclusion == "failure" or .conclusion == "timed_out")) | .steps[]? | .name | capture("^Require worldwide railway reference (?<digest>[0-9a-f]{64})$").digest] | unique | if length == 1 then .[0] else empty end')
+            [ -n "$expected" ] || continue
             for pr in $prs; do
               current=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pr")
               matches_pr "$metadata" "$current" || continue
               ready=false
               for encoded in $builds; do
                 build=$(printf '%s' "$encoded" | base64 --decode)
-                if matches_pr "$build" "$current"; then ready=true; break; fi
+                matches_pr "$build" "$current" || continue
+                artifacts=$(REFERENCE_DIGEST="$expected" gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$(printf '%s' "$build" | jq -r .id)/artifacts?per_page=100" --jq '.artifacts[] | select((.name | test("^mainline-reference-[0-9]{4}-[0-9]{2}-[0-9]{2}-" + env.REFERENCE_DIGEST + "$")) and .expired == false and .size_in_bytes > 0 and .size_in_bytes < 1073741824) | .id')
+                [ -n "$artifacts" ] || continue
+                ready=true; break
               done
               [ "$ready" = true ] || continue
               gh run rerun "$run" --failed --repo "$GITHUB_REPOSITORY"

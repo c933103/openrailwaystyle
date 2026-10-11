@@ -9,6 +9,8 @@ test('every native browser bundle entry and its imports affect accepted referenc
  const root=await mkdtemp(join(tmpdir(),'atlas-reference-provenance-'));
  try{
   for(const path of ['scripts','styles','.github','package.json','package-lock.json'])await cp(path,join(root,path),{recursive:true});
+  await mkdir(join(root,'tests/fixtures'),{recursive:true});
+  await cp('tests/fixtures/browser-glyphs',join(root,'tests/fixtures/browser-glyphs'),{recursive:true});
   const build=await readFile('scripts/build-browser.mjs','utf8');
   const entries=[...build.matchAll(/entryPoints:\s*\[\s*['"]([^'"]+)['"]\s*\]/g)].map(match=>match[1]);
   assert.equal(entries.length,5,'cover every current esbuild entry');
@@ -19,6 +21,11 @@ test('every native browser bundle entry and its imports affect accepted referenc
   await assert.rejects(access(join(root,'node_modules')),error=>error.code==='ENOENT');
   const baseline=await referenceInputDigest(root);
   assert.equal(baseline,await referenceInputDigest(),'install state does not change accepted inputs');
+  const glyph=join(root,'tests/fixtures/browser-glyphs/0-255.pbf'),originalGlyph=await readFile(glyph);
+  await writeFile(glyph,Buffer.concat([originalGlyph,Buffer.from([0])]));
+  assert.notEqual(await referenceInputDigest(root),baseline,'renderer glyph bytes invalidate acceptance');
+  await writeFile(glyph,originalGlyph);
+  assert.ok((await readFile('.github/workflows/mainline-reference.yml','utf8')).includes('tests/fixtures/browser-glyphs/0-255.pbf'),'glyph changes trigger real-source acceptance');
   for(const entry of entries){
    const path=join(root,entry),original=await readFile(path);
    await writeFile(path,Buffer.concat([original,Buffer.from('\n// changed browser entry\n')]));

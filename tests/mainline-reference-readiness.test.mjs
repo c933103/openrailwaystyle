@@ -6,7 +6,7 @@ import {tmpdir} from 'node:os';
 import {spawnSync} from 'node:child_process';
 
 const workflow=await readFile('.github/workflows/site.yml','utf8');
-const script=workflow.split('        run: |\n')[1].split('\n  facilities:')[0].split('\n').map(line=>line.slice(10)).join('\n');
+const script=workflow.split('        id: reference\n')[1].split('        run: |\n')[1].split('\n  facilities:')[0].split('\n').map(line=>line.slice(10)).join('\n');
 const mock=`#!/usr/bin/env python3
 import os,sys,json,subprocess,pathlib
 args=sys.argv[1:];endpoint=args[1];case=os.environ['READINESS_CASE'];state=pathlib.Path(os.environ['POLL_STATE'])
@@ -47,7 +47,7 @@ for(const [scenario,artifact,polls,run=300] of [
   const output=join(root,'outputs'),state=join(root,'poll');
   const result=spawnSync('bash',['-c',script],{encoding:'utf8',env:{...process.env,PATH:root+':'+process.env.PATH,
    GH_TOKEN:'fixture-no-network',GITHUB_REPOSITORY:'test/atlas',PR_HEAD_SHA:'1'.repeat(40),PREVIEW_BRANCH:'',
-   EXPECTED_DIGEST:'a'.repeat(64),READINESS_CASE:scenario,POLL_STATE:state,GITHUB_OUTPUT:output}});
+   EXPECTED_DIGEST:'a'.repeat(64),EXPECTED_REFERENCE_DIGEST:'a'.repeat(64),READINESS_CASE:scenario,POLL_STATE:state,GITHUB_OUTPUT:output}});
   assert.equal(result.status,artifact?0:1,result.stderr);
   let outputs='';try{outputs=await readFile(output,'utf8')}catch(error){if(error.code!=='ENOENT')throw error}
   assert.equal(outputs,artifact?`artifact=${artifact}\nrun=${run}\n`:'');
@@ -61,4 +61,6 @@ test('publisher names accepted artifacts with current input digest and validator
  assert.match(publisher,/digest=\$\(node scripts\/mainline-provenance\.mjs\)/);
  assert.match(workflow,/verify-mainline-snapshot\.mjs styles\/data\/mainline-reference --require-browser-acceptance/);
  assert.match(workflow,/test "\$actual" = "\$\(node scripts\/mainline-provenance\.mjs\)"/);
+ assert.ok(workflow.includes('name: Require worldwide railway reference ${{ steps.inputs.outputs.digest }}'));
+ assert.ok(workflow.includes('EXPECTED_REFERENCE_DIGEST: ${{ steps.inputs.outputs.digest }}'));
 });

@@ -25,15 +25,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Require the complete independent worldwide mainline source
+      - name: Identify required reference inputs
+        id: inputs
+        run: |
+          set -eu
+          echo "digest=$(node scripts/mainline-provenance.mjs)" >> "$GITHUB_OUTPUT"
+      # Keep the required digest in completed job metadata, including timeouts.
+      # The trusted retry controller reads this name without downloading code.
+      - name: Require worldwide railway reference ${{ steps.inputs.outputs.digest }}
         id: reference
         env:
+          EXPECTED_REFERENCE_DIGEST: ${{ steps.inputs.outputs.digest }}
           PREVIEW_BRANCH: ${{ github.event_name == 'pull_request' && format('mainline-preview-{0}', github.event.pull_request.number) || '' }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
-          expected=$(node scripts/mainline-provenance.mjs)
+          expected=$EXPECTED_REFERENCE_DIGEST
+          [[ "$expected" =~ ^[0-9a-f]{64}$ ]]
           for attempt in $(seq 1 350); do
             for branch in mainline-data $PREVIEW_BRANCH; do
               status=0

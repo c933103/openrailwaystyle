@@ -28,7 +28,7 @@ def site_run(n):
  if case=='retried':run['run_attempt']=2
  return run
 def source_run():
- site=case in ['late_site','no_source'];dispatch=case=='dispatch'
+ site=case in ['late_site','no_source','late_site_stale_then_matching'];dispatch=case=='dispatch'
  run=dict(id=123,status='completed',conclusion='failure' if site else 'success',event='workflow_dispatch' if dispatch else 'pull_request',name='Validate and deploy world railway map' if site else 'Build worldwide OSM railway reference',**identity(empty=dispatch or case=='fork'))
  if case=='stale_trigger':run['head_sha']='2'*40
  if case=='other_source_pr':run['pull_requests']=[dict(number=999)]
@@ -36,7 +36,16 @@ def source_run():
  return run
 def pr(number=186):
  return dict(number=number,state='closed' if case in ['closed','closed_race'] or number==999 else 'open',head=dict(sha='2'*40 if case=='changed' else sha,ref='feature',repo=dict(id=42)))
-if '/actions/runs/123' in endpoint:data=source_run()
+if '/artifacts?' in endpoint:
+ assert '--paginate' in args
+ run_id=int(endpoint.split('/runs/')[1].split('/')[0])
+ digest='b'*64 if case in ['stale_source_inputs','artifact_later_page'] or run_id==124 else 'a'*64
+ artifact=dict(id=888,name='mainline-reference-2026-10-09-'+digest,expired=case=='expired_source_artifact',size_in_bytes=1234)
+ if case=='oversized_source_artifact':artifact['size_in_bytes']=1073741824
+ if case=='empty_source_artifact':artifact['size_in_bytes']=0
+ if case=='legacy_source_artifact':artifact['name']='mainline-reference-2026-10-09'
+ data=dict(artifacts=[] if case=='missing_source_artifact' else [artifact])
+elif '/actions/runs/123' in endpoint:data=source_run()
 elif '/pulls?state=all' in endpoint:
  assert '--paginate' in args
  data=[] if case=='empty_missing_history' else [pr()]
@@ -49,11 +58,13 @@ elif '/pulls?state=all' in endpoint:
 elif '/pulls?state=open' in endpoint:data=[] if case=='closed' else [dict(pr(),state='open',head=dict(sha=sha,ref='feature',repo=dict(id=42)))]
 elif '/actions/workflows/mainline-reference.yml/runs?' in endpoint:
  source=source_run();source.update(name='Build worldwide OSM railway reference',conclusion='success')
- data=dict(workflow_runs=[] if case=='no_source' else [source])
+ data=dict(workflow_runs=[] if case=='no_source' else [dict(source,id=124),source] if case=='late_site_stale_then_matching' else [source])
 elif '/actions/workflows/site.yml/runs?' in endpoint:
  data=dict(workflow_runs=[site_run(21),site_run(22),dict(site_run(23),conclusion='success'),dict(site_run(24),status='in_progress',conclusion=None)])
 elif '/jobs?' in endpoint:
- data=dict(jobs=[dict(id=321,name='reference',conclusion='success' if case=='test_failure' else 'failure')])
+ steps=[] if case=='missing_site_inputs' else [dict(name='Require worldwide railway reference '+'a'*64)]
+ if case=='ambiguous_site_inputs':steps.append(dict(name='Require worldwide railway reference '+'b'*64))
+ data=dict(jobs=[dict(id=321,name='reference',conclusion='success' if case=='test_failure' else 'failure',steps=steps)])
 elif '/actions/runs/21' in endpoint or '/actions/runs/22' in endpoint:
  data=site_run(int(endpoint.rsplit('/',1)[1]))
  if case=='retried_race':data['run_attempt']=2
@@ -63,7 +74,11 @@ else:raise Exception('Unexpected API '+endpoint)
 if '--jq' in args:
  query=args[args.index('--jq')+1];result=subprocess.run(['jq','-r',query],input=json.dumps(data),text=True)
  if '/pulls?state=all' in endpoint and case=='empty_later_page_closed':subprocess.run(['jq','-r',query],input=json.dumps([pr(999)]),text=True,check=True)
- sys.exit(1 if case=='history_error' and '/pulls?state=all' in endpoint else result.returncode)
+ if '/artifacts?' in endpoint and case=='artifact_later_page':
+  later=dict(artifact,name='mainline-reference-2026-10-09-'+'a'*64)
+  subprocess.run(['jq','-r',query],input=json.dumps(dict(artifacts=[later])),text=True,check=True)
+ sys.exit(1 if (case=='history_error' and '/pulls?state=all' in endpoint) or (case=='source_artifact_error' and '/artifacts?' in endpoint) else result.returncode)
+if case=='source_artifact_error' and '/artifacts?' in endpoint:sys.exit(1)
 print(json.dumps(data))
 `;
 
@@ -74,13 +89,17 @@ for(const [scenario,expected,exit] of [
  ['retried',[],0],['retried_race',[],0],['test_failure',[],0],['stale_trigger',[],1],
  ['closed_other_pr_same_sha',[],0],['empty_other_repo',[],0],['empty_other_branch',[],0],
  ['empty_missing_identity',[],0],['other_source_pr',[],0],['other_source_repo',[],0],
+ ['stale_source_inputs',[],0],['expired_source_artifact',[],0],['oversized_source_artifact',[],0],
+ ['empty_source_artifact',[],0],['legacy_source_artifact',[],0],['missing_source_artifact',[],0],
+ ['missing_site_inputs',[],0],['ambiguous_site_inputs',[],0],['source_artifact_error',[],1],
+ ['artifact_later_page',['21','22'],0],['late_site_stale_then_matching',['21','22'],0],
 ])test(`trusted reference completion: ${scenario}`,async()=>{
  const root=await mkdtemp(join(tmpdir(),'atlas-reference-retry-')),log=join(root,'calls.jsonl');
  try{
   await writeFile(join(root,'gh'),mock,{mode:0o755});
   const result=spawnSync('bash',['-c',script],{encoding:'utf8',env:{...process.env,
    PATH:root+':'+process.env.PATH,GH_TOKEN:'fixture-no-network',GITHUB_REPOSITORY:'test/atlas',
-   TRIGGER_RUN:'123',TRIGGER_NAME:['late_site','no_source'].includes(scenario)?'Validate and deploy world railway map':'Build worldwide OSM railway reference',
+   TRIGGER_RUN:'123',TRIGGER_NAME:['late_site','no_source','late_site_stale_then_matching'].includes(scenario)?'Validate and deploy world railway map':'Build worldwide OSM railway reference',
    SOURCE_SHA:'1'.repeat(40),RETRY_CASE:scenario,RETRY_LOG:log}});
   assert.equal(result.status,exit,result.stderr);
   let calls=[];try{calls=(await readFile(log,'utf8')).trim().split('\n').map(line=>JSON.parse(line))}

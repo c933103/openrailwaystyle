@@ -6,6 +6,7 @@ import {sha256} from './mainline-coverage.mjs';
 // Documentation-only and unrelated orchestration edits can reuse that result.
 export const REFERENCE_INPUTS=Object.freeze([
  '.github/workflows/mainline-reference.yml','package.json','package-lock.json',
+ 'tests/fixtures/browser-glyphs/0-255.pbf',
  'scripts/acquire-mainline-extract.py','scripts/plan-mainline-acquisition.py',
  'scripts/build-mainline-snapshot.mjs','scripts/mainline-overview.mjs',
  'scripts/mainline-chains.mjs','scripts/mainline-coverage.mjs',
