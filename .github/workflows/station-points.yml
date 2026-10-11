@@ -46,18 +46,18 @@ jobs:
         id: previous
         run: |
           if [ -f /tmp/station-previous/state.json ]; then
-            node --input-type=module <<'JS'
-            import {readFile,appendFile} from 'node:fs/promises';
-            import {checkStationAcquisition} from './scripts/station-acquisition.mjs';
-            import {gunzipSync} from 'node:zlib';
-            const state=JSON.parse(await readFile('/tmp/station-previous/state.json','utf8'));
-            const rows=JSON.parse(gunzipSync(await readFile('/tmp/station-previous/stations.json.gz')));
-            checkStationAcquisition(state,rows);
-            if(state.pending.length===0) {
-              console.log('Station-point source already complete: do not rerun downloads or rebuild tiles.');
-              await appendFile(process.env.GITHUB_OUTPUT,'complete=true\n');
-            }
-            JS
+            node --input-type=module -e "
+              import {readFile,appendFile} from 'node:fs/promises';
+              import {gunzipSync} from 'node:zlib';
+              import {checkStationAcquisition} from './scripts/station-acquisition.mjs';
+              const state=JSON.parse(await readFile('/tmp/station-previous/state.json','utf8'));
+              const rows=JSON.parse(gunzipSync(await readFile('/tmp/station-previous/stations.json.gz')));
+              checkStationAcquisition(state,rows);
+              if(state.pending.length===0){
+                console.log('Station source is complete; no further collection requested.');
+                await appendFile(process.env.GITHUB_OUTPUT,'complete=true\\n');
+              }
+            "
           fi
       - name: Process at most one bounded region
         if: steps.previous.outputs.complete != 'true'
