@@ -93,6 +93,7 @@ test('browser bundle entries, computed imports and service worker changes invali
  entries.push('styles/sw.js','styles/workers/future-entry.mjs');
  try{
   for(const path of [...REFERENCE_INPUTS,...entries]){await mkdir(dirname(join(root,path)),{recursive:true});await writeFile(join(root,path),'export {};\n')}
+  await writeFile(join(root,'styles/package-proxy.mjs'),"export {foo} from '../node_modules/package/index.js';\nexport {bar} from './vendor/generated-entry.js';\n");
   const baseline=await referenceInputDigest(root);
   for(const path of entries){
    await writeFile(join(root,path),'export const changed=true;\n');

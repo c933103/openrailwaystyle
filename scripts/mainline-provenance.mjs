@@ -42,6 +42,10 @@ export async function referenceInputDigest(root=process.cwd()){
   if(/\.(?:mjs|js)$/.test(path))for(const match of bytes.toString().matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s*)['"](\.[^'"]+)['"]/g)){
    const dependency=relative(root,resolve(root,dirname(path),match[1].split('?')[0]));
    if(dependency.startsWith('..'))throw Error('Reference dependency escaped repository');
+   // Installed dependencies are bound by package-lock and immutable library
+   // pins; generated outputs are bound by their authored build inputs. The
+   // readiness job intentionally computes this digest without npm install.
+   if(dependency.startsWith('node_modules/')||dependency.startsWith('styles/vendor/')||dependency.startsWith('styles/data/'))continue;
    queue.push(dependency);
   }
  }
