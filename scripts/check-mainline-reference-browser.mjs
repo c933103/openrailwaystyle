@@ -64,8 +64,17 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:600},
    const expected=c.chainIdsByZoom[Math.min(6,Math.max(0,Math.floor(zoom)))],started=Date.now();
    await page.evaluate(({center,zoom,projection})=>{testMap.setProjection({type:projection});testMap.jumpTo({center,zoom});},
     {center:c.center,zoom,projection});
-   await page.waitForFunction(expected=>testMap.queryRenderedFeatures({layers:['rail-reference-main','rail-reference-unknown']})
-    .some(f=>expected.includes(f.properties.id)),expected,{timeout:30000});
+   try{await page.waitForFunction(expected=>testMap.queryRenderedFeatures({layers:['rail-reference-main','rail-reference-unknown']})
+    .some(f=>expected.includes(f.properties.id)),expected,{timeout:30000})}
+   catch(error){
+    const diagnostic=await page.evaluate(()=>({zoom:testMap.getZoom(),center:testMap.getCenter(),loaded:testMap.loaded(),
+     sourceLoaded:testMap.isSourceLoaded('railReference'),errors:sourceErrors,
+     rendered:testMap.queryRenderedFeatures({layers:['rail-reference-main','rail-reference-unknown']}).slice(0,30).map(f=>({id:f.properties.id,properties:f.properties}))}));
+    const failure={profile:profile.name,projection,name:c.name,zoom,expected,diagnostic};
+    console.error('MAINLINE_RENDER_FAILURE',JSON.stringify(failure));
+    await writeFile('browser-review/mainline-failure.json',JSON.stringify(failure,null,2)+'\n');
+    await page.screenshot({path:'browser-review/mainline-failure.png'});throw error;
+   }
    const result=await page.evaluate(async expected=>{
     await new Promise(resolve=>{testMap.once('render',resolve);testMap.triggerRepaint()});
     const found=testMap.queryRenderedFeatures({layers:['rail-reference-main','rail-reference-unknown']}).filter(f=>expected.includes(f.properties.id));

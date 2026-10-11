@@ -61,7 +61,7 @@ export function normalizeMainlineWay(element){
  return {type:'Feature',id:element.id,
    bbox,
    properties:{id:`way-${element.id}`,osm_id:String(element.id),osm_version:version,
-     feature:tags.railway,usage:tags.usage||'',classification:tags.usage||'unknown',highspeed:tags.highspeed==='yes',
+     feature:tags.railway,usage:tags.usage||'',classification:tags.usage||'unknown',
      highspeed_tag:text(tags.highspeed),osm_timestamp:text(element.timestamp),
      start_node:Array.isArray(element.nodes)?String(element.nodes[0]):'',
      end_node:Array.isArray(element.nodes)?String(element.nodes.at(-1)):'',
