@@ -59,6 +59,6 @@ if (process.argv[2] === '--child') {
     }
     process.stdout.write(JSON.stringify({schema: 1, synthetic: true, node: process.version, fixture: JSON.parse(generated.stdout),
       measurement: 'Fresh serial processes; elapsed time covers matching only, after parsing and fixture mutation. Peak process RSS includes Node startup, input parsing and fixture preparation, not just matcher allocations. This is not production profiling.',
-      source_sha256: Object.fromEntries(['scripts/timetable-matching.mjs', 'scripts/benchmark-timetable-matching.mjs'].map(path => [path, createHash('sha256').update(readFileSync(join(root, path))).digest('hex')])), results}, null, 2) + '\n');
+      source_sha256: Object.fromEntries(['scripts/timetable-matching.mjs', 'scripts/timetable-timezones.mjs', 'scripts/benchmark-timetable-matching.mjs'].map(path => [path, createHash('sha256').update(readFileSync(join(root, path))).digest('hex')])), results}, null, 2) + '\n');
   } finally { rmSync(directory, {recursive: true, force: true}); }
 }

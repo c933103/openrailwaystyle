@@ -1,6 +1,7 @@
 // Offline identity contract only. Nothing imports this into map assembly.
 // Reviewed bindings/crosswalks are inputs, not facts inferred from equal labels.
 import {createHash} from 'node:crypto';
+import {isSupportedTimetableTimezone} from './timetable-timezones.mjs';
 
 const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
 const canonicalText = value => JSON.stringify(canonical(value));
@@ -219,6 +220,8 @@ function matchPattern(input) {
   // Check all source content bindings before using any identity field to exclude
   // them. The single source budget covers every canonicalization/hash input.
   const sourceWork = workBudget('source_work_limit'), patterns = new Map(), observationIds = new Set(), observedPatterns = new Set(), selectedObservations = [];
+  const agencyTimezones = new Map(), serviceDates = new Map();
+  let maximumValidity = 0;
   for (const pattern of evidence.patterns) {
     if (!patternSchema(pattern)) return result('missing_evidence', 'invalid_pattern');
     const {id: ignored, ...definition} = pattern;
@@ -230,10 +233,18 @@ function matchPattern(input) {
     const {fingerprint, ...definition} = observation;
     if (observationIds.has(observation.id) || hashText(sourceWork.encode([source.feed_id, source.sha256, observation.trip_id])) !== observation.id || hashText(sourceWork.encode([source.feed_id, source.sha256, source.service_date, definition])) !== fingerprint) return result('conflicting', 'observation_fingerprint_mismatch');
     if (!observationValidity(observation, source)) return result('missing_evidence', 'invalid_observation_validity');
+    if (!isSupportedTimetableTimezone(observation.timezone)) return result('missing_evidence', 'unsupported_observation_timezone');
+    const agency = patterns.get(observation.pattern_id).agency_id;
+    if (agencyTimezones.has(agency) && agencyTimezones.get(agency) !== observation.timezone) return result('missing_evidence', 'inconsistent_agency_timezone');
+    if (serviceDates.has(observation.service_id) && !same(serviceDates.get(observation.service_id), observation.active_service_dates)) return result('missing_evidence', 'inconsistent_service_dates');
+    agencyTimezones.set(agency, observation.timezone);
+    serviceDates.set(observation.service_id, observation.active_service_dates);
+    maximumValidity = Math.max(maximumValidity, observation.valid_until);
     observationIds.add(observation.id);
     observedPatterns.add(observation.pattern_id);
     if (observation.pattern_id === pattern_id) selectedObservations.push(observation);
   }
+  if (source.valid_until !== maximumValidity) return result('missing_evidence', 'source_validity_mismatch');
   if (observedPatterns.size !== patterns.size) return result('missing_evidence', 'missing_observations');
   const pattern = patterns.get(pattern_id);
   if (!pattern) return result('missing_evidence', 'pattern_identity');

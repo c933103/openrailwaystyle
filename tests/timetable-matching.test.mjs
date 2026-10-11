@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {captureOsmServiceEvidence, matchTimetablePattern} from '../scripts/timetable-matching.mjs';
+import {isSupportedTimetableTimezone, timezoneCatalog} from '../scripts/timetable-timezones.mjs';
 const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
 const hash = value => createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
 const snapshot = '2026-10-05T00:00:00Z', sha = 'a'.repeat(64);
@@ -146,8 +147,7 @@ test('resealed observation validity cannot exceed the complete source validity',
   sealObservations(revived);
   assert.deepEqual(matchTimetablePattern(revived).reasons, ['invalid_observation_validity']);
   for (const placement of ['selected', 'other', 'expired-other']) for (const reverse of [false, true]) {
-    const input = fixture();
-    if (placement !== 'selected') addOtherSourcePattern(input);
+    const input = addOtherSourcePattern(fixture());
     const row = input.evidence.observations[placement === 'selected' ? 0 : 1];
     if (placement === 'expired-other') { row.calendar_state = 'expired'; row.active_service_dates = []; }
     for (const delta of [-1, 0, 0.001, 1, 1e9]) {
@@ -204,7 +204,7 @@ try:
         path = case.feed(kinds, patterns)
         with zipfile.ZipFile(path) as z:
             files = {name: z.read(name) for name in z.namelist() if name != 'feed_info.txt'}
-        files['trips.txt'] = ('trip_id,route_id,service_id,direction_id,shape_id\\n' + ''.join(f'{kind},R,{kind},0,{kind}\\n' for kind in kinds)).encode()
+        files['trips.txt'] = ('trip_id,route_id,service_id,direction_id,shape_id\\n' + ''.join(f"{kind},R,{'overnight' if kind == 'expired' else kind},0,{kind}\\n" for kind in kinds)).encode()
         bounds = {'current': (previous, following), 'overnight': (previous, previous), 'expired': (previous, previous), 'future': (following, following), 'inactive': (previous, following)}
         files['calendar.txt'] = ('service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\\n' + ''.join(f'{kind},1,1,1,1,1,1,1,{compact(start)},{compact(end)}\\n' for kind, (start, end) in bounds.items())).encode()
         files['calendar_dates.txt'] = ('service_id,date,exception_type\\n' + f'missing,{compact(date)},2\\n' + ''.join(f'inactive,{compact(date-dt.timedelta(days=days))},2\\n' for days in range(4))).encode()
@@ -220,9 +220,12 @@ finally:
   for (const {evidence, now} of JSON.parse(run.stdout)) {
     assert.equal(evidence.status, 'captured');
     const observations = Object.fromEntries(evidence.observations.map(row => [row.trip_id, row]));
+    assert.equal(evidence.source.valid_until, Math.max(0, ...evidence.observations.map(row => row.valid_until)));
     for (const row of evidence.observations) assert.ok(row.valid_until <= evidence.source.valid_until);
     assert.equal(observations.overnight.calendar_state, 'current');
     assert.equal(observations.expired.calendar_state, 'expired');
+    assert.equal(observations.expired.service_id, observations.overnight.service_id);
+    assert.deepEqual(observations.expired.active_service_dates, observations.overnight.active_service_dates, 'same calendar retains dates despite different overnight expiry');
     assert.equal(observations.future.calendar_state, 'future');
     assert.equal(observations.missing.valid_until, 0);
     assert.equal(observations.missing.calendar_state, 'expired');
@@ -246,9 +249,79 @@ finally:
   }
 });
 
+
+test('resealed observation timezones require supported case-sensitive IANA names', () => {
+  assert.equal(timezoneCatalog.names, 598);
+  assert.equal(timezoneCatalog.iana_version, '2026d');
+  assert.equal(isSupportedTimetableTimezone('UTC'), true);
+  const valid = ['Europe/Helsinki', 'America/New_York', 'Asia/Kathmandu', 'Pacific/Chatham', 'UTC', 'Etc/UTC', 'US/Eastern', 'Etc/GMT+12', 'GMT0', 'EST5EDT'];
+  const invalid = ['Not/AZone', 'Europe/Not_A_Zone', '+02:00', '-0130', 'europe/helsinki', 'utc', ' UTC', 'UTC\n', '../UTC', '/etc/localtime', 'localtime', 'posix/Europe/Helsinki', 'z'.repeat(1024)];
+  for (const timezone of [...valid, ...invalid]) for (const placement of ['selected', 'other', 'expired-other']) {
+    const input = fixture();
+    if (placement !== 'selected') addOtherSourcePattern(input);
+    // This test isolates zone names; a genuinely different agency may use
+    // another zone. Same-agency consistency has its own regression below.
+    if (placement !== 'selected') changeOtherAgency(input, 'other-agency');
+    const row = input.evidence.observations[placement === 'selected' ? 0 : 1];
+    row.timezone = timezone;
+    if (placement === 'expired-other') Object.assign(row, {calendar_state: 'expired', valid_until: 0, active_service_dates: []});
+    sealObservations(input);
+    const before = structuredClone(input), output = matchTimetablePattern(input);
+    assert.equal(output.status, valid.includes(timezone) ? 'verified' : 'missing_evidence', `${timezone}/${placement}`);
+    if (!valid.includes(timezone)) assert.deepEqual(output.reasons, ['unsupported_observation_timezone']);
+    assert.deepEqual(input, before);
+  }
+  const run = spawnSync('python3', ['-c', 'import json,sys;from zoneinfo import ZoneInfo;[ZoneInfo(z) for z in json.load(sys.stdin)]'], {input: JSON.stringify(valid), encoding: 'utf8'});
+  assert.equal(run.status, 0, run.stderr);
+});
+
+function changeOtherAgency(input, agency) {
+  const pattern = input.evidence.patterns[1], previous = pattern.id;
+  pattern.agency_id = agency;
+  const {id, ...definition} = pattern;
+  pattern.id = hash([input.evidence.source.feed_id, input.evidence.source.sha256, definition]);
+  for (const row of input.evidence.observations) if (row.pattern_id === previous) row.pattern_id = pattern.id;
+  return sealObservations(input);
+}
+
+test('one captured agency cannot claim different observation timezones', () => {
+  for (const reverse of [false, true]) {
+    const input = addOtherSourcePattern(fixture());
+    input.evidence.observations[1].timezone = 'America/New_York'; sealObservations(input);
+    if (reverse) input.evidence.observations.reverse();
+    assert.deepEqual(matchTimetablePattern(input).reasons, ['inconsistent_agency_timezone']);
+    if (reverse) input.evidence.observations.reverse();
+    changeOtherAgency(input, 'other-agency');
+    assert.equal(status(input), 'verified', 'separate agencies can retain distinct timezones');
+  }
+});
+
+test('one captured service calendar has consistent active dates across trips', () => {
+  for (const reverse of [false, true]) {
+    const input = addOtherSourcePattern(fixture());
+    input.evidence.observations[1].service_id = input.evidence.observations[0].service_id;
+    input.evidence.observations[1].active_service_dates = []; sealObservations(input);
+    if (reverse) input.evidence.observations.reverse();
+    assert.deepEqual(matchTimetablePattern(input).reasons, ['inconsistent_service_dates']);
+    if (reverse) input.evidence.observations.reverse();
+    input.evidence.observations[1].service_id = 'another-calendar'; sealObservations(input);
+    assert.equal(status(input), 'verified', 'different service calendars can retain different dates');
+  }
+});
+
+test('source validity retains the collector maximum and historical zero floor', () => {
+  const input = fixture(); input.evidence.source.valid_until++;
+  assert.deepEqual(matchTimetablePattern(input).reasons, ['source_validity_mismatch']);
+  input.evidence.source.valid_until -= 2;
+  assert.deepEqual(matchTimetablePattern(input).reasons, ['invalid_observation_validity']);
+  const ordinary = addOtherSourcePattern(fixture()); ordinary.evidence.observations[0].valid_until--;
+  sealObservations(ordinary);
+  assert.equal(status(ordinary), 'verified', 'the maximum may belong to a different pattern');
+});
+
 test('committed matcher benchmark is bound to the current measured sources', () => {
   const report = JSON.parse(readFileSync(new URL('../docs/investigations/timetable-evidence-benchmark-20261009.json', import.meta.url), 'utf8'));
-  for (const path of ['scripts/timetable-matching.mjs', 'scripts/benchmark-timetable-matching.mjs']) {
+  for (const path of ['scripts/timetable-matching.mjs', 'scripts/timetable-timezones.mjs', 'scripts/benchmark-timetable-matching.mjs']) {
     const actual = createHash('sha256').update(readFileSync(new URL(`../${path}`, import.meta.url))).digest('hex');
     assert.equal(report.matcher.source_sha256[path], actual, `rerun the benchmark after changing ${path}`);
   }
@@ -862,7 +935,7 @@ function addOtherSourcePattern(input) {
   const {id, ...definition} = other;
   other.id = hash([input.evidence.source.feed_id, input.evidence.source.sha256, definition]);
   input.evidence.patterns.push(other);
-  input.evidence.observations.push({...structuredClone(input.evidence.observations[0]), id: hash(['feed', sha, 'other-trip']), trip_id: 'other-trip', pattern_id: other.id});
+  input.evidence.observations.push({...structuredClone(input.evidence.observations[0]), id: hash(['feed', sha, 'other-trip']), trip_id: 'other-trip', service_id: 'other-calendar', pattern_id: other.id});
   return sealObservations(input);
 }
 
@@ -965,9 +1038,9 @@ test('all-record source hashing work is capped for patterns and observations', (
   }
   assert.deepEqual(matchTimetablePattern(patterns).reasons, ['source_work_limit']);
   const observations = fixture();
-  observations.evidence.observations = Array.from({length: 5000}, (_, i) => {
+  observations.evidence.observations = Array.from({length: 8000}, (_, i) => {
     const trip_id = 't'.repeat(1000) + i;
-    return {...observations.evidence.observations[0], id: hash(['feed', sha, trip_id]), trip_id, service_id: 's'.repeat(1024), timezone: 'z'.repeat(1024)};
+    return {...observations.evidence.observations[0], id: hash(['feed', sha, trip_id]), trip_id, service_id: 's'.repeat(1024)};
   });
   sealObservations(observations);
   assert.deepEqual(matchTimetablePattern(observations).reasons, ['source_work_limit']);

@@ -272,6 +272,20 @@ overnight/DST service remain supported. Calendar start/end bounds are not stored
 in this sidecar, so the matcher does not claim to reconstruct the full calendar
 or authenticate source truth from a resealable content hash.
 
+Timezone names use a pinned, case-sensitive IANA name/link catalog (598 names,
+IANA 2026d from Python tzdata 2026.4). Canonical names and IANA aliases are retained
+without normalization; numeric offsets, arbitrary names, altered case and
+host-local filesystem aliases are unsupported. The matcher does not perform
+transition arithmetic or use the host's permissive Intl name normalization.
+Unknown future names are withheld until the reviewed catalog is refreshed.
+All observations for one agency retain the same exact timezone string; all
+observations for one service ID retain identical active-date lists, even when
+trip durations produce different current/expired states. Source validity must
+also equal the complete observation maximum with the compiler's zero floor.
+These bounded cross-record checks run before selection and keep array order
+independent. The [field-by-field comparison](investigations/timetable-observation-validation-20261011.md)
+records the exact scope, regressions and limits of this review.
+
 ### Outcomes
 
 - `verified`: exactly one reviewed service/section/direction variant satisfies
@@ -353,14 +367,14 @@ bounded; they do not justify enabling it across the production registry yet.
 The same report records fresh, serial Node 24.19.0 matcher processes over a
 controlled 10,000-observation, 2-pattern, 5,825,261-byte sidecar produced from the
 240,000-stop-row/28-profile fixture. Across three repetitions, the valid identity
-case took a median 166.562 ms; an unbound alternative was withheld in 178.462 ms.
-Median peak process RSS was 78,544 and 78,688 KiB respectively. These elapsed
+case took a median 177.037 ms; an unbound alternative was withheld in 182.021 ms.
+Median peak process RSS was 82,744 and 82,116 KiB respectively. These elapsed
 times cover matching after parsing/preparation; RSS includes startup, parsing
 and fixture preparation and is not a matcher-only allocation measurement.
 
 The source-work adversary and candidate-reference adversary returned explicit
-work-limit outcomes in median 61.620 and 196.834 ms, with median peak process RSS
-87,828 and 97,412 KiB. The source adversary fails during all-pattern validation
+work-limit outcomes in median 60.993 and 184.935 ms, with median peak process RSS
+87,884 and 101,420 KiB. The source adversary fails during all-pattern validation
 before reaching the ordinary observation scan, so its lower elapsed time is not
 a speed improvement. The script publishes only aggregate measurements and
 source hashes, never the temporary synthetic sidecar or ZIP. Compiler and
@@ -368,9 +382,11 @@ matcher measurements are separate; neither establishes production coverage or
 worldwide resource savings.
 
 These matcher measurements bind the exact source hashes recorded in the report,
-including served-role, active-date, captured-member and observation-validity validation. The prior Node 22.23.3 measurements are retained under
+including served-role, active-date, captured-member, observation-validity,
+timezone and source-consistency validation. The prior Node 22.23.3 measurements
+are retained under
 `historical_matcher_measurements`; they are not current-source performance
 evidence. Runtime/environment differences prevent a controlled speed or memory
 comparison between these generations. The historical compiler A/B cohorts
-above are unchanged. A regression requires the current report's matcher and
-benchmark-script hashes to match the committed sources.
+above are unchanged. A regression requires the current report's matcher,
+zone-catalog and benchmark-script hashes to match the committed sources.
