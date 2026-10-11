@@ -1,0 +1,89 @@
+{
+  "observedAt": "2026-10-11T01:20:00Z",
+  "source": "4408eaf2402d9c5a6639b97e400c0cabcfacb85e",
+  "tree": "475b514b01bb7acea579a16c8b2525440a66f6b1",
+  "parents": [
+    "caf03eb96f7cb32859c4e522179fbd8abac4f989",
+    "569957c3e23b0d28f6fe35316a815c646edd9cfd"
+  ],
+  "deployment": {
+    "run": 38100980805,
+    "url": "https://github.com/c933103/openrailwaystyle/actions/runs/38100980805",
+    "status": "completed",
+    "conclusion": "success",
+    "page": "https://c933103.github.io/openrailwaystyle/",
+    "jobs": [
+      {
+        "id": 114356675461,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114356675640,
+        "name": "facilities",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114356699516,
+        "name": "validate",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114357349532,
+        "name": "browser-checks",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114357350581,
+        "name": "browser (${{ matrix.group }})",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "id": 114357366042,
+        "name": "deploy",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114357366755,
+        "name": "record",
+        "status": "completed",
+        "conclusion": "skipped"
+      }
+    ]
+  },
+  "browserReuse": {
+    "tree": "475b514b01bb7acea579a16c8b2525440a66f6b1",
+    "dataKey": "81975fc6a8ad697d12077eefdd6b9a6b",
+    "acceptedPRRun": 38100263380
+  },
+  "nativeTests": {
+    "passed": 1044,
+    "failed": 0
+  },
+  "deployedChecks": [
+    "2026-10-11T01:16:36.6065054Z PASS: exact deployed vector tile 7/109/50 identity",
+    "2026-10-11T01:16:36.6889266Z PASS: exact deployed vector tile 7/109/50 gzip, deflate, br, zstd, identity",
+    "2026-10-11T01:16:36.7814593Z PASS: exact deployed vector tile 0/0/0 identity",
+    "2026-10-11T01:16:36.8700753Z PASS: exact deployed vector tile 0/0/0 gzip, deflate, br, zstd, identity",
+    "2026-10-11T01:16:36.9591049Z PASS: exact deployed vector tile 10/552/143 identity",
+    "2026-10-11T01:16:37.0642372Z PASS: exact deployed vector tile 10/552/143 gzip, deflate, br, zstd, identity",
+    "2026-10-11T01:17:56.1129179Z PASS: Wuhan rail overlays at z6/z7; z14 track-count interaction used local fixtures only {\"initial\":{\"requests\":61,\"unique\":61,\"byDataset\":{\"railway_line_high\":25,\"standard_railway_grouped_station_areas\":18,\"standard_railway_text_stations\":18}},\"afterPan\":{\"requests\":72,\"unique\":72,\"byDataset\":{\"railway_line_high\":30,\"standard_railway_grouped_station_areas\":21,\"standard_railway_text_stations\":21}},\"panAdded\":11,\"metadata\":1,\"tiles\":321}"
+  ],
+  "publishedArtifact": {
+    "id": 11687308660,
+    "bytes": 499646,
+    "sha256": "293a38734508176dc7cf982b7e0af9ce27f6acc01e309ddea1d1f125986af876",
+    "zipCRC": "all entries verified"
+  },
+  "limits": [
+    "Synthetic provider fixtures, actual served first-party assets. No automatic public-provider tile benchmarking.",
+    "Five selected-name candidates means logical tiles; fallback requests remain possible.",
+    "Curated/regional overview does not establish worldwide station completeness, regional/IVS font guarantees, or an authentic fifth backdrop."
+  ]
+}

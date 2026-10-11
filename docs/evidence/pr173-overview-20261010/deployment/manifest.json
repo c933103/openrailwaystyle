@@ -1,0 +1,57 @@
+{
+  "originalArchiveBytes": 499646,
+  "originalArchiveSha256": "293a38734508176dc7cf982b7e0af9ce27f6acc01e309ddea1d1f125986af876",
+  "parts": [
+    {
+      "path": "published-map-review.zip.part-000",
+      "bytes": 50000,
+      "sha256": "410424040d905c2599d52ba7af137e54850c6bb316ced2abccf22de8810316e1"
+    },
+    {
+      "path": "published-map-review.zip.part-001",
+      "bytes": 50000,
+      "sha256": "fe5cdae2b339f5eaf66c17982bed36abafc8f22cd81b67b1db5891ff7c5a4ae8"
+    },
+    {
+      "path": "published-map-review.zip.part-002",
+      "bytes": 50000,
+      "sha256": "ad7148dad7e3f63605450343ffecd5ff2bc0be59ba538a4092fd30959a35c0eb"
+    },
+    {
+      "path": "published-map-review.zip.part-003",
+      "bytes": 50000,
+      "sha256": "5fd7a9ef992ace031d2ee29bb5d25a050ff54508055ce186c87b9a92d81209a7"
+    },
+    {
+      "path": "published-map-review.zip.part-004",
+      "bytes": 50000,
+      "sha256": "f4633a23c33ad4dbeb75abf5a7f6ade79506677a33367e9af294dcd50528797f"
+    },
+    {
+      "path": "published-map-review.zip.part-005",
+      "bytes": 50000,
+      "sha256": "aab73ece207e389cb81bc9fdb6dce77ca6477b385eb5bab1bacc950bba3f3919"
+    },
+    {
+      "path": "published-map-review.zip.part-006",
+      "bytes": 50000,
+      "sha256": "f2e67b96def49a0dd24d923fe9c0e85f914ffd9b6de9a45a935b4416cb2da01b"
+    },
+    {
+      "path": "published-map-review.zip.part-007",
+      "bytes": 50000,
+      "sha256": "80fcfb8dbdd137855110c8b6c5e976b50b179ddbd845c4da02e0b70c25b67800"
+    },
+    {
+      "path": "published-map-review.zip.part-008",
+      "bytes": 50000,
+      "sha256": "4a8b4c58b3173390c95e6d902882ccfbffaeee22069863d5acd9d59aeb2e11e9"
+    },
+    {
+      "path": "published-map-review.zip.part-009",
+      "bytes": 49646,
+      "sha256": "552104b4a08457f77dfcbeccdf62b54121602cd5234ef43962a181bc0e302755"
+    }
+  ],
+  "reconstruct": "Concatenate published-map-review.zip.part-* in lexical order. The result is the original GitHub artifact ZIP; verify SHA-256 before extraction."
+}

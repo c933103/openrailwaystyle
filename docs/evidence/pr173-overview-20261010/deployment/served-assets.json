@@ -1,0 +1,71 @@
+{
+  "source": "4408eaf2402d9c5a6639b97e400c0cabcfacb85e",
+  "base": "https://c933103.github.io/openrailwaystyle/",
+  "observedAt": "2026-10-11T01:17:45.077Z",
+  "results": [
+    {
+      "path": "index.html",
+      "status": 200,
+      "bytes": 45796,
+      "sha256": "62b4a6642a45e07cd763b4e2c00ab918c9f90bb6655bb2952c0a15d368f81459",
+      "expectedSha256": "62b4a6642a45e07cd763b4e2c00ab918c9f90bb6655bb2952c0a15d368f81459",
+      "equal": true
+    },
+    {
+      "path": "app.mjs",
+      "status": 200,
+      "bytes": 151896,
+      "sha256": "29e32a4f562c50261ca4a68c2e8d890c262777bdda0ada76c7dbca3008fe6fcf",
+      "expectedSha256": "29e32a4f562c50261ca4a68c2e8d890c262777bdda0ada76c7dbca3008fe6fcf",
+      "equal": true
+    },
+    {
+      "path": "world.style.json",
+      "status": 200,
+      "bytes": 1860083,
+      "sha256": "83af8ff6437a0719fcf2eec48db275f1c5ffa6d827a388cf74c1351b66fcde04",
+      "expectedSha256": "83af8ff6437a0719fcf2eec48db275f1c5ffa6d827a388cf74c1351b66fcde04",
+      "equal": true
+    },
+    {
+      "path": "major-stations.geojson",
+      "status": 200,
+      "bytes": 95923,
+      "sha256": "51f0da6d83dd5870232b2b34126bc3f4667f127651b2c580fc42f5b9b26470c9",
+      "expectedSha256": "51f0da6d83dd5870232b2b34126bc3f4667f127651b2c580fc42f5b9b26470c9",
+      "equal": true
+    },
+    {
+      "path": "vendor/tile-labels.js",
+      "status": 200,
+      "bytes": 367629,
+      "sha256": "b81df20eab1c4e0bff30e044dc1b16e562e2384ff0a595710631db9add26c334",
+      "expectedSha256": "b81df20eab1c4e0bff30e044dc1b16e562e2384ff0a595710631db9add26c334",
+      "equal": true
+    },
+    {
+      "path": "vendor/maplibre-gl-5.24.0-atlas.1.js",
+      "status": 200,
+      "bytes": 1056809,
+      "sha256": "46dc2971db363b0c7efa1d9ae6035d26c872c7110a3384aaec379ff281e0f223",
+      "expectedSha256": "46dc2971db363b0c7efa1d9ae6035d26c872c7110a3384aaec379ff281e0f223",
+      "equal": true
+    },
+    {
+      "path": "vendor/maplibre-gl-5.24.0.css",
+      "status": 200,
+      "bytes": 70024,
+      "sha256": "ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732",
+      "expectedSha256": "ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732",
+      "equal": true
+    },
+    {
+      "path": "vendor/pmtiles-4.2.1.js",
+      "status": 200,
+      "bytes": 19565,
+      "sha256": "afc49d216fd24c0a3c0ff3cd2e0c62d6cdaf062854c3dced778dcab168824f79",
+      "expectedSha256": "afc49d216fd24c0a3c0ff3cd2e0c62d6cdaf062854c3dced778dcab168824f79",
+      "equal": true
+    }
+  ]
+}
