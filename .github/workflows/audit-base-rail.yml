@@ -1,0 +1,48 @@
+name: Diagnose low-zoom local basemap rail feature coverage
+on:
+  push:
+    branches: [investigate/country-label-li-20261011]
+    paths: ['.github/workflows/audit-base-rail.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Inspect only Alpine/European reference tiles (no ORM requests)
+        run: |
+          node --input-type=module <<'JS'
+          import {PMTiles} from 'pmtiles';
+          import {VectorTile} from '@mapbox/vector-tile';
+          import Pbf from 'pbf';
+          const pm=new PMTiles('https://tuiles.enliberte.fr/planet.pmtiles');
+          const sites=[['Swiss-Austria',9.54,47.14],['Zurich',8.54,47.37],['Berlin',13.4,52.5]];
+          for(const [name,lon,lat] of sites){
+            for(const z of [3,4,5,6,7]){
+              const n=2**z,x=Math.floor((lon+180)/360*n);
+              const y=Math.floor((1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*n);
+              const result=await pm.getZxy(z,x,y);
+              if(!result){console.log('UNAVAILABLE',name,z,x,y);continue;}
+              const data=new Uint8Array(result.data);
+              if(data.length>2000000)throw Error('Tile exceeds inspection bound');
+              const tile=new VectorTile(new Pbf(data));
+              const layer=tile.layers.transportation;
+              const counts={},examples=[];
+              for(let i=0;i<(layer?.length??0);i++){
+                const f=layer.feature(i),p=f.properties;
+                if(!['rail','transit','subway','light_rail','tram'].includes(p.class)&&
+                   !/rail|subway|tram/i.test(String(p.subclass||'')))continue;
+                const cls=String(p.class),sub=String(p.subclass);
+                counts[cls+':'+sub]=(counts[cls+':'+sub]||0)+1;
+                if(examples.length<8)examples.push({type:f.type,keys:Object.keys(p),p});
+              }
+              console.log('RAIL_TILE',JSON.stringify({name,z,x,y,bytes:data.length,transportation:layer?.length??0,counts,examples}));
+            }
+          }
+          JS
