@@ -5,7 +5,7 @@ import {mkdir,readFile,writeFile,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {newStationAcquisition,checkStationAcquisition,stationRegionQuery,
- applyStationRegion,postponeStationRegion,stationWorldCoverage} from './station-acquisition.mjs';
+ applyStationRegion,postponeStationRegion,stationWorldCoverage,nextStationAcquisitionCycle} from './station-acquisition.mjs';
 import {stationOverviewData} from './station-overview.mjs';
 
 const endpoint=process.env.OVERPASS_URL||'https://overpass-api.de/api/interpreter';
@@ -25,15 +25,11 @@ if(input){
   if(loaded!==2)throw Error('Station checkpoint incomplete');
   existing=true;
 }
-checkStationAcquisition(state,records);
-// A completed acquisition is the *previous* published generation. Start a
-// fresh independent crawl; the workflow never overwrites its public data
-// branch with an incomplete successor's checkpoint.
-let refreshStarted=false;
-if(!state.pending.length) {
-  if(!stationWorldCoverage(state.completed))throw new Error('Refusing refresh of incomplete station source');
-  state=newStationAcquisition();records=[];refreshStarted=true;
-}
+// Refreshed generations are built in the work branch, never over the
+// already-complete public station-points-data branch.
+const rotated=nextStationAcquisitionCycle(state,records);
+({state,records}=rotated);
+const refreshStarted=rotated.refreshed;
 const pending=state.pending[0];
 const url=new URL(endpoint),query=pending&&stationRegionQuery(pending.box);
 let accepted=false,status='already complete',received=0;
