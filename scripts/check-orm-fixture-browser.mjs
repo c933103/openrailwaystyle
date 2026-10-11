@@ -7,6 +7,7 @@ import {checkRailRecoveryWithoutIdle} from './rail-recovery-browser-fixture.mjs'
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import {launchBrowser} from './browser.mjs';
+import {WUHAN_ZOOMS,checkWuhanRailZoom,readWuhanRail,assertWuhanRail} from './wuhan-rail-browser.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {observeRequiredBrowserLibraries} from './required-browser-libraries.mjs';
 
@@ -104,6 +105,25 @@ try {
   await visible('speed-overview');
   await page.evaluate(()=>window.fixtureMap.jumpTo({center:[114.4,30.55],zoom:7}));
   await visible('speed-tracks');
+  // Exercise the same city-centred active-Infrastructure diagnostic as the
+  // self-hosted audit, using only this generated provider-shaped geometry.
+  await page.locator('[data-mode="infrastructure"]').click();
+  const wuhan=[];
+  for(const zoom of WUHAN_ZOOMS) {
+    wuhan.push(await checkWuhanRailZoom(page,zoom));
+    await page.screenshot({path:`browser-review/orm-fixture-wuhan-infrastructure-z${zoom}.png`});
+  }
+  // Negative control: decoded data must not pass when the active style filters
+  // every line out. Another thematic layer cannot mask that failure.
+  await checkWuhanRailZoom(page,7);
+  const infrastructureFilter=await page.evaluate(()=>window.fixtureMap.getFilter('infrastructure-tracks'));
+  await page.evaluate(()=>window.fixtureMap.setFilter('infrastructure-tracks',['==',['get','id'],'absent-fixture-id']));
+  await page.waitForFunction(()=>window.fixtureMap.loaded());
+  const filtered=await readWuhanRail(page,7);
+  assert.ok(filtered.providerPresentRail>0,'Negative control retains decoded railway geometry');
+  assert.throws(()=>assertWuhanRail(filtered,7),/WUHAN_TRACKS_NOT_RENDERED/);
+  await page.evaluate(filter=>window.fixtureMap.setFilter('infrastructure-tracks',filter),infrastructureFilter);
+  await checkWuhanRailZoom(page,7);
   assert.equal(requests.metadata,0,'Known catalogue sources require zero metadata requests');
   assert.ok(requests.tiles>0,'Synthetic railway tiles must be requested');
   assert.deepEqual(requests.missingReferer,[], 'Chromium must send a genuine site-origin Referer for provider requests');
@@ -171,8 +191,8 @@ try {
   assert.equal(requests.metadata,1,'Only the explicit unknown endpoint fetched metadata');
   assert.deepEqual(errors,[]);
   assert.deepEqual(requests.missingReferer,[]);assert.deepEqual(requests.missingUserAgent,[]);
-  await writeFile('browser-review/orm-fixture-evidence.json',JSON.stringify({base,libraryAssets,archiveContract,initial,afterPan,panAdded,recovery,requests,ledger},null,2)+'\n');
-  console.log('PASS: Wuhan rail overlays at z6/z7; z14 track-count interaction used local fixtures only',
+  await writeFile('browser-review/orm-fixture-evidence.json',JSON.stringify({base,libraryAssets,archiveContract,wuhan,filtered,initial,afterPan,panAdded,recovery,requests,ledger},null,2)+'\n');
+  console.log('PASS: city-centred Wuhan Infrastructure at z6/z7/z8; z14 track-count interaction used local fixtures only',
     JSON.stringify({initial,afterPan,panAdded,metadata:requests.metadata,tiles:requests.tiles}));
 }finally{
   await writeFile('browser-review/orm-network-ledger.json',JSON.stringify(ledger,null,2)+'\n');

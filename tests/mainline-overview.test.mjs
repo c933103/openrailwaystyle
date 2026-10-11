@@ -13,7 +13,7 @@ const source=(...ways)=>mainlineRegion({elements:ways});
 const decode=(bytes)=>new VectorTile(new Pbf(new Uint8Array(gunzipSync(bytes)))).layers[MAINLINE_LAYER];
 const ids=(layer)=>new Set(Array.from({length:layer?.length||0},(_,i)=>layer.feature(i).properties.id));
 
-test('operating main, high-speed and unspecified-usage railways survive; branches and sidings do not',()=>{
+test('operating main, high-speed and unspecified-usage railways survive; branches remain classified; sidings do not',()=>{
  const records=source(
    way(1,[[0,0],[12,0]]),
    way(2,[[0,2],[12,2]],{railway:'narrow_gauge',highspeed:'yes'}),
@@ -25,7 +25,7 @@ test('operating main, high-speed and unspecified-usage railways survive; branche
    way(8,[[0,14],[12,14]],{railway:'rail',disused:'yes'}),
    way(9,[[0,16],[12,16]],{railway:'tram',usage:'main'}),
  );
- assert.deepEqual(records.map(r=>r.id),[1,2,3]);
+ assert.deepEqual(records.map(r=>r.id),[1,2,3,4]);
  assert.equal(records[1].properties.rank,0);
  assert.equal(records[0].properties.rank,1);
  assert.equal(records[2].properties.rank,2);
@@ -55,7 +55,7 @@ test('all-world fixture mainlines persist through z0–6 even without OpenRailwa
    [[lon,lat],[lon+8,lat+1]],{railway:'rail',usage:'main',name})));
  const result=mainlineTiles(all);
  assert.equal(result.manifest.wayCount,corridors.length);
- assert.equal(result.manifest.complete,true);
+ assert.equal(result.manifest.complete,false);
  assert.equal(result.manifest.minzoom,0);
  assert.equal(result.manifest.maxzoom,6);
  assert.ok(result.index.tiles.includes('0/0/0'),'worldwide z0 tile is available at negative map zoom too');

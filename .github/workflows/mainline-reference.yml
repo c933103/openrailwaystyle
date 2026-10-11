@@ -1,0 +1,118 @@
+name: Build worldwide OSM railway reference
+on:
+  workflow_dispatch:
+    inputs:
+      source_date:
+        description: 'Dated Geofabrik snapshot (YYYY-MM-DD); blank uses two days ago'
+        type: string
+        required: false
+  schedule:
+    - cron: '19 3 3 * *'
+  push:
+    branches: [main, feat/world-mainline-overview-source-20261011]
+    paths: ['.github/workflows/mainline-reference.yml', 'scripts/acquire-mainline-extract.py']
+permissions:
+  contents: read
+concurrency:
+  group: mainline-reference-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      date: ${{ steps.plan.outputs.date }}
+    steps:
+      - id: plan
+        env:
+          REQUESTED: ${{ inputs.source_date }}
+        run: |
+          python - <<'PY'
+          import datetime as d, os, re
+          date=os.environ.get('REQUESTED') or str(d.datetime.now(d.timezone.utc).date()-d.timedelta(days=2))
+          if not re.fullmatch(r'\d{4}-\d{2}-\d{2}',date): raise ValueError('Invalid source date')
+          d.date.fromisoformat(date)
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f: f.write('date='+date+'\n')
+          PY
+  extract:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        region: [africa, antarctica, asia, australia-oceania, central-america, europe, north-america, south-america]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore completed continent checkpoint
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: extract-output
+          key: mainline-extract-v1-${{ matrix.region }}-${{ needs.plan.outputs.date }}-${{ hashFiles('scripts/acquire-mainline-extract.py') }}
+      - name: Make room for one bounded PBF on the disposable runner
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo apt-get update -qq
+          sudo apt-get install -y osmium-tool
+      - name: Download one dated extract, verify checksum and export complete ways
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: python scripts/acquire-mainline-extract.py '${{ matrix.region }}' '${{ needs.plan.outputs.date }}' extract-output
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mainline-source-${{ matrix.region }}
+          path: extract-output
+          compression-level: 0
+          retention-days: 14
+  assemble:
+    needs: [plan, extract]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mainline-source-*
+          path: mainline-input
+      - name: Validate all continents, build independent tiles and audit real source coverage
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: node scripts/build-mainline-snapshot.mjs mainline-input mainline-output
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mainline-reference-${{ needs.plan.outputs.date }}
+          path: mainline-output
+          compression-level: 0
+          retention-days: 14
+      # The draft branch only stages inspectable data; it cannot replace
+      # production. A reviewed merge imports the exact complete generation.
+      - name: Publish complete reference generation atomically
+        env:
+          PUBLISH_BRANCH: ${{ github.ref == 'refs/heads/main' && 'mainline-data' || 'mainline-preview-186' }}
+        run: |
+          set -eu
+          mkdir /tmp/mainline-publish
+          cd /tmp/mainline-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout --orphan "$PUBLISH_BRANCH"
+          cp -r "$GITHUB_WORKSPACE/mainline-output/." .
+          git add .
+          git commit -q -m 'Complete worldwide OSM railway reference ${{ needs.plan.outputs.date }}'
+          git push --force origin "HEAD:$PUBLISH_BRANCH"
+      - name: Redeploy the reviewed production site
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site.yml --ref main
