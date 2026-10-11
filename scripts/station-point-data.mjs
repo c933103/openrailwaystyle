@@ -15,7 +15,7 @@ const RETIRED = new Set(['yes', 'true', '1']);
 const osmKey = e => `${e.type}/${e.id}`;
 const validCoord = (lat, lon) => Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
 const scrub = value => typeof value === 'string'
-  ? value.replace(/[\\u0000-\\u001f\\u007f]/g, ' ').trim().slice(0, 240)
+  ? value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 240)
   : '';
 export function initialRegions() {
   const regions = [];
@@ -105,7 +105,7 @@ export function readTable(text) {
     if (!line.trim()) continue;
     const record = JSON.parse(line);
     if (!record || typeof record.id !== 'string' ||
-        !/^(node|way|relation)\\/[1-9]\\d*$/.test(record.id) ||
+        !/^(node|way|relation)\/[1-9]\d*$/.test(record.id) ||
         !validCoord(record.lat,record.lon) || !RAILWAY_KINDS.includes(record.feature))
       throw new Error('Malformed worldwide station record');
     if (records.has(record.id)) throw new Error('Duplicate station identity in saved data');
