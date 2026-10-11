@@ -1137,17 +1137,20 @@ class RemoteZip:
         return self.full
 
 
+def public_url_columns(row):
+    """Shared producer/stager projection; matching IDs are never URL columns."""
+    columns = {key: item for key, item in row.items() if key == 'url' or key.endswith('_url')}
+    # Re-staging a display must retain its original URL fingerprint too.
+    for key in list(columns):
+        if key+'_sha256' in row:
+            columns[key+'_sha256'] = row[key+'_sha256']
+    return {**row, **published_metadata(columns)}
+
+
 def write_feed(path, value):
     # Redact provenance and GTFS URL columns, not matching identifiers that
     # happen to resemble URLs. Avoid a second copy or walk of geometry/profiles.
     value = {**value, 'source': published_metadata(value['source'])}
-    def public_url_columns(row):
-        columns = {key: item for key, item in row.items() if key == 'url' or key.endswith('_url')}
-        # Re-staging a display must retain its original URL fingerprint too.
-        for key in list(columns):
-            if key+'_sha256' in row:
-                columns[key+'_sha256'] = row[key+'_sha256']
-        return {**row, **published_metadata(columns)}
     for table in ('agencies', 'routes'):
         if table in value:
             value[table] = [public_url_columns(row) for row in value[table]]
