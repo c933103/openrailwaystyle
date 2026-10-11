@@ -18,6 +18,7 @@ import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAt
 import { installWatchGesture } from './watch-map.mjs?v=20261010-rail-markers-1';
 import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261010-rail-markers-1';
 import { createBundleReader } from './tile-bundles.mjs?v=20261010-rail-markers-1';
+import {installSovietStyle} from './soviet-topo.mjs?v=20261010-rail-markers-1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
@@ -1375,7 +1376,7 @@ function installPolar() {
   if (!map) return;
   if (polarLayer) { if (!map.getLayer(polarLayer.id)) map.addLayer(polarLayer, map.getLayer('waterway-tunnel') ? 'waterway-tunnel' : undefined); return; }
   polarLoading ||= import(`./vendor/polar-layer.js?v=${assetVersion}`).then(({PolarLayer}) => {
-    polarLayer = new PolarLayer({data: new URL('./data/polar/', import.meta.url), units: () => settings.units, relief: () => settings.relief, places: showPolarPlaces, imagery: () => ['satellite','hybrid'].includes(settings.background), palette: () => settings.background});
+    polarLayer = new PolarLayer({data: new URL('./data/polar/', import.meta.url), units: () => settings.units, relief: () => settings.relief, places: showPolarPlaces, imagery: () => ['satellite','hybrid'].includes(settings.background), palette: () => settings.background === 'soviet' ? 'map' : settings.background});
     installPolar();
   }).catch(error => console.warn('Polar caps unavailable:', error?.message || error));
 }
@@ -1451,6 +1452,7 @@ async function initialize() {
   const response = await fetch(styleURL);
   if (!response.ok) throw new Error('The map style could not load. Reload to try again.');
   const style = await response.json();
+  installSovietStyle(style);
   // Keep the style's version-matched station copy available during the first
   // upgrade from a worker whose fixed precache does not know the new file.
   // Parsing/rendering its GeoJSON in MapLibre remains deferred to the overview.
