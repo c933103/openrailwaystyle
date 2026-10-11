@@ -296,7 +296,11 @@ and remain station-connected through all calls, including transitive bridges. Re
 IDs preserve one station parent; a parent that is itself called must remain a
 root, preventing nested chains and cycles. These checks retain repeated calls,
 shared parents, loops and per-call access differences. Canonical aliases can
-retain different raw references, directions and shapes; an actual collector
+retain different raw whitespace, directions and shapes. Nonblank references
+within one compiled component must agree after Python `str.strip()` normalization.
+Blank short names may fall back to omitted long names and remain unconstrained;
+no case folding, interior-space collapsing or JavaScript-specific BOM stripping
+is applied. An actual collector
 fixture covers their combined loop/root-station behavior.
 
 A shared service calendar also retains one missing-end marker and, per exact
@@ -392,14 +396,14 @@ bounded; they do not justify enabling it across the production registry yet.
 The same report records fresh, serial Node 24.19.0 matcher processes over a
 controlled 10,000-observation, 2-pattern, 5,825,261-byte sidecar produced from the
 240,000-stop-row/28-profile fixture. Across three repetitions, the valid identity
-case took a median 173.768 ms; an unbound alternative was withheld in 213.610 ms.
-Median peak process RSS was 83,936 and 83,828 KiB respectively. These elapsed
+case took a median 207.216 ms; an unbound alternative was withheld in 197.380 ms.
+Median peak process RSS was 84,264 and 84,336 KiB respectively. These elapsed
 times cover matching after parsing/preparation; RSS includes startup, parsing
 and fixture preparation and is not a matcher-only allocation measurement.
 
 The source-work adversary and candidate-reference adversary returned explicit
-work-limit outcomes in median 64.293 and 249.936 ms, with median peak process RSS
-88,236 and 102,764 KiB. The source adversary fails during all-pattern validation
+work-limit outcomes in median 59.197 and 212.124 ms, with median peak process RSS
+88,164 and 102,984 KiB. The source adversary fails during all-pattern validation
 before reaching the ordinary observation scan, so its lower elapsed time is not
 a speed improvement. The script publishes only aggregate measurements and
 source hashes, never the temporary synthetic sidecar or ZIP. Compiler and

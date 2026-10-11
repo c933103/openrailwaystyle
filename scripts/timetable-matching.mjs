@@ -124,6 +124,10 @@ function workBudget(reason) {
     },
   };
 }
+// Python str.strip() uses Unicode White_Space plus U+001C..U+001F;
+// JavaScript trim() instead strips U+FEFF and misses those controls/U+0085.
+// Compare the collector's label key without changing the retained raw ref.
+const canonicalRouteRef = value => value === null ? '' : value.replace(/^[\p{White_Space}\u001c-\u001f]+|[\p{White_Space}\u001c-\u001f]+$/gu, '');
 function patternSchema(pattern) {
   return record(pattern, patternFields) && digest(pattern.id) && id(pattern.source_route_id) && id(pattern.compiled_route_id) && id(pattern.agency_id) && nullableId(pattern.route_ref) && nullableId(pattern.shape_id) && [null, '0', '1'].includes(pattern.direction_id) && array(pattern.calls, 512) && pattern.calls.length >= 2 &&
     pattern.calls.every(call => record(call, callFields) && id(call.stop_id) && id(call.station_id) && ['0', '1', '2', '3'].includes(call.pickup_type) && ['0', '1', '2', '3'].includes(call.drop_off_type));
@@ -258,7 +262,7 @@ function matchPattern(input) {
   // them. The single source budget covers every canonicalization/hash input.
   const sourceWork = workBudget('source_work_limit'), patterns = new Map(), observationIds = new Set(), observedPatterns = new Set(), selectedObservations = [];
   const agencyTimezones = new Map(), serviceDates = new Map(), serviceCalendars = new Map();
-  const sourceRoutes = new Map(), compiledAgencies = new Map(), stopParents = new Map(), stationRoots = new Set();
+  const sourceRoutes = new Map(), compiledAgencies = new Map(), compiledRefs = new Map(), stopParents = new Map(), stationRoots = new Set();
   let maximumValidity = 0;
   for (const pattern of evidence.patterns) {
     if (!patternSchema(pattern)) return result('missing_evidence', 'invalid_pattern');
@@ -267,6 +271,13 @@ function matchPattern(input) {
     const routeMetadata = [pattern.agency_id, pattern.route_ref, pattern.compiled_route_id];
     if (sourceRoutes.has(pattern.source_route_id) && !same(sourceRoutes.get(pattern.source_route_id), routeMetadata)) return result('missing_evidence', 'inconsistent_source_route');
     if (compiledAgencies.has(pattern.compiled_route_id) && compiledAgencies.get(pattern.compiled_route_id) !== pattern.agency_id) return result('missing_evidence', 'inconsistent_compiled_agency');
+    const normalizedRef = canonicalRouteRef(pattern.route_ref);
+    // A blank short name may use an omitted long name as its grouping label.
+    // Only nonblank short names constrain the shared canonical component.
+    if (normalizedRef) {
+      if (compiledRefs.has(pattern.compiled_route_id) && compiledRefs.get(pattern.compiled_route_id) !== normalizedRef) return result('missing_evidence', 'inconsistent_compiled_ref');
+      compiledRefs.set(pattern.compiled_route_id, normalizedRef);
+    }
     sourceRoutes.set(pattern.source_route_id, routeMetadata);
     compiledAgencies.set(pattern.compiled_route_id, pattern.agency_id);
     for (const call of pattern.calls) {

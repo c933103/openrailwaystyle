@@ -212,7 +212,7 @@
     },
     "measurement": "Fresh serial processes; elapsed time covers matching only, after parsing and fixture mutation. Peak process RSS includes Node startup, input parsing and fixture preparation, not just matcher allocations. This is not production profiling.",
     "source_sha256": {
-      "scripts/timetable-matching.mjs": "d92683ce725161b5129b13ad4030bf80739b1685ab2d49bbaed2988be90124bf",
+      "scripts/timetable-matching.mjs": "17468896f421ef84754194ff0da654b815718e6a414c0615095df37feefc8f3f",
       "scripts/timetable-timezones.mjs": "2275eaafa2258f29e17ca53efcedff6d31eb3f32298518855296e316e9d62d22",
       "scripts/benchmark-timetable-matching.mjs": "34e5c9adfe8010f3a4d6e322150dcada6936949cea000d7c37e21b528adab525"
     },
@@ -220,120 +220,120 @@
       {
         "repeat": 0,
         "mode": "verified",
-        "milliseconds": 173.768,
-        "rss_before_bytes": 58818560,
-        "rss_after_bytes": 85557248,
-        "peak_process_rss_kib": 83552,
+        "milliseconds": 195.241,
+        "rss_before_bytes": 59068416,
+        "rss_after_bytes": 86200320,
+        "peak_process_rss_kib": 84180,
         "status": "verified",
         "reason": "reviewed_identity_and_stops"
       },
       {
         "repeat": 0,
         "mode": "unbound",
-        "milliseconds": 177.448,
-        "rss_before_bytes": 58880000,
-        "rss_after_bytes": 85749760,
-        "peak_process_rss_kib": 83740,
+        "milliseconds": 197.38,
+        "rss_before_bytes": 59146240,
+        "rss_after_bytes": 86147072,
+        "peak_process_rss_kib": 84128,
         "status": "missing_evidence",
         "reason": "missing_service_identity"
       },
       {
         "repeat": 0,
         "mode": "source-limit",
-        "milliseconds": 65.761,
-        "rss_before_bytes": 88363008,
-        "rss_after_bytes": 85811200,
-        "peak_process_rss_kib": 89036,
+        "milliseconds": 60.941,
+        "rss_before_bytes": 88743936,
+        "rss_after_bytes": 85319680,
+        "peak_process_rss_kib": 88688,
         "status": "missing_evidence",
         "reason": "source_work_limit"
       },
       {
         "repeat": 0,
         "mode": "candidate-limit",
-        "milliseconds": 216.909,
-        "rss_before_bytes": 59748352,
-        "rss_after_bytes": 105230336,
-        "peak_process_rss_kib": 102764,
+        "milliseconds": 212.124,
+        "rss_before_bytes": 60112896,
+        "rss_after_bytes": 103890944,
+        "peak_process_rss_kib": 101456,
         "status": "missing_evidence",
         "reason": "candidate_work_limit"
       },
       {
         "repeat": 1,
         "mode": "verified",
-        "milliseconds": 172.208,
-        "rss_before_bytes": 58626048,
-        "rss_after_bytes": 86151168,
-        "peak_process_rss_kib": 84132,
+        "milliseconds": 207.549,
+        "rss_before_bytes": 59023360,
+        "rss_after_bytes": 86286336,
+        "peak_process_rss_kib": 84264,
         "status": "verified",
         "reason": "reviewed_identity_and_stops"
       },
       {
         "repeat": 1,
         "mode": "unbound",
-        "milliseconds": 213.61,
-        "rss_before_bytes": 58707968,
-        "rss_after_bytes": 85839872,
-        "peak_process_rss_kib": 83828,
+        "milliseconds": 215.448,
+        "rss_before_bytes": 59097088,
+        "rss_after_bytes": 86360064,
+        "peak_process_rss_kib": 84336,
         "status": "missing_evidence",
         "reason": "missing_service_identity"
       },
       {
         "repeat": 1,
         "mode": "source-limit",
-        "milliseconds": 54.823,
-        "rss_before_bytes": 88248320,
-        "rss_after_bytes": 84115456,
-        "peak_process_rss_kib": 87372,
+        "milliseconds": 58.711,
+        "rss_before_bytes": 88473600,
+        "rss_after_bytes": 85065728,
+        "peak_process_rss_kib": 88164,
         "status": "missing_evidence",
         "reason": "source_work_limit"
       },
       {
         "repeat": 1,
         "mode": "candidate-limit",
-        "milliseconds": 249.936,
-        "rss_before_bytes": 59895808,
-        "rss_after_bytes": 103673856,
-        "peak_process_rss_kib": 101244,
+        "milliseconds": 211.007,
+        "rss_before_bytes": 60076032,
+        "rss_after_bytes": 105689088,
+        "peak_process_rss_kib": 103212,
         "status": "missing_evidence",
         "reason": "candidate_work_limit"
       },
       {
         "repeat": 2,
         "mode": "verified",
-        "milliseconds": 194.117,
-        "rss_before_bytes": 58687488,
-        "rss_after_bytes": 85950464,
-        "peak_process_rss_kib": 83936,
+        "milliseconds": 207.216,
+        "rss_before_bytes": 59326464,
+        "rss_after_bytes": 86327296,
+        "peak_process_rss_kib": 84304,
         "status": "verified",
         "reason": "reviewed_identity_and_stops"
       },
       {
         "repeat": 2,
         "mode": "unbound",
-        "milliseconds": 217.284,
-        "rss_before_bytes": 59047936,
-        "rss_after_bytes": 85917696,
-        "peak_process_rss_kib": 83904,
+        "milliseconds": 184.344,
+        "rss_before_bytes": 59133952,
+        "rss_after_bytes": 86790144,
+        "peak_process_rss_kib": 84756,
         "status": "missing_evidence",
         "reason": "missing_service_identity"
       },
       {
         "repeat": 2,
         "mode": "source-limit",
-        "milliseconds": 64.293,
-        "rss_before_bytes": 88125440,
-        "rss_after_bytes": 85000192,
-        "peak_process_rss_kib": 88236,
+        "milliseconds": 59.197,
+        "rss_before_bytes": 88514560,
+        "rss_after_bytes": 84000768,
+        "peak_process_rss_kib": 87392,
         "status": "missing_evidence",
         "reason": "source_work_limit"
       },
       {
         "repeat": 2,
         "mode": "candidate-limit",
-        "milliseconds": 300.117,
-        "rss_before_bytes": 59736064,
-        "rss_after_bytes": 105349120,
-        "peak_process_rss_kib": 102880,
+        "milliseconds": 224.102,
+        "rss_before_bytes": 59842560,
+        "rss_after_bytes": 105455616,
+        "peak_process_rss_kib": 102984,
         "status": "missing_evidence",
         "reason": "candidate_work_limit"
       }
@@ -1363,10 +1363,157 @@
       "matcher_recorded_date": "2026-10-11",
       "matcher_source_parent_commit": "43e9ab098875c2082d409752f668609e3b06ae0e",
       "matcher_source_note": "Measured sources are identified by matcher.source_sha256. The parent commit identifies history before the shared-calendar and canonical-component correction, not the measured source snapshot."
+    },
+    {
+      "matcher": {
+        "schema": 1,
+        "synthetic": true,
+        "node": "v24.19.0",
+        "fixture": {
+          "trips": 10000,
+          "stop_rows": 240000,
+          "profiles": 28,
+          "patterns": 2,
+          "observations": 10000,
+          "sidecar_bytes": 5825261,
+          "sidecar_sha256": "f02c73cd8bbe77d9df24cdf88c2f40d936586f79b5bae60d5163f9086c756d2c"
+        },
+        "measurement": "Fresh serial processes; elapsed time covers matching only, after parsing and fixture mutation. Peak process RSS includes Node startup, input parsing and fixture preparation, not just matcher allocations. This is not production profiling.",
+        "source_sha256": {
+          "scripts/timetable-matching.mjs": "d92683ce725161b5129b13ad4030bf80739b1685ab2d49bbaed2988be90124bf",
+          "scripts/timetable-timezones.mjs": "2275eaafa2258f29e17ca53efcedff6d31eb3f32298518855296e316e9d62d22",
+          "scripts/benchmark-timetable-matching.mjs": "34e5c9adfe8010f3a4d6e322150dcada6936949cea000d7c37e21b528adab525"
+        },
+        "results": [
+          {
+            "repeat": 0,
+            "mode": "verified",
+            "milliseconds": 173.768,
+            "rss_before_bytes": 58818560,
+            "rss_after_bytes": 85557248,
+            "peak_process_rss_kib": 83552,
+            "status": "verified",
+            "reason": "reviewed_identity_and_stops"
+          },
+          {
+            "repeat": 0,
+            "mode": "unbound",
+            "milliseconds": 177.448,
+            "rss_before_bytes": 58880000,
+            "rss_after_bytes": 85749760,
+            "peak_process_rss_kib": 83740,
+            "status": "missing_evidence",
+            "reason": "missing_service_identity"
+          },
+          {
+            "repeat": 0,
+            "mode": "source-limit",
+            "milliseconds": 65.761,
+            "rss_before_bytes": 88363008,
+            "rss_after_bytes": 85811200,
+            "peak_process_rss_kib": 89036,
+            "status": "missing_evidence",
+            "reason": "source_work_limit"
+          },
+          {
+            "repeat": 0,
+            "mode": "candidate-limit",
+            "milliseconds": 216.909,
+            "rss_before_bytes": 59748352,
+            "rss_after_bytes": 105230336,
+            "peak_process_rss_kib": 102764,
+            "status": "missing_evidence",
+            "reason": "candidate_work_limit"
+          },
+          {
+            "repeat": 1,
+            "mode": "verified",
+            "milliseconds": 172.208,
+            "rss_before_bytes": 58626048,
+            "rss_after_bytes": 86151168,
+            "peak_process_rss_kib": 84132,
+            "status": "verified",
+            "reason": "reviewed_identity_and_stops"
+          },
+          {
+            "repeat": 1,
+            "mode": "unbound",
+            "milliseconds": 213.61,
+            "rss_before_bytes": 58707968,
+            "rss_after_bytes": 85839872,
+            "peak_process_rss_kib": 83828,
+            "status": "missing_evidence",
+            "reason": "missing_service_identity"
+          },
+          {
+            "repeat": 1,
+            "mode": "source-limit",
+            "milliseconds": 54.823,
+            "rss_before_bytes": 88248320,
+            "rss_after_bytes": 84115456,
+            "peak_process_rss_kib": 87372,
+            "status": "missing_evidence",
+            "reason": "source_work_limit"
+          },
+          {
+            "repeat": 1,
+            "mode": "candidate-limit",
+            "milliseconds": 249.936,
+            "rss_before_bytes": 59895808,
+            "rss_after_bytes": 103673856,
+            "peak_process_rss_kib": 101244,
+            "status": "missing_evidence",
+            "reason": "candidate_work_limit"
+          },
+          {
+            "repeat": 2,
+            "mode": "verified",
+            "milliseconds": 194.117,
+            "rss_before_bytes": 58687488,
+            "rss_after_bytes": 85950464,
+            "peak_process_rss_kib": 83936,
+            "status": "verified",
+            "reason": "reviewed_identity_and_stops"
+          },
+          {
+            "repeat": 2,
+            "mode": "unbound",
+            "milliseconds": 217.284,
+            "rss_before_bytes": 59047936,
+            "rss_after_bytes": 85917696,
+            "peak_process_rss_kib": 83904,
+            "status": "missing_evidence",
+            "reason": "missing_service_identity"
+          },
+          {
+            "repeat": 2,
+            "mode": "source-limit",
+            "milliseconds": 64.293,
+            "rss_before_bytes": 88125440,
+            "rss_after_bytes": 85000192,
+            "peak_process_rss_kib": 88236,
+            "status": "missing_evidence",
+            "reason": "source_work_limit"
+          },
+          {
+            "repeat": 2,
+            "mode": "candidate-limit",
+            "milliseconds": 300.117,
+            "rss_before_bytes": 59736064,
+            "rss_after_bytes": 105349120,
+            "peak_process_rss_kib": 102880,
+            "status": "missing_evidence",
+            "reason": "candidate_work_limit"
+          }
+        ]
+      },
+      "matcher_recorded_date": "2026-10-11",
+      "matcher_source_parent_commit": "46349eb97333e4c134b1b0e3e0b8b5c9036eb8bb",
+      "matcher_source_note": "Measured sources are identified by matcher.source_sha256. The parent commit identifies history before the precision/raw-tag correction and PR #144 main integration, not the measured source snapshot."
     }
   ],
   "matcher_recorded_date": "2026-10-11",
   "measurement_scope_note": "Compiler cohorts and their base/source metadata remain the historical 2026-10-09 A/B measurement. The matcher section is the separately measured 2026-10-11 final candidate source, bound to its exact source hashes; prior matcher measurements are retained under historical_matcher_measurements. Runtime and environment differences preclude a controlled comparison between matcher generations.",
-  "matcher_source_parent_commit": "46349eb97333e4c134b1b0e3e0b8b5c9036eb8bb",
-  "matcher_source_note": "Measured sources are identified by matcher.source_sha256. The parent commit identifies history before the precision/raw-tag correction and PR #144 main integration, not the measured source snapshot."
+  "matcher_source_parent_commit": "5c7bc5e1648d8094aa24ff6faa93abf1f0f0bc96",
+  "matcher_source_note": "Measured sources are identified by matcher.source_sha256. The parent commit identifies history before the normalized canonical-label correction, not the measured source snapshot."
 }

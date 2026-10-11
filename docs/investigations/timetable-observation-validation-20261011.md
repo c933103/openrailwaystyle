@@ -153,6 +153,25 @@ assertions. This correction also integrates main commit
 development-documentation files are preserved byte-for-byte from main. They do
 not overlap the matcher corrections. The combined tree is tested before publication.
 
+## Canonical label consistency
+
+The next review reproduced a connected, minimum-ID alias group with incompatible
+raw short names `R` and `Q`. The collector's grouping key includes the stripped
+short name (or, when blank, an omitted long name / route ID). Therefore every
+nonblank short name in a compiled component must normalize to the same label.
+The matcher now enforces that necessary invariant in either record order.
+
+Normalization mirrors Python `str.strip()` exactly, rather than JavaScript
+`trim()`: Unicode White_Space plus U+001C–U+001F, excluding U+FEFF. Regressions
+check all 29 Python whitespace code points, preserve raw strings and test case,
+interior-space, BOM and zero-width distinctions. Null/whitespace-only short names
+remain unconstrained because their long-name fallback is not retained. Ten
+actual compiler fixtures cover both genuine merged groups and distinct groups;
+resealing each incompatible group into an alias is rejected in both orders.
+Different compiled components may retain different short names. Mode, colour
+and long name are omitted, so this remains a necessary consistency check rather
+than reconstruction of all canonicalization decisions.
+
 ## Explicit limits and intentional differences
 
 - The pinned name catalog comes from the installed Python `tzdata` package's

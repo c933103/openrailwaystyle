@@ -349,6 +349,82 @@ test('one source route retains stable agency reference and compiled identity', (
   }
 });
 
+test('canonical aliases agree on known Python-stripped refs without guessing missing labels', () => {
+  const python = spawnSync('python3', ['-c', 'import json; print(json.dumps([chr(i) for i in range(0x110000) if chr(i).isspace()]))'], {encoding: 'utf8'});
+  assert.equal(python.status, 0, python.stderr);
+  const spaces = JSON.parse(python.stdout); assert.equal(spaces.length, 29);
+  const pairs = [
+    ['R', 'Q', false], ['R', ' R ', true], ['R', null, true], [null, 'R', true],
+    ['R', ' ', true], [null, null, true], ['R', 'r', false], ['R S', 'R  S', false],
+    ['R', '\ufeffR\ufeff', false], ['R', '\u200bR\u200b', false],
+    ...spaces.map(space => ['R', `${space}R${space}`, true]),
+    ...spaces.map(space => ['R', space, true]),
+  ];
+  for (const [first, second, valid] of pairs) for (const reverse of [false, true]) {
+    const input = addOtherSourcePattern(fixture());
+    input.evidence.patterns[0].route_ref = first;
+    Object.assign(input.evidence.patterns[1], {source_route_id: 'other', route_ref: second});
+    for (let i = 0; i < 2; i++) resealPattern(input, i);
+    if (reverse) { input.evidence.patterns.reverse(); input.evidence.observations.reverse(); }
+    const before = structuredClone(input), output = matchTimetablePattern(input);
+    assert.equal(output.status, valid ? 'verified' : 'missing_evidence', `${JSON.stringify([first, second])}/${reverse}`);
+    if (!valid) assert.deepEqual(output.reasons, ['inconsistent_compiled_ref']);
+    assert.deepEqual(input, before, 'normalization compares grouping keys without changing raw evidence');
+  }
+  const separate = addOtherSourcePattern(fixture());
+  Object.assign(separate.evidence.patterns[1], {source_route_id: 'other', compiled_route_id: 'other', route_ref: 'Q'}); resealPattern(separate, 1);
+  assert.equal(status(separate), 'verified', 'different components retain different refs');
+});
+
+test('actual collector preserves blank-label fallback and exact Python reference grouping', () => {
+  const run = spawnSync('python3', ['-c', `
+import sys,json,zipfile,csv,io
+sys.path.insert(0,'tests')
+import gtfs_frequency_test as f
+cases=[('same',' R ','R','',True),('python-space','\\x1c\\x85R\\x85\\x1f','R','',True),
+       ('blank-fallback','','R','R',True),('space-fallback','   ','R','R',True),
+       ('both-blank','','','Shared',True),('different','R','Q','',False),
+       ('bom','R','\\ufeffR\\ufeff','',False),('zero-width','R','\\u200bR\\u200b','',False),
+       ('case','R','r','',False),('interior','R S','R  S','',False)]
+output=[]
+for label,a,b,long_name,merged in cases:
+    case=f.GTFSFrequency()
+    try:
+        patterns={'one':[('A','08:00:00'),('B','08:10:00')], 'two':[('A','08:00:00'),('B','08:10:00')]}
+        path=case.feed(patterns,patterns)
+        with zipfile.ZipFile(path) as z: files={name:z.read(name) for name in z.namelist()}
+        buffer=io.StringIO();writer=csv.writer(buffer)
+        writer.writerow(['route_id','route_type','agency_id','route_short_name','route_long_name'])
+        writer.writerows([['a','1','A',a,long_name],['b','1','A',b,long_name]])
+        files['routes.txt']=buffer.getvalue().encode()
+        files['trips.txt']=b'trip_id,route_id,service_id,direction_id\\none,a,W,0\\ntwo,b,W,0\\n'
+        with zipfile.ZipFile(path,'w') as z:
+            for name,data in files.items(): z.writestr(name,data)
+        evidence=f.compiler.compile_feed(path,{**f.CONFIG,'canonical_routes':True},'2026-10-05',matching_evidence=True)['matching_evidence']
+        output.append([label,merged,evidence])
+    finally: case.doCleanups()
+print(json.dumps(output))
+`], {encoding: 'utf8'});
+  assert.equal(run.status, 0, run.stderr);
+  for (const [label, merged, evidence] of JSON.parse(run.stdout)) {
+    assert.equal(evidence.status, 'captured', label);
+    assert.deepEqual(new Set(evidence.patterns.map(p => p.compiled_route_id)), new Set(merged ? ['a'] : ['a', 'b']), label);
+    const input = fixture(), selected = evidence.patterns.find(p => p.source_route_id === 'a');
+    const bound = {feed_id: evidence.source.feed_id, source_sha256: evidence.source.sha256, status: 'verified'};
+    input.evidence = evidence; input.pattern_id = selected.id;
+    Object.assign(input.context, {feed_id: bound.feed_id, source_sha256: bound.source_sha256});
+    input.candidates[0].route_bindings = [{...bound, route_id: 'a'}];
+    input.crosswalk = ['A', 'B'].map((station_id, i) => ({...bound, station_id, osm_station_id: `node:${i + 1}`, osm_snapshot: snapshot}));
+    assert.equal(status(input), 'verified', label);
+    if (!merged) {
+      for (let i = 0; i < evidence.patterns.length; i++) { evidence.patterns[i].compiled_route_id = 'a'; resealPattern(input, i); }
+      assert.deepEqual(matchTimetablePattern(input).reasons, ['inconsistent_compiled_ref'], label);
+      evidence.patterns.reverse(); evidence.observations.reverse();
+      assert.deepEqual(matchTimetablePattern(input).reasons, ['inconsistent_compiled_ref'], `${label}/reverse`);
+    }
+  }
+});
+
 test('one source stop retains one station parent within loops and across patterns', () => {
   for (const placement of ['loop', 'other']) for (const reverse of [false, true]) {
     const input = fixture();
