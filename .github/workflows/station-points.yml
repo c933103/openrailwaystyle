@@ -42,7 +42,25 @@ jobs:
             echo "Cannot safely check the previous checkpoint (git status $status)"
             exit "$status"
           fi
+      - name: Stop maintenance once the initial full-world snapshot is complete
+        id: previous
+        run: |
+          if [ -f /tmp/station-previous/state.json ]; then
+            node --input-type=module <<'JS'
+            import {readFile,appendFile} from 'node:fs/promises';
+            import {checkStationAcquisition} from './scripts/station-acquisition.mjs';
+            import {gunzipSync} from 'node:zlib';
+            const state=JSON.parse(await readFile('/tmp/station-previous/state.json','utf8'));
+            const rows=JSON.parse(gunzipSync(await readFile('/tmp/station-previous/stations.json.gz')));
+            checkStationAcquisition(state,rows);
+            if(state.pending.length===0) {
+              console.log('Station-point source already complete: do not rerun downloads or rebuild tiles.');
+              await appendFile(process.env.GITHUB_OUTPUT,'complete=true\n');
+            }
+            JS
+          fi
       - name: Process at most one bounded region
+        if: steps.previous.outputs.complete != 'true'
         env:
           PREVIOUS_DATA: /tmp/station-previous
         run: |
@@ -52,6 +70,7 @@ jobs:
             env -u PREVIOUS_DATA node scripts/build-station-snapshot.mjs
           fi
       - name: Check generated record and source completeness
+        if: steps.previous.outputs.complete != 'true'
         run: |
           node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
@@ -66,6 +85,7 @@ jobs:
           assert.equal(manifest.stations,rows.length);
           JS
       - name: Publish exact progress checkpoint
+        if: steps.previous.outputs.complete != 'true'
         run: |
           set -eu
           mkdir /tmp/station-publish
