@@ -31,6 +31,28 @@ function fixture() {
 }
 const status = input => matchTimetablePattern(input).status;
 
+test('resealed served members require the exact roles emitted by capture', () => {
+  const allowed = ['stop', 'platform', 'stop_entry_only', 'stop_exit_only', 'platform_entry_only', 'platform_exit_only'];
+  const rejected = ['', 'forward', 'backward', 'station', 'stop_entry', 'platform_exit', 'stop_entry_only_extra', 'STOP', 'stop\n', 'stop\0', ' platform'];
+  for (const role of [...allowed, ...rejected]) for (const fallback of [false, true]) {
+    const input = fixture(), osm = input.candidates[0].osm;
+    if (fallback) {
+      input.candidates[0].route_bindings = [];
+      input.candidates[0].operator_binding = {feed_id: 'feed', source_sha256: sha, agency_id: 'A', status: 'verified'};
+    }
+    osm.served_members[0].role = role;
+    const declaration = Object.fromEntries(['relation_id', 'version', 'timestamp', 'snapshot', 'tags', 'served_members', 'track_members'].map(key => [key, osm[key]]));
+    osm.fingerprint = hash(declaration);
+    const before = structuredClone(input), output = matchTimetablePattern(input);
+    assert.equal(output.status, allowed.includes(role) ? 'verified' : 'missing_evidence', `${JSON.stringify(role)}/${fallback}`);
+    if (!allowed.includes(role)) assert.deepEqual(output.reasons, ['invalid_service_members']);
+    assert.equal(output.frequency_status, 'not_evaluated');
+    assert.deepEqual(input, before, 'validation does not repair the resealed declaration');
+  }
+  const captured = captureOsmServiceEvidence(relation({members: [...allowed, ...rejected].map((role, index) => ({type: 'node', ref: index + 1, role}))}), snapshot);
+  assert.deepEqual(captured.served_members.map(member => member.role), allowed);
+});
+
 test('offline compiler evidence fixtures and existing-output compatibility', () => {
   const run = spawnSync('python3', ['-m', 'unittest', 'discover', '-s', 'tests', '-p', 'timetable_evidence_test.py'], {encoding: 'utf8'});
   assert.equal(run.status, 0, run.stdout + run.stderr);

@@ -80,6 +80,7 @@ const routeBinding = row => record(row, ['feed_id', 'source_sha256', 'route_id',
 const operatorBinding = row => record(row, ['feed_id', 'source_sha256', 'agency_id', 'status']) && id(row.feed_id) && digest(row.source_sha256) && id(row.agency_id) && assertionState(row.status);
 const stationBinding = row => record(row, ['feed_id', 'source_sha256', 'station_id', 'osm_station_id', 'osm_snapshot', 'status']) && id(row.feed_id) && digest(row.source_sha256) && id(row.station_id) && typedId(row.osm_station_id) && instant(row.osm_snapshot) && assertionState(row.status);
 const osmFields = ['schema', 'status', 'reasons', 'relation_id', 'version', 'timestamp', 'snapshot', 'tags', 'served_members', 'track_members', 'fingerprint'];
+const servedRoles = new Set(['stop', 'platform', 'stop_entry_only', 'stop_exit_only', 'platform_entry_only', 'platform_exit_only']);
 
 // Preserve OSM tags and served-member order before a display view discards
 // them. This deliberately does not change service-relations' fingerprints or
@@ -99,7 +100,7 @@ export function captureOsmServiceEvidence(relation, snapshot) {
     selected.push([key, rawTags[key]]);
   }
   const tags = Object.fromEntries(selected.sort(([a], [b]) => a.localeCompare(b)));
-  const served_members = relation.members.flatMap((m, position) => /^(stop|platform)(_(entry|exit)_only)?$/.test(m.role) ? [{id: memberId(m), role: m.role, position}] : []);
+  const served_members = relation.members.flatMap((m, position) => servedRoles.has(m.role) ? [{id: memberId(m), role: m.role, position}] : []);
   if (served_members.length > 512) return incomplete('served_member_limit');
   const track_members = [...new Set(relation.members.filter(m => m.type === 'way' && !/platform|stop/.test(m.role)).map(m => m.ref))];
   const declaration = {relation_id: relation.id, version: relation.version, timestamp: relation.timestamp, snapshot, tags, served_members, track_members};
@@ -147,7 +148,7 @@ function inspectOsm(osm, snapshot, budget) {
   if (!record(osm, osmFields) || osm.schema !== 1 || osm.status !== 'captured' || !array(osm.reasons, 0) || !positive(osm.relation_id) || !positive(osm.version) || !instant(osm.timestamp) || !instant(osm.snapshot) || Date.parse(osm.timestamp) > Date.parse(osm.snapshot) || !capturedTags(osm.tags) || !digest(osm.fingerprint)) return ['missing_evidence', 'missing_osm_declaration'];
   if (!array(osm.served_members, 512) || !array(osm.track_members, 10000)) return ['missing_evidence', 'invalid_service_sections'];
   budget.references(osm.served_members.length + osm.track_members.length);
-  if (osm.served_members.some(member => !record(member, ['id', 'role', 'position']) || !typedId(member.id) || typeof member.role !== 'string' || member.role.length > 64 || Buffer.byteLength(member.role) > 64 || !Number.isSafeInteger(member.position) || member.position < 0 || member.position >= 10000) || osm.track_members.some(way => !positive(way))) return ['missing_evidence', 'invalid_service_members'];
+  if (osm.served_members.some(member => !record(member, ['id', 'role', 'position']) || !typedId(member.id) || typeof member.role !== 'string' || member.role.length > 64 || Buffer.byteLength(member.role) > 64 || !servedRoles.has(member.role) || !Number.isSafeInteger(member.position) || member.position < 0 || member.position >= 10000) || osm.track_members.some(way => !positive(way))) return ['missing_evidence', 'invalid_service_members'];
   const declaration = Object.fromEntries(['relation_id', 'version', 'timestamp', 'snapshot', 'tags', 'served_members', 'track_members'].map(key => [key, osm[key]]));
   if (hashText(budget.encode(declaration)) !== osm.fingerprint) return ['conflicting', 'osm_fingerprint_mismatch'];
   if (osm.snapshot !== snapshot) return ['stale', 'service_snapshot_mismatch'];
