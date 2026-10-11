@@ -49,7 +49,6 @@ const rowDigest=rows=>{const hash=createHash('sha256');for(const row of rows)has
 const normalizedWaysSha256=rowDigest(features),membershipSha256=rowDigest(chained.membership);
 const tileDetails=[...result.tiles].map(([key,bytes])=>({key,bytes:bytes.length,sha256:sha256(bytes)}));
 if(tileDetails.reduce((n,t)=>n+t.bytes,0)>256*1024**2)throw Error('Reference tile-set exceeds publication bandwidth budget');
-const generation=sha256(JSON.stringify([sources.map(s=>[s.region,s.pbfSha256]),normalizedWaysSha256,membershipSha256,tileDetails])).slice(0,24);
 // Independent source-vs-tile audit: retained source ways are not proof that
 // the simplifier emitted their corresponding chain in any low zoom tile.
 const byZoom=new Map();
@@ -67,6 +66,10 @@ for(const control of audit){
   control.chainIdsByZoom[z]=ids.slice(0,16);
  }
 }
+const coverageAuditBytes=JSON.stringify(audit,null,2)+'\n',coverageAuditSha256=sha256(coverageAuditBytes);
+// Audits are immutable render assets too: changing controls or their emitted
+// membership must produce a new URL rather than overwrite a prior generation.
+const generation=sha256(JSON.stringify([sources.map(s=>[s.region,s.pbfSha256]),normalizedWaysSha256,membershipSha256,coverageAuditSha256,tileDetails])).slice(0,24);
 const sourceCoverageByZoom={};
 for(let z=0;z<=6;z++){
  const classifications={};let ways=0,chains=0;
@@ -98,7 +101,7 @@ async function archive(name,rows){
 }
 const archives={membership:await archive('membership',chained.membership),ways:await archive('ways',features)};
 if(archives.membership.bytes+archives.ways.bytes>512*1024**2)throw Error('Combined reference source archives exceed publication size budget');
-await writeFile(join(target,'coverage-audit.json'),JSON.stringify(audit,null,2)+'\n');
+await writeFile(join(target,'coverage-audit.json'),coverageAuditBytes);
 const classes={};for(const f of features)classes[f.properties.classification]=(classes[f.properties.classification]||0)+1;
 const manifest={...result.manifest,complete:true,generation,inputSha256:await referenceInputDigest(),coverage:'all eight Geofabrik continent extracts; complete OSM ways',
  sourceDate:sources[0].date,oldestSource:new Date(Math.min(...sources.map(s=>Date.parse(s.sourceTimestamp)))).toISOString(),
@@ -107,7 +110,7 @@ const manifest={...result.manifest,complete:true,generation,inputSha256:await re
  controls:audit.map(({feature,...c})=>({...c,osmId:feature.properties.id,osmVersion:feature.properties.osm_version})),
  downloadedBytes:sources.reduce((n,s)=>n+s.pbfBytes,0),tileBytes:tileDetails.reduce((n,t)=>n+t.bytes,0),
  largestTileBytes:Math.max(...tileDetails.map(t=>t.bytes)),buildSeconds:(performance.now()-start)/1000,
- peakRssBytes:process.resourceUsage().maxRSS*1024,archives,normalizedWaysSha256,membershipSha256,
+ peakRssBytes:process.resourceUsage().maxRSS*1024,archives,normalizedWaysSha256,membershipSha256,coverageAuditSha256,
  indexSha256:sha256(await readFile(join(target,'index.json'))),
  fullAcquisitionRequests:sources.length*5,preflightMetadataRequests:sources.length*2,providerTileRequests:0,
  tileFeatureInstancesByZoom:result.manifest.drawnFeaturesByZoom,sourceCoverageByZoom};

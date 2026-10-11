@@ -22,7 +22,9 @@ for(const [key,record] of entries){
  total+=zipped.length;
 }
 if(total!==manifest.tileBytes||total>256*1024**2)throw Error('Reference tile-set byte budget mismatch');
-const controls=JSON.parse(await readFile(join(dir,'coverage-audit.json')));
+const auditBytes=await readFile(join(dir,'coverage-audit.json'));
+if(sha256(auditBytes)!==manifest.coverageAuditSha256)throw Error('Reference coverage audit does not match generation');
+const controls=JSON.parse(auditBytes);
 if(controls.length!==MAINLINE_CONTROLS.length)throw Error('Missing worldwide acceptance controls');
 for(const required of MAINLINE_CONTROLS){
  const c=controls.find(c=>c.name===required.name);

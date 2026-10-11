@@ -23,7 +23,9 @@ if(published){
  manifest=await (await fetch(new URL('data/mainline-reference/manifest.json',base))).json();
  assert.equal(manifest.complete,true);assert.equal(manifest.sources.length,8);
  const response=await fetch(new URL(`data/mainline-reference/generations/${manifest.generation}/coverage-audit.json`,base));
- assert.ok(response.ok);controls=await response.json();assert.equal(controls.length,MAINLINE_CONTROLS.length);
+ assert.ok(response.ok);const auditBytes=Buffer.from(await response.arrayBuffer());
+ assert.equal(sha256(auditBytes),manifest.coverageAuditSha256,'Published coverage audit must match the versioned generation');
+ controls=JSON.parse(auditBytes);assert.equal(controls.length,MAINLINE_CONTROLS.length);
  for(const c of controls)assert.ok(c.chainIdsByZoom&&c.feature.properties.osm_version>0);
 }else{
  // Synthetic country viewpoints validate rendering only. Never source proof.
