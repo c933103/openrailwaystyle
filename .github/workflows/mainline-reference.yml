@@ -166,14 +166,17 @@ jobs:
             mkdir /tmp/mainline-previous
             git archive FETCH_HEAD | tar -x -C /tmp/mainline-previous
             node "$GITHUB_WORKSPACE/scripts/retain-mainline-generation.mjs" /tmp/mainline-previous "$GITHUB_WORKSPACE/mainline-output"
+            git checkout -b "$PUBLISH_BRANCH" FETCH_HEAD
+            git rm -rq .
           elif [ "$status" != 2 ]; then
             exit "$status"
+          else
+            git checkout --orphan "$PUBLISH_BRANCH"
           fi
-          git checkout --orphan "$PUBLISH_BRANCH"
           cp -r "$GITHUB_WORKSPACE/mainline-output/." .
           git add .
           git commit -q -m 'Complete worldwide OSM railway reference ${{ needs.plan.outputs.date }}'
-          git push --force origin "HEAD:$PUBLISH_BRANCH"
+          git push origin "HEAD:$PUBLISH_BRANCH"
       - name: Redeploy the reviewed production site
         if: github.ref == 'refs/heads/main'
         env:

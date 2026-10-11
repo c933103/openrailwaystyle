@@ -36,8 +36,10 @@ OSM acceptance controls and passing renderer checks. Partial downloads never
 replace the previous live generation. The draft PR stages only
 `mainline-preview-<PR number>` for each input-changing PR; reviewed main uses
 `mainline-data`. Unchanged inputs can reuse accepted production data. Fork
-pull requests can run source and renderer verification with a read-only token;
-publishing a preview requires a repository-owned reviewed branch. Site assembly
+pull requests upload verified reference artifacts with a read-only token;
+site assembly consumes the artifact from the successful exact-head build and
+revalidates its provenance, without elevated fork writes. Repository-owned
+preview branches are deleted when their PR closes. Site assembly
 requires and verifies the complete generation before deployment. A SHA-256
 fingerprint binds the published result to acquisition, compiler and renderer
 acceptance inputs. Site readiness waits for that fingerprint and pins the
@@ -49,7 +51,8 @@ The runtime pins the generation named in its manifest. Only an absent tile in
 the verified complete index is empty. A manifest/index error, timeout, HTTP
 failure, changed digest, oversized tile or decompression failure remains an
 error. The independent layer cannot clear an OpenRailwayMap outage state.
-Publication retains the preceding generation's immutable render URLs for
+Production refresh commits retain their parent history, so previous source
+archives remain reachable. Publication retains the preceding generation's immutable render URLs for
 one additional refresh; older source archives remain in their Git commits.
 Sites omit archival source parts and serve only runtime assets and audits.
 

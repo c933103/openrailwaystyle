@@ -50,7 +50,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
    window.referenceBlobs=new Map();const create=URL.createObjectURL.bind(URL);
    URL.createObjectURL=blob=>{const url=create(blob);referenceBlobs.set(url,blob);return url};
   });
-  await page.route(`blob:${new URL(base).origin}/**`,async route=>{
+  await page.context().route(`blob:${new URL(base).origin}/**`,async route=>{
    const body=await page.evaluate(async url=>referenceBlobs.get(url)?.text()??null,route.request().url());
    assert.notEqual(body,null,'Only actual recorded renderer Blob workers can be replayed');
    return route.fulfill({body,contentType:'text/javascript'});
@@ -79,6 +79,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
      {id:'missing-live',type:'line',source:'missingLive','source-layer':'missing',paint:{'line-color':'red'}}]}});
    window.sourceErrors=[];testMap.on('error',e=>sourceErrors.push({source:e.sourceId,message:e.error?.message}));
   },{layers,base,module:readerModule});
+  await page.waitForFunction(()=>testMap.isStyleLoaded(),null,{timeout:30000});
   for(const projection of ['mercator','globe'])for(const c of controls)for(const zoom of [-.1,0,3,4,5,6,7]){
    const expected=c.chainIdsByZoom[Math.min(6,Math.max(0,Math.floor(zoom)))],started=Date.now();
    await page.evaluate(({center,zoom,projection,expected})=>{
@@ -128,7 +129,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
   console.error('MAINLINE_PROFILE_FAILURE',profile.name,error.stack||error.message);
   await writeFile('browser-review/mainline-profile-failure.json',JSON.stringify({profile:profile.name,message:error.message,stack:error.stack},null,2)+'\n');
   throw error;
- }finally{await page.unrouteAll({behavior:'ignoreErrors'});await browser.close()}
+ }finally{await page.unrouteAll({behavior:'ignoreErrors'});await page.context().unrouteAll({behavior:'ignoreErrors'});await browser.close()}
 }
 const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
 // Exercise the actual Atlas module and theme selection too. This catches a
