@@ -185,9 +185,15 @@ jobs:
             browser-review
             mainline-output/manifest.json
           retention-days: 14
+      - name: Identify accepted reference inputs
+        id: provenance
+        run: |
+          set -eu
+          digest=$(node scripts/mainline-provenance.mjs)
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
-          name: mainline-reference-${{ needs.plan.outputs.date }}
+          name: mainline-reference-${{ needs.plan.outputs.date }}-${{ steps.provenance.outputs.digest }}
           path: mainline-output
           compression-level: 0
           retention-days: 14

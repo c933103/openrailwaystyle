@@ -52,15 +52,19 @@ jobs:
             # but cannot write a preview ref. Consume that exact successful run
             # without elevating the fork's token or executing an artifact.
             if [ -n "$PR_HEAD_SHA" ]; then
-              build=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/mainline-reference.yml/runs?event=pull_request&head_sha=$PR_HEAD_SHA" --jq '[.workflow_runs[] | select(.status == "completed" and .conclusion == "success")][0].id // empty')
-              if [ -n "$build" ]; then
-                artifact=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$build/artifacts" --jq '.artifacts[] | select((.name | test("^mainline-reference-[0-9]{4}-[0-9]{2}-[0-9]{2}$")) and .expired == false and .size_in_bytes < 1073741824) | .id')
+              builds=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/mainline-reference.yml/runs?event=pull_request&head_sha=$PR_HEAD_SHA&per_page=100" --jq '.workflow_runs[] | select(.status == "completed" and .conclusion == "success") | .id')
+              for build in $builds; do
+                # The head alone does not identify the tested merge inputs: the
+                # base may have changed. Keep stale artifacts in this waiting
+                # job so a later matching build can recover it. The validator
+                # still independently verifies the downloaded content below.
+                artifact=$(REFERENCE_DIGEST="$expected" gh api "repos/$GITHUB_REPOSITORY/actions/runs/$build/artifacts?per_page=100" --jq '[.artifacts[] | select((.name | test("^mainline-reference-[0-9]{4}-[0-9]{2}-[0-9]{2}-" + env.REFERENCE_DIGEST + "$")) and .expired == false and .size_in_bytes > 0 and .size_in_bytes < 1073741824)] | sort_by(.id) | last | .id // empty')
                 if [ -n "$artifact" ]; then
                   echo "artifact=$artifact" >> "$GITHUB_OUTPUT"
                   echo "run=$build" >> "$GITHUB_OUTPUT"
                   exit 0
                 fi
-              fi
+              done
             fi
             echo 'Waiting for reference built and browser-checked with the current inputs.'
             sleep 60

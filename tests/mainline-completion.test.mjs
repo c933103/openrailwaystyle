@@ -16,32 +16,64 @@ if args[:2]==['run','rerun']:
  with open(os.environ['RETRY_LOG'],'a') as f:f.write(json.dumps(args)+'\\n')
  sys.exit(0)
 assert args[0]=='api';endpoint=next(a for a in args[1:] if a.startswith('repos/'))
-if '/actions/runs/123' in endpoint:
+def identity(number=186,empty=False):
+ return dict(head_sha=sha,head_branch='feature',head_repository=dict(id=42),pull_requests=[] if empty else [dict(number=number)])
+def site_run(n):
+ run=dict(id=n,name='Validate and deploy world railway map',event='pull_request',status='completed',conclusion='failure' if n==21 else 'timed_out',run_attempt=1,**identity(empty=case.startswith('empty_')))
+ if case=='closed_other_pr_same_sha':run['pull_requests']=[dict(number=999)]
+ if case=='empty_other_repo':run['head_repository']['id']=99
+ if case=='empty_other_branch':run['head_branch']='different'
+ if case=='empty_missing_identity':run.pop('head_repository')
+ if case=='pending_site':run['status']='in_progress'
+ if case=='retried':run['run_attempt']=2
+ return run
+def source_run():
  site=case in ['late_site','no_source'];dispatch=case=='dispatch'
- data=dict(conclusion='failure' if site else 'success',event='workflow_dispatch' if dispatch else 'pull_request',
-  name='Validate and deploy world railway map' if site else 'Build worldwide OSM railway reference',
-  head_sha=sha if case!='stale_trigger' else '2'*40,pull_requests=[])
-elif '/pulls?state=open' in endpoint:
- data=[] if case=='closed' else [dict(number=186,state='open',head=dict(sha=sha))]
+ run=dict(id=123,status='completed',conclusion='failure' if site else 'success',event='workflow_dispatch' if dispatch else 'pull_request',name='Validate and deploy world railway map' if site else 'Build worldwide OSM railway reference',**identity(empty=dispatch or case=='fork'))
+ if case=='stale_trigger':run['head_sha']='2'*40
+ if case=='other_source_pr':run['pull_requests']=[dict(number=999)]
+ if case=='other_source_repo':run['pull_requests']=[];run['head_repository']['id']=99
+ return run
+def pr(number=186):
+ return dict(number=number,state='closed' if case in ['closed','closed_race'] or number==999 else 'open',head=dict(sha='2'*40 if case=='changed' else sha,ref='feature',repo=dict(id=42)))
+if '/actions/runs/123' in endpoint:data=source_run()
+elif '/pulls?state=all' in endpoint:
+ assert '--paginate' in args
+ data=[] if case=='empty_missing_history' else [pr()]
+ if case in ['empty_closed_other_pr_same_sha','empty_other_base','empty_closed_changed_head','explicit_with_history','empty_history_missing_identity']:
+  old=pr(999)
+  if case=='empty_other_base':old.update(state='open',base=dict(ref='release'))
+  if case=='empty_closed_changed_head':old['head']['sha']='3'*40
+  if case=='empty_history_missing_identity':old['head']['repo']=None
+  data.append(old)
+elif '/pulls?state=open' in endpoint:data=[] if case=='closed' else [dict(pr(),state='open',head=dict(sha=sha,ref='feature',repo=dict(id=42)))]
 elif '/actions/workflows/mainline-reference.yml/runs?' in endpoint:
- data=dict(workflow_runs=[] if case=='no_source' else [dict(id=123,status='completed',conclusion='success',event='pull_request')])
+ source=source_run();source.update(name='Build worldwide OSM railway reference',conclusion='success')
+ data=dict(workflow_runs=[] if case=='no_source' else [source])
 elif '/actions/workflows/site.yml/runs?' in endpoint:
- data=dict(workflow_runs=[dict(id=21,status='in_progress' if case=='pending_site' else 'completed',conclusion='failure',run_attempt=2 if case=='retried' else 1),
-  dict(id=22,status='in_progress' if case=='pending_site' else 'completed',conclusion='timed_out',run_attempt=2 if case=='retried' else 1),
-  dict(id=23,status='completed',conclusion='success',run_attempt=1),dict(id=24,status='in_progress',conclusion=None,run_attempt=1)])
+ data=dict(workflow_runs=[site_run(21),site_run(22),dict(site_run(23),conclusion='success'),dict(site_run(24),status='in_progress',conclusion=None)])
 elif '/jobs?' in endpoint:
  data=dict(jobs=[dict(id=321,name='reference',conclusion='success' if case=='test_failure' else 'failure')])
-elif endpoint.endswith('/pulls/186'):
- data=dict(state='open',head=dict(sha='2'*40 if case=='changed' else sha))
+elif '/actions/runs/21' in endpoint or '/actions/runs/22' in endpoint:
+ data=site_run(int(endpoint.rsplit('/',1)[1]))
+ if case=='retried_race':data['run_attempt']=2
+elif endpoint.endswith('/pulls/999'):data=pr(999)
+elif endpoint.endswith('/pulls/186'):data=pr()
 else:raise Exception('Unexpected API '+endpoint)
-query=args[args.index('--jq')+1];result=subprocess.run(['jq','-r',query],input=json.dumps(data),text=True)
-sys.exit(result.returncode)
+if '--jq' in args:
+ query=args[args.index('--jq')+1];result=subprocess.run(['jq','-r',query],input=json.dumps(data),text=True)
+ if '/pulls?state=all' in endpoint and case=='empty_later_page_closed':subprocess.run(['jq','-r',query],input=json.dumps([pr(999)]),text=True,check=True)
+ sys.exit(1 if case=='history_error' and '/pulls?state=all' in endpoint else result.returncode)
+print(json.dumps(data))
 `;
 
 for(const [scenario,expected,exit] of [
- ['fork',['21','22'],0],['late_site',['21','22'],0],['dispatch',['21','22'],0],
- ['pending_site',[],0],['changed',[],0],['closed',[],0],['no_source',[],0],
- ['retried',[],0],['test_failure',[],0],['stale_trigger',[],1],
+ ['explicit_with_history',['21','22'],0],['fork',['21','22'],0],['late_site',['21','22'],0],['dispatch',['21','22'],0],
+ ['empty_closed_other_pr_same_sha',[],0],['empty_other_base',[],0],['empty_closed_changed_head',[],0],
+ ['empty_later_page_closed',[],0],['empty_history_missing_identity',[],0],['empty_missing_history',[],0],['history_error',[],1],['empty_matching',['21','22'],0],['pending_site',[],0],['changed',[],0],['closed',[],0],['closed_race',[],0],['no_source',[],0],
+ ['retried',[],0],['retried_race',[],0],['test_failure',[],0],['stale_trigger',[],1],
+ ['closed_other_pr_same_sha',[],0],['empty_other_repo',[],0],['empty_other_branch',[],0],
+ ['empty_missing_identity',[],0],['other_source_pr',[],0],['other_source_repo',[],0],
 ])test(`trusted reference completion: ${scenario}`,async()=>{
  const root=await mkdtemp(join(tmpdir(),'atlas-reference-retry-')),log=join(root,'calls.jsonl');
  try{
@@ -56,4 +88,11 @@ for(const [scenario,expected,exit] of [
   assert.deepEqual(calls.map(call=>call[2]),expected);
   for(const call of calls)assert.deepEqual(call.slice(3),['--failed','--repo','test/atlas']);
  }finally{await rm(root,{recursive:true,force:true})}
+});
+
+test('the completion controller is the only automatic preview retry authority',async()=>{
+ const publisher=await readFile('.github/workflows/mainline-reference.yml','utf8');
+ assert.doesNotMatch(publisher,/gh run rerun/);
+ assert.doesNotMatch(workflow,/actions\/checkout|download-artifact|curl|node scripts\//);
+ assert.match(workflow,/run_attempt/);
 });

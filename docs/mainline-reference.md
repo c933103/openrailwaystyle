@@ -38,12 +38,17 @@ replace the previous live generation. The draft PR stages only
 `mainline-preview-<PR number>` for each input-changing PR; reviewed main uses
 `mainline-data`. Unchanged inputs can reuse accepted production data. Fork
 pull requests upload verified reference artifacts with a read-only token;
-site assembly consumes the artifact from the successful exact-head build and
-revalidates its provenance, without elevated fork writes. Repository-owned
+site readiness selects an artifact from a successful exact-head build only when
+its name also binds the current input fingerprint. A changed base can therefore
+wait for a new artifact even when the PR head is unchanged. Site assembly still
+independently revalidates the downloaded content and provenance, without
+elevated fork writes. Repository-owned
 preview branches are deleted when their PR closes. Site assembly
 requires and verifies the complete generation before deployment. A SHA-256
 fingerprint binds the published result to acquisition, compiler and renderer
-acceptance inputs. Site readiness waits for that fingerprint and pins the
+acceptance inputs, including authored browser bundle entries. Package sources
+are represented by the pinned lockfile, so the fingerprint is identical before
+and after dependency installation. Site readiness waits for that fingerprint and pins the
 verified data commit, so an older branch cannot satisfy a changed build.
 The site readiness job allows six hours rather than timing out during acquisition.
 For builds that outlast that window, a trusted default-branch completion
@@ -52,6 +57,11 @@ head, including forks and manually dispatched previews. It reads only GitHub
 metadata; it never checks out fork code or executes an artifact.
 It also handles a site failure that completes after the source callback,
 retries only failed reference jobs, and permits one automatic retry per run.
+Both the source and site run must identify that PR; an empty fork association
+requires a matching head repository ID and branch as well as its SHA, and
+exactly one such PR across the complete open/closed history. Ambiguous histories
+need a manual retry. An open PR sharing a closed PR’s SHA cannot authorize a
+retry of the closed PR’s run.
 
 The runtime pins the generation named in its manifest. Only an absent tile in
 the verified complete index is empty. A manifest/index error, timeout, HTTP

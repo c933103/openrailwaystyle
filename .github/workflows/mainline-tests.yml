@@ -1,10 +1,10 @@
 name: Check independent railway reference failures and rendering
 on:
   pull_request:
-    paths: ['scripts/*mainline*', 'scripts/browser*.mjs', 'styles/mainline-reference.mjs', 'styles/world.style.json', 'tests/mainline*.mjs', '.github/workflows/mainline-tests.yml']
+    paths: ['scripts/*mainline*', 'scripts/browser*.mjs', 'styles/mainline-reference.mjs', 'styles/world.style.json', 'tests/mainline*.mjs', '.github/workflows/mainline-tests.yml', '.github/workflows/mainline-reference.yml', '.github/workflows/mainline-reference-completed.yml', '.github/workflows/site.yml']
   push:
     branches: [main, feat/world-mainline-overview-source-20261011]
-    paths: ['scripts/*mainline*', 'scripts/browser*.mjs', 'styles/mainline-reference.mjs', 'styles/world.style.json', 'tests/mainline*.mjs', '.github/workflows/mainline-tests.yml']
+    paths: ['scripts/*mainline*', 'scripts/browser*.mjs', 'styles/mainline-reference.mjs', 'styles/world.style.json', 'tests/mainline*.mjs', '.github/workflows/mainline-tests.yml', '.github/workflows/mainline-reference.yml', '.github/workflows/mainline-reference-completed.yml', '.github/workflows/site.yml']
 permissions:
   contents: read
 concurrency:
@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: node --test tests/mainline-overview.test.mjs tests/mainline-reference.test.mjs
+      - run: node --test tests/mainline*.test.mjs
       - run: npm run build
       - run: npx playwright install --with-deps chromium webkit
       - name: Render synthetic failure, filter and zoom controls independently of source acquisition
