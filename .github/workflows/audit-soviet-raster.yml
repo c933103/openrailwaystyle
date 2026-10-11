@@ -1,0 +1,52 @@
+name: Audit free Soviet-topo raster source candidates (bounded)
+on:
+  push:
+    branches: [investigate/country-label-li-20261011]
+    paths: ['.github/workflows/audit-soviet-raster.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Check two documented URLs at five representative locations
+        run: |
+          node --input-type=module <<'JS'
+          const targets=[
+            ['France',2.35,48.86],['Japan',139.77,35.68],
+            ['United States',-87.63,41.88],['India',72.88,19.07],
+            ['Ocean',-140,-20],
+          ];
+          const layers=[['AtloMaps','https://tiles.nakarte.me/topomapper/',false],
+            ['Topo_1M','https://a.tiles.nakarte.me/topo001m/',true]];
+          let total=0;
+          for(const [layer,prefix,tms] of layers){
+            for(const [name,lon,lat] of targets){
+              const z=5,n=2**z,x=Math.floor((lon+180)/360*n);
+              const y=Math.floor((1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*n);
+              const url=prefix+[z,x,tms?n-1-y:y].join('/');
+              const controller=new AbortController();
+              try{
+                const response=await fetch(url,{signal:AbortSignal.timeout(13000),
+                  redirect:'error',
+                  headers:{'User-Agent':'RailwayAtlas-SovietTopo-Feasibility/1.0 (+https://github.com/c933103/openrailwaystyle)'}});
+                const type=response.headers.get('content-type')||'';
+                const bytes=new Uint8Array(await response.arrayBuffer());
+                const signature=[...bytes.subarray(0,12)].map(n=>n.toString(16).padStart(2,'0')).join(' ');
+                console.log('SOVIET_TILE',JSON.stringify({layer,name,z,x,y:tms?n-1-y:y,status:response.status,
+                  type,length:bytes.length,signature,cors:response.headers.get('access-control-allow-origin'),
+                  cache:response.headers.get('cache-control')}));
+                if(bytes.length>1_000_000)throw Error('Unexpected response > 1 MiB');
+              }catch(error){
+                console.log('SOVIET_TILE_UNAVAILABLE',JSON.stringify({layer,name,reason:error.message.slice(0,150)}));
+              }
+              total++;
+            }
+          }
+          console.log('SOVIET_AUDIT_TARGETS',total,'external requests at most 10, no prefetch');
+          JS
