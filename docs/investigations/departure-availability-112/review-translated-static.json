@@ -1,0 +1,32 @@
+{
+  "baselineCommit": "1ad2a047832936cdec511c99dc78463af4a675ef",
+  "baselineTree": "63585398781bce8c59ae1bd353563101503ca6bc",
+  "candidateTree": "3fbe3aefc4964325c3146cb40e62ac20ccc984a2",
+  "changedFiles": 11,
+  "appOnlyReviewedHelperAndKeyChange": true,
+  "assetVersions": {
+    "styles/app.mjs": [
+      "20261011-departure-availability-2"
+    ],
+    "styles/cjk-font.mjs": [
+      "20261011-departure-availability-2"
+    ],
+    "styles/departures-ui.mjs": [
+      "20261011-departure-availability-2"
+    ],
+    "styles/elevation.mjs": [
+      "20261011-departure-availability-2"
+    ],
+    "styles/index.html": [
+      "20261011-departure-availability-2"
+    ],
+    "styles/layer-semantics.mjs": [
+      "20261011-departure-availability-2"
+    ],
+    "styles/map-model.mjs": [
+      "20261011-departure-availability-2"
+    ]
+  },
+  "patchSha256": "7b88c2c6dd91671220f34667b3e64bc4f89bff82103cbb37b5b2961bb09c2237",
+  "manifestSha256": "bb4c51d57760620ca94be0fb0c5d90c8ac76a694e3190e20f70f64b4fa88186b"
+}

@@ -1,5 +1,81 @@
 # Partial departure-board status (#112, #129)
 
+## Current reviewed source and Codex correction
+
+[PR #190](https://github.com/c933103/openrailwaystyle/pull/190) now has source head
+`6f18de8225aa936aa9b1d229812a139e8ae65a2e`, tree
+`3fbe3aefc4964325c3146cb40e62ac20ccc984a2`. All 443 remote source file modes and
+blob hashes match the frozen candidate. The PR remains draft pending exact-head
+Codex re-review and hosted CI.
+
+[Codex identified](https://github.com/c933103/openrailwaystyle/pull/190#discussion_r4242802242)
+a cache-key gap in the first published head: translated display names changed the
+key, causing a new stop lookup and two selected-board requests within the minute.
+A recovered response could remove the cached partial warning. The original
+name-only fixture did not exercise a real heading translation; this was a real
+verification gap, not evidence that the original finding was harmless.
+
+The correction separates station identity from translated presentation:
+
+- Known OSM objects use a canonical type/ID tuple across source representations
+  and coordinate quantization. Other identifiers are source/source-layer scoped
+  and include exact coordinates; ID zero is valid. Stable raw names are the
+  fallback when IDs are absent.
+- Named/unnamed state remains separate so deferred hub enrichment can request its
+  first useful named board without an old unnamed rejection evicting it.
+- Matching names, row identity, request bounds and ordinary cache expiry are
+  unchanged. Headings and journey-link names still translate.
+- The coherent asset token advances to `20261011-departure-availability-2`.
+  Exact app and departure module bytes are checked online/offline for upgrades
+  from both `20261011-power-legend-1` and the first published availability token.
+
+Frozen 11-file corrective patch SHA-256:
+`7b88c2c6dd91671220f34667b3e64bc4f89bff82103cbb37b5b2961bb09c2237`.
+The earlier integration history, failure log and accepted repeat are retained below.
+
+### Corrective verification
+
+- Final full suite: **1324/1324 passed**, zero failures/cancellations/skips,
+  96.771 seconds. No assertion or timeout relaxation.
+- Build/style reproducibility passed. Expanded implementation-focused tests passed
+  167/167; the final cache/availability subset passed 44/44 after the additional
+  predecessor-byte and canonical-OSM checks.
+- Independent focused verification passed 121/121, including actual deferred
+  startup naming, identity/race cases and both prior-release cache upgrades.
+- The same strengthened Chromium fixture fails on exact published baseline
+  `1ad2a047832936cdec511c99dc78463af4a675ef` at the translated cached-warning
+  assertion, then passes on the frozen successor. Actual station heading and
+  journey-link name changes are asserted, recovered fixtures are available,
+  request count remains bounded, and ordinary expiry still establishes recovery.
+- Both translation directions and partial result shapes pass in the production
+  renderer/DOM tests. Distinct IDs at the same coordinates, node/way namespaces,
+  source/layer scopes, ID zero, nearby points, fallback raw names and late unnamed
+  rejection after named success are covered.
+- Independent source review found no blocker. The production app differs from the
+  earlier reviewed version only in the cache-key helper/use and release token;
+  merged Power behavior and the partial-status correction are preserved.
+
+WebKit remains unavailable locally; the committed checker remains dual-engine for
+hosted CI. No live departure requests or native browser service-worker
+interception were used. Broader #112/#129 work remains open.
+
+### Corrective evidence
+
+- [Independent corrective review](independent-translated-cache-review.md)
+- [Full 1324-test aggregate](translated-redraw-full-suite.log)
+- [167 implementation-focused tests](translated-redraw-expanded.log)
+- [Final 44 cache/availability tests](translated-redraw-cache.log)
+- [121 independent focused tests](review-translated-focused.log)
+- [Expected baseline browser failure](review-translated-baseline-browser.log)
+- [Successor browser pass](review-translated-successor-browser.log)
+- [Original two-case DOM reproduction](translated-redraw-baseline.log)
+- [Reviewed successor file hashes](review-translated-source-manifest.json)
+- [Static source/version comparison](review-translated-static.json)
+- [Exact corrective source patch](translated-redraw-source.patch)
+- [Corrective build log](translated-redraw-build.log)
+
+# Initial partial departure-board correction and integration history
+
 ## Scope and reproduced failure
 
 The fault was reproduced on main `8c1d2607068f0f3c0cce7e9e721fca1deaa07ee0` after #188.
@@ -19,7 +95,7 @@ The correction is integrated onto merged #189 main
 its Power implementation and tests. The immediate-prior asset release in the
 departure cache-upgrade regression is `20261011-power-legend-1`.
 
-Published source: [PR #190](https://github.com/c933103/openrailwaystyle/pull/190),
+Initial published source: [PR #190](https://github.com/c933103/openrailwaystyle/pull/190),
 head `1ad2a047832936cdec511c99dc78463af4a675ef`, tree
 `63585398781bce8c59ae1bd353563101503ca6bc`. All 443 remote source-tree file
 modes and blob hashes were verified against the frozen local candidate.
@@ -52,7 +128,7 @@ coverage, missing or stale snapshots, ingestion and processing status, the
 Ōji departures-versus-map-frequency contradiction, and frequency matching remain
 open. No live provider coverage or timetable accuracy claim is made here.
 
-## Verification
+## Initial integration verification
 
 - Build passed; generated `world.style.json` stays byte-identical to the base.
 - Unchanged final full-suite repeat: **1306 passed, 0 failed, 0 cancelled, 0 skipped** (94.537 s).

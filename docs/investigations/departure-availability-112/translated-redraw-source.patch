@@ -1,0 +1,417 @@
+diff --git a/docs/user-guide.md b/docs/user-guide.md
+index 3a0ad9f..fb4898c 100644
+--- a/docs/user-guide.md
++++ b/docs/user-guide.md
+@@ -24,7 +24,9 @@ If a selected stop’s departure board fails while another loads, usable departu
+ remain visible with an incomplete-load warning. The same warning appears when the
+ successful boards return no upcoming rail departures; this is not a complete empty
+ result. Reopening or redrawing a station within the existing one-minute cache keeps
+-that status. After the cache expires, opening the board again checks the selected
++that status, including when a translated label changes. Cache identity follows the
++mapped object or scoped source identifier where available, with raw names as a
++fallback; resolving an unnamed station still allows a new named lookup. After the cache expires, opening the board again checks the selected
+ stops afresh. This status describes those requests only, not worldwide timetable
+ coverage or the map’s separately matched frequency profiles.
+ 
+diff --git a/scripts/check-departures-browser.mjs b/scripts/check-departures-browser.mjs
+index b077b2d..531761c 100644
+--- a/scripts/check-departures-browser.mjs
++++ b/scripts/check-departures-browser.mjs
+@@ -55,15 +55,15 @@ try {
+       await page.waitForSelector('body[data-map-ready="true"]',{timeout:60000});
+       // Supply one mapped station to the actual production click handler.
+       // All station-detail and departure rendering remains production code.
+-      const openStation = async (name = 'Suehirocho') => page.evaluate(async name=>{
++      const openStation = async (name = 'Suehirocho', properties = {}) => page.evaluate(async ({name, properties})=>{
+         const {map}=await import(document.querySelector('script[type="module"]').src);
+         const original=map.queryRenderedFeatures;
+         map.queryRenderedFeatures=()=>[{source:'stationMajor',kind:'station',layer:{id:'station-major'},
+-          properties:{name,station:'subway',station_size:'small'},
++          properties:{name,station:'subway',station_size:'small',...properties},
+           geometry:{type:'Point',coordinates:[139.77,35.7]}}];
+         try{map.fire('click',{point:{x:500,y:500},lngLat:{lng:139.77,lat:35.7}});}
+         finally{map.queryRenderedFeatures=original;}
+-      }, name);
++      }, {name, properties});
+       await openStation();
+       await page.locator('.departure-trip').first().waitFor();
+       assert.equal(await page.locator('.departure-trip').count(),3);
+@@ -128,8 +128,9 @@ try {
+       for (const order of [['a','b'], ['b','a']]) for (const withRows of [false, true]) {
+         boardName = `Partial ${order.join('')} ${withRows ? 'rows' : 'empty'}`;
+         boardOrder = order; boardTimes = withRows ? [row] : []; boardFailed = ['b'];
++        const translated = {id:`fixture-${boardName}`, 'name:en':`${boardName} English`, 'name:ja':`${boardName} 日本語`};
+         const before = boardRequests.length;
+-        await openStation(boardName); await waitBoard();
++        await openStation(boardName, translated); await waitBoard();
+         assert.equal(boardRequests.length - before, 3);
+         assert.equal(await page.locator('.departure-warning').textContent(), 'Some departures could not load. The board may be incomplete.');
+         assert.equal(await page.locator('.departure-list > li').count(), Number(withRows));
+@@ -138,16 +139,19 @@ try {
+         if (order[0] === 'a') await page.screenshot({path:`browser-review/departures-partial-${withRows ? 'rows' : 'empty'}-${engine}.png`});
+         await page.locator('#details-close').click();
+         boardFailed = [];
+-        await openStation(boardName); await waitBoard();
++        await openStation(boardName, translated); await waitBoard();
+         assert.equal(await page.locator('.departure-warning').count(), 1, 'reopening keeps cached partial status');
+         assert.equal(boardRequests.length - before, 3, 'reopening does not add provider requests');
+-        await page.locator('#language').selectOption(withRows ? 'ja' : 'en');
++        const language = (await page.locator('#language').inputValue()) === 'ja' ? 'en' : 'ja';
++        await page.locator('#language').selectOption(language);
++        await page.waitForFunction(name => document.querySelector('#detail-content h2')?.textContent === name, translated[`name:${language}`]);
+         await waitBoard();
++        assert.equal(new URL(await page.locator('.departure-links a').first().getAttribute('href')).searchParams.get('fromName'), translated[`name:${language}`], 'journey labels still follow the selected language');
+         assert.equal(await page.locator('.departure-warning').count(), 1, 'settings redraw retains the warning');
+         assert.equal(boardRequests.length - before, 3);
+         await page.evaluate(() => {window.__departureFixtureNow += 60_001;});
+         assert.equal(boardRequests.length - before, 3, 'expiry alone never triggers an automatic retry');
+-        await openStation(boardName); await waitBoard();
++        await openStation(boardName, translated); await waitBoard();
+         assert.equal(boardRequests.length - before, 6);
+         assert.equal(await page.locator('.departure-warning').count(), 0, 'normal expiry and opening establishes recovery');
+         assert.equal(await page.locator('.departure-list > li').count(), Number(withRows));
+diff --git a/styles/app.mjs b/styles/app.mjs
+index 3f7a6cb..8a34e0c 100644
+--- a/styles/app.mjs
++++ b/styles/app.mjs
+@@ -1,24 +1,24 @@
+-import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261011-departure-availability-1';
+-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261011-departure-availability-1';
+-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261011-departure-availability-1';
+-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261011-departure-availability-1';
+-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261011-departure-availability-1';
+-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261011-departure-availability-1';
++import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261011-departure-availability-2';
++import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261011-departure-availability-2';
++import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261011-departure-availability-2';
++import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261011-departure-availability-2';
++import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261011-departure-availability-2';
++import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261011-departure-availability-2';
+ 
+-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261011-departure-availability-1';
+-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261011-departure-availability-1';
+-import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261011-departure-availability-1';
+-import {departureItem} from './departures-ui.mjs?v=20261011-departure-availability-1';
+-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261011-departure-availability-1';
+-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261011-departure-availability-1';
+-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261011-departure-availability-1';
+-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261011-departure-availability-1';
+-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261011-departure-availability-1';
+-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261011-departure-availability-1';
+-import { installWatchGesture } from './watch-map.mjs?v=20261011-departure-availability-1';
+-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261011-departure-availability-1';
+-import { createBundleReader } from './tile-bundles.mjs?v=20261011-departure-availability-1';
+-import { createReferenceReader } from './mainline-reference.mjs?v=20261011-departure-availability-1';
++import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261011-departure-availability-2';
++import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261011-departure-availability-2';
++import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261011-departure-availability-2';
++import {departureItem} from './departures-ui.mjs?v=20261011-departure-availability-2';
++import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261011-departure-availability-2';
++import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261011-departure-availability-2';
++import { installKeyboardPan } from './keyboard-pan.mjs?v=20261011-departure-availability-2';
++import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261011-departure-availability-2';
++import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_LEGEND, POWER_FACILITY_SYMBOL} from './power-facilities.mjs?v=20261011-departure-availability-2';
++import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261011-departure-availability-2';
++import { installWatchGesture } from './watch-map.mjs?v=20261011-departure-availability-2';
++import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261011-departure-availability-2';
++import { createBundleReader } from './tile-bundles.mjs?v=20261011-departure-availability-2';
++import { createReferenceReader } from './mainline-reference.mjs?v=20261011-departure-availability-2';
+ 
+ const $ = id => document.getElementById(id);
+ // The controls work as soon as this small module runs; the map libraries and
+@@ -55,7 +55,7 @@ let platformLengths,frequencyExpiry;
+ let powerFacilities;
+ let railRecovery, wakeRailRecovery = () => {};
+ let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
+-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261011-departure-availability-1';
++const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261011-departure-availability-2';
+ // An old active worker can save this new page before its replacement has
+ // installed. If that update is interrupted, only old first-party/CDN copies
+ // may be available offline. Read exact saved responses without contacting the
+@@ -877,15 +877,31 @@ function showServiceDetails(feature) {
+ // data, and journey links. Fetched once a minute at most per station (the
+ // panel is redrawn when settings change).
+ const departureBoards = new Map();
++function departureBoardKey(feature, names) {
++  const p = feature.properties, object = osmObject(feature);
++  const id = [p.id, p.osm_id, feature.id].find(value =>
++    (typeof value === 'string' && value !== '') || (typeof value === 'number' && Number.isFinite(value)));
++  const rawNames = [p.name, p.full_name].filter(Boolean);
++  const fallbackNames = rawNames.length ? rawNames : Object.entries(p)
++    .filter(([key, value]) => key.startsWith('name:') && value).map(([, value]) => value);
++  const identity = object ? ['osm', object.type, object.id] :
++    ['source', feature.source ?? null, feature.sourceLayer ?? null, id ??
++      [...new Set(fallbackNames.length ? fallbackNames : names)].sort()];
++  // Translation changes presentation, not station identity. Keep a separate
++  // unnamed lookup so resolving a deferred hub can still improve stop matching.
++  // A known OSM object survives coordinate quantization across map sources.
++  // Scoped or missing IDs still need the exact point to avoid local-ID aliases.
++  return JSON.stringify([identity, object ? null : feature.geometry.coordinates, names.length > 0]);
++}
+ function showDepartures(panel, feature) {
+   const p = feature.properties, [lon, lat] = feature.geometry.coordinates;
+   const names = [displayName(p, settings.language), p.name, p.localized_name, p['name:en'], p.full_name].filter(Boolean);
+   const section = document.createElement('section'); section.className = 'departures';
+   section.append(textNode('h3', 'Departures'), textNode('p', 'Loading departures…', 'small'));
+   panel.append(section);
+-  // Matching uses names as well as position. A deferred hub's unnamed lookup
+-  // must not mask its later named result for the rest of the cache minute.
+-  const key = `${lat.toFixed(5)},${lon.toFixed(5)}:${JSON.stringify([...new Set(names)].sort())}`;
++  // Matching names stay local to the request; translated redraws reuse its
++  // outcome until expiry rather than bypassing the per-station cache.
++  const key = departureBoardKey(feature, names);
+   let board = departureBoards.get(key);
+   if (!board || Date.now() - board.at > 60_000) {
+     board = {at: Date.now(), promise: stationDepartures({lat, lon, names}, {signal: AbortSignal.timeout(15000)})};
+diff --git a/styles/cjk-font.mjs b/styles/cjk-font.mjs
+index 9b87c25..ae7a2cb 100644
+--- a/styles/cjk-font.mjs
++++ b/styles/cjk-font.mjs
+@@ -1,4 +1,4 @@
+-import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261011-departure-availability-1';
++import {RARE_HAN_FAMILY} from './rare-han.mjs?v=20261011-departure-availability-2';
+ // Which local font draws Han labels. Names mix scripts (a Simplified name in
+ // the Traditional view, Hong Kong or Macao characters, Japanese kanji, rare
+ // extension characters), and a font missing some of them makes the browser
+diff --git a/styles/departures-ui.mjs b/styles/departures-ui.mjs
+index 45e405e..4c5a704 100644
+--- a/styles/departures-ui.mjs
++++ b/styles/departures-ui.mjs
+@@ -1,4 +1,4 @@
+-import {clock, trainSchedule} from './departures.mjs?v=20261011-departure-availability-1';
++import {clock, trainSchedule} from './departures.mjs?v=20261011-departure-availability-2';
+ 
+ const node = (document, tag, text = '', className = '') => {
+   const element = document.createElement(tag);
+diff --git a/styles/elevation.mjs b/styles/elevation.mjs
+index 09d9bde..b3ee18b 100644
+--- a/styles/elevation.mjs
++++ b/styles/elevation.mjs
+@@ -4,7 +4,7 @@
+ // (about 9.5 m a pixel at the equator) are finer than most of the source data.
+ // Their bad pixels are repaired as for the map (dem-repair.mjs), the finer
+ // zoom included.
+-import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261011-departure-availability-1';
++import {REFERENCE_FROM, REPAIR_FROM, referenceTile, repairPixels, witnessTiles, repairFromWitness} from './dem-repair.mjs?v=20261011-departure-availability-2';
+ export const ELEVATION_ZOOM = 14;
+ const TILE = 256, CACHE = 64;
+ 
+diff --git a/styles/index.html b/styles/index.html
+index e4707c8..874eb09 100644
+--- a/styles/index.html
++++ b/styles/index.html
+@@ -31,7 +31,7 @@
+   <meta name="apple-mobile-web-app-capable" content="yes">
+   <meta name="apple-mobile-web-app-title" content="Railway Atlas">
+   <link id="maplibre-css" href="vendor/maplibre-gl-5.24.0.css" rel="stylesheet">
+-  <link href="app.css?v=20261011-departure-availability-1" rel="stylesheet">
++  <link href="app.css?v=20261011-departure-availability-2" rel="stylesheet">
+ </head>
+ <body>
+   <div id="map-frame"><main id="map" aria-label="Interactive worldwide railway map"></main></div>
+@@ -219,6 +219,6 @@
+     }, true);
+   </script>
+   <section id="watch-menu" role="dialog" aria-modal="true" aria-label="Watch map controls" hidden><div id="watch-content"></div></section>
+-  <script type="module" src="app.mjs?v=20261011-departure-availability-1"></script>
++  <script type="module" src="app.mjs?v=20261011-departure-availability-2"></script>
+ </body>
+ </html>
+diff --git a/styles/layer-semantics.mjs b/styles/layer-semantics.mjs
+index 44dfe0a..f17eda9 100644
+--- a/styles/layer-semantics.mjs
++++ b/styles/layer-semantics.mjs
+@@ -1,4 +1,4 @@
+-import { MODES } from './map-model.mjs?v=20261011-departure-availability-1';
++import { MODES } from './map-model.mjs?v=20261011-departure-availability-2';
+ 
+ const VERSION = 1;
+ const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;
+diff --git a/styles/map-model.mjs b/styles/map-model.mjs
+index 29b948f..d641ade 100644
+--- a/styles/map-model.mjs
++++ b/styles/map-model.mjs
+@@ -1,6 +1,6 @@
+-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261011-departure-availability-1';
++export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261011-departure-availability-2';
+ 
+-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261011-departure-availability-1';
++export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261011-departure-availability-2';
+ // The provider normalizes maxspeed to km/h; speed_label retains source units
+ // and both directional values. Never infer a limit from railway class.
+ export const SPEED_BANDS = [
+diff --git a/tests/departure-availability.test.mjs b/tests/departure-availability.test.mjs
+index 8f1fc46..e734dd1 100644
+--- a/tests/departure-availability.test.mjs
++++ b/tests/departure-availability.test.mjs
+@@ -5,6 +5,7 @@ import vm from 'node:vm';
+ import {JSDOM} from 'jsdom';
+ import {stationDepartures, departureRows, plannerLink, TRANSITOUS_SOURCES} from '../styles/departures.mjs';
+ import {departureItem} from '../styles/departures-ui.mjs';
++import {displayName, osmObject} from '../styles/map-model.mjs';
+ 
+ const station = {lat: 0, lon: 0, names: ['Central']};
+ const stop = id => ({type: 'STOP', id, name: 'Central', lat: 0, lon: 0, modes: ['REGIONAL_RAIL']});
+@@ -77,18 +78,19 @@ const renderer = app.slice(app.indexOf('const departureBoards = new Map();'), ap
+ function boardDom(feed) {
+   const dom = new JSDOM('<div id="panel"></div>'), document = dom.window.document;
+   let now = 1000;
++  const settings = {language: 'en'};
+   const context = vm.createContext({document, AbortSignal, departureItem, plannerLink, TRANSITOUS_SOURCES,
+-    Date: {now: () => now}, settings: {language: 'en'}, displayName: p => p.name,
++    Date: {now: () => now}, settings, displayName, osmObject,
+     stationDepartures: (station, options) => stationDepartures(station, {...options, fetch: (...args) => feed.current.fetch(...args)}),
+     textNode: (tag, text, className = '') => {
+       const node = document.createElement(tag); node.textContent = text; node.className = className; return node;
+     }});
+   const {showDepartures, departureBoards} = vm.runInContext(`${renderer}\n({showDepartures, departureBoards})`, context);
+   const panel = document.querySelector('#panel');
+-  return {dom, panel, departureBoards, advance: ms => {now += ms;},
+-    show: (name = 'Central') => {
++  return {dom, panel, departureBoards, advance: ms => {now += ms;}, language: value => {settings.language = value;},
++    show: (properties = 'Central', extra = {}) => {
+       panel.replaceChildren();
+-      showDepartures(panel, {properties: {name}, geometry: {coordinates: [0, 0]}});
++      showDepartures(panel, {...extra, properties: typeof properties === 'string' ? {name: properties} : properties, geometry: extra.geometry || {coordinates: [0, 0]}});
+     },
+     settle: async () => {
+       await Promise.allSettled([...departureBoards.values()].map(board => board.promise));
+@@ -180,3 +182,91 @@ for (const times of [[], [observation]]) test(`late partial ${times.length ? 'ro
+       'reopening the old station uses its own cached partial result');
+   } finally {release(); view.dom.window.close();}
+ });
++
++for (const [from, to] of [['ja', 'en'], ['en', 'ja']]) for (const times of [[], [observation]]) test(`translated ${from} to ${to} redraw preserves cached partial ${times.length ? 'rows' : 'empty'} until normal expiry`, async () => {
++  const feed = {current: fixture({failed: ['b'], times})}, view = boardDom(feed);
++  const properties = {id: 'node-1', name: 'Central', 'name:en': 'Central', 'name:ja': '中央'};
++  try {
++    view.language(from); view.show(properties); await view.settle();
++    const previous = feed.current;
++    assert.equal(view.panel.querySelector('.departure-warning').textContent, partialMessage);
++    assert.equal(previous.calls.length, 3);
++    feed.current = fixture({times});
++    view.language(to); view.show(properties); await view.settle();
++    assert.equal(feed.current.calls.length, 0, 'a translated redraw cannot refetch before expiry');
++    assert.equal(view.panel.querySelector('.departure-warning').textContent, partialMessage);
++    assert.equal(view.panel.querySelectorAll('.departure-list > li').length, times.length);
++    view.advance(60_001); view.show(properties); await view.settle();
++    assert.equal(feed.current.calls.length, 3);
++    assert.equal(view.panel.querySelector('.departure-warning'), null);
++  } finally {view.dom.window.close();}
++});
++
++for (const [label, first, second] of [
++  ['different OSM objects', {properties: {id: 'node-1'}}, {properties: {id: 'node-2'}}],
++  ['OSM types with one numeric ID', {properties: {osm_type: 'node', osm_id: 1}}, {properties: {osm_type: 'way', osm_id: 1}}],
++  ['feature ID zero', {id: 0}, {id: 1}],
++  ['OSM and provider ID namespaces', {properties: {id: 'node-1'}}, {source: 'osm', sourceLayer: 'node', id: '1'}],
++  ['source-scoped feature ID', {id: 0, source: 'stations-a'}, {id: 0, source: 'stations-b'}],
++  ['source-layer-scoped provider ID', {properties: {id: 'local'}, sourceLayer: 'a'}, {properties: {id: 'local'}, sourceLayer: 'b'}],
++  ['nearby points with a tile-local ID', {id: 0}, {id: 0, geometry: {coordinates: [0.000001, 0]}}],
++  ['no-ID raw-name fallback', {properties: {name: 'Central'}}, {properties: {name: 'Other'}}],
++]) test(`departure cache keeps ${label} distinct`, async () => {
++  const feed = {current: fixture({failed: ['b']})}, view = boardDom(feed);
++  const show = feature => view.show({name: 'Central', ...feature.properties}, feature);
++  try {
++    show(first); await view.settle();
++    assert.equal(view.panel.querySelector('.departure-warning').textContent, partialMessage);
++    feed.current = fixture();
++    show(second); await view.settle();
++    assert.equal(feed.current.calls.length, 3, 'another station cannot inherit the cached partial result');
++    assert.equal(view.panel.querySelector('.departure-warning'), null);
++  } finally {view.dom.window.close();}
++});
++
++test('cache normalizes explicit OSM identities across source representations and quantized points', async () => {
++  const feed = {current: fixture({failed: ['b']})}, view = boardDom(feed);
++  try {
++    view.show({name: 'Central', id: 'node-1'}, {source: 'stationMajor'}); await view.settle();
++    feed.current = fixture();
++    view.show({name: '中央', osm_type: 'node', osm_id: 1}, {source: 'stations', geometry: {coordinates: [0.000001, 0]}}); await view.settle();
++    assert.equal(feed.current.calls.length, 0);
++    assert.equal(view.panel.querySelector('.departure-warning').textContent, partialMessage);
++  } finally {view.dom.window.close();}
++});
++
++test('no-ID fallback anchors translated redraws to stable raw names', async () => {
++  const feed = {current: fixture({failed: ['b']})}, view = boardDom(feed);
++  try {
++    view.language('ja'); view.show({name: 'Central', localized_name: '中央'}); await view.settle();
++    feed.current = fixture();
++    view.language('en'); view.show({name: 'Central', localized_name: 'Central'}); await view.settle();
++    assert.equal(feed.current.calls.length, 0);
++    assert.equal(view.panel.querySelector('.departure-warning').textContent, partialMessage);
++  } finally {view.dom.window.close();}
++});
++
++test('an unnamed pending failure cannot evict the later named station board', async () => {
++  let release, started;
++  const held = new Promise(resolve => {release = resolve;});
++  const requested = new Promise(resolve => {started = resolve;});
++  const previous = fixture({failed: ['a', 'b']});
++  const feed = {current: {fetch: async (...args) => {
++    if (String(args[0]).includes('/stoptimes')) {started(); await held;}
++    return previous.fetch(...args);
++  }}};
++  const view = boardDom(feed);
++  try {
++    view.show({id: 'node-1'}); await requested;
++    const previousPromise = [...view.departureBoards.values()][0].promise;
++    feed.current = fixture();
++    view.show({id: 'node-1', name: 'Central'});
++    await [...view.departureBoards.values()][1].promise;
++    release(); await Promise.allSettled([previousPromise]); await view.settle();
++    assert.match(view.panel.textContent, /No rail departures in the published timetable soon/);
++    assert.equal(view.departureBoards.size, 1, 'the named result survives old unnamed rejection');
++    assert.equal(feed.current.calls.length, 3);
++    view.show({id: 'node-1', name: 'Central'}); await view.settle();
++    assert.equal(feed.current.calls.length, 3, 'named enrichment has its own retained cache entry');
++  } finally {release(); view.dom.window.close();}
++});
+diff --git a/tests/sw-install.test.mjs b/tests/sw-install.test.mjs
+index 0f105f1..d22d58e 100644
+--- a/tests/sw-install.test.mjs
++++ b/tests/sw-install.test.mjs
+@@ -163,33 +163,32 @@ test('a complete replacement keeps the previous version and revised icons availa
+   assert.deepEqual(versions, ['new', 'old']);
+ });
+ 
+-test('the current departure release refreshes cached code while previous tabs retain their version', async () => {
+-  const previousVersion = '20261011-power-legend-1';
++for (const previousVersion of ['20261011-power-legend-1', '20261011-departure-availability-1']) for (const file of ['app.mjs', 'departures.mjs']) test(`the current departure release refreshes ${file} from ${previousVersion} while previous tabs retain their version`, async () => {
+   const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
+   const currentVersion = page.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
+   assert.ok(currentVersion, 'the actual page declares its asset version');
+   assert.notEqual(currentVersion, previousVersion, 'the correction needs a fresh cache-first asset version');
+-  const path = new URL('departures.mjs', scope).pathname;
++  const path = new URL(file, scope).pathname;
+   const previousBytes = 'export const departureRelease = "before-correction";';
+-  const currentBytes = readFileSync(new URL('../styles/departures.mjs', import.meta.url), 'utf8');
++  const currentBytes = readFileSync(new URL(`../styles/${file}`, import.meta.url), 'utf8');
+   const old = startWorker({version: previousVersion, assetBodies: new Map([[path, previousBytes]])});
+   await bounded(old.lifecycle('install'));
+   await old.lifecycle('activate');
+-  assert.equal(await (await old.request(`departures.mjs?v=${previousVersion}`)).text(), previousBytes);
++  assert.equal(await (await old.request(`${file}?v=${previousVersion}`)).text(), previousBytes);
+ 
+   // The worker source and cache generation stay unchanged. Only the deployed
+   // page and assets change, as on a normal visit after this release.
+   const next = startWorker({version: currentVersion, stores: old.stores,
+     assetBodies: new Map([[path, currentBytes]])});
+   await bounded(next.request('./', true));
+-  assert.ok(await (await next.request(`departures.mjs?v=${currentVersion}`)).text() === currentBytes,
+-    'the current page must receive the corrected departure bytes, not the previous saved version');
++  assert.ok(await (await next.request(`${file}?v=${currentVersion}`)).text() === currentBytes,
++    'the current page must receive the corrected module bytes, not the previous saved version');
+   assert.equal(next.requests.filter(url => new URL(url).pathname === path).length, 1,
+-    'the new complete shell fetches departure code once');
++    'the new complete shell fetches this module once');
+   next.setOffline();
+-  assert.equal(await (await next.request(`departures.mjs?v=${previousVersion}`)).text(), previousBytes,
++  assert.equal(await (await next.request(`${file}?v=${previousVersion}`)).text(), previousBytes,
+     'an older tab keeps its own module after the new shell is saved');
+-  assert.ok(await (await next.request(`departures.mjs?v=${currentVersion}`)).text() === currentBytes,
++  assert.ok(await (await next.request(`${file}?v=${currentVersion}`)).text() === currentBytes,
+     'the corrected module remains available offline');
+ });
+ 

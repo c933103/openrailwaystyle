@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import {JSDOM} from 'jsdom';
 import {stationDepartures, departureRows, plannerLink, TRANSITOUS_SOURCES} from '../styles/departures.mjs';
 import {departureItem} from '../styles/departures-ui.mjs';
+import {displayName, osmObject} from '../styles/map-model.mjs';
 
 const station = {lat: 0, lon: 0, names: ['Central']};
 const stop = id => ({type: 'STOP', id, name: 'Central', lat: 0, lon: 0, modes: ['REGIONAL_RAIL']});
@@ -77,18 +78,19 @@ const renderer = app.slice(app.indexOf('const departureBoards = new Map();'), ap
 function boardDom(feed) {
   const dom = new JSDOM('<div id="panel"></div>'), document = dom.window.document;
   let now = 1000;
+  const settings = {language: 'en'};
   const context = vm.createContext({document, AbortSignal, departureItem, plannerLink, TRANSITOUS_SOURCES,
-    Date: {now: () => now}, settings: {language: 'en'}, displayName: p => p.name,
+    Date: {now: () => now}, settings, displayName, osmObject,
     stationDepartures: (station, options) => stationDepartures(station, {...options, fetch: (...args) => feed.current.fetch(...args)}),
     textNode: (tag, text, className = '') => {
       const node = document.createElement(tag); node.textContent = text; node.className = className; return node;
     }});
   const {showDepartures, departureBoards} = vm.runInContext(`${renderer}\n({showDepartures, departureBoards})`, context);
   const panel = document.querySelector('#panel');
-  return {dom, panel, departureBoards, advance: ms => {now += ms;},
-    show: (name = 'Central') => {
+  return {dom, panel, departureBoards, advance: ms => {now += ms;}, language: value => {settings.language = value;},
+    show: (properties = 'Central', extra = {}) => {
       panel.replaceChildren();
-      showDepartures(panel, {properties: {name}, geometry: {coordinates: [0, 0]}});
+      showDepartures(panel, {...extra, properties: typeof properties === 'string' ? {name: properties} : properties, geometry: extra.geometry || {coordinates: [0, 0]}});
     },
     settle: async () => {
       await Promise.allSettled([...departureBoards.values()].map(board => board.promise));
@@ -178,5 +180,93 @@ for (const times of [[], [observation]]) test(`late partial ${times.length ? 'ro
     assert.equal(view.panel.querySelectorAll('.departure-list > li').length, times.length);
     assert.equal(previous.calls.length, 3); assert.equal(feed.current.calls.length, 3,
       'reopening the old station uses its own cached partial result');
+  } finally {release(); view.dom.window.close();}
+});
+
+for (const [from, to] of [['ja', 'en'], ['en', 'ja']]) for (const times of [[], [observation]]) test(`translated ${from} to ${to} redraw preserves cached partial ${times.length ? 'rows' : 'empty'} until normal expiry`, async () => {
+  const feed = {current: fixture({failed: ['b'], times})}, view = boardDom(feed);
+  const properties = {id: 'node-1', name: 'Central', 'name:en': 'Central', 'name:ja': '中央'};
+  try {
+    view.language(from); view.show(properties); await view.settle();
+    const previous = feed.current;
+    assert.equal(view.panel.querySelector('.departure-warning').textContent, partialMessage);
+    assert.equal(previous.calls.length, 3);
+    feed.current = fixture({times});
+    view.language(to); view.show(properties); await view.settle();
+    assert.equal(feed.current.calls.length, 0, 'a translated redraw cannot refetch before expiry');
+    assert.equal(view.panel.querySelector('.departure-warning').textContent, partialMessage);
+    assert.equal(view.panel.querySelectorAll('.departure-list > li').length, times.length);
+    view.advance(60_001); view.show(properties); await view.settle();
+    assert.equal(feed.current.calls.length, 3);
+    assert.equal(view.panel.querySelector('.departure-warning'), null);
+  } finally {view.dom.window.close();}
+});
+
+for (const [label, first, second] of [
+  ['different OSM objects', {properties: {id: 'node-1'}}, {properties: {id: 'node-2'}}],
+  ['OSM types with one numeric ID', {properties: {osm_type: 'node', osm_id: 1}}, {properties: {osm_type: 'way', osm_id: 1}}],
+  ['feature ID zero', {id: 0}, {id: 1}],
+  ['OSM and provider ID namespaces', {properties: {id: 'node-1'}}, {source: 'osm', sourceLayer: 'node', id: '1'}],
+  ['source-scoped feature ID', {id: 0, source: 'stations-a'}, {id: 0, source: 'stations-b'}],
+  ['source-layer-scoped provider ID', {properties: {id: 'local'}, sourceLayer: 'a'}, {properties: {id: 'local'}, sourceLayer: 'b'}],
+  ['nearby points with a tile-local ID', {id: 0}, {id: 0, geometry: {coordinates: [0.000001, 0]}}],
+  ['no-ID raw-name fallback', {properties: {name: 'Central'}}, {properties: {name: 'Other'}}],
+]) test(`departure cache keeps ${label} distinct`, async () => {
+  const feed = {current: fixture({failed: ['b']})}, view = boardDom(feed);
+  const show = feature => view.show({name: 'Central', ...feature.properties}, feature);
+  try {
+    show(first); await view.settle();
+    assert.equal(view.panel.querySelector('.departure-warning').textContent, partialMessage);
+    feed.current = fixture();
+    show(second); await view.settle();
+    assert.equal(feed.current.calls.length, 3, 'another station cannot inherit the cached partial result');
+    assert.equal(view.panel.querySelector('.departure-warning'), null);
+  } finally {view.dom.window.close();}
+});
+
+test('cache normalizes explicit OSM identities across source representations and quantized points', async () => {
+  const feed = {current: fixture({failed: ['b']})}, view = boardDom(feed);
+  try {
+    view.show({name: 'Central', id: 'node-1'}, {source: 'stationMajor'}); await view.settle();
+    feed.current = fixture();
+    view.show({name: '中央', osm_type: 'node', osm_id: 1}, {source: 'stations', geometry: {coordinates: [0.000001, 0]}}); await view.settle();
+    assert.equal(feed.current.calls.length, 0);
+    assert.equal(view.panel.querySelector('.departure-warning').textContent, partialMessage);
+  } finally {view.dom.window.close();}
+});
+
+test('no-ID fallback anchors translated redraws to stable raw names', async () => {
+  const feed = {current: fixture({failed: ['b']})}, view = boardDom(feed);
+  try {
+    view.language('ja'); view.show({name: 'Central', localized_name: '中央'}); await view.settle();
+    feed.current = fixture();
+    view.language('en'); view.show({name: 'Central', localized_name: 'Central'}); await view.settle();
+    assert.equal(feed.current.calls.length, 0);
+    assert.equal(view.panel.querySelector('.departure-warning').textContent, partialMessage);
+  } finally {view.dom.window.close();}
+});
+
+test('an unnamed pending failure cannot evict the later named station board', async () => {
+  let release, started;
+  const held = new Promise(resolve => {release = resolve;});
+  const requested = new Promise(resolve => {started = resolve;});
+  const previous = fixture({failed: ['a', 'b']});
+  const feed = {current: {fetch: async (...args) => {
+    if (String(args[0]).includes('/stoptimes')) {started(); await held;}
+    return previous.fetch(...args);
+  }}};
+  const view = boardDom(feed);
+  try {
+    view.show({id: 'node-1'}); await requested;
+    const previousPromise = [...view.departureBoards.values()][0].promise;
+    feed.current = fixture();
+    view.show({id: 'node-1', name: 'Central'});
+    await [...view.departureBoards.values()][1].promise;
+    release(); await Promise.allSettled([previousPromise]); await view.settle();
+    assert.match(view.panel.textContent, /No rail departures in the published timetable soon/);
+    assert.equal(view.departureBoards.size, 1, 'the named result survives old unnamed rejection');
+    assert.equal(feed.current.calls.length, 3);
+    view.show({id: 'node-1', name: 'Central'}); await view.settle();
+    assert.equal(feed.current.calls.length, 3, 'named enrichment has its own retained cache entry');
   } finally {release(); view.dom.window.close();}
 });

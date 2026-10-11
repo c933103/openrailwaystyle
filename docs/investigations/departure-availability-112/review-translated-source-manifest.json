@@ -1,0 +1,46 @@
+[
+  {
+    "path": "docs/user-guide.md",
+    "sha256": "ea4752b868d520884a6a0a482dfc245b90dfda0162a9cab70ad52123ea75f1e6"
+  },
+  {
+    "path": "scripts/check-departures-browser.mjs",
+    "sha256": "3df5cc760c920a2c20f547960f2a05d9d4e6e48017f3981c1e079a6491621887"
+  },
+  {
+    "path": "styles/app.mjs",
+    "sha256": "7d3b073b258d14a67bddfa656e111619f39aea96789fb76e6d117465daf09585"
+  },
+  {
+    "path": "styles/cjk-font.mjs",
+    "sha256": "4850a8a73ba31b3a4f9da73081b8ebeefb8d3da68fb04cca38a538ddf85773e9"
+  },
+  {
+    "path": "styles/departures-ui.mjs",
+    "sha256": "4bb0a6ace89335d8c2ef3df083082d2196025eb7d2f07a762ab5bf21f5245fda"
+  },
+  {
+    "path": "styles/elevation.mjs",
+    "sha256": "f016358650c02053d6ac2778c2f6aed9e8fd85c211c6300cccc24500aced002a"
+  },
+  {
+    "path": "styles/index.html",
+    "sha256": "777195e5213dc3825b8e681fa171301f76a1943cdb9b31d979ad33e558ed8951"
+  },
+  {
+    "path": "styles/layer-semantics.mjs",
+    "sha256": "bd4ceab0990cb5df5ca5c3402293d7febbff88a8f09cc40e4a570adb3b1891fc"
+  },
+  {
+    "path": "styles/map-model.mjs",
+    "sha256": "b96a4f0bc17eedd42261f63de0bbe619cd1efb1589770bd3494f6371338c8a81"
+  },
+  {
+    "path": "tests/departure-availability.test.mjs",
+    "sha256": "9618519ce62964dfb9789570d8cb2da15ff15e38d15d06a84703d9f92be2c986"
+  },
+  {
+    "path": "tests/sw-install.test.mjs",
+    "sha256": "bd88bc28ff064265e9ce48fdaa6056f0d90b8966979ec84733c91477eb354eb8"
+  }
+]

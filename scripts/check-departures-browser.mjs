@@ -55,15 +55,15 @@ try {
       await page.waitForSelector('body[data-map-ready="true"]',{timeout:60000});
       // Supply one mapped station to the actual production click handler.
       // All station-detail and departure rendering remains production code.
-      const openStation = async (name = 'Suehirocho') => page.evaluate(async name=>{
+      const openStation = async (name = 'Suehirocho', properties = {}) => page.evaluate(async ({name, properties})=>{
         const {map}=await import(document.querySelector('script[type="module"]').src);
         const original=map.queryRenderedFeatures;
         map.queryRenderedFeatures=()=>[{source:'stationMajor',kind:'station',layer:{id:'station-major'},
-          properties:{name,station:'subway',station_size:'small'},
+          properties:{name,station:'subway',station_size:'small',...properties},
           geometry:{type:'Point',coordinates:[139.77,35.7]}}];
         try{map.fire('click',{point:{x:500,y:500},lngLat:{lng:139.77,lat:35.7}});}
         finally{map.queryRenderedFeatures=original;}
-      }, name);
+      }, {name, properties});
       await openStation();
       await page.locator('.departure-trip').first().waitFor();
       assert.equal(await page.locator('.departure-trip').count(),3);
@@ -128,8 +128,9 @@ try {
       for (const order of [['a','b'], ['b','a']]) for (const withRows of [false, true]) {
         boardName = `Partial ${order.join('')} ${withRows ? 'rows' : 'empty'}`;
         boardOrder = order; boardTimes = withRows ? [row] : []; boardFailed = ['b'];
+        const translated = {id:`fixture-${boardName}`, 'name:en':`${boardName} English`, 'name:ja':`${boardName} 日本語`};
         const before = boardRequests.length;
-        await openStation(boardName); await waitBoard();
+        await openStation(boardName, translated); await waitBoard();
         assert.equal(boardRequests.length - before, 3);
         assert.equal(await page.locator('.departure-warning').textContent(), 'Some departures could not load. The board may be incomplete.');
         assert.equal(await page.locator('.departure-list > li').count(), Number(withRows));
@@ -138,16 +139,19 @@ try {
         if (order[0] === 'a') await page.screenshot({path:`browser-review/departures-partial-${withRows ? 'rows' : 'empty'}-${engine}.png`});
         await page.locator('#details-close').click();
         boardFailed = [];
-        await openStation(boardName); await waitBoard();
+        await openStation(boardName, translated); await waitBoard();
         assert.equal(await page.locator('.departure-warning').count(), 1, 'reopening keeps cached partial status');
         assert.equal(boardRequests.length - before, 3, 'reopening does not add provider requests');
-        await page.locator('#language').selectOption(withRows ? 'ja' : 'en');
+        const language = (await page.locator('#language').inputValue()) === 'ja' ? 'en' : 'ja';
+        await page.locator('#language').selectOption(language);
+        await page.waitForFunction(name => document.querySelector('#detail-content h2')?.textContent === name, translated[`name:${language}`]);
         await waitBoard();
+        assert.equal(new URL(await page.locator('.departure-links a').first().getAttribute('href')).searchParams.get('fromName'), translated[`name:${language}`], 'journey labels still follow the selected language');
         assert.equal(await page.locator('.departure-warning').count(), 1, 'settings redraw retains the warning');
         assert.equal(boardRequests.length - before, 3);
         await page.evaluate(() => {window.__departureFixtureNow += 60_001;});
         assert.equal(boardRequests.length - before, 3, 'expiry alone never triggers an automatic retry');
-        await openStation(boardName); await waitBoard();
+        await openStation(boardName, translated); await waitBoard();
         assert.equal(boardRequests.length - before, 6);
         assert.equal(await page.locator('.departure-warning').count(), 0, 'normal expiry and opening establishes recovery');
         assert.equal(await page.locator('.departure-list > li').count(), Number(withRows));

@@ -1,0 +1,221 @@
+✔ partial empty preserves safe per-stop outcomes in a,b order (5.829489ms)
+✔ partial rows preserves safe per-stop outcomes in a,b order (2.670142ms)
+✔ partial empty preserves safe per-stop outcomes in b,a order (1.024338ms)
+✔ partial rows preserves safe per-stop outcomes in b,a order (1.570267ms)
+✔ complete empty and populated results retain both successful stop outcomes (1.09181ms)
+✔ no matching stops, selected-stop limit, and all-failed behavior remain bounded (1.703925ms)
+✔ DOM preserves cached partial empty and normal expiry establishes recovery (184.899086ms)
+✔ DOM preserves cached partial rows and normal expiry establishes recovery (48.910179ms)
+✔ DOM keeps all-failed rejection, eviction, and no-matching-stop messages (33.170162ms)
+✔ detached DOM results cannot overwrite a newly opened station section (21.178847ms)
+✔ late partial empty cannot replace a newer station result (18.698131ms)
+✔ late partial rows cannot replace a newer station result (19.978317ms)
+✔ translated ja to en redraw preserves cached partial empty until normal expiry (26.070415ms)
+✔ translated ja to en redraw preserves cached partial rows until normal expiry (24.240646ms)
+✔ translated en to ja redraw preserves cached partial empty until normal expiry (22.127721ms)
+✔ translated en to ja redraw preserves cached partial rows until normal expiry (46.220858ms)
+✔ departure cache keeps different OSM objects distinct (21.047408ms)
+✔ departure cache keeps OSM types with one numeric ID distinct (21.051622ms)
+✔ departure cache keeps feature ID zero distinct (17.255151ms)
+✔ departure cache keeps OSM and provider ID namespaces distinct (20.637454ms)
+✔ departure cache keeps source-scoped feature ID distinct (22.51611ms)
+✔ departure cache keeps source-layer-scoped provider ID distinct (21.651917ms)
+✔ departure cache keeps nearby points with a tile-local ID distinct (14.436168ms)
+✔ departure cache keeps no-ID raw-name fallback distinct (16.554816ms)
+✔ cache normalizes explicit OSM identities across source representations (17.219306ms)
+✔ no-ID fallback anchors translated redraws to stable raw names (20.898164ms)
+✔ an unnamed pending failure cannot evict the later named station board (18.662154ms)
+✔ same-list tripId distinguishes simultaneous services (16.652287ms)
+✔ same-list routeId distinguishes simultaneous services (0.756257ms)
+✔ same-list tripShortName distinguishes simultaneous services (0.959022ms)
+✔ same-list routeLongName distinguishes simultaneous services (0.402347ms)
+✔ same-list mode distinguishes simultaneous services (0.403856ms)
+✔ resolved destination fallback distinguishes services without a headsign (3.001675ms)
+✔ tuple identity cannot collide through delimiter-bearing names and IDs (0.804609ms)
+✔ exact repeats and equivalent missing optional fields merge (1.150124ms)
+✔ one exact train retains live data and any cancellation in every observation order (3.738298ms)
+✔ all cancellation flags survive repeated observations (2.112426ms)
+✔ an old scheduled cancellation survives when the exact train is still delayed ahead (1.269766ms)
+✔ conflicting live predictions use a stable conservative time, not input order as freshness (0.825819ms)
+✔ same-list matching uses exact scheduled instants rather than a minute bucket (0.345409ms)
+✔ null optional values and missing places retain existing filtering and arrival fallback (0.420272ms)
+✔ unknown scheduled times do not collapse different actual departures (0.613421ms)
+✔ identity distinctions retain cross-list ambiguity under row and list permutations (0.811837ms)
+✔ genuine cross-list merges and mode-family boundaries remain unchanged (0.512066ms)
+✔ equal-time distinct outputs and a limited board are stable under permutation (1.906855ms)
+✔ bare numeric label 8913771 is not a line name, regardless of route ID or fallback copies (4.075104ms)
+✔ bare numeric label 20022891 is not a line name, regardless of route ID or fallback copies (0.562689ms)
+✔ bare numeric label 1 is not a line name, regardless of route ID or fallback copies (0.371282ms)
+✔ bare numeric label 42 is not a line name, regardless of route ID or fallback copies (0.467984ms)
+✔ bare numeric label 00123 is not a line name, regardless of route ID or fallback copies (0.364363ms)
+✔ bare numeric label ８９１３７７１ is not a line name, regardless of route ID or fallback copies (0.648219ms)
+✔ bare numeric label ٨٩١٣٧٧١ is not a line name, regardless of route ID or fallback copies (0.510859ms)
+✔ display and short-name fallbacks keep meaningful public text and train labels (1.033603ms)
+✔ hidden numeric labels retain raw exact identity and do not mutate input observations (1.944338ms)
+✔ hiding a numeric line label does not introduce new cross-feed wildcard matches (1.311987ms)
+✔ known opaque-ID duplicates still reconcile and retain their trip and destination fallback (0.789065ms)
+✔ the board and schedule caption never reintroduce a hidden numeric line label (222.592764ms)
+✔ a later live time without a platform retains another live observation’s platform (8.171639ms)
+✔ live platform survives every two-feed partition and row/list ordering (2.65686ms)
+✔ a live row’s scheduled platform is not an explicit live platform update (2.862975ms)
+✔ missing, null and empty live platforms allow actual live platform fallback (2.890007ms)
+✔ scheduled platform remains available when no observation has an actual live platform (1.581537ms)
+✔ absent platform data stays empty while live time and cancellation are retained (0.426279ms)
+✔ the selected live observation retains priority for scheduled-platform fallback (0.448354ms)
+✔ conflicting explicit platforms at one live instant are deterministic across observations and feeds (13.73187ms)
+✔ combining a time-only update does not change the prediction attached to a platform update (3.255376ms)
+✔ the station's timetable stops: rail stops nearby, named like the station first (7.99644ms)
+✔ departure rows: rail only, merged in time order, one row per train, live delays and cancellations (67.012913ms)
+✔ one train from two feeds is one row under its line name; numbered route IDs are not line names (1.49964ms)
+✔ merged rows keep real-time state from either feed; rows without a destination are not merged (0.993767ms)
+✔ a live row and a cancelled duplicate merge as cancelled; one list keeps two simultaneous services (0.850346ms)
+✔ a named row with two candidates in another list merges with neither, in either order (0.526597ms)
+✔ ambiguous cross-feed matches stay separate whatever the order (0.57759ms)
+✔ a regional train and a metro train leaving together are never merged (6.770418ms)
+✔ journey links and the station board request (1.713763ms)
+✔ one stop's board failing keeps the other's; all failing is an error (4.757075ms)
+(node:87) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ actual sw-before-first-party-libraries.js keeps app/control versions coherent and safely recovers cached libraries (600.872146ms)
+✔ actual sw-before-maplibre-backport.js keeps app/control versions coherent and safely recovers cached libraries (456.459665ms)
+✔ new app recovers verified already-patched first-party cache bytes without a second patch (221.016514ms)
+✔ legacy startup recovery ignores unrelated caches and non-JavaScript saved responses (128.19117ms)
+✔ legacy startup recovery rejects tampered-bytes even with HTTP 200 and correct MIME (111.788463ms)
+✔ legacy startup recovery rejects crypto-unavailable even with HTTP 200 and correct MIME (131.402382ms)
+▶ installation help works before renderer libraries load and after WebGL initialization fails
+  ✔ {"delayLibraries":true} (214.759987ms)
+  ✔ {"failWebGL":true} (159.757511ms)
+✔ installation help works before renderer libraries load and after WebGL initialization fails (376.131894ms)
+✔ a complete installed Chinese font is used without any download (126.225424ms)
+✔ a partial installed Chinese font fetches the packaged font only once Han labels are drawn, for the current script (166.586464ms)
+✔ a failed packaged Chinese font download waits before trying again, and retries when back online (124.312469ms)
+✔ Japanese labels keep the installed Japanese font even when it is partial (124.567191ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ unavailable Chinese font preserves a working map and system fallback (116.983899ms)
+✔ clicked station, service, entrance, power and context details share the selected regional font (813.123258ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ English and local infoboxes scope script languages to CJK runs and preserve English text (864.408238ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ infobox Han text requests the packaged font after probing without requiring map glyph drawing (236.305806ms)
+✔ an open infobox follows language and font changes while map style loading is delayed (152.354164ms)
+✔ rare Han in infobox body values and later departure text loads only the displayed slices (252.301262ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ service frequency profile is applied on the first frame and controls persist independently (210.656417ms)
+✔ frequency periods no applied source covers are not offered, and a link to one falls back (115.960111ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ equal-width service details expire even after the inspected route leaves loaded tiles (176.688048ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ mixed timetable and headway details name each source, period definition and terms link (153.993733ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ app starts with the MapLibre 5 API and enables map controls (266.495311ms)
+Railway energy supplies unavailable: Invalid railway energy supply snapshot
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ controls work while the map is still loading, and settings take effect once it loads (264.124612ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ more detail cycles: the next zoom level at half size, two levels at a quarter, then normal (123.615521ms)
+✔ settings are remembered in a cookie; a shared link applies once and leaves the address (449.232018ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ curated hubs take their names from the provider station tiles by OSM identity, without OSM API requests (123.294425ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ curated hub names with rare Han wait for their slices before reaching the map (164.25666ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ curated dots survive an unavailable name dependency: metadata (117.316452ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ curated dots survive an unavailable name dependency: stationProtocol (182.924469ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ a selected deferred dot is named when missing provider metadata later becomes available (185.135668ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ curated locations publish before an eligible provider name request settles (229.227266ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ opening a deferred curated dot loads its provider name and refreshes name-based departure matching (174.172099ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ failed selected-hub lookups stay bounded and preserve the anonymous point (192.665489ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ a deferred curated name cannot overwrite the panel after close (157.314861ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ a deferred curated name cannot overwrite the panel after select another station (249.233907ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ an open deferred hub follows the newest language and ignores its older pending name (205.632298ms)
+✔ tiles served as stored load the rare Han slices of their text, such as service route names (123.389703ms)
+✔ real renderer initialization failures reach the visible error message (86.96393ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ station inspection finds nearby interchanges and facility inspection avoids railway fields (129.807228ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ museum and theatre context does not offer a pointer or intercept railway inspection (100.014902ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ concurrent train-control systems use compact names with complete hover and native expandable descriptions (439.220724ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ railway energy supplies download once at facility zoom and relocalize existing data on language changes (218.379491ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ Power facilities inspect their supply type and source object without train speed or timetable fields (119.734709ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ close infrastructure details follow the mode, labels and background on the initial frame and after switching (152.672235ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ signals and entrances inspect their mapped node and avoid track/timetable fields (117.787391ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ Carto shows railway overlays, honours terrain, hides duplicate basemap labels and keeps compact attribution (191.79978ms)
+✔ desktop brand announces collapse on its first activation (127.096377ms)
+✔ compact controls open from the icon and return focus to it on collapse and Escape (138.977755ms)
+✔ saved hidden overlays are absent in the constructor before any tile request (104.504381ms)
+✔ Causeway Bay search reaches both APIs before a delayed label bundle loads (114.835033ms)
+✔ map info identifies the executing cached asset and links to its build repository across backgrounds (100.444317ms)
+✔ map info exposes mismatched cached bundle versions and handles a missing commit (107.140089ms)
+✔ every versioned file the page loads asks for the page version (25.593766ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ watch starts map-only and deliberate controls return to the map after each action (142.705319ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ entering watch mode deactivates hidden drawing and measurement input (148.026363ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ rail tile recovery updates visible app status without idle, after bookkeeping, including early style events (238.601985ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ partial rail recovery and loaded-but-errored sources retain the outage state without extra retries (114.60145ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ rail recovery preserves unrelated app errors until actual unrelated success (118.509839ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ metadata recovery clears app bookkeeping without idle and cancellation is not an outage (125.681968ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ source replacement retires old recovery and disposal cancels every scheduled retry (153.658703ms)
+✔ platform measurement fetches HTTP templates rather than MapLibre protocol URLs (150.94768ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ settings hide and show failed layers without pan or idle resumes exactly one recovery timer (214.430365ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ off-screen retirement reconciles owned errors without source success and retains other failures (187.178968ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ retirement cannot clear nonretryable or newer same-ID errors (360.659485ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-departure-availability-1
+✔ timer retirement reconciles status after its transaction and queued notifications are inert after disposal (191.240262ms)
+✔ Power legend shows facility point letters and preserves track samples across setting and view changes (367.335ms)
+✔ installation drains response bodies without exhausting its three network slots (118.453882ms)
+✔ a truncated map-model.mjs response cannot publish or activate an incomplete shell (15.408026ms)
+✔ a truncated maplibre-gl-5.24.0-atlas.1.js response cannot publish or activate an incomplete shell (26.558598ms)
+✔ a truncated maplibre-gl-5.24.0.css response cannot publish or activate an incomplete shell (13.553972ms)
+✔ a truncated pmtiles-4.2.1.js response cannot publish or activate an incomplete shell (15.993935ms)
+✔ a complete replacement keeps the previous version and revised icons available offline (119.436174ms)
+✔ the current departure release refreshes cached code while previous tabs retain their version (79.461853ms)
+✔ first-party libraries install together and remain available offline with every external origin blocked (48.088714ms)
+✔ actual CDN-era worker copies remain usable after first-party migration without new CDN requests (131.242209ms)
+✔ an old CDN JS URL receives the fixed library even without a legacy cache entry (42.766738ms)
+✔ legacy cache migration and serving reject tampered-bytes with otherwise valid responses (75.433872ms)
+✔ legacy cache migration and serving reject crypto-unavailable with otherwise valid responses (60.368389ms)
+✔ actual first-party worker migration serves fixed bytes to delayed old tabs (83.888857ms)
+✔ Power legend release upgrades the cached app, CSS and facility metadata together (69.27907ms)
+✔ complete trip includes origin, preceding stops, selected stop and terminus, and encodes its opaque ID (3.117395ms)
+✔ loops keep repeated stations; interlined continuations join only their shared boundary (0.521878ms)
+✔ cross-feed merging retains a usable trip reference with its own stop, deterministically (1.803784ms)
+✔ bounded loader shares requests, expires cached schedules and recovers after failure (2.541156ms)
+✔ departure expansion is lazy, reuses loaded content and reports missing IDs and retryable failure (295.398957ms)
+✔ schedule shows local dates over midnight, dwell, live scheduled times, cancellations and safe text (18.852093ms)
+✔ merged trip highlight uses its own observation time through both reconciliation stages (15.749369ms)
+✔ arrival-only board events highlight the matching arrival rather than a later departure (10.833983ms)
+✔ arrival and departure observations tied in presentation choose trip context deterministically (0.518823ms)
+ℹ tests 167
+ℹ suites 0
+ℹ pass 167
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15275.18202
