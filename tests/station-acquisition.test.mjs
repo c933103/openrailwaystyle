@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {stationBaseRegions,stationRegionQuery,stationWorldCoverage,newStationAcquisition,
  checkStationAcquisition,applyStationRegion,postponeStationRegion,splitStationRegion,
- centerInside} from '../scripts/station-acquisition.mjs';
+ centerInside,nextStationAcquisitionCycle} from '../scripts/station-acquisition.mjs';
 
 const node=(id,lon,lat)=>({type:'node',id,lon,lat,tags:{railway:'station',name:'Railway'}});
 
@@ -42,10 +42,15 @@ test('verified regional responses checkpoint only their contained stations',()=>
   node(5,box[1]+1,box[0]+1),
   node(6,box[1]+1,box[0]+2),
   node(7,box[3],box[2]),
+  // Intersecting OSM area: the reported bounding-box center is elsewhere.
+  // Its source region still legitimately returns this geometry.
+  {type:'way',id:99,center:{lon:0,lat:0},
+    tags:{railway:'station',name:'Multi-region station facility'}},
  ]};
  const processed=applyStationRegion(state,records,box,response);
  state=processed.state;records=processed.records;
- assert.equal(records.length,2,'no border-overlapping feature outside its owning region');
+ assert.equal(records.length,3,'retain out-of-region center for intersecting ways while filtering boundary nodes');
+ assert.ok(records.some(x=>x.id==='way-99'),'cross-region station areas must survive');
  assert.equal(state.completed.length,1);
  assert.equal(state.pending.length,31);
  assert.equal(checkStationAcquisition(state,records),true);
@@ -63,4 +68,19 @@ test('timed-out region subdivision preserves complete world topology and data',(
  assert.deepEqual(split.pending[0].box,splitStationRegion(first)[0]);
  assert.throws(()=>postponeStationRegion(split,split.pending[0].box,{maxDepth:1}),/after 1 splits/);
  assert.throws(()=>postponeStationRegion(initial,[0,0,1,1]),/Unexpected/);
+});
+
+test('next worldwide refresh is fresh and cannot erase an immutable published generation',()=>{
+ const initial=newStationAcquisition();
+ const records=[{id:'node-1'}];
+ assert.equal(nextStationAcquisitionCycle(initial,records).refreshed,false);
+ const complete={...initial,pending:[],completed:initial.pending.map(({box})=>({box,at:'2026-10-11T00:00:00Z',count:0}))};
+ assert.equal(checkStationAcquisition(complete,records),true);
+ const restarted=nextStationAcquisitionCycle(complete,records);
+ assert.equal(restarted.refreshed,true);
+ assert.equal(restarted.records.length,0);
+ assert.equal(restarted.state.pending.length,32);
+ assert.equal(checkStationAcquisition(restarted.state,restarted.records),true);
+ assert.equal(records.length,1,'last complete generation remains immutable in memory');
+ assert.deepEqual(complete.pending,[]);
 });
