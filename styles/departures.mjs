@@ -40,6 +40,11 @@ export function pickStops(candidates, station, limit = 2) {
 // A route "name" that only repeats the numeric end of its route ID (some
 // feeds give every trip pattern its own numbered route) is not a line name.
 const opaqueName = (name, routeId) => /^\d{5,}$/.test(name || '') && String(routeId || '').endsWith(name);
+// Bare numeric labels are not line names without a meaningful long name.
+// Apply this only to presentation: removing a label must not turn previously
+// distinct numeric public routes into wildcard matches across feeds.
+const numericName = name => /^\p{Decimal_Number}+$/u.test(name);
+const labelText = value => String(value || '').trim();
 // Rows of different families (main-line rail, metro, tram, funicular, cable
 // car) are never one train. A feed that classifies a train differently from
 // another leaves two rows rather than hiding a departure.
@@ -48,7 +53,7 @@ const modeFamily = mode => MODE_FAMILY[mode] || 'rail';
 const squash = text => String(text || '').replace(/[\s()（）]/g, '');
 const compareText = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 // Stable presentation ties must not depend on either feed or observation order.
-const rowOrder = row => JSON.stringify([row.line, row.headsign, row.mode, row.tz ?? null,
+const rowOrder = row => JSON.stringify([row.line, row.matchingLine, row.headsign, row.mode, row.tz ?? null,
   row.color, row.textColor, row.track, row.departure, row.scheduled, row.live, row.delay, row.cancelled,
   row.tripId, row.stopId, row.tripScheduled, row.tripEvent]);
 const compareRows = (a, b) => Number(!a.line) - Number(!b.line) || a.headsign.length - b.headsign.length || compareText(rowOrder(a), rowOrder(b));
@@ -83,7 +88,10 @@ const mergeObservations = group => {
 // are compatible when they are of the same mode family, leave in the same
 // scheduled minute, their
 // destinations are non-empty and contain one another, and at least one has no
-// line name or both have the same one. A compatible pair is merged only when
+// matching label or both have the same one. Matching retains the original
+// labels even when the numeric-only presentation guard hides them; this guard
+// does not establish whether an unknown number is an internal ID or public ref.
+// A compatible pair is merged only when
 // each is the other's only compatible row in that list, and a merged group
 // never holds two rows of one list; anything ambiguous stays separate, so the
 // result does not depend on the order of the lists or rows. A merged train has
@@ -96,8 +104,11 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
     if (!RAIL_MODES.has(time.mode)) continue;
     const place = time.place || {}, departure = Date.parse(place.departure ?? place.arrival), scheduled = Date.parse(place.scheduledDeparture ?? place.scheduledArrival ?? place.departure ?? place.arrival);
     if (!Number.isFinite(departure)) continue;
-    const named = [time.displayName, time.routeShortName].find(name => name && !opaqueName(name, time.routeId));
-    const line = named || time.tripShortName || time.routeLongName || '';
+    const names = [time.displayName, time.routeShortName].filter(name => name && !opaqueName(name, time.routeId));
+    const matchingLine = names[0] || time.tripShortName || time.routeLongName || '';
+    const longName = labelText(time.routeLongName), hasLongName = longName && !numericName(longName);
+    const line = [...names, time.tripShortName, time.routeLongName].map(labelText)
+      .find(name => name && (hasLongName || !numericName(name))) || '';
     const headsign = time.headsign || time.tripTo?.name || '';
     // JSON tuples preserve field boundaries even when IDs/names contain '|'.
     // Missing IDs are equal only to missing IDs, never a wildcard. If the
@@ -107,7 +118,7 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
       modeFamily(time.mode), headsign, Number.isFinite(scheduled) ? scheduled :
         [place.scheduledDeparture ?? null, place.scheduledArrival ?? null, departure]]);
     const row = {
-      departure, scheduled, tz: place.tz, line, headsign,
+      departure, scheduled, tz: place.tz, line, matchingLine, headsign,
       tripId: typeof time.tripId === 'string' ? time.tripId : '',
       stopId: typeof place.stopId === 'string' ? place.stopId : '',
       ...(typeof time.tripId==='string'&&time.tripId?{tripScheduled:scheduled,tripEvent:place.scheduledDeparture!=null?'departure':place.scheduledArrival!=null?'arrival':place.departure!=null?'departure':'arrival'}:{}),
@@ -129,7 +140,7 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
     if (row.departure >= now - 60_000) rows.push(row);
   }
   const compatible = (a, b) => a.list !== b.list && modeFamily(a.mode) === modeFamily(b.mode) && a.minute === b.minute && a.to && b.to &&
-    (a.to.includes(b.to) || b.to.includes(a.to)) && (!a.line || !b.line || a.line === b.line);
+    (a.to.includes(b.to) || b.to.includes(a.to)) && (!a.matchingLine || !b.matchingLine || a.matchingLine === b.matchingLine);
   const only = (a, list) => rows.filter(r => r.list === list && compatible(a, r)).length === 1;
   const parent = rows.map((_, i) => i), find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
   for (let i = 0; i < rows.length; i++) for (let j = i + 1; j < rows.length; j++)
@@ -141,7 +152,7 @@ export function departureRows(lists, {now = Date.now(), count = 10} = {}) {
     if (new Set(group.map(r => r.list)).size < group.length) { out.push(...group); continue; }
     out.push(mergeObservations(group));
   }
-  return out.sort((a, b) => a.departure - b.departure || compareRows(a, b)).slice(0, count).map(({list, to, minute, liveTrack, ...row}) => row);
+  return out.sort((a, b) => a.departure - b.departure || compareRows(a, b)).slice(0, count).map(({list, to, minute, liveTrack, matchingLine, ...row}) => row);
 }
 
 // Clock time at the station (its own time zone).
