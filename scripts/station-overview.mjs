@@ -63,7 +63,9 @@ export const mercatorLocation=(lon,lat,z)=>{
    Math.abs(lon)>180||Math.abs(lat)>MERCATOR_LIMIT)throw new Error('Invalid Mercator coordinate');
  const n=2**z,x=((lon+180)/360*n)%n;
  const y=(1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*n;
- return [((x+n)%n),Math.max(0,Math.min(n-Number.EPSILON,y))];
+ // Scale epsilon to tile count so the upper cap is representably < n,
+ // including at the southern Mercator limit and at world zoom.
+ return [((x+n)%n),Math.max(0,Math.min(n-(n*Number.EPSILON),y))];
 };
 
 export function stationOverviewData(rows,{maxRecords=MAX_RECORDS,maxTileBytes=MAX_TILE_BYTES}={}){
