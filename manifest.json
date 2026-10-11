@@ -17,12 +17,12 @@
   "source": "OpenStreetMap",
   "license": "ODbL-1.0",
   "generation": "5563c894755acda3187a948c",
-  "inputSha256": "586742236365be1bad4b5337fed7ca1ed836fdc0eae0cc27bf0c884db778705c",
+  "inputSha256": "91a35377a911707d31455903a87a17f48658afd1b2de3080fb2e89b70ac7c5b7",
   "coverage": "all eight Geofabrik continent extracts; complete OSM ways",
   "sourceDate": "2026-10-09",
   "oldestSource": "2026-10-09T20:21:04.000Z",
   "newestSource": "2026-10-09T20:21:04.000Z",
-  "generated": "2026-10-11T17:50:32.937Z",
+  "generated": "2026-10-11T18:46:35.156Z",
   "sources": [
     {
       "schema": 1,
@@ -2927,8 +2927,8 @@
   "downloadedBytes": 85497264561,
   "tileBytes": 20503710,
   "largestTileBytes": 521959,
-  "buildSeconds": 191.948216234,
-  "peakRssBytes": 5253148672,
+  "buildSeconds": 176.287244221,
+  "peakRssBytes": 5236740096,
   "archives": {
     "membership": {
       "parts": [
@@ -3044,15 +3044,15 @@
   },
   "rendererAcceptance": {
     "complete": true,
-    "path": "generations/5563c894755acda3187a948c/renderer-acceptance-61cec6d3b10330d0ed15e63062a30065ae6f9d3d118162f6ea27c2d09e449ccb.json",
-    "sha256": "61cec6d3b10330d0ed15e63062a30065ae6f9d3d118162f6ea27c2d09e449ccb",
+    "path": "generations/5563c894755acda3187a948c/renderer-acceptance-818cd99e3ac4bb2626acce83ec50d70c9ffc6c6845cd7a839ec31eaf748109a8.json",
+    "sha256": "818cd99e3ac4bb2626acce83ec50d70c9ffc6c6845cd7a839ec31eaf748109a8",
     "samples": 840,
     "appSamples": 18,
     "assetRequests": 1077,
     "assetBytes": 62160378,
     "timing": {
-      "medianMs": 345,
-      "p95Ms": 1468
+      "medianMs": 350,
+      "p95Ms": 1942
     }
   }
 }
