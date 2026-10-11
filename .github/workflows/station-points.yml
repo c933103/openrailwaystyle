@@ -1,0 +1,106 @@
+name: Refresh worldwide station-point overview
+on:
+  workflow_dispatch:
+  # One bounded station-source query per run. This is an acquisition pipeline,
+  # never visitor traffic or bulk downloads of another map's tiles.
+  schedule:
+    - cron: '43 2,8,14,20 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/station-overview.mjs'
+      - 'scripts/station-acquisition.mjs'
+      - 'scripts/build-station-snapshot.mjs'
+      - 'styles/tile-bundles.mjs'
+      - '.github/workflows/station-points.yml'
+permissions:
+  contents: write
+concurrency:
+  group: station-point-snapshot
+  cancel-in-progress: false
+jobs:
+  collect:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Restore previous station acquisition
+        run: |
+          set -eu
+          status=0
+          git ls-remote --exit-code --heads origin station-points-data >/dev/null || status=$?
+          if [ "$status" = 0 ]; then
+            git fetch --depth=1 origin station-points-data
+            mkdir -p /tmp/station-previous
+            git archive FETCH_HEAD -- state.json stations.json.gz | tar -x -C /tmp/station-previous
+          elif [ "$status" != 2 ]; then
+            echo "Cannot safely check the previous checkpoint (git status $status)"
+            exit "$status"
+          fi
+      - name: Stop maintenance once the initial full-world snapshot is complete
+        id: previous
+        run: |
+          if [ -f /tmp/station-previous/state.json ]; then
+            node --input-type=module -e "
+              import {readFile,appendFile} from 'node:fs/promises';
+              import {gunzipSync} from 'node:zlib';
+              import {checkStationAcquisition} from './scripts/station-acquisition.mjs';
+              const state=JSON.parse(await readFile('/tmp/station-previous/state.json','utf8'));
+              const rows=JSON.parse(gunzipSync(await readFile('/tmp/station-previous/stations.json.gz')));
+              checkStationAcquisition(state,rows);
+              if(state.pending.length===0){
+                console.log('Station source is complete; no further collection requested.');
+                await appendFile(process.env.GITHUB_OUTPUT,'complete=true\n');
+              }
+            "
+          fi
+      - name: Process at most one bounded region
+        if: steps.previous.outputs.complete != 'true'
+        env:
+          PREVIOUS_DATA: /tmp/station-previous
+        run: |
+          if [ -f /tmp/station-previous/state.json ]; then
+            node scripts/build-station-snapshot.mjs
+          else
+            env -u PREVIOUS_DATA node scripts/build-station-snapshot.mjs
+          fi
+      - name: Check generated record and source completeness
+        if: steps.previous.outputs.complete != 'true'
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {readFile} from 'node:fs/promises';
+          import {gunzipSync} from 'node:zlib';
+          import {checkStationAcquisition,stationWorldCoverage} from './scripts/station-acquisition.mjs';
+          const state=JSON.parse(await readFile('station-snapshot/state.json','utf8'));
+          const rows=JSON.parse(gunzipSync(await readFile('station-snapshot/stations.json.gz')));
+          const manifest=JSON.parse(await readFile('station-snapshot/manifest.json','utf8'));
+          assert.equal(checkStationAcquisition(state,rows),true);
+          assert.equal(manifest.complete,state.pending.length===0 && stationWorldCoverage(state.completed));
+          assert.equal(manifest.stations,rows.length);
+          JS
+      - name: Publish exact progress checkpoint
+        if: steps.previous.outputs.complete != 'true'
+        run: |
+          set -eu
+          mkdir /tmp/station-publish
+          cd /tmp/station-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout --orphan station-points-data
+          cp -r "$GITHUB_WORKSPACE/station-snapshot/." .
+          git add .
+          git commit -q -m "Station-point source progress $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          if ! git push --force origin HEAD:station-points-data; then
+            test "$(git ls-remote origin refs/heads/station-points-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
+      # Site ingestion will be enabled only after the completion manifest is
+      # proven against the station table, overview tiles and polar coverage.
