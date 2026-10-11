@@ -1,6 +1,6 @@
-export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261011-departure-availability-2';
+export {createPlatformLengths,createPlatformTileGeometry,platformLengthLabel,formatPlatformLength} from './platform-length.mjs?v=20261011-search-numeric-1';
 
-export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261011-departure-availability-2';
+export {axleLoad,formatAxleLoad,axlePaint,axleLabel} from './axle-load.mjs?v=20261011-search-numeric-1';
 // The provider normalizes maxspeed to km/h; speed_label retains source units
 // and both directional values. Never infer a limit from railway class.
 export const SPEED_BANDS = [
@@ -48,8 +48,18 @@ export function samePlaceName(a, b) {
   [a, b] = [tidy(a), tidy(b)].sort((x, y) => x.length - y.length);
   if (!a || a.length < 2) return false;
   if (a === b) return true;
-  if (!b.includes(a)) return false;
-  const rest = b.replace(a, '');
+  const at = b.indexOf(a);
+  if (at < 0) return false;
+  const sides = [b.slice(0, at), b.slice(at + a.length)];
+  // Do not take just part of a number or a directly joined numeric component
+  // (Terminal 1 / Terminal 10 or Terminal 1-1), even beside a translation.
+  if ((/\p{N}[\p{Pd}−./]?$/u.test(sides[0]) && /^\p{N}/u.test(a)) || (/\p{N}$/u.test(a) && /^[\p{Pd}−./]?\p{N}/u.test(sides[1]))) return false;
+  const otherScript = LATIN.test(a) ? OTHER_LETTER : LATIN;
+  const numbers = value => (value.match(/\p{N}+/gu) || []).map(token => token.normalize('NFKC')).join('\0');
+  // A number belongs to the name, not to a translation by itself. A real
+  // translation may repeat the same numbers (第1航廈 / Terminal 1).
+  if (sides.some(side => /\p{N}/u.test(side) && (!otherScript.test(side) || numbers(side) !== numbers(a)))) return false;
+  const rest = sides.join('');
   return LATIN.test(a) ? !LATIN.test(rest) : !OTHER_LETTER.test(rest);
 }
 // Facility API results and geocoder results → {rail, places}. A geocoded

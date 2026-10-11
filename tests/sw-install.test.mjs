@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-import {webcrypto} from 'node:crypto';
+import {webcrypto, createHash} from 'node:crypto';
+import {gunzipSync} from 'node:zlib';
 import {backportMapLibre524} from '../styles/map-controls.mjs';
 import {BROWSER_LIBRARIES} from '../scripts/browser-libraries.mjs';
 
@@ -190,6 +191,32 @@ for (const previousVersion of ['20261011-power-legend-1', '20261011-departure-av
     'an older tab keeps its own module after the new shell is saved');
   assert.ok(await (await next.request(`${file}?v=${currentVersion}`)).text() === currentBytes,
     'the corrected module remains available offline');
+});
+
+for (const file of ['app.mjs', 'map-model.mjs']) test(`numeric station search refreshes exact ${file} bytes from the immediate predecessor`, async () => {
+  // Exact files from main 79162dff before the numeric-name correction. Keeping
+  // these compressed makes this an upgrade regression, not a synthetic version
+  // label test; no GitHub or provider access is needed at test time.
+  const previous = JSON.parse(gunzipSync(readFileSync(new URL('fixtures/search-numeric-predecessor.json.gz', import.meta.url))));
+  assert.equal(previous.commit, '79162dff6808b18461e4c8e33e177ca39effb146');
+  assert.equal(previous.version, '20261011-departure-availability-2');
+  const previousBytes = previous.files[file].text;
+  assert.equal(createHash('sha256').update(previousBytes).digest('hex'), previous.files[file].sha256);
+  const currentBytes = readFileSync(new URL(`../styles/${file}`, import.meta.url), 'utf8');
+  const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
+  const currentVersion = page.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
+  assert.ok(currentVersion);
+  assert.notEqual(currentVersion, previous.version);
+  const path = new URL(file, scope).pathname;
+  const old = startWorker({version: previous.version, assetBodies: new Map([[path, previousBytes]])});
+  await bounded(old.lifecycle('install'));
+  await old.lifecycle('activate');
+  const next = startWorker({version: currentVersion, stores: old.stores, assetBodies: new Map([[path, currentBytes]])});
+  await bounded(next.request('./', true));
+  assert.equal(await (await next.request(`${file}?v=${currentVersion}`)).text(), currentBytes);
+  next.setOffline();
+  assert.equal(await (await next.request(`${file}?v=${previous.version}`)).text(), previousBytes);
+  assert.equal(await (await next.request(`${file}?v=${currentVersion}`)).text(), currentBytes);
 });
 
 test('first-party libraries install together and remain available offline with every external origin blocked', async () => {
