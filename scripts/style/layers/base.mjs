@@ -888,73 +888,6 @@ export const placeLayers = [
 
 export const countryLayers = [
   {
-    "id": "country_label-other",
-    "type": "symbol",
-    "source": "openmaptiles",
-    "source-layer": "place",
-    "maxzoom": 8,
-    "filter": [
-      "all",
-      [
-        "==",
-        "$type",
-        "Point"
-      ],
-      [
-        "==",
-        "class",
-        "country"
-      ],
-      [
-        "!has",
-        "iso_a2"
-      ]
-    ],
-    "layout": {
-      "text-field": "{name:latin}",
-      "text-font": [
-        "Noto Sans Regular"
-      ],
-      "text-max-width": 8,
-      "text-size": [
-        "interpolate",
-        [
-          "linear"
-        ],
-        [
-          "zoom"
-        ],
-        2,
-        10,
-        6,
-        15
-      ],
-      "visibility": "visible",
-      "text-transform": "uppercase",
-      "text-letter-spacing": 0.12
-    },
-    "paint": {
-      "text-color": "#5c6c68",
-      "text-halo-blur": 0,
-      "text-halo-color": "rgba(255,255,255,0.75)",
-      "text-halo-width": 2,
-      "text-opacity": [
-        "interpolate",
-        [
-          "linear"
-        ],
-        [
-          "zoom"
-        ],
-        7,
-        1,
-        8,
-        0
-      ]
-    },
-    "minzoom": 1
-  },
-  {
     "id": "country_label",
     "type": "symbol",
     "source": "openmaptiles",
@@ -971,14 +904,11 @@ export const countryLayers = [
         "==",
         "class",
         "country"
-      ],
-      [
-        "has",
-        "iso_a2"
       ]
     ],
     "layout": {
       "text-field": "{name:en}",
+      "text-padding": 10,
       "text-font": [
         "Noto Sans Regular"
       ],

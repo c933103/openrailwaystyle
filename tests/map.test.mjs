@@ -140,67 +140,90 @@ test('large way lookups decode each distinct property group once and share its i
  const decoded=decodeLoadingGauges(encodeLoadingGauges(rows),value=>{parsed++;return Object.freeze(JSON.parse(value));});
  assert.equal(parsed,1);assert.equal(decoded.size,4096);assert.equal(decoded.get(1),decoded.get(4096));assert.ok(Object.isFrozen(decoded.get(1)));
 });
-test('regional stations have collision-aware markers and progressive size thresholds', () => {
+test('country names have one collision-managed layer including non-ISO records', () => {
+  const countries=style.layers.filter(l=>l.id.startsWith('country_label'));
+  assert.deepEqual(countries.map(l=>l.id),['country_label']);
+  const [country]=countries;
+  assert.ok(country.layout['text-padding']>=8);
+  const allows=properties=>featureFilter(country.filter).filter({zoom:6},{type:1,properties});
+  assert.ok(allows({class:'country',iso_a2:'LI',name:'Liechtenstein'}));
+  assert.ok(allows({class:'country',name:'Liechtenstein'}));
+  assert.equal(allows({class:'state',name:'Vaduz'}),false);
+});
+
+test('independent world/regional rail geography is drawn under thematic tracks', () => {
+  assert.ok(style.sources.railBackbone.url.startsWith('https://'));
+  assert.ok(!style.sources.railBackbone.url.includes('openrailwaymap.app'));
+  const backbone=style.layers.filter(l=>l.id.startsWith('rail-backbone-'));
+  assert.deepEqual(backbone.map(l=>l['source-layer']),['railroads','railroads_north_america']);
+  const firstThematic=style.layers.findIndex(l=>l.id==='infrastructure-branch-overview');
+  assert.ok(backbone.every(l=>l.minzoom===4&&l.maxzoom===7&&style.layers.indexOf(l)<firstThematic));
+  assert.ok(backbone.every(l=>l.paint['line-color']==='#728783'&&l.paint['line-dasharray']));
+  for(const l of backbone)assert.ok(!l.filter,'generalized geometry must not invent speed, power, gauge or service attributes');
+});
+
+test('regional station dots survive name collision and begin before level crossings', () => {
   const visible = (layer, zoom, properties) => zoom >= layer.minzoom && (layer.maxzoom === undefined || zoom < layer.maxzoom) && featureFilter(layer.filter).filter({zoom}, {type:1,properties});
   const layers = style.layers.filter(l => l.id.startsWith('station-'));
-  const shown = (zoom, properties) => layers.some(layer => visible(layer, zoom, {state:'present',feature:'station', ...properties}));
-  assert.equal(shown(3.9, {station_size:'large'}),false);
-  assert.equal(shown(4, {station_size:'large'}),true,'provider fill starts at four beneath priority hubs');
-  assert.equal(shown(3, {station_size:'large',tier:3,rank:1}),true,'curated principal hubs start at three');
-  assert.equal(shown(5.9, {station_size:'normal'}),false);
-  assert.equal(shown(6, {station_size:'normal'}),true);
-  assert.equal(shown(6, {station_size:'small'}),true,'zoom-7 tiles supply small stations from zoom 6');
-  // MapLibre 5 rejects vector sources whose tileSize is not 512.
-  for (const [id, source] of Object.entries(style.sources)) if (source.type === 'vector') assert.equal(source.tileSize ?? 512, 512, id);
-  assert.match(style.sources.stationMed.url, /#minzoom=6&maxzoom=7&underzoom=7$/);
-  assert.equal(shown(7, {station_size:'normal'}),true);
-  assert.equal(shown(6, {id:'node-2149761647-train-station',station_size:'large'}),true,'provider copy remains eligible beneath curated placement priority');
-  assert.equal(shown(7, {id:'node-2149761647-train-station',station_size:'large'}),true,'provider labels take over at seven');
-  assert.equal(shown(7, {station_size:'small'}),true);
-  assert.equal(shown(9.9, {station_size:'small'}),true);
-  assert.equal(shown(10, {station_size:'small'}),true);
-  assert.equal(shown(10, {station_size:'small',feature:'halt'}),false);
-  assert.equal(shown(11, {station_size:'small',feature:'halt'}),true);
-  // Metro (from the first station tiles that carry it, zoom 8) before light
-  // rail, monorail, people movers and trams (10): never the reverse.
-  // (Below zoom 8 the provider's overview station tiles carry no metro at all.)
-  assert.equal(shown(8, {station_size:'small',station:'subway'}),true);
-  assert.equal(shown(9.9, {station_size:'large',station:'light_rail'}),false);
-  assert.equal(shown(10, {station_size:'large',station:'light_rail'}),true);
-  assert.equal(shown(9.9, {station_size:'small',station:'monorail'}),false);
-  assert.equal(shown(10, {station_size:'small',station:'monorail'}),true);
-  assert.equal(shown(9.9, {station_size:'normal',station:'tram'}),false);
-  assert.equal(shown(10, {station_size:'normal',station:'tram'}),true);
-  // Sized by mode: the smallest metro station outranks a "large" people mover
-  // or tram station, in name size, label priority and marker size.
-  const names = style.layers.find(l => l.id === 'station-detail-metro-names');
+  const matches = (type, zoom, properties) => layers.filter(layer =>
+    layer.type === type && visible(layer, zoom, {state:'present',feature:'station',...properties}));
+  const names = (zoom,p) => matches('symbol',zoom,p);
+  const dots = (zoom,p) => matches('circle',zoom,p);
+  assert.equal(names(3.9,{station_size:'large'}).length,0);
+  assert.equal(dots(3.9,{station_size:'large'}).length,0,'non-curated stations need a provider point');
+  assert.ok(dots(3,{station_size:'large',tier:6,rank:10}).some(l=>l.id==='station-major-dots'),
+    'curated station nodes are drawn from zoom 3 regardless of name tier');
+  assert.equal(names(3,{station_size:'large',tier:6,rank:10}).length,0,'name placement starts at its curated tier');
+  assert.ok(names(3,{station_size:'large',tier:3,rank:1}).some(l=>l.id==='station-major-3-names'));
+  assert.ok(dots(4,{station_size:'normal'}).length,'station nodes must not be gated by the large-station name threshold');
+  assert.equal(names(5.9,{station_size:'normal'}).length,0);
+  assert.ok(names(6,{station_size:'normal'}).length);
+  assert.ok(dots(6,{station_size:'small'}).length,'zoom-7 station points are available by zoom 6');
+  for (const [id,source] of Object.entries(style.sources)) if(source.type==='vector') assert.equal(source.tileSize??512,512,id);
+  assert.match(style.sources.stationMed.url,/#minzoom=6&maxzoom=7&underzoom=7$/);
+  assert.ok(dots(7,{station_size:'small'}).length);
+  assert.ok(dots(9.9,{station_size:'large',station:'subway'}).length);
+  assert.ok(dots(9.9,{station_size:'large',station:'light_rail'}).length,
+    'mapped points precede light-rail name eligibility');
+  assert.equal(names(9.9,{station_size:'large',station:'light_rail'}).length,0);
+  assert.ok(names(10,{station_size:'large',station:'light_rail'}).length);
+  assert.ok(dots(10,{feature:'halt'}).length,'halt node remains visible while its label is deferred');
+  assert.equal(names(10,{feature:'halt'}).length,0);
+  assert.ok(names(11,{feature:'halt'}).length);
+  const firstCrossing=Math.min(...style.layers.filter(l=>l.id.startsWith('infrastructure-crossing-')).map(l=>l.minzoom));
+  assert.equal(firstCrossing,5);
+  assert.equal(style.layers.find(l=>l.id==='station-major-dots').minzoom,firstCrossing-2);
+  for (const [id,zmin,zmax] of [
+    ['station-stationLow-dots',4,6],['station-stationMed-dots',6,8],
+    ['station-provider-dots',8,12],['station-stations-dots',12,undefined],
+  ]) {
+    const dot=style.layers.find(l=>l.id===id);
+    assert.ok(dot && dot.type==='circle',id);
+    assert.equal(dot.minzoom,zmin,id);
+    assert.equal(dot.maxzoom,zmax,id);
+    assert.ok(style.layers.findIndex(l=>l.id===id)<style.layers.findIndex(l=>l.id==='station-major-3-names'));
+  }
   const sizeAt = (layerId, key, zoom, properties) => {
-    const layer = style.layers.find(l => l.id === layerId), value = (layer.layout[key] ?? layer.paint[key]);
-    return styleSpec.expression.createPropertyExpression(value, styleSpec.latest[layer.type === 'circle' ? (key === 'circle-radius' ? 'paint_circle' : 'layout_circle') : 'layout_symbol'][key]).value.evaluate({zoom}, {type:1, properties});
+    const layer=style.layers.find(l=>l.id===layerId),value=layer.layout[key]??layer.paint[key];
+    return styleSpec.expression.createPropertyExpression(value,styleSpec.latest[layer.type==='circle'?(key==='circle-radius'?'paint_circle':'layout_circle'):'layout_symbol'][key]).value.evaluate({zoom},{type:1,properties});
   };
-  const metroSmall = {state:'present', feature:'station', station:'subway', station_size:'small'};
-  const moverLarge = {state:'present', feature:'station', station:'light_rail', station_size:'large'};
-  const tramLarge = {state:'present', feature:'station', station:'tram', station_size:'large'};
-  for (const [id, key, better] of [['station-detail-metro-names','text-size',(a,b)=>a>b], ['station-detail-metro-names','symbol-sort-key',(a,b)=>a<b], ['station-stations-dots','circle-radius',(a,b)=>a>b], ['station-stations-dots','circle-sort-key',(a,b)=>a>b]])
-    for (const other of [moverLarge, tramLarge]) assert.ok(better(sizeAt(id, key, 14, metroSmall), sizeAt(id, key, 14, other)), `${key}: metro over ${other.station}`);
-  assert.ok(names);
-  assert.equal(shown(9.9, {feature:'tram_stop'}),false);
-  assert.equal(shown(10, {feature:'tram_stop'}),true);
-  for (const layer of layers) {
-    if (layer.type === 'circle') assert.ok(layer.minzoom >= 12, 'unconditional dots only at local scale');
-    else {
-      assert.equal(layer.layout['text-allow-overlap'],false);
-      assert.ok(style.layers.indexOf(layer) > style.layers.findIndex(l => l.id === 'place_label_city'));
-      if (layer.minzoom < 12) {
-        assert.equal(layer.layout['icon-image'],'station-dot');
-        assert.equal(layer.layout['icon-allow-overlap'],false);
-        assert.equal(layer.layout['icon-optional'],false);
-        assert.equal(layer.layout['text-optional'],false);
-        assert.equal(layer.maxzoom <= 12,true);
-      }
-    }
+  const metroSmall={state:'present',feature:'station',station:'subway',station_size:'small'};
+  for (const other of [
+    {state:'present',feature:'station',station:'light_rail',station_size:'large'},
+    {state:'present',feature:'station',station:'tram',station_size:'large'},
+  ]) for (const [id,key,better] of [
+    ['station-detail-metro-names','text-size',(a,b)=>a>b],
+    ['station-detail-metro-names','symbol-sort-key',(a,b)=>a<b],
+    ['station-stations-dots','circle-radius',(a,b)=>a>b],
+    ['station-stations-dots','circle-sort-key',(a,b)=>a>b],
+  ]) assert.ok(better(sizeAt(id,key,14,metroSmall),sizeAt(id,key,14,other)),key);
+  for (const layer of layers.filter(l=>l.type==='symbol')) {
+    assert.equal(layer.layout['text-allow-overlap'],false);
+    assert.equal(layer.layout['icon-image'],undefined,'no name layer owns a collision-dependent station marker');
+    assert.ok(style.layers.indexOf(layer)>style.layers.findIndex(l=>l.id==='place_label_city'));
   }
 });
+
 test('every lifecycle is shown at zoom 7 without a live query or a zoom-8 handoff', () => {
   const layers=style.layers.filter(l=>/^inactive-regional-(construction|proposed|disused|former)$/.test(l.id));
   assert.equal(layers.length,4);
@@ -1046,7 +1069,7 @@ test('search: only stations the layers draw at the zoom are matched', async () =
 test('country names to zoom 7 above station names; states and provinces from zoom 4', async () => {
   const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url)));
   const ids = style.layers.map(l => l.id), last = ids.lastIndexOf.bind(ids);
-  for (const id of ['country_label', 'country_label-other']) {
+  for (const id of ['country_label']) {
     const layer = style.layers.find(l => l.id === id);
     assert.ok(last(id) > last('station-detail-large-names'), `${id} placed before station names`);
     const opacity = z => styleSpec.expression.createPropertyExpression(layer.paint['text-opacity'], styleSpec.latest.paint_symbol['text-opacity']).value.evaluate({zoom: z});

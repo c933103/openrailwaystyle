@@ -7,7 +7,7 @@ import encode from 'vt-pbf';
 const origin='https://openrailwaymap.app';
 test('all catalog ranges match the generated source contract, including the station underzoom override',()=>{
  for(const source of Object.values(railwaySources())){
-  if(!source.url)continue;const [address,fragment='']=source.url.split('#');
+  if(!source.url||!source.url.startsWith(origin+'/'))continue;const [address,fragment='']=source.url.split('#');
   const data={...railTileMetadata(address),...zoomOverrides(fragment)};
   assert.equal(data.minzoom,source.minzoom,address);assert.equal(data.maxzoom,source.maxzoom,address);
  }

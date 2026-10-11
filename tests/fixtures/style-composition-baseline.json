@@ -92,6 +92,37 @@
         "context-constraints-protected-area-label"
       ],
       "reason": "OpenMapTiles park classes come from boundary=national_park/protected_area, leisure=nature_reserve and lower-cased protection_title; boundary=aboriginal_lands is only in the boundary layer. The removed filters could never match. The landuse layer has only a class field, so its area labels had no text."
+    },
+    "regionalStationRailAndCountryFollowup": {
+      "reviewed": "2026-10-10",
+      "addedSources": [
+        "railBackbone"
+      ],
+      "addedLayers": [
+        "rail-backbone-railroads",
+        "rail-backbone-railroads_north_america",
+        "station-major-dots",
+        "station-stationLow-dots",
+        "station-stationMed-dots",
+        "station-provider-dots"
+      ],
+      "removedLayers": [
+        "country_label-other"
+      ],
+      "updatedLayers": [
+        "country_label",
+        "station-*-names (zoom 3–11)"
+      ],
+      "reason": "Intentional independent low-zoom station dots, rail geography under thematic tracks, and a consolidated localized country-name layer. Station labels remain selectively placed."
+    },
+    "overviewMarkerDeduplication": {
+      "baseCommit": "82a1de8174e9cbe5768e941a0a4c0e091bf66825",
+      "reviewed": "2026-10-10",
+      "changedLayers": [
+        "station-stationLow-dots",
+        "station-stationMed-dots"
+      ],
+      "reason": "Only vetted OSM identities/aliases of emitted curated points suppress provider dots before z7; provider labels stay eligible."
     }
   },
   "root": {
@@ -206,6 +237,14 @@
       "minzoom": 7,
       "maxzoom": 16,
       "sha256": "62d90b3b468a3bcf6659225a0a2eb575129b231fd8dc53ea8f34be98287f990e"
+    },
+    {
+      "id": "railBackbone",
+      "type": "vector",
+      "url": "https://papers.reearth.land/naturalearth_transport/tilejson.json",
+      "minzoom": 4,
+      "maxzoom": 10,
+      "sha256": "7d11889eadd3691a36beb5f72d41c6561ffe59527b71e3493444af0bff1ad9f1"
     },
     {
       "id": "trackCounts",
@@ -904,6 +943,24 @@
       "sourceLayer": "contours",
       "minzoom": 11,
       "sha256": "223e852696e031d6fd6de63120dc1b3ac195171a2e3ce4bee7bd6ed4065d764d"
+    },
+    {
+      "id": "rail-backbone-railroads",
+      "type": "line",
+      "source": "railBackbone",
+      "sourceLayer": "railroads",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "ec90a3fc290c01a09d976035646fdf649a167f110c8413fce6d00bb692b8310c"
+    },
+    {
+      "id": "rail-backbone-railroads_north_america",
+      "type": "line",
+      "source": "railBackbone",
+      "sourceLayer": "railroads_north_america",
+      "minzoom": 4,
+      "maxzoom": 7,
+      "sha256": "6b290b5f4bdd6e730ca27b2288a5cc7cf2558d914bbb9874648f25006d66353e"
     },
     {
       "id": "infrastructure-branch-overview",
@@ -1701,6 +1758,41 @@
       "sha256": "1669fc441948e6d089b0a76dcbc548854a0bf857c2a670c35ce714045d7e9611"
     },
     {
+      "id": "station-stationLow-dots",
+      "type": "circle",
+      "source": "stationLow",
+      "sourceLayer": "standard_railway_text_stations_low",
+      "minzoom": 4,
+      "maxzoom": 6,
+      "sha256": "d57a96093d453d010a2dfa90168bbdcf3acad80faa00db8ef9e14c4ef21a5fd3"
+    },
+    {
+      "id": "station-stationMed-dots",
+      "type": "circle",
+      "source": "stationMed",
+      "sourceLayer": "standard_railway_text_stations_med",
+      "minzoom": 6,
+      "maxzoom": 8,
+      "sha256": "d8e3e11bc8703e24e6ca1bc2cb6dd20ae1b10389f3a6d055ed9040073c6e155d"
+    },
+    {
+      "id": "station-major-dots",
+      "type": "circle",
+      "source": "stationMajor",
+      "minzoom": 3,
+      "maxzoom": 7,
+      "sha256": "833da3b1b025be88426462ef61b8ebfe7de7369eaf138101a4cd2b3f6c6b2e66"
+    },
+    {
+      "id": "station-provider-dots",
+      "type": "circle",
+      "source": "stations",
+      "sourceLayer": "standard_railway_text_stations",
+      "minzoom": 8,
+      "maxzoom": 12,
+      "sha256": "c7b75aaee7383122017e80a433ac56c3f59bf72e34031930ba4a9c9b2afe463e"
+    },
+    {
       "id": "station-former-dots",
       "type": "circle",
       "source": "stations",
@@ -2083,7 +2175,7 @@
       "sourceLayer": "standard_railway_text_stations_low",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "3d6bb2d712d07e0f262a8476e8e742723281440a8ea343d0047a5b0abfac01ea"
+      "sha256": "a0f9504fc7f287ec93edf8f1fb033c3704464d0d125b92d765769fe63504d777"
     },
     {
       "id": "station-stationMed-mover-names",
@@ -2092,7 +2184,7 @@
       "sourceLayer": "standard_railway_text_stations_med",
       "minzoom": 6,
       "maxzoom": 8,
-      "sha256": "4c59b253719d954f5a38ced5a6889a770b5479e5dcc5d4569e16bd3a6a85aff1"
+      "sha256": "d6bbb5f547d01d7122dc65b64f7b45fb88536249047dcbb234c6768d375e8775"
     },
     {
       "id": "station-stations-mover-names",
@@ -2101,7 +2193,7 @@
       "sourceLayer": "standard_railway_text_stations",
       "minzoom": 8,
       "maxzoom": 12,
-      "sha256": "efc8979fd45bb27a40ab193b1b535e2ec819b9714bef4f5bd1f0e89eaac6da1c"
+      "sha256": "1e73c3ecf890042d1f1c3e26b6a53c2f2e0991aca13aad385e763c6858641e25"
     },
     {
       "id": "station-stationLow-light-rail-names",
@@ -2110,7 +2202,7 @@
       "sourceLayer": "standard_railway_text_stations_low",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "a7c7f2f41ede08b938c1ed3d3497fe86dc0c7cb2103daa7d9511a52a41e5c059"
+      "sha256": "b5374f5ab109b98ac6412eb78a524635abae7621eedd35b614ac6dd2a2a08ce0"
     },
     {
       "id": "station-stationMed-light-rail-names",
@@ -2119,7 +2211,7 @@
       "sourceLayer": "standard_railway_text_stations_med",
       "minzoom": 6,
       "maxzoom": 8,
-      "sha256": "cd06e2fce91f2b514729d7f1c8bee1a8c467a1d021747603a0a91e0d75c6304c"
+      "sha256": "017f8a7c95041a5a220232d340ae1431456ceb25235356e7f56621a7e90739dc"
     },
     {
       "id": "station-stations-light-rail-names",
@@ -2128,7 +2220,7 @@
       "sourceLayer": "standard_railway_text_stations",
       "minzoom": 8,
       "maxzoom": 12,
-      "sha256": "ef7b1e92e2b3bd4254098688175e076d6bcd286ebc33a951dad1d5915097442f"
+      "sha256": "f9a5f24afdf0485d08c1969e711ddf603c19449815379955652589ecc7054d5b"
     },
     {
       "id": "station-stationLow-metro-names",
@@ -2137,7 +2229,7 @@
       "sourceLayer": "standard_railway_text_stations_low",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "558e13d5e76e954add758796e94ade901ce0b4db520215757d4917f268f413a0"
+      "sha256": "b250e8427998b76bf20d90aacbe68e89e3f6c08df42f3181bf351efe1c5a61b6"
     },
     {
       "id": "station-stationMed-metro-names",
@@ -2146,7 +2238,7 @@
       "sourceLayer": "standard_railway_text_stations_med",
       "minzoom": 6,
       "maxzoom": 8,
-      "sha256": "35b4e37a5c339dd6176c13846b787cbffff958672e5c0f7c538f37d8ffacb3f9"
+      "sha256": "65ea39c8f7075e155aed3e66b6077b2f09ea7c0596caac6e49051b35b4f0debd"
     },
     {
       "id": "station-stations-metro-names",
@@ -2155,7 +2247,7 @@
       "sourceLayer": "standard_railway_text_stations",
       "minzoom": 8,
       "maxzoom": 12,
-      "sha256": "5682713c17ca25b7ddadc6998b8c63bf87d1fd2ef26c4d84e963adfd780f1d31"
+      "sha256": "a4d9ce7edd604a2793bb517f1c8c96429344068ee81ea3c42cae3dd92aaa3d7c"
     },
     {
       "id": "station-stationLow-halt-names",
@@ -2164,7 +2256,7 @@
       "sourceLayer": "standard_railway_text_stations_low",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "cbb553bb17c41593ce07a82000c40409fe876da9bfdf376bf958d07827a4bafe"
+      "sha256": "76842d6d1609e600384fb956f3584d07d9508eada066ec21c703c865659e04bb"
     },
     {
       "id": "station-stationMed-halt-names",
@@ -2173,7 +2265,7 @@
       "sourceLayer": "standard_railway_text_stations_med",
       "minzoom": 6,
       "maxzoom": 8,
-      "sha256": "956f1636ef2c2740f1931a4d6d5af9624aae415ae42f0421bd81be797116ea4b"
+      "sha256": "d0e5b150dbf62caace85d4b03d5075aff5ad99937d16a1988d085d93679c9b23"
     },
     {
       "id": "station-stations-halt-names",
@@ -2182,7 +2274,7 @@
       "sourceLayer": "standard_railway_text_stations",
       "minzoom": 8,
       "maxzoom": 12,
-      "sha256": "cdf5954f14587ac2afafe5012dfba12bd87f9fdb6f35536a89cc32bb63bff71d"
+      "sha256": "751bbdf1f7c638118cc66b954aef7fc3ded98f7e8d158526289e07d9f2dd8877"
     },
     {
       "id": "station-stationLow-small-names",
@@ -2191,7 +2283,7 @@
       "sourceLayer": "standard_railway_text_stations_low",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "780aa51f7d4a332a18240ae860505fd04d26f60964e577c06dd53f1a3e9c7133"
+      "sha256": "513a95380cc141a2208b3c7759eb3c6979b0e1fddf7b2e6954f1d8c32b384923"
     },
     {
       "id": "station-stationMed-small-names",
@@ -2200,7 +2292,7 @@
       "sourceLayer": "standard_railway_text_stations_med",
       "minzoom": 6,
       "maxzoom": 8,
-      "sha256": "e48b9634c3e74c16aff17b37b4511515d80d9dcb4fd9a623a19f9ec1a3319b14"
+      "sha256": "4fe44b2dd3e469a568f3d0ce109d2c1b019b641ea407102fdb53a3193dc821fd"
     },
     {
       "id": "station-stations-small-names",
@@ -2209,7 +2301,7 @@
       "sourceLayer": "standard_railway_text_stations",
       "minzoom": 8,
       "maxzoom": 12,
-      "sha256": "58ee6bc5f11adbbfa377bfff173035d9681a3b3c9e6fdb09057dfabc508fac16"
+      "sha256": "5b03690500900c8405b68ab1bf51b67c91daf101bd30cebe3d522103b820d9d5"
     },
     {
       "id": "station-stationLow-normal-names",
@@ -2218,7 +2310,7 @@
       "sourceLayer": "standard_railway_text_stations_low",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "2ecfc187c6a300ac09f471eb6e801a40857eccf84a2247c296d30f4ed5188f76"
+      "sha256": "1b1d6ba1ef9bdea680ec655cba3592e73f9dcc76f433d81c71761bb90b46704a"
     },
     {
       "id": "station-stationMed-normal-names",
@@ -2227,7 +2319,7 @@
       "sourceLayer": "standard_railway_text_stations_med",
       "minzoom": 6,
       "maxzoom": 8,
-      "sha256": "884f709b27a78b63c73ae91cee6b5f0bb2f71b661a962c8dac481cdafbc97911"
+      "sha256": "8d7f9e00cc6baad068b50c6729af4f63a2f2e848d53df0e93f4ce370381b891e"
     },
     {
       "id": "station-stations-normal-names",
@@ -2236,7 +2328,7 @@
       "sourceLayer": "standard_railway_text_stations",
       "minzoom": 8,
       "maxzoom": 12,
-      "sha256": "3c5237a96e1735af2e28c6dfd7f3506448dfbfd673e00766cc158e25b1bc34c8"
+      "sha256": "9767b3e6cefa69bb07849a4e28bd1fdde8cde6b0ce05a4affc8a7b2b3e2135b6"
     },
     {
       "id": "station-stationLow-large-names",
@@ -2245,7 +2337,7 @@
       "sourceLayer": "standard_railway_text_stations_low",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "f882fb10b76c3822aada8fbdf7acabc20eed70e356ebc38e54b3318b05ebda97"
+      "sha256": "6a325dc96ca56e75c3b2f7e76cd112f063e0b3ae429565c2c612ea5af1d6206a"
     },
     {
       "id": "station-stationMed-large-names",
@@ -2254,7 +2346,7 @@
       "sourceLayer": "standard_railway_text_stations_med",
       "minzoom": 6,
       "maxzoom": 8,
-      "sha256": "58f00a45fc6002d4e753ec1bac768aee85fd984124d1179a6efd1ad8c24cef85"
+      "sha256": "53ea3690d6a25dfd6c39626af945692d570b1a8d5b501ac10dfb102df1dd92fc"
     },
     {
       "id": "station-stations-large-names",
@@ -2263,7 +2355,7 @@
       "sourceLayer": "standard_railway_text_stations",
       "minzoom": 8,
       "maxzoom": 12,
-      "sha256": "aca8eae66f428da7e24d31786bc7560c8a55d30cddab6825a7decfc32810a732"
+      "sha256": "06261d329fbf71f5f637fedff497452aaa6f7a2b8da78868edf3fc688d94c9da"
     },
     {
       "id": "station-major-6-names",
@@ -2271,7 +2363,7 @@
       "source": "stationMajor",
       "minzoom": 6,
       "maxzoom": 7,
-      "sha256": "40ab27acd9985dcc1c22f61f3f01ad6715222374450fecc7bc3cf89861a73d91"
+      "sha256": "387fdc891cacc89bd1a3bbb9a0aac34a05c48424aa7f35d86b9b717644c8e174"
     },
     {
       "id": "station-major-5-names",
@@ -2279,7 +2371,7 @@
       "source": "stationMajor",
       "minzoom": 5,
       "maxzoom": 7,
-      "sha256": "c0008712b8297131777d7ca6fd6ecebd236a34f4edc489878a6dc00def24c93c"
+      "sha256": "6fd057a758a5834e0be86529cec58a6b65ae1686e4143541e3bd3eb900b85498"
     },
     {
       "id": "station-major-4-names",
@@ -2287,7 +2379,7 @@
       "source": "stationMajor",
       "minzoom": 4,
       "maxzoom": 7,
-      "sha256": "adbe8eba2fbba7baf1a9eb978704a7bfbb601793f8edbafd035a5777d4700908"
+      "sha256": "e8735e0d41673de57ab0979d5d1b27cb72b6d8ccbc8bb9b861bace2ed597b7c5"
     },
     {
       "id": "station-major-3-names",
@@ -2295,7 +2387,7 @@
       "source": "stationMajor",
       "minzoom": 3,
       "maxzoom": 7,
-      "sha256": "594d82779dde14507dc1c16b1aafd41713bc8ca7d6dd41247272695e9dc89609"
+      "sha256": "399a96ec411a9f9c7935facec254d368750faa9ba729333b5cefbb6248c79886"
     },
     {
       "id": "station-former-names",
@@ -2362,22 +2454,13 @@
       "sha256": "533ceab5eb16cd40f05359ea6c6057f712c4bac5287935a2cd145ee390d7ab7e"
     },
     {
-      "id": "country_label-other",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "sourceLayer": "place",
-      "minzoom": 1,
-      "maxzoom": 8,
-      "sha256": "56cc5264148dcf221e15bb501c96a802ab7bd4781d30b45a6914d2da06598219"
-    },
-    {
       "id": "country_label",
       "type": "symbol",
       "source": "openmaptiles",
       "sourceLayer": "place",
       "minzoom": 1,
       "maxzoom": 8,
-      "sha256": "4255373d45d823c6f8ae88cbb6b400b59842e8d6f91954a687f83d7a37a597d4"
+      "sha256": "1181f62018eca7eee562f1bc061befbf6bf52f237448402daec3728686aa99ba"
     }
   ],
   "reviewedUpdates": [

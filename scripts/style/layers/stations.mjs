@@ -4,10 +4,10 @@ import {present} from './railway-expressions.mjs';
 
 // MapLibre places symbols from top to bottom, so names retain their exact
 // importance-tier order independently of the platform and dot layers.
-export function stationLayers(curatedFilter) {
+export function stationLayers(curatedFilter, curatedMarkerFilter = ['literal',true]) {
   const platforms = [], dots = [], names = [];
-  // Keep distant views sparse. Marker and name form one collision-aware symbol
-  // below zoom 12; individual circles appear only at local scale.
+  // Labels alone use collision placement. Station locations are real circle
+  // layers, independent of the number of labels that fit at any zoom.
   // Zoom 4–5: large stations; 6: large and normal, plus small ones from the
   // zoom-7 tiles; 7 and above: all.
   const stationSelection = ['any', ['>=', ['zoom'], 6], ['==', ['get','station_size'], 'large']];
@@ -69,8 +69,7 @@ export function stationLayers(curatedFilter) {
     names.push({
       id: `station-${source}-${tier}-names`, type: 'symbol', source, 'source-layer': layer, minzoom, maxzoom,
       filter: ['all', filter,...(source==='stations'?[]:[source==='stationMed'?['any',['>=',['zoom'],7],curatedFilter]:curatedFilter]), ...(source === 'stations' ? [stationSelection, stationFeatures] : source === 'stationMed' ? [zoom6Small] : [stationSelection])],
-      layout: { ...stationText, 'icon-image': 'station-dot', 'icon-size': ['interpolate', ['linear'], ['zoom'], 4, 0.8, 6, 0.95, 11, bySize(1.25, 1.15, 1.05, 0.9, 0.8)],
-        'icon-padding': 12, 'icon-allow-overlap': false, 'icon-ignore-placement': false, 'icon-optional': false, 'text-optional': false },
+      layout: {...stationText, 'text-optional': false},
       paint: stationInk,
     });
   }
@@ -78,8 +77,39 @@ export function stationLayers(curatedFilter) {
   for(const tier of [6,5,4,3])names.push({
    id:`station-major-${tier}-names`,type:'symbol',source:'stationMajor',minzoom:tier,maxzoom:7,
    filter:['==',['get','tier'],tier],
-   layout:{...stationText,'text-padding':['step',['zoom'],MAJOR_STATION_DENSITY[0].padding,...MAJOR_STATION_DENSITY.slice(1).flatMap(({zoom,padding})=>[zoom,padding])],'symbol-sort-key':['get','rank'],'icon-image':'station-dot','icon-size':.85,'icon-padding':12,'icon-allow-overlap':false,'icon-ignore-placement':false,'icon-optional':false,'text-optional':false},paint:stationInk,
+   layout:{...stationText,'text-padding':['step',['zoom'],MAJOR_STATION_DENSITY[0].padding,...MAJOR_STATION_DENSITY.slice(1).flatMap(({zoom,padding})=>[zoom,padding])],'symbol-sort-key':['get','rank'],'text-optional':false},paint:stationInk,
   });
+  // Locations begin before level crossings (zoom 5), initially from the
+  // curated global points at zoom 3. The provider overview/detail tiles then
+  // contribute every station point THEY CONTAIN, irrespective of whether its
+  // name fits. Do not enumerate detailed z8 child tiles at world zoom: that
+  // would produce unbounded network amplification. A complete worldwide
+  // inventory below the provider's detail zoom needs prebuilt overview data.
+  const marker = (id, source, sourceLayer, minzoom, maxzoom, filter, sizePaint) => dots.push({
+    id, type: 'circle', source, ...(sourceLayer ? {'source-layer': sourceLayer} : {}),
+    minzoom, maxzoom, filter,
+    layout: {'circle-sort-key': bySize(4, 3, 2, 1, 0)},
+    paint: {
+      'circle-color': '#ffa323', 'circle-stroke-color': '#123e52',
+      'circle-stroke-width': ['interpolate',['linear'],['zoom'],3,0.7,8,1,12,1.5],
+      'circle-radius': sizePaint,
+    },
+  });
+  const earlyRadius = ['interpolate',['linear'],['zoom'],3,1.4,5,1.9,7,2.5,12,3.2];
+  const overviewPoints = ['all', current, ['==',['coalesce',['get','feature'],'station'],'station']];
+  // Suppress only provider dots whose identities already have a curated dot.
+  // At z7 the curated source ends, so the provider marker takes over.
+  marker('station-stationLow-dots','stationLow','standard_railway_text_stations_low',4,6,
+    ['all',overviewPoints,curatedMarkerFilter],earlyRadius);
+  marker('station-stationMed-dots','stationMed','standard_railway_text_stations_med',6,8,
+    ['all',overviewPoints,['any',['>=',['zoom'],7],curatedMarkerFilter]],earlyRadius);
+  // The vetted overview set is small enough to draw every dot from zoom 3;
+  // its selected tier remains a LABEL priority, not a location cutoff.
+  marker('station-major-dots','stationMajor',null,3,7,
+    ['all',['==',['get','feature'],'station'],['has','tier']],earlyRadius);
+  marker('station-provider-dots','stations','standard_railway_text_stations',8,12,
+    ['all',current,['match',['coalesce',['get','feature'],'station'],['station','halt','tram_stop'],true,false]],
+    ['interpolate',['linear'],['zoom'],8,2,12,bySize(5,4,3.2,2.7,2.3)]);
   // Close-zoom infrastructure details use the worldwide provider sources directly,
   // independently of the original Hack4Rail demo styles. Platform tiles omit ref;
   // the app's shared feature-API queue supplies platformNumbers and full edge lengths.
