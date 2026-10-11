@@ -975,3 +975,11 @@ The trusted workflow supplies the producer outcome, and cache restore does not
 include inventory checkpoints. CLI outcomes/receipts are not cryptographic
 invocation proofs. Same-bound historical feeds can be staged without being
 misrepresented as newly acquired. No provider request is part of staging.
+
+## Offline matching prerequisite
+
+The [timetable identity evidence and matching contract](timetable-matching-contract.md)
+provides bounded, opt-in capture and a pure fixture-tested decision contract. It
+is not enabled in production and does not apply timetable frequencies to OSM or
+change route geometry. Compiled or geometry-bearing feed counts are not verified
+OSM-match counts.
