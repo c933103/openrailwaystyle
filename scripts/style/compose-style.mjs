@@ -1,3 +1,4 @@
+import {curatedStationMarkerFilter} from '../major-stations.mjs';
 import {seabedContourOpacity} from '../../styles/bathymetry.mjs';
 import {ORM} from '../../styles/map-model.mjs';
 import {annotateLayers} from '../../styles/layer-semantics.mjs';
@@ -20,7 +21,7 @@ import {assertSourceContracts} from './source-contract.mjs';
 // Each call owns its layer objects: runtime localization/units may mutate them.
 export function composeStyle({majorStationData, curatedFilter}) {
   const rail = createRailwayLayers(), lifecycle = lifecycleLayers();
-  const stations = stationLayers(curatedFilter), infrastructure = infrastructureContextLayers();
+  const stations = stationLayers(curatedFilter,curatedStationMarkerFilter(majorStationData)), infrastructure = infrastructureContextLayers();
   const context = contextLayers(), constraints = constraintLayers(), roads = roadLayers();
   const [background, ...fills] = baseFills;
   const layers = structuredClone([

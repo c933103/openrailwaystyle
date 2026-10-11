@@ -114,6 +114,15 @@
         "station-*-names (zoom 3–11)"
       ],
       "reason": "Intentional independent low-zoom station dots, rail geography under thematic tracks, and a consolidated localized country-name layer. Station labels remain selectively placed."
+    },
+    "overviewMarkerDeduplication": {
+      "baseCommit": "82a1de8174e9cbe5768e941a0a4c0e091bf66825",
+      "reviewed": "2026-10-10",
+      "changedLayers": [
+        "station-stationLow-dots",
+        "station-stationMed-dots"
+      ],
+      "reason": "Only vetted OSM identities/aliases of emitted curated points suppress provider dots before z7; provider labels stay eligible."
     }
   },
   "root": {
@@ -1755,7 +1764,7 @@
       "sourceLayer": "standard_railway_text_stations_low",
       "minzoom": 4,
       "maxzoom": 6,
-      "sha256": "2eb57fe5e9a74eb8e9266fd36f6017efa8bbfb004cf415f90aeece4bbf40865d"
+      "sha256": "d57a96093d453d010a2dfa90168bbdcf3acad80faa00db8ef9e14c4ef21a5fd3"
     },
     {
       "id": "station-stationMed-dots",
@@ -1764,7 +1773,7 @@
       "sourceLayer": "standard_railway_text_stations_med",
       "minzoom": 6,
       "maxzoom": 8,
-      "sha256": "422ee39f17c2f35b1fb0bd3e8394f875fffa4fab738bd2853d994660dbdb448a"
+      "sha256": "d8e3e11bc8703e24e6ca1bc2cb6dd20ae1b10389f3a6d055ed9040073c6e155d"
     },
     {
       "id": "station-major-dots",

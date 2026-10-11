@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {MAJOR_STATION_DENSITY,validateStationCountries,majorStationsGeoJSON,selectMajorStations,distanceKm,separationPixels,duplicatesMajorStation} from '../scripts/major-stations.mjs';
 import {readFile} from 'node:fs/promises';
+import {featureFilter} from '@maplibre/maplibre-gl-style-spec';
+import {curatedStationMarkerFilter} from '../scripts/major-stations.mjs';
 import {osmObject} from '../styles/map-model.mjs';
 const entry=(id,lon,lat,extra={})=>({wikidata:`Q${id}`,osm:`node/${id}`,lon,lat,name:`Hub ${id}`,country:'X',metro:`City ${id}`,region:'Test',rank:id,minZoom:3,basis:'Curated passenger hub; https://www.wikidata.org/wiki/Q'+id,...extra});
 test('station selection spreads hubs globally and postpones a second station in one metropolis',()=>{
@@ -69,7 +71,29 @@ test('provider fill remains available across regional overview zooms beneath cur
 
 test('provider station names stay eligible even when the same identity is curated',async()=>{
  const style=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url)));
- const provider=style.layers.filter(l=>l.source==='stationLow'||l.source==='stationMed');
+ const provider=style.layers.filter(l=>l.type==='symbol'&&(l.source==='stationLow'||l.source==='stationMed'));
  assert.ok(provider.length);
  for(const layer of provider){const filter=JSON.stringify(layer.filter);assert.equal(filter.includes('Q54451'),false,layer.id);assert.equal(filter.includes('node-895371274'),false,layer.id);}
+});
+
+test('provider overview dots suppress curated identities and aliases only until the z7 handoff',async()=>{
+ const style=JSON.parse(await readFile(new URL('../styles/world.style.json',import.meta.url)));
+ const point=style.sources.stationMajor.data.features.find(f=>f.properties.osm_ids.includes(';'));assert.ok(point);
+ const allows=(id,z,properties)=>featureFilter(style.layers.find(l=>l.id===id).filter).filter({zoom:z},{type:1,properties:{feature:'station',state:'present',station_size:'large',...properties}});
+ const identities=point.properties.osm_ids.split(';');
+ for(const z of [4,5,6])for(const id of identities)for(const properties of [{id},{id:id+'-train-station'},{osm_id:id.replace('-','/')}]){
+  const source=z<6?'stationLow':'stationMed';
+  assert.equal(allows(`station-${source}-dots`,z,properties),false,'curated identity has just one circle');
+  assert.ok(allows(`station-stationLow-large-names`,z,properties),'provider name eligibility is independent');
+ }
+ for(const id of identities)assert.ok(allows('station-stationMed-dots',7,{id:id+'-train-station'}),'provider dot takes over at z7');
+ assert.ok(allows('station-stationLow-dots',5,{id:identities[0]+'9-train-station'}),'prefix-like different object stays visible');
+ assert.ok(allows('station-stationLow-dots',5,{id:'node-1-train-station',wikidata:point.properties.wikidata,name:point.properties.name}),'different OSM station stays visible even with shared Wikidata/name');
+ const all=JSON.parse(await readFile(new URL('../styles/data-src/major-stations.json',import.meta.url)));
+ const omitted=selectMajorStations(all).find(e=>e.tier===7);assert.ok(omitted);
+ assert.ok(allows('station-stationLow-dots',5,{id:omitted.osm.replace('/','-')+'-train-station',wikidata:omitted.wikidata}),'an omitted curated candidate cannot hide a provider point');
+});
+test('an empty curated geometry set suppresses no provider markers',()=>{
+ const filter=curatedStationMarkerFilter({type:'FeatureCollection',features:[]});
+ assert.equal(featureFilter(filter).filter({zoom:4},{type:1,properties:{id:'node-1'}}),true);
 });
