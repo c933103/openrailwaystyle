@@ -3,6 +3,24 @@ import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {BROWSER_LIBRARIES} from './browser-libraries.mjs';
+import {gzipSync} from 'node:zlib';
+
+// Empty, explicitly synthetic reference wire responses for unrelated UI
+// checks. Real source acceptance uses the published pipeline and never this.
+const referenceGeneration='0'.repeat(24),referenceEmpty=gzipSync(Buffer.from([26,0]));
+const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
+const referenceIndex=JSON.stringify({schema:1,complete:true,generation:referenceGeneration,
+ tiles:[{key:'0/0/0',bytes:referenceEmpty.length,sha256:hash(referenceEmpty)}]});
+const referenceManifest={schema:1,complete:true,generation:referenceGeneration,minzoom:0,maxzoom:6,
+ license:'ODbL-1.0',wayCount:1,oldestSource:'2026-10-09T20:00:00Z',newestSource:'2026-10-09T20:00:00Z',
+ sources:Array.from({length:8},()=>({source:'empty synthetic UI wire fixture'})),indexSha256:hash(referenceIndex)};
+export function emptyReferenceFixture(path){
+ if(!path.includes('/data/mainline-reference/'))return null;
+ if(path.endsWith('/manifest.json'))return {json:referenceManifest};
+ if(path.endsWith('/index.json'))return {contentType:'application/json',body:referenceIndex};
+ if(path.endsWith('.pbf.gz'))return {contentType:'application/octet-stream',body:referenceEmpty};
+ return null;
+}
 
 // The UI suite uses the real production renderer, not a renderer mock. Serve
 // exactly the same built, verified bytes to isolated renderer tests. Production
@@ -40,6 +58,7 @@ export async function installEmptyMapProviders(context, base, {firstParty = 'fix
       if(firstParty === 'network') return route.continue();
       if(path.endsWith('/major-stations.geojson'))return route.fulfill({json:{type:'FeatureCollection',features:[]}});
       if(path.endsWith('/world.style.json'))return route.fulfill({json:style});
+      const reference=emptyReferenceFixture(path);if(reference)return route.fulfill(reference);
       if(path.includes('/data/polar/'))return route.fulfill({status:404,body:''});
       if(path.includes('/data/'))return route.fulfill({json:{tiles:[],features:[],countries:{}}});
       return route.continue();

@@ -8,6 +8,7 @@ const STATION = [...LABEL, 'feature', 'state', 'station', 'station_size'];
 const CONTOUR = {contours:['ele', 'level']};
 
 export const SOURCE_CONTRACTS = {
+  railReference:{atlas_mainline_overview:['classification','rank']},
   openmaptiles: {
     landuse:[...LABEL, 'class'],
     landcover:['class', 'subclass'],

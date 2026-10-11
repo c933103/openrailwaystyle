@@ -1,4 +1,4 @@
-import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
+import {installEmptyMapProviders,emptyReferenceFixture} from './browser-renderer-fixture.mjs';
 import {launchBrowser} from './browser.mjs';
 import {ormVectorFixture} from './orm-vector-fixture.mjs';
 import {readFile,mkdir} from 'node:fs/promises';
@@ -33,6 +33,7 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  await page.route('https://tuiles.enliberte.fr/planet.pmtiles',route=>route.fulfill({body:archive,contentType:'application/octet-stream'}));
  if(glyphFile)await page.route('https://tuiles.enliberte.fr/fonts/**',async route=>route.fulfill({body:await readFile(glyphFile),contentType:'application/x-protobuf'}));
  await page.route('**/data/**/index.json',route=>route.fulfill({json:{tiles:[]}}));
+ await page.route('**/data/mainline-reference/**',route=>route.fulfill(emptyReferenceFixture(new URL(route.request().url()).pathname)));
  await page.route('https://openrailwaymap.app/**',async route=>{
   const path=new URL(route.request().url()).pathname;
   const direct=ormVectorFixture(path,{'standard_railway_platform_edges':edges});

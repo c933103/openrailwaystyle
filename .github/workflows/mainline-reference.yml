@@ -1,0 +1,243 @@
+name: Build worldwide OSM railway reference
+on:
+  workflow_dispatch:
+    inputs:
+      source_date:
+        description: 'Dated Geofabrik snapshot (YYYY-MM-DD); blank uses two days ago'
+        type: string
+        required: false
+      preview_pr:
+        description: 'PR number for a manually dispatched preview (required away from main)'
+        type: number
+        required: false
+  schedule:
+    - cron: '19 3 3 * *'
+  push:
+    branches: [main]
+    paths: &reference_paths ['.github/workflows/mainline-reference.yml', 'scripts/**/*.mjs', 'scripts/*.py', 'styles/**/*.mjs', 'styles/**/*.js', 'styles/index.html', 'styles/app.css', 'styles/world.style.json', 'styles/data-src/major-stations.json', 'tests/fixtures/browser-glyphs/0-255.pbf', 'package.json', 'package-lock.json']
+  pull_request:
+    paths: *reference_paths
+permissions:
+  contents: read
+concurrency:
+  group: mainline-reference-${{ (github.event.pull_request.number || inputs.preview_pr) && format('pr-{0}', github.event.pull_request.number || inputs.preview_pr) || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      date: ${{ steps.plan.outputs.date }}
+      sizes: ${{ steps.budget.outputs.sizes }}
+      checksums: ${{ steps.budget.outputs.checksums }}
+      checkpoints: ${{ steps.checkpoints.outputs.checkpoints }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: plan
+        env:
+          REQUESTED: ${{ inputs.source_date }}
+          PREVIEW_PR: ${{ github.event.pull_request.number || inputs.preview_pr }}
+        run: |
+          python - <<'PY'
+          import datetime as d, os, re
+          date=os.environ.get('REQUESTED') or str(d.datetime.now(d.timezone.utc).date()-d.timedelta(days=2))
+          if os.environ['GITHUB_REF']!='refs/heads/main' and not re.fullmatch(r'[1-9]\d*',os.environ.get('PREVIEW_PR','')): raise ValueError('Non-production builds require a PR number')
+          if not re.fullmatch(r'\d{4}-\d{2}-\d{2}',date): raise ValueError('Invalid source date')
+          d.date.fromisoformat(date)
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f: f.write('date='+date+'\n')
+          PY
+      - name: Check the full worldwide download budget before acquiring any PBF
+        id: budget
+        run: python scripts/plan-mainline-acquisition.py '${{ steps.plan.outputs.date }}'
+      - name: Find completed continent artifacts across branch cache scopes
+        id: checkpoints
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/find-mainline-checkpoints.mjs
+  extract:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        region: [africa, antarctica, asia, australia-oceania, central-america, europe, north-america, south-america]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore completed continent checkpoint
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: extract-output
+          key: mainline-extract-v1-${{ matrix.region }}-${{ needs.plan.outputs.date }}-${{ hashFiles('scripts/acquire-mainline-extract.py') }}-${{ fromJSON(needs.plan.outputs.checksums)[matrix.region] }}
+      - name: Reuse a completed continent artifact before requesting another PBF body
+        if: steps.cache.outputs.cache-hit != 'true' && fromJSON(needs.plan.outputs.checkpoints)[matrix.region].artifact
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ fromJSON(needs.plan.outputs.checkpoints)[matrix.region].artifact }}
+          run-id: ${{ fromJSON(needs.plan.outputs.checkpoints)[matrix.region].run }}
+          github-token: ${{ github.token }}
+          path: extract-output
+          merge-multiple: true
+      - name: Validate checkpoint date, identity and export checksum
+        id: checkpoint
+        env:
+          SOURCE_REGION: ${{ matrix.region }}
+          SOURCE_DATE: ${{ needs.plan.outputs.date }}
+          PLANNED_BYTES: ${{ fromJSON(needs.plan.outputs.sizes)[matrix.region] }}
+          PLANNED_MD5: ${{ fromJSON(needs.plan.outputs.checksums)[matrix.region] }}
+        run: |
+          python - <<'PY'
+          import importlib.util,os,shutil
+          from pathlib import Path
+          spec=importlib.util.spec_from_file_location('plan','scripts/plan-mainline-acquisition.py')
+          plan=importlib.util.module_from_spec(spec);spec.loader.exec_module(plan)
+          root=Path('extract-output')
+          valid=plan.validate_checkpoint(root,os.environ['SOURCE_REGION'],os.environ['SOURCE_DATE'],int(os.environ['PLANNED_BYTES']),os.environ['PLANNED_MD5'])
+          if not valid and root.exists(): shutil.rmtree(root)
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output: output.write('valid='+str(valid).lower()+'\n')
+          print('Completed dated checkpoint reused:',valid)
+          PY
+      - name: Make room for one bounded PBF on the disposable runner
+        if: steps.checkpoint.outputs.valid != 'true'
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo apt-get update -qq
+          sudo apt-get install -y osmium-tool
+      - name: Download one dated extract, verify checksum and export complete ways
+        if: steps.checkpoint.outputs.valid != 'true'
+        env:
+          PLANNED_BYTES: ${{ fromJSON(needs.plan.outputs.sizes)[matrix.region] }}
+          SOURCE_REGION: ${{ matrix.region }}
+          SOURCE_DATE: ${{ needs.plan.outputs.date }}
+        run: |
+          python - <<'PY'
+          import importlib.util, os
+          from pathlib import Path
+          spec=importlib.util.spec_from_file_location('acquire','scripts/acquire-mainline-extract.py')
+          acquire=importlib.util.module_from_spec(spec);spec.loader.exec_module(acquire)
+          acquire.MAX_PBF_BYTES=min(acquire.MAX_PBF_BYTES,int(os.environ['PLANNED_BYTES']))
+          acquire.acquire(os.environ['SOURCE_REGION'],os.environ['SOURCE_DATE'],Path('extract-output'))
+          PY
+      - name: Require the planned byte bound for new and cached exports
+        env:
+          PLANNED_BYTES: ${{ fromJSON(needs.plan.outputs.sizes)[matrix.region] }}
+          PLANNED_MD5: ${{ fromJSON(needs.plan.outputs.checksums)[matrix.region] }}
+        run: |
+          python - <<'PY'
+          import json, os
+          source=json.load(open('extract-output/source.json'))
+          if source['pbfBytes']!=int(os.environ['PLANNED_BYTES']) or source['sourceMd5']!=os.environ['PLANNED_MD5']: raise ValueError('Dated source changed after worldwide planning')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mainline-source-${{ matrix.region }}
+          path: extract-output
+          compression-level: 0
+          retention-days: 14
+  assemble:
+    needs: [plan, extract]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    concurrency:
+      group: mainline-publication-${{ github.event.pull_request.number || inputs.preview_pr || 'production' }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mainline-source-*
+          path: mainline-input
+      - name: Validate all continents, build independent tiles and audit real source coverage
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: node scripts/build-mainline-snapshot.mjs mainline-input mainline-output
+      - name: Verify the exact generation and renderer before publication
+        run: |
+          node scripts/verify-mainline-snapshot.mjs mainline-output
+          npm run build
+          mkdir -p styles/data/mainline-reference
+          cp -r mainline-output/. styles/data/mainline-reference/
+          npx playwright install --with-deps chromium webkit
+          node scripts/serve.mjs &
+          node scripts/check-mainline-reference-browser.mjs --published
+          node scripts/record-mainline-acceptance.mjs mainline-output browser-review/mainline-reference.json
+          node scripts/verify-mainline-snapshot.mjs mainline-output --require-browser-acceptance
+      - name: Save source and browser acceptance diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mainline-reference-diagnostics
+          path: |
+            browser-review
+            mainline-output/manifest.json
+          retention-days: 14
+      - name: Identify accepted reference inputs
+        id: provenance
+        run: |
+          set -eu
+          digest=$(node scripts/mainline-provenance.mjs)
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mainline-reference-${{ needs.plan.outputs.date }}-${{ steps.provenance.outputs.digest }}
+          path: mainline-output
+          compression-level: 0
+          retention-days: 14
+      # The draft branch only stages inspectable data; it cannot replace
+      # production. A reviewed merge imports the exact complete generation.
+      - name: Publish complete reference generation atomically
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          PUBLISH_BRANCH: ${{ github.ref == 'refs/heads/main' && 'mainline-data' || format('mainline-preview-{0}', github.event.pull_request.number || inputs.preview_pr) }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.preview_pr }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          if [ "$PUBLISH_BRANCH" != mainline-data ] && [ "$(gh pr view "$PR_NUMBER" --json state --jq .state)" != OPEN ]; then
+            echo 'PR is closed; retain diagnostics without recreating its preview.'
+            exit 0
+          fi
+          mkdir /tmp/mainline-publish
+          cd /tmp/mainline-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          status=0
+          git ls-remote --exit-code --heads origin "$PUBLISH_BRANCH" >/dev/null || status=$?
+          if [ "$status" = 0 ]; then
+            git fetch --depth=1 origin "$PUBLISH_BRANCH"
+            mkdir /tmp/mainline-previous
+            git archive FETCH_HEAD | tar -x -C /tmp/mainline-previous
+            node "$GITHUB_WORKSPACE/scripts/retain-mainline-generation.mjs" /tmp/mainline-previous "$GITHUB_WORKSPACE/mainline-output"
+            git checkout -b "$PUBLISH_BRANCH" FETCH_HEAD
+            git rm -rq .
+          elif [ "$status" != 2 ]; then
+            exit "$status"
+          else
+            git checkout --orphan "$PUBLISH_BRANCH"
+          fi
+          cp -r "$GITHUB_WORKSPACE/mainline-output/." .
+          git add .
+          git commit -q -m 'Complete worldwide OSM railway reference ${{ needs.plan.outputs.date }}'
+          git push origin "HEAD:$PUBLISH_BRANCH"
+      - name: Redeploy the reviewed production site
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site.yml --ref main
