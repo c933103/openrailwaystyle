@@ -327,21 +327,30 @@ arrays. Its legacy output still matched both controls; enabled peak RSS was
 bounded; they do not justify enabling it across the production registry yet.
 
 
-### Separate matcher measurement
+### Separate matcher measurement on 2026-10-11
 
-The same report also records fresh, serial Node 22.23.3 matcher processes over a
+The same report records fresh, serial Node 24.19.0 matcher processes over a
 controlled 10,000-observation, 2-pattern, 5,825,261-byte sidecar produced from the
 240,000-stop-row/28-profile fixture. Across three repetitions, the valid identity
-case took a median 128.876 ms; an unbound alternative was withheld in 125.724 ms.
-Median peak process RSS was 116,672 and 116,700 KiB respectively. These elapsed
+case took a median 191.746 ms; an unbound alternative was withheld in 178.452 ms.
+Median peak process RSS was 78,752 and 78,632 KiB respectively. These elapsed
 times cover matching after parsing/preparation; RSS includes startup, parsing
 and fixture preparation and is not a matcher-only allocation measurement.
 
 The source-work adversary and candidate-reference adversary returned explicit
-work-limit outcomes in median 43.996 and 134.603 ms, with median peak process RSS
-121,488 and 117,592 KiB. The source adversary fails during all-pattern validation
+work-limit outcomes in median 58.376 and 238.321 ms, with median peak process RSS
+87,864 and 97,508 KiB. The source adversary fails during all-pattern validation
 before reaching the ordinary observation scan, so its lower elapsed time is not
 a speed improvement. The script publishes only aggregate measurements and
 source hashes, never the temporary synthetic sidecar or ZIP. Compiler and
 matcher measurements are separate; neither establishes production coverage or
 worldwide resource savings.
+
+These matcher measurements bind the exact source hashes at commit
+`56f7559d8355dd4d14923bfdc949052952be6e4a`, including served-role and active-date
+validation. The prior Node 22.23.3 measurements are retained under
+`historical_matcher_measurements`; they are not current-source performance
+evidence. Runtime/environment differences prevent a controlled speed or memory
+comparison between these generations. The historical compiler A/B cohorts
+above are unchanged. A regression requires the current report's matcher and
+benchmark-script hashes to match the committed sources.

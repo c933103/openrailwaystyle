@@ -82,6 +82,19 @@ test('resealed active service dates preserve the collector reference window and 
   }
 });
 
+test('committed matcher benchmark is bound to the current measured sources', () => {
+  const report = JSON.parse(readFileSync(new URL('../docs/investigations/timetable-evidence-benchmark-20261009.json', import.meta.url), 'utf8'));
+  for (const path of ['scripts/timetable-matching.mjs', 'scripts/benchmark-timetable-matching.mjs']) {
+    const actual = createHash('sha256').update(readFileSync(new URL(`../${path}`, import.meta.url))).digest('hex');
+    assert.equal(report.matcher.source_sha256[path], actual, `rerun the benchmark after changing ${path}`);
+  }
+  assert.equal(report.matcher.synthetic, true);
+  assert.ok(report.matcher.results.some(row => row.mode === 'verified' && row.status === 'verified'));
+  for (const [mode, reason] of [['unbound', 'missing_service_identity'], ['source-limit', 'source_work_limit'], ['candidate-limit', 'candidate_work_limit']]) {
+    assert.ok(report.matcher.results.some(row => row.mode === mode && row.status === 'missing_evidence' && row.reason === reason));
+  }
+});
+
 test('offline compiler evidence fixtures and existing-output compatibility', () => {
   const run = spawnSync('python3', ['-m', 'unittest', 'discover', '-s', 'tests', '-p', 'timetable_evidence_test.py'], {encoding: 'utf8'});
   assert.equal(run.status, 0, run.stdout + run.stderr);
