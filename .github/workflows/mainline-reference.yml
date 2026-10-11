@@ -14,7 +14,7 @@ on:
     - cron: '19 3 3 * *'
   push:
     branches: [main]
-    paths: &reference_paths ['.github/workflows/mainline-reference.yml', 'scripts/**/*.mjs', 'scripts/*.py', 'styles/**/*.mjs', 'styles/**/*.js', 'styles/index.html', 'styles/app.css', 'styles/world.style.json', 'tests/fixtures/browser-glyphs/0-255.pbf', 'package.json', 'package-lock.json']
+    paths: &reference_paths ['.github/workflows/mainline-reference.yml', 'scripts/**/*.mjs', 'scripts/*.py', 'styles/**/*.mjs', 'styles/**/*.js', 'styles/index.html', 'styles/app.css', 'styles/world.style.json', 'styles/data-src/major-stations.json', 'tests/fixtures/browser-glyphs/0-255.pbf', 'package.json', 'package-lock.json']
   pull_request:
     paths: *reference_paths
 permissions:

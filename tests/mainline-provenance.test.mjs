@@ -47,3 +47,34 @@ test('every native browser bundle entry and its imports affect accepted referenc
   assert.equal(await referenceInputDigest(root),baseline,'documentation can reuse accepted inputs');
  }finally{await rm(root,{recursive:true,force:true})}
 });
+
+
+test('source acceptance commands, build drivers and direct station input affect provenance',async()=>{
+ const workflow=await readFile('.github/workflows/mainline-reference.yml','utf8');
+ const pkg=JSON.parse(await readFile('package.json','utf8'));
+ const commands=[...workflow.matchAll(/\bnode (scripts\/[\w/-]+\.mjs)/g),...pkg.scripts.build.matchAll(/\bnode (scripts\/[\w/-]+\.mjs)/g)].map(match=>match[1]);
+ for(const path of new Set(commands))assert.ok(REFERENCE_INPUTS.includes(path),`explicit acceptance driver ${path}`);
+ const root=await mkdtemp(join(tmpdir(),'atlas-reference-drivers-'));
+ try{
+  for(const path of ['scripts','styles','.github','tests/fixtures/browser-glyphs','package.json','package-lock.json'])await cp(path,join(root,path),{recursive:true});
+  const baseline=await referenceInputDigest(root);
+  for(const path of ['scripts/serve.mjs','scripts/build-style.mjs','styles/data-src/major-stations.json']){
+   const file=join(root,path),bytes=await readFile(file);
+   await writeFile(file,Buffer.concat([bytes,Buffer.from('\n')]));
+   assert.notEqual(await referenceInputDigest(root),baseline,path);
+   await writeFile(file,bytes);
+  }
+  assert.equal(await referenceInputDigest(root),baseline);
+ }finally{await rm(root,{recursive:true,force:true})}
+ assert.match(workflow,/paths: &reference_paths .*'styles\/data-src\/major-stations\.json'/);
+});
+
+
+test('glyph and direct station data changes trigger both acceptance workflows',async()=>{
+ for(const workflow of ['mainline-reference.yml','mainline-tests.yml']){
+  const text=await readFile('.github/workflows/'+workflow,'utf8');
+  const paths=text.split('\n').filter(line=>line.includes('paths:')&&!line.includes('paths: *reference_paths'));
+  assert.ok(paths.length>0);
+  for(const line of paths)for(const fixture of ['tests/fixtures/browser-glyphs/0-255.pbf','styles/data-src/major-stations.json'])assert.ok(line.includes(fixture),workflow+' '+fixture);
+ }
+});

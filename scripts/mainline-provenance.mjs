@@ -7,6 +7,8 @@ import {sha256} from './mainline-coverage.mjs';
 export const REFERENCE_INPUTS=Object.freeze([
  '.github/workflows/mainline-reference.yml','package.json','package-lock.json',
  'tests/fixtures/browser-glyphs/0-255.pbf',
+ // The acceptance workflow also executes these drivers and reads station data.
+ 'scripts/serve.mjs','scripts/build-style.mjs','styles/data-src/major-stations.json',
  'scripts/acquire-mainline-extract.py','scripts/plan-mainline-acquisition.py',
  'scripts/build-mainline-snapshot.mjs','scripts/mainline-overview.mjs',
  'scripts/mainline-chains.mjs','scripts/mainline-coverage.mjs',

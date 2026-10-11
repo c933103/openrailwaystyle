@@ -60,7 +60,8 @@ retries only failed reference jobs, and permits one automatic retry per run.
 The failed site's required input digest is retained in its job-step metadata.
 Recovery requires a bounded, unexpired source artifact with that exact digest,
 so an older tested base cannot consume the only retry. Renderer provenance also
-includes the binary glyph fixture; changing it triggers new acceptance.
+includes the binary glyph fixture, the preview server, both build drivers and
+their directly read station data. Changes to those inputs trigger new acceptance.
 Both the source and site run must identify that PR; an empty fork association
 requires a matching head repository ID and branch as well as its SHA, and
 exactly one such PR across the complete open/closed history. Ambiguous histories
