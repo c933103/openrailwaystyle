@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: pages-${{ github.head_ref && format('refs/heads/{0}', github.head_ref) || github.ref }}
+  group: pages-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
   reference:

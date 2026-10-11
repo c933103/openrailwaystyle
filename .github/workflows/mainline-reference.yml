@@ -20,7 +20,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: mainline-reference-${{ github.head_ref && format('refs/heads/{0}', github.head_ref) || github.ref }}
+  group: mainline-reference-${{ (github.event.pull_request.number || inputs.preview_pr) && format('pr-{0}', github.event.pull_request.number || inputs.preview_pr) || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   plan:

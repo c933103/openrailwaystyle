@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: mainline-tests-${{ github.head_ref && format('refs/heads/{0}', github.head_ref) || github.ref }}
+  group: mainline-tests-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.ref }}
   cancel-in-progress: true
 jobs:
   independent-failures:
