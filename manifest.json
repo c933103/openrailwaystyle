@@ -16,13 +16,13 @@
   },
   "source": "OpenStreetMap",
   "license": "ODbL-1.0",
-  "generation": "ba50701d76214af40d133a2f",
-  "inputSha256": "99090edef081b867f736e1fc55955136e328736e27d611d7e09d386cd7a9c5a6",
+  "generation": "5563c894755acda3187a948c",
+  "inputSha256": "45f563a3270463de7c56ff0181f6c1488f38698ca6215140fee81f71e4df1b2c",
   "coverage": "all eight Geofabrik continent extracts; complete OSM ways",
   "sourceDate": "2026-10-09",
   "oldestSource": "2026-10-09T20:21:04.000Z",
   "newestSource": "2026-10-09T20:21:04.000Z",
-  "generated": "2026-10-11T14:18:46.498Z",
+  "generated": "2026-10-11T14:41:11.632Z",
   "sources": [
     {
       "schema": 1,
@@ -2927,8 +2927,8 @@
   "downloadedBytes": 85497264561,
   "tileBytes": 20503710,
   "largestTileBytes": 521959,
-  "buildSeconds": 192.48395584099998,
-  "peakRssBytes": 5246267392,
+  "buildSeconds": 177.09218540500004,
+  "peakRssBytes": 5282377728,
   "archives": {
     "membership": {
       "parts": [
@@ -2949,7 +2949,8 @@
   },
   "normalizedWaysSha256": "fa23782463b9f0e412f2039e1187518eb4c12cd46aef03d3879b24f141633fe8",
   "membershipSha256": "06344f4dd1b2797b18be250d91c1926046f91ed9ef400a101d52fde0766d3d3a",
-  "indexSha256": "ade8c67c8975c6ca05bab3eae693de713dc59e090bda3120c06384b7ec0993b8",
+  "coverageAuditSha256": "eb8d7b6f0e4443d5721e424d0123661727b7addbd1e67ae4709816483837ad33",
+  "indexSha256": "daa2e717add5d5faf95c40f681a558fc2ddf47ad18cd42e8e41da6a60cc280f6",
   "fullAcquisitionRequests": 40,
   "preflightMetadataRequests": 16,
   "providerTileRequests": 0,
@@ -3043,15 +3044,15 @@
   },
   "rendererAcceptance": {
     "complete": true,
-    "path": "generations/ba50701d76214af40d133a2f/renderer-acceptance-3d5f0ad64035a54b467547896009213e06fca2912b78e3a9b2c1362210e26336.json",
-    "sha256": "3d5f0ad64035a54b467547896009213e06fca2912b78e3a9b2c1362210e26336",
+    "path": "generations/5563c894755acda3187a948c/renderer-acceptance-83a3e4d4182380edee77ee54b9bb83cb248dcf78535743eb6383ed71f230585e.json",
+    "sha256": "83a3e4d4182380edee77ee54b9bb83cb248dcf78535743eb6383ed71f230585e",
     "samples": 840,
     "appSamples": 18,
-    "assetRequests": 1078,
-    "assetBytes": 62207263,
+    "assetRequests": 1077,
+    "assetBytes": 62160393,
     "timing": {
-      "medianMs": 345,
-      "p95Ms": 1320
+      "medianMs": 339,
+      "p95Ms": 897
     }
   }
 }
