@@ -1,0 +1,303 @@
+{
+  "network": [
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/",
+      "ms": 17
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/",
+      "status": 200,
+      "ms": 7410
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/vendor/maplibre-gl-5.24.0.css",
+      "ms": 7419
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/app.css",
+      "ms": 7421
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/app.mjs",
+      "ms": 7422
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/vendor/maplibre-gl-5.24.0.css",
+      "status": 200,
+      "ms": 15549
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/app.mjs",
+      "status": 200,
+      "ms": 15569
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/app.css",
+      "status": 200,
+      "ms": 15615
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/map-controls.mjs",
+      "ms": 15679
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/cjk-font.mjs",
+      "ms": 15680
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/rare-han.mjs",
+      "ms": 15681
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/crossing-tags.mjs",
+      "ms": 15683
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/context.mjs",
+      "ms": 15684
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/map-model.mjs",
+      "ms": 15686
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/draw.mjs",
+      "ms": 15687
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/elevation.mjs",
+      "ms": 15688
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/departures.mjs",
+      "ms": 15692
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/departures-ui.mjs",
+      "ms": 15698
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/globe-drag.mjs",
+      "ms": 15698
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/bathymetry.mjs",
+      "ms": 15699
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/keyboard-pan.mjs",
+      "ms": 15702
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/layer-semantics.mjs",
+      "ms": 15703
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/power-facilities.mjs",
+      "ms": 15703
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/service-frequency.mjs",
+      "ms": 15704
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/watch-map.mjs",
+      "ms": 15707
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/rail-provider-recovery.mjs",
+      "ms": 15709
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/tile-bundles.mjs",
+      "ms": 15710
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/mainline-reference.mjs",
+      "ms": 15712
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/globe-drag.mjs",
+      "status": 200,
+      "ms": 24102
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/map-controls.mjs",
+      "status": 200,
+      "ms": 24121
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/map-model.mjs",
+      "status": 200,
+      "ms": 24123
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/platform-length.mjs",
+      "ms": 24124
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/axle-load.mjs",
+      "ms": 24126
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/keyboard-pan.mjs",
+      "status": 200,
+      "ms": 24133
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/elevation.mjs",
+      "status": 200,
+      "ms": 24175
+    },
+    {
+      "event": "request",
+      "url": "https://c933103.github.io/openrailwaystyle/dem-repair.mjs",
+      "ms": 24182
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/bathymetry.mjs",
+      "status": 200,
+      "ms": 24199
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/rare-han.mjs",
+      "status": 200,
+      "ms": 24202
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/crossing-tags.mjs",
+      "status": 200,
+      "ms": 24310
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/draw.mjs",
+      "status": 200,
+      "ms": 24310
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/departures-ui.mjs",
+      "status": 200,
+      "ms": 24312
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/layer-semantics.mjs",
+      "status": 200,
+      "ms": 24327
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/departures.mjs",
+      "status": 200,
+      "ms": 24352
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/context.mjs",
+      "status": 200,
+      "ms": 24357
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/cjk-font.mjs",
+      "status": 200,
+      "ms": 24414
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/tile-bundles.mjs",
+      "status": 200,
+      "ms": 24473
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/service-frequency.mjs",
+      "status": 200,
+      "ms": 24558
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/watch-map.mjs",
+      "status": 200,
+      "ms": 24563
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/power-facilities.mjs",
+      "status": 200,
+      "ms": 24574
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/rail-provider-recovery.mjs",
+      "status": 200,
+      "ms": 24574
+    },
+    {
+      "event": "response",
+      "url": "https://c933103.github.io/openrailwaystyle/mainline-reference.mjs",
+      "status": 200,
+      "ms": 24620
+    }
+  ],
+  "document": {
+    "readyState": "interactive",
+    "heading": "Railway Atlas · Worldwide rail map"
+  }
+}
+First-party test request failed: route.abort: route.abort: route.abort: route.fetch: route.fetch: route.fetch: Target page, context or browser has been closed
+First-party test request failed: route.abort: route.abort: route.abort: route.fetch: route.fetch: route.fetch: Target page, context or browser has been closed
+First-party test request failed: route.abort: route.abort: route.abort: route.fetch: route.fetch: route.fetch: Target page, context or browser has been closed
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://c933103.github.io/openrailwaystyle/?language=en&relief=0&inactive=0&transport=0&destinations=0&constraints=0#13/35.7/139.77", waiting until "domcontentloaded"
+
+    at <candidate>/scripts/check-departures-served.tmp.mjs:58:24 {
+  name: 'TimeoutError'
+}
+
+Node.js v24.19.0

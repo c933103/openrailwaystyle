@@ -1,0 +1,91 @@
+{
+  "observedAt": "2026-10-11T20:23:21.665Z",
+  "base": "https://c933103.github.io/openrailwaystyle/",
+  "commit": "79162dff6808b18461e4c8e33e177ca39effb146",
+  "version": "20261011-departure-availability-2",
+  "assets": [
+    {
+      "path": "",
+      "status": 200,
+      "bytes": 45816,
+      "sha256": "777195e5213dc3825b8e681fa171301f76a1943cdb9b31d979ad33e558ed8951",
+      "matchesReviewedSource": true
+    },
+    {
+      "path": "app.mjs?v=20261011-departure-availability-2",
+      "status": 200,
+      "bytes": 155303,
+      "sha256": "7d3b073b258d14a67bddfa656e111619f39aea96789fb76e6d117465daf09585",
+      "matchesReviewedSource": true
+    },
+    {
+      "path": "app.css?v=20261011-departure-availability-2",
+      "status": 200,
+      "bytes": 23144,
+      "sha256": "736f338e7a855b7864802f0eaa7972a713650fe171bbad837156c6693416bc8b",
+      "matchesReviewedSource": true
+    },
+    {
+      "path": "departures.mjs?v=20261011-departure-availability-2",
+      "status": 200,
+      "bytes": 15728,
+      "sha256": "67ec067cb0f0fc97a37414940d34b596e6e488596538bad334e452562e80d440",
+      "matchesReviewedSource": true
+    },
+    {
+      "path": "departures-ui.mjs?v=20261011-departure-availability-2",
+      "status": 200,
+      "bytes": 6982,
+      "sha256": "4bb0a6ace89335d8c2ef3df083082d2196025eb7d2f07a762ab5bf21f5245fda",
+      "matchesReviewedSource": true
+    },
+    {
+      "path": "map-model.mjs?v=20261011-departure-availability-2",
+      "status": 200,
+      "bytes": 58091,
+      "sha256": "b96a4f0bc17eedd42261f63de0bbe619cd1efb1589770bd3494f6371338c8a81",
+      "matchesReviewedSource": true
+    },
+    {
+      "path": "layer-semantics.mjs?v=20261011-departure-availability-2",
+      "status": 200,
+      "bytes": 6080,
+      "sha256": "bd4ceab0990cb5df5ca5c3402293d7febbff88a8f09cc40e4a570adb3b1891fc",
+      "matchesReviewedSource": true
+    },
+    {
+      "path": "elevation.mjs?v=20261011-departure-availability-2",
+      "status": 200,
+      "bytes": 6821,
+      "sha256": "f016358650c02053d6ac2778c2f6aed9e8fd85c211c6300cccc24500aced002a",
+      "matchesReviewedSource": true
+    },
+    {
+      "path": "cjk-font.mjs?v=20261011-departure-availability-2",
+      "status": 200,
+      "bytes": 4086,
+      "sha256": "4850a8a73ba31b3a4f9da73081b8ebeefb8d3da68fb04cca38a538ddf85773e9",
+      "matchesReviewedSource": true
+    },
+    {
+      "path": "power-facilities.mjs?v=20261011-departure-availability-2",
+      "status": 200,
+      "bytes": 8199,
+      "sha256": "3e52cb9bbec6a4b36088fee6ca00706980500e256ba0942f7f5e390907e546b4",
+      "matchesReviewedSource": true
+    },
+    {
+      "path": "sw.js",
+      "status": 200,
+      "bytes": 14826,
+      "sha256": "bae6f897ca776163b097b00e6210ff35932aa073b19ad49b0788d2066e8a910c",
+      "matchesReviewedSource": true
+    }
+  ],
+  "bundle": {
+    "bytes": 367639,
+    "sha256": "a12327bb4afc561065ff12b873721450be678653cc09748eb5b0e9ed56039ae8",
+    "commitPresent": true,
+    "versionPresent": true
+  }
+}

@@ -1,11 +1,22 @@
 # Partial departure-board status (#112, #129)
 
-## Current reviewed source and Codex correction
+## Merged and delivered
+
+#190 merged as `79162dff6808b18461e4c8e33e177ca39effb146`, with the exact reviewed
+tree below. Codex re-review and exact-head PR CI passed. Its direct automatic
+reference/deployment successor passed, and actual served availability-2 bytes plus
+the production departure fixture were verified by 20:33 UTC, before #191 delivery.
+[Final delivery report, workflow receipt, served hashes, screenshots and navigation diagnostics](postmerge/README.md)
+records the initial 30-second navigation failures, the separate 60-second local
+production allowance and an interrupted run that is explicitly not counted as a
+pass. All earlier test history is preserved below. Wider #112/#129 remain open.
+
+## Reviewed source and Codex correction
 
 [PR #190](https://github.com/c933103/openrailwaystyle/pull/190) now has source head
 `6f18de8225aa936aa9b1d229812a139e8ae65a2e`, tree
 `3fbe3aefc4964325c3146cb40e62ac20ccc984a2`. All 443 remote source file modes and
-blob hashes match the frozen candidate. The PR remains draft pending exact-head
+blob hashes match the frozen candidate. At that publication, the PR remained draft pending exact-head
 Codex re-review and hosted CI.
 
 [Codex identified](https://github.com/c933103/openrailwaystyle/pull/190#discussion_r4242802242)

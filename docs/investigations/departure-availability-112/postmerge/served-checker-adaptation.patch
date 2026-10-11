@@ -1,0 +1,67 @@
+--- scripts/check-departures-browser.mjs
++++ scripts/check-departures-served.tmp.mjs
+@@ -3,18 +3,22 @@
+ import assert from 'node:assert/strict';
+ import {mkdir} from 'node:fs/promises';
+ import {launchBrowser} from './browser.mjs';
+-import {serveAtlasAppFixture} from './atlas-app-browser-fixture.mjs';
+ import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
+ 
+-const server = await serveAtlasAppFixture();
+-await mkdir('browser-review', {recursive:true});
++const server = {origin:new URL(process.env.MAP_BASE_URL).origin,close:async()=>{}};
++await mkdir('../postmerge', {recursive:true});
+ try {
+-  for (const engine of ['chromium','webkit']) {
++  for (const engine of ['chromium']) {
+     const browser = await launchBrowser({engine});
+     try {
+       const context = await browser.newContext({viewport:{width:1100,height:920},serviceWorkers:'block'});
+-      const page = await context.newPage(), base = server.origin + '/atlas-project/';
++      const page = await context.newPage(), base = process.env.MAP_BASE_URL;
+       const errors=[],requests=[];
++      const network=[]; const started=Date.now();
++      const safe=url=>{try{return new URL(url).origin+new URL(url).pathname}catch{return '<non-http>'}};
++      page.on('request',r=>network.push({event:'request',url:safe(r.url()),ms:Date.now()-started}));
++      page.on('response',r=>network.push({event:'response',url:safe(r.url()),status:r.status(),ms:Date.now()-started}));
++      page.on('requestfailed',r=>network.push({event:'failed',url:safe(r.url()),error:r.failure()?.errorText,ms:Date.now()-started}));
+       page.on('pageerror', error=>errors.push(error.message));
+       // WebKit routes the renderer's Blob worker reads through Playwright.
+       // Replay the real Blob bytes, not the empty provider's JSON fallback.
+@@ -51,7 +55,8 @@
+         if(url.searchParams.get('tripId')==='fixture_retry'&&fail)return route.fulfill({status:503,json:{error:'fixture outage'}});
+         return route.fulfill({json:timetable});
+       });
+-      await page.goto(base+'?language=en&relief=0&inactive=0&transport=0&destinations=0&constraints=0#13/35.7/139.77',{waitUntil:'domcontentloaded'});
++      try { await page.goto(base+'?language=en&relief=0&inactive=0&transport=0&destinations=0&constraints=0#13/35.7/139.77',{waitUntil:'domcontentloaded',timeout:60000}); console.log(JSON.stringify({servedNavigationBudgetMs:60000,DOMContentLoadedMs:Date.now()-started,network},null,2)); }
++      catch(error){console.log(JSON.stringify({network,document:await page.evaluate(()=>({readyState:document.readyState,appStarted:document.body?.dataset.appStarted,mapReady:document.body?.dataset.mapReady,heading:document.title})).catch(()=>null)},null,2));throw error;}
+       await page.waitForSelector('body[data-map-ready="true"]',{timeout:60000});
+       // Supply one mapped station to the actual production click handler.
+       // All station-detail and departure rendering remains production code.
+@@ -81,7 +86,7 @@
+       await summary.click();await page.locator('.trip-stops').waitFor();
+       assert.deepEqual(await page.locator('.trip-stops tbody th').allTextContents(),['渋谷 Shibuya','上野 Ueno','末廣町 SuehirochoPlatform 1','浅草 Asakusa']);
+       assert.equal(await page.locator('.trip-current-stop').count(),1);
+-      await page.screenshot({path:`browser-review/train-schedule-${engine}.png`});
++      await page.screenshot({path:`../postmerge/train-schedule-${engine}.png`});
+       const scheduleText=page.locator('.trip-stops tbody th').first(),scheduleRect=await scheduleText.boundingBox();
+       await page.mouse.move(scheduleRect.x+3,scheduleRect.y+8);await page.mouse.down();
+       await page.mouse.move(scheduleRect.x+scheduleRect.width-3,scheduleRect.y+8,{steps:10});await page.mouse.up();
+@@ -101,7 +106,7 @@
+       await page.getByText('The source did not supply a trip ID, so its full schedule cannot be requested.').waitFor();
+       assert.equal(requests.filter(p=>p.endsWith('/trip')).length,3);
+       assert.deepEqual(errors,[]);
+-      await page.screenshot({path:`browser-review/departures-${engine}.png`});
++      await page.screenshot({path:`../postmerge/departures-${engine}.png`});
+       console.log(`${engine}: station board, mouse selection, full trip, keyboard, cache, retry, and missing identity passed; ${requests.length} fixture requests.`);
+       // Partial board failures must survive the production cache and renderer.
+       // All responses below are synthetic; the loopback transport guard remains.
+@@ -136,7 +141,7 @@
+         assert.equal(await page.locator('.departure-list > li').count(), Number(withRows));
+         assert.doesNotMatch(await page.locator('.departures').textContent(), /No rail departures|No published timetable|synthetic private/);
+         assert.equal(await page.locator('.departures button').count(), 0, 'no board retry button');
+-        if (order[0] === 'a') await page.screenshot({path:`browser-review/departures-partial-${withRows ? 'rows' : 'empty'}-${engine}.png`});
++        if (order[0] === 'a') await page.screenshot({path:`../postmerge/departures-partial-${withRows ? 'rows' : 'empty'}-${engine}.png`});
+         await page.locator('#details-close').click();
+         boardFailed = [];
+         await openStation(boardName, translated); await waitBoard();

@@ -1,0 +1,16 @@
+First-party test request failed: route.abort: route.abort: route.abort: route.fetch: route.fetch: route.fetch: Target page, context or browser has been closed
+First-party test request failed: route.abort: route.abort: route.abort: route.fetch: route.fetch: route.fetch: Target page, context or browser has been closed
+First-party test request failed: route.abort: route.abort: route.abort: route.fetch: route.fetch: route.fetch: Target page, context or browser has been closed
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://c933103.github.io/openrailwaystyle/?language=en&relief=0&inactive=0&transport=0&destinations=0&constraints=0#13/35.7/139.77", waiting until "domcontentloaded"
+
+    at <candidate>/scripts/check-departures-served.tmp.mjs:53:18 {
+  name: 'TimeoutError'
+}
+
+Node.js v24.19.0
