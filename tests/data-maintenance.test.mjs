@@ -48,7 +48,7 @@ const trackedPaths = ['.github/workflows/site.yml','.github/workflows/pr71-live.
 test('cleanup only disables allowlisted diagnostics removed from main', () => {
   assert.deepEqual(removedDiagnosticWorkflows(workflows,trackedPaths).map(w => w.id),[1,2,3,4]);
 });
-const upgraded = {schema:3,applied_profiles:{schema:1,file:'profiles.json.gz',sha256:'a'.repeat(64)}};
+const upgraded = {schema:3,applied_profiles:{schema:1,file:'profiles.json.gz',sha256:'a'.repeat(64),osm_sha256:'b'.repeat(64),sections:0}};
 const run = async (manifest, active = [], ref = 'refs/heads/main') => {
   const calls = [];
   const api = async (method,path,paginate,body) => {
@@ -91,4 +91,19 @@ test('non-main and malformed release metadata fail before any workflow mutation'
   for (const manifest of [{schema:2},{schema:3,applied_profiles:{schema:1}}]) await assert.rejects(
     maintainDataWorkflows({repo:'example/atlas',ref:'refs/heads/main',trackedPaths,api,readManifest:async () => manifest}),/Invalid/);
   assert.deepEqual(mutations,[]);
+});
+
+
+test('every aggregate binding field is required before suppressing production repair',async () => {
+  const changes = [
+    m => delete m.applied_profiles.osm_sha256,
+    m => m.applied_profiles.osm_sha256 = 'not-a-digest',
+    m => delete m.applied_profiles.sections,
+    ...[-1, 0.5, '0', Number.MAX_SAFE_INTEGER + 1].map(value => m => m.applied_profiles.sections = value),
+    m => m.applied_profiles = null,
+  ];
+  for (const change of changes) {
+    const manifest = structuredClone(upgraded);change(manifest);
+    await assert.rejects(run(manifest),/Invalid aggregate publication metadata/);
+  }
 });

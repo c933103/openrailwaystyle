@@ -24,13 +24,16 @@ export async function maintainDataWorkflows({repo, ref, trackedPaths, api, readM
   const removed = removedDiagnosticWorkflows(pages.flatMap(p => p.workflows), trackedPaths);
   const manifest = await readManifest();
   if (!manifest || manifest.schema !== 3) throw new Error('Invalid published frequency manifest');
+  const hasAggregate = Object.hasOwn(manifest, 'applied_profiles');
   // Presence alone is insufficient: malformed upgrade metadata must block,
   // rather than suppressing the refresh or flooding the production queue.
-  if (manifest.applied_profiles && (manifest.applied_profiles.schema !== 1 ||
+  if (hasAggregate && (!manifest.applied_profiles || manifest.applied_profiles.schema !== 1 ||
     manifest.applied_profiles.file !== 'profiles.json.gz' ||
-    !/^[a-f0-9]{64}$/.test(manifest.applied_profiles.sha256 || ''))) throw new Error('Invalid aggregate publication metadata');
+    !/^[a-f0-9]{64}$/.test(manifest.applied_profiles.sha256 || '') ||
+    !/^[a-f0-9]{64}$/.test(manifest.applied_profiles.osm_sha256 || '') ||
+    !Number.isSafeInteger(manifest.applied_profiles.sections) || manifest.applied_profiles.sections < 0)) throw new Error('Invalid aggregate publication metadata');
   let active = [];
-  if (!manifest.applied_profiles) {
+  if (!hasAggregate) {
     const statuses = ['queued', 'in_progress', 'requested', 'waiting', 'pending'];
     const runs = await Promise.all(statuses.map(status => api('GET',
       `repos/${repo}/actions/workflows/service-frequency.yml/runs?status=${status}&per_page=100`, true)));
@@ -39,9 +42,9 @@ export async function maintainDataWorkflows({repo, ref, trackedPaths, api, readM
       ['schedule', 'workflow_dispatch'].includes(r.event) && r.status !== 'completed');
   }
   for (const w of removed) await api('PUT', `repos/${repo}/actions/workflows/${w.id}/disable`);
-  if (!manifest.applied_profiles && !active.length) await api('POST',
+  if (!hasAggregate && !active.length) await api('POST',
     `repos/${repo}/actions/workflows/service-frequency.yml/dispatches`, false, {ref:'main'});
-  return {disabled: removed.map(w => w.path), frequency: manifest.applied_profiles ? 'aggregate-present' : active.length ? 'already-running' : 'refresh-dispatched'};
+  return {disabled: removed.map(w => w.path), frequency: hasAggregate ? 'aggregate-present' : active.length ? 'already-running' : 'refresh-dispatched'};
 }
 
 async function run() {
