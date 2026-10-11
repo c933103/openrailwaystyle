@@ -73,25 +73,6 @@ jobs:
           }
           await appendFile(process.env.GITHUB_OUTPUT,`complete=${complete}\n`);
           JS
-      - name: Publish checked in-progress checkpoint without replacing live data
-        run: |
-          set -eu
-          mkdir /tmp/station-publish
-          cd /tmp/station-publish
-          git init -q
-          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
-          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git checkout --orphan station-points-work
-          cp "$GITHUB_WORKSPACE/station-snapshot/state.json" .
-          cp "$GITHUB_WORKSPACE/station-snapshot/stations.json.gz" .
-          cp "$GITHUB_WORKSPACE/station-snapshot/manifest.json" .
-          git add .
-          git commit -q -m "Station-point acquisition progress $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          if ! git push --force origin HEAD:station-points-work; then
-            test "$(git ls-remote origin refs/heads/station-points-work | cut -f1)" = "$(git rev-parse HEAD)"
-          fi
       # Production readers must use ONLY station-points-data; it is never
       # touched by a partial refresh. The complete generation replaces it
       # atomically as one branch update.
@@ -112,6 +93,25 @@ jobs:
           git commit -q -m "Complete worldwide station points $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           if ! git push --force origin HEAD:station-points-data; then
             test "$(git ls-remote origin refs/heads/station-points-data | cut -f1)" = "$(git rev-parse HEAD)"
+          fi
+      - name: Publish checked in-progress checkpoint without replacing live data
+        run: |
+          set -eu
+          mkdir /tmp/station-publish
+          cd /tmp/station-publish
+          git init -q
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git config http.https://github.com/.extraheader "$(git -C "$GITHUB_WORKSPACE" config http.https://github.com/.extraheader)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout --orphan station-points-work
+          cp "$GITHUB_WORKSPACE/station-snapshot/state.json" .
+          cp "$GITHUB_WORKSPACE/station-snapshot/stations.json.gz" .
+          cp "$GITHUB_WORKSPACE/station-snapshot/manifest.json" .
+          git add .
+          git commit -q -m "Station-point acquisition progress $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          if ! git push --force origin HEAD:station-points-work; then
+            test "$(git ls-remote origin refs/heads/station-points-work | cut -f1)" = "$(git rev-parse HEAD)"
           fi
       # The website imports station-points-data only after that separate
       # integration has tests for manifest, identity, zoom handoffs and polar.
