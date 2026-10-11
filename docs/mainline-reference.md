@@ -70,7 +70,8 @@ world download. A missing dated export fails explicitly instead of silently
 substituting a different date or source.
 
 The manifest measures acquisition bytes and seconds per continent, filtered
-export bytes, classified way counts, emitted feature counts by zoom, largest
+export bytes, classified way counts, unique chain and represented-source-way
+fractions by zoom (distinct from duplicated tile feature instances), largest
 tile, total tile bytes, compiler duration and peak RSS. Browser review records
 latency distributions for each geography, projection, zoom and device profile.
 No public OpenRailwayMap tile is downloaded by this pipeline or its tests.

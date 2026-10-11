@@ -124,7 +124,11 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
   assert.ok(await page.evaluate(()=>sourceErrors.some(e=>e.source==='missingLive')),'reference success cannot conceal live provider outage');
   profiles.push({...profile,...await page.evaluate(()=>referenceReader.statistics())});
   await page.screenshot({path:`browser-review/mainline-${profile.name}.png`});
- }finally{await browser.close()}
+ }catch(error){
+  console.error('MAINLINE_PROFILE_FAILURE',profile.name,error.stack||error.message);
+  await writeFile('browser-review/mainline-profile-failure.json',JSON.stringify({profile:profile.name,message:error.message,stack:error.stack},null,2)+'\n');
+  throw error;
+ }finally{await page.unrouteAll({behavior:'ignoreErrors'});await browser.close()}
 }
 const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
 // Exercise the actual Atlas module and theme selection too. This catches a
@@ -154,7 +158,7 @@ const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
   }
   await page.waitForFunction(()=>document.getElementById('map-status').textContent.includes('OpenRailwayMap railway tiles are unavailable'),null,{timeout:30000});
   await page.screenshot({path:'browser-review/mainline-actual-atlas-outage.png'});
- }finally{await browser.close()}
+ }finally{await page.unrouteAll({behavior:'ignoreErrors'});await context.unrouteAll({behavior:'ignoreErrors'});await browser.close()}
 }
 const report={scope:published?'Actual published OSM generation; exact chain identities':'Synthetic renderer fixtures; no OSM completeness claim',
  generation:manifest.generation,samples,appSamples,profiles,assetRequests:profiles.reduce((n,p)=>n+p.assetRequests,0),

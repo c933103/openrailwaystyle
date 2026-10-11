@@ -63,6 +63,17 @@ for(const control of audit){
   control.chainIdsByZoom[z]=ids.slice(0,16);
  }
 }
+const sourceCoverageByZoom={};
+for(let z=0;z<=6;z++){
+ const classifications={};let ways=0,chains=0;
+ for(let i=0;i<chained.features.length;i++){
+  const f=chained.features[i];if(!byZoom.get(z)?.has(f.properties.id))continue;
+  const count=chained.membership[i].ways.length;ways+=count;chains++;
+  classifications[f.properties.classification]=(classifications[f.properties.classification]||0)+count;
+ }
+ sourceCoverageByZoom[z]={uniqueChains:chains,representedSourceWays:ways,totalSourceWays:features.length,
+  sourceWayFraction:ways/features.length,classifications};
+}
 const target=join(output,'generations',generation);await mkdir(target,{recursive:true});
 for(const [key,bytes] of result.tiles){
  const path=join(target,key+'.pbf.gz');await mkdir(dirname(path),{recursive:true});await writeFile(path,bytes);
@@ -95,6 +106,6 @@ const manifest={...result.manifest,complete:true,generation,inputSha256:await re
  peakRssBytes:process.resourceUsage().maxRSS*1024,archives,
  indexSha256:sha256(await readFile(join(target,'index.json'))),
  fullAcquisitionRequests:sources.length*4,providerTileRequests:0,
- coverageByZoom:result.manifest.drawnFeaturesByZoom};
+ tileFeatureInstancesByZoom:result.manifest.drawnFeaturesByZoom,sourceCoverageByZoom};
 await writeFile(join(output,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 console.log('MAINLINE_REFERENCE',JSON.stringify(manifest));

@@ -8,7 +8,7 @@ import {VectorTile} from '@mapbox/vector-tile';
 import Pbf from 'pbf';
 import {mainlineChains} from '../scripts/mainline-chains.mjs';
 import {mainlineRegion,mainlineTiles,MAINLINE_LAYER} from '../scripts/mainline-overview.mjs';
-import {sha256,MAINLINE_REGIONS,validateMainlineSources,segmentInBox,auditMainlineCoverage} from '../scripts/mainline-coverage.mjs';
+import {sha256,MAINLINE_REGIONS,MAINLINE_CONTROLS,validateMainlineSources,segmentInBox,auditMainlineCoverage} from '../scripts/mainline-coverage.mjs';
 import {referenceTileKey,createReferenceReader,decompressReference} from '../styles/mainline-reference.mjs';
 import {layerVisibility} from '../styles/layer-semantics.mjs';
 import {referenceInputDigest,matchingReferenceInputs} from '../scripts/mainline-provenance.mjs';
@@ -75,6 +75,25 @@ test('clipping tests exact segments and buffered tile boundaries independently o
  const ids=k=>{const layer=new VectorTile(new Pbf(gunzipSync(data.tiles.get(k)))).layers[MAINLINE_LAYER];
    return Array.from({length:layer.length},(_,i)=>layer.feature(i).properties.id)};
  assert.ok(ids('6/31/31').includes('way-100'));assert.ok(ids('6/32/31').includes('way-100'));
+});
+test('missing source geometry is identified separately for every geographically diverse control',()=>{
+ const features=source(MAINLINE_CONTROLS.map((c,i)=>way(1000+i,
+  [c.center[0]-.1,c.center[1]],[c.center[0]+.1,c.center[1]],[2000+i*2,2001+i*2])));
+ assert.equal(auditMainlineCoverage(features).length,MAINLINE_CONTROLS.length);
+ for(let i=0;i<features.length;i++)assert.throws(()=>auditMainlineCoverage(features.filter((_,n)=>n!==i)),
+  error=>error.message.includes(MAINLINE_CONTROLS[i].name),MAINLINE_CONTROLS[i].name);
+});
+test('OSM identities survive adjacent tile boundaries near all global acceptance regions',()=>{
+ const controls=MAINLINE_CONTROLS.map((c,i)=>{
+  const x=Math.floor((c.center[0]+180)/360*64),edge=(x+1)/64*360-180;
+  const lat=c.center[1]*Math.PI/180,y=Math.floor((1-Math.log(Math.tan(lat)+1/Math.cos(lat))/Math.PI)/2*64);
+  return {...c,x,y,id:3000+i,points:[[edge-.2,c.center[1]],[edge+.2,c.center[1]]]};
+ });
+ const data=mainlineTiles(source(controls.map(c=>way(c.id,...c.points,[c.id*2,c.id*2+1]))));
+ for(const c of controls)for(const x of [c.x,c.x+1]){
+  const key=`6/${x}/${c.y}`,layer=new VectorTile(new Pbf(gunzipSync(data.tiles.get(key)))).layers[MAINLINE_LAYER];
+  assert.ok(Array.from({length:layer.length},(_,i)=>layer.feature(i).properties.id).includes(`way-${c.id}`),`${c.name} ${key}`);
+ }
 });
 function fixture(){
  const generation='a'.repeat(24),tile=gzipSync(Buffer.from([26,0]));
