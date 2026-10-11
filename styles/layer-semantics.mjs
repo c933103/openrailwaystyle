@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261011-departure-labels-1';
+import { MODES } from './map-model.mjs?v=20261011-power-legend-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;

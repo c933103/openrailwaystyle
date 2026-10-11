@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {featureFilter,validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
-import {powerFacility,createPowerFacilityLoader} from '../styles/power-facilities.mjs';
+import {powerFacility,createPowerFacilityLoader,POWER_FACILITY_KINDS,POWER_FACILITY_LEGEND,POWER_FACILITY_SYMBOL} from '../styles/power-facilities.mjs';
 import {powerFacilitiesGeoJSON,powerFacilityQuery,powerFacilityCacheRecordAccepted,powerFacilityCachedResponse} from '../scripts/power-facility-data.mjs';
 import {powerFacilityLayers} from '../scripts/style/layers/power-facilities.mjs';
 import {annotateLayers,layerVisibility} from '../styles/layer-semantics.mjs';
@@ -284,4 +284,24 @@ test('former railway use does not describe an operating traction supply',()=>{
   }
   assert.equal(powerFacility({power:'plant','disused:railway':'yes',frequency:'16.7'}).state,'present','independent current traction evidence');
   assert.equal(powerFacility({man_made:'storage_tank',content:'water','disused:railway':'yes',usage:'railway'}).state,'present');
+});
+
+
+test('each facility category shares its point letter and color with the legend and map paint',()=>{
+  assert.deepEqual(POWER_FACILITY_LEGEND.map(row=>row.mark),['E','F','C','W']);
+  for (const [kind,definition] of Object.entries(POWER_FACILITY_KINDS)) {
+    const rows=POWER_FACILITY_LEGEND.filter(row=>row.mark===definition.mark);
+    assert.equal(rows.length,1,kind);assert.equal(rows[0].symbol,'point');assert.equal(rows[0].color,definition.color,kind);
+  }
+  const layers=powerFacilityLayers(),{paper,radius,textSize,stroke,formerStroke}=POWER_FACILITY_SYMBOL;
+  for (const former of [false,true]) {
+    const prefix=former?'electrification-former-supply':'electrification-supply';
+    const point=layers.find(layer=>layer.id===prefix+'-points'),letter=layers.find(layer=>layer.id===prefix+'-marks');
+    assert.equal(point.type,'circle');assert.equal(point.paint['circle-radius'].at(-1),radius);
+    assert.deepEqual(point.paint['circle-color'],former?paper:['get','power_color']);
+    assert.deepEqual(point.paint['circle-stroke-color'],former?['get','power_color']:paper);
+    assert.equal(point.paint['circle-stroke-width'],former?formerStroke:stroke);
+    assert.deepEqual(letter.layout['text-field'],['get','power_mark']);assert.equal(letter.layout['text-size'],textSize);
+    assert.deepEqual(letter.paint['text-color'],former?['get','power_color']:paper);
+  }
 });

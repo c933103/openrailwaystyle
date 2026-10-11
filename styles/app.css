@@ -175,3 +175,6 @@ dialog:not([open]){display:none}
 #pwa-install-status{font-weight:600}
 body[data-ui="watch"] #pwa-install{display:none!important}
 @media(max-width:360px){#pwa-install{padding:24px 18px}#pwa-install h2{font-size:21px}}
+
+/* Power facilities are circular lettered points, separate from track swatches. */
+.point-swatch{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:25px;height:16px;gap:4px}.point-swatch.paired{width:36px}.point-swatch svg{display:block;flex-shrink:0;width:16px;height:16px}

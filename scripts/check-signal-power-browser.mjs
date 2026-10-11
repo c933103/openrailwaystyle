@@ -136,6 +136,48 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
   const clickCoordinates=async coordinates=>{const point=await page.evaluate(coordinates=>{const point=window.reviewMap.project(coordinates);return{x:point.x,y:point.y};},coordinates);await page.locator('#map canvas').click({position:point});};
   const sharedBands=async prefix=>{for(const id of [prefix,`${prefix}-system-2`,`${prefix}-system-3`])await visible(id);assert.deepEqual(await page.evaluate(prefix=>[prefix,`${prefix}-system-2`,`${prefix}-system-3`].map(id=>window.reviewMap.getLayoutProperty(id,'visibility')),prefix),['visible','visible','visible']);};
 
+  const powerLegend = async former => {
+    await openControls();
+    if (await page.locator('#settings-view').isVisible()) await page.locator('#settings-close').click();
+    const samples = await page.evaluate(() => [...document.querySelectorAll('#legend .point-swatch')].map(sample => ({
+      label:sample.nextElementSibling.textContent, hidden:sample.getAttribute('aria-hidden'),
+      line:sample.classList.contains('swatch'), width:sample.getBoundingClientRect().width,
+      symbols:[...sample.querySelectorAll('svg')].map(svg => {
+        const circle=svg.querySelector('circle'),text=svg.querySelector('text'),box=svg.getBoundingClientRect(),glyph=text.getBBox();
+        return {mark:text.textContent,fill:circle.getAttribute('fill'),stroke:circle.getAttribute('stroke'),
+          strokeWidth:+circle.getAttribute('stroke-width'),textColor:text.getAttribute('fill'),
+          radius:+circle.getAttribute('r'),fontSize:+text.getAttribute('font-size'),width:box.width,height:box.height,
+          glyphVisible:glyph.width>0&&glyph.height>0&&glyph.x>=0&&glyph.x+glyph.width<=16&&glyph.y>=0&&glyph.y+glyph.height<=16};
+      }),
+    })));
+    assert.equal(samples.length,4,'E/F/C/W use circular point samples, not line swatches');
+    const expected=[['E','Electricity supply','#b77d00'],['F','Train refuelling point (fuel type where mapped)','#906532'],['C','Steam engine coaling','#4b4c50'],['W','Steam engine water','#287bad']];
+    const paints=await page.evaluate(()=>[false,true].map(former=>{
+      const map=window.reviewMap,prefix=former?'electrification-former-supply':'electrification-supply';
+      return {radius:map.getPaintProperty(prefix+'-points','circle-radius').at(-1),
+        stroke:map.getPaintProperty(prefix+'-points','circle-stroke-width'),textSize:map.getLayoutProperty(prefix+'-marks','text-size')};
+    }));
+    for (const [i,sample] of samples.entries()) {
+      const [mark,label,color]=expected[i];assert.equal(sample.label,label);assert.equal(sample.hidden,'true');assert.equal(sample.line,false);
+      assert.equal(sample.symbols.length,former?2:1);
+      for (const [j,symbol] of sample.symbols.entries()) {
+        assert.equal(symbol.mark,mark);assert.equal(symbol.fill,j?'#fffef8':color);assert.equal(symbol.stroke,j?color:'#fffef8');assert.equal(symbol.textColor,j?color:'#fffef8');
+        assert.equal(symbol.radius,paints[j].radius);assert.equal(symbol.strokeWidth,paints[j].stroke);assert.equal(symbol.fontSize,paints[j].textSize);
+        assert.equal(symbol.width,16);assert.equal(symbol.height,16);assert.equal(symbol.glyphVisible,true,'letter stays visible inside its circular sample');
+      }
+    }
+    const track=await page.evaluate(()=>{
+      const row=[...document.querySelectorAll('#legend .legend-item')].find(row=>row.lastElementChild.textContent==='Not electrified');
+      const sample=row.firstElementChild,box=sample.getBoundingClientRect();return {line:sample.classList.contains('swatch'),width:box.width,height:box.height,text:sample.textContent};
+    });
+    assert.deepEqual(track,{line:true,width:25,height:4,text:''},'ordinary track sample retains its line geometry');
+    const accessible=await page.locator('#legend').ariaSnapshot();
+    assert.ok(accessible.includes('Train refuelling point (fuel type where mapped)'));
+    assert.ok(!/^\s*- text: [EFCW]$/m.test(accessible),'decorative letters do not duplicate accessible labels');
+    await page.locator('#legend').screenshot({path:`browser-review/power-legend-${former?'former':'active'}-${kind}.png`});
+    await closeControls();
+  };
+
   try {
     console.log(`CHECK: ${kind} loaded real map; checking control and signal fixtures`);
     await sharedBands('control-tracks');
@@ -188,6 +230,7 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     assert.equal(supplyRequests,0,'railway energy supplies are deferred until Power view');
     await mode('electrification');await closeControls();
     await visible('electrification-supply-points');await visible('electrification-substation-areas');
+    await powerLegend(false);
     await waitUntil(page,()=>new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-points']}).map(f=>f.properties.power_kind)).size===5);
     assert.deepEqual(await page.evaluate(()=>[...new Set(window.reviewMap.queryRenderedFeatures({layers:['electrification-supply-points']}).map(f=>f.properties.power_group))].sort()),['coal','electricity','fuel','water']);
     assert.equal(await page.evaluate(()=>window.reviewMap.queryRenderedFeatures({layers:['electrification-former-supply-points']}).length),0,'disused supply follows the inactive setting');
@@ -202,14 +245,15 @@ try {for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]])
     await page.screenshot({path:`browser-review/signal-power-supplies-${kind}.png`});
     await openSettings();await page.locator('#inactive').check();
     await visible('electrification-former-supply-points');
+    await powerLegend(true);await openSettings();
     await page.locator('#labels').uncheck();
     assert.ok(await page.evaluate(()=>window.reviewMap.getLayoutProperty('electrification-supply-names','visibility')==='none'&&window.reviewMap.getLayoutProperty('electrification-supply-points','visibility')==='visible'));
     await page.locator('#labels').check();await page.locator('#inactive').uncheck();
-    await mode('control');assert.ok(await page.evaluate(()=>['electrification-supply-points','electrification-substation-areas'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')));
+    await mode('control');assert.equal(await page.locator('#legend .point-swatch').count(),0,'Power legend points do not leak into Control view');assert.ok(await page.evaluate(()=>['electrification-supply-points','electrification-substation-areas'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')));
     await openSettings();await page.locator('#labels').uncheck();
     assert.ok(await page.evaluate(()=>['infrastructure-signal-references','infrastructure-signal-supplement-references'].every(id=>window.reviewMap.getLayoutProperty(id,'visibility')==='none')&&window.reviewMap.getLayoutProperty('infrastructure-signal-points','visibility')==='visible'));
     await page.locator('#labels').check();
-    await mode('electrification');await visible('electrification-supply-points');assert.equal(supplyRequests,1,'Power view reuses its previously downloaded snapshot');
+    await mode('electrification');await visible('electrification-supply-points');assert.equal(supplyRequests,1,'Power view reuses its previously downloaded snapshot');await powerLegend(false);
     await mode('control');await closeControls();
     console.log(`CHECK: ${kind} energy supplies passed; checking overview control bands`);
     await jump([0,0],5);console.log(`CHECK: ${kind} moved to overview`);await sharedBands('control-overview');await sharedBands('control-branch-overview');
