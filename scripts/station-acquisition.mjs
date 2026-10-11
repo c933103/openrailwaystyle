@@ -81,7 +81,13 @@ export function applyStationRegion(state,records,region,json){
  checkStationAcquisition(state,records);
  const first=state.pending[0];
  if(!first||JSON.stringify(first.box)!==JSON.stringify(region))throw new Error('Unexpected station region completion');
- const additions=parseStationRegion(json,{maxElements:MAX_QUERY_ELEMENTS}).filter(p=>centerInside(region,p));
+ // Overpass returns intersecting ways/relations, whose bbox centre can be
+ // outside the queried region and even outside *every* region intersected by
+ // their actual geometry (concave/multipart OSM objects). Keep these records
+ // wherever found and deduplicate globally using their typed OSM identity.
+ // Nodes use strict half-open geographic ownership to avoid edge ambiguity.
+ const additions=parseStationRegion(json,{maxElements:MAX_QUERY_ELEMENTS})
+   .filter(p=>p.osm_type!=='node'||centerInside(region,p));
  // Never silently replace an independently fetched object with changed
  // coordinates from another region, or a saved record with conflicting tags.
  const byId=new Map(records.map(r=>[r.id,r]));
