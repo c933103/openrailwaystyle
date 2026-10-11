@@ -25,8 +25,9 @@ for(const region of MAINLINE_REGIONS){
  let raw=0,kept=0,lineBytes=0;
  for await(const line of lines){
   lineBytes+=Buffer.byteLength(line);
-  if(lineBytes>4*1024**3||line.length>8*1024**2||++raw>6000000)throw Error('Oversized continent feature stream');
+  if(lineBytes>4*1024**3||line.length>8*1024**2)throw Error('Oversized continent feature stream');
   if(!line.trim())continue;
+  if(++raw>6000000)throw Error('Oversized continent feature stream');
   const f=JSON.parse(line),p=f.properties;
   if(f.type!=='Feature'||p?.['@type']!=='way'||f.geometry?.type!=='LineString')throw Error('Invalid Osmium way export');
   const feature=normalizeMainlineWay({type:'way',id:p['@id'],version:p['@version'],
@@ -108,7 +109,7 @@ const manifest={...result.manifest,complete:true,generation,inputSha256:await re
  largestTileBytes:Math.max(...tileDetails.map(t=>t.bytes)),buildSeconds:(performance.now()-start)/1000,
  peakRssBytes:process.resourceUsage().maxRSS*1024,archives,normalizedWaysSha256,membershipSha256,
  indexSha256:sha256(await readFile(join(target,'index.json'))),
- fullAcquisitionRequests:sources.length*4,providerTileRequests:0,
+ fullAcquisitionRequests:sources.length*5,preflightMetadataRequests:sources.length*2,providerTileRequests:0,
  tileFeatureInstancesByZoom:result.manifest.drawnFeaturesByZoom,sourceCoverageByZoom};
 await writeFile(join(output,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 console.log('MAINLINE_REFERENCE',JSON.stringify(manifest));
