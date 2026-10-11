@@ -151,6 +151,17 @@ function observationSchema(row, patterns, serviceDate) {
     array(row.departures, 512) && row.departures.length === patterns.get(row.pattern_id).calls.length && row.departures.every(value => value === null || offset(value)) &&
     array(row.frequencies, 128) && row.frequencies.every(frequency => record(frequency, ['start', 'end', 'headway_secs', 'exact_times']) && offset(frequency.start) && offset(frequency.end) && frequency.end > frequency.start && positive(frequency.headway_secs) && ['0', '1'].includes(frequency.exact_times)) && digest(row.fingerprint) && observationTimes(row);
 }
+// The compiler sets source validity to the maximum route/trip validity. A
+// missing calendar end produces the zero sentinel and expired/no-date evidence.
+// State is relative to the stored service date, not now: overnight and DST
+// services may remain current beyond their last active date. Start/end calendar
+// bounds are not retained, so these checks assert only provable consistency.
+function observationValidity(row, source) {
+  return row.valid_until <= source.valid_until &&
+    (row.valid_until !== 0 || (row.calendar_state === 'expired' && row.active_service_dates.length === 0)) &&
+    (row.calendar_state !== 'future' || row.active_service_dates.length === 0) &&
+    (row.calendar_state !== 'expired' || !row.active_service_dates.includes(source.service_date));
+}
 function inspectOsm(osm, snapshot, budget) {
   if (!record(osm, osmFields) || osm.schema !== 1 || osm.status !== 'captured' || !array(osm.reasons, 0) || !positive(osm.relation_id) || !positive(osm.version) || !instant(osm.timestamp) || !instant(osm.snapshot) || Date.parse(osm.timestamp) > Date.parse(osm.snapshot) || !capturedTags(osm.tags) || !digest(osm.fingerprint)) return ['missing_evidence', 'missing_osm_declaration'];
   if (!array(osm.served_members, 512) || !array(osm.track_members, 10000) || osm.served_members.length + osm.track_members.length > 10000) return ['missing_evidence', 'invalid_service_sections'];
@@ -218,6 +229,7 @@ function matchPattern(input) {
     if (!observationSchema(observation, patterns, source.service_date)) return result('missing_evidence', 'invalid_observation_schema');
     const {fingerprint, ...definition} = observation;
     if (observationIds.has(observation.id) || hashText(sourceWork.encode([source.feed_id, source.sha256, observation.trip_id])) !== observation.id || hashText(sourceWork.encode([source.feed_id, source.sha256, source.service_date, definition])) !== fingerprint) return result('conflicting', 'observation_fingerprint_mismatch');
+    if (!observationValidity(observation, source)) return result('missing_evidence', 'invalid_observation_validity');
     observationIds.add(observation.id);
     observedPatterns.add(observation.pattern_id);
     if (observation.pattern_id === pattern_id) selectedObservations.push(observation);

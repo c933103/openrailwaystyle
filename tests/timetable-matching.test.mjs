@@ -123,13 +123,125 @@ test('resealed active service dates preserve the collector reference window and 
       if (placement !== 'selected') addOtherSourcePattern(input);
       const row = input.evidence.observations[placement === 'selected' ? 0 : 1];
       row.active_service_dates = [...dates];
-      if (placement === 'expired-other') { row.calendar_state = 'expired'; row.valid_until = 0; }
+      if (placement === 'expired-other') { row.calendar_state = 'expired'; row.valid_until = input.now - 1; }
       sealObservations(input);
       const before = structuredClone(input), output = matchTimetablePattern(input);
-      assert.equal(output.status, valid ? 'verified' : 'missing_evidence', `${reference}/${JSON.stringify(dates)}/${placement}`);
+      const consistent = placement !== 'expired-other' || !dates.includes(reference);
+      assert.equal(output.status, valid && consistent ? 'verified' : 'missing_evidence', `${reference}/${JSON.stringify(dates)}/${placement}`);
+      if (valid && !consistent) assert.deepEqual(output.reasons, ['invalid_observation_validity']);
       if (!valid) assert.deepEqual(output.reasons, ['invalid_observation_schema']);
       assert.equal(output.frequency_status, 'not_evaluated');
       assert.deepEqual(input, before, 'date validation neither reorders nor drops observations');
+    }
+  }
+});
+
+
+test('resealed observation validity cannot exceed the complete source validity', () => {
+  const revived = fixture(); addOtherSourcePattern(revived);
+  Object.assign(revived.evidence.observations[0], {calendar_state: 'expired', valid_until: revived.now - 1, active_service_dates: ['2026-10-04']});
+  sealObservations(revived);
+  assert.equal(status(revived), 'stale', 'another current route cannot revive the expired target');
+  Object.assign(revived.evidence.observations[0], {calendar_state: 'current', valid_until: revived.evidence.source.valid_until + 1});
+  sealObservations(revived);
+  assert.deepEqual(matchTimetablePattern(revived).reasons, ['invalid_observation_validity']);
+  for (const placement of ['selected', 'other', 'expired-other']) for (const reverse of [false, true]) {
+    const input = fixture();
+    if (placement !== 'selected') addOtherSourcePattern(input);
+    const row = input.evidence.observations[placement === 'selected' ? 0 : 1];
+    if (placement === 'expired-other') { row.calendar_state = 'expired'; row.active_service_dates = []; }
+    for (const delta of [-1, 0, 0.001, 1, 1e9]) {
+      row.valid_until = input.evidence.source.valid_until + delta;
+      sealObservations(input);
+      if (reverse) input.evidence.observations.reverse();
+      const before = structuredClone(input), output = matchTimetablePattern(input);
+      assert.equal(output.status, delta <= 0 ? 'verified' : 'missing_evidence', `${placement}/${delta}/${reverse}`);
+      if (delta > 0) assert.deepEqual(output.reasons, ['invalid_observation_validity']);
+      assert.deepEqual(input, before);
+      if (reverse) input.evidence.observations.reverse();
+    }
+  }
+});
+
+test('resealed observation calendar states retain collector reference-day consistency', () => {
+  const cases = [
+    ['current', 2000000000, [], true],
+    ['future', 2000000000, [], true],
+    ['expired', 0, [], true],
+    ['expired', 1791000000, ['2026-10-04'], true],
+    ['future', 2000000000, ['2026-10-04'], false],
+    ['expired', 1791000000, ['2026-10-05'], false],
+    ['current', 0, [], false],
+    ['future', 0, [], false],
+    ['expired', 0, ['2026-10-04'], false],
+  ];
+  for (const [state, until, dates, valid] of cases) {
+    const input = fixture(); addOtherSourcePattern(input);
+    Object.assign(input.evidence.observations[1], {calendar_state: state, valid_until: until, active_service_dates: dates});
+    sealObservations(input);
+    const before = structuredClone(input), output = matchTimetablePattern(input);
+    assert.equal(output.status, valid ? 'verified' : 'missing_evidence', `${state}/${until}/${dates}`);
+    if (!valid) assert.deepEqual(output.reasons, ['invalid_observation_validity']);
+    assert.deepEqual(input, before);
+  }
+});
+
+test('collector historical, overnight and DST observations preserve validity and state semantics', () => {
+  const run = spawnSync('python3', ['-c', `
+import sys, json, zipfile, datetime as dt
+from zoneinfo import ZoneInfo
+sys.path.insert(0, 'tests')
+import gtfs_frequency_test as f
+case = f.GTFSFrequency()
+results = []
+try:
+    for reference in ['1950-10-05', '2024-03-31', '2024-10-27', '2026-10-05']:
+        date = dt.date.fromisoformat(reference)
+        previous, following = date - dt.timedelta(days=1), date + dt.timedelta(days=1)
+        compact = lambda day: day.isoformat().replace('-', '')
+        kinds = ['current', 'overnight', 'expired', 'future', 'missing', 'inactive']
+        patterns = {kind: [('A', '25:00:00' if kind == 'overnight' else '08:00:00'), ('B', '25:10:00' if kind == 'overnight' else '08:10:00')] for kind in kinds}
+        path = case.feed(kinds, patterns)
+        with zipfile.ZipFile(path) as z:
+            files = {name: z.read(name) for name in z.namelist() if name != 'feed_info.txt'}
+        files['trips.txt'] = ('trip_id,route_id,service_id,direction_id,shape_id\\n' + ''.join(f'{kind},R,{kind},0,{kind}\\n' for kind in kinds)).encode()
+        bounds = {'current': (previous, following), 'overnight': (previous, previous), 'expired': (previous, previous), 'future': (following, following), 'inactive': (previous, following)}
+        files['calendar.txt'] = ('service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\\n' + ''.join(f'{kind},1,1,1,1,1,1,1,{compact(start)},{compact(end)}\\n' for kind, (start, end) in bounds.items())).encode()
+        files['calendar_dates.txt'] = ('service_id,date,exception_type\\n' + f'missing,{compact(date)},2\\n' + ''.join(f'inactive,{compact(date-dt.timedelta(days=days))},2\\n' for days in range(4))).encode()
+        with zipfile.ZipFile(path, 'w') as z:
+            for name, data in files.items(): z.writestr(name, data)
+        compiled = f.compiler.compile_feed(path, f.CONFIG, reference, matching_evidence=True)
+        results.append({'evidence': compiled['matching_evidence'], 'now': f.compiler.service_start(date, ZoneInfo('Europe/Helsinki'))})
+    print(json.dumps(results))
+finally:
+    case.doCleanups()
+`], {encoding: 'utf8'});
+  assert.equal(run.status, 0, run.stderr);
+  for (const {evidence, now} of JSON.parse(run.stdout)) {
+    assert.equal(evidence.status, 'captured');
+    const observations = Object.fromEntries(evidence.observations.map(row => [row.trip_id, row]));
+    for (const row of evidence.observations) assert.ok(row.valid_until <= evidence.source.valid_until);
+    assert.equal(observations.overnight.calendar_state, 'current');
+    assert.equal(observations.expired.calendar_state, 'expired');
+    assert.equal(observations.future.calendar_state, 'future');
+    assert.equal(observations.missing.valid_until, 0);
+    assert.equal(observations.missing.calendar_state, 'expired');
+    assert.deepEqual(observations.missing.active_service_dates, []);
+    assert.deepEqual(observations.future.active_service_dates, []);
+    assert.deepEqual(observations.inactive.active_service_dates, []);
+    assert.equal(observations.inactive.calendar_state, 'current');
+    for (const trip of ['current', 'overnight', 'inactive', 'expired', 'future', 'missing']) {
+      const input = fixture(), observed = observations[trip], snap = new Date(now * 1000).toISOString();
+      const bound = {feed_id: evidence.source.feed_id, source_sha256: evidence.source.sha256, status: 'verified'};
+      input.evidence = structuredClone(evidence); input.pattern_id = observed.pattern_id; input.now = now;
+      Object.assign(input.context, {feed_id: bound.feed_id, source_sha256: bound.source_sha256, service_date: evidence.source.service_date, osm_snapshot: snap});
+      input.candidates[0].osm = captureOsmServiceEvidence(relation({timestamp: snap}), snap);
+      input.candidates[0].route_bindings = [{...bound, route_id: 'R'}];
+      input.crosswalk = ['A', 'B'].map((station_id, i) => ({...bound, station_id, osm_station_id: `node:${i+1}`, osm_snapshot: snap}));
+      const before = structuredClone(input), output = matchTimetablePattern(input);
+      const expected = ['expired', 'missing'].includes(trip) ? 'stale' : trip === 'future' ? 'missing_evidence' : now > observed.valid_until ? 'stale' : 'verified';
+      assert.equal(output.status, expected, `${evidence.source.service_date}/${trip}`);
+      assert.deepEqual(input, before);
     }
   }
 });
@@ -193,8 +305,8 @@ test('missing, future and expired evidence are never converted into a zero-frequ
   const cases = [
     [x => { x.evidence.status = 'incomplete'; }, 'missing_evidence'],
     [x => { x.evidence.observations = []; }, 'missing_evidence'],
-    [x => { x.evidence.observations[0].calendar_state = 'future'; }, 'missing_evidence'],
-    [x => { x.evidence.observations[0].calendar_state = 'expired'; }, 'stale'],
+    [x => { Object.assign(x.evidence.observations[0], {calendar_state: 'future', active_service_dates: []}); }, 'missing_evidence'],
+    [x => { Object.assign(x.evidence.observations[0], {calendar_state: 'expired', active_service_dates: []}); }, 'stale'],
     [x => { x.context.review_until = x.now - 1; }, 'stale'],
     [x => { x.context.candidate_inventory = 'partial'; }, 'missing_evidence'],
     [x => { x.candidates[0].eligibility = 'excluded'; }, 'no_eligible_service'],
@@ -332,6 +444,7 @@ test('a current observation cannot be relinked to revive an expired pattern', ()
   const input = fixture(), expired = input.evidence.patterns[0];
   input.evidence.observations[0].calendar_state = 'expired';
   input.evidence.observations[0].valid_until = input.now - 1;
+  input.evidence.observations[0].active_service_dates = ['2026-10-04'];
   const current = {...structuredClone(expired), shape_id: 'current-branch'};
   const {id, ...definition} = current; current.id = hash(['feed', sha, definition]);
   input.evidence.patterns.push(current);
@@ -1225,7 +1338,7 @@ for (const kind of ['departures', 'frequencies']) test(`resealed observation ${k
     const observation = input.evidence.observations[placement === 'selected' ? 0 : 1];
     observation.departures = [...vector.departures]; observation.frequencies = structuredClone(vector.frequencies);
     if (reverseIntervals) observation.frequencies.reverse();
-    if (placement === 'expired-other') { observation.calendar_state = 'expired'; observation.valid_until = 0; }
+    if (placement === 'expired-other') { observation.calendar_state = 'expired'; observation.valid_until = 0; observation.active_service_dates = []; }
     if (reverseObservations) input.evidence.observations.reverse();
     sealObservations(input);
     const before = structuredClone(input), output = matchTimetablePattern(input);

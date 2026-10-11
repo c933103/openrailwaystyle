@@ -260,6 +260,18 @@ therefore emit seconds or millisecond precision; GTFS evidence uses date strings
 and epoch seconds. Equivalent supported instants are deterministic across
 process timezones, while snapshot pins still require the exact supplied string.
 
+Each content-bound observation must expire no later than the feed-level source
+validity, the collector's maximum route validity. A zero observation boundary
+is the missing-calendar-end sentinel and requires expired state with no active
+dates. Future observations have no active dates in the reference-day lookback;
+expired observations cannot include the reference day itself. These consistency
+checks run after fingerprints and before relevance filtering, including for
+unselected observations. They use the stored historical service date, never
+today. Empty-date current observations, negative historical epoch values and
+overnight/DST service remain supported. Calendar start/end bounds are not stored
+in this sidecar, so the matcher does not claim to reconstruct the full calendar
+or authenticate source truth from a resealable content hash.
+
 ### Outcomes
 
 - `verified`: exactly one reviewed service/section/direction variant satisfies
@@ -341,14 +353,14 @@ bounded; they do not justify enabling it across the production registry yet.
 The same report records fresh, serial Node 24.19.0 matcher processes over a
 controlled 10,000-observation, 2-pattern, 5,825,261-byte sidecar produced from the
 240,000-stop-row/28-profile fixture. Across three repetitions, the valid identity
-case took a median 183.533 ms; an unbound alternative was withheld in 172.560 ms.
-Median peak process RSS was 78,824 and 78,600 KiB respectively. These elapsed
+case took a median 166.562 ms; an unbound alternative was withheld in 178.462 ms.
+Median peak process RSS was 78,544 and 78,688 KiB respectively. These elapsed
 times cover matching after parsing/preparation; RSS includes startup, parsing
 and fixture preparation and is not a matcher-only allocation measurement.
 
 The source-work adversary and candidate-reference adversary returned explicit
-work-limit outcomes in median 59.687 and 193.743 ms, with median peak process RSS
-87,968 and 97,360 KiB. The source adversary fails during all-pattern validation
+work-limit outcomes in median 61.620 and 196.834 ms, with median peak process RSS
+87,828 and 97,412 KiB. The source adversary fails during all-pattern validation
 before reaching the ordinary observation scan, so its lower elapsed time is not
 a speed improvement. The script publishes only aggregate measurements and
 source hashes, never the temporary synthetic sidecar or ZIP. Compiler and
@@ -356,7 +368,7 @@ matcher measurements are separate; neither establishes production coverage or
 worldwide resource savings.
 
 These matcher measurements bind the exact source hashes recorded in the report,
-including served-role, active-date and captured-member structure validation. The prior Node 22.23.3 measurements are retained under
+including served-role, active-date, captured-member and observation-validity validation. The prior Node 22.23.3 measurements are retained under
 `historical_matcher_measurements`; they are not current-source performance
 evidence. Runtime/environment differences prevent a controlled speed or memory
 comparison between these generations. The historical compiler A/B cohorts
