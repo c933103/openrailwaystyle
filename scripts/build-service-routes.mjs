@@ -1,7 +1,7 @@
 // Maintenance build only: visitors never query Overpass. Keeps the worldwide
 // table of urban rail services (service-data branch) and writes its tiles.
 //
-// One region stage per run, in the order of STAGES (Japan first), each run
+// One region stage per run, least recently attempted first (Japan initially), each run
 // capped at BUDGET_BYTES of downloads and every run six hours apart
 // (service-routes.yml), so the volume, with the branch lines' (which share
 // the server), stays within the public Overpass server's guidance (under
@@ -15,6 +15,9 @@ import {STAGES, quarters} from './branch-lines.mjs';
 import {MIN_ZOOM, MAX_ZOOM, migrateServiceDownloads, retireServiceEurope, addResult, buildTiles, geometrySummary, commitStage, discardStage, partQuery, readTable, routeStages, routeView, stageChange, suspiciousChange, toTable, writeTable} from './service-routes.mjs';
 import {createHash} from 'node:crypto';
 import {stageGeometryHealth, refreshRelationDependencyHealth} from './service-geometry-health.mjs';
+
+import {selectDownloadStage} from './download-stages.mjs';
+import {describeOverpassError} from './overpass-errors.mjs';
 
 const api = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
 const previous = process.env.PREVIOUS_DATA ? new URL(`file://${process.env.PREVIOUS_DATA.replace(/\/?$/, '/')}`) : null;
@@ -58,14 +61,9 @@ if (BUDGET_BYTES < 10_000_000) {
   console.log(`${lastDay} bytes downloaded in the last 24 hours; waiting for a later run.`);
   process.exit(0);
 }
-// The stage to work on: one in progress, else the first never completed,
-// else the one completed longest ago if due for a refresh.
+// Resume unfinished stages fairly, retaining each stage's accepted data and queue.
 const info = name => (state.stages[name] ||= {completed: null, pending: null, seen: []});
-let stage = STAGES.find(s => info(s.name).pending?.length) || STAGES.find(s => !info(s.name).completed);
-if (!stage) {
-  const oldest = [...STAGES].sort((a, b) => info(a.name).completed.localeCompare(info(b.name).completed))[0];
-  if (Date.now() - Date.parse(info(oldest.name).completed) >= REFRESH_DAYS * 86400_000) stage = oldest;
-}
+const stage = selectDownloadStage(state, {refreshDays: REFRESH_DAYS});
 if (!stage) {
   console.log('Every stage is current; nothing to fetch.');
   process.exit(0);
@@ -102,14 +100,14 @@ async function overpass(query) {
       if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 200)}`);
       return toTable(JSON.parse(text), {endpoint: api, acquired: new Date().toISOString(), stage: stage.name, pass: current.started, query: createHash('sha256').update(query).digest('hex')});
     } catch (error) {
-      console.warn(error.message);
+      console.warn(`Overpass attempt ${attempt + 1}/5: ${describeOverpassError(error)}`);
       // A busy server calls for waiting; a query that ran out of time or
       // memory calls for a smaller area (null); anything else, try again.
       if (/Dispatcher|too busy|rate_limited|HTTP 429|HTTP 503/i.test(error.message)) continue;
       if (/timed? ?out|timeout|memory|maxsize|HTTP 504|Unexpected end|JSON/i.test(error.message)) return null;
     }
   }
-  throw new Error('Overpass stayed unavailable');
+  throw new Error('Overpass stayed unavailable; see bounded attempt diagnostics');
 }
 
 let fetchedBoxes = 0, splitBoxes = 0, stopped = null;
@@ -170,9 +168,17 @@ if (!current.pending.length) {
 // published data as it was; bytes it did download are still recorded (the
 // state is published with the table unchanged, and the site not redeployed).
 if (!fetchedBoxes && !splitBoxes && stopped) {
-  if (!downloaded) throw new Error(`Nothing fetched: ${stopped}`);
   console.warn(`Nothing fetched (${stopped}); recording ${downloaded} bytes downloaded`);
 }
+
+// Persist failed zero-byte attempts too: the next scheduled run can give a
+// different region a turn. A deferred acquisition is never a completed box.
+current.lastAttempt = {at: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
+  status: !current.pending?.length ? 'acquired' : fetchedBoxes ? 'partial' : 'deferred',
+  reason: stopped, fetchedBoxes, splitBoxes, requests, downloadedBytes: downloaded};
+if (current.lastAttempt.status === 'deferred') console.warn(`::warning::${stage.name} acquisition deferred: ${stopped}`);
+if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY,
+  `### ${stage.name}: ${current.lastAttempt.status}\n${fetchedBoxes} fetched boxes; ${current.pending?.length || 0} pending. ${stopped || ''}\n`);
 
 // Stamped when the downloads end, so the bytes stay in the 24-hour window
 // for a full day after they were last downloaded.
@@ -195,10 +201,10 @@ for (const [key, data] of buildTiles(table)) {
 }
 await writeFile(new URL('index.json', out), JSON.stringify({tiles: index.sort()}));
 const manifest = {geometry: geometrySummary(table), generated: new Date().toISOString(), routes: [...table.routes.values()].filter(r => routeView(r).active !== false).length, retainedRelations: table.routes.size, ways: table.ways.size, tiles: index.length, tileBytes, zooms: [MIN_ZOOM, MAX_ZOOM],
-  stages: STAGES.map(s => ({name: s.name, label: s.label, completed: info(s.name).completed, inProgress: Boolean(info(s.name).pending?.length), geometry: info(s.name).geometry || null,
+  stages: STAGES.map(s => ({name: s.name, label: s.label, completed: info(s.name).completed, inProgress: Boolean(info(s.name).pending?.length), lastAttempt: info(s.name).lastAttempt || null, geometry: info(s.name).geometry || null,
     routes: [...table.routes.values()].filter(r => routeStages(r).includes(s.name) && routeView(r).active !== false).length,
     retainedRelations: [...table.routes.values()].filter(r => routeStages(r).includes(s.name)).length})),
-  run: {stage: stage.name, requests, downloadedBytes: downloaded}, source: api,
+  run: {stage: stage.name, ...current.lastAttempt}, source: api,
   query: 'route relations (type=route) with route=subway, light_rail, tram or monorail, or route=train with service=commuter or urban, and their track ways, by region', license: 'ODbL-1.0',
   description: 'OpenStreetMap urban rail services (metro, light rail, tram, monorail and commuter rail routes) along the tracks they run on, for the Service view.'};
 await writeFile(new URL('manifest.json', out), JSON.stringify(manifest, null, 2));

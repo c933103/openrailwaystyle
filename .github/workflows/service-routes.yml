@@ -11,7 +11,7 @@ on:
     - cron: '11 3-23/6 * * *'
   push:
     branches: [main]
-    paths: ['scripts/download-stages.mjs', 'scripts/build-service-routes.mjs', 'scripts/service-routes.mjs', 'scripts/service-geometry.mjs', 'scripts/service-geometry-health.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs', '.github/workflows/service-routes.yml']
+    paths: ['scripts/download-stages.mjs', 'scripts/overpass-errors.mjs', 'scripts/maintain-data-workflows.mjs', 'scripts/build-service-routes.mjs', 'scripts/service-routes.mjs', 'scripts/service-geometry.mjs', 'scripts/service-geometry-health.mjs', 'scripts/branch-lines.mjs', 'styles/pbf-utf8.mjs', '.github/workflows/service-routes.yml']
 permissions:
   contents: write
   actions: write
@@ -19,6 +19,24 @@ concurrency:
   group: service-data
   cancel-in-progress: false
 jobs:
+  maintenance:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Retire removed diagnostics and refresh the missing timetable aggregate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/maintain-data-workflows.mjs
   stage:
     # Only main publishes the shared snapshot (branches and manual runs
     # started from other refs never replace it).

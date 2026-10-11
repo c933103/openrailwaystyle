@@ -25,6 +25,7 @@ const observations=JSON.parse(readFileSync(process.env.MOCK_PATH,'utf8')); let c
 globalThis.setTimeout=(callback)=>{callback();return 0;};
 globalThis.fetch=async(url,options)=>{appendFileSync(process.env.MOCK_LOG,JSON.stringify({url,query:options.body.get('data')})+'\\n');
 const next=observations[count++];if(!next)throw new Error('Unexpected fetch');
+if(next.error)throw new TypeError('fetch failed',{cause:Object.assign(new Error('transport'),{code:next.error})});
 return new Response(next.padding?' '.repeat(next.padding):JSON.stringify(next.body),{status:next.status||200});};`);
     const run = async (responses, previousState = state(), table = {routes:new Map(),ways:new Map()}, environment = {}) => {
       await writeFile(join(root,'responses.json'),JSON.stringify(responses));
@@ -38,6 +39,22 @@ return new Response(next.padding?' '.repeat(next.padding):JSON.stringify(next.bo
     await fn(run);
   } finally { await rm(root,{recursive:true,force:true}); }
 }
+
+test('zero-byte transport outage persists a deferred attempt, unchanged geometry and an unfinished queue',async () => fixture(async run => {
+  const table={routes:new Map(),ways:new Map()};addResult(table,toTable(response('06')),'japan');commitStage(table,'japan');
+  const before=writeTable(table),result=await run(Array.from({length:5},()=>({error:'ENETUNREACH'})),state(),table);
+  const saved=readTable(gunzipSync(await readFile(join(result.root,'service-data/service-routes.ndjson.gz'))).toString());
+  assert.equal(writeTable(saved),before);
+  const acquired=await result.read('state.json');
+  assert.equal(acquired.stages.japan.completed,null);
+  assert.equal(acquired.stages.japan.pending.length,1);
+  assert.equal(acquired.stages.japan.lastAttempt.status,'deferred');
+  assert.equal(acquired.stages.japan.lastAttempt.requests,5);
+  assert.equal(acquired.stages.japan.lastAttempt.downloadedBytes,0);
+  assert.equal((await result.read('manifest.json')).run.status,'deferred');
+  const {selectDownloadStage}=await import('../scripts/download-stages.mjs');
+  assert.equal(selectDownloadStage(acquired).name,'east-asia');
+}));
 
 test('geometry acquisition: busy-server retry retains metadata and records partial refresh health', async () => fixture(async run => {
   const result = await run([{status:503,body:{remark:'too busy'}},{body:response('07',[points[0],points[1],null,points[3],points[4]])}]);
