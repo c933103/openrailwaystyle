@@ -21,13 +21,17 @@ permissions:
   contents: read
 concurrency:
   group: mainline-reference-${{ github.head_ref && format('refs/heads/{0}', github.head_ref) || github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   plan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     outputs:
       date: ${{ steps.plan.outputs.date }}
       sizes: ${{ steps.budget.outputs.sizes }}
+      checkpoints: ${{ steps.checkpoints.outputs.checkpoints }}
     steps:
       - uses: actions/checkout@v4
       - id: plan
@@ -46,10 +50,18 @@ jobs:
       - name: Check the full worldwide download budget before acquiring any PBF
         id: budget
         run: python scripts/plan-mainline-acquisition.py '${{ steps.plan.outputs.date }}'
+      - name: Find completed continent artifacts across branch cache scopes
+        id: checkpoints
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/find-mainline-checkpoints.mjs
   extract:
     needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    permissions:
+      contents: read
+      actions: read
     strategy:
       fail-fast: false
       max-parallel: 2
@@ -63,14 +75,43 @@ jobs:
         with:
           path: extract-output
           key: mainline-extract-v1-${{ matrix.region }}-${{ needs.plan.outputs.date }}-${{ hashFiles('scripts/acquire-mainline-extract.py') }}
+      - name: Reuse a completed continent artifact before requesting another PBF body
+        if: steps.cache.outputs.cache-hit != 'true' && fromJSON(needs.plan.outputs.checkpoints)[matrix.region].artifact
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ fromJSON(needs.plan.outputs.checkpoints)[matrix.region].artifact }}
+          run-id: ${{ fromJSON(needs.plan.outputs.checkpoints)[matrix.region].run }}
+          github-token: ${{ github.token }}
+          path: extract-output
+          merge-multiple: true
+      - name: Validate checkpoint date, identity and export checksum
+        id: checkpoint
+        env:
+          SOURCE_REGION: ${{ matrix.region }}
+          SOURCE_DATE: ${{ needs.plan.outputs.date }}
+          PLANNED_BYTES: ${{ fromJSON(needs.plan.outputs.sizes)[matrix.region] }}
+        run: |
+          python - <<'PY'
+          import hashlib,json,os,shutil
+          from pathlib import Path
+          root=Path('extract-output');valid=False
+          if (root/'source.json').is_file():
+            s=json.loads((root/'source.json').read_text());p=root/'ways.geojsonseq.gz'
+            valid=(s.get('complete') is True and s.get('region')==os.environ['SOURCE_REGION'] and s.get('date')==os.environ['SOURCE_DATE'] and
+              0<s.get('pbfBytes',0)<=int(os.environ['PLANNED_BYTES']) and p.is_file() and 0<p.stat().st_size<=1024**3 and p.stat().st_size==s.get('exportBytes') and
+              hashlib.file_digest(p.open('rb'),'sha256').hexdigest()==s.get('exportSha256'))
+          if not valid and root.exists(): shutil.rmtree(root)
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output: output.write('valid='+str(valid).lower()+'\n')
+          print('Completed dated checkpoint reused:',valid)
+          PY
       - name: Make room for one bounded PBF on the disposable runner
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: steps.checkpoint.outputs.valid != 'true'
         run: |
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL
           sudo apt-get update -qq
           sudo apt-get install -y osmium-tool
       - name: Download one dated extract, verify checksum and export complete ways
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: steps.checkpoint.outputs.valid != 'true'
         env:
           PLANNED_BYTES: ${{ fromJSON(needs.plan.outputs.sizes)[matrix.region] }}
           SOURCE_REGION: ${{ matrix.region }}
