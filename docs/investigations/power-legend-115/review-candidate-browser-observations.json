@@ -1,0 +1,1112 @@
+[
+  {
+    "device": "desktop",
+    "inactive": false,
+    "points": [
+      {
+        "label": "Electricity supply",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "E",
+            "color": "#b77d00",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      },
+      {
+        "label": "Train refuelling point (fuel type where mapped)",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "F",
+            "color": "#906532",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      },
+      {
+        "label": "Steam engine coaling",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "C",
+            "color": "#4b4c50",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      },
+      {
+        "label": "Steam engine water",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "W",
+            "color": "#287bad",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      }
+    ],
+    "labels": [
+      "Nothing recorded in view",
+      "Not electrified",
+      "Unknown",
+      "Bridge",
+      "Tunnel",
+      "EElectricity supply",
+      "FTrain refuelling point (fuel type where mapped)",
+      "CSteam engine coaling",
+      "WSteam engine water"
+    ],
+    "geometry": {
+      "left": 39,
+      "right": 311,
+      "width": 272,
+      "scrollWidth": 272,
+      "rows": [
+        {
+          "label": "Nothing recorded in view",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 168.5,
+          "width": 129.5
+        },
+        {
+          "label": "Not electrified",
+          "left": 181.5,
+          "right": 311,
+          "labelLeft": 214.5,
+          "labelRight": 287.828125,
+          "width": 129.5
+        },
+        {
+          "label": "Unknown",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 121.390625,
+          "width": 129.5
+        },
+        {
+          "label": "Bridge",
+          "left": 181.5,
+          "right": 311,
+          "labelLeft": 214.5,
+          "labelRight": 248.765625,
+          "width": 129.5
+        },
+        {
+          "label": "Tunnel",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 107.015625,
+          "width": 129.5
+        },
+        {
+          "label": "Electricity supply",
+          "left": 181.5,
+          "right": 311,
+          "labelLeft": 214.5,
+          "labelRight": 300.90625,
+          "width": 129.5
+        },
+        {
+          "label": "Train refuelling point (fuel type where mapped)",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 168.5,
+          "width": 129.5
+        },
+        {
+          "label": "Steam engine coaling",
+          "left": 181.5,
+          "right": 311,
+          "labelLeft": 214.5,
+          "labelRight": 311,
+          "width": 129.5
+        },
+        {
+          "label": "Steam engine water",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 168.5,
+          "width": 129.5
+        }
+      ]
+    }
+  },
+  {
+    "device": "desktop",
+    "inactive": true,
+    "points": [
+      {
+        "label": "Electricity supply",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "E",
+            "color": "#b77d00",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          },
+          {
+            "letter": "E",
+            "color": "#fffef8",
+            "stroke": "#b77d00",
+            "textColor": "#b77d00",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      },
+      {
+        "label": "Train refuelling point (fuel type where mapped)",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "F",
+            "color": "#906532",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          },
+          {
+            "letter": "F",
+            "color": "#fffef8",
+            "stroke": "#906532",
+            "textColor": "#906532",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      },
+      {
+        "label": "Steam engine coaling",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "C",
+            "color": "#4b4c50",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          },
+          {
+            "letter": "C",
+            "color": "#fffef8",
+            "stroke": "#4b4c50",
+            "textColor": "#4b4c50",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      },
+      {
+        "label": "Steam engine water",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "W",
+            "color": "#287bad",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          },
+          {
+            "letter": "W",
+            "color": "#fffef8",
+            "stroke": "#287bad",
+            "textColor": "#287bad",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      }
+    ],
+    "labels": [
+      "Nothing recorded in view",
+      "Not electrified",
+      "Unknown",
+      "Bridge",
+      "Tunnel",
+      "EEElectricity supply",
+      "FFTrain refuelling point (fuel type where mapped)",
+      "CCSteam engine coaling",
+      "WWSteam engine water",
+      "Construction",
+      "Proposed",
+      "Disused",
+      "Abandoned / removed"
+    ],
+    "geometry": {
+      "left": 39,
+      "right": 311,
+      "width": 272,
+      "scrollWidth": 279,
+      "rows": [
+        {
+          "label": "Nothing recorded in view",
+          "left": 39,
+          "right": 168.953125,
+          "labelLeft": 72,
+          "labelRight": 168.953125,
+          "width": 129.953125
+        },
+        {
+          "label": "Not electrified",
+          "left": 181.953125,
+          "right": 318.484375,
+          "labelLeft": 214.953125,
+          "labelRight": 288.28125,
+          "width": 136.53125
+        },
+        {
+          "label": "Unknown",
+          "left": 39,
+          "right": 168.953125,
+          "labelLeft": 72,
+          "labelRight": 121.390625,
+          "width": 129.953125
+        },
+        {
+          "label": "Bridge",
+          "left": 181.953125,
+          "right": 318.484375,
+          "labelLeft": 214.953125,
+          "labelRight": 249.21875,
+          "width": 136.53125
+        },
+        {
+          "label": "Tunnel",
+          "left": 39,
+          "right": 168.953125,
+          "labelLeft": 72,
+          "labelRight": 107.015625,
+          "width": 129.953125
+        },
+        {
+          "label": "Electricity supply",
+          "left": 181.953125,
+          "right": 318.484375,
+          "labelLeft": 225.953125,
+          "labelRight": 312.359375,
+          "width": 136.53125
+        },
+        {
+          "label": "Train refuelling point (fuel type where mapped)",
+          "left": 39,
+          "right": 168.953125,
+          "labelLeft": 83,
+          "labelRight": 168.953125,
+          "width": 129.953125
+        },
+        {
+          "label": "Steam engine coaling",
+          "left": 181.953125,
+          "right": 318.484375,
+          "labelLeft": 225.953125,
+          "labelRight": 318.484375,
+          "width": 136.53125
+        },
+        {
+          "label": "Steam engine water",
+          "left": 39,
+          "right": 168.953125,
+          "labelLeft": 83,
+          "labelRight": 168.953125,
+          "width": 129.953125
+        },
+        {
+          "label": "Construction",
+          "left": 181.953125,
+          "right": 318.484375,
+          "labelLeft": 251.953125,
+          "labelRight": 318.484375,
+          "width": 136.53125
+        },
+        {
+          "label": "Proposed",
+          "left": 39,
+          "right": 168.953125,
+          "labelLeft": 109,
+          "labelRight": 158.296875,
+          "width": 129.953125
+        },
+        {
+          "label": "Disused",
+          "left": 181.953125,
+          "right": 318.484375,
+          "labelLeft": 251.953125,
+          "labelRight": 293.140625,
+          "width": 136.53125
+        },
+        {
+          "label": "Abandoned / removed",
+          "left": 39,
+          "right": 168.953125,
+          "labelLeft": 109,
+          "labelRight": 168.953125,
+          "width": 129.953125
+        }
+      ]
+    }
+  },
+  {
+    "device": "desktop",
+    "inactive": false,
+    "points": [
+      {
+        "label": "Electricity supply",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "E",
+            "color": "#b77d00",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      },
+      {
+        "label": "Train refuelling point (fuel type where mapped)",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "F",
+            "color": "#906532",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      },
+      {
+        "label": "Steam engine coaling",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "C",
+            "color": "#4b4c50",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      },
+      {
+        "label": "Steam engine water",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "W",
+            "color": "#287bad",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      }
+    ],
+    "labels": [
+      "Nothing recorded in view",
+      "Not electrified",
+      "Unknown",
+      "Bridge",
+      "Tunnel",
+      "EElectricity supply",
+      "FTrain refuelling point (fuel type where mapped)",
+      "CSteam engine coaling",
+      "WSteam engine water"
+    ],
+    "geometry": {
+      "left": 39,
+      "right": 311,
+      "width": 272,
+      "scrollWidth": 272,
+      "rows": [
+        {
+          "label": "Nothing recorded in view",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 168.5,
+          "width": 129.5
+        },
+        {
+          "label": "Not electrified",
+          "left": 181.5,
+          "right": 311,
+          "labelLeft": 214.5,
+          "labelRight": 287.828125,
+          "width": 129.5
+        },
+        {
+          "label": "Unknown",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 121.390625,
+          "width": 129.5
+        },
+        {
+          "label": "Bridge",
+          "left": 181.5,
+          "right": 311,
+          "labelLeft": 214.5,
+          "labelRight": 248.765625,
+          "width": 129.5
+        },
+        {
+          "label": "Tunnel",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 107.015625,
+          "width": 129.5
+        },
+        {
+          "label": "Electricity supply",
+          "left": 181.5,
+          "right": 311,
+          "labelLeft": 214.5,
+          "labelRight": 300.90625,
+          "width": 129.5
+        },
+        {
+          "label": "Train refuelling point (fuel type where mapped)",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 168.5,
+          "width": 129.5
+        },
+        {
+          "label": "Steam engine coaling",
+          "left": 181.5,
+          "right": 311,
+          "labelLeft": 214.5,
+          "labelRight": 311,
+          "width": 129.5
+        },
+        {
+          "label": "Steam engine water",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 168.5,
+          "width": 129.5
+        }
+      ]
+    }
+  },
+  {
+    "device": "mobile",
+    "inactive": false,
+    "points": [
+      {
+        "label": "Electricity supply",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "E",
+            "color": "#b77d00",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      },
+      {
+        "label": "Train refuelling point (fuel type where mapped)",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "F",
+            "color": "#906532",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      },
+      {
+        "label": "Steam engine coaling",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "C",
+            "color": "#4b4c50",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      },
+      {
+        "label": "Steam engine water",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "W",
+            "color": "#287bad",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      }
+    ],
+    "labels": [
+      "Nothing recorded in view",
+      "Not electrified",
+      "Unknown",
+      "Bridge",
+      "Tunnel",
+      "EElectricity supply",
+      "FTrain refuelling point (fuel type where mapped)",
+      "CSteam engine coaling",
+      "WSteam engine water"
+    ],
+    "geometry": {
+      "left": 25,
+      "right": 305,
+      "width": 280,
+      "scrollWidth": 280,
+      "rows": [
+        {
+          "label": "Nothing recorded in view",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 158.5,
+          "width": 133.5
+        },
+        {
+          "label": "Not electrified",
+          "left": 171.5,
+          "right": 305,
+          "labelLeft": 204.5,
+          "labelRight": 277.828125,
+          "width": 133.5
+        },
+        {
+          "label": "Unknown",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 107.390625,
+          "width": 133.5
+        },
+        {
+          "label": "Bridge",
+          "left": 171.5,
+          "right": 305,
+          "labelLeft": 204.5,
+          "labelRight": 238.765625,
+          "width": 133.5
+        },
+        {
+          "label": "Tunnel",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 93.015625,
+          "width": 133.5
+        },
+        {
+          "label": "Electricity supply",
+          "left": 171.5,
+          "right": 305,
+          "labelLeft": 204.5,
+          "labelRight": 290.90625,
+          "width": 133.5
+        },
+        {
+          "label": "Train refuelling point (fuel type where mapped)",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 158.5,
+          "width": 133.5
+        },
+        {
+          "label": "Steam engine coaling",
+          "left": 171.5,
+          "right": 305,
+          "labelLeft": 204.5,
+          "labelRight": 305,
+          "width": 133.5
+        },
+        {
+          "label": "Steam engine water",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 158.5,
+          "width": 133.5
+        }
+      ]
+    }
+  },
+  {
+    "device": "mobile",
+    "inactive": true,
+    "points": [
+      {
+        "label": "Electricity supply",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "E",
+            "color": "#b77d00",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          },
+          {
+            "letter": "E",
+            "color": "#fffef8",
+            "stroke": "#b77d00",
+            "textColor": "#b77d00",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      },
+      {
+        "label": "Train refuelling point (fuel type where mapped)",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "F",
+            "color": "#906532",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          },
+          {
+            "letter": "F",
+            "color": "#fffef8",
+            "stroke": "#906532",
+            "textColor": "#906532",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      },
+      {
+        "label": "Steam engine coaling",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "C",
+            "color": "#4b4c50",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          },
+          {
+            "letter": "C",
+            "color": "#fffef8",
+            "stroke": "#4b4c50",
+            "textColor": "#4b4c50",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      },
+      {
+        "label": "Steam engine water",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "W",
+            "color": "#287bad",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          },
+          {
+            "letter": "W",
+            "color": "#fffef8",
+            "stroke": "#287bad",
+            "textColor": "#287bad",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      }
+    ],
+    "labels": [
+      "Nothing recorded in view",
+      "Not electrified",
+      "Unknown",
+      "Bridge",
+      "Tunnel",
+      "EEElectricity supply",
+      "FFTrain refuelling point (fuel type where mapped)",
+      "CCSteam engine coaling",
+      "WWSteam engine water",
+      "Construction",
+      "Proposed",
+      "Disused",
+      "Abandoned / removed"
+    ],
+    "geometry": {
+      "left": 25,
+      "right": 305,
+      "width": 280,
+      "scrollWidth": 280,
+      "rows": [
+        {
+          "label": "Nothing recorded in view",
+          "left": 25,
+          "right": 155.46875,
+          "labelLeft": 58,
+          "labelRight": 155.46875,
+          "width": 130.46875
+        },
+        {
+          "label": "Not electrified",
+          "left": 168.46875,
+          "right": 305,
+          "labelLeft": 201.46875,
+          "labelRight": 274.796875,
+          "width": 136.53125
+        },
+        {
+          "label": "Unknown",
+          "left": 25,
+          "right": 155.46875,
+          "labelLeft": 58,
+          "labelRight": 107.390625,
+          "width": 130.46875
+        },
+        {
+          "label": "Bridge",
+          "left": 168.46875,
+          "right": 305,
+          "labelLeft": 201.46875,
+          "labelRight": 235.734375,
+          "width": 136.53125
+        },
+        {
+          "label": "Tunnel",
+          "left": 25,
+          "right": 155.46875,
+          "labelLeft": 58,
+          "labelRight": 93.015625,
+          "width": 130.46875
+        },
+        {
+          "label": "Electricity supply",
+          "left": 168.46875,
+          "right": 305,
+          "labelLeft": 212.46875,
+          "labelRight": 298.875,
+          "width": 136.53125
+        },
+        {
+          "label": "Train refuelling point (fuel type where mapped)",
+          "left": 25,
+          "right": 155.46875,
+          "labelLeft": 69,
+          "labelRight": 155.46875,
+          "width": 130.46875
+        },
+        {
+          "label": "Steam engine coaling",
+          "left": 168.46875,
+          "right": 305,
+          "labelLeft": 212.46875,
+          "labelRight": 305,
+          "width": 136.53125
+        },
+        {
+          "label": "Steam engine water",
+          "left": 25,
+          "right": 155.46875,
+          "labelLeft": 69,
+          "labelRight": 155.46875,
+          "width": 130.46875
+        },
+        {
+          "label": "Construction",
+          "left": 168.46875,
+          "right": 305,
+          "labelLeft": 238.46875,
+          "labelRight": 305,
+          "width": 136.53125
+        },
+        {
+          "label": "Proposed",
+          "left": 25,
+          "right": 155.46875,
+          "labelLeft": 95,
+          "labelRight": 144.296875,
+          "width": 130.46875
+        },
+        {
+          "label": "Disused",
+          "left": 168.46875,
+          "right": 305,
+          "labelLeft": 238.46875,
+          "labelRight": 279.65625,
+          "width": 136.53125
+        },
+        {
+          "label": "Abandoned / removed",
+          "left": 25,
+          "right": 155.46875,
+          "labelLeft": 95,
+          "labelRight": 155.46875,
+          "width": 130.46875
+        }
+      ]
+    }
+  },
+  {
+    "device": "mobile",
+    "inactive": false,
+    "points": [
+      {
+        "label": "Electricity supply",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "E",
+            "color": "#b77d00",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      },
+      {
+        "label": "Train refuelling point (fuel type where mapped)",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "F",
+            "color": "#906532",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      },
+      {
+        "label": "Steam engine coaling",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "C",
+            "color": "#4b4c50",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      },
+      {
+        "label": "Steam engine water",
+        "hidden": "true",
+        "line": false,
+        "symbols": [
+          {
+            "letter": "W",
+            "color": "#287bad",
+            "stroke": "#fffef8",
+            "textColor": "#fffef8",
+            "width": 16,
+            "height": 16,
+            "glyphInside": true
+          }
+        ]
+      }
+    ],
+    "labels": [
+      "Nothing recorded in view",
+      "Not electrified",
+      "Unknown",
+      "Bridge",
+      "Tunnel",
+      "EElectricity supply",
+      "FTrain refuelling point (fuel type where mapped)",
+      "CSteam engine coaling",
+      "WSteam engine water"
+    ],
+    "geometry": {
+      "left": 25,
+      "right": 305,
+      "width": 280,
+      "scrollWidth": 280,
+      "rows": [
+        {
+          "label": "Nothing recorded in view",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 158.5,
+          "width": 133.5
+        },
+        {
+          "label": "Not electrified",
+          "left": 171.5,
+          "right": 305,
+          "labelLeft": 204.5,
+          "labelRight": 277.828125,
+          "width": 133.5
+        },
+        {
+          "label": "Unknown",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 107.390625,
+          "width": 133.5
+        },
+        {
+          "label": "Bridge",
+          "left": 171.5,
+          "right": 305,
+          "labelLeft": 204.5,
+          "labelRight": 238.765625,
+          "width": 133.5
+        },
+        {
+          "label": "Tunnel",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 93.015625,
+          "width": 133.5
+        },
+        {
+          "label": "Electricity supply",
+          "left": 171.5,
+          "right": 305,
+          "labelLeft": 204.5,
+          "labelRight": 290.90625,
+          "width": 133.5
+        },
+        {
+          "label": "Train refuelling point (fuel type where mapped)",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 158.5,
+          "width": 133.5
+        },
+        {
+          "label": "Steam engine coaling",
+          "left": 171.5,
+          "right": 305,
+          "labelLeft": 204.5,
+          "labelRight": 305,
+          "width": 133.5
+        },
+        {
+          "label": "Steam engine water",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 158.5,
+          "width": 133.5
+        }
+      ]
+    }
+  }
+]

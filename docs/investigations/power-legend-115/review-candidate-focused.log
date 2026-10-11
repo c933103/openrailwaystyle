@@ -1,0 +1,159 @@
+✔ the station's timetable stops: rail stops nearby, named like the station first (2.672859ms)
+✔ departure rows: rail only, merged in time order, one row per train, live delays and cancellations (17.930727ms)
+✔ one train from two feeds is one row under its line name; numbered route IDs are not line names (0.963794ms)
+✔ merged rows keep real-time state from either feed; rows without a destination are not merged (0.518131ms)
+✔ a live row and a cancelled duplicate merge as cancelled; one list keeps two simultaneous services (0.42092ms)
+✔ a named row with two candidates in another list merges with neither, in either order (0.307737ms)
+✔ ambiguous cross-feed matches stay separate whatever the order (0.370956ms)
+✔ a regional train and a metro train leaving together are never merged (0.25318ms)
+✔ journey links and the station board request (0.857923ms)
+✔ one stop's board failing keeps the other's; all failing is an error (2.148477ms)
+✔ power supplies select locomotive facilities without proximity or operator guesses (2.17572ms)
+✔ maintenance selectors include every supported token and lifecycle hint before classification (5.303301ms)
+✔ power/tank filters use only the bounded named hint set, avoiding global primary-tag scans (1.731797ms)
+✔ key-presence prefilter preserves all v6 raw selections and classifier output (85.902835ms)
+✔ reviewed v6 responses and split routes retain exact same-bbox compatibility and original freshness (111.056812ms)
+✔ future changes to base selectors or the prefilter disable legacy-cache compatibility (6.102451ms)
+✔ named-set filtering preserves classifier-accepted supplies from the literal-query baseline (66.182593ms)
+✔ literal hints and classification reject uppercase-only and irrelevant energy hints (0.824756ms)
+✔ snapshot keeps node/way/relation identities and lifecycle instead of claiming former supplies are operating (8.790322ms)
+✔ Power-only facility layers place symbols by actual supply zoom and gate former supplies (8.651948ms)
+✔ supply snapshot loading is lazy, shared and re-localized without downloading again (0.805685ms)
+✔ former railway use does not describe an operating traction supply (0.456708ms)
+✔ each facility category shares its point letter and color with the legend and map paint (0.481648ms)
+(node:59) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ actual sw-before-first-party-libraries.js keeps app/control versions coherent and safely recovers cached libraries (572.05221ms)
+✔ actual sw-before-maplibre-backport.js keeps app/control versions coherent and safely recovers cached libraries (289.028559ms)
+✔ new app recovers verified already-patched first-party cache bytes without a second patch (228.205527ms)
+✔ legacy startup recovery ignores unrelated caches and non-JavaScript saved responses (94.346221ms)
+✔ legacy startup recovery rejects tampered-bytes even with HTTP 200 and correct MIME (127.741068ms)
+✔ legacy startup recovery rejects crypto-unavailable even with HTTP 200 and correct MIME (80.940374ms)
+▶ installation help works before renderer libraries load and after WebGL initialization fails
+  ✔ {"delayLibraries":true} (184.542873ms)
+  ✔ {"failWebGL":true} (150.477435ms)
+✔ installation help works before renderer libraries load and after WebGL initialization fails (336.047792ms)
+✔ a complete installed Chinese font is used without any download (107.007668ms)
+✔ a partial installed Chinese font fetches the packaged font only once Han labels are drawn, for the current script (161.533939ms)
+✔ a failed packaged Chinese font download waits before trying again, and retries when back online (106.511702ms)
+✔ Japanese labels keep the installed Japanese font even when it is partial (128.334248ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ unavailable Chinese font preserves a working map and system fallback (98.619479ms)
+✔ clicked station, service, entrance, power and context details share the selected regional font (225.752056ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ English and local infoboxes scope script languages to CJK runs and preserve English text (542.155816ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ infobox Han text requests the packaged font after probing without requiring map glyph drawing (121.268682ms)
+✔ an open infobox follows language and font changes while map style loading is delayed (127.340749ms)
+✔ rare Han in infobox body values and later departure text loads only the displayed slices (126.689816ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ service frequency profile is applied on the first frame and controls persist independently (147.195043ms)
+✔ frequency periods no applied source covers are not offered, and a link to one falls back (127.022553ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ equal-width service details expire even after the inspected route leaves loaded tiles (98.004677ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ mixed timetable and headway details name each source, period definition and terms link (91.669131ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ app starts with the MapLibre 5 API and enables map controls (165.390361ms)
+Railway energy supplies unavailable: Invalid railway energy supply snapshot
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ controls work while the map is still loading, and settings take effect once it loads (161.870611ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ more detail cycles: the next zoom level at half size, two levels at a quarter, then normal (95.885425ms)
+✔ settings are remembered in a cookie; a shared link applies once and leaves the address (365.012882ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ curated hubs take their names from the provider station tiles by OSM identity, without OSM API requests (99.987566ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ curated hub names with rare Han wait for their slices before reaching the map (114.074299ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ curated dots survive an unavailable name dependency: metadata (142.058526ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ curated dots survive an unavailable name dependency: stationProtocol (136.12404ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ a selected deferred dot is named when missing provider metadata later becomes available (131.416658ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ curated locations publish before an eligible provider name request settles (154.15251ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ opening a deferred curated dot loads its provider name and refreshes name-based departure matching (133.121328ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ failed selected-hub lookups stay bounded and preserve the anonymous point (156.735437ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ a deferred curated name cannot overwrite the panel after close (124.019587ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ a deferred curated name cannot overwrite the panel after select another station (161.588326ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ an open deferred hub follows the newest language and ignores its older pending name (158.353233ms)
+✔ tiles served as stored load the rare Han slices of their text, such as service route names (93.548544ms)
+✔ real renderer initialization failures reach the visible error message (73.939352ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ station inspection finds nearby interchanges and facility inspection avoids railway fields (117.737274ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ museum and theatre context does not offer a pointer or intercept railway inspection (109.983866ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ concurrent train-control systems use compact names with complete hover and native expandable descriptions (409.43592ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ railway energy supplies download once at facility zoom and relocalize existing data on language changes (175.231349ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ Power facilities inspect their supply type and source object without train speed or timetable fields (117.195784ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ close infrastructure details follow the mode, labels and background on the initial frame and after switching (113.640471ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ signals and entrances inspect their mapped node and avoid track/timetable fields (120.115063ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ Carto shows railway overlays, honours terrain, hides duplicate basemap labels and keeps compact attribution (95.411996ms)
+✔ desktop brand announces collapse on its first activation (114.293163ms)
+✔ compact controls open from the icon and return focus to it on collapse and Escape (116.143634ms)
+✔ saved hidden overlays are absent in the constructor before any tile request (92.442336ms)
+✔ Causeway Bay search reaches both APIs before a delayed label bundle loads (106.659905ms)
+✔ map info identifies the executing cached asset and links to its build repository across backgrounds (83.328249ms)
+✔ map info exposes mismatched cached bundle versions and handles a missing commit (99.470366ms)
+✔ every versioned file the page loads asks for the page version (24.273107ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ watch starts map-only and deliberate controls return to the map after each action (129.31423ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ entering watch mode deactivates hidden drawing and measurement input (242.500849ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ rail tile recovery updates visible app status without idle, after bookkeeping, including early style events (227.730428ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ partial rail recovery and loaded-but-errored sources retain the outage state without extra retries (113.126651ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ rail recovery preserves unrelated app errors until actual unrelated success (125.067016ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ metadata recovery clears app bookkeeping without idle and cancellation is not an outage (95.80351ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ source replacement retires old recovery and disposal cancels every scheduled retry (102.756894ms)
+✔ platform measurement fetches HTTP templates rather than MapLibre protocol URLs (97.352548ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ settings hide and show failed layers without pan or idle resumes exactly one recovery timer (150.737142ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ off-screen retirement reconciles owned errors without source success and retains other failures (114.903495ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ retirement cannot clear nonretryable or newer same-ID errors (198.708128ms)
+Polar caps unavailable: Unexpected import ./vendor/polar-layer.js?v=20261011-power-legend-1
+✔ timer retirement reconciles status after its transaction and queued notifications are inert after disposal (91.812721ms)
+✔ Power legend shows facility point letters and preserves track samples across setting and view changes (170.734535ms)
+✔ installation drains response bodies without exhausting its three network slots (59.216963ms)
+✔ a truncated map-model.mjs response cannot publish or activate an incomplete shell (10.591226ms)
+✔ a truncated maplibre-gl-5.24.0-atlas.1.js response cannot publish or activate an incomplete shell (9.725797ms)
+✔ a truncated maplibre-gl-5.24.0.css response cannot publish or activate an incomplete shell (10.120659ms)
+✔ a truncated pmtiles-4.2.1.js response cannot publish or activate an incomplete shell (9.532643ms)
+✔ a complete replacement keeps the previous version and revised icons available offline (71.187683ms)
+✔ the current departure release refreshes cached code while previous tabs retain their version (57.367021ms)
+✔ first-party libraries install together and remain available offline with every external origin blocked (31.683093ms)
+✔ actual CDN-era worker copies remain usable after first-party migration without new CDN requests (45.353451ms)
+✔ an old CDN JS URL receives the fixed library even without a legacy cache entry (28.812118ms)
+✔ legacy cache migration and serving reject tampered-bytes with otherwise valid responses (44.781362ms)
+✔ legacy cache migration and serving reject crypto-unavailable with otherwise valid responses (56.797133ms)
+✔ actual first-party worker migration serves fixed bytes to delayed old tabs (50.54033ms)
+✔ Power legend release upgrades the cached app, CSS and facility metadata together (34.277817ms)
+ℹ tests 105
+ℹ suites 0
+ℹ pass 105
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12378.664723

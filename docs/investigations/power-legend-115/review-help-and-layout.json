@@ -1,0 +1,74 @@
+[
+  {
+    "kind": "baseline",
+    "device": "desktop",
+    "geometry": {
+      "labelRight": 318.484375,
+      "legendRight": 311,
+      "panelRight": 330,
+      "panelClientRight": 329,
+      "panelScrollWidth": 308,
+      "panelClientWidth": 308,
+      "legendScrollWidth": 279,
+      "legendClientWidth": 272,
+      "lastCharacterHit": true
+    },
+    "keyboardHelpOpened": true,
+    "lifecycleDescriptionAccessible": true,
+    "accessible": "- heading \"Railway power · in view\" [level=2]\n- text: Nothing recorded in view Not electrified Unknown Bridge Tunnel Electricity supply Locomotive fuel Coal supply Steam locomotive water Construction Proposed Disused Abandoned / removed\n- group:\n  - text: How to read this view\n  - paragraph: Track hue is the current type (DC, or AC by frequency); darker is higher voltage. A train needs both to match, unless built for several systems. E/F/C/W markers identify railway electricity, fuel, coal and steam-water supplies. Hollow markers identify planned or former facilities when those are enabled. Grey means not recorded. At world scales, grey OSM reference lines preserve corridor geometry when thematic data is unavailable. Darker grey is mapped mainline; lighter grey is branch; dashed grey has no mapped main/branch classification."
+  },
+  {
+    "kind": "baseline",
+    "device": "mobile",
+    "geometry": {
+      "labelRight": 305,
+      "legendRight": 305,
+      "panelRight": 320,
+      "panelClientRight": 319,
+      "panelScrollWidth": 308,
+      "panelClientWidth": 308,
+      "legendScrollWidth": 280,
+      "legendClientWidth": 280,
+      "lastCharacterHit": true
+    },
+    "keyboardHelpOpened": true,
+    "lifecycleDescriptionAccessible": true,
+    "accessible": "- heading \"Railway power · in view\" [level=2]\n- text: Nothing recorded in view Not electrified Unknown Bridge Tunnel Electricity supply Locomotive fuel Coal supply Steam locomotive water Construction Proposed Disused Abandoned / removed\n- group:\n  - text: How to read this view\n  - paragraph: Track hue is the current type (DC, or AC by frequency); darker is higher voltage. A train needs both to match, unless built for several systems. E/F/C/W markers identify railway electricity, fuel, coal and steam-water supplies. Hollow markers identify planned or former facilities when those are enabled. Grey means not recorded. At world scales, grey OSM reference lines preserve corridor geometry when thematic data is unavailable. Darker grey is mapped mainline; lighter grey is branch; dashed grey has no mapped main/branch classification."
+  },
+  {
+    "kind": "candidate",
+    "device": "desktop",
+    "geometry": {
+      "labelRight": 318.484375,
+      "legendRight": 311,
+      "panelRight": 330,
+      "panelClientRight": 329,
+      "panelScrollWidth": 308,
+      "panelClientWidth": 308,
+      "legendScrollWidth": 279,
+      "legendClientWidth": 272,
+      "lastCharacterHit": true
+    },
+    "keyboardHelpOpened": true,
+    "lifecycleDescriptionAccessible": true,
+    "accessible": "- heading \"Railway power · in view\" [level=2]\n- text: Nothing recorded in view Not electrified Unknown Bridge Tunnel Electricity supply Train refuelling point (fuel type where mapped) Steam engine coaling Steam engine water Construction Proposed Disused Abandoned / removed\n- group:\n  - text: How to read this view\n  - paragraph: Track hue is the current type (DC, or AC by frequency); darker is higher voltage. A train needs both to match, unless built for several systems. E/F/C/W markers identify railway electricity, fuel, coal and steam-water supplies. Hollow markers identify planned or former facilities when those are enabled. Grey means not recorded. At world scales, grey OSM reference lines preserve corridor geometry when thematic data is unavailable. Darker grey is mapped mainline; lighter grey is branch; dashed grey has no mapped main/branch classification."
+  },
+  {
+    "kind": "candidate",
+    "device": "mobile",
+    "geometry": {
+      "labelRight": 305,
+      "legendRight": 305,
+      "panelRight": 320,
+      "panelClientRight": 319,
+      "panelScrollWidth": 308,
+      "panelClientWidth": 308,
+      "legendScrollWidth": 280,
+      "legendClientWidth": 280,
+      "lastCharacterHit": true
+    },
+    "keyboardHelpOpened": true,
+    "lifecycleDescriptionAccessible": true,
+    "accessible": "- heading \"Railway power · in view\" [level=2]\n- text: Nothing recorded in view Not electrified Unknown Bridge Tunnel Electricity supply Train refuelling point (fuel type where mapped) Steam engine coaling Steam engine water Construction Proposed Disused Abandoned / removed\n- group:\n  - text: How to read this view\n  - paragraph: Track hue is the current type (DC, or AC by frequency); darker is higher voltage. A train needs both to match, unless built for several systems. E/F/C/W markers identify railway electricity, fuel, coal and steam-water supplies. Hollow markers identify planned or former facilities when those are enabled. Grey means not recorded. At world scales, grey OSM reference lines preserve corridor geometry when thematic data is unavailable. Darker grey is mapped mainline; lighter grey is branch; dashed grey has no mapped main/branch classification."
+  }
+]

@@ -1,0 +1,21 @@
+✔ power supplies select locomotive facilities without proximity or operator guesses (5.57824ms)
+✔ maintenance selectors include every supported token and lifecycle hint before classification (10.781148ms)
+✔ power/tank filters use only the bounded named hint set, avoiding global primary-tag scans (2.194566ms)
+✔ key-presence prefilter preserves all v6 raw selections and classifier output (172.560614ms)
+✔ reviewed v6 responses and split routes retain exact same-bbox compatibility and original freshness (227.016324ms)
+✔ future changes to base selectors or the prefilter disable legacy-cache compatibility (12.441206ms)
+✔ named-set filtering preserves classifier-accepted supplies from the literal-query baseline (168.948935ms)
+✔ literal hints and classification reject uppercase-only and irrelevant energy hints (2.243461ms)
+✔ snapshot keeps node/way/relation identities and lifecycle instead of claiming former supplies are operating (16.876835ms)
+✔ Power-only facility layers place symbols by actual supply zoom and gate former supplies (14.042242ms)
+✔ supply snapshot loading is lazy, shared and re-localized without downloading again (1.984014ms)
+✔ former railway use does not describe an operating traction supply (1.367636ms)
+✔ each facility category shares its point letter and color with the legend and map paint (1.547164ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 945.485958

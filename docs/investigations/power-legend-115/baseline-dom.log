@@ -1,0 +1,31 @@
+(node:14) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✖ Power legend shows facility point letters and preserves track samples across setting and view changes (439.928685ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1474.703918
+
+✖ failing tests:
+
+test at tests/startup.test.mjs:1587:1
+✖ Power legend shows facility point letters and preserves track samples across setting and view changes (439.928685ms)
+  AssertionError [ERR_ASSERTION]: E/F/C/W must use point samples, not empty line swatches
+  
+  0 !== 4
+  
+      at checkPoints (file://[candidate]/tests/startup.test.mjs:1599:14)
+      at TestContext.<anonymous> (file://[candidate]/tests/startup.test.mjs:1620:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 4,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

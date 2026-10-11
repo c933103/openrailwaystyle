@@ -1,0 +1,98 @@
+{
+  "review-candidate-browser-observations.json": {
+    "bytes": 26614,
+    "sha256": "cd1091e607370fdc0d5881479a0728c99430ad0d7cb1c290030e80e1ed234ec8"
+  },
+  "review-candidate-mobile-full-panel.png": {
+    "bytes": 126878,
+    "sha256": "7b9c2fa9f8b2130c71d117696355aa23db68b9d21eecea93737f87325a9ace2c"
+  },
+  "power-legend-former-mobile.png": {
+    "bytes": 56793,
+    "sha256": "df082236257bc4c8df7f0112f19101c6af2ffb38af6532994031af51a568717b"
+  },
+  "baseline-browser.log": {
+    "bytes": 1397,
+    "sha256": "ec1f576d8f5ce2700658244fb76e8d4f3f741735bb07dfd3cd45cbdfa4d8e73e"
+  },
+  "power-legend-former-desktop.png": {
+    "bytes": 56362,
+    "sha256": "cf8fca3108359bebd7c88daa961fb7d097293eae608fccc39bc7f07a6230cc5f"
+  },
+  "full-tests.log": {
+    "bytes": 132298,
+    "sha256": "94b5952f6a967d0574f6be36186ff069404a1715c5c89316d94e1e77e843182d"
+  },
+  "baseline-dom.log": {
+    "bytes": 1140,
+    "sha256": "ef42cd2b3179fb3fcc86049226fec5d18f976840288c0181c342bec10465be56"
+  },
+  "review-baseline-browser-observations.json": {
+    "bytes": 15181,
+    "sha256": "ac769e0bb507c1717f055db7717a7044dddf43062cce3849b19f384b084b640b"
+  },
+  "baseline-cache.log": {
+    "bytes": 995,
+    "sha256": "1810ebdc0cee83f9e8305feb0091d5c53cefd301d0309fa0ad6fd51fb96e89f6"
+  },
+  "README.md": {
+    "bytes": 5265,
+    "sha256": "cdcb6808497c8692a41ef7c20e5628589d642d225dbe40960176eeae30a92519"
+  },
+  "review-candidate-focused.log": {
+    "bytes": 15134,
+    "sha256": "0ef071e3b125f046258d3bd0e7c2f0a7dedb050871ab3b3dfdf70ef6e0d5d563"
+  },
+  "cache-upgrade.log": {
+    "bytes": 215,
+    "sha256": "19d58b6818ae1819b11188cc020faf25fde80b100d0977ad691b5fad877459c8"
+  },
+  "review-parity-result.log": {
+    "bytes": 84,
+    "sha256": "0a53f99bea75ea92c5852c085f2b50067925b6d2e6857ab88afc5990aaedbcd8"
+  },
+  "review-baseline-mobile-full-panel.png": {
+    "bytes": 117414,
+    "sha256": "362fe3f62d430e098759c5e8aaa9a92f754331937662d67266348c821dd7e5d8"
+  },
+  "power-legend-active-mobile.png": {
+    "bytes": 41311,
+    "sha256": "559b6b77069b116d344fd75743c82af442c63220f227601f0de92d483a8e177e"
+  },
+  "power-model.log": {
+    "bytes": 1479,
+    "sha256": "7f4de4a18ad8a7d0e4b4041360e3eee0d6d6362a7f41daea8ec12dd39a88d9af"
+  },
+  "build.log": {
+    "bytes": 209,
+    "sha256": "5edef98e1be88795ff16c41d5f8ede8c01527bc708aa6f0e4ace618b5862826a"
+  },
+  "review-help-and-layout.log": {
+    "bytes": 209,
+    "sha256": "10e88a143f537900ca6aedeb1db7b6262fb37a15d617a811257f83009d903717"
+  },
+  "review-help-and-layout.json": {
+    "bytes": 5238,
+    "sha256": "07c2059f343f1cb924bac14d16872dcb7cb8714ded8b06f76d1edb157f05ef49"
+  },
+  "power-legend-active-desktop.png": {
+    "bytes": 41166,
+    "sha256": "5fe57704fdd3fb165fc34176dd60bf19af6514a4cba7083e83e9c275bf0c2938"
+  },
+  "candidate-dom.log": {
+    "bytes": 487,
+    "sha256": "19cc099ede7348b0d010940c4b3f24829fa06294272ffa4cd865adab84e110c6"
+  },
+  "candidate-browser.log": {
+    "bytes": 1050,
+    "sha256": "aaab98db22b9257a9606dce89c5e445459e99a99ddb877902c8a76b0a3436de3"
+  },
+  "review-candidate-desktop-full-panel.png": {
+    "bytes": 129077,
+    "sha256": "8c53372c75196a34e8cc2369528177e55c4c57a94be17ca646cbb2277145a206"
+  },
+  "review-baseline-desktop-full-panel.png": {
+    "bytes": 119050,
+    "sha256": "5476974b2a8db35f9f5519ea9a63fc7997758d5bcd0be0e7b334f0b52773b1f9"
+  }
+}

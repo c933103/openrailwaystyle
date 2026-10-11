@@ -1,0 +1,22 @@
+CHECK: desktop loaded real map; checking control and signal fixtures
+CHECK: desktop shared signals, compact descriptions and cultural context passed; checking energy supplies
+{"kind":"desktop","errors":[],"state":{"zoom":18,"center":{"lng":0.0007,"lat":0},"errors":[],"rendered":["context-destinations-culture-label","electrification-supply-names","electrification-supply-marks","electrification-supply-points","electrification-substation-edges","electrification-substation-areas","electrification-tracks"],"substations":{"visibility":"visible","loaded":true,"features":[{"properties":{"id":"way-9400","name":"Traction substation footprint"},"geometry":{"type":"Polygon","coordinates":[[[0.0001498684287071228,0.000849924981565664],[0.0001498684287071228,0.001050084829273601],[0.00035002827644348145,0.001050084829273601],[0.00035002827644348145,0.000849924981565664],[0.0001498684287071228,0.000849924981565664]]]}}]}}}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: E/F/C/W use circular point samples, not line swatches
+
+0 !== 4
+
+    at powerLegend (file://[baseline]/scripts/check-signal-power-browser.mjs:153:12)
+    at async file://[baseline]/scripts/check-signal-power-browser.mjs:233:5 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 0,
+  expected: 4,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.19.0

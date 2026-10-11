@@ -1,0 +1,650 @@
+[
+  {
+    "device": "desktop",
+    "inactive": false,
+    "points": [],
+    "labels": [
+      "Nothing recorded in view",
+      "Not electrified",
+      "Unknown",
+      "Bridge",
+      "Tunnel",
+      "Electricity supply",
+      "Locomotive fuel",
+      "Coal supply",
+      "Steam locomotive water"
+    ],
+    "geometry": {
+      "left": 39,
+      "right": 311,
+      "width": 272,
+      "scrollWidth": 272,
+      "rows": [
+        {
+          "label": "Nothing recorded in view",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 168.5,
+          "width": 129.5
+        },
+        {
+          "label": "Not electrified",
+          "left": 181.5,
+          "right": 311,
+          "labelLeft": 214.5,
+          "labelRight": 287.828125,
+          "width": 129.5
+        },
+        {
+          "label": "Unknown",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 121.390625,
+          "width": 129.5
+        },
+        {
+          "label": "Bridge",
+          "left": 181.5,
+          "right": 311,
+          "labelLeft": 214.5,
+          "labelRight": 248.765625,
+          "width": 129.5
+        },
+        {
+          "label": "Tunnel",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 107.015625,
+          "width": 129.5
+        },
+        {
+          "label": "Electricity supply",
+          "left": 181.5,
+          "right": 311,
+          "labelLeft": 214.5,
+          "labelRight": 300.90625,
+          "width": 129.5
+        },
+        {
+          "label": "Locomotive fuel",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 154.390625,
+          "width": 129.5
+        },
+        {
+          "label": "Coal supply",
+          "left": 181.5,
+          "right": 311,
+          "labelLeft": 214.5,
+          "labelRight": 274.03125,
+          "width": 129.5
+        },
+        {
+          "label": "Steam locomotive water",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 168.5,
+          "width": 129.5
+        }
+      ]
+    }
+  },
+  {
+    "device": "desktop",
+    "inactive": true,
+    "points": [],
+    "labels": [
+      "Nothing recorded in view",
+      "Not electrified",
+      "Unknown",
+      "Bridge",
+      "Tunnel",
+      "Electricity supply",
+      "Locomotive fuel",
+      "Coal supply",
+      "Steam locomotive water",
+      "Construction",
+      "Proposed",
+      "Disused",
+      "Abandoned / removed"
+    ],
+    "geometry": {
+      "left": 39,
+      "right": 311,
+      "width": 272,
+      "scrollWidth": 279,
+      "rows": [
+        {
+          "label": "Nothing recorded in view",
+          "left": 39,
+          "right": 168.953125,
+          "labelLeft": 72,
+          "labelRight": 168.953125,
+          "width": 129.953125
+        },
+        {
+          "label": "Not electrified",
+          "left": 181.953125,
+          "right": 318.484375,
+          "labelLeft": 214.953125,
+          "labelRight": 288.28125,
+          "width": 136.53125
+        },
+        {
+          "label": "Unknown",
+          "left": 39,
+          "right": 168.953125,
+          "labelLeft": 72,
+          "labelRight": 121.390625,
+          "width": 129.953125
+        },
+        {
+          "label": "Bridge",
+          "left": 181.953125,
+          "right": 318.484375,
+          "labelLeft": 214.953125,
+          "labelRight": 249.21875,
+          "width": 136.53125
+        },
+        {
+          "label": "Tunnel",
+          "left": 39,
+          "right": 168.953125,
+          "labelLeft": 72,
+          "labelRight": 107.015625,
+          "width": 129.953125
+        },
+        {
+          "label": "Electricity supply",
+          "left": 181.953125,
+          "right": 318.484375,
+          "labelLeft": 214.953125,
+          "labelRight": 301.359375,
+          "width": 136.53125
+        },
+        {
+          "label": "Locomotive fuel",
+          "left": 39,
+          "right": 168.953125,
+          "labelLeft": 72,
+          "labelRight": 154.390625,
+          "width": 129.953125
+        },
+        {
+          "label": "Coal supply",
+          "left": 181.953125,
+          "right": 318.484375,
+          "labelLeft": 214.953125,
+          "labelRight": 274.484375,
+          "width": 136.53125
+        },
+        {
+          "label": "Steam locomotive water",
+          "left": 39,
+          "right": 168.953125,
+          "labelLeft": 72,
+          "labelRight": 168.953125,
+          "width": 129.953125
+        },
+        {
+          "label": "Construction",
+          "left": 181.953125,
+          "right": 318.484375,
+          "labelLeft": 251.953125,
+          "labelRight": 318.484375,
+          "width": 136.53125
+        },
+        {
+          "label": "Proposed",
+          "left": 39,
+          "right": 168.953125,
+          "labelLeft": 109,
+          "labelRight": 158.296875,
+          "width": 129.953125
+        },
+        {
+          "label": "Disused",
+          "left": 181.953125,
+          "right": 318.484375,
+          "labelLeft": 251.953125,
+          "labelRight": 293.140625,
+          "width": 136.53125
+        },
+        {
+          "label": "Abandoned / removed",
+          "left": 39,
+          "right": 168.953125,
+          "labelLeft": 109,
+          "labelRight": 168.953125,
+          "width": 129.953125
+        }
+      ]
+    }
+  },
+  {
+    "device": "desktop",
+    "inactive": false,
+    "points": [],
+    "labels": [
+      "Nothing recorded in view",
+      "Not electrified",
+      "Unknown",
+      "Bridge",
+      "Tunnel",
+      "Electricity supply",
+      "Locomotive fuel",
+      "Coal supply",
+      "Steam locomotive water"
+    ],
+    "geometry": {
+      "left": 39,
+      "right": 311,
+      "width": 272,
+      "scrollWidth": 272,
+      "rows": [
+        {
+          "label": "Nothing recorded in view",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 168.5,
+          "width": 129.5
+        },
+        {
+          "label": "Not electrified",
+          "left": 181.5,
+          "right": 311,
+          "labelLeft": 214.5,
+          "labelRight": 287.828125,
+          "width": 129.5
+        },
+        {
+          "label": "Unknown",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 121.390625,
+          "width": 129.5
+        },
+        {
+          "label": "Bridge",
+          "left": 181.5,
+          "right": 311,
+          "labelLeft": 214.5,
+          "labelRight": 248.765625,
+          "width": 129.5
+        },
+        {
+          "label": "Tunnel",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 107.015625,
+          "width": 129.5
+        },
+        {
+          "label": "Electricity supply",
+          "left": 181.5,
+          "right": 311,
+          "labelLeft": 214.5,
+          "labelRight": 300.90625,
+          "width": 129.5
+        },
+        {
+          "label": "Locomotive fuel",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 154.390625,
+          "width": 129.5
+        },
+        {
+          "label": "Coal supply",
+          "left": 181.5,
+          "right": 311,
+          "labelLeft": 214.5,
+          "labelRight": 274.03125,
+          "width": 129.5
+        },
+        {
+          "label": "Steam locomotive water",
+          "left": 39,
+          "right": 168.5,
+          "labelLeft": 72,
+          "labelRight": 168.5,
+          "width": 129.5
+        }
+      ]
+    }
+  },
+  {
+    "device": "mobile",
+    "inactive": false,
+    "points": [],
+    "labels": [
+      "Nothing recorded in view",
+      "Not electrified",
+      "Unknown",
+      "Bridge",
+      "Tunnel",
+      "Electricity supply",
+      "Locomotive fuel",
+      "Coal supply",
+      "Steam locomotive water"
+    ],
+    "geometry": {
+      "left": 25,
+      "right": 305,
+      "width": 280,
+      "scrollWidth": 280,
+      "rows": [
+        {
+          "label": "Nothing recorded in view",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 158.5,
+          "width": 133.5
+        },
+        {
+          "label": "Not electrified",
+          "left": 171.5,
+          "right": 305,
+          "labelLeft": 204.5,
+          "labelRight": 277.828125,
+          "width": 133.5
+        },
+        {
+          "label": "Unknown",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 107.390625,
+          "width": 133.5
+        },
+        {
+          "label": "Bridge",
+          "left": 171.5,
+          "right": 305,
+          "labelLeft": 204.5,
+          "labelRight": 238.765625,
+          "width": 133.5
+        },
+        {
+          "label": "Tunnel",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 93.015625,
+          "width": 133.5
+        },
+        {
+          "label": "Electricity supply",
+          "left": 171.5,
+          "right": 305,
+          "labelLeft": 204.5,
+          "labelRight": 290.90625,
+          "width": 133.5
+        },
+        {
+          "label": "Locomotive fuel",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 140.390625,
+          "width": 133.5
+        },
+        {
+          "label": "Coal supply",
+          "left": 171.5,
+          "right": 305,
+          "labelLeft": 204.5,
+          "labelRight": 264.03125,
+          "width": 133.5
+        },
+        {
+          "label": "Steam locomotive water",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 158.5,
+          "width": 133.5
+        }
+      ]
+    }
+  },
+  {
+    "device": "mobile",
+    "inactive": true,
+    "points": [],
+    "labels": [
+      "Nothing recorded in view",
+      "Not electrified",
+      "Unknown",
+      "Bridge",
+      "Tunnel",
+      "Electricity supply",
+      "Locomotive fuel",
+      "Coal supply",
+      "Steam locomotive water",
+      "Construction",
+      "Proposed",
+      "Disused",
+      "Abandoned / removed"
+    ],
+    "geometry": {
+      "left": 25,
+      "right": 305,
+      "width": 280,
+      "scrollWidth": 280,
+      "rows": [
+        {
+          "label": "Nothing recorded in view",
+          "left": 25,
+          "right": 155.46875,
+          "labelLeft": 58,
+          "labelRight": 155.46875,
+          "width": 130.46875
+        },
+        {
+          "label": "Not electrified",
+          "left": 168.46875,
+          "right": 305,
+          "labelLeft": 201.46875,
+          "labelRight": 274.796875,
+          "width": 136.53125
+        },
+        {
+          "label": "Unknown",
+          "left": 25,
+          "right": 155.46875,
+          "labelLeft": 58,
+          "labelRight": 107.390625,
+          "width": 130.46875
+        },
+        {
+          "label": "Bridge",
+          "left": 168.46875,
+          "right": 305,
+          "labelLeft": 201.46875,
+          "labelRight": 235.734375,
+          "width": 136.53125
+        },
+        {
+          "label": "Tunnel",
+          "left": 25,
+          "right": 155.46875,
+          "labelLeft": 58,
+          "labelRight": 93.015625,
+          "width": 130.46875
+        },
+        {
+          "label": "Electricity supply",
+          "left": 168.46875,
+          "right": 305,
+          "labelLeft": 201.46875,
+          "labelRight": 287.875,
+          "width": 136.53125
+        },
+        {
+          "label": "Locomotive fuel",
+          "left": 25,
+          "right": 155.46875,
+          "labelLeft": 58,
+          "labelRight": 140.390625,
+          "width": 130.46875
+        },
+        {
+          "label": "Coal supply",
+          "left": 168.46875,
+          "right": 305,
+          "labelLeft": 201.46875,
+          "labelRight": 261,
+          "width": 136.53125
+        },
+        {
+          "label": "Steam locomotive water",
+          "left": 25,
+          "right": 155.46875,
+          "labelLeft": 58,
+          "labelRight": 155.46875,
+          "width": 130.46875
+        },
+        {
+          "label": "Construction",
+          "left": 168.46875,
+          "right": 305,
+          "labelLeft": 238.46875,
+          "labelRight": 305,
+          "width": 136.53125
+        },
+        {
+          "label": "Proposed",
+          "left": 25,
+          "right": 155.46875,
+          "labelLeft": 95,
+          "labelRight": 144.296875,
+          "width": 130.46875
+        },
+        {
+          "label": "Disused",
+          "left": 168.46875,
+          "right": 305,
+          "labelLeft": 238.46875,
+          "labelRight": 279.65625,
+          "width": 136.53125
+        },
+        {
+          "label": "Abandoned / removed",
+          "left": 25,
+          "right": 155.46875,
+          "labelLeft": 95,
+          "labelRight": 155.46875,
+          "width": 130.46875
+        }
+      ]
+    }
+  },
+  {
+    "device": "mobile",
+    "inactive": false,
+    "points": [],
+    "labels": [
+      "Nothing recorded in view",
+      "Not electrified",
+      "Unknown",
+      "Bridge",
+      "Tunnel",
+      "Electricity supply",
+      "Locomotive fuel",
+      "Coal supply",
+      "Steam locomotive water"
+    ],
+    "geometry": {
+      "left": 25,
+      "right": 305,
+      "width": 280,
+      "scrollWidth": 280,
+      "rows": [
+        {
+          "label": "Nothing recorded in view",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 158.5,
+          "width": 133.5
+        },
+        {
+          "label": "Not electrified",
+          "left": 171.5,
+          "right": 305,
+          "labelLeft": 204.5,
+          "labelRight": 277.828125,
+          "width": 133.5
+        },
+        {
+          "label": "Unknown",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 107.390625,
+          "width": 133.5
+        },
+        {
+          "label": "Bridge",
+          "left": 171.5,
+          "right": 305,
+          "labelLeft": 204.5,
+          "labelRight": 238.765625,
+          "width": 133.5
+        },
+        {
+          "label": "Tunnel",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 93.015625,
+          "width": 133.5
+        },
+        {
+          "label": "Electricity supply",
+          "left": 171.5,
+          "right": 305,
+          "labelLeft": 204.5,
+          "labelRight": 290.90625,
+          "width": 133.5
+        },
+        {
+          "label": "Locomotive fuel",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 140.390625,
+          "width": 133.5
+        },
+        {
+          "label": "Coal supply",
+          "left": 171.5,
+          "right": 305,
+          "labelLeft": 204.5,
+          "labelRight": 264.03125,
+          "width": 133.5
+        },
+        {
+          "label": "Steam locomotive water",
+          "left": 25,
+          "right": 158.5,
+          "labelLeft": 58,
+          "labelRight": 158.5,
+          "width": 133.5
+        }
+      ]
+    }
+  }
+]

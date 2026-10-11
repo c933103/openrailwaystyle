@@ -1,0 +1,12 @@
+CHECK: desktop loaded real map; checking control and signal fixtures
+CHECK: desktop shared signals, compact descriptions and cultural context passed; checking energy supplies
+CHECK: desktop energy supplies passed; checking overview control bands
+CHECK: desktop moved to overview
+CHECK: desktop moved to metro overview
+PASS: desktop simultaneous protection color bands, compact hover/tap descriptions, shared directed/undirected signals, electricity/diesel/coal/steam-water supplies, view gating and noninteractive cultural POIs
+CHECK: mobile loaded real map; checking control and signal fixtures
+CHECK: mobile shared signals, compact descriptions and cultural context passed; checking energy supplies
+CHECK: mobile energy supplies passed; checking overview control bands
+CHECK: mobile moved to overview
+CHECK: mobile moved to metro overview
+PASS: mobile simultaneous protection color bands, compact hover/tap descriptions, shared directed/undirected signals, electricity/diesel/coal/steam-water supplies, view gating and noninteractive cultural POIs
