@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import encode from 'vt-pbf';
-import {readTile,localizeTile,installLabelProtocols, timedSource,hanRegion,chineseArea,glyphRequestURL} from '../styles/tile-labels.mjs';
+import {readTile,localizeTile,installLabelProtocols, timedSource,hanRegion,chineseArea,glyphRequestURL,correctedCountryName} from '../styles/tile-labels.mjs';
 import {chooseName,readSettings,stationLanguages,stationPending,labelExpression} from '../styles/map-model.mjs';
 
 // Tiles give every feature its Han-name region; tests state it explicitly.
@@ -46,6 +46,22 @@ test('localization preserves geometry, identifiers, layers and unrelated propert
   assert.equal(after.properties.maxspeed,160);
   assert.equal(after.id,before.id);assert.equal(after.type,before.type);
   assert.deepEqual(after.loadGeometry(),before.loadGeometry());
+});
+test('verified Liechtenstein source typo is removed only from displayed country labels',()=>{
+  const incorrect='列支敦斯登 / 登列支敦士登';
+  const corrected='列支敦斯登 / 列支敦士登';
+  const properties={class:'country',iso_a2:'LI',name:'Liechtenstein',
+    'name:zh':incorrect,'name:zh-Hant':incorrect,'name:zh-Hans':'列支敦士登'};
+  assert.equal(correctedCountryName(properties,incorrect),corrected);
+  assert.equal(correctedCountryName({...properties,iso_a2:'CH'},incorrect),incorrect);
+  assert.equal(correctedCountryName({...properties,class:'city'},incorrect),incorrect);
+  assert.equal(correctedCountryName(properties,corrected),corrected);
+  for(const [lang,expected] of [['zh-Hant',corrected],['zh-Hans','列支敦士登'],['en','Liechtenstein']]){
+    const encoded=tile(properties);
+    const localized=readTile(localizeTile(encoded,lang,{z:6,x:33,y:22})).layers.stations.feature(0).properties;
+    assert.equal(localized.atlas_name,expected,lang);
+    assert.equal(localized['name:zh-Hant'],incorrect,'audit-preserving source tag remains unchanged');
+  }
 });
 test('station protocol fetches English fallback and Hanja from actual translation responses',async()=>{
   const protocols={},requests=[];
