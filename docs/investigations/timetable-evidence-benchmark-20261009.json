@@ -1,0 +1,341 @@
+{
+  "schema": 1,
+  "recorded_date": "2026-10-09",
+  "base_commit": "61ccbc9713f05fdb79a593b36cf982450025dd75",
+  "base_tree": "33cde9de45e03e21247a771c0ce06dc7971eb426",
+  "scope": "Controlled synthetic offline fixtures after current-main parser reconciliation, observation/source audits and numeric-domain alignment; no live providers or production resource claim. Linux peak RSS is KiB; output equality excludes the new optional sidecar only.",
+  "source_sha256": {
+    "scripts/gtfs-frequency.py": "3c5d527d470f369a5c9c1709ca039c6bb34e527b4ec97f3d2b96f8ebeca1fe12",
+    "scripts/timetable_evidence.py": "6e1fb0de4f0d63ef5d0110ed176b6fe043b3fe67026073a545cdb3e11aae3250",
+    "scripts/benchmark-timetable-evidence.py": "00228dc8c7af17b65d94250820e4b0e9231e6139dd610dc2ff3c121c8844aeed"
+  },
+  "cohorts": [
+    {
+      "synthetic": true,
+      "trips": 10000,
+      "calls": 24,
+      "stop_rows": 240000,
+      "unique_patterns": false,
+      "profiles": 28,
+      "compressed_input_bytes": 619734,
+      "python": "3.12.14",
+      "results": [
+        {
+          "repeat": 0,
+          "mode": "baseline",
+          "capture": false,
+          "seconds": 9.766,
+          "peak_rss_kib": 111684,
+          "compiled_sha256": "1d81590baaab22e6b0b07e4c10324effbc9d3990aebc72c6bcc19928f10bcc1b",
+          "evidence_bytes": 0,
+          "evidence_status": "disabled",
+          "evidence_reasons": [],
+          "patterns": 0,
+          "observations": 0
+        },
+        {
+          "repeat": 0,
+          "mode": "disabled",
+          "capture": false,
+          "seconds": 9.093,
+          "peak_rss_kib": 111696,
+          "compiled_sha256": "1d81590baaab22e6b0b07e4c10324effbc9d3990aebc72c6bcc19928f10bcc1b",
+          "evidence_bytes": 0,
+          "evidence_status": "disabled",
+          "evidence_reasons": [],
+          "patterns": 0,
+          "observations": 0
+        },
+        {
+          "repeat": 0,
+          "mode": "enabled",
+          "capture": true,
+          "seconds": 10.359,
+          "peak_rss_kib": 144856,
+          "compiled_sha256": "1d81590baaab22e6b0b07e4c10324effbc9d3990aebc72c6bcc19928f10bcc1b",
+          "evidence_bytes": 5825261,
+          "evidence_status": "captured",
+          "evidence_reasons": [],
+          "patterns": 2,
+          "observations": 10000
+        },
+        {
+          "repeat": 1,
+          "mode": "baseline",
+          "capture": false,
+          "seconds": 9.222,
+          "peak_rss_kib": 111560,
+          "compiled_sha256": "1d81590baaab22e6b0b07e4c10324effbc9d3990aebc72c6bcc19928f10bcc1b",
+          "evidence_bytes": 0,
+          "evidence_status": "disabled",
+          "evidence_reasons": [],
+          "patterns": 0,
+          "observations": 0
+        },
+        {
+          "repeat": 1,
+          "mode": "disabled",
+          "capture": false,
+          "seconds": 9.191,
+          "peak_rss_kib": 111700,
+          "compiled_sha256": "1d81590baaab22e6b0b07e4c10324effbc9d3990aebc72c6bcc19928f10bcc1b",
+          "evidence_bytes": 0,
+          "evidence_status": "disabled",
+          "evidence_reasons": [],
+          "patterns": 0,
+          "observations": 0
+        },
+        {
+          "repeat": 1,
+          "mode": "enabled",
+          "capture": true,
+          "seconds": 10.565,
+          "peak_rss_kib": 144872,
+          "compiled_sha256": "1d81590baaab22e6b0b07e4c10324effbc9d3990aebc72c6bcc19928f10bcc1b",
+          "evidence_bytes": 5825261,
+          "evidence_status": "captured",
+          "evidence_reasons": [],
+          "patterns": 2,
+          "observations": 10000
+        },
+        {
+          "repeat": 2,
+          "mode": "baseline",
+          "capture": false,
+          "seconds": 9.281,
+          "peak_rss_kib": 111556,
+          "compiled_sha256": "1d81590baaab22e6b0b07e4c10324effbc9d3990aebc72c6bcc19928f10bcc1b",
+          "evidence_bytes": 0,
+          "evidence_status": "disabled",
+          "evidence_reasons": [],
+          "patterns": 0,
+          "observations": 0
+        },
+        {
+          "repeat": 2,
+          "mode": "disabled",
+          "capture": false,
+          "seconds": 9.154,
+          "peak_rss_kib": 111696,
+          "compiled_sha256": "1d81590baaab22e6b0b07e4c10324effbc9d3990aebc72c6bcc19928f10bcc1b",
+          "evidence_bytes": 0,
+          "evidence_status": "disabled",
+          "evidence_reasons": [],
+          "patterns": 0,
+          "observations": 0
+        },
+        {
+          "repeat": 2,
+          "mode": "enabled",
+          "capture": true,
+          "seconds": 10.619,
+          "peak_rss_kib": 144868,
+          "compiled_sha256": "1d81590baaab22e6b0b07e4c10324effbc9d3990aebc72c6bcc19928f10bcc1b",
+          "evidence_bytes": 5825261,
+          "evidence_status": "captured",
+          "evidence_reasons": [],
+          "patterns": 2,
+          "observations": 10000
+        }
+      ]
+    },
+    {
+      "synthetic": true,
+      "trips": 12000,
+      "calls": 24,
+      "stop_rows": 288000,
+      "unique_patterns": true,
+      "profiles": 28,
+      "compressed_input_bytes": 780558,
+      "python": "3.12.14",
+      "results": [
+        {
+          "repeat": 0,
+          "mode": "baseline",
+          "capture": false,
+          "seconds": 11.836,
+          "peak_rss_kib": 132752,
+          "compiled_sha256": "86b5e048e3cf4f0b6fae74d87c97af3b8f20dabcbbc4939d89fb11398536fdfb",
+          "evidence_bytes": 0,
+          "evidence_status": "disabled",
+          "evidence_reasons": [],
+          "patterns": 0,
+          "observations": 0
+        },
+        {
+          "repeat": 0,
+          "mode": "disabled",
+          "capture": false,
+          "seconds": 11.621,
+          "peak_rss_kib": 132768,
+          "compiled_sha256": "86b5e048e3cf4f0b6fae74d87c97af3b8f20dabcbbc4939d89fb11398536fdfb",
+          "evidence_bytes": 0,
+          "evidence_status": "disabled",
+          "evidence_reasons": [],
+          "patterns": 0,
+          "observations": 0
+        },
+        {
+          "repeat": 0,
+          "mode": "enabled",
+          "capture": true,
+          "seconds": 12.171,
+          "peak_rss_kib": 179056,
+          "compiled_sha256": "86b5e048e3cf4f0b6fae74d87c97af3b8f20dabcbbc4939d89fb11398536fdfb",
+          "evidence_bytes": 387,
+          "evidence_status": "incomplete",
+          "evidence_reasons": [
+            "byte_limit"
+          ],
+          "patterns": 0,
+          "observations": 0
+        }
+      ]
+    }
+  ],
+  "integration_base_commit": "741b5e858710fb20fa55533eacd330142ad1c271",
+  "integration_base_tree": "cc883ee7543bf317d38770b11dc1c47aa19f76c9",
+  "baseline_compiler_git_blob": "fd62dbf5b23811052c084f4d20c4beb88133f103",
+  "integration_note": "The measured baseline compiler is byte-identical on main61ccbc97 and main741b5e85; the latter Retry-After acquisition merge does not change this compiler benchmark path.",
+  "matcher": {
+    "schema": 1,
+    "synthetic": true,
+    "node": "v22.23.3",
+    "fixture": {
+      "trips": 10000,
+      "stop_rows": 240000,
+      "profiles": 28,
+      "patterns": 2,
+      "observations": 10000,
+      "sidecar_bytes": 5825261,
+      "sidecar_sha256": "f02c73cd8bbe77d9df24cdf88c2f40d936586f79b5bae60d5163f9086c756d2c"
+    },
+    "measurement": "Fresh serial processes; elapsed time covers matching only, after parsing and fixture mutation. Peak process RSS includes Node startup, input parsing and fixture preparation, not just matcher allocations. This is not production profiling.",
+    "source_sha256": {
+      "scripts/timetable-matching.mjs": "3f613dc123d5bfbd5149ecdd9d053f89d1cf92fc91aad89d69e4048bc4139c5c",
+      "scripts/benchmark-timetable-matching.mjs": "62af0bf2953ba0a94cf18d1773c96816139237b221560b8f590f56eaf94e0215"
+    },
+    "results": [
+      {
+        "repeat": 0,
+        "mode": "verified",
+        "milliseconds": 126.145,
+        "rss_before_bytes": 77000704,
+        "rss_after_bytes": 119472128,
+        "peak_process_rss_kib": 116672,
+        "status": "verified",
+        "reason": "reviewed_identity_and_stops"
+      },
+      {
+        "repeat": 0,
+        "mode": "unbound",
+        "milliseconds": 124.902,
+        "rss_before_bytes": 77099008,
+        "rss_after_bytes": 119439360,
+        "peak_process_rss_kib": 116640,
+        "status": "missing_evidence",
+        "reason": "missing_service_identity"
+      },
+      {
+        "repeat": 0,
+        "mode": "source-limit",
+        "milliseconds": 43.996,
+        "rss_before_bytes": 108093440,
+        "rss_after_bytes": 124702720,
+        "peak_process_rss_kib": 121780,
+        "status": "missing_evidence",
+        "reason": "source_work_limit"
+      },
+      {
+        "repeat": 0,
+        "mode": "candidate-limit",
+        "milliseconds": 128.702,
+        "rss_before_bytes": 78073856,
+        "rss_after_bytes": 120414208,
+        "peak_process_rss_kib": 117592,
+        "status": "missing_evidence",
+        "reason": "candidate_work_limit"
+      },
+      {
+        "repeat": 1,
+        "mode": "verified",
+        "milliseconds": 129.463,
+        "rss_before_bytes": 76886016,
+        "rss_after_bytes": 119619584,
+        "peak_process_rss_kib": 116816,
+        "status": "verified",
+        "reason": "reviewed_identity_and_stops"
+      },
+      {
+        "repeat": 1,
+        "mode": "unbound",
+        "milliseconds": 125.724,
+        "rss_before_bytes": 77058048,
+        "rss_after_bytes": 119529472,
+        "peak_process_rss_kib": 116728,
+        "status": "missing_evidence",
+        "reason": "missing_service_identity"
+      },
+      {
+        "repeat": 1,
+        "mode": "source-limit",
+        "milliseconds": 42.73,
+        "rss_before_bytes": 108048384,
+        "rss_after_bytes": 124227584,
+        "peak_process_rss_kib": 121316,
+        "status": "missing_evidence",
+        "reason": "source_work_limit"
+      },
+      {
+        "repeat": 1,
+        "mode": "candidate-limit",
+        "milliseconds": 134.603,
+        "rss_before_bytes": 78086144,
+        "rss_after_bytes": 120688640,
+        "peak_process_rss_kib": 117860,
+        "status": "missing_evidence",
+        "reason": "candidate_work_limit"
+      },
+      {
+        "repeat": 2,
+        "mode": "verified",
+        "milliseconds": 128.876,
+        "rss_before_bytes": 77082624,
+        "rss_after_bytes": 119291904,
+        "peak_process_rss_kib": 116496,
+        "status": "verified",
+        "reason": "reviewed_identity_and_stops"
+      },
+      {
+        "repeat": 2,
+        "mode": "unbound",
+        "milliseconds": 126.921,
+        "rss_before_bytes": 76898304,
+        "rss_after_bytes": 119500800,
+        "peak_process_rss_kib": 116700,
+        "status": "missing_evidence",
+        "reason": "missing_service_identity"
+      },
+      {
+        "repeat": 2,
+        "mode": "source-limit",
+        "milliseconds": 45.461,
+        "rss_before_bytes": 108646400,
+        "rss_after_bytes": 124403712,
+        "peak_process_rss_kib": 121488,
+        "status": "missing_evidence",
+        "reason": "source_work_limit"
+      },
+      {
+        "repeat": 2,
+        "mode": "candidate-limit",
+        "milliseconds": 145.981,
+        "rss_before_bytes": 77955072,
+        "rss_after_bytes": 120164352,
+        "peak_process_rss_kib": 117348,
+        "status": "missing_evidence",
+        "reason": "candidate_work_limit"
+      }
+    ]
+  }
+}
