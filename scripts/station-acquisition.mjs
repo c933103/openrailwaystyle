@@ -55,6 +55,15 @@ export function newStationAcquisition(){
  return {schema:REGION_SCHEMA,pending:stationBaseRegions().map(box=>({box,depth:0})),completed:[],
    fetchedBytes:0,started:new Date().toISOString(),lastUpdate:null};
 }
+// One entire verified source generation is immutable to map readers.
+// The next collection starts with an empty table; its progress stays in
+// station-points-work until a *separate* complete-generation publication.
+export function nextStationAcquisitionCycle(state,records){
+ checkStationAcquisition(state,records);
+ if(state.pending.length)return {state,records,refreshed:false};
+ if(!stationWorldCoverage(state.completed))throw new Error('Cannot refresh incomplete station inventory');
+ return {state:newStationAcquisition(),records:[],refreshed:true};
+}
 export function checkStationAcquisition(state,records){
  if(!state||state.schema!==REGION_SCHEMA||!Array.isArray(state.pending)||
    !Array.isArray(state.completed)||state.pending.length>MAX_PENDING_REGIONS||
