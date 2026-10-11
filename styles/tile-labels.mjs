@@ -94,11 +94,21 @@ export function locateFeatures(tile, coordinates) {
     Object.assign(f.properties, locate(tx/n*360-180, Math.atan(Math.sinh(Math.PI*(1-2*ty/n)))*180/Math.PI));
   }
 }
+// One verified upstream OSM country-point error, not a MapLibre wrap error:
+// OSM node 3696525426 / En Liberté z5–7 country tiles encode
+// "列支敦斯登 / 登列支敦士登" in name:zh/name:zh-Hant. Do not mutate
+// source tags, guess other names, or apply general character deletion.
+// Evidence: https://github.com/c933103/openrailwaystyle/actions/runs/38110927831
+export function correctedCountryName(properties, value) {
+  return properties?.class === 'country' && properties?.iso_a2 === 'LI' &&
+    value === '列支敦斯登 / 登列支敦士登'
+    ? '列支敦斯登 / 列支敦士登' : value;
+}
 // `found` (optional) collects the rare-Han blocks of the names written, so
 // their glyph slices can load before the tile is drawn (rare-han.mjs).
 export function writeLabels(tile, lang, found) {
   for (const f of features(tile)) {
-    f.properties.atlas_name = chooseName(f.properties,lang);
+    f.properties.atlas_name = correctedCountryName(f.properties, chooseName(f.properties,lang));
     f.properties.atlas_language = lang;
     if (found) rareHanBlocks(f.properties.atlas_name, found);
   }
