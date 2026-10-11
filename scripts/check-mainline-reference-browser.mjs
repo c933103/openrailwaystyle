@@ -44,6 +44,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
  {name:'android',engine:'chromium',width:360,height:450},
  {name:'safari',engine:'webkit',width:390,height:450}]){
  const browser=await launchBrowser({engine:profile.engine}),page=await browser.newPage({viewport:{width:profile.width,height:profile.height}});
+ let closing=false;
  if(!published)await page.route(library,route=>route.fulfill(renderer.get(library)));
  if(profile.engine==='webkit'){
   await page.addInitScript(()=>{
@@ -51,9 +52,11 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
    URL.createObjectURL=blob=>{const url=create(blob);referenceBlobs.set(url,blob);return url};
   });
   await page.context().route(`blob:${new URL(base).origin}/**`,async route=>{
-   const body=await page.evaluate(async url=>referenceBlobs.get(url)?.text()??null,route.request().url());
-   assert.notEqual(body,null,'Only actual recorded renderer Blob workers can be replayed');
-   return route.fulfill({body,contentType:'text/javascript'});
+   try{
+    const body=await page.evaluate(async url=>referenceBlobs.get(url)?.text()??null,route.request().url());
+    assert.notEqual(body,null,'Only actual recorded renderer Blob workers can be replayed');
+    return await route.fulfill({body,contentType:'text/javascript'});
+   }catch(error){if(closing&&/closed/i.test(error.message))return route.abort().catch(()=>{});throw error}
   });
  }
  if(!published)await page.route(new URL('data/mainline-reference/**',base).href,route=>{
@@ -120,7 +123,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
    },expected);
    assert.ok(result.ids.length&&result.painted>0,`${profile.name} ${projection} ${c.name} z${zoom}: actual reference stroke must paint`);
    assert.ok(Math.abs(result.zoom-zoom)<.001,`${profile.name} ${projection}: verify the actual camera zoom, not a clamped request`);
-   samples.push({profile:profile.name,projection,name:c.name,zoom,latencyMs:Date.now()-started,ids:result.ids,painted:result.painted});
+   samples.push({profile:profile.name,projection,name:c.name,zoom,cameraZoom:result.zoom,latencyMs:Date.now()-started,ids:result.ids,painted:result.painted});
   }
   assert.ok(await page.evaluate(()=>sourceErrors.some(e=>e.source==='missingLive')),'reference success cannot conceal live provider outage');
   profiles.push({...profile,...await page.evaluate(()=>referenceReader.statistics())});
@@ -129,7 +132,7 @@ for(const profile of [{name:'desktop',engine:'chromium',width:800,height:450},
   console.error('MAINLINE_PROFILE_FAILURE',profile.name,error.stack||error.message);
   await writeFile('browser-review/mainline-profile-failure.json',JSON.stringify({profile:profile.name,message:error.message,stack:error.stack},null,2)+'\n');
   throw error;
- }finally{await page.unrouteAll({behavior:'ignoreErrors'});await page.context().unrouteAll({behavior:'ignoreErrors'});await browser.close()}
+ }finally{closing=true;await page.evaluate(()=>testMap?.remove()).catch(()=>{});await browser.close()}
 }
 const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
 // Exercise the actual Atlas module and theme selection too. This catches a
@@ -159,7 +162,7 @@ const latencies=samples.map(s=>s.latencyMs).sort((a,b)=>a-b);
   }
   await page.waitForFunction(()=>document.getElementById('map-status').textContent.includes('OpenRailwayMap railway tiles are unavailable'),null,{timeout:30000});
   await page.screenshot({path:'browser-review/mainline-actual-atlas-outage.png'});
- }finally{await page.unrouteAll({behavior:'ignoreErrors'});await context.unrouteAll({behavior:'ignoreErrors'});await browser.close()}
+ }finally{await page.evaluate(()=>window.atlasMap?.remove()).catch(()=>{});await browser.close()}
 }
 const report={scope:published?'Actual published OSM generation; exact chain identities':'Synthetic renderer fixtures; no OSM completeness claim',
  generation:manifest.generation,samples,appSamples,profiles,assetRequests:profiles.reduce((n,p)=>n+p.assetRequests,0),

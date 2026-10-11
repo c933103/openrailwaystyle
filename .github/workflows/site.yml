@@ -188,7 +188,7 @@ jobs:
           merge-multiple: true
       - name: Verify source completeness and current provenance before assembling either reference path
         run: |
-          node scripts/verify-mainline-snapshot.mjs styles/data/mainline-reference
+          node scripts/verify-mainline-snapshot.mjs styles/data/mainline-reference --require-browser-acceptance
           actual=$(node -e 'console.log(JSON.parse(require("fs").readFileSync("styles/data/mainline-reference/manifest.json")).inputSha256)')
           test "$actual" = "$(node scripts/mainline-provenance.mjs)"
           python - <<'PY'

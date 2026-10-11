@@ -30,5 +30,12 @@ for(const required of MAINLINE_CONTROLS){
  for(let z=0;z<=6;z++)if(!c.chainIdsByZoom?.[z]?.some(id=>retained.get(String(z))?.has(id)))
   throw Error(`Source/rendering omission: ${required.name} z${z}`);
 }
+if(process.argv.includes('--require-browser-acceptance')&&!manifest.rendererAcceptance?.complete)
+ throw Error('Actual OSM renderer acceptance is required for publication');
+if(manifest.rendererAcceptance){
+ const a=manifest.rendererAcceptance;
+ if(a.complete!==true||a.path!==`generations/${manifest.generation}/renderer-acceptance.json`||a.samples!==840||a.appSamples!==18||
+  sha256(await readFile(join(root,a.path)))!==a.sha256)throw Error('Changed or incomplete retained renderer acceptance');
+}
 console.log('PASS: complete versioned world reference',JSON.stringify({generation:manifest.generation,ways:manifest.wayCount,
  tiles:entries.size,tileBytes:total,downloadedBytes:manifest.downloadedBytes,buildSeconds:manifest.buildSeconds,peakRssBytes:manifest.peakRssBytes}));

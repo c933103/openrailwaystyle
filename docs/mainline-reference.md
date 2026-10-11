@@ -77,7 +77,10 @@ export bytes, classified way counts, unique chain and represented-source-way
 fractions by zoom (distinct from duplicated tile feature instances), largest
 tile, total tile bytes, compiler duration and peak RSS. Browser review records
 latency distributions for each geography, projection, zoom and device profile.
-No public OpenRailwayMap tile is downloaded by this pipeline or its tests.
+The exact 840-sample renderer report and 18 actual-Atlas theme/handoff checks
+are retained at the generation's `renderer-acceptance.json`, with its digest
+in the manifest. Site assembly requires this completed proof. No public
+OpenRailwayMap tile is downloaded by this pipeline or its tests.
 The cost inputs are measured transfer/storage bytes and runner time; monetary
 cost depends on the account's bandwidth, storage and Actions rates.
 

@@ -10,6 +10,7 @@ export const REFERENCE_INPUTS=Object.freeze([
  'scripts/build-mainline-snapshot.mjs','scripts/mainline-overview.mjs',
  'scripts/mainline-chains.mjs','scripts/mainline-coverage.mjs',
  'scripts/mainline-provenance.mjs','scripts/retain-mainline-generation.mjs',
+ 'scripts/record-mainline-acceptance.mjs',
  'scripts/verify-mainline-snapshot.mjs','scripts/check-mainline-reference-browser.mjs',
  'scripts/browser-renderer-fixture.mjs','scripts/browser.mjs',
  'scripts/browser-libraries.mjs','scripts/build-browser.mjs','scripts/maplibre-backport.mjs',
