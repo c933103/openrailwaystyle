@@ -164,7 +164,7 @@ test('a complete replacement keeps the previous version and revised icons availa
 });
 
 test('the current departure release refreshes cached code while previous tabs retain their version', async () => {
-  const previousVersion = '20261011-mainline-reference-1';
+  const previousVersion = '20261011-power-legend-1';
   const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
   const currentVersion = page.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
   assert.ok(currentVersion, 'the actual page declares its asset version');

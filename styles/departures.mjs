@@ -211,16 +211,18 @@ export function plannerLink(direction, place, name) {
   return url.href;
 }
 
-// Fetch the board for a station: {stops, rows} (rows empty when no
-// timetable covers it).
+// Fetch the selected stop boards for a station. Keep only safe per-stop
+// outcomes: fulfilled means that request loaded, not complete area coverage.
+// Empty rows alone do not establish that all selected boards loaded.
 export async function stationDepartures(station, {signal, fetch: get = fetch} = {}) {
   const json = async url => { const r = await get(url, {signal}); if (!r.ok) throw new Error(`Transitous returned ${r.status}`); return r.json(); };
   const candidates = await json(`${TRANSITOUS_API}/reverse-geocode?place=${station.lat},${station.lon}&type=STOP`);
   const stops = pickStops(Array.isArray(candidates) ? candidates : [], station);
-  if (!stops.length) return {stops, rows: []};
+  if (!stops.length) return {stops, rows: [], stopResults: []};
   // Each stop's board on its own: one feed failing keeps the other's.
   const results = await Promise.allSettled(stops.map(s => json(`${TRANSITOUS_API}/stoptimes?stopId=${encodeURIComponent(s.id)}&n=30&mode=${[...RAIL_MODES].join(',')}`).then(d => d.stopTimes || [])));
   const lists = results.filter(r => r.status === 'fulfilled').map(r => r.value);
   if (!lists.length) throw results[0].reason;
-  return {stops, rows: departureRows(lists)};
+  const stopResults = results.map((result, i) => ({stopId: stops[i].id, status: result.status}));
+  return {stops, rows: departureRows(lists), stopResults};
 }

@@ -20,6 +20,14 @@ platforms conflict, the platform attached to the later predicted departure is
 used, with a consistent choice for equal times. This also cannot establish which
 platform update is newest. Ambiguous matches between different boards remain separate.
 
+If a selected stop’s departure board fails while another loads, usable departures
+remain visible with an incomplete-load warning. The same warning appears when the
+successful boards return no upcoming rail departures; this is not a complete empty
+result. Reopening or redrawing a station within the existing one-minute cache keeps
+that status. After the cache expires, opening the board again checks the selected
+stops afresh. This status describes those requests only, not worldwide timetable
+coverage or the map’s separately matched frequency profiles.
+
 Bare numeric departure labels are omitted from the line-name badge unless the
 source also supplies a nonempty, nonnumeric long route name. Surrounding whitespace
 and decimal digits in other scripts follow the same rule. Meaningful text and
