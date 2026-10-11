@@ -136,3 +136,25 @@ full-geography audits and require separate review.
   should be inspected without spoofing, across redirects and nested tile
   requests. The October 5 reported 403 is an observed symptom, not a
   request-level authorization audit.
+
+## Re:Earth Papers overview backbone (PR173)
+
+The production `railBackbone` source reads
+`https://papers.reearth.land/naturalearth_transport/tilejson.json`. Map initialization
+can request that metadata; loading/panning at zooms 4–6 automatically requests the
+view's transport tiles. Direct browser requests expose the requested tile areas,
+the client's IP address and ordinary request headers to the hosting service.
+The in-app Sources and Licences sections disclose this separately from the
+detailed/thematic OpenRailwayMap data. No retention policy or service-level
+guarantee is inferred here.
+
+The [official Re:Earth Papers README](https://github.com/reearth/reearth-papers)
+lists `naturalearth_transport` as Natural Earth transport, MVT, public domain,
+and documents the [provider attribution page](https://papers.reearth.land/attribution).
+[Natural Earth's own terms](https://www.naturalearthdata.com/about/terms-of-use/)
+confirm that its vector/raster data may be used and modified without permission.
+These data rights do not themselves establish unlimited hosted-service usage
+rights. No separate Papers-specific hosted-service policy was established in
+this check. Automated Atlas checks continue to fixture this host with no provider
+egress. The vectors are generalized context, not verified present-day operating
+railways, and do not fill the separate worldwide station-point inventory gap.

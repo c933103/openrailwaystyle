@@ -1,0 +1,4672 @@
+{
+  "schema": 1,
+  "scope": "Metadata-only bounded attribution and proposed behavior; not production acquisition or reclassified published coverage",
+  "base": "741b5e858710fb20fa55533eacd330142ad1c271",
+  "transitous_ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+  "transitland_ref": "e2c827fdc0540577eb8e0d668d80ce290a948498",
+  "revision_caveat": "Transitous production CI uses git submodule update --remote; the gitlink pin is reproducible but not verified as the production resolver revision.",
+  "held_inventory_sha256": "6ba2f32a07e3915c19e640b8abb88884c4a3e4e9881517b8e8fc94e355ec398e",
+  "cohort": {
+    "published_entries": 5489,
+    "all_404_entries": 582,
+    "processed_only_404_entries": 141,
+    "pinned_source_declarations": 145,
+    "initially_checked_entries": 96,
+    "additional_checked_entries": 45,
+    "url_override_declarations": 3
+  },
+  "before": {
+    "offline_baseline_pending_rows": 141,
+    "invented_processed_gtfs_candidates": 141,
+    "declared_direct_source_rows": 0,
+    "retained_reference_ids": 0,
+    "historical_404_attempts": 141
+  },
+  "proposed_after": {
+    "retained_legacy_rows": 141,
+    "retained_declarations": 145,
+    "non_timetable_format_rows": 131,
+    "static_timetable_rows": 10,
+    "static_endpoints_resolved_from_metadata": 10,
+    "rt_companion_declarations": 3,
+    "rt_companions_authorization_required": 1,
+    "no_rail_classifications": 0,
+    "licence_exclusions": 0,
+    "upstream_skip_policy_exclusions": 0,
+    "provider_requests_during_validation": 0,
+    "synthetic_processed_candidates_for_this_subset": 0,
+    "existing_static_endpoint_alias_rows": 7,
+    "previously_unmatched_static_endpoint_rows": 3,
+    "alias_target_outcomes_not_reclassified": true
+  },
+  "entries": [
+    {
+      "id": "at_WienMobil-Rad",
+      "legacy_filename": "at_WienMobil-Rad.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-wienmobil~rad~vienna~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/14",
+          "transitous_definition_sha256": "72af0ce28c4a7df9c503344c40dd7ee79d52a49a77522143fac5c28b9c12ff66",
+          "atlas_definition_pointer": "/feeds/1474",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "be_blue-bike",
+      "legacy_filename": "be_blue-bike.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-blue~bike~antwerp~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/11",
+          "transitous_definition_sha256": "0478ccb606632bf902f037c9186c6910e4f4b437bc2cbb9c133958a6cb1b03a9",
+          "atlas_definition_pointer": "/feeds/175",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "be_villo-brussels",
+      "legacy_filename": "be_villo-brussels.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-villo~brussels~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/10",
+          "transitous_definition_sha256": "15d90edcaf7604f2d8d7668009392d6cbb50510d1a95db1748cdfedd93bcc992",
+          "atlas_definition_pointer": "/feeds/1416",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "ca-bc_Lime-Kelowna",
+      "legacy_filename": "ca-bc_Lime-Kelowna.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-lime~kelowna~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/48",
+          "transitous_definition_sha256": "e5d14c785f1c6277104655b876391778f59535cacd45b8e3a1f3fe5a23cfe5b9",
+          "atlas_definition_pointer": "/feeds/1046",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "ca-bc_Lime-Vancouver",
+      "legacy_filename": "ca-bc_Lime-Vancouver.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-lime~vancouver~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/47",
+          "transitous_definition_sha256": "9c8f9e6a1ba6e0d5484676277e87daf62d9c6636d6ae7f1370daa9f049179e29",
+          "atlas_definition_pointer": "/feeds/1074",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "ca-bc_Mobi",
+      "legacy_filename": "ca-bc_Mobi.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-mobi~bike~share~vancouver~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/46",
+          "transitous_definition_sha256": "dd487e0d4715e03cb630b0befafe93a69402fc7dd4c2c73475f754540e4ebd49",
+          "atlas_definition_pointer": "/feeds/1107",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "ca-on_Burlington-Transit",
+      "legacy_filename": "ca-on_Burlington-Transit.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dpxq-burlingtontransit",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": true,
+          "upstream_skip_reason": "Not accessible from our import server or the transitland proxy",
+          "atlas_spec": "gtfs",
+          "endpoint_roles": [
+            "static_current"
+          ],
+          "atlas_path": "feeds/opendata.burlington.ca.dmfr.json",
+          "official_resolver_specs": [
+            "gtfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": true,
+          "transitous_definition_pointer": "/sources/6",
+          "transitous_definition_sha256": "2132d76421f4c360b1530e754cf2a99555f2cbfe416b326b5065f4e175f464ec",
+          "atlas_definition_pointer": "/feeds/1",
+          "url_override_present": false
+        },
+        {
+          "id": "f-burt~rt",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": true,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gtfs-rt",
+          "endpoint_roles": [
+            "realtime_alerts",
+            "realtime_trip_updates",
+            "realtime_vehicle_positions"
+          ],
+          "atlas_path": "feeds/opendata.burlington.ca.dmfr.json",
+          "official_resolver_specs": [
+            "gtfs-rt",
+            "gtfs-rt",
+            "gtfs-rt"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/7",
+          "transitous_definition_sha256": "135570e7d2feac91895f0f8c27880ffe3f8026f9facade6c1f058891a8601679",
+          "atlas_definition_pointer": "/feeds/0",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "schedule"
+    },
+    {
+      "id": "ca-on_Quinte-Transit",
+      "legacy_filename": "ca-on_Quinte-Transit.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-quinte~transit~ca",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": true,
+          "upstream_skip_reason": "Not accessible from our import server or the transitland proxy",
+          "atlas_spec": "gtfs",
+          "endpoint_roles": [
+            "static_current",
+            "static_historic"
+          ],
+          "atlas_path": "feeds/quintetransit.ca.dmfr.json",
+          "official_resolver_specs": [
+            "gtfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": true,
+          "transitous_definition_pointer": "/sources/49",
+          "transitous_definition_sha256": "98e6f902d91e6d1cb4dad9f3257773a36fd5edbb75d2528daba62b8747e8be1b",
+          "atlas_definition_pointer": "/feeds/0",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "schedule"
+    },
+    {
+      "id": "ca-qc_Acces-Velo",
+      "legacy_filename": "ca-qc_Acces-Velo.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-accès~vélo~saguenay~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/37",
+          "transitous_definition_sha256": "cddae3132cb87c13448cec351b0537bc1a4a5b6c25e2fb59de402ec62cb3a723",
+          "atlas_definition_pointer": "/feeds/5",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "ca-qc_aVelo",
+      "legacy_filename": "ca-qc_aVelo.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-àvélo~ville~de~québec~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/36",
+          "transitous_definition_sha256": "1fb43106a58ba76e2cbe1fd509274c0172f9914bb360ef292a9207e6bb1a4982",
+          "atlas_definition_pointer": "/feeds/1538",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "ca-qc_Bixi-Montreal",
+      "legacy_filename": "ca-qc_Bixi-Montreal.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-bixi~montréal~montreal~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/35",
+          "transitous_definition_sha256": "2890543151ac62723e423829d1f7f7dc1c0fd22a11f6c094136a4990a628a3c6",
+          "atlas_definition_pointer": "/feeds/169",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_ALF",
+      "legacy_filename": "de_ALF.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-alf~das~affstätter~lastenfahrrad~herrenberg~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/64",
+          "transitous_definition_sha256": "82d8140e21f2314d273cf985fd59407308496cdb00bb34555bae572bb70793cc",
+          "atlas_definition_pointer": "/feeds/7",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_BoltKarlsruhe",
+      "legacy_filename": "de_BoltKarlsruhe.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-bolt~technology~oü~karlsruhe~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/72",
+          "transitous_definition_sha256": "0c48ed12659ed8f065ba3afa303baa35a7fdf8d7885f0b4ec0d22f7e2fdc0c9a",
+          "atlas_definition_pointer": "/feeds/192",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_BoltReutlingenT-bingen-d8043c6eed63",
+      "legacy_filename": "de_BoltReutlingenTübingen.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-bolt~technology~oü~reutlingen~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/74",
+          "transitous_definition_sha256": "9ed08d395e3c5c1af0ac3c62c13a0e53098e87d412afb71f90c1628aad9868be",
+          "atlas_definition_pointer": "/feeds/193",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_BoltStuttgart",
+      "legacy_filename": "de_BoltStuttgart.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-bolt~technology~oü~stuttgart~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/73",
+          "transitous_definition_sha256": "b79856068017f4989ef2cdd53d02808a54512c2201086f46883e87b55b0cb201",
+          "atlas_definition_pointer": "/feeds/194",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_CallaBike",
+      "legacy_filename": "de_CallaBike.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-call~a~bike~germany~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/12",
+          "transitous_definition_sha256": "e69994266064e947eeeddb933cc70cd713864be0033783d26b592984fd231c70",
+          "atlas_definition_pointer": "/feeds/209",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_Car-ship",
+      "legacy_filename": "de_Car-ship.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-car~ship~constance~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/45",
+          "transitous_definition_sha256": "6f7fa1028a4c92e0faf68c28018c7da67e6da138ef1682274398144b258b8f7e",
+          "atlas_definition_pointer": "/feeds/218",
+          "url_override_present": true,
+          "url_override_host": "api.mobidata-bw.de",
+          "url_override_sha256": "dc89d627d32125c899b07991676fe1fab71f6c98ea16c540f4680f27edd95523"
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_CarSharingRenningen",
+      "legacy_filename": "de_CarSharingRenningen.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-carsharing~renningen~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/29",
+          "transitous_definition_sha256": "8d9cb103b96ebea6c06188688bc64252d9693c6ef8dc0d440592e9e85e9550e7",
+          "atlas_definition_pointer": "/feeds/216",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_Conficars",
+      "legacy_filename": "de_Conficars.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-conficars~ulm~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/32",
+          "transitous_definition_sha256": "b8422a8b3abb7381a849566f0129bb019d3156b5ffe6a4d8fd704f8e7ac48450",
+          "atlas_definition_pointer": "/feeds/271",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_Deer",
+      "legacy_filename": "de_Deer.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-deer~germany~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/20",
+          "transitous_definition_sha256": "bff049393212bae7ce874115f222ed9972aad30406ec6d34d04fb4999f7c6bc8",
+          "atlas_definition_pointer": "/feeds/288",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DieGr-neFlotte-571dab0d698a",
+      "legacy_filename": "de_DieGrüneFlotte.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-die~grüne~flotte~freiburg~im~breisgau~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/30",
+          "transitous_definition_sha256": "50a65fc88687249d90b093b8721e7e66f16edd0506f61123ad40738af19da752",
+          "atlas_definition_pointer": "/feeds/291",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DonkeyBamberg",
+      "legacy_filename": "de_DonkeyBamberg.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-donkey~republic~bamberg~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/75",
+          "transitous_definition_sha256": "468c1e50a30862d2d3ee2eae88be112531cc28708ddfd3458c548716cd20a069",
+          "atlas_definition_pointer": "/feeds/311",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DonkeyKiel",
+      "legacy_filename": "de_DonkeyKiel.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-donkey~republic~kiel~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/76",
+          "transitous_definition_sha256": "7e9be6151097642d620da7e2c59a3ab7e239aef6112c64311603f917c91d8419",
+          "atlas_definition_pointer": "/feeds/338",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_Dott-berlingen-5bef93b1e074",
+      "legacy_filename": "de_DottÜberlingen.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~überlingen~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/59",
+          "transitous_definition_sha256": "915392424b11dc8da82f09081cf912efc8207aadb2676d1d17a3d61f1bee4682",
+          "atlas_definition_pointer": "/feeds/724",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DottB-blingen-6407dbbf95c3",
+      "legacy_filename": "de_DottBöblingen.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~böblingen~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/48",
+          "transitous_definition_sha256": "befaba6b7c7a97e75d7e5d98b9cf37146b0a25e4682da52e234227eec09e8b73",
+          "atlas_definition_pointer": "/feeds/423",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DottBerlin",
+      "legacy_filename": "de_DottBerlin.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~berlin~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/96",
+          "transitous_definition_sha256": "c3fef33c7c54921dbd2c273e3a67792cc701edd35db2e1233c4de23ccf2c8523",
+          "atlas_definition_pointer": "/feeds/399",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DottDarmstadt",
+      "legacy_filename": "de_DottDarmstadt.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~darmstadt~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/63",
+          "transitous_definition_sha256": "a9c74ad78a8a1665dfd3b19b8acf1f344d04fbd93ccc3551f05f02e9df475ee0",
+          "atlas_definition_pointer": "/feeds/436",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DottFriedrichshafen",
+      "legacy_filename": "de_DottFriedrichshafen.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~friedrichshafen~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/49",
+          "transitous_definition_sha256": "193c17a88e519f08cf9b93e41b882445a1a19b1717c671c71599b47d11b2a2fe",
+          "atlas_definition_pointer": "/feeds/461",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DottHeidelberg",
+      "legacy_filename": "de_DottHeidelberg.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~heidelberg~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/50",
+          "transitous_definition_sha256": "f6a2cfbd24ac3dfb8c1b9ce5deda86d2d226f5fd9e790dac7a6c4dc7d160ee6d",
+          "atlas_definition_pointer": "/feeds/486",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DottHeilbronn",
+      "legacy_filename": "de_DottHeilbronn.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~heilbronn~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/51",
+          "transitous_definition_sha256": "7f3b036553435b9e542fb3dbd47e1879416e39b8cca25fb9dec451478cf81c9e",
+          "atlas_definition_pointer": "/feeds/487",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DottKaiserslautern",
+      "legacy_filename": "de_DottKaiserslautern.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~kaiserslautern~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/61",
+          "transitous_definition_sha256": "37c86892cd255bfe02e39b4c17e059c62b905e4ce7191752d5536195850db5a2",
+          "atlas_definition_pointer": "/feeds/516",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DottKarlsruhe",
+      "legacy_filename": "de_DottKarlsruhe.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~karlsruhe~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/52",
+          "transitous_definition_sha256": "00957eee3dbea0b5991622b53914e9031167a6ab656bb30dca63f4aed2de9086",
+          "atlas_definition_pointer": "/feeds/521",
+          "url_override_present": true,
+          "url_override_host": "api.mobidata-bw.de",
+          "url_override_sha256": "e2893e538ad11f4172a8b8dc207adfd0fb4572e8ebb5d26558d88fe7952fce4a"
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DottLindau",
+      "legacy_filename": "de_DottLindau.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~lindau~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/53",
+          "transitous_definition_sha256": "3c3010f55e3a8e8ee6e29d32f1b8d46df06975fe3629ec9baeb94a8bb2bc277c",
+          "atlas_definition_pointer": "/feeds/557",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DottLudwigsburg",
+      "legacy_filename": "de_DottLudwigsburg.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~ludwigsburg~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/54",
+          "transitous_definition_sha256": "44094587d49f41827163d307c24c3a52c6242da886a11ff3f0110030907a32f2",
+          "atlas_definition_pointer": "/feeds/562",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DottMannheim",
+      "legacy_filename": "de_DottMannheim.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~mannheim~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/55",
+          "transitous_definition_sha256": "a753f07ec0189a270a9a71a3035fed0aa51cc1761333126bcd07df6bc012d2bf",
+          "atlas_definition_pointer": "/feeds/568",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DottMunich",
+      "legacy_filename": "de_DottMunich.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~munich~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/102",
+          "transitous_definition_sha256": "5335c5b6e83d1ac17315d403eb2b2d26dbc2a43cb9b9a1442a2fce4478e3d427",
+          "atlas_definition_pointer": "/feeds/586",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DottReutlingen",
+      "legacy_filename": "de_DottReutlingen.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~reutlingen~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/56",
+          "transitous_definition_sha256": "c642bcfed1e7aa4bacdb540668ac9a459e6c92da1da0ec7a28b09dbcc34484a3",
+          "atlas_definition_pointer": "/feeds/636",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DottRostock",
+      "legacy_filename": "de_DottRostock.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~rostock~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/98",
+          "transitous_definition_sha256": "ab96b12736d82df9200a6e7c8c31086aca1a3d8c3c23286264037684a95f30b0",
+          "atlas_definition_pointer": "/feeds/646",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DottSaarbr-cken-4bccf5e8ae88",
+      "legacy_filename": "de_DottSaarbrücken.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~saarbrücken~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/62",
+          "transitous_definition_sha256": "5a547e6ad57a58e8f587a3441011a4eae6c49d8e1905dabe9ca3f324254b766e",
+          "atlas_definition_pointer": "/feeds/649",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DottStuttgart",
+      "legacy_filename": "de_DottStuttgart.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~stuttgart~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/57",
+          "transitous_definition_sha256": "368ccc77e16531dae36d821bcaebc104543f48041f4f2770f706d85ad38b0338",
+          "atlas_definition_pointer": "/feeds/671",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DottT-bingen-a0b45104e272",
+      "legacy_filename": "de_DottTübingen.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~tübingen~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/58",
+          "transitous_definition_sha256": "4e0b8df6c2ca4137b203e0d8eae0e518250d0eba68e4ebbf2bd537cfe968e803",
+          "atlas_definition_pointer": "/feeds/695",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_DottUlm",
+      "legacy_filename": "de_DottUlm.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dott~ulm~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/60",
+          "transitous_definition_sha256": "9ae7abf7c6d78c6069d4c92976714af9056249a45a75f3d1d007067cbe55fbbd",
+          "atlas_definition_pointer": "/feeds/697",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_EinfachMobil",
+      "legacy_filename": "de_EinfachMobil.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-einfachmobil~ortenaukreis~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/17",
+          "transitous_definition_sha256": "31b3a936e79e7842a4b68782c31708c4a949659804feda7832a7b4a2c96be0c2",
+          "atlas_definition_pointer": "/feeds/735",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_EinfachUnterwegs",
+      "legacy_filename": "de_EinfachUnterwegs.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-einfach~unterwegs~germany~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/40",
+          "transitous_definition_sha256": "bd800ca38035a731fa9bed756bd8bc066cfa79dcce9995c471a66ca678bd532a",
+          "atlas_definition_pointer": "/feeds/736",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_esel.ac",
+      "legacy_filename": "de_esel.ac.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-esel~ac~aachen~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/97",
+          "transitous_definition_sha256": "18361f0612702f8a3499b57ab91c6f03cad807d1cf9bc623deca8293a9defea3",
+          "atlas_definition_pointer": "/feeds/739",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_euregiobike",
+      "legacy_filename": "de_euregiobike.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-euregiobike~aachen~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/101",
+          "transitous_definition_sha256": "50cedf998e90fd011a1f0b06c24351c957c3d8f40e2b2fd42b6629dacb576ad9",
+          "atlas_definition_pointer": "/feeds/741",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_FaRe",
+      "legacy_filename": "de_FaRe.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-fare~das~bananologen~lastenrad~herrenberg~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/65",
+          "transitous_definition_sha256": "11b17b08d3ba042325538d767ec00481eb73ae3983c7eb2ce39588457a0cb232",
+          "atlas_definition_pointer": "/feeds/745",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_Flinkster",
+      "legacy_filename": "de_Flinkster.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-flinkster~germany~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/34",
+          "transitous_definition_sha256": "07cadb19be97b15fda3812e1e3aac151259731d482d47650e0886c7a55dbb702",
+          "atlas_definition_pointer": "/feeds/772",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_FordCarharingAutohausKauderer",
+      "legacy_filename": "de_FordCarharingAutohausKauderer.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-ford~carsharing~autohaus~kauderer~eislingen~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/39",
+          "transitous_definition_sha256": "1cc70bd38e1f32ca2d2f078e773f94f5851013d17a9a4241e47be16f83027e08",
+          "atlas_definition_pointer": "/feeds/777",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_FordCarsharingAutohausAlbert",
+      "legacy_filename": "de_FordCarsharingAutohausAlbert.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-ford~carsharing~autohaus~albert~donaueschingen~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/36",
+          "transitous_definition_sha256": "6357b7d04f6d4ff5038a78c74a49ac345efa87956c9ac885d3e3cae55abb83d2",
+          "atlas_definition_pointer": "/feeds/774",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_FordCarsharingAutohausB-lz-f07739a17f70",
+      "legacy_filename": "de_FordCarsharingAutohausBölz.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-ford~carsharing~autohaus~bölz~sinsheim~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/38",
+          "transitous_definition_sha256": "2290b1b30c202daf2fea7af996c6d81df35f54187c27c3f1d59b64d57274878e",
+          "atlas_definition_pointer": "/feeds/776",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_FordCarsharingAutohausBaur",
+      "legacy_filename": "de_FordCarsharingAutohausBaur.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-ford~carsharing~autohaus~baur~germany~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/37",
+          "transitous_definition_sha256": "bf48d0e402cdf76162f2b605932860d2b4c3d93dfcd11e354921dedd9e247056",
+          "atlas_definition_pointer": "/feeds/775",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_Frank-e",
+      "legacy_filename": "de_Frank-e.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-franke~freiburg~im~breisgau~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/47",
+          "transitous_definition_sha256": "e448d2211d0f58176643322034fd5e99b2969477a4fa0633c7bd00c7514807a6",
+          "atlas_definition_pointer": "/feeds/778",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_FreloFreiburg",
+      "legacy_filename": "de_FreloFreiburg.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-frelo~freiburg~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/14",
+          "transitous_definition_sha256": "8cfb4e04f9cbdb957a7ed23576a8e436ef76af5b3f8c40f8f6e69a85d8797c93",
+          "atlas_definition_pointer": "/feeds/779",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_G-lf-f509f799051a",
+      "legacy_filename": "de_Gülf.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-gülf~das~gültsteiner~lastenrad~herrenberg~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/66",
+          "transitous_definition_sha256": "be1eca702dad2c2bad076555a880e6b8249e695445e91509949d1177a9b10951",
+          "atlas_definition_pointer": "/feeds/982",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_Hertlein-d227d089c39f",
+      "legacy_filename": "de_Hertlein,.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-hertlein~carsharing~weikersheim~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/43",
+          "transitous_definition_sha256": "d92717bb480d3e527f0c71ad313bd59c4b74fcdbdff555425fbceb49b3659560",
+          "atlas_definition_pointer": "/feeds/986",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_HoppKonstanz",
+      "legacy_filename": "de_HoppKonstanz.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-hopp~konstanz~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/68",
+          "transitous_definition_sha256": "d67ef08759f60ad5275008f22de9eb00f6d2a299003c22cf183064306c4cc957",
+          "atlas_definition_pointer": "/feeds/989",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_KVV.nextbike",
+      "legacy_filename": "de_KVV.nextbike.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-kvv~nextbike~karlsruhe~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/13",
+          "transitous_definition_sha256": "cd74cb1ea6285cf60c01ed8120885fa71694b4e76799b1da106c22469699aa8e",
+          "atlas_definition_pointer": "/feeds/1014",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_LaRaToGo",
+      "legacy_filename": "de_LaRaToGo.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-lara~to~go~waiblingen~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/44",
+          "transitous_definition_sha256": "53debb5170200236d4e02deec21912a67367c15e74398a5b62a082f4748d0347",
+          "atlas_definition_pointer": "/feeds/1016",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_LastenVeloFreiburg",
+      "legacy_filename": "de_LastenVeloFreiburg.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-lastenvelo~freiburg~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/15",
+          "transitous_definition_sha256": "53bdd2a3a54b21407035420ce876d23679fc02c3cd87b5b70b950db25ad4c2cf",
+          "atlas_definition_pointer": "/feeds/1017",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_LimeBW",
+      "legacy_filename": "de_LimeBW.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-lime~stuttgart~konstanz~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/69",
+          "transitous_definition_sha256": "d2973ac81d27e10798fd7335e6cfa0fa85921a49772ca3a0d22bf6f4ac563b82",
+          "atlas_definition_pointer": "/feeds/1070",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_LimeFrankfurt",
+      "legacy_filename": "de_LimeFrankfurt.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-lime~frankfurt~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/19",
+          "transitous_definition_sha256": "802105805bba3fbf1cc801b09860e78f5dca32b99eea29d391f26604552293d2",
+          "atlas_definition_pointer": "/feeds/1043",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_LimeWuppertal",
+      "legacy_filename": "de_LimeWuppertal.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-lime~wuppertal~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/106",
+          "transitous_definition_sha256": "4bbb84eee661a34c210095f5f9ab3b9b55c57efb4f18f42e6d6018c760ed43f5",
+          "atlas_definition_pointer": "/feeds/1078",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_MeinKonrad",
+      "legacy_filename": "de_MeinKonrad.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-mein~konrad~konstanz~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/70",
+          "transitous_definition_sha256": "6f34b3c08138aff8688b3f7449c7fecdc4b31a4d500d91b41f7c64030eb41c86",
+          "atlas_definition_pointer": "/feeds/1096",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_Mikar",
+      "legacy_filename": "de_Mikar.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-mikar~germany~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/21",
+          "transitous_definition_sha256": "ec6389f59d27827b329a74dfd0404872f0254875b050073d02b4b08255cf1d5a",
+          "atlas_definition_pointer": "/feeds/1102",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_MOBIBikeDresden",
+      "legacy_filename": "de_MOBIBikeDresden.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-mobibike~dresden~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/93",
+          "transitous_definition_sha256": "2cce5c0469e771967f85acb6a25703ea6921429ac779625bd6f1983b77592623",
+          "atlas_definition_pointer": "/feeds/1104",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_MyRadlMunich",
+      "legacy_filename": "de_MyRadlMunich.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-myradl~munich~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/103",
+          "transitous_definition_sha256": "384df1eb3e19a81f9afcb30d853225bc79463eeaa8f185388dc6aa4e379d922e",
+          "atlas_definition_pointer": "/feeds/1118",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_NaturenergieSharing",
+      "legacy_filename": "de_NaturenergieSharing.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-naturenergie~sharing~south~baden~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/25",
+          "transitous_definition_sha256": "ce0d4cb8ca2e1ef21bf1ee37323241bb813faaf7a9f8c823e044e52658980236",
+          "atlas_definition_pointer": "/feeds/1123",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_NextbikeBerlin",
+      "legacy_filename": "de_NextbikeBerlin.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-nextbike~berlin~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/95",
+          "transitous_definition_sha256": "763d8f32c9da5225abf5c80f05e7acbe6f02452ca4c2ad3177f059b2e32b7c1e",
+          "atlas_definition_pointer": "/feeds/1128",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_NextbikeLeipzig",
+      "legacy_filename": "de_NextbikeLeipzig.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-nextbike~leipzig~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/94",
+          "transitous_definition_sha256": "fd08108e914cca08728451309f9038c55f2074119e8cf969500dcc539ef6fd7d",
+          "atlas_definition_pointer": "/feeds/1156",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_NextbikeNorderstedt",
+      "legacy_filename": "de_NextbikeNorderstedt.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-nextbike~norderstedt~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/71",
+          "transitous_definition_sha256": "59ca51c2f19b94f88271985669ff5b1321fbc47ef880b8156003b7dba93c9b5e",
+          "atlas_definition_pointer": "/feeds/1169",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_OberSchwabenMobil",
+      "legacy_filename": "de_OberSchwabenMobil.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-oberschwabenmobil~carsharing~halle~saale~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/35",
+          "transitous_definition_sha256": "b06f48b4225c62ca4866039061b5196b40e55795c59b9bce10f06a20f7248c3d",
+          "atlas_definition_pointer": "/feeds/1204",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_RegioRadStuttgart",
+      "legacy_filename": "de_RegioRadStuttgart.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-regioradstuttgart~stuttgart~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/11",
+          "transitous_definition_sha256": "6aca3f92867ce896ef4d4c775b12b8ffceb926e7991f05922ba8fa93d834ab1f",
+          "atlas_definition_pointer": "/feeds/1249",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_SAPWalldorf",
+      "legacy_filename": "de_SAPWalldorf.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-sap~walldorf~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/16",
+          "transitous_definition_sha256": "129e942cd1e3218fe167147cb38d5b32960c7d5e8b0f8982c99139eb2feca521",
+          "atlas_definition_pointer": "/feeds/1275",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_Seefahrer",
+      "legacy_filename": "de_Seefahrer.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-seefahrer~e~carsharing~radolfzell~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/41",
+          "transitous_definition_sha256": "56e26f07c9fc538de888b3a4bae15e0b2f090148fdd85319c349d149142c12cd",
+          "atlas_definition_pointer": "/feeds/1277",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_StadtmobilKarlsruhe",
+      "legacy_filename": "de_StadtmobilKarlsruhe.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-stadtmobil~karlsruhe~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/23",
+          "transitous_definition_sha256": "8d5dd1b8a3bd1c0d2e8bbe28eba799dd1983b057c0f0b719f767ef9c31ac4d4e",
+          "atlas_definition_pointer": "/feeds/1325",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_StadtmobilRheinNeckar",
+      "legacy_filename": "de_StadtmobilRheinNeckar.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-stadtmobil~rhein~neckar~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/24",
+          "transitous_definition_sha256": "d4c017fc2f03d784b498eeec03f8bd1574854505ba89d227c4e3af96e7bedaae",
+          "atlas_definition_pointer": "/feeds/1326",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_StadtmobilStuttgart",
+      "legacy_filename": "de_StadtmobilStuttgart.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-stadtmobil~stuttgart~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/22",
+          "transitous_definition_sha256": "88e8394e6bcd34935ce0df94cf84ea99caf8cb0a43a3b2b7b10cad7b8e8ddf8f",
+          "atlas_definition_pointer": "/feeds/1327",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_StadtRadHerrenberg",
+      "legacy_filename": "de_StadtRadHerrenberg.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-stadtrad~das~stadtnavi~lastenrad~herrenberg~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/67",
+          "transitous_definition_sha256": "1ad38e7ec6e649d2040737a669e4ffc13240629f6eb4f919e661952de0390010",
+          "atlas_definition_pointer": "/feeds/1330",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_StadtwerkeWertheim",
+      "legacy_filename": "de_StadtwerkeWertheim.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-carsharing~in~wertheim~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/42",
+          "transitous_definition_sha256": "d8699dc45b17432889732d6c99d1c5497ba1d87937b155071c7fd003c0293b25",
+          "atlas_definition_pointer": "/feeds/215",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_StadtwerkTauberfranken",
+      "legacy_filename": "de_StadtwerkTauberfranken.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-stadtwerk~tauberfranken~germany~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/33",
+          "transitous_definition_sha256": "ff7d67e0805acf7f37b38ad6e70064da922845bbc539ae3273c8bafe2d70bf30",
+          "atlas_definition_pointer": "/feeds/1333",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_Stella",
+      "legacy_filename": "de_Stella.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-stella~stuttgart~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/46",
+          "transitous_definition_sha256": "953d2f895d24d6f7fdb17eacccf88c146f2bdb339621f15b47edce1fc4aab5bf",
+          "atlas_definition_pointer": "/feeds/1334",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_swu2go",
+      "legacy_filename": "de_swu2go.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-swu2go~carsharing~ulm~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/31",
+          "transitous_definition_sha256": "0bf1dfe2802dbc36e0d5c717109e524e780578369b5819c8799241d5998af011",
+          "atlas_definition_pointer": "/feeds/1338",
+          "url_override_present": true,
+          "url_override_host": "api.mobidata-bw.de",
+          "url_override_sha256": "5b06b8299a03f10cf20aa4f0e8514372047782d0770759d2990c9e0749a6dceb"
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_TeilAutoBiberach",
+      "legacy_filename": "de_TeilAutoBiberach.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-teilauto~biberach~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/27",
+          "transitous_definition_sha256": "da4a08a304c135bdd2400f03da8fa4b8338dde3209a53735a05d6879fe1cac7c",
+          "atlas_definition_pointer": "/feeds/1343",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_TeilAutoNeckar-Alb",
+      "legacy_filename": "de_TeilAutoNeckar-Alb.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-teilauto~neckar~alb~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/26",
+          "transitous_definition_sha256": "ef4294cbf5fd94545d1417d8dd91689e31c91ab35c5016d19eae2b275c8f99bf",
+          "atlas_definition_pointer": "/feeds/1344",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_TeilAutoSchw-bischHall-ee7e77d9670b",
+      "legacy_filename": "de_TeilAutoSchwäbischHall.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-teilauto~schwäbisch~hall~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/28",
+          "transitous_definition_sha256": "0380be42860c1272f1e6c5a53ae2d77e649ebee99b868570400045b695a39626",
+          "atlas_definition_pointer": "/feeds/1345",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_VoiGermany",
+      "legacy_filename": "de_VoiGermany.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-voi~germany~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/77",
+          "transitous_definition_sha256": "1b59fdd567664582475b027b4c0f12388912380a85bfef574a87560ce8614075",
+          "atlas_definition_pointer": "/feeds/1425",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_VRNnextbike",
+      "legacy_filename": "de_VRNnextbike.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-vrnnextbike~rhine~neckar~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/18",
+          "transitous_definition_sha256": "8e9bbf557c57187195f60ae57753864d15c314c5e1e7492daca6f9ee56e2ecb1",
+          "atlas_definition_pointer": "/feeds/1440",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_westbike",
+      "legacy_filename": "de_westbike.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-westbike~heinsberg~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/105",
+          "transitous_definition_sha256": "8bea2e36814c9004f0968a8fb7b4b743f0bb44c197d12b54fd7e6ad1c3e0356a",
+          "atlas_definition_pointer": "/feeds/1470",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_YoioFreiburg",
+      "legacy_filename": "de_YoioFreiburg.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-yoio~freiburg~im~breisgau~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/78",
+          "transitous_definition_sha256": "1e49f0d586ffb748942f1696df2d1007a796763063421ab93388275b053ea2e4",
+          "atlas_definition_pointer": "/feeds/1486",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_ZeoBruchsal",
+      "legacy_filename": "de_ZeoBruchsal.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-zeo~carsharing~bruchsal~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/79",
+          "transitous_definition_sha256": "dc856c1f37d69af8e15cf2a97cabc37a7dcfdf9268836cbebfbd3d439e34cfc6",
+          "atlas_definition_pointer": "/feeds/1491",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_ZeusFreiburg",
+      "legacy_filename": "de_ZeusFreiburg.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-zeus~freiburg~im~breisgau~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/80",
+          "transitous_definition_sha256": "62e1d50f37171ccd2e060cf37efa72bce6317692f2963dc5895b816ecf09786e",
+          "atlas_definition_pointer": "/feeds/1500",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_ZeusG-ppingen-f511783dba16",
+      "legacy_filename": "de_ZeusGöppingen.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-zeus~goppingen~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/91",
+          "transitous_definition_sha256": "4494b37e1e519f78e2e93c3ddec13053856781b0e1cb40ef99514f5bc4d4cfe2",
+          "atlas_definition_pointer": "/feeds/1504",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_ZeusHeidelberg",
+      "legacy_filename": "de_ZeusHeidelberg.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-zeus~heidelberg~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/81",
+          "transitous_definition_sha256": "d9669242b546e99f936242ecf151873a4d50a43954080be93cc724793493299b",
+          "atlas_definition_pointer": "/feeds/1508",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_ZeusKonstanz",
+      "legacy_filename": "de_ZeusKonstanz.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-zeus~konstanz~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/82",
+          "transitous_definition_sha256": "d3c0631071a5c76052b726ea5ddcd52a219a24e60203b66d3a7f7303b0efbcd0",
+          "atlas_definition_pointer": "/feeds/1515",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_ZeusLudwigsburg",
+      "legacy_filename": "de_ZeusLudwigsburg.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-zeus~ludwigsburg~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/83",
+          "transitous_definition_sha256": "fa5bdb6fbc66c8fed823f6af7725a067c9d5b81d4f898de41ac4b10e0178d370",
+          "atlas_definition_pointer": "/feeds/1518",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_ZeusNeustadt",
+      "legacy_filename": "de_ZeusNeustadt.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-zeus~neustadt~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/84",
+          "transitous_definition_sha256": "3263e58073e80cb59edfec5cfd7c6c6b1cde44e9f81aa0632a868ecb824f475c",
+          "atlas_definition_pointer": "/feeds/1521",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_ZeusPforzheim",
+      "legacy_filename": "de_ZeusPforzheim.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-zeus~pforzheim~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/85",
+          "transitous_definition_sha256": "de01dd7b57f3e881124cc800a862e2447bb929669f8e8d15c6294f957e9152c0",
+          "atlas_definition_pointer": "/feeds/1523",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_ZeusRenningenMalmsheim",
+      "legacy_filename": "de_ZeusRenningenMalmsheim.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-zeus~renningen~malmsheim~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/90",
+          "transitous_definition_sha256": "955dbe07883191d91df2cc20d7c6e8710bbc9a21af201e9c29a9f1e7503f0e73",
+          "atlas_definition_pointer": "/feeds/1525",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_ZeusSchw-bischGm-nd-be53e1dd4c3b",
+      "legacy_filename": "de_ZeusSchwäbischGmünd.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-zeus~schwäbisch~gmünd~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/86",
+          "transitous_definition_sha256": "8490d6396ed8b3f780ff7005c4191896a932c1dbc386e6dc40fee122f07a15bf",
+          "atlas_definition_pointer": "/feeds/1529",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_ZeusT-bingen-707ef6758c4e",
+      "legacy_filename": "de_ZeusTübingen.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-zeus~tubingen~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/87",
+          "transitous_definition_sha256": "6adbf61435209aa205b7dfe67b2f7b6d00853d35bfe302a9acf49c176c538caa",
+          "atlas_definition_pointer": "/feeds/1532",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_ZeusTuttlingen",
+      "legacy_filename": "de_ZeusTuttlingen.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-zeus~tuttlingen~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/88",
+          "transitous_definition_sha256": "77eebbabe684aa04f11ea61bd88b98a635b2ab2e4caa3e5d4f0250f739354189",
+          "atlas_definition_pointer": "/feeds/1533",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_ZeusVillingenSchwenningen",
+      "legacy_filename": "de_ZeusVillingenSchwenningen.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-zeus~villingen~schwenningen~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/89",
+          "transitous_definition_sha256": "bca2f2f356b863d54ce1dde6de2fdeff894bcdd4b746a4df1d46313d8b2f0aed",
+          "atlas_definition_pointer": "/feeds/1534",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "de_ZeusW-rzburg-2019cc1be756",
+      "legacy_filename": "de_ZeusWürzburg.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-zeus~wurzburg~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/92",
+          "transitous_definition_sha256": "2760ca1273ac8fbd564fc7fd21c7137b3e66988768b0ddb3d5a592c0ab246e1c",
+          "atlas_definition_pointer": "/feeds/1535",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "nz-auk_Flamingo-Auckland",
+      "legacy_filename": "nz-auk_Flamingo-Auckland.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-flamingo~auckland~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/2",
+          "transitous_definition_sha256": "bde5614151aa9de7d7adad6eec853292a597a4cacd917f2d291a48ec8629e32c",
+          "atlas_definition_pointer": "/feeds/764",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "nz-bop_Flamingo-Tauranga",
+      "legacy_filename": "nz-bop_Flamingo-Tauranga.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-flamingo~tauranga~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/2",
+          "transitous_definition_sha256": "22edc36bdd9f0f3cb001c0736825f783d2b55e7d802cd48e04a98c336f102972",
+          "atlas_definition_pointer": "/feeds/769",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "nz-can_Flamingo-Christchurch",
+      "legacy_filename": "nz-can_Flamingo-Christchurch.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-flamingo~christchurch~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/2",
+          "transitous_definition_sha256": "170f61ccc2f0caa73bd3c6393cfefd020f2af8e7ce3e2d8b1f0bbd8f9b397f70",
+          "atlas_definition_pointer": "/feeds/765",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "nz-can_Flamingo-Waimakariri",
+      "legacy_filename": "nz-can_Flamingo-Waimakariri.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-flamingo~waimakariri~district~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/3",
+          "transitous_definition_sha256": "d0440de75d12d53ac28fc9c9c2b65b9e5a50170bdbcb0c69af01f92199a4170a",
+          "atlas_definition_pointer": "/feeds/770",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "nz-can_JOLT-Selwyn",
+      "legacy_filename": "nz-can_JOLT-Selwyn.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-jolt~selwyn~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/4",
+          "transitous_definition_sha256": "3d8e0e20ab5cd09386d25f72e69be309779e1ac6812346c8c60ca70a77d1bd3f",
+          "atlas_definition_pointer": "/feeds/1005",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "nz-mwt_Flamingo-Palmerston-North",
+      "legacy_filename": "nz-mwt_Flamingo-Palmerston-North.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-flamingo~palmerston~north~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/1",
+          "transitous_definition_sha256": "085dc52912ac12ebd9fdf813c97402282dccf340695a34409d90c04754231f8c",
+          "atlas_definition_pointer": "/feeds/767",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "nz-ota_Flamingo-Dunedin",
+      "legacy_filename": "nz-ota_Flamingo-Dunedin.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-flamingo~dunedin~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/1",
+          "transitous_definition_sha256": "1a24ac54b439bdaccb1f3ce9fc0c639a28e94ce9e2d624f67600574dc15c1eaa",
+          "atlas_definition_pointer": "/feeds/766",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "nz-tki_JOLT-New-Plymouth",
+      "legacy_filename": "nz-tki_JOLT-New-Plymouth.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-jolt~new~plymouth~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/2",
+          "transitous_definition_sha256": "bb029ff99fa97070f4f16840c74e58584309895a8b3ddb3d7b1838043766a7ce",
+          "atlas_definition_pointer": "/feeds/1004",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "nz-wgn_Flamingo-Porirua",
+      "legacy_filename": "nz-wgn_Flamingo-Porirua.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-flamingo~porirua~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/6",
+          "transitous_definition_sha256": "f46799c92f04ea70e502e71e2556f0c581589114fce91235f638cd0a8a5134c2",
+          "atlas_definition_pointer": "/feeds/768",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "nz-wgn_Flamingo-Wellington",
+      "legacy_filename": "nz-wgn_Flamingo-Wellington.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-flamingo~wellington~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/5",
+          "transitous_definition_sha256": "baac7a17744e98508480806d438544706d1431073eb114740b1957478bbda616",
+          "atlas_definition_pointer": "/feeds/771",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "nz-wgn_JOLT-Hutt-Valley",
+      "legacy_filename": "nz-wgn_JOLT-Hutt-Valley.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-jolt~hutt~valley~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/4",
+          "transitous_definition_sha256": "04a016c55132952e2fc403ed209f3edadc78b0aaab8f6bc3edbe20afe4c23226",
+          "atlas_definition_pointer": "/feeds/1003",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "pl_Che-mski-Rower-9f75e9ea8856",
+      "legacy_filename": "pl_Chełmski-Rower.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-chełmski~rower~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/187",
+          "transitous_definition_sha256": "d2531856b40d26f11469b3524b72bf5960ac3a25b63797ec2b68384c9014aa35",
+          "atlas_definition_pointer": "/feeds/244",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "pl_Jask--ka-Jastrz-bie-Zdr-j-dbee5ce68868",
+      "legacy_filename": "pl_Jaskółka-Jastrzębie-Zdrój.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-jaskółka~jastrzębie~zdrój~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/188",
+          "transitous_definition_sha256": "1b60c26b6dc5ad471d9c211e6db6d5854325cb288123909262a818afa7087a9c",
+          "atlas_definition_pointer": "/feeds/1000",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "pl_KRM-Konin",
+      "legacy_filename": "pl_KRM-Konin.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-koniński~rower~miejski~poland~konin~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/189",
+          "transitous_definition_sha256": "b61a0cb73c4947d90984538ae19d454226b141c296f0ebc3b1f05037574a89c4",
+          "atlas_definition_pointer": "/feeds/1009",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "pl_KRM-Koszalin",
+      "legacy_filename": "pl_KRM-Koszalin.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-koszaliński~rower~miejski~poland~koszalin~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/190",
+          "transitous_definition_sha256": "05b99865480ee7e1f854464ce6c078df1dc5acc0b41b12ec36b85a6a565c0c2c",
+          "atlas_definition_pointer": "/feeds/1010",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "pl_Metrorower",
+      "legacy_filename": "pl_Metrorower.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-metrorower~tychy~pl~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/191",
+          "transitous_definition_sha256": "22b9d79df1363d70c32a02d52682c17176e6c6b867c88a2262575f011b69dd2d",
+          "atlas_definition_pointer": "/feeds/1097",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "pl_Mevo",
+      "legacy_filename": "pl_Mevo.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-mevo~gdansk~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/192",
+          "transitous_definition_sha256": "ae9ad980d5ffd96a36d1d65331fa6b3611a6a73956134aa9941e2f3119275cd7",
+          "atlas_definition_pointer": "/feeds/1099",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "pl_WRM-Wolsztyn",
+      "legacy_filename": "pl_WRM-Wolsztyn.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-wolsztyński~rower~miejski~wolsztyn~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/193",
+          "transitous_definition_sha256": "7637578de4546bacf730071baee9a3617ac7caeb875869f52ce74fe61b32fe8b",
+          "atlas_definition_pointer": "/feeds/1476",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "pl_WRM-Wroc-aw-498b0c424438",
+      "legacy_filename": "pl_WRM-Wrocław.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-wrm~nextbike~poland~wrocław~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/194",
+          "transitous_definition_sha256": "6248b288852834b05089d2940d5d91f6e561f0ce578af52d9f81c243a8bc574f",
+          "atlas_definition_pointer": "/feeds/1477",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "ro_Alba-Iulia-Velocity",
+      "legacy_filename": "ro_Alba-Iulia-Velocity.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-alba~iulia~velocity~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/2",
+          "transitous_definition_sha256": "6a8a5d056a9c34533a0176779fef1db0b4c18872b337817140f3e91fb720ba58",
+          "atlas_definition_pointer": "/feeds/6",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "ro_Dej-Velo-City",
+      "legacy_filename": "ro_Dej-Velo-City.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dej~velo~city~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/16",
+          "transitous_definition_sha256": "292ee676f4c801c271476ab1eaa945749e0d2b7f80d96c88b52cca2cab3419ed",
+          "atlas_definition_pointer": "/feeds/289",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "ro_Hunedoara-public-bike-system",
+      "legacy_filename": "ro_Hunedoara-public-bike-system.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-hunedoara~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/20",
+          "transitous_definition_sha256": "7ce5ddbcd0e92123b1d669b36e9dde4509060614633461584b4db65eb90ca11d",
+          "atlas_definition_pointer": "/feeds/990",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "ro_Moinesti-public-bike-system",
+      "legacy_filename": "ro_Moinesti-public-bike-system.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-moinesti~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/24",
+          "transitous_definition_sha256": "01e98ed45a14b64ab9fba1f02ebe8a1cfc94479a6b40d93f3ec764912864474e",
+          "atlas_definition_pointer": "/feeds/1110",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "ro_S-ntana-Velo-e7351d6b72da",
+      "legacy_filename": "ro_Sântana-Velo.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-velo~sântana~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/27",
+          "transitous_definition_sha256": "7aa952b9b1207f871fdf98bd0282e3c1c0dfd646f46a0ee967c816919ddf5dac",
+          "atlas_definition_pointer": "/feeds/1371",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "ro_Slatina-Velo-City",
+      "legacy_filename": "ro_Slatina-Velo-City.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-slatina~velo~city~ro~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/30",
+          "transitous_definition_sha256": "5a220146fa7cd1d73552839206c08f45959927945d2c1215ef768a1092216771",
+          "atlas_definition_pointer": "/feeds/1284",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "ro_Slobozia-Bike-City",
+      "legacy_filename": "ro_Slobozia-Bike-City.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-buzau~velocity~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/8",
+          "transitous_definition_sha256": "fd21751e462d2cc24e6add75bd3ce3002e26350828044246b2c8cb19fb43aa82",
+          "atlas_definition_pointer": "/feeds/205",
+          "url_override_present": false
+        },
+        {
+          "id": "f-slobozia~bike~city~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/31",
+          "transitous_definition_sha256": "b7960c8cc8bf772d54fbfc0dc9af62a7d142245f6d659e62e7ed03d1b9080b93",
+          "atlas_definition_pointer": "/feeds/1285",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "ro_Topoloveni-Bike",
+      "legacy_filename": "ro_Topoloveni-Bike.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-topoloveni~bike~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/32",
+          "transitous_definition_sha256": "1ce4fb65b38daaee171a7da15a61093f1e037e1d2a81577767b7bad4035aa241",
+          "atlas_definition_pointer": "/feeds/1349",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "us-ca_Glendale-Beeline",
+      "legacy_filename": "us-ca_Glendale-Beeline.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-9q5f-glendalebeeline",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": true,
+          "upstream_skip_reason": "403 error code when downloading, no documentation from agency on fix, supposedly requires compression on download which isnt supported yet",
+          "atlas_spec": "gtfs",
+          "endpoint_roles": [
+            "static_current",
+            "static_historic"
+          ],
+          "atlas_path": "feeds/glendaleca.gov.dmfr.json",
+          "official_resolver_specs": [
+            "gtfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": true,
+          "transitous_definition_pointer": "/sources/19",
+          "transitous_definition_sha256": "ec57482ee9a8f508831eb56cd39856d2b3b0d39e2bba6aa19736982ebb6ffcf0",
+          "atlas_definition_pointer": "/feeds/0",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "schedule"
+    },
+    {
+      "id": "us-dc_capital-bikeshare",
+      "legacy_filename": "us-dc_capital-bikeshare.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-capital~bike~share~washington~dc~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/4",
+          "transitous_definition_sha256": "569344070bc6c24f45177befe6fd6150355107018fdb97e5e4c80e6fe5d15447",
+          "atlas_definition_pointer": "/feeds/212",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "us-md_TransIt",
+      "legacy_filename": "us-md_TransIt.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dr0b-transitservicesoffrederickcounty",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": true,
+          "upstream_skip_reason": "Connection timed out",
+          "atlas_spec": "gtfs",
+          "endpoint_roles": [
+            "static_current",
+            "static_historic"
+          ],
+          "atlas_path": "feeds/frederickcountymd.gov.dmfr.json",
+          "official_resolver_specs": [
+            "gtfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": true,
+          "transitous_definition_pointer": "/sources/13",
+          "transitous_definition_sha256": "edf0ad14c154b9ed2178fcce4587a7b215698a4b69981c1745823b22289b551e",
+          "atlas_definition_pointer": "/feeds/0",
+          "url_override_present": false
+        },
+        {
+          "id": "f-dr0b-transitservicesoffrederickcounty~rt",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": true,
+          "upstream_skip_reason": "Connection timed out",
+          "atlas_spec": "gtfs-rt",
+          "endpoint_roles": [
+            "realtime_trip_updates",
+            "realtime_vehicle_positions"
+          ],
+          "atlas_path": "feeds/tu-vp.goswift.ly.dmfr.json",
+          "official_resolver_specs": null,
+          "resolver_state": "authorization_required",
+          "authorization": {
+            "type": "header",
+            "param_name": "Authorization",
+            "info_url": "https://goswift.ly/realtime-api-key"
+          },
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/14",
+          "transitous_definition_sha256": "d381ddb363b040d03aa9921454e80701ab0677f79b7092b54119c6194bbf2358",
+          "atlas_definition_pointer": "/feeds/33",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "schedule"
+    },
+    {
+      "id": "us-ny_RochesterVeoBikes",
+      "legacy_filename": "us-ny_RochesterVeoBikes.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-veo~rochester~ny~gbfs",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": false,
+          "upstream_skip_reason": "",
+          "atlas_spec": "gbfs",
+          "endpoint_roles": [
+            "gbfs_auto_discovery"
+          ],
+          "atlas_path": "feeds/nabsa.github.com.dmfr.json",
+          "official_resolver_specs": [
+            "gbfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/63",
+          "transitous_definition_sha256": "aaa34b234e202f4b00b8df52dfb9634439d3ddf68e6f18298b7740d013640ee0",
+          "atlas_definition_pointer": "/feeds/1398",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "non_timetable_format"
+    },
+    {
+      "id": "us-tn_bristol",
+      "legacy_filename": "us-tn_bristol.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-city~of~bristol~tennessee",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": true,
+          "upstream_skip_reason": "cloudflare blocking and transitland cache needs account?",
+          "atlas_spec": "gtfs",
+          "endpoint_roles": [
+            "static_current"
+          ],
+          "atlas_path": "feeds/bristoltn.org.dmfr.json",
+          "official_resolver_specs": [
+            "gtfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": true,
+          "transitous_definition_pointer": "/sources/0",
+          "transitous_definition_sha256": "644848f4b5496df58e68732e4f5f5b69eb657b17407ae750334aa9cd649c01e3",
+          "atlas_definition_pointer": "/feeds/0",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "schedule"
+    },
+    {
+      "id": "us-tn_clarksville",
+      "legacy_filename": "us-tn_clarksville.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-clarksville~tn~us",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": true,
+          "upstream_skip_reason": "Outdated GTFS",
+          "atlas_spec": "gtfs",
+          "endpoint_roles": [
+            "static_current",
+            "static_historic"
+          ],
+          "atlas_path": "feeds/etaspot.net.dmfr.json",
+          "official_resolver_specs": [
+            "gtfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": true,
+          "transitous_definition_pointer": "/sources/4",
+          "transitous_definition_sha256": "7d5f7e076fd0e4a3873e11dd8d5490d1766de70c826ad5978e26240f83fecb9e",
+          "atlas_definition_pointer": "/feeds/5",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "schedule"
+    },
+    {
+      "id": "us-tn_columbia",
+      "legacy_filename": "us-tn_columbia.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-muletown",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": true,
+          "upstream_skip_reason": "Outdated GTFS",
+          "atlas_spec": "gtfs",
+          "endpoint_roles": [
+            "static_current"
+          ],
+          "atlas_path": "feeds/sctdd.org.dmfr.json",
+          "official_resolver_specs": [
+            "gtfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": true,
+          "transitous_definition_pointer": "/sources/19",
+          "transitous_definition_sha256": "a6dbc7be4741b39662a623c7acf29cd2db8a8207bbb48cfee53c5bc08123e03c",
+          "atlas_definition_pointer": "/feeds/0",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "schedule"
+    },
+    {
+      "id": "us-tn_murfreesboro",
+      "legacy_filename": "us-tn_murfreesboro.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-murfreesboro~transit",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": true,
+          "upstream_skip_reason": "Unreachable from DFN",
+          "atlas_spec": "gtfs",
+          "endpoint_roles": [
+            "static_current"
+          ],
+          "atlas_path": "feeds/murfreesborotransit.tripsparkhost.com.dmfr.json",
+          "official_resolver_specs": [
+            "gtfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": true,
+          "transitous_definition_pointer": "/sources/3",
+          "transitous_definition_sha256": "288725b8f854cfd063b58bb824859c709734d8f7617f29b101d50fd25d94d0a1",
+          "atlas_definition_pointer": "/feeds/0",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "schedule"
+    },
+    {
+      "id": "us-va_blacksburgtransit",
+      "legacy_filename": "us-va_blacksburgtransit.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dnwg-blacksburgtransit",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": true,
+          "upstream_skip_reason": "Not accessible from our import server or the transitland proxy",
+          "atlas_spec": "gtfs",
+          "endpoint_roles": [
+            "static_current"
+          ],
+          "atlas_path": "feeds/bt4uclassic.org.dmfr.json",
+          "official_resolver_specs": [
+            "gtfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": true,
+          "transitous_definition_pointer": "/sources/6",
+          "transitous_definition_sha256": "030cd17ef102bcc86e1fbc9631aaf6d3d7172ee88e084d9a548ab7003dd34020",
+          "atlas_definition_pointer": "/feeds/0",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "schedule"
+    },
+    {
+      "id": "us-wi_milwaukee",
+      "legacy_filename": "us-wi_milwaukee.gtfs.zip",
+      "declarations": [
+        {
+          "id": "f-dp9-milwaukeecountytransitsystem",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": true,
+          "upstream_skip_reason": "Connection timeout",
+          "atlas_spec": "gtfs",
+          "endpoint_roles": [
+            "static_current"
+          ],
+          "atlas_path": "feeds/mcts.org.dmfr.json",
+          "official_resolver_specs": [
+            "gtfs"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": true,
+          "transitous_definition_pointer": "/sources/11",
+          "transitous_definition_sha256": "9cbf50c17eab5566e1153fc93dc2c523c6ea46bdc1c702fd65da3e623dbf4b2b",
+          "atlas_definition_pointer": "/feeds/0",
+          "url_override_present": false
+        },
+        {
+          "id": "f-dp9-milwaukeecountytransitsystem~rt",
+          "declared_type": "transitland-atlas",
+          "declared_spec": null,
+          "upstream_skip": true,
+          "upstream_skip_reason": "Connection timeout",
+          "atlas_spec": "gtfs-rt",
+          "endpoint_roles": [
+            "realtime_alerts",
+            "realtime_trip_updates",
+            "realtime_vehicle_positions"
+          ],
+          "atlas_path": "feeds/mcts.org.dmfr.json",
+          "official_resolver_specs": [
+            "gtfs-rt",
+            "gtfs-rt",
+            "gtfs-rt"
+          ],
+          "resolver_state": "resolved",
+          "authorization": null,
+          "static_source_present": false,
+          "transitous_definition_pointer": "/sources/12",
+          "transitous_definition_sha256": "808887d7608cea31c3d57f0ce1b1d81b0c72b7d63340a089e1f54e40126c8bb5",
+          "atlas_definition_pointer": "/feeds/1",
+          "url_override_present": false
+        }
+      ],
+      "proposed_state": "schedule"
+    }
+  ],
+  "checked_sources": [
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/at.json",
+      "git_blob_sha": "6413c69e217d7712fdd4812b030709becd212f75",
+      "sha256": "9454540e1371193357961dfb4e40b6d808f1270b7a9526e045d506fcec9287cf",
+      "bytes": 8003,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/at.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/be.json",
+      "git_blob_sha": "49599300735e4c0dfe3cdfeff814b96d4f4eebec",
+      "sha256": "422a839113656f4cae93d62cc076063467e599fcc8587c94d5a9f3f46970d00b",
+      "bytes": 6480,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/be.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/ca-bc.json",
+      "git_blob_sha": "8f2f009b270aa3d84b58bd46a48ebef7a37d19ee",
+      "sha256": "a0f3c851f0afd56c05de6274450586b7ea51857668ef2860f2171c1d06cce827",
+      "bytes": 9072,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/ca-bc.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/ca-on.json",
+      "git_blob_sha": "84145fb0d088ce8b613f8974001eceac94622aba",
+      "sha256": "05850800890e1a1494fd53953478ec0ebecedc2f85de91f44f7a71a316dbee63",
+      "bytes": 12625,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/ca-on.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/ca-qc.json",
+      "git_blob_sha": "332d39036d04d52f2951dfbf7e3d12b896ec7987",
+      "sha256": "54bdcde8cdf31d80b79bbfd955735b13b6a97ecd0dd4187959dc364b8a461c5b",
+      "bytes": 8843,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/ca-qc.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/de.json",
+      "git_blob_sha": "2c48227de398d02e70cf2e31b6c7ac324184f655",
+      "sha256": "1d19f8a3de709d2ca9d603771ce00cab42ec46cd601774bf2785a7711c146683",
+      "bytes": 23370,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/de.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/nz-auk.json",
+      "git_blob_sha": "c4bb94b4b149075a822ec75406c57791a22eb826",
+      "sha256": "aee061a127fe3fad0cb2c714938f48674542a1c7aa1de858ea156944b6da1bc3",
+      "bytes": 1404,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/nz-auk.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/nz-bop.json",
+      "git_blob_sha": "095de3e2ba016942462dcd4e575b6952febd815a",
+      "sha256": "ac413d1dde0a3a16e432bf309b121a563b2637d45af650eea52f57a744e6692d",
+      "bytes": 818,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/nz-bop.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/nz-can.json",
+      "git_blob_sha": "0728780bbcf3bfa8d991b413415898e9a4f508d2",
+      "sha256": "beb08c2cd90ed1a9cbddd207f7c177424b56851da115196aeca67c666e4c133f",
+      "bytes": 1961,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/nz-can.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/nz-mwt.json",
+      "git_blob_sha": "ad7526122976b34fb04569f37b73d2957b4edd01",
+      "sha256": "16375e8ad60c82f3ce8384197a20ad328dc5ce94a9dc99f994479b7f2c164ada",
+      "bytes": 599,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/nz-mwt.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/nz-ota.json",
+      "git_blob_sha": "d91f92a34f968af75bf01fa311cc50d55b29c978",
+      "sha256": "a80c9e2e898808686bdca320c944ce3f973bfab09d53db4b752c6444175d1481",
+      "bytes": 593,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/nz-ota.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/nz-tki.json",
+      "git_blob_sha": "1823cdc7f59a0574322d577cc9bc3f25c2bf9f9c",
+      "sha256": "633050ee73553cc39985dee9fa191d7e59d16140af421e4d375f4d55d7bbf637",
+      "bytes": 856,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/nz-tki.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/nz-wgn.json",
+      "git_blob_sha": "daf00e07f5647928a1268fbd85d799eb45f109c8",
+      "sha256": "1efa1b58e4b0ddaff5241edf1b459806194ad28c16f134ca6f5dd7d692e6be51",
+      "bytes": 3050,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/nz-wgn.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/pl.json",
+      "git_blob_sha": "24f8aec5a39a78869a26e13e76f3c26bb2f66e06",
+      "sha256": "d54b1748224ac362422076fb5484638526e54bf73d84fa41503b1d682f3c4ae1",
+      "bytes": 79109,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/pl.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/ro.json",
+      "git_blob_sha": "9e7059541f8158d121c4375bfb6030afa77f37c3",
+      "sha256": "80b592f461be37630010266d162c76a307095289e5f8be3238c495fd2179cc77",
+      "bytes": 9621,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/ro.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/us-ca.json",
+      "git_blob_sha": "c607b95316e961583fbbfbbed899627467587560",
+      "sha256": "d9478921dbbcbb5375309447e7b9eb8ef605dfc0998848bae031864160135f10",
+      "bytes": 12310,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/us-ca.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/us-dc.json",
+      "git_blob_sha": "54490d24cf58b08b028743675eb9b5b49bda43a8",
+      "sha256": "bf42b0a466eff1e6e80d446bbd81eae44da2211d34b39a8b41d31de8999df68d",
+      "bytes": 1162,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/us-dc.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/us-md.json",
+      "git_blob_sha": "dd8307972109fe57b99b541a6badb69dea64fe3e",
+      "sha256": "3f5669ca36982be17c922389adae7588d00219cd74fa7f24acef47b0a0d77c00",
+      "bytes": 3607,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/us-md.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/us-ny.json",
+      "git_blob_sha": "01f8eca5d93c54e4d1fd7824978d39cc5bfcdba4",
+      "sha256": "8fac93d1ef1dc68e5bb3a208414e5b22df02194cc6198cb77bbdfdaadee9a70f",
+      "bytes": 16409,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/us-ny.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/us-tn.json",
+      "git_blob_sha": "35f26e7694279ecdf07e7b26245bdf841af506a8",
+      "sha256": "c343223a477ccdc9399af34841fbdae8a61d0f234f03028fbcaa74ff22eafc5b",
+      "bytes": 4004,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/us-tn.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/us-va.json",
+      "git_blob_sha": "9de22060529639e91f3feb46e0cdce40ca4ab4fd",
+      "sha256": "d0ab989c249e3df0d3f74d598eac1786e9e959eaef74715989016ea009cd9aa3",
+      "bytes": 7187,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/us-va.json"
+    },
+    {
+      "repository": "public-transport/transitous",
+      "ref": "afcc88b467259bae36c25964dbb1db165d2afb31",
+      "path": "feeds/us-wi.json",
+      "git_blob_sha": "8b01ffd66f091a33260e51343792fe2b212451ea",
+      "sha256": "65ddc8538db5cac86b27096b73dd1516e151f9a8c025787d075b197636427f74",
+      "bytes": 3124,
+      "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/feeds/us-wi.json"
+    },
+    {
+      "repository": "transitland/transitland-atlas",
+      "ref": "e2c827fdc0540577eb8e0d668d80ce290a948498",
+      "path": "feeds/bristoltn.org.dmfr.json",
+      "git_blob_sha": "6d16d04ba515fb188a074f75eddef821e647e0f5",
+      "sha256": "6a23b62358c1c5357f47ae6a6b08150ba408f109fb934a349b4552af2dd432a3",
+      "bytes": 577,
+      "url": "https://github.com/transitland/transitland-atlas/blob/e2c827fdc0540577eb8e0d668d80ce290a948498/feeds/bristoltn.org.dmfr.json"
+    },
+    {
+      "repository": "transitland/transitland-atlas",
+      "ref": "e2c827fdc0540577eb8e0d668d80ce290a948498",
+      "path": "feeds/bt4uclassic.org.dmfr.json",
+      "git_blob_sha": "d58a4ae05600e018d77f81525fdffca8ff95f95f",
+      "sha256": "bc659769bd4bb33c33bbbdc6db396f924ea67d35e97cac38e89d21d53f75fb5a",
+      "bytes": 594,
+      "url": "https://github.com/transitland/transitland-atlas/blob/e2c827fdc0540577eb8e0d668d80ce290a948498/feeds/bt4uclassic.org.dmfr.json"
+    },
+    {
+      "repository": "transitland/transitland-atlas",
+      "ref": "e2c827fdc0540577eb8e0d668d80ce290a948498",
+      "path": "feeds/etaspot.net.dmfr.json",
+      "git_blob_sha": "32840ba26ae7d0165e21f1cfa9d6b422bb644d01",
+      "sha256": "9fd3b69dfa9276d1428b75383bfc80172cb068cb95fa0418a950a6757ad5679e",
+      "bytes": 22563,
+      "url": "https://github.com/transitland/transitland-atlas/blob/e2c827fdc0540577eb8e0d668d80ce290a948498/feeds/etaspot.net.dmfr.json"
+    },
+    {
+      "repository": "transitland/transitland-atlas",
+      "ref": "e2c827fdc0540577eb8e0d668d80ce290a948498",
+      "path": "feeds/frederickcountymd.gov.dmfr.json",
+      "git_blob_sha": "5aabf46779fe69e544d33e1863dea2423900ad70",
+      "sha256": "d116de3f4272cf820f4e1248aefd5431c9235b33e22c872fdf9b69c553a1cdf3",
+      "bytes": 1048,
+      "url": "https://github.com/transitland/transitland-atlas/blob/e2c827fdc0540577eb8e0d668d80ce290a948498/feeds/frederickcountymd.gov.dmfr.json"
+    },
+    {
+      "repository": "transitland/transitland-atlas",
+      "ref": "e2c827fdc0540577eb8e0d668d80ce290a948498",
+      "path": "feeds/glendaleca.gov.dmfr.json",
+      "git_blob_sha": "e15f1b5e21fc4ee58f58301efd10f79602ef93f2",
+      "sha256": "320cbc6d5b0f028818d06b6bca35458dc42918c23f877e223f64acefc52a88c7",
+      "bytes": 1009,
+      "url": "https://github.com/transitland/transitland-atlas/blob/e2c827fdc0540577eb8e0d668d80ce290a948498/feeds/glendaleca.gov.dmfr.json"
+    },
+    {
+      "repository": "transitland/transitland-atlas",
+      "ref": "e2c827fdc0540577eb8e0d668d80ce290a948498",
+      "path": "feeds/mcts.org.dmfr.json",
+      "git_blob_sha": "1b56968382aa14a7509647c7e2655a92acaedb9f",
+      "sha256": "5ca9117cc4dfe02181225930cad136752f3e23a55f233fdb291820a1ac76965c",
+      "bytes": 1406,
+      "url": "https://github.com/transitland/transitland-atlas/blob/e2c827fdc0540577eb8e0d668d80ce290a948498/feeds/mcts.org.dmfr.json"
+    },
+    {
+      "repository": "transitland/transitland-atlas",
+      "ref": "e2c827fdc0540577eb8e0d668d80ce290a948498",
+      "path": "feeds/murfreesborotransit.tripsparkhost.com.dmfr.json",
+      "git_blob_sha": "0f806e2c3e41c150431fb4c24e4ecef9f1ee4726",
+      "sha256": "458f474b55b34960b8afcf621a113449e49081259ca82994014d1c4b686f8b5c",
+      "bytes": 592,
+      "url": "https://github.com/transitland/transitland-atlas/blob/e2c827fdc0540577eb8e0d668d80ce290a948498/feeds/murfreesborotransit.tripsparkhost.com.dmfr.json"
+    },
+    {
+      "repository": "transitland/transitland-atlas",
+      "ref": "e2c827fdc0540577eb8e0d668d80ce290a948498",
+      "path": "feeds/nabsa.github.com.dmfr.json",
+      "git_blob_sha": "b42b2c7ffd81226e3ae57089e603fb3a577ec384",
+      "sha256": "736da5d0ab864a70a0988b44a469852ed0301e62b7f1c6d2ed8d84cff1b0f814",
+      "bytes": 295881,
+      "url": "https://github.com/transitland/transitland-atlas/blob/e2c827fdc0540577eb8e0d668d80ce290a948498/feeds/nabsa.github.com.dmfr.json"
+    },
+    {
+      "repository": "transitland/transitland-atlas",
+      "ref": "e2c827fdc0540577eb8e0d668d80ce290a948498",
+      "path": "feeds/opendata.burlington.ca.dmfr.json",
+      "git_blob_sha": "325174dbc69ed2c86de63e2ef13c751b09b91fb7",
+      "sha256": "a4161aaefeb0727ef3332df3de3bc7da2d3ff8708da396d0eb1f54be05fe346f",
+      "bytes": 1553,
+      "url": "https://github.com/transitland/transitland-atlas/blob/e2c827fdc0540577eb8e0d668d80ce290a948498/feeds/opendata.burlington.ca.dmfr.json"
+    },
+    {
+      "repository": "transitland/transitland-atlas",
+      "ref": "e2c827fdc0540577eb8e0d668d80ce290a948498",
+      "path": "feeds/quintetransit.ca.dmfr.json",
+      "git_blob_sha": "ff57c6f952018dd127e145e147cdd45ea672e009",
+      "sha256": "b4c26f620baa5cf78d8ef27fa727cde88a04d5be78e02c4307b5a9529cf13a0e",
+      "bytes": 651,
+      "url": "https://github.com/transitland/transitland-atlas/blob/e2c827fdc0540577eb8e0d668d80ce290a948498/feeds/quintetransit.ca.dmfr.json"
+    },
+    {
+      "repository": "transitland/transitland-atlas",
+      "ref": "e2c827fdc0540577eb8e0d668d80ce290a948498",
+      "path": "feeds/sctdd.org.dmfr.json",
+      "git_blob_sha": "095bcdcb97365dc9880964369d81e02809e12a58",
+      "sha256": "07d4f71a3cd3a6de41cc90d38f374215f6450d0ec29533132b73b17898bea385",
+      "bytes": 542,
+      "url": "https://github.com/transitland/transitland-atlas/blob/e2c827fdc0540577eb8e0d668d80ce290a948498/feeds/sctdd.org.dmfr.json"
+    },
+    {
+      "repository": "transitland/transitland-atlas",
+      "ref": "e2c827fdc0540577eb8e0d668d80ce290a948498",
+      "path": "feeds/tu-vp.goswift.ly.dmfr.json",
+      "git_blob_sha": "0d513734652a7d0e915773b38846fa07cc68a9bf",
+      "sha256": "1aa8ff15fc95bd95fce320f49eabcb5911e80a0a264fbd4de0836367de706bfa",
+      "bytes": 38619,
+      "url": "https://github.com/transitland/transitland-atlas/blob/e2c827fdc0540577eb8e0d668d80ce290a948498/feeds/tu-vp.goswift.ly.dmfr.json"
+    }
+  ],
+  "verification": {
+    "metadata_files_blob_verified": 34,
+    "controlled_replay_sha256": "a9bd9ec157747cec44798a2625cc82380bb40c3ec08d512040c24b6548d06215",
+    "network_boundary": "loopback-only LD_PRELOAD guard; metadata-only replay, no provider calls",
+    "candidate_outcomes_not_executed": true,
+    "executed_upstream_modules": [
+      {
+        "path": "src/metadata.py",
+        "git_blob_sha": "e9541f67a161d8030ad280062ae9b986144a6efb",
+        "sha256": "f3c83f7fc2c2970b25fd0bf85600e3f4f57222f78cb933d0f3af1203483ecc41",
+        "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/src/metadata.py"
+      },
+      {
+        "path": "src/transitland.py",
+        "git_blob_sha": "03b79c1c126062cb23a0f39afb9a5376c79b5867",
+        "sha256": "0a7e6ef4fc9023ac1db578a6cfc8f6d3da63f92ab4d4dca1a3703c05f9176109",
+        "url": "https://github.com/public-transport/transitous/blob/afcc88b467259bae36c25964dbb1db165d2afb31/src/transitland.py"
+      }
+    ],
+    "called_function": "transitland.Atlas.sources_by_id(metadata.TransitlandSource(declaration))",
+    "atlas_index": "Local-only Atlas.by_id dictionary constructed from pinned, blob-verified feed files",
+    "dependency_shim": "utils module exposing an eprint-only no-op; no upstream utilities executed",
+    "upstream_fetch_program_executed": false,
+    "upstream_cli_executed": false,
+    "guard_sha256": "f4c0f7fca8cd3edb562e56034ca08605101f16c81bfe073f62415abc37688b59",
+    "guard_source_sha256": "8da01441fa598fae84fb0a6c3c2ef2769415124a2574de506ff9cb81b76f8025",
+    "declaration_hash_format": "SHA-256 of sorted-key compact JSON with ensure_ascii=False, UTF-8 bytes and no trailing newline"
+  },
+  "exact_static_endpoint_overlaps": [
+    {
+      "id": "ca-on_Burlington-Transit",
+      "static_original_url_sha256": "7b9b6eba32a6d36616393e003446049a298052243c5a3d48923f836cf96bdeb0",
+      "held_endpoint_owners": [
+        {
+          "id": "mdb_mdb-724",
+          "status": "no_rail",
+          "reason_code": ""
+        }
+      ]
+    },
+    {
+      "id": "ca-on_Quinte-Transit",
+      "static_original_url_sha256": "ef017fd714ae1b3f16429d3ce80ab6aa177d60555db4d5d114f6b422493133cf",
+      "held_endpoint_owners": []
+    },
+    {
+      "id": "us-ca_Glendale-Beeline",
+      "static_original_url_sha256": "0f2ac6197b284ee8d1f719a3efa1df6ed1f689aa68a4c5304b965e1d0e5931f6",
+      "held_endpoint_owners": [
+        {
+          "id": "mdb_mdb-3177",
+          "status": "retry_pending",
+          "reason_code": "source_access_denied"
+        }
+      ]
+    },
+    {
+      "id": "us-md_TransIt",
+      "static_original_url_sha256": "badaf77ef66816137bae0c7f89f1c43d97d32eddbcadbde980b4761ce3e231fe",
+      "held_endpoint_owners": [
+        {
+          "id": "mdb_mdb-2432",
+          "status": "no_rail",
+          "reason_code": ""
+        }
+      ]
+    },
+    {
+      "id": "us-tn_bristol",
+      "static_original_url_sha256": "0752480f1973fb5e555af5520c367e7496b28bb72501e2c770578e3ca997f0c6",
+      "held_endpoint_owners": [
+        {
+          "id": "mdb_ntd-40055",
+          "status": "retry_pending",
+          "reason_code": "source_retrieval_error"
+        }
+      ]
+    },
+    {
+      "id": "us-tn_clarksville",
+      "static_original_url_sha256": "fa47427ce38e8cf2c98f7a3e357949d5d56ecde0bba20374e7d378b54902a3ac",
+      "held_endpoint_owners": []
+    },
+    {
+      "id": "us-tn_columbia",
+      "static_original_url_sha256": "9509faa089092a20e5d917b0fa66353d16b54fb9a2f29b4b654dea444bf496b8",
+      "held_endpoint_owners": [
+        {
+          "id": "mdb_mdb-2420",
+          "status": "no_rail",
+          "reason_code": ""
+        }
+      ]
+    },
+    {
+      "id": "us-tn_murfreesboro",
+      "static_original_url_sha256": "847a18b37273139d08d5a065c8547a9506e7154f350010a9cf20348679ecd24c",
+      "held_endpoint_owners": []
+    },
+    {
+      "id": "us-va_blacksburgtransit",
+      "static_original_url_sha256": "40499fbb6cbb1339324cdd7426c880ae2b6bf1fbdc1e5c81c4d744daba3aa7f9",
+      "held_endpoint_owners": [
+        {
+          "id": "mdb_mdb-1189",
+          "status": "no_rail",
+          "reason_code": ""
+        }
+      ]
+    },
+    {
+      "id": "us-wi_milwaukee",
+      "static_original_url_sha256": "0bd8e153723ba3301f6ecb63bd39c0abc40ac0153fc54e011e4e490fd404509c",
+      "held_endpoint_owners": [
+        {
+          "id": "mdb_mdb-2127",
+          "status": "no_rail",
+          "reason_code": ""
+        }
+      ]
+    }
+  ]
+}

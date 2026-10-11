@@ -1,6 +1,6 @@
 // Actual app layout/gestures; this does not claim physical-watch performance.
 import assert from 'node:assert/strict';
-import {readFile,mkdir} from 'node:fs/promises';
+import {mkdir} from 'node:fs/promises';
 import {launchBrowser} from './browser.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 const root=process.env.ATLAS_TEST_URL || 'http://127.0.0.1:4173';
@@ -8,10 +8,6 @@ const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader'
 try {
   const context=await browser.newContext({viewport:{width:240,height:240},hasTouch:true,serviceWorkers:'block'}),page=await context.newPage();
   await installEmptyMapProviders(context,root+'/');
-  if(process.env.ATLAS_MAPLIBRE_ASSETS){
-    for(const name of ['maplibre-gl.js','maplibre-gl.css'])await page.route(`**/maplibre-gl@5.24.0/dist/${name}`,async r=>r.fulfill({body:await readFile(`${process.env.ATLAS_MAPLIBRE_ASSETS}/${name}`),contentType:name.endsWith('.js')?'text/javascript':'text/css'}));
-    await page.route('**/pmtiles@4.2.1/dist/pmtiles.js',async r=>r.fulfill({body:await readFile(`${process.env.ATLAS_MAPLIBRE_ASSETS}/pmtiles.js`),contentType:'text/javascript'}));
-  }
   await page.goto(root+'/?ui=watch&mode=service&relief=0#15/22.405/113.98',{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.body.dataset.mapReady==='true',{},{timeout:60000});
   await page.evaluate(async()=>{window.testMap=(await import(document.querySelector('script[type="module"]').src)).map;});

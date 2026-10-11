@@ -8,6 +8,7 @@ import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 import {launchBrowser} from './browser.mjs';
 import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
+import {observeRequiredBrowserLibraries} from './required-browser-libraries.mjs';
 
 const base=(process.env.ATLAS_FIXTURE_BASE_URL||process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/');
 const line={type:'Feature',properties:{id:'fixture-wuhan-mainline',feature:'rail',railway:'rail',state:'present',usage:'main',service:'',maxspeed:250,gaugeint0:1435},
@@ -24,6 +25,7 @@ try {
   // external services during the browser integration check.
   await installEmptyMapProviders(context,base,{firstParty:process.env.MAP_BASE_URL?'network':'fixture'});
   const page=await context.newPage();
+  const requiredLibraries=process.env.MAP_BASE_URL?observeRequiredBrowserLibraries(page,base):null;
   const outstanding=new Set(),firstPartyFailures=[];
   page.on('request',request=>outstanding.add(request));
   page.on('requestfinished',request=>{outstanding.delete(request);ledger.push({event:'finished',url:request.url(),at:Date.now()});});
@@ -82,6 +84,10 @@ try {
   });
   await page.goto(base+'?mode=speed&language=en&relief=0&inactive=0&transport=0&destinations=0&constraints=0#6/30.55/114.4',{waitUntil:'domcontentloaded'});
   await page.waitForSelector('body[data-map-ready="true"]',{timeout:90000});
+  ledger.push({event:'initial-map-ready',at:Date.now()});
+  // MapLibre can initialize even when its stylesheet failed. Validate only
+  // required library responses now, before unrelated z14/recovery checks.
+  const libraryAssets=await requiredLibraries?.assertReady();
   await page.evaluate(async()=>{window.fixtureMap=(await import(document.querySelector('script[type="module"]').src)).map;});
   // Negative control: the former generic TileJSON fallback must fail in the
   // real client. This archive is not attached to the map or its error state.
@@ -165,7 +171,7 @@ try {
   assert.equal(requests.metadata,1,'Only the explicit unknown endpoint fetched metadata');
   assert.deepEqual(errors,[]);
   assert.deepEqual(requests.missingReferer,[]);assert.deepEqual(requests.missingUserAgent,[]);
-  await writeFile('browser-review/orm-fixture-evidence.json',JSON.stringify({base,archiveContract,initial,afterPan,panAdded,recovery,requests,ledger},null,2)+'\n');
+  await writeFile('browser-review/orm-fixture-evidence.json',JSON.stringify({base,libraryAssets,archiveContract,initial,afterPan,panAdded,recovery,requests,ledger},null,2)+'\n');
   console.log('PASS: Wuhan rail overlays at z6/z7; z14 track-count interaction used local fixtures only',
     JSON.stringify({initial,afterPan,panAdded,metadata:requests.metadata,tiles:requests.tiles}));
 }finally{

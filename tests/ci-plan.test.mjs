@@ -38,9 +38,22 @@ test('a check, its helpers and its fixtures run only the checks that use them', 
   const helper = plan(['scripts/click-visible-control.mjs'], read).groups.flatMap(g => g.checks);
   assert.ok(helper.length && helper.every(check => read(`scripts/${check}`).includes('click-visible-control.mjs')), helper.join(', '));
   const frequency = GROUPS.find(g => g.group === 'frequency');
-  for (const check of frequency.checks)
-    assert.deepEqual(plan([`scripts/${check}`], read).groups, [{...frequency, checks: [check]}], 'frequency fixture preparation is retained for each selected check');
+  for (const check of frequency.checks) {
+    const checks = check === 'check-paris-service-geometry-browser.mjs'
+      ? ['check-paris-service-geometry-browser.mjs', 'check-normandy-service-geometry-browser.mjs'] : [check];
+    assert.deepEqual(plan([`scripts/${check}`], read).groups, [{...frequency, checks}], 'frequency fixture preparation is retained for each selected check and its dependent wrapper');
+  }
   assert.deepEqual(groupsFor(['scripts/service-geometry-browser-fixture.mjs']), ['frequency:1']);
+  assert.deepEqual(groupsFor(['scripts/paris-service-geometry-fixture.mjs']), ['frequency:2']);
+  for (const path of ['scripts/assemble-global-frequency.mjs', 'scripts/read-frequency-feed.mjs'])
+    assert.deepEqual(groupsFor([path]), ['frequency:2'], `Paris production CLI dependency ${path} selects its browser gate`);
+  assert.deepEqual(groupsFor(['scripts/service-geometry-test-framing.mjs']), ['frequency:2']);
+  assert.deepEqual(groupsFor(['scripts/service-geometry-test-clock.mjs']), ['frequency:2']);
+  assert.deepEqual(groupsFor(['scripts/normandy-service-geometry-fixture.mjs']), ['frequency:1']);
+  for (const name of ['normandy-20261005.json.gz', 'normandy-20261005-12-2074-1408.pbf.gz', 'normandy-20261005-12-2074-1409.pbf.gz', 'normandy-metadata.json', 'normandy-probes.json'])
+    assert.deepEqual(groupsFor([`tests/fixtures/service-geometry/${name}`]), ['frequency:1'], `Historical Normandy input ${name} selects its browser gate`);
+  for (const name of ['paris-osm-01.ndjson', 'paris-osm-02.ndjson', 'paris-metadata.json', 'paris-adversary.json'])
+    assert.deepEqual(groupsFor([`tests/fixtures/service-geometry/${name}`]), ['frequency:2'], `Paris fixture ${name} selects its deterministic browser gate`);
 });
 
 test('deployed fixture follows its delegated checker and archive dependency in safe CI',()=>{

@@ -36,7 +36,7 @@ def unpack(path, output):
             name=Path(member.name)
             if name.is_absolute() or '..' in name.parts or member.issym() or member.islnk() or not (member.isfile() or member.isdir()):
                 raise ValueError('Unsafe snapshot member')
-            if name.parts and name.parts[0] not in {'manifest.json','inventory.json','feeds','tiles'}:
+            if name.parts and name.parts[0] not in {'manifest.json','inventory.json','profiles.json.gz','feeds','tiles'}:
                 raise ValueError('Unexpected snapshot member')
         archive.extractall(output, members=members, filter='data')
 

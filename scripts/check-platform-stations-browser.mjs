@@ -1,3 +1,4 @@
+import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 import {launchBrowser} from './browser.mjs';
 import {ormVectorFixture} from './orm-vector-fixture.mjs';
 import {readFile,mkdir} from 'node:fs/promises';
@@ -5,6 +6,7 @@ import assert from 'node:assert/strict';
 import geojsonvt from 'geojson-vt';
 import {waitUntil} from './wait-until.mjs';
 import {platformExtent} from '../styles/platform-length.mjs';
+import {stationScFontReady} from './platform-font-ready.mjs';
 
 // Complete OSM platform areas from the three reported stations, encoded with
 // the provider's real tile contract (typed identity/name, no ref or length).
@@ -16,11 +18,12 @@ for(const [offset,value] of [[8,127],[16,1],[24,128],[32,2],[40,130],[56,130]])a
 archive[96]=1;archive[97]=archive[98]=archive[99]=1;archive[101]=22;
 for(const [offset,value] of [[102,-1800000000],[106,-850000000],[110,1800000000],[114,850000000]])archive.writeInt32LE(value,offset);
 archive.write('{}',128);
-const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/'),runtime=process.env.ATLAS_BROWSER_RUNTIME,glyphFile=process.env.ATLAS_BROWSER_GLYPHS;
+const base=(process.env.MAP_BASE_URL||'http://127.0.0.1:4173/').replace(/\/?$/,'/'),glyphFile=process.env.ATLAS_BROWSER_GLYPHS;
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 await mkdir('browser-review',{recursive:true});
 try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
  const page=await browser.newPage({viewport:{width,height},hasTouch:kind==='mobile',deviceScaleFactor:kind==='mobile'?2:1,serviceWorkers:'block'}),errors=[],requests=[];
+ await installEmptyMapProviders(page.context(),base,{firstParty:'network'});
  // Deterministic installed fonts: every Chinese candidate name is a stand-in
  // built from the packaged font, partial as on Windows (Microsoft JhengHei
  // has no Simplified forms; neither has Extension B). Page fonts take
@@ -31,7 +34,6 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
   stand(['Noto Sans SC','Noto Sans CJK SC','Source Han Sans SC','PingFang SC','Microsoft YaHei','Hiragino Sans GB'],'atlas-cjk-sc-v1.woff2','U+3000-9FFF,U+F900-FAFF');
  });
  page.on('pageerror',error=>errors.push(error.message));
- if(runtime)await page.route('https://cdn.jsdelivr.net/npm/**',async route=>{const path=new URL(route.request().url()).pathname,local=path.includes('maplibre-gl')?'maplibre-gl/dist/'+path.split('/').at(-1):'pmtiles/dist/pmtiles.js';await route.fulfill({body:await readFile(`${runtime}/${local}`),contentType:path.endsWith('.css')?'text/css':'text/javascript'});});
  await page.route('https://tuiles.enliberte.fr/planet.pmtiles',route=>route.fulfill({body:archive,contentType:'application/octet-stream'}));
  if(glyphFile)await page.route('https://tuiles.enliberte.fr/fonts/**',async route=>route.fulfill({body:await readFile(glyphFile),contentType:'application/x-protobuf'}));
  await page.route('**/data/**/index.json',route=>route.fulfill({json:{tiles:[]}}));
@@ -98,11 +100,28 @@ try{for(const [kind,width,height] of [['desktop',1365,900],['mobile',412,915]]){
   console.log(`PASS: ${kind} ${station.name}, complete area lengths, recorded numbers and visible end labels at zoom 22`);
  }
  if(await page.locator('#controls').isHidden())await page.locator('#controls-open').click();
- await page.selectOption('#language','zh-Hans');
- await page.waitForFunction(()=>window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Microsoft YaHei')||window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Noto Sans SC'),undefined,{timeout:30000});
+ // Hold the real candidate-font responses to reproduce selection still being
+ // pending after the global fallback already names SC. No elapsed-time guess.
+ const scFont=new URL('fonts/atlas-cjk-sc-v1.woff2',base).href;
+ let releaseScFonts;
+ const scFontsReleased=new Promise(resolve=>{releaseScFonts=resolve;});
+ const holdScFont=async route=>{await scFontsReleased;return route.fallback();};
+ await page.route(scFont,holdScFont);
+ // Handle an early page/setup failure even before this request is awaited.
+ const scRequest=page.waitForRequest(scFont,{timeout:30000}).then(()=>null,error=>error);
+ try{
+  await page.selectOption('#language','zh-Hans');
+  const requestError=await scRequest;if(requestError)throw requestError;
+  await page.waitForFunction(()=>window.reviewMap.isStyleLoaded()&&window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Noto Sans SC'),undefined,{timeout:30000});
+  assert.equal(await page.evaluate(stationScFontReady),false,'global SC candidates must not release the draw while selection is gated');
+ }finally{releaseScFonts();await page.unroute(scFont,holdScFont);}
+ await page.waitForFunction(stationScFontReady,undefined,{timeout:30000});
  await drawHan();
  await page.waitForFunction(()=>document.fonts.check('24px "Atlas CJK SC"')&&window.reviewMap.style.glyphManager.localIdeographFontFamily.includes('Atlas CJK SC'),undefined,{timeout:30000});
  await checkGlyphs('SC');
+ // Finish already-queued source/style renderer work as well as font selection.
+ // Keep the complete final predicate in one bounded wait, without a later sample.
+ await page.waitForFunction(stationScFontReady,{requireMapLoaded:true},{timeout:30000});
  const counts=new Map();for(const id of requests)counts.set(id,(counts.get(id)||0)+1);assert.ok([...counts.values()].every(n=>n===1),'pans, zooms and font/style changes reuse measuring tiles');
  assert.deepEqual(errors,[]);console.log(`PASS: ${kind} both packaged CJK fonts load without blocking startup`);await page.close();
 }}finally{await browser.close();}

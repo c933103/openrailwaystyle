@@ -37,6 +37,7 @@ export const SOURCE_CONTRACTS = {
   axleLow:{standard_railway_line_low:['axle_tonnes', 'feature', 'state']},
   axleRail:{railway_line_high:['axle_native', 'axle_tonnes', 'axle_units', 'feature', 'service', 'state', 'tunnel']},
   axleBranch:{branch_lines:['axle_tonnes', 'feature', 'service', 'state', 'tunnel']},
+  railBackbone:{railroads:[],railroads_north_america:[]},
   railway:{railway_line_high:[...LABEL, 'bridge', 'electrification_state', 'feature', 'frequency', 'gauge0', 'gauge1', 'gaugeint0', 'gaugeint1', 'highspeed', 'loading_gauge', 'maxspeed', 'owner', 'service', 'speed_label', 'state', 'train_protection0', 'train_protection1', 'train_protection2', 'tunnel', 'usage', 'voltage']},
   branchLines:{branch_lines:['bridge', 'electrification_state', 'feature', 'frequency', 'gaugeint0', 'gaugeint1', 'highspeed', 'loading_gauge', 'maxspeed', 'owner_color', 'service', 'state', 'train_protection0', 'train_protection1', 'train_protection2', 'tunnel', 'usage', 'voltage']},
   inactiveRegional:{lifecycle:[...LABEL, 'bridge', 'feature', 'maxspeed', 'state', 'tunnel']},

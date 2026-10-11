@@ -4,11 +4,13 @@ import * as labelModule from '../styles/tile-labels.mjs';
 import encodeTile from 'vt-pbf';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import {webcrypto,createHash} from 'node:crypto';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 import * as model from '../styles/map-model.mjs';
 import * as draw from '../styles/draw.mjs';
 import * as departuresModule from '../styles/departures.mjs';
+import * as departuresUiModule from '../styles/departures-ui.mjs';
 import * as elevationModule from '../styles/elevation.mjs';
 import * as contextFeatures from '../styles/context.mjs';
 import * as cjkFontFeatures from '../styles/cjk-font.mjs';
@@ -22,13 +24,20 @@ import * as watchModule from '../styles/watch-map.mjs';
 import * as railRecoveryModule from '../styles/rail-provider-recovery.mjs';
 import * as tileBundleModule from '../styles/tile-bundles.mjs';
 import * as layerSemantics from '../styles/layer-semantics.mjs';
+import {BROWSER_LIBRARIES} from '../scripts/browser-libraries.mjs';
 
 const html = await readFile(new URL('../styles/index.html', import.meta.url), 'utf8');
 const appURL = new URL('../styles/app.mjs', import.meta.url);
 const code = await readFile(appURL, 'utf8');
 const style = JSON.parse(await readFile(new URL('../styles/world.style.json', import.meta.url), 'utf8'));
+const legacyDistributions=await Promise.all(BROWSER_LIBRARIES.map(async library=>({...library,
+  url:`https://cdn.jsdelivr.net/npm/${library.package}@${library.version}/${library.source}`,
+  body:await readFile(new URL(`../node_modules/${library.package}/${library.source}`,import.meta.url)),
+}))).then(async libraries=>Promise.all(libraries.map(async library=>({...library,
+  patchedBody:library.sourceSha256?Buffer.from(await controlFunctions.backportMapLibre524(library.body,webcrypto.subtle)):null,
+}))));
 
-async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, platformGeometryOptions, departureLoader } = {}) {
+async function start({ failWebGL = false, delayLibraries = false, delayLabels = false, fontFaces=false, installedFonts, fetcher, search = '', cookie = '', compact = false, labelBuild, assetQuery = '', stationTile, frequencyClock, recoveryClock, platformGeometryOptions, departureLoader, cacheOnlyLibraries, noLegacyCrypto=false, controlSource } = {}) {
   const dom = new JSDOM(html, {url:`https://example.org/openrailwaystyle/${search}`, runScripts:'outside-only'});
   if (cookie) dom.window.document.cookie = `${cookie}; path=/`;
   const window = dom.window;
@@ -91,6 +100,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     setProjection(projection) { this.projection = projection; }
     getContainer() { return {clientWidth:1000, clientHeight:700}; }
     getCenter() { return {lng:0, lat:0}; }
+    getBounds() { return {getWest:()=>-180,getEast:()=>180,getSouth:()=>-85,getNorth:()=>85}; }
     getBearing() { return 0; }
     getPitch() { return 0; }
     unproject() { return {lng:0, lat:0}; }
@@ -112,7 +122,38 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     Object.assign(window, libraries);
     for (const script of window.document.head.querySelectorAll('script')) script.onload?.();
   };
-  if (!delayLibraries) Object.assign(window, libraries);
+  const scriptLoads=[],revoked=[];
+  if (cacheOnlyLibraries) {
+    window.caches=cacheOnlyLibraries;
+    window.Blob=Blob; window.Response=Response; window.TextDecoder=TextDecoder; window.TextEncoder=TextEncoder;
+    Object.defineProperty(window.crypto,'subtle',{value:noLegacyCrypto?undefined:webcrypto.subtle});
+    Object.assign(window,{mlcontour:libraries.mlcontour});
+    const blobs=new globalThis.Map();let sequence=0;
+    window.URL.createObjectURL=blob=>{const url=`blob:https://example.org/${++sequence}`;blobs.set(url,blob);return url;};
+    window.URL.revokeObjectURL=url=>{revoked.push(url);blobs.delete(url);};
+    const append=window.document.head.append.bind(window.document.head);
+    window.document.head.append=(...nodes)=>{
+      append(...nodes);
+      for(const script of nodes.filter(node=>node.tagName==='SCRIPT')) {
+        scriptLoads.push(script.src);
+        queueMicrotask(async()=>{
+          const saved=blobs.get(script.src);
+          if(!saved){script.onerror?.();return;}
+          try {
+            const body=Buffer.from(await saved.arrayBuffer());
+            const library=legacyDistributions.find(library=>(library.patchedBody || library.body).equals(body));
+            // The real app has hashed the actual upstream bytes. This DOM
+            // unit harness substitutes only the renderer API after accepting
+            // those exact bytes; browser coverage also executes the real code.
+            if(library)window[library.package==='maplibre-gl'?'maplibregl':'pmtiles']=libraries[library.package==='maplibre-gl'?'maplibregl':'pmtiles'];
+            else window.eval(body.toString('utf8'));
+            script.onload?.();
+          }
+          catch {script.onerror?.();}
+        });
+      }
+    };
+  } else if (!delayLibraries) Object.assign(window, libraries);
   window.fetch = fetcher || (async () => ({ok:true,json:async()=>structuredClone(style)}));
   window.matchMedia = () => ({matches:compact});
   const context = dom.getInternalVMContext();
@@ -124,7 +165,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   let loadLabels;
   const labelsReady=new Promise(resolve=>{loadLabels=resolve;});
   if(!delayLabels)loadLabels();
-  const app = new vm.SourceTextModule(code, {
+  const app = new vm.SourceTextModule(code+'\nexport {libraries as __testLibraryLoads, legacyStyle as __testLegacyStyle};', {
     context,
     initializeImportMeta(meta) { meta.url = 'https://example.org/openrailwaystyle/app.mjs'+assetQuery; },
     importModuleDynamically: async specifier => {
@@ -169,19 +210,168 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
   const semantics = new vm.SyntheticModule(Object.keys(layerSemantics), function() {
     for (const [key,value] of Object.entries(layerSemantics)) this.setExport(key,value);
   }, {context});
-  const mapControls = new vm.SyntheticModule(Object.keys(controlFunctions), function() {
+  const mapControls = controlSource ? new vm.SourceTextModule(controlSource, {context}) : new vm.SyntheticModule(Object.keys(controlFunctions), function() {
     for (const [key,value] of Object.entries(controlFunctions)) this.setExport(key,value);
   }, {context});
   const bundles = new vm.SyntheticModule(Object.keys(tileBundleModule),function(){for(const [key,value] of Object.entries(tileBundleModule))this.setExport(key,value);},{context});
   const watch = new vm.SyntheticModule(Object.keys(watchModule),function(){for(const [key,value] of Object.entries(watchModule))this.setExport(key,value);},{context});
   const recovery = new vm.SyntheticModule(Object.keys(railRecoveryModule),function(){for(const [key,value] of Object.entries(railRecoveryModule))this.setExport(key,key==='createRailProviderRecovery'&&recoveryClock?(map,options)=>value(map,{...options,...recoveryClock}):value);},{context});
-  await app.link(specifier => specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
+  const departuresUi = new vm.SyntheticModule(Object.keys(departuresUiModule), function() {
+    for (const [key,value] of Object.entries(departuresUiModule)) this.setExport(key,value);
+  }, {context});
+  await app.link(specifier => specifier.includes('departures-ui.mjs') ? departuresUi : specifier.includes('cjk-font.mjs') ? cjkFontModule : specifier.includes('rare-han.mjs') ? rareHanModule : specifier.includes('tile-bundles.mjs') ? bundles : specifier.includes('bathymetry.mjs') ? bathymetry : specifier.includes('service-frequency.mjs') ? frequency : specifier.includes('watch-map.mjs') ? watch : specifier.includes('rail-provider-recovery.mjs') ? recovery : specifier.includes('map-controls.mjs') ? mapControls : specifier.includes('layer-semantics.mjs') ? semantics : specifier.includes('crossing-tags.mjs') ? crossingTagModule : specifier.includes('context.mjs') ? contextModule : specifier.includes('power-facilities.mjs') ? powerModule : specifier.includes('draw.mjs') ? drawing : specifier.includes('elevation.mjs') ? elevation : specifier.includes('departures.mjs') ? departures : specifier.includes('globe-drag.mjs') ? globe : specifier.includes('keyboard-pan.mjs') ? keyboard : dependency);
   await app.evaluate();
+  if(cacheOnlyLibraries)await Promise.allSettled([app.namespace.__testLibraryLoads,app.namespace.__testLegacyStyle]);
   for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve,0));
-  return {dom,window,maps,errors,loadLibraries,loadLabels,fonts};
+  return {dom,window,maps,errors,loadLibraries,loadLabels,fonts,scriptLoads,revoked};
 }
 
 const ALL_PROBES='顿頓嘢冧𨋢俆㜏駅峠畑\uF900\uFA11㐀㙟𠮷';
+
+for (const previous of ['sw-before-first-party-libraries.js','sw-before-maplibre-backport.js']) test(`actual ${previous} keeps app/control versions coherent and safely recovers cached libraries`,async()=>{
+  const [oldSource,newSource]=await Promise.all([
+    readFile(new URL(`fixtures/${previous}`,import.meta.url),'utf8'),
+    readFile(new URL('../styles/sw.js',import.meta.url),'utf8'),
+  ]);
+  const scope='https://example.org/openrailwaystyle/',stores=new Map(),fetched=[];
+  const controlCode=await readFile(new URL('../styles/map-controls.mjs',import.meta.url),'utf8');
+  const oldControlCode=controlCode.split('// MapLibre attribution hardening')[0];
+  let deployed='old',offline=false,failReplacement=false,failControl=false;
+  const caches={
+    keys:async()=>[...stores.keys()],delete:async key=>stores.delete(key),
+    open:async key=>{
+      if(!stores.has(key))stores.set(key,new Map());const rows=stores.get(key);
+      const keyOf=key=>typeof key==='string'?key:key.url;
+      return {match:async key=>rows.get(keyOf(key))?.clone(),put:async(key,response)=>rows.set(keyOf(key),response.clone()),
+        keys:async()=>[...rows.keys()].map(url=>new Request(url)),delete:async key=>rows.delete(keyOf(key))};
+    },
+  };
+  const fetcher=async input=>{
+    const url=new URL(typeof input==='string'?input:input.url||input.href);fetched.push(url.href);
+    if(offline)throw Error('offline');
+    if(failControl&&url.pathname.endsWith('/map-controls.mjs'))throw Error('control download interrupted');
+    if(failReplacement&&url.pathname.endsWith('vendor/maplibre-gl-5.24.0-atlas.1.js'))throw Error('replacement library unavailable');
+    const oldFirstParty=legacyDistributions.find(library=>url.pathname.endsWith('/'+library.target.replace('-atlas.1.js','.js')));
+    if(url.hostname==='cdn.jsdelivr.net'||oldFirstParty) {
+      const css=url.pathname.endsWith('.css');
+      const library=oldFirstParty||legacyDistributions.find(library=>library.url===url.href);
+      assert.ok(library,'only exact released dependencies enter the old cache');
+      const body=library.body;
+      assert.equal(createHash('sha256').update(body).digest('hex'),library.sourceSha256 || library.sha256);
+      return new Response(body,{headers:{'content-type':css?'text/css':'application/javascript'}});
+    }
+    const body=url.href===scope?(deployed==='old'?'<script type="module" src="app.mjs?v=old"></script>':html)
+      :url.pathname.endsWith('/app.mjs')&&deployed==='new'?code
+      :url.pathname.endsWith('/map-controls.mjs')?(deployed==='new'?controlCode:oldControlCode):`${deployed}:${url.pathname}`;
+    return new Response(body);
+  };
+  const worker=source=>{
+    const handlers={};
+    vm.runInNewContext(source,{URL,Response,Request,fetch:fetcher,caches,location:{origin:new URL(scope).origin},
+      self:{registration:{scope},addEventListener:(name,handler)=>handlers[name]=handler,skipWaiting:async()=>{},clients:{claim:async()=>{}}}});
+    return handlers;
+  };
+  const install=handlers=>{let result;handlers.install({waitUntil:promise=>result=promise});return result;};
+  const request=(handlers,path)=>{let result;handlers.fetch({request:{method:'GET',url:new URL(path,scope).href,mode:path==='./'?'navigate':'cors'},respondWith:promise=>result=promise});return result;};
+  const old=worker(oldSource);await install(old);deployed='new';
+  failControl=true;
+  assert.match(await (await request(old,'./')).text(),/app.mjs\?v=old/, 'failed updated control module keeps the complete old page');
+  failControl=false;
+  assert.equal(await (await request(old,'./')).text(),html,'old worker really admitted the new HTML');
+  failReplacement=true;await assert.rejects(install(worker(newSource)),/replacement library unavailable/);
+  offline=true;
+  assert.equal(await (await request(old,'./')).text(),html);
+  const version=html.match(/src="app\.mjs\?v=([\w.-]+)"/)[1];
+  assert.equal(await (await request(old,`app.mjs?v=${version}`)).text(),code,'the tested app is exactly the copy kept by the old worker');
+  if(previous==='sw-before-first-party-libraries.js')assert.equal(request(old,'vendor/maplibre-gl-5.24.0-atlas.1.js'),undefined,'the actual CDN-era worker cannot serve the new dotted vendor path');
+  const savedControls=await (await request(old,`map-controls.mjs?v=${version}`)).text();
+  assert.equal(savedControls,controlCode,'new app receives exact updated controls from its own version');
+  assert.equal(await (await request(old,'map-controls.mjs?v=old')).text(),oldControlCode,'old tab still receives its own controls');
+  const before=fetched.length;
+  const result=await start({cacheOnlyLibraries:caches,controlSource:savedControls});
+  try {
+    assert.equal(result.maps.length,1,'cached legacy JavaScript can still initialize the app');
+    assert.deepEqual(result.errors,[]);
+    assert.equal(result.scriptLoads.filter(url=>url.startsWith('blob:')).length,2);
+    assert.equal(result.revoked.length,2,'temporary script URLs are released');
+    assert.ok(result.scriptLoads.filter(url=>!url.startsWith('blob:')).every(url=>url.startsWith(scope+'vendor/')));
+    const link=result.window.document.getElementById('maplibre-css'),fallback=link.nextElementSibling;
+    assert.equal(fallback.tagName,'STYLE');
+    assert.match(fallback.textContent,/maplibregl-map/);
+    assert.ok(fallback.nextElementSibling.href.includes('app.css'),'app styling keeps priority over recovered MapLibre CSS');
+    assert.equal(fetched.length,before,'cache recovery makes no network request, including to the old CDN');
+  } finally {result.dom.window.close();}
+});
+
+test('new app recovers verified already-patched first-party cache bytes without a second patch',async()=>{
+  const scope='https://example.org/openrailwaystyle/';
+  const caches={keys:async()=>['atlas-shell-24'],open:async()=>({match:async url=>{
+    if(url===scope)return new Response(html,{headers:{'content-type':'text/html'}});
+    const library=legacyDistributions.find(library=>new URL(library.target,scope).href===url);
+    if(!library)return undefined;
+    return new Response(library.patchedBody||library.body,{headers:{'content-type':library.target.endsWith('.css')?'text/css':'text/javascript'}});
+  }})};
+  const result=await start({cacheOnlyLibraries:caches});
+  try {
+    assert.equal(result.maps.length,1);
+    assert.deepEqual(result.errors,[]);
+    assert.equal(result.scriptLoads.filter(url=>url.startsWith('blob:')).length,2);
+    assert.equal(result.revoked.length,2);
+  } finally {result.dom.window.close();}
+});
+
+test('legacy startup recovery ignores unrelated caches and non-JavaScript saved responses',async()=>{
+  const requested=[];
+  const caches={keys:async()=>['unrelated-cache','atlas-shell-22'],open:async name=>{
+    assert.equal(name,'atlas-shell-22');
+    return {match:async url=>{requested.push(url);return new Response('not executable',{headers:{'content-type':'text/plain'}});}};
+  }};
+  const result=await start({cacheOnlyLibraries:caches});
+  try {
+    assert.equal(result.maps.length,0);
+    assert.equal(result.scriptLoads.filter(url=>url.startsWith('blob:')).length,0);
+    assert.equal(result.window.document.getElementById('maplibre-css').nextElementSibling.tagName,'LINK');
+    assert.ok(result.scriptLoads.every(url=>url.startsWith('https://example.org/openrailwaystyle/vendor/')));
+    assert.ok(requested.length>0);
+  } finally {result.dom.window.close();}
+});
+for(const mode of ['tampered-bytes','crypto-unavailable'])test(`legacy startup recovery rejects ${mode} even with HTTP 200 and correct MIME`,async()=>{
+  const served=[];
+  const caches={keys:async()=>['atlas-shell-22'],open:async()=>({match:async url=>{
+    if(url==='https://example.org/openrailwaystyle/')return new Response(html,{headers:{'content-type':'text/html'}});
+    const library=legacyDistributions.find(library=>library.url===url);
+    if (!library) return undefined;
+    const body=mode==='tampered-bytes'?Buffer.concat([library.body,Buffer.from('\n/* modified cached distribution */')]):library.body;
+    const type=library.target.endsWith('.css')?'text/css':'application/javascript';
+    served.push({url,status:200,type});
+    return new Response(body,{status:200,headers:{'content-type':type}});
+  }})};
+  const result=await start({cacheOnlyLibraries:caches,noLegacyCrypto:mode==='crypto-unavailable'});
+  try {
+    assert.equal(result.maps.length,0);
+    assert.equal(result.scriptLoads.filter(url=>url.startsWith('blob:')).length,0,'unverified bytes must never become an executable blob');
+    assert.equal(result.window.document.getElementById('maplibre-css').nextElementSibling.tagName,'LINK','unverified CSS must never be inserted');
+    assert.ok(result.scriptLoads.every(url=>url.startsWith('https://example.org/openrailwaystyle/vendor/')),'there is no network fallback to the CDN');
+    assert.equal(served.length,mode==='tampered-bytes'?3:0,'all three valid-MIME responses reach integrity verification, or fail closed before reading without crypto');
+  } finally {result.dom.window.close();}
+});
+test('installation help works before renderer libraries load and after WebGL initialization fails', async t => {
+  for (const options of [{delayLibraries: true}, {failWebGL: true}]) await t.test(JSON.stringify(options), async () => {
+    const {dom, window, maps} = await start(options);
+    try {
+      const get = id => window.document.getElementById(id);
+      assert.equal(maps.length, 0, 'the renderer is unavailable in both cases');
+      assert.equal(get('pwa-install-open').hidden, false);
+      get('pwa-install-open').focus();
+      get('pwa-install-open').click();
+      assert.equal(get('pwa-install').open, true);
+      assert.equal(get('pwa-install-generic').hidden, false);
+      get('pwa-install-close').click();
+      assert.equal(get('pwa-install').open, false);
+      assert.equal(window.document.activeElement, get('pwa-install-open'));
+    } finally { dom.window.close(); }
+  });
+});
 test('a complete installed Chinese font is used without any download',async()=>{
  const {dom,maps,fonts,errors}=await start({search:'?language=zh-Hant',fontFaces:true,installedFonts:{'Noto Sans CJK TC':ALL_PROBES}});
  try{
@@ -482,10 +672,23 @@ test('equal-width service details expire even after the inspected route leaves l
     assert.equal(scheduled?.delay,1001,'the open panel keeps its expiry when the route leaves the viewport');
     stamp=2001;scheduled.fn();
     assert.doesNotMatch(doc.getElementById('detail-content').textContent,/2\/h\/direction/);
-    assert.match(doc.getElementById('detail-content').textContent,/Frequency unavailable/);
+    assert.match(doc.getElementById('detail-content').textContent,/No matched frequency profile/);
     assert.equal(errors.length,0);
     window.dispatchEvent(new window.Event('pagehide'));
   }finally{dom.window.close();}
+});
+test('mixed timetable and headway details name each source, period definition and terms link',async()=>{
+ const catalog=JSON.parse(await readFile(new URL('../styles/service-headways.json',import.meta.url),'utf8'));
+ const timetable={properties:{frequency_source:'Full timetable',frequency_url:'https://example.test/timetable-terms',frequency_checked:'2026-10-05',frequency_definition:'Agency-local 07:00–09:00',frequency_date:'2026-10-05',frequency_credit:'Timetable operator',frequency_license:'CC0',frequency_until:20},profiles:{am:{rate:4,quality:'scheduled'}}};
+ const properties=frequencyModule.frequencyBundle([{ref:'ISL',network:'港鐵 MTR',kind:'subway'}],[[[114.12,22.28],[114.13,22.29]]],catalog,[timetable],1000)[0];
+ const {dom,window,maps,errors}=await start({search:'?mode=service',frequencyClock:{now:()=>1000,setTimer:()=>0,clearTimer:()=>{}}});
+ try{
+  const map=maps[0],doc=window.document;map.handlers['style.load']();map.project=([lng,lat])=>({x:500+lng*100,y:400+lat*100});
+  map.rendered=[{source:'serviceRoutes',sourceLayer:'service_routes',layer:{id:'service-routes'},properties:{...properties,id:'relation-10',ref:'ISL',kind:'subway',i:0,n:1},geometry:{type:'LineString',coordinates:[[0,0],[1,0]]}}];
+  map.handlers.click({point:{x:550,y:400},lngLat:{lng:.5,lat:0}});
+  const panel=doc.getElementById('detail-content');assert.match(panel.textContent,/Full timetable · Morning peak/);assert.match(panel.textContent,/MTR published average headways · Evening peak, Off-peak/);assert.match(panel.textContent,/clock windows are not supplied/);
+  const links=[...panel.querySelectorAll('a')].filter(a=>a.textContent==='Frequency source and terms').map(a=>a.href);assert.deepEqual(links,[timetable.properties.frequency_url,catalog.source.url]);assert.equal(errors.length,0);
+ }finally{dom.window.close();}
 });
 test('app starts with the MapLibre 5 API and enables map controls', async () => {
   const {dom,window,maps,errors} = await start();
@@ -682,13 +885,13 @@ test('curated hubs take their names from the provider station tiles by OSM ident
   // New York two world copies east: the hub must still count as in view.
   map.getBounds=()=>({getWest:()=>640,getEast:()=>650,getSouth:()=>35,getNorth:()=>45});
   map.handlers['style.load']();
-  for(let i=0;i<50&&!map.sourceData?.stationMajor?.features.length;i++)await new Promise(r=>setTimeout(r,0));
+  for(let i=0;i<50&&!map.sourceData?.stationMajor?.features.some(f=>f.properties.atlas_name);i++)await new Promise(r=>setTimeout(r,0));
   const named=map.sourceData?.stationMajor?.features.find(f=>f.properties.wikidata==='Q54451');
   assert.ok(named,'the curated hub in view is named');
   assert.equal(named.properties.atlas_name,'Provider Penn (en)');
   assert.ok(tileRequests.every(([url,lang])=>/^https:\/\/tiles\.test\/stations\/(8|10)\/\d+\/\d+$/.test(url)&&lang==='en'),'zoom-8 station tiles through the station pipeline');
   assert.ok(!requests.some(url=>url.includes('openstreetmap.org')),'no OSM API requests');
-  assert.ok(map.sourceData.stationMajor.features.every(f=>f.properties.atlas_name),'unnamed hubs stay hidden rather than showing a source note');
+  assert.ok(map.sourceData.stationMajor.features.every(f=>f.properties.atlas_name || (f.properties.atlas_name==='' && f.properties.name==='')),'deferred hubs retain unlabeled marker points without leaking source notes');
  }finally{dom.window.close();}
 });
 
@@ -709,11 +912,130 @@ test('curated hub names with rare Han wait for their slices before reaching the 
   for(let i=0;i<100&&!slice();i++)await new Promise(r=>setTimeout(r,0));
   assert.ok(slice(),'the slice of the hub name is requested');
   const named=()=>map.sourceData?.stationMajor?.features.find(f=>f.properties.wikidata==='Q54451');
-  assert.equal(named(),undefined,'the name waits for its slice');
+  assert.ok(named(),'the location is already present while its name waits');
+  assert.equal(named().properties.atlas_name,'','the name waits for its slice');
   slice().finish();
-  for(let i=0;i<50&&!named();i++)await new Promise(r=>setTimeout(r,0));
+  for(let i=0;i<50&&!named()?.properties.atlas_name;i++)await new Promise(r=>setTimeout(r,0));
   assert.equal(named()?.properties.atlas_name,'\u{2A700}站');
  }finally{dom.window.close();}
+});
+
+const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
+const providerHubTile=(hub,language)=>{
+ const id=hub.properties.osm_ids.split(';')[0],name=`Provider hub (${language})`;
+ const bytes=encodeTile.fromGeojsonVt({standard_railway_text_stations:{features:[{type:1,id:1,
+  tags:{id:`${id}-train-train-station`,name,atlas_name:name,atlas_language:language},geometry:[[2048,2048]]}]}},{version:2});
+ return bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);
+};
+async function deferredHubHarness({tier=7,metadata=true,stationProtocol=true}={}){
+ const hub=structuredClone(style.sources.stationMajor.data.features.find(f=>f.properties.wikidata==='Q54451'));
+ hub.properties.tier=tier;
+ const input=structuredClone(style);input.sources.stationMajor.data.features=[hub];
+ const pending=[],departures=[];
+ const state=await start({search:'?language=en#3/40.75/-74',fetcher:async()=>({ok:true,status:200,json:async()=>structuredClone(input)}),
+  stationTile:stationProtocol?(url,language)=>new Promise((resolve,reject)=>pending.push({url,language,resolve,reject})):undefined,
+  departureLoader:async station=>{departures.push(structuredClone(station));return {stops:[],rows:[]};}});
+ const map=state.maps[0],getSource=map.getSource.bind(map);
+ const stationSource=metadata?{tiles:['atlasstation://en/https://tiles.test/stations/{z}/{x}/{y}']}:{};
+ map.getSource=id=>id==='stations'?stationSource:getSource(id);
+ map.getBounds=()=>({getWest:()=>-80,getEast:()=>-70,getSouth:()=>35,getNorth:()=>45});
+ map.handlers['style.load']();
+ const point=()=>map.sourceData?.stationMajor?.features.find(f=>f.id===hub.id);
+ for(let i=0;i<50&&!point();i++)await tick();
+ const click=()=>{
+  map.rendered=[{...structuredClone(point()),source:'stationMajor',layer:{id:'station-major-dots'}}];
+  map.handlers.click({point:{x:500,y:400},lngLat:{lng:hub.geometry.coordinates[0],lat:hub.geometry.coordinates[1]}});
+ };
+ return {...state,map,hub,pending,departures,point,click,stationSource};
+}
+for(const options of [{metadata:false},{stationProtocol:false}])test(`curated dots survive an unavailable name dependency: ${Object.keys(options)[0]}`,async()=>{
+ const h=await deferredHubHarness({tier:3,...options});
+ try{
+  assert.ok(h.point(),'local geometry does not require provider metadata or name protocols');
+  assert.equal(h.point().properties.atlas_name,'');assert.equal(h.pending.length,0);
+ }finally{h.dom.window.close();}
+});
+test('a selected deferred dot is named when missing provider metadata later becomes available',async()=>{
+ const h=await deferredHubHarness({metadata:false});
+ try{
+  assert.ok(h.point());h.click();for(let i=0;i<5;i++)await tick();
+  assert.equal(h.pending.length,0,'selection cannot request a nonexistent tile template');
+  h.stationSource.tiles=['atlasstation://en/https://tiles.test/stations/{z}/{x}/{y}'];
+  h.map.handlers.sourcedata({sourceId:'stations',sourceDataType:'metadata'});
+  for(let i=0;i<50&&!h.pending.length;i++)await tick();
+  assert.equal(h.pending.length,1,'metadata recovery names only the selected deferred station');
+  h.pending[0].resolve(providerHubTile(h.hub,'en'));for(let i=0;i<50&&!h.departures.some(s=>s.names.includes('Provider hub (en)'));i++)await tick();
+  assert.equal(h.window.document.querySelector('#detail-content h2').textContent,'Provider hub (en)');
+ }finally{h.dom.window.close();}
+});
+test('curated locations publish before an eligible provider name request settles',async()=>{
+ const h=await deferredHubHarness({tier:3});
+ try{
+  assert.ok(h.point(),'an unresolved name must not suppress its dot');
+  assert.equal(h.point().properties.atlas_name,'');
+  assert.equal(h.pending.length,1,'only the current tile is requested initially');
+  h.pending[0].resolve(providerHubTile(h.hub,'en'));
+  for(let i=0;i<50&&!h.point().properties.atlas_name;i++)await tick();
+  assert.equal(h.point().properties.atlas_name,'Provider hub (en)');
+ }finally{h.dom.window.close();}
+});
+test('opening a deferred curated dot loads its provider name and refreshes name-based departure matching',async()=>{
+ const h=await deferredHubHarness();
+ try{
+  assert.ok(h.point());assert.equal(h.pending.length,0,'below-tier hubs have no bulk name request');
+  h.click();h.click();
+  for(let i=0;i<50&&!h.pending.length;i++)await tick();
+  assert.equal(h.pending.length,1,'repeated selection shares the provider tile promise');
+  assert.match(h.window.document.querySelector('#detail-content h2').textContent,/Unnamed station/);
+  h.pending[0].resolve(providerHubTile(h.hub,'en'));
+  for(let i=0;i<50&&!h.departures.some(s=>s.names.includes('Provider hub (en)'));i++)await tick();
+  assert.equal(h.window.document.querySelector('#detail-content h2').textContent,'Provider hub (en)');
+  assert.ok(h.departures.some(s=>s.names.includes('Provider hub (en)')),'the unnamed cached board cannot mask named matching');
+  assert.equal(h.pending.length,1,'selecting one dot does not name the rest of the world');
+ }finally{h.dom.window.close();}
+});
+test('failed selected-hub lookups stay bounded and preserve the anonymous point',async()=>{
+ const h=await deferredHubHarness();
+ try{
+  h.click();
+  for(let index=0;index<5;index++){
+   for(let i=0;i<50&&h.pending.length<=index;i++)await tick();
+   assert.ok(h.pending[index],`candidate ${index+1} requested`);
+   h.pending[index].reject(new Error('synthetic unavailable tile'));
+  }
+  for(let i=0;i<10;i++)await tick();
+  assert.equal(h.pending.length,5,'one z8 tile and four neighbours, never an overview fan-out');
+  assert.ok(h.point());assert.equal(h.point().properties.atlas_name,'');
+  assert.equal(h.window.document.querySelector('#detail-content h2').textContent,'Unnamed station');
+ }finally{h.dom.window.close();}
+});
+for(const action of ['close','select another station'])test(`a deferred curated name cannot overwrite the panel after ${action}`,async()=>{
+ const h=await deferredHubHarness();
+ try{
+  h.click();for(let i=0;i<50&&!h.pending.length;i++)await tick();
+  if(action==='close')h.window.document.getElementById('details-close').click();
+  else{
+   h.map.rendered=[{source:'stations',layer:{id:'station-stations-dots'},properties:{id:'node-999',name:'Other station'},geometry:{type:'Point',coordinates:[1,2]}}];
+   h.map.handlers.click({point:{x:500,y:400},lngLat:{lng:1,lat:2}});
+  }
+  h.pending[0].resolve(providerHubTile(h.hub,'en'));for(let i=0;i<10;i++)await tick();
+  if(action==='close')assert.equal(h.window.document.getElementById('details').hidden,true);
+  else assert.equal(h.window.document.querySelector('#detail-content h2').textContent,'Other station');
+  assert.equal(h.departures.some(s=>s.names.includes('Provider hub (en)')),false,'stale completion must not start a new board');
+ }finally{h.dom.window.close();}
+});
+test('an open deferred hub follows the newest language and ignores its older pending name',async()=>{
+ const h=await deferredHubHarness();
+ try{
+  h.click();for(let i=0;i<50&&!h.pending.length;i++)await tick();
+  const select=h.window.document.getElementById('language');select.value='fr';select.dispatchEvent(new h.window.Event('change'));
+  for(let i=0;i<50&&!h.pending.some(p=>p.language==='fr');i++)await tick();
+  const french=h.pending.find(p=>p.language==='fr');assert.ok(french);
+  french.resolve(providerHubTile(h.hub,'fr'));for(let i=0;i<50&&!h.departures.some(s=>s.names.includes('Provider hub (fr)'));i++)await tick();
+  h.pending.find(p=>p.language==='en').resolve(providerHubTile(h.hub,'en'));for(let i=0;i<10;i++)await tick();
+  assert.equal(h.window.document.querySelector('#detail-content h2').textContent,'Provider hub (fr)');
+  assert.equal(h.departures.some(s=>s.names.includes('Provider hub (en)')),false);
+ }finally{h.dom.window.close();}
 });
 
 test('tiles served as stored load the rare Han slices of their text, such as service route names',async()=>{

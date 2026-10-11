@@ -1,3 +1,4 @@
+import {installEmptyMapProviders} from './browser-renderer-fixture.mjs';
 // The Service view draws OSM routes only. In the regions of the dated
 // timetable fixtures (rebuilt with --fixtures), no timetable route may appear
 // as a line of its own, in equal or frequency width.
@@ -10,11 +11,9 @@ const examples=[{id:'hong-kong',lat:22.302,lon:114.172,osm:true},{id:'hsl',lat:6
 const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 try {
   const context=await browser.newContext({viewport:{width:720,height:600}}),page=await context.newPage();
+  await installEmptyMapProviders(context,root.replace(/\/?$/,'/'),{firstParty:'network'});
   await page.clock.install({time:new Date('2026-10-05T12:00:00Z')});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  if(process.env.ATLAS_MAPLIBRE_ASSETS){
-    for(const name of ['maplibre-gl.js','maplibre-gl.css','pmtiles.js'])await page.route(name==='pmtiles.js'?'**/pmtiles@4.2.1/dist/pmtiles.js':`**/maplibre-gl@5.24.0/dist/${name}`,async r=>r.fulfill({body:await readFile(`${process.env.ATLAS_MAPLIBRE_ASSETS}/${name}`),contentType:name.endsWith('.js')?'text/javascript':'text/css'}));
-  }
   const index=JSON.parse(await readFile('styles/data/service-routes/index.json','utf8'));
   await mkdir('browser-review',{recursive:true});
   for(const example of examples)for(const width of ['equal','frequency']){

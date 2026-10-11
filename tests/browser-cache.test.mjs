@@ -131,6 +131,11 @@ test('every browser check launches through the shared helper', async () => {
       // This orchestration check delegates both URL cases to the guarded checker.
       assert.match(source,/new URL\('\.\/check-orm-fixture-browser\.mjs',import.meta.url\)/);
       assert.match(source,/spawn\(process.execPath,\[check\]/);
+    }else if(name==='check-normandy-service-geometry-browser.mjs'){
+      assert.match(source,/from '\.\/check-paris-service-geometry-browser\.mjs'/,name);
+      assert.match(source,/await checkParisServiceGeometryBrowser\(/,name);
+      assert.ok(scripts.includes('check-paris-service-geometry-browser.mjs'),
+        'delegated Paris checker is checked for its shared helper import');
     }else assert.match(source, /import \{launchBrowser\} from '\.\/browser\.mjs';/, name);
     assert.doesNotMatch(source, /chromium\.launch\(/, name);
   }
@@ -141,7 +146,7 @@ test('the site workflow plans the browser checks and runs them through the runne
   assert.match(workflow, /run: node scripts\/ci-plan\.mjs/);
   assert.match(workflow, /matrix: \$\{\{ fromJSON\(needs\.plan\.outputs\.matrix\) \}\}/);
   assert.match(workflow, /node scripts\/run-browser-checks\.mjs --concurrency 1 --label "\$GROUP" \$CHECKS/);
-  assert.match(workflow, /BROWSER_TILE_CACHE: \$\{\{ github\.workspace \}\}\/\.browser-tiles/);
+  assert.doesNotMatch(workflow, /BROWSER_TILE_CACHE|Restore browser tile cache|Save browser tile cache/);
   // Every check is named in exactly one job of scripts/ci-plan.mjs (tests/ci-plan.test.mjs).
 });
 
@@ -184,7 +189,7 @@ test('automated OpenRailwayMap routing aborts unfixed public requests without fe
 
 test('CI uses a synthetic railway fixture rather than the provider-dependent globe/map audit', async () => {
   const workflow=await readFile(new URL('../.github/workflows/site.yml',import.meta.url),'utf8');
-  assert.match(workflow,/browser-tiles-v2-no-public-orm/);
+  assert.doesNotMatch(workflow,/browser-tiles-v2-no-public-orm/);
   assert.match(workflow,/run: node scripts\/check-orm-fixture-browser\.mjs/);
   assert.doesNotMatch(workflow,/run: node scripts\/check-map-browser\.mjs/);
   assert.doesNotMatch(workflow,/run: node scripts\/check-planning-browser\.mjs/);

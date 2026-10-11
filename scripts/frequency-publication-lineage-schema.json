@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "string_fields": ["catalogue", "id", "url", "source", "mdb_id", "status"],
+  "scalar_fields": ["authentication_type"],
+  "url_fields": ["url", "source"],
+  "hash_pattern": "[a-f0-9]{64}",
+  "alias_marker": "publication_alias_eligible"
+}

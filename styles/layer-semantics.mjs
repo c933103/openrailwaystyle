@@ -1,4 +1,4 @@
-import { MODES } from './map-model.mjs?v=20261009-infobox-cjk';
+import { MODES } from './map-model.mjs?v=20261010-rail-markers-1';
 
 const VERSION = 1;
 const VALUE_LABELS = /^(speed|electrification|control|gauge|loading|axle|owner)-labels$/;

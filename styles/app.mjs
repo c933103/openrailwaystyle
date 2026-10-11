@@ -1,28 +1,30 @@
-import {installControlLayout, rememberAttribution} from './map-controls.mjs?v=20261009-infobox-cjk';
-import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261009-infobox-cjk';
-import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261009-infobox-cjk';
-import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261009-infobox-cjk';
-import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261009-infobox-cjk';
-import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261009-infobox-cjk';
+import {installControlLayout, rememberAttribution, installPwaInstall, backportMapLibre524, MAPLIBRE_BACKPORT} from './map-controls.mjs?v=20261010-rail-markers-1';
+import {CJK_FONTS, PROBE_FAMILY, PROBE_FONT, PROBE_SETS, familyNames, chooseCjkFont, isLocalFamily} from './cjk-font.mjs?v=20261010-rail-markers-1';
+import {RARE_HAN_FAMILY, createRareHanFonts, rareHanBlocks} from './rare-han.mjs?v=20261010-rail-markers-1';
+import {CROSSING_TAGS} from './crossing-tags.mjs?v=20261010-rail-markers-1';
+import {contextIcon, contextDescription, contextLayerInteractive, nearbyTransport} from './context.mjs?v=20261010-rail-markers-1';
+import { SETTING_KEYS, SETTING_PARAMS, settingsQuery, speedBands, UNKNOWN_COLOR, INFRASTRUCTURE, NOT_ELECTRIFIED, TRAIN_PROTECTION, CONTROL_FAMILIES, CONTROL_LEVELS, NO_PROTECTION, controlColor, trainProtection, trainProtectionName, trainProtectionShort, trainProtectionSystems, electrificationColor, gaugeColor, axleLoad, formatAxleLoad, axleLabel, loadingGauge, loadingDimensions, INACTIVE_STATES, LIFECYCLE_PATTERNS, inactivePaint, describeCurrent, DEM_URL, contourOptions, speedPaint, speedLabel, SEARCH_API, PLACE_SEARCH_API, searchResults, tileStations, drawnStationQueries, LANGUAGES, chooseName, labelExpression, displayName, legendRows, autoProjection, ORM, MODES, DETAIL_LEVELS, formatReadout, osmObject, createPlatformLengths, createPlatformTileGeometry, platformLengthLabel, formatPlatformLength, readSettings, formatSpeed, numericSpeed, stationRank, decodeLifecycleTile } from './map-model.mjs?v=20261010-rail-markers-1';
 
-import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261009-infobox-cjk';
-import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261009-infobox-cjk';
-import { stationDepartures, clock, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261009-infobox-cjk';
-import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261009-infobox-cjk';
-import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261009-infobox-cjk';
-import { installKeyboardPan } from './keyboard-pan.mjs?v=20261009-infobox-cjk';
-import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261009-infobox-cjk';
-import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261009-infobox-cjk';
-import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261009-infobox-cjk';
-import { installWatchGesture } from './watch-map.mjs?v=20261009-infobox-cjk';
-import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261009-infobox-cjk';
-import { createBundleReader } from './tile-bundles.mjs?v=20261009-infobox-cjk';
+import { Drawing, Measure, readDrawing, lengthKm, formatLength, formatClimb, climb } from './draw.mjs?v=20261010-rail-markers-1';
+import { createElevation, alongLine, profileStats } from './elevation.mjs?v=20261010-rail-markers-1';
+import { stationDepartures, plannerLink, TRANSITOUS_SOURCES } from './departures.mjs?v=20261010-rail-markers-1';
+import {departureItem} from './departures-ui.mjs?v=20261010-rail-markers-1';
+import { installGlobeDrag, allowPolarCentres, readoutZoom, viewHash, parseViewHash } from './globe-drag.mjs?v=20261010-rail-markers-1';
+import { installBathymetry, shareArchiveRequests, seabedContourOpacity } from './bathymetry.mjs?v=20261010-rail-markers-1';
+import { installKeyboardPan } from './keyboard-pan.mjs?v=20261010-rail-markers-1';
+import { layerVisibility, shouldLocalizeLayer } from './layer-semantics.mjs?v=20261010-rail-markers-1';
+import {createPowerFacilityLoader, powerFacilityName, POWER_FACILITY_KINDS} from './power-facilities.mjs?v=20261010-rail-markers-1';
+import {serviceFrequencyPaint,nearestServiceFeature,frequencyDetails,frequencyAttribution,frequencyWidth,selectedFrequencyProfile,FREQUENCY_LABELS,HOURLY_PROFILES,installFrequencyExpiry} from './service-frequency.mjs?v=20261010-rail-markers-1';
+import { installWatchGesture } from './watch-map.mjs?v=20261010-rail-markers-1';
+import { createRailProviderRecovery } from './rail-provider-recovery.mjs?v=20261010-rail-markers-1';
+import { createBundleReader } from './tile-bundles.mjs?v=20261010-rail-markers-1';
 
 const $ = id => document.getElementById(id);
 // The controls work as soon as this small module runs; the map libraries and
 // label code load in the background (index.html reports a failure to load
 // this module itself).
 document.body.dataset.appStarted = 'true';
+installPwaInstall({window, document});
 // Installable as an app (manifest.webmanifest); the service worker keeps the
 // app's own files for opening without a connection.
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register(new URL('sw.js', import.meta.url)).catch(() => {});
@@ -52,16 +54,91 @@ let platformLengths,frequencyExpiry;
 let powerFacilities;
 let railRecovery, wakeRailRecovery = () => {};
 let map, ready = false, currentFeature, searchController, searchPausedUntil = 0, dem, scale, styleLanguage, pendingView, clickable = [], hoverFrame, drawing, measuring;
-const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261009-infobox-cjk';
-const loadScript = (src, global) => window[global] ? Promise.resolve() : new Promise((resolve, reject) => {
+const assetVersion = new URL(import.meta.url).searchParams.get('v') || '20261010-rail-markers-1';
+// An old active worker can save this new page before its replacement has
+// installed. If that update is interrupted, only old first-party/CDN copies
+// may be available offline. Read exact saved responses without contacting the
+// CDN; first visits and successful upgrades use the first-party files below.
+async function cachedLegacyLibrary(name) {
+  // Match scripts/browser-libraries.mjs. Cache Storage is not a trusted source
+  // of executable bytes: verify each pinned distribution before using it as
+  // a same-origin blob or stylesheet, and fail closed without Web Crypto.
+  const library = {
+    'maplibre-js': {local: 'vendor/maplibre-gl-5.24.0.js', url: 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js', sha256: '45a9b07a9189ce56054c620a947ccf41e291e58c95e9b61533b740aaa65ee5cb'},
+    'maplibre-css': {local: 'vendor/maplibre-gl-5.24.0.css', url: 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css', sha256: 'ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732'},
+    'pmtiles-js': {local: 'vendor/pmtiles-4.2.1.js', url: 'https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js', sha256: 'afc49d216fd24c0a3c0ff3cd2e0c62d6cdaf062854c3dced778dcab168824f79'},
+  }[name];
+  if (!library || !window.caches || !window.crypto?.subtle) return null;
+  try {
+    const names = (await window.caches.keys()).filter(key => /^atlas-shell-\d+$/.test(key));
+    names.sort((a,b) => Number(b.split('-').at(-1)) - Number(a.split('-').at(-1)));
+    for (const key of names) {
+      const cache = await window.caches.open(key);
+      if (!await cache.match(new URL('./', import.meta.url).href)) continue;
+      const urls = [...(name === 'maplibre-js' ? [new URL(MAPLIBRE_BACKPORT.target, import.meta.url).href] : []),
+        new URL(library.local, import.meta.url).href, library.url];
+      for (const url of urls) {
+        const response = await cache.match(url);
+        if (!response?.ok || response.type === 'opaque') continue;
+        const type = (response.headers.get('content-type') || '').split(';')[0].trim();
+        if (!(name.endsWith('-css') ? /^text\/css$/i.test(type) : /^(?:text|application)\/(?:x-)?(?:java|ecma)script$/i.test(type))) continue;
+        const digest = await window.crypto.subtle.digest('SHA-256', await response.clone().arrayBuffer());
+        const sha256 = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+        if (name === 'maplibre-js' && sha256 === MAPLIBRE_BACKPORT.sha256) return response;
+        if (sha256 !== library.sha256) continue;
+        if (name === 'maplibre-js') {
+          // Never execute the old distribution, even when its hash is genuine.
+          const patched = await backportMapLibre524(await response.arrayBuffer(), window.crypto.subtle);
+          return new Response(patched, {headers: {'content-type': 'text/javascript'}});
+        }
+        return response;
+      }
+    }
+  } catch {}
+  return null;
+}
+const appendLibraryScript = src => new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = src; script.onload = resolve;
-  script.onerror = () => reject(new Error('Map libraries could not load. Check your connection and reload.'));
+  script.onerror = () => {script.remove(); reject(new Error('Map libraries could not load. Check your connection and reload.'));};
   document.head.append(script);
 });
+async function loadScript(src, global, legacy) {
+  if (window[global]) return;
+  try { await appendLibraryScript(src); }
+  catch (error) {
+    const saved = await cachedLegacyLibrary(legacy);
+    if (!saved) throw error;
+    const blob = URL.createObjectURL(new Blob([await saved.blob()], {type: 'text/javascript'}));
+    try { await appendLibraryScript(blob); }
+    finally { URL.revokeObjectURL(blob); }
+  }
+}
+let legacyStyle;
+const mapStyleReady = link => {
+  // A blocked stylesheet can leave a non-null sheet whose rules are
+  // inaccessible. Only readable rules establish that this local CSS loaded.
+  try { return Boolean(link?.sheet?.cssRules.length); } catch { return false; }
+};
+function restoreCachedMapStyle() {
+  return legacyStyle ||= (async () => {
+    const link = $('maplibre-css');
+    if (!link || mapStyleReady(link)) return;
+    const saved = await cachedLegacyLibrary('maplibre-css');
+    if (!saved || mapStyleReady(link)) return;
+    const style = document.createElement('style');
+    style.textContent = await saved.text();
+    link.after(style);
+  })();
+}
+// The link's error may precede module execution, so check its sheet now as
+// well as listening for a later failure. Both copies have the same pinned
+// version; a slow successful first-party link can safely finish afterwards.
+$('maplibre-css')?.addEventListener('error', () => restoreCachedMapStyle().catch(() => {}), {once: true});
+restoreCachedMapStyle().catch(() => {});
 const libraries = Promise.all([
-  loadScript('https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js', 'maplibregl'),
-  loadScript('https://cdn.jsdelivr.net/npm/pmtiles@4.2.1/dist/pmtiles.js', 'pmtiles'),
+  loadScript(new URL('vendor/maplibre-gl-5.24.0-atlas.1.js', import.meta.url).href, 'maplibregl', 'maplibre-js'),
+  loadScript(new URL('vendor/pmtiles-4.2.1.js', import.meta.url).href, 'pmtiles', 'pmtiles-js'),
   loadScript(new URL(`vendor/maplibre-contour.js?v=${assetVersion}`, import.meta.url).href, 'mlcontour'),
 ]);
 const labels = import(`./vendor/tile-labels.js?v=${assetVersion}`);
@@ -387,7 +464,7 @@ function renderLegend() {
     const key=textNode('div','','frequency-key');
     key.append(textNode('p',FREQUENCY_LABELS[selectedFrequencyProfile(settings)],'small'));
     for(const rate of [1,6,12,24,30]){const sample=textNode('span','','frequency-sample'),mark=textNode('i');mark.style.height=frequencyWidth(rate)+'px';sample.append(mark,textNode('span',`${rate===30?'30+':rate}/h`));key.append(sample);}
-    key.append(textNode('p','Subdued line: frequency unavailable. Rates are per direction; published headways are estimates.','small'));box.append(key);
+    key.append(textNode('p','Subdued line: no matched frequency profile. Departure timetables may still be available. Rates are per direction; published headways are estimates.','small'));box.append(key);
   }
   const notes = {
     speed: settings.units === 'imperial' ? 'Labels in mph; limits tagged in mph keep their directional values. Grey means no numeric limit is recorded.' : 'Labels keep tagged units: bare numbers are km/h, mph is written out. Grey means no numeric limit is recorded.',
@@ -397,11 +474,11 @@ function renderLegend() {
     axle: 'Colour shows the mapped axle load or the load category’s reference axle load. Load per metre and additional operating restrictions also matter. Numeric US/Canadian classes describe speed, and Finnish superstructure classes do not give a single axle-load limit. Grey means not recorded.',
     loading: 'Colour follows the envelope’s height above rail, so equal sizes match across regions; Britain’s W gauges share one height and form their own ladder. Click a track for dimensions. Grey means not recorded.',
     owner: 'Each owner of the infrastructure, as recorded in OpenStreetMap, has its own colour, the same everywhere; the owner is not always the operator. Click a track for its owner and operator. Grey means no owner is recorded.',
-    service: 'Urban rail services mapped in OpenStreetMap (metro, light rail, tram, monorail and commuter rail), each in its own colour along the tracks it runs on. Frequency widths use published headways where a source covers the route; timetables are not yet matched to these routes. The OpenStreetMap service snapshot does not yet cover every region; grey tracks have no service mapped.',
+    service: 'Urban rail services mapped in OpenStreetMap (metro, light rail, tram, monorail and commuter rail), each in its own colour along the tracks it runs on. Frequency widths use matched timetable counts on covered sections, with published headway estimates for missing periods. Frequency and OpenStreetMap service coverage are partial; grey tracks have no service mapped.',
     infrastructure: 'Numbers in boxes count mapped tracks: running tracks side by side (not sidings, yards or crossovers), on every level; at a station, sidings are included. Ochre marks shared roadway; crossings are brown. Zoom in for platform references and complete boarding-edge lengths, purple signal locations and teal station entrances. Signal markers do not show a live aspect.',
   };
   let note = notes[settings.mode];
-  if(settings.mode==='service'&&settings.serviceWidth==='frequency')note+=' Width uses the same capped scale in each weekday profile, using the lower rate when the source publishes a range. Morning and evening peaks are separate.'+(periodCovered('overnight')||periodCovered('hour')?' Overnight and individual hours use each agency’s local time on the reference date; temporary operating changes may be absent.':'')+' Missing, expired or unmatched profiles remain unavailable.';
+  if(settings.mode==='service'&&settings.serviceWidth==='frequency')note+=' Width uses the same capped scale across periods, using the lower directional rate or the lower bound of a published range. Morning and evening peaks are separate.'+(periodCovered('overnight')||periodCovered('hour')?' Overnight and individual hours use each agency’s local time on the reference date; temporary operating changes may be absent.':'')+' Missing, expired or unmatched profiles remain unavailable.';
   if (settings.inactive && settings.mode === 'speed') note += ' Planned and former lines take the colour of their recorded limit, if any.';
   // Collapsed by default, so the legend stays short; stays open once opened.
   const help = Object.assign(textNode('details', '', 'legend-help'), {open: legendHelpOpen});
@@ -477,15 +554,27 @@ function updateMajorStations(){
  if(!ready||!settings.stations||settings.background==='satellite'||map.getZoom()<3||map.getZoom()>=7)return;
  const source=map.getSource('stationMajor'),language=settings.language;
  stationTileURL ||= map.getSource('stations')?.tiles?.[0]?.replace(/^atlasstation:\/\/[^/]+\//,'');
- if(!source||!stationTileFor||!stationTileURL)return;
+ if(!source)return;
  const generation=++majorStationGeneration,zoom=map.getZoom(),bounds=map.getBounds();
  majorStationsPromise ||= majorStationData?Promise.resolve(majorStationData):fetch(new URL(`major-stations.geojson?v=${assetVersion}`,import.meta.url)).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}).catch(error=>{majorStationsPromise=undefined;throw error;});
  majorStationsPromise.then(async data=>{
-  // Only the hubs this view can show are named; others wait for their view.
+  // Keep every curated location, but fetch names only at their label tier.
+  // A dot must not disappear just because a hub's name is deferred.
   const west=bounds.getWest()-10,east=bounds.getEast()+10,south=bounds.getSouth()-10,north=bounds.getNorth()+10;
   // Into the world copy the view shows, however far it was panned.
   const centre=(west+east)/2;
-  const wanted=data.features.filter(f=>{const [lon,lat]=f.geometry.coordinates,l=lon+360*Math.round((centre-lon)/360);return (f.properties.tier??7)<=Math.floor(zoom)&&l>=west&&l<=east&&lat>=south&&lat<=north;});
+  const visible=data.features.filter(f=>{const [lon,lat]=f.geometry.coordinates,l=lon+360*Math.round((centre-lon)/360);return l>=west&&l<=east&&lat>=south&&lat<=north;});
+  const visibleIDs=new Set(visible.map(f=>f.id));
+  const wanted=visible.filter(f=>(f.properties.tier??7)<=Math.floor(zoom));
+  if(generation!==majorStationGeneration||!ready||language!==settings.language||source!==map.getSource('stationMajor'))return;
+  // Publish locations immediately, before provider requests or rare-Han fonts
+  // settle. Only already-renderable names from this language may be reused.
+  const existing=new Map((majorStationSearchData?.language===language?majorStationSearchData.features:[]).map(f=>[f.id,f]));
+  const points=data.features.map(f=>existing.get(f.id)||(visibleIDs.has(f.id)?{...f,properties:{...f.properties,name:'',atlas_name:''}}:null)).filter(Boolean);
+  majorStationSearchData={type:'FeatureCollection',language,features:points};
+  source.setData({type:'FeatureCollection',features:points});
+  // Provider metadata and the name adapter are optional for local geometry.
+  if(!stationTileFor||!stationTileURL)return;
   const named=await Promise.all(wanted.map(f=>majorStationName(f,language).catch(()=>null)));
   if(generation!==majorStationGeneration||!ready||language!==settings.language||source!==map.getSource('stationMajor'))return;
   const names=new Map(wanted.map((f,i)=>[f.id,named[i]]));
@@ -495,7 +584,9 @@ function updateMajorStations(){
   const features=data.features.map(f=>{
    const p=names.get(f.id);
    if(p)return {...f,properties:{...f.properties,name:p.name,localized_name:p.localized_name,atlas_name:p.atlas_name,atlas_language:language,atlas_name_source:'provider'}};
-   return previous.get(f.id)||null;
+   // A location is always present when in view, independently of whether
+   // its translated name has been fetched or has label priority yet.
+   return previous.get(f.id)||(visibleIDs.has(f.id)?{...f,properties:{...f.properties,name:'',atlas_name:''}}:null);
   }).filter(Boolean);
   // These names reach the map as GeoJSON, not through a tile protocol, so
   // their rare Han slices load here (the layers draw atlas_name, else name).
@@ -505,8 +596,8 @@ function updateMajorStations(){
   source.setData({type:'FeatureCollection',features});
  }).catch(error=>console.warn('Major station names unavailable:',error.message));
 }
-// An open curated station's panel follows a language change on its own,
-// whether or not the overview currently shows that hub.
+// Selecting an unnamed curated dot resolves only that hub. The same guarded
+// path follows language changes, even outside the overview's label tier.
 function renameOpenMajorStation(){
  const open=currentFeature;
  const curatedData=majorStationsPromise||(majorStationData&&Promise.resolve(majorStationData));
@@ -514,7 +605,9 @@ function renameOpenMajorStation(){
  stationTileURL ||= map.getSource('stations')?.tiles?.[0]?.replace(/^atlasstation:\/\/[^/]+\//,'');
  if(!stationTileURL)return;
  const language=settings.language;
+ if(open.properties?.atlas_language===language&&open.properties?.atlas_name)return;
  curatedData.then(data=>{
+  if(currentFeature!==open||language!==settings.language||$('details').hidden)return;
   const curated=data.features.find(f=>f.properties.id===open.properties?.id);
   return curated&&majorStationName(curated,language).then(p=>{
    if(!p||currentFeature!==open||language!==settings.language||$('details').hidden)return;
@@ -742,9 +835,19 @@ function showServiceDetails(feature) {
   row(dl, 'Reference', p.ref);
   row(dl, 'Network', p.network);
   row(dl, 'Operator', p.operator);
-  for(const profile of [...new Set(['am','pm','offpeak','overnight',selectedFrequencyProfile(settings)])].filter(profileCovered))row(dl,FREQUENCY_LABELS[profile],frequencyDetails(p,profile)||'Frequency unavailable');
-  if(p.frequency_source){row(dl,'Frequency source',`${p.frequency_source} · checked ${p.frequency_checked}`);row(dl,'Period definitions',p.frequency_definition);row(dl,'Source credit',p.frequency_credit);row(dl,'Licence',p.frequency_license);row(dl,'Schedule note',p.frequency_note);row(dl,'Geometry',p.geometry_source);}
-  if(/^https:\/\//.test(p.frequency_url||'')){const link=textNode('a','Frequency source and terms');link.href=p.frequency_url;link.target='_blank';link.rel='noopener';panel.append(link);}
+  const profiles=[...new Set(['am','pm','offpeak','overnight',selectedFrequencyProfile(settings)])].filter(profileCovered),sources=new Map();
+  for(const profile of profiles){
+    row(dl,FREQUENCY_LABELS[profile],frequencyDetails(p,profile)||'No matched frequency profile');
+    if(p[`frequency_${profile}`]===undefined)continue;
+    const attribution=frequencyAttribution(p,profile),key=JSON.stringify(attribution);
+    if(!sources.has(key))sources.set(key,{...attribution,periods:[]});sources.get(key).periods.push(FREQUENCY_LABELS[profile]);
+  }
+  if(!sources.size&&p.frequency_source)sources.set('',frequencyAttribution(p,selectedFrequencyProfile(settings)));
+  for(const source of sources.values()){
+    if(source.frequency_source){row(dl,'Frequency source',`${source.frequency_source}${source.periods?.length?' · '+source.periods.join(', '):''} · checked ${source.frequency_checked}`);row(dl,'Period definitions',source.frequency_definition);row(dl,'Source credit',source.frequency_credit);row(dl,'Licence',source.frequency_license);row(dl,'Schedule note',source.frequency_note);}
+    if(/^https:\/\//.test(source.frequency_url||'')){const link=textNode('a','Frequency source and terms');link.href=source.frequency_url;link.target='_blank';link.rel='noopener';panel.append(link);}
+  }
+  row(dl,'Geometry',p.geometry_source);
   if (p.n > 1) row(dl, 'Services on this track', String(p.n));
   panel.append(dl);
   osmLink(panel, feature);
@@ -760,7 +863,9 @@ function showDepartures(panel, feature) {
   const section = document.createElement('section'); section.className = 'departures';
   section.append(textNode('h3', 'Departures'), textNode('p', 'Loading departures…', 'small'));
   panel.append(section);
-  const key = `${lat.toFixed(5)},${lon.toFixed(5)}`;
+  // Matching uses names as well as position. A deferred hub's unnamed lookup
+  // must not mask its later named result for the rest of the cache minute.
+  const key = `${lat.toFixed(5)},${lon.toFixed(5)}:${JSON.stringify([...new Set(names)].sort())}`;
   let board = departureBoards.get(key);
   if (!board || Date.now() - board.at > 60_000) {
     board = {at: Date.now(), promise: stationDepartures({lat, lon, names}, {signal: AbortSignal.timeout(15000)})};
@@ -774,18 +879,11 @@ function showDepartures(panel, feature) {
     else {
       const live = rows.filter(r => r.live).length;
       section.append(textNode('p', live ? `Live times for ${live} of ${rows.length} departures; the rest are timetabled.` : 'Timetabled times: no live data for these departures.', 'small'));
+      if (settings.serviceWidth === 'frequency') section.append(textNode('p', 'These departure timetables are available independently of the map’s matched frequency profiles.', 'small'));
+      section.append(textNode('p', 'Click a departure to see its full train schedule. Drag over text to select and copy it.', 'small'));
       const list = document.createElement('ol'); list.className = 'departure-list';
       for (const r of rows) {
-        const item = document.createElement('li');
-        const time = textNode('span', clock(r.cancelled ? r.scheduled : r.departure, r.tz), 'departure-time');
-        if (r.cancelled) time.classList.add('cancelled');
-        const line = textNode('span', r.line || r.mode.toLowerCase().replace(/_/g, ' '), 'departure-line');
-        if (r.color) { line.style.background = r.color; line.style.color = r.textColor || '#fff'; }
-        const status = r.cancelled ? 'Cancelled' : r.live ? (r.delay > 0 ? `+${r.delay} min` : r.delay < 0 ? `${r.delay} min` : 'On time') : '';
-        item.append(time, line, textNode('span', r.headsign, 'departure-headsign'));
-        if (r.track) item.append(textNode('span', /^\w{1,4}$/.test(r.track) ? `Pl. ${r.track}` : r.track, 'departure-track'));
-        if (status) item.append(textNode('span', status, `departure-status${r.cancelled || r.delay > 0 ? ' late' : ''}`));
-        list.append(item);
+        list.append(departureItem(document, r));
       }
       section.append(list);
     }
@@ -1595,7 +1693,7 @@ async function initialize() {
   map.on('moveend',updateMajorStations);
   // Curated names need the station source's tile address, known once its
   // TileJSON arrives (possibly after the first frame, with no move to follow).
-  map.on('sourcedata',e=>{if(e.sourceId==='stations'&&e.sourceDataType==='metadata'&&!stationTileURL)updateMajorStations();});
+  map.on('sourcedata',e=>{if(e.sourceId==='stations'&&e.sourceDataType==='metadata'&&!stationTileURL){updateMajorStations();renameOpenMajorStation();}});
   map.on('moveend', scheduleNearbyTransport);
   map.on('sourcedata', e => { if (e.sourceId === 'openmaptiles' && e.isSourceLoaded) scheduleNearbyTransport(); });
   map.on('moveend', updatePolar);
@@ -1631,6 +1729,7 @@ async function initialize() {
     features[0].properties = properties.atlas_han ? properties : {...properties, ...locate(event.lngLat.lng, event.lngLat.lat)};
     features[0].clickLngLat = event.lngLat;
     showDetails(features[0]);
+    renameOpenMajorStation();
   });
   // A full feature query on every mouse move is slow in dense areas and made
   // mouse panning stall. Skip it while dragging or moving, query only the
