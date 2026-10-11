@@ -1,0 +1,198 @@
+{
+  "evidence_kind": "Authentic pre-fix compiled Normandy bytes from the October 5 successful published-snapshot workflow. This is derived timetable data, not the raw GTFS ZIP.",
+  "archive_member": "feeds/fr_base-de-donnees-multimodale-des-reseaux-de-transport-public-normands.json.gz",
+  "fixture_compressed_bytes": 15279,
+  "fixture_compressed_sha256": "9de5d10c8f35d51670115e582100ab1212843f76f63ab365afe699e6db22fbff",
+  "fixture_expanded_bytes": 556608,
+  "fixture_expanded_sha256": "7e96edecf52cb72663149e2e4385ea51bcc31ea8c438c46558b98042bbd542b0",
+  "source": {
+    "id": "fr_base-de-donnees-multimodale-des-reseaux-de-transport-public-normands",
+    "name": "Base De Donnees Multimodale Des Reseaux De Transport Public Normands",
+    "url": "https://transport.data.gouv.fr/resources/81942/download",
+    "processed_url": "https://api.transitous.org/gtfs/fr_base-de-donnees-multimodale-des-reseaux-de-transport-public-normands.gtfs.zip",
+    "catalogue_url": "https://raw.githubusercontent.com/public-transport/transitous/main/website/data/license.json",
+    "license": "etalab-2.0",
+    "terms_url": "https://transport.data.gouv.fr/datasets/base-de-donnees-multimodale-des-reseaux-de-transport-public-normands",
+    "attribution": "Base De Donnees Multimodale Des Reseaux De Transport Public Normands; Nomad Train (SNCF, Région Normandie); Semo (Val-de-Reuil, Louviers, Seine Eure Agglo); SN'go! (Vernon, Les Andelys, Seine Normandie Agglo); Rézo'Bus (Bolbec, Lillebonne, Port-Jérôme, Caux Seine Agglo); Cap Cotentin (Cherbourg, Agglo. du Cotentin); Altobus (Communauté Urbaine d'Alençon); SLAM (Saint-Lô Agglo); Bybus (Bayeux Intercom); Brittany Ferries; Bagnoles de l'Orne",
+    "catalogue_attribution": {
+      "country_code": "FR",
+      "country_name": "France",
+      "region_code": "FR",
+      "region_name": "France",
+      "spdx_license_identifier": "etalab-2.0",
+      "license_url": "https://transport.data.gouv.fr/datasets/base-de-donnees-multimodale-des-reseaux-de-transport-public-normands",
+      "operators": [],
+      "source": "https://transport.data.gouv.fr/resources/81942/download",
+      "filename": "fr_base-de-donnees-multimodale-des-reseaux-de-transport-public-normands.gtfs.zip",
+      "human_name": "Base De Donnees Multimodale Des Reseaux De Transport Public Normands",
+      "rt": [
+        {
+          "source": "https://proxy.transport.data.gouv.fr/resource/atoumod-gtfs-rt-trip-update",
+          "spdx_license_identifier": "etalab-2.0",
+          "license_url": "https://transport.data.gouv.fr/datasets/base-de-donnees-multimodale-des-reseaux-de-transport-public-normands",
+          "attribution_text": null
+        }
+      ]
+    },
+    "retrieved": "2026-10-04",
+    "checked": "2026-10-05",
+    "rail_graph_sha256": "a768dd1918e3a27f8ff46997a7324a10aedcbfe34f57b1aa6dcf4b79c5d03cc3",
+    "country": "FR",
+    "region": "France",
+    "review_after_days": 30,
+    "compiler_version": 2,
+    "input_signature": "f75ec0a3bca6b2d64fbec5f6d083e96a9f678572147dfd7c5ac4cb08f1733551",
+    "note": "Configured AM/PM/daytime windows in each agency timezone. Scheduled service, not live departures.",
+    "sha256": "2d66b46d7cef1f86e8534aaf33e3bd947b85828c5108ce2d488800cd762641b4",
+    "feed_info": {
+      "feed_publisher_name": "CITYWAY",
+      "feed_publisher_url": "http://cityway.fr",
+      "feed_lang": "FR",
+      "feed_version": "16291"
+    },
+    "service_date": "2026-10-05",
+    "day_type": "monday",
+    "geometry": "supplied GTFS shapes",
+    "count_anchor": "departure at the preceding served stop; no inferred pass times",
+    "calendar_audit": {
+      "routes_beyond_service_horizon": [],
+      "trip_patterns_beyond_service_horizon": 183,
+      "routes_before_service_start": [],
+      "trip_patterns_before_service_start": 609
+    },
+    "feed_attributions": [],
+    "geometry_audit": {
+      "withheld_trips": {},
+      "routes_with_incomplete_active_geometry": [],
+      "excluded_replacement_bus_trips": 0,
+      "invalid_rail_stop_sequences": 0,
+      "matched_railway_patterns": 0
+    },
+    "valid_until": 1806101999.999
+  },
+  "canonical_rail_routes": 3,
+  "compiled_segments": 203,
+  "vertex_counts": {
+    "2": 203
+  },
+  "longest_segments": [
+    {
+      "distance_km": 383.7882761467824,
+      "route_id": "ATOUMOD002:Line:FRxLinexx6CC8BBE5x9508x49DBx95CDx797616EA49C6x:LOC",
+      "geometry": [
+        [
+          2.257528,
+          48.72642
+        ],
+        [
+          4.859409,
+          45.760597
+        ]
+      ]
+    },
+    {
+      "distance_km": 197.71505585419303,
+      "route_id": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+      "geometry": [
+        [
+          -0.347613,
+          49.176353
+        ],
+        [
+          2.325331,
+          48.876244
+        ]
+      ]
+    },
+    {
+      "distance_km": 155.49893167787928,
+      "route_id": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+      "geometry": [
+        [
+          0.231143,
+          49.138298
+        ],
+        [
+          2.325331,
+          48.876244
+        ]
+      ]
+    },
+    {
+      "distance_km": 150.7985924243516,
+      "route_id": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+      "geometry": [
+        [
+          -0.347613,
+          49.176353
+        ],
+        [
+          1.70337,
+          48.98984
+        ]
+      ]
+    },
+    {
+      "distance_km": 124.8164378135572,
+      "route_id": "ATOUMOD002:Line:FRxLinexx03A83359x7D9Dx4301x9C87x92FED4666451x:LOC",
+      "geometry": [
+        [
+          0.620014,
+          48.766228
+        ],
+        [
+          2.320514,
+          48.84117
+        ]
+      ]
+    }
+  ],
+  "license_evidence_url": "https://transport.data.gouv.fr/datasets/base-de-donnees-multimodale-des-reseaux-de-transport-public-normands",
+  "license_text_url": "https://github.com/etalab/licence-ouverte/blob/master/open-licence.txt",
+  "retrieved_for_audit": "2026-10-07",
+  "limitation": "The compiler intentionally splits supplied shapes into two-vertex edges. The vertex count does not establish the vertex count of raw GTFS shapes.",
+  "workflow_run_url": "https://github.com/c933103/openrailwaystyle/actions/runs/37291043442",
+  "workflow_head_sha": "c039337f4cb7c7fc3f997521196df758633832d3",
+  "service_date": "2026-10-05",
+  "shard_artifact": {
+    "id": 11337683948,
+    "name": "worldwide-frequency-shard-4",
+    "size_bytes": 1282403,
+    "sha256": "236a890413049a4c40b5da2460d2b0d48f04f1e62d60d8e23c05eb9753aab117",
+    "created_at": "2026-10-05T10:15:23Z",
+    "expires_at": "2026-10-19T10:15:22Z"
+  },
+  "assembled_artifact": {
+    "id": 11338486417,
+    "name": "worldwide-frequency-snapshot",
+    "size_bytes": 7758204,
+    "sha256": "5abfb09f081ceb91c2064d398585d954caeda1871dfa73cf26fc7cb23a26f90d",
+    "created_at": "2026-10-05T10:16:30Z",
+    "expires_at": "2026-10-19T10:16:27Z"
+  },
+  "fixture_file": "normandy-20261005.json.gz",
+  "assembled_fixture_byte_identical": true,
+  "later_oct6_geometry_route_id_pairs_identical": true,
+  "later_oct6_raw_source_sha256_identical": true,
+  "archived_tiles": [
+    {
+      "path": "tiles/12/2074/1408.pbf.gz",
+      "normandy_features": 6,
+      "fixture_file": "normandy-20261005-12-2074-1408.pbf.gz",
+      "compressed_bytes": 3129,
+      "compressed_sha256": "ed7efd6d54028c4f1a057c5ac187a56740d95fa20234647a83b374932d906ac3",
+      "expanded_bytes": 10887,
+      "expanded_sha256": "90a3c254d8f6091e11c66710206207c900470d808d2add20f37d2812070579cd"
+    },
+    {
+      "path": "tiles/12/2074/1409.pbf.gz",
+      "normandy_features": 4,
+      "fixture_file": "normandy-20261005-12-2074-1409.pbf.gz",
+      "compressed_bytes": 2773,
+      "compressed_sha256": "86fe7a5427612ed6f7797e6f0bdcbfeb3eb979f58a5f8630f4f8d519feb1688a",
+      "expanded_bytes": 9561,
+      "expanded_sha256": "eb137c65445eb2ca7c5a58e00b5cdc92e44dba79b60f953261ded3c78e1d287c"
+    }
+  ],
+  "original_fixture_file": "original-20261005-normandy.json.gz"
+}

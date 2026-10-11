@@ -29,8 +29,12 @@ Main-line railway geometry comes from OpenRailwayMap's live vector service, not
 from the Atlas's regional branch-line snapshot. In all operating-rail views the
 simplified overview runs below zoom 7; at zoom 7 the renderer switches to the
 provider's `railway_line_high` tiles. The branch-line snapshot instead supplies
-branch lines at zooms 4–6 and subway lines at zooms 7–9. Its presence does not
-prove the live main-line source is available.
+branch lines at zooms 4–6 and subway lines at zooms 7–9. A separate, coarsely
+generalized Natural Earth railway underlay appears at zooms 4–6 underneath the
+thematic strokes. Its thin neutral dashed lines are geographic reference only,
+not verified operating status, speed, gauge, electrification or service. The
+underlay cannot replace complete mainline data or disguise tile errors; a
+visible branch never proves that the provider's mainline source is healthy.
 
 An upstream HTTP 520 or network failure can therefore hide rails even while the
 basemap, regional station symbols and Atlas snapshot layers remain visible.
@@ -86,7 +90,16 @@ By mode, metro stations appear from zoom 8 (the first station tiles that carry t
 
 Metro tracks are drawn from zoom 7 where data exists (the provider's tiles hold them only from zoom 10); light rail, monorail, tram, funicular and miniature tracks from zoom 10.
 
-Before zoom 12 a marker and its name are placed together with collision detection. From zoom 12 individual markers remain visible when labels collide. Worldwide coverage means global source coverage, not a guarantee that every railway, station or speed is mapped.
+Markers and station names are separate at all zooms, so collision and name
+selection only affect text. Curated worldwide marker points start at zoom 3,
+two zooms ahead of level crossings (zoom 5). The provider contributes station
+dots from zoom 4, additional points from zoom 6, and detailed stations from
+zoom 8. Every station *actually present in the loaded source tiles* can retain
+its point even when its name is deferred or collides. Below zoom 8 the provider
+station tiles are selective; rendering every station worldwide at zoom 3 still
+requires a prebuilt nationwide/worldwide station-point dataset, not a burst of
+on-demand detailed tile requests. From zoom 12 the detailed marker hierarchy
+continues unchanged. Worldwide coverage means global source coverage, not a guarantee that every railway, station or speed is mapped.
 
 ## Branch lines at overview zooms
 
@@ -166,6 +179,11 @@ Beyond 85.05° N and S, where the terrain tiles end, the globe's relief and cont
 
 ## Country and state names
 
+One collision-managed, ISO-neutral country-label layer handles country points
+with or without ISO country codes. This prevents separate base-map country
+layers from competing to display names in the same region.
+
+
 Country names are shown up to zoom 7 in spaced capitals and are placed before station names (the base style faded them out by zoom 6, and station names, placed first, hid most of the rest). States, provinces and prefectures (OpenMapTiles `place` classes `state` and `province`) have their own lighter layer from zoom 4 to 9, below station names in priority.
 
 ## Transport interchanges and passenger destinations
@@ -222,3 +240,27 @@ on hover, and expandable explanations for touch and keyboard users.
 The Power view adds dedicated railway supply facilities independently of
 transport and destination context settings. See [railway energy supplies](power-facilities.md)
 for supported tags, zooms, lifecycle treatment and source limitations.
+
+### Overview marker acceptance
+
+Curated hub points are published before their eligible names or rare-Han fonts
+settle. Selecting a below-tier, unnamed hub requests only that hub's existing
+zoom-8 name candidates (one tile and four neighbours, with shared tile caching).
+Closing the panel, selecting another feature, or changing language prevents a
+stale result from replacing the current details. Departure matching is cached
+by the supplied names as well as position, so an earlier unnamed lookup cannot
+mask the selected hub's later provider name.
+
+`check-overview-markers-browser.mjs` uses the production station and backbone
+layers with the real MapLibre renderer and synthetic, fixture-only geometry.
+It checks marker continuity at zooms 3, 4, 5, 6, 7, 8 and 12 while names collide,
+and the two backbone layers' zoom-4–6 window. It does not establish worldwide
+station completeness or live provider availability. The curated/regional source
+limits and the separate complete station-point work in issue #175 still apply.
+
+Provider overview dots suppress only the vetted OSM identities and aliases of
+points actually emitted in the curated GeoJSON. Provider names remain eligible.
+Label tiers, nearby coordinates, similar names and shared Wikidata alone do not
+remove another station's dot. At zoom 7 the curated layer ends and the provider
+marker resumes; zooming back below 7 restores the curated ownership. Candidates
+not emitted by the curated selection cannot suppress provider points.

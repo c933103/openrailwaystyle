@@ -41,6 +41,15 @@ export function railwaySources() {
   }));
   return {
     ...sources,
+    // Independently hosted Natural Earth rail corridors are generalized
+    // geometry for z4–6 continuity when the thematic ORM overview is absent.
+    // They are not evidence that a particular line is open or electrified.
+    railBackbone: {
+      type:'vector',
+      url:'https://papers.reearth.land/naturalearth_transport/tilejson.json',
+      minzoom:4, maxzoom:10,
+      attribution:'<a href="https://www.naturalearthdata.com/">Natural Earth (public domain)</a> · <a href="https://papers.reearth.land/">Re:Earth Papers</a>',
+    },
     // Track counts always derive from z14 tiles to remain stable at any zoom.
     trackCounts: {type:'vector', tiles:['atlastracks://{z}/{x}/{y}'], minzoom:14, maxzoom:14, attribution:RAIL_ATTRIBUTION},
     platforms: railwayVector('standard_railway_platforms', 17, 22),

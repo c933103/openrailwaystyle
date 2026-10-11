@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "source": {
+    "repository": "https://github.com/c933103/openrailwaystyle",
+    "branch": "service-data",
+    "commit": "ba3ffbbfa24cb72d01a07022b526cced30b39cd7",
+    "path": "service-routes.ndjson.gz",
+    "sha256": "ac91e3d45e95248261914a2d54c7d110bc9c0bcebf6dca5ea2cd9052b75178bf"
+  },
+  "bbox": [
+    2.15,
+    48.76,
+    2.45,
+    48.95
+  ],
+  "selection": "Keep complete unchanged way rows if any vertex lies in, or any segment intersects, the closed bbox. Include all route rows referenced by accepted or pending memberships. Preserve input row order.",
+  "ways": 2094,
+  "relations": 119,
+  "bytes": 425600,
+  "sha256": "fdfaf30b3323e750b5470e721dcced41ed00d3c5d98da9a72e302d68c24a9819",
+  "files": [
+    {
+      "path": "paris-osm-01.ndjson",
+      "bytes": 249945,
+      "sha256": "f318562c0ef34a19ac5e269dbe08eb6979c9f193da86a68d64a933ae88c3d352"
+    },
+    {
+      "path": "paris-osm-02.ndjson",
+      "bytes": 175655,
+      "sha256": "b3a69b19c33264515f25182da722ab05c55244102fcc9ef76fdd4ddf7c8ce3b5"
+    }
+  ],
+  "build": {
+    "baseline": "PR #146 dfdc858; source tree 2019bcf",
+    "files": {
+      "scripts/service-routes.mjs": "3c62cab47e45de1fcd4ac2d2c07532cb298722f8be71fe2bdd8b66387a3db032",
+      "scripts/service-geometry.mjs": "ca25c74bbb55d79f6ecfffd93df0e871a3d39ae591f0f38c45b5edcdf53d46c8",
+      "scripts/service-relations.mjs": "f0258b76f41f96711eed1bb1a87fc1c29d93bf1792b278db35c02a2bb90243e7",
+      "scripts/rebuild-service-frequency.mjs": "23900e6fb379824aa733fbf372bf5926e74149433b24b7e61f21dd0c588211e6",
+      "scripts/assemble-global-frequency.mjs": "7cdcf4e4d4409ebae5eb489608fe47a65c0707c943665aa19203ddbe5837f75b",
+      "styles/service-frequency.mjs": "267e90e7fd780e0f073b7d04e7098046b6e74f74316bb4a625749db0aa2e3336"
+    }
+  },
+  "provenance": "Real published OSM-derived legacy simplified lines. Source snapshot time, raw node IDs, way versions and unsimplified geometry are unavailable; completeness remains unknown.",
+  "attribution": "© OpenStreetMap contributors, ODbL 1.0",
+  "license": "https://www.openstreetmap.org/copyright",
+  "reproduction": "node scripts/paris-service-geometry-fixture.mjs --extract /path/to/pinned/service-routes.ndjson.gz",
+  "limitation": "Synthetic timetable adversaries are not authentic Normandy SNCF bytes. This fixture does not resolve issue #107 or certify current live OSM coverage."
+}

@@ -100,6 +100,7 @@ async function start({ failWebGL = false, delayLibraries = false, delayLabels = 
     setProjection(projection) { this.projection = projection; }
     getContainer() { return {clientWidth:1000, clientHeight:700}; }
     getCenter() { return {lng:0, lat:0}; }
+    getBounds() { return {getWest:()=>-180,getEast:()=>180,getSouth:()=>-85,getNorth:()=>85}; }
     getBearing() { return 0; }
     getPitch() { return 0; }
     unproject() { return {lng:0, lat:0}; }
@@ -884,13 +885,13 @@ test('curated hubs take their names from the provider station tiles by OSM ident
   // New York two world copies east: the hub must still count as in view.
   map.getBounds=()=>({getWest:()=>640,getEast:()=>650,getSouth:()=>35,getNorth:()=>45});
   map.handlers['style.load']();
-  for(let i=0;i<50&&!map.sourceData?.stationMajor?.features.length;i++)await new Promise(r=>setTimeout(r,0));
+  for(let i=0;i<50&&!map.sourceData?.stationMajor?.features.some(f=>f.properties.atlas_name);i++)await new Promise(r=>setTimeout(r,0));
   const named=map.sourceData?.stationMajor?.features.find(f=>f.properties.wikidata==='Q54451');
   assert.ok(named,'the curated hub in view is named');
   assert.equal(named.properties.atlas_name,'Provider Penn (en)');
   assert.ok(tileRequests.every(([url,lang])=>/^https:\/\/tiles\.test\/stations\/(8|10)\/\d+\/\d+$/.test(url)&&lang==='en'),'zoom-8 station tiles through the station pipeline');
   assert.ok(!requests.some(url=>url.includes('openstreetmap.org')),'no OSM API requests');
-  assert.ok(map.sourceData.stationMajor.features.every(f=>f.properties.atlas_name),'unnamed hubs stay hidden rather than showing a source note');
+  assert.ok(map.sourceData.stationMajor.features.every(f=>f.properties.atlas_name || (f.properties.atlas_name==='' && f.properties.name==='')),'deferred hubs retain unlabeled marker points without leaking source notes');
  }finally{dom.window.close();}
 });
 
@@ -911,11 +912,130 @@ test('curated hub names with rare Han wait for their slices before reaching the 
   for(let i=0;i<100&&!slice();i++)await new Promise(r=>setTimeout(r,0));
   assert.ok(slice(),'the slice of the hub name is requested');
   const named=()=>map.sourceData?.stationMajor?.features.find(f=>f.properties.wikidata==='Q54451');
-  assert.equal(named(),undefined,'the name waits for its slice');
+  assert.ok(named(),'the location is already present while its name waits');
+  assert.equal(named().properties.atlas_name,'','the name waits for its slice');
   slice().finish();
-  for(let i=0;i<50&&!named();i++)await new Promise(r=>setTimeout(r,0));
+  for(let i=0;i<50&&!named()?.properties.atlas_name;i++)await new Promise(r=>setTimeout(r,0));
   assert.equal(named()?.properties.atlas_name,'\u{2A700}站');
  }finally{dom.window.close();}
+});
+
+const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
+const providerHubTile=(hub,language)=>{
+ const id=hub.properties.osm_ids.split(';')[0],name=`Provider hub (${language})`;
+ const bytes=encodeTile.fromGeojsonVt({standard_railway_text_stations:{features:[{type:1,id:1,
+  tags:{id:`${id}-train-train-station`,name,atlas_name:name,atlas_language:language},geometry:[[2048,2048]]}]}},{version:2});
+ return bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);
+};
+async function deferredHubHarness({tier=7,metadata=true,stationProtocol=true}={}){
+ const hub=structuredClone(style.sources.stationMajor.data.features.find(f=>f.properties.wikidata==='Q54451'));
+ hub.properties.tier=tier;
+ const input=structuredClone(style);input.sources.stationMajor.data.features=[hub];
+ const pending=[],departures=[];
+ const state=await start({search:'?language=en#3/40.75/-74',fetcher:async()=>({ok:true,status:200,json:async()=>structuredClone(input)}),
+  stationTile:stationProtocol?(url,language)=>new Promise((resolve,reject)=>pending.push({url,language,resolve,reject})):undefined,
+  departureLoader:async station=>{departures.push(structuredClone(station));return {stops:[],rows:[]};}});
+ const map=state.maps[0],getSource=map.getSource.bind(map);
+ const stationSource=metadata?{tiles:['atlasstation://en/https://tiles.test/stations/{z}/{x}/{y}']}:{};
+ map.getSource=id=>id==='stations'?stationSource:getSource(id);
+ map.getBounds=()=>({getWest:()=>-80,getEast:()=>-70,getSouth:()=>35,getNorth:()=>45});
+ map.handlers['style.load']();
+ const point=()=>map.sourceData?.stationMajor?.features.find(f=>f.id===hub.id);
+ for(let i=0;i<50&&!point();i++)await tick();
+ const click=()=>{
+  map.rendered=[{...structuredClone(point()),source:'stationMajor',layer:{id:'station-major-dots'}}];
+  map.handlers.click({point:{x:500,y:400},lngLat:{lng:hub.geometry.coordinates[0],lat:hub.geometry.coordinates[1]}});
+ };
+ return {...state,map,hub,pending,departures,point,click,stationSource};
+}
+for(const options of [{metadata:false},{stationProtocol:false}])test(`curated dots survive an unavailable name dependency: ${Object.keys(options)[0]}`,async()=>{
+ const h=await deferredHubHarness({tier:3,...options});
+ try{
+  assert.ok(h.point(),'local geometry does not require provider metadata or name protocols');
+  assert.equal(h.point().properties.atlas_name,'');assert.equal(h.pending.length,0);
+ }finally{h.dom.window.close();}
+});
+test('a selected deferred dot is named when missing provider metadata later becomes available',async()=>{
+ const h=await deferredHubHarness({metadata:false});
+ try{
+  assert.ok(h.point());h.click();for(let i=0;i<5;i++)await tick();
+  assert.equal(h.pending.length,0,'selection cannot request a nonexistent tile template');
+  h.stationSource.tiles=['atlasstation://en/https://tiles.test/stations/{z}/{x}/{y}'];
+  h.map.handlers.sourcedata({sourceId:'stations',sourceDataType:'metadata'});
+  for(let i=0;i<50&&!h.pending.length;i++)await tick();
+  assert.equal(h.pending.length,1,'metadata recovery names only the selected deferred station');
+  h.pending[0].resolve(providerHubTile(h.hub,'en'));for(let i=0;i<50&&!h.departures.some(s=>s.names.includes('Provider hub (en)'));i++)await tick();
+  assert.equal(h.window.document.querySelector('#detail-content h2').textContent,'Provider hub (en)');
+ }finally{h.dom.window.close();}
+});
+test('curated locations publish before an eligible provider name request settles',async()=>{
+ const h=await deferredHubHarness({tier:3});
+ try{
+  assert.ok(h.point(),'an unresolved name must not suppress its dot');
+  assert.equal(h.point().properties.atlas_name,'');
+  assert.equal(h.pending.length,1,'only the current tile is requested initially');
+  h.pending[0].resolve(providerHubTile(h.hub,'en'));
+  for(let i=0;i<50&&!h.point().properties.atlas_name;i++)await tick();
+  assert.equal(h.point().properties.atlas_name,'Provider hub (en)');
+ }finally{h.dom.window.close();}
+});
+test('opening a deferred curated dot loads its provider name and refreshes name-based departure matching',async()=>{
+ const h=await deferredHubHarness();
+ try{
+  assert.ok(h.point());assert.equal(h.pending.length,0,'below-tier hubs have no bulk name request');
+  h.click();h.click();
+  for(let i=0;i<50&&!h.pending.length;i++)await tick();
+  assert.equal(h.pending.length,1,'repeated selection shares the provider tile promise');
+  assert.match(h.window.document.querySelector('#detail-content h2').textContent,/Unnamed station/);
+  h.pending[0].resolve(providerHubTile(h.hub,'en'));
+  for(let i=0;i<50&&!h.departures.some(s=>s.names.includes('Provider hub (en)'));i++)await tick();
+  assert.equal(h.window.document.querySelector('#detail-content h2').textContent,'Provider hub (en)');
+  assert.ok(h.departures.some(s=>s.names.includes('Provider hub (en)')),'the unnamed cached board cannot mask named matching');
+  assert.equal(h.pending.length,1,'selecting one dot does not name the rest of the world');
+ }finally{h.dom.window.close();}
+});
+test('failed selected-hub lookups stay bounded and preserve the anonymous point',async()=>{
+ const h=await deferredHubHarness();
+ try{
+  h.click();
+  for(let index=0;index<5;index++){
+   for(let i=0;i<50&&h.pending.length<=index;i++)await tick();
+   assert.ok(h.pending[index],`candidate ${index+1} requested`);
+   h.pending[index].reject(new Error('synthetic unavailable tile'));
+  }
+  for(let i=0;i<10;i++)await tick();
+  assert.equal(h.pending.length,5,'one z8 tile and four neighbours, never an overview fan-out');
+  assert.ok(h.point());assert.equal(h.point().properties.atlas_name,'');
+  assert.equal(h.window.document.querySelector('#detail-content h2').textContent,'Unnamed station');
+ }finally{h.dom.window.close();}
+});
+for(const action of ['close','select another station'])test(`a deferred curated name cannot overwrite the panel after ${action}`,async()=>{
+ const h=await deferredHubHarness();
+ try{
+  h.click();for(let i=0;i<50&&!h.pending.length;i++)await tick();
+  if(action==='close')h.window.document.getElementById('details-close').click();
+  else{
+   h.map.rendered=[{source:'stations',layer:{id:'station-stations-dots'},properties:{id:'node-999',name:'Other station'},geometry:{type:'Point',coordinates:[1,2]}}];
+   h.map.handlers.click({point:{x:500,y:400},lngLat:{lng:1,lat:2}});
+  }
+  h.pending[0].resolve(providerHubTile(h.hub,'en'));for(let i=0;i<10;i++)await tick();
+  if(action==='close')assert.equal(h.window.document.getElementById('details').hidden,true);
+  else assert.equal(h.window.document.querySelector('#detail-content h2').textContent,'Other station');
+  assert.equal(h.departures.some(s=>s.names.includes('Provider hub (en)')),false,'stale completion must not start a new board');
+ }finally{h.dom.window.close();}
+});
+test('an open deferred hub follows the newest language and ignores its older pending name',async()=>{
+ const h=await deferredHubHarness();
+ try{
+  h.click();for(let i=0;i<50&&!h.pending.length;i++)await tick();
+  const select=h.window.document.getElementById('language');select.value='fr';select.dispatchEvent(new h.window.Event('change'));
+  for(let i=0;i<50&&!h.pending.some(p=>p.language==='fr');i++)await tick();
+  const french=h.pending.find(p=>p.language==='fr');assert.ok(french);
+  french.resolve(providerHubTile(h.hub,'fr'));for(let i=0;i<50&&!h.departures.some(s=>s.names.includes('Provider hub (fr)'));i++)await tick();
+  h.pending.find(p=>p.language==='en').resolve(providerHubTile(h.hub,'en'));for(let i=0;i<10;i++)await tick();
+  assert.equal(h.window.document.querySelector('#detail-content h2').textContent,'Provider hub (fr)');
+  assert.equal(h.departures.some(s=>s.names.includes('Provider hub (en)')),false);
+ }finally{h.dom.window.close();}
 });
 
 test('tiles served as stored load the rare Han slices of their text, such as service route names',async()=>{

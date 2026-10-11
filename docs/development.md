@@ -4,7 +4,11 @@
 
 ## Prerequisites
 
-Use Node.js 22 (the version used in CI), npm, Git, Python 3 and pip. The commands
+Use Node.js 22.22.2 or newer in the 22.x line (the line used in CI), npm, Git,
+Python 3 and pip. Node.js 24.15.0 or newer in 24.x and Node.js 26 or newer are
+also supported by the pinned DOM test dependency. The package engine range and
+`.npmrc` reject unsupported runtimes during installation. Keep lifecycle scripts
+disabled with `npm ci --ignore-scripts`, as in CI. The commands
 below use a POSIX shell. Viewing the map requires an internet connection and a
 WebGL-capable browser; external tiles are not bundled for offline use.
 
@@ -169,6 +173,13 @@ checks use the same synthetic railway fixture against the published page. They
 test rendering integration, **not real-world railway geometry or live tile
 availability**, which must be assessed separately.
 
+The [Paris Service geometry acceptance](service-paris-acceptance.md) runs two
+fixture-only gates against the current production renderer and line layer. They
+preserve pinned OSM positives and reject both synthetic and authentic archived
+Normandy timetable geometry across all 28 profiles. The original archives and
+source dates stay unchanged; publication metadata uses the current safe URL and
+lineage projection. These gates do not certify live geographic coverage.
+
 Service-worker installation/upgrade tests in `tests/sw-install.test.mjs` and
 `tests/startup.test.mjs` execute the actual old/new worker sources with synthetic
 fetch/cache implementations. The browser matrix has always blocked registered
@@ -203,6 +214,28 @@ remaining uncertainties see [external services](external-services.md).
 placement priority, proximity/deduplication and settings. The separate
 `node scripts/check-search-api.mjs` probes the public station-search API and CORS;
 CI treats its external-service failure as non-blocking.
+
+The self-hosted station-density audit shares successful responses between its
+before/after maps so both compare byte-identical inputs. Its in-memory replay
+cache coalesces concurrent requests by validated local target, retaining only
+HTTP 200, 204 and 206 responses. HTTP failures and fetch/body rejections are
+removed before the next application attempt, allowing a recovered local server
+to answer. Every cache miss still uses the loopback-only, no-redirect transport;
+TileJSON validation and all density/readiness assertions remain unchanged. No
+synthetic empty tile replaces a failure. Before each paired density measurement,
+both pages reset their station sources through MapLibre's public source setters.
+If either side encounters a failed station response or source/protocol error,
+including page-local errors after a successful transport, both counts are
+discarded and logged in the separate density-invalidated JSON artifact, both pages reset
+again, and the pair is measured once more. Each reset must confirm source-data
+invalidation; a no-op or failed setter cannot reuse retained tiles. A second
+failed attempt fails the audit rather than accepting unequal inputs. Recovery
+never erases evidence that the other page saw a missing tile. Each viewport gets
+a fresh cache, so changed fixtures are reread on the next comparison. The legacy
+disk cache is still unused. `tests/browser-response-cache.test.mjs` covers
+recovery, replay and the current local-only boundary with controlled responses.
+`tests/station-density-comparison.test.mjs` covers paired invalidation and the
+pinned MapLibre source/tile-manager reset path without WebGL or geographic data.
 
 For documentation-only changes, check relative links, heading anchors, command
 accuracy and `git diff --check`; no new application tests are needed.

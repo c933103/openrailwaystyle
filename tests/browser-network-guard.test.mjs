@@ -92,7 +92,12 @@ test('every matrix browser launches through the shared guard (including WebKit)'
   for(const check of GROUPS.flatMap(group=>group.checks)){
     const source=await readFile(new URL('../scripts/'+check,import.meta.url),'utf8');
     if(check==='check-deployed-fixture-browser.mjs')assert.match(source,/check-orm-fixture-browser/);
-    else assert.match(source,/launchBrowser\(/,check);
+    else if(check==='check-normandy-service-geometry-browser.mjs'){
+      assert.match(source,/from '\.\/check-paris-service-geometry-browser\.mjs'/,check);
+      assert.match(source,/await checkParisServiceGeometryBrowser\(/,check);
+      assert.ok(GROUPS.some(group=>group.checks.includes('check-paris-service-geometry-browser.mjs')),
+        'delegated Paris checker is checked for its direct guarded launch');
+    }else assert.match(source,/launchBrowser\(/,check);
     assert.doesNotMatch(source,/\b(?:chromium|webkit|firefox)\.launch\(/,check);
   }
   const browser=await readFile(new URL('../scripts/browser.mjs',import.meta.url),'utf8');
