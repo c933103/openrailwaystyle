@@ -1,7 +1,7 @@
 name: Resume site checks after railway reference completion
 on:
   workflow_run:
-    workflows: ['Build worldwide OSM railway reference']
+    workflows: ['Build worldwide OSM railway reference', 'Validate and deploy world railway map']
     types: [completed]
 permissions:
   actions: write
@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   retry:
-    if: github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'workflow_dispatch')
+    if: (github.event.workflow_run.name == 'Build worldwide OSM railway reference' && github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'workflow_dispatch')) || (github.event.workflow_run.name == 'Validate and deploy world railway map' && github.event.workflow_run.event == 'pull_request' && (github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'timed_out'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -20,20 +20,32 @@ jobs:
       - name: Retry failed site checks for the exact current open PR head
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_RUN: ${{ github.event.workflow_run.id }}
+          TRIGGER_RUN: ${{ github.event.workflow_run.id }}
+          TRIGGER_NAME: ${{ github.event.workflow_run.name }}
           SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -eu
-          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
+          [[ "$TRIGGER_RUN" =~ ^[0-9]+$ ]]
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
-          verified=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" --jq 'select(.conclusion == "success" and .name == "Build worldwide OSM railway reference" and (.event == "pull_request" or .event == "workflow_dispatch")) | .head_sha')
+          verified=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$TRIGGER_RUN" --jq 'select(.name == env.TRIGGER_NAME and ((.name == "Build worldwide OSM railway reference" and .conclusion == "success" and (.event == "pull_request" or .event == "workflow_dispatch")) or (.name == "Validate and deploy world railway map" and .event == "pull_request" and (.conclusion == "failure" or .conclusion == "timed_out")))) | .head_sha')
           [ "$verified" = "$SOURCE_SHA" ]
           # Fork workflow_run payloads can omit pull_requests. Resolve the
           # current PR from trusted repository metadata instead.
           prs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" --jq '.[] | select(.head.sha == env.SOURCE_SHA) | .number')
           [ -n "$prs" ] || exit 0
-          runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/site.yml/runs?event=pull_request&head_sha=$SOURCE_SHA&per_page=100" --jq '.workflow_runs[] | select(.status == "completed" and (.conclusion == "failure" or .conclusion == "timed_out")) | .id')
+          if [ "$TRIGGER_NAME" = 'Build worldwide OSM railway reference' ]; then
+            build=$TRIGGER_RUN
+          else
+            build=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/mainline-reference.yml/runs?head_sha=$SOURCE_SHA&per_page=100" --jq '[.workflow_runs[] | select(.status == "completed" and .conclusion == "success" and (.event == "pull_request" or .event == "workflow_dispatch"))][0].id // empty')
+          fi
+          [ -n "$build" ] || exit 0
+          # If source completion races the last site polling sleep, the
+          # later site-completed event performs this same check. Limit each
+          # run to one automatic retry, and preserve real test failures.
+          runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/site.yml/runs?event=pull_request&head_sha=$SOURCE_SHA&per_page=100" --jq '.workflow_runs[] | select(.status == "completed" and (.conclusion == "failure" or .conclusion == "timed_out") and (.run_attempt // 1) < 2) | .id')
           for run in $runs; do
+            missing=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/jobs?per_page=100" --jq '.jobs[] | select(.name == "reference" and (.conclusion == "failure" or .conclusion == "timed_out")) | .id')
+            [ -n "$missing" ] || continue
             current=false
             for pr in $prs; do
               head=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pr" --jq 'select(.state == "open") | .head.sha')

@@ -51,6 +51,8 @@ For builds that outlast that window, a trusted default-branch completion
 workflow retries failed/timed-out site checks for the same current open PR
 head, including forks and manually dispatched previews. It reads only GitHub
 metadata; it never checks out fork code or executes an artifact.
+It also handles a site failure that completes after the source callback,
+retries only failed reference jobs, and permits one automatic retry per run.
 
 The runtime pins the generation named in its manifest. Only an absent tile in
 the verified complete index is empty. A manifest/index error, timeout, HTTP
