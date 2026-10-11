@@ -164,10 +164,11 @@ test('a complete replacement keeps the previous version and revised icons availa
 });
 
 test('the current departure release refreshes cached code while previous tabs retain their version', async () => {
-  const previousVersion = '20261009-ios-install-5';
+  const previousVersion = '20261011-mainline-reference-1';
   const page = readFileSync(new URL('../styles/index.html', import.meta.url), 'utf8');
   const currentVersion = page.match(/src="app\.mjs\?v=([\w.-]+)"/)?.[1];
   assert.ok(currentVersion, 'the actual page declares its asset version');
+  assert.notEqual(currentVersion, previousVersion, 'the correction needs a fresh cache-first asset version');
   const path = new URL('departures.mjs', scope).pathname;
   const previousBytes = 'export const departureRelease = "before-correction";';
   const currentBytes = readFileSync(new URL('../styles/departures.mjs', import.meta.url), 'utf8');

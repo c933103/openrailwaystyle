@@ -20,6 +20,17 @@ platforms conflict, the platform attached to the later predicted departure is
 used, with a consistent choice for equal times. This also cannot establish which
 platform update is newest. Ambiguous matches between different boards remain separate.
 
+Bare numeric departure labels are omitted from the line-name badge unless the
+source also supplies a nonempty, nonnumeric long route name. Surrounding whitespace
+and decimal digits in other scripts follow the same rule. Meaningful text and
+alphanumeric service labels remain available; otherwise the badge shows the mode.
+Raw labels and identifiers remain available to reconciliation, so hiding a number
+does not make two differently numbered routes compatible. This display guard does
+not prove that a number is an internal ID or a public route reference. The board
+does not infer a separately labelled public ref from an ambiguous numeric field;
+broader cross-feed identity and public-ref verification remain open in
+[issue #113](https://github.com/c933103/openrailwaystyle/issues/113).
+
 Stations appear progressively as you zoom in. Construction, proposed and former lines use distinct patterns. The [rendering reference](rendering.md) explains symbols, zoom levels, units and coverage limits.
 
 Train control shows concurrent systems as adjacent colour bands along the track. The legend and infobox use short system names; hover for the full description, or tap/click a name to expand it. The same descriptions can be opened with the keyboard.
