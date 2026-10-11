@@ -121,6 +121,12 @@ jobs:
       service_date: ${{ steps.date.outputs.value }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # The Python cross-shard fixture invokes the production JS assembler.
+      # Its OSM/timetable imports require the locked Node dependency tree.
+      - run: npm ci --ignore-scripts --no-audit --no-fund
       - id: date
         env:
           REQUESTED_DATE: ${{ inputs.service_date }}
@@ -134,8 +140,19 @@ jobs:
           PY
       - name: Run offline source-eligibility and catalogue regression fixtures
         run: |
-          python3 -m unittest discover -s tests -p 'frequency_catalogue_test.py'
-          python3 -m unittest discover -s tests -p 'global_frequency_test.py'
+          # Only fixtures lose public networking; subsequent source acquisition
+          # remains outside this namespace. Drop root before executing tests.
+          sudo unshare --net -- bash -euc '
+            ip link set lo up
+            exec setpriv --reuid="$1" --regid="$2" --init-groups --no-new-privs "$3" -
+          ' _ "$(id -u)" "$(id -g)" "$(command -v python3)" <<'PY'
+          import unittest
+          suite=unittest.TestSuite()
+          for pattern in ('frequency_catalogue_test.py','global_frequency_test.py'):
+              suite.addTests(unittest.TestLoader().discover('tests',pattern=pattern))
+          result=unittest.TextTestRunner().run(suite)
+          raise SystemExit(not result.wasSuccessful())
+          PY
       - name: Pin actual Transitous feed registry and authoritative Mobility Database export
         run: |
           mkdir -p catalogue
