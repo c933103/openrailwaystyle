@@ -217,7 +217,10 @@ export function plannerLink(direction, place, name) {
 export async function stationDepartures(station, {signal, fetch: get = fetch} = {}) {
   const json = async url => { const r = await get(url, {signal}); if (!r.ok) throw new Error(`Transitous returned ${r.status}`); return r.json(); };
   const candidates = await json(`${TRANSITOUS_API}/reverse-geocode?place=${station.lat},${station.lon}&type=STOP`);
-  const stops = pickStops(Array.isArray(candidates) ? candidates : [], station);
+  // Only an array is a successful lookup. A malformed response cannot establish
+  // that no nearby timetable stop matched the existing rail/distance filters.
+  if (!Array.isArray(candidates)) throw new Error('Invalid Transitous stop lookup response');
+  const stops = pickStops(candidates, station);
   if (!stops.length) return {stops, rows: [], stopResults: []};
   // Each stop's board on its own: one feed failing keeps the other's.
   const results = await Promise.allSettled(stops.map(s => json(`${TRANSITOUS_API}/stoptimes?stopId=${encodeURIComponent(s.id)}&n=30&mode=${[...RAIL_MODES].join(',')}`).then(d => d.stopTimes || [])));

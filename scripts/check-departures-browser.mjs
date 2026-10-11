@@ -106,11 +106,11 @@ try {
       // Partial board failures must survive the production cache and renderer.
       // All responses below are synthetic; the loopback transport guard remains.
       const boardRequests = [];
-      let boardName, boardOrder = ['a', 'b'], boardTimes = [], boardFailed = ['b'];
+      let boardName, boardOrder = ['a', 'b'], boardTimes = [], boardFailed = ['b'], lookupResponse;
       await context.route('https://api.transitous.org/api/v1/**', route => {
         const url = new URL(route.request().url()); boardRequests.push(url.pathname);
-        if (url.pathname.endsWith('/reverse-geocode')) return route.fulfill({json: boardOrder.map(id =>
-          ({type:'STOP', name:boardName, id, lat:35.7, lon:139.77, modes:['SUBWAY']}))});
+        if (url.pathname.endsWith('/reverse-geocode')) return route.fulfill({json: lookupResponse === undefined ? boardOrder.map(id =>
+          ({type:'STOP', name:boardName, id, lat:35.7, lon:139.77, modes:['SUBWAY']})) : lookupResponse});
         assert.equal(url.pathname, '/api/v1/stoptimes', 'board never prefetches schedules or retries');
         assert.equal(url.searchParams.get('n'), '30');
         return boardFailed.includes(url.searchParams.get('stopId'))
@@ -134,7 +134,7 @@ try {
         assert.equal(boardRequests.length - before, 3);
         assert.equal(await page.locator('.departure-warning').textContent(), 'Some departures could not load. The board may be incomplete.');
         assert.equal(await page.locator('.departure-list > li').count(), Number(withRows));
-        assert.doesNotMatch(await page.locator('.departures').textContent(), /No rail departures|No published timetable|synthetic private/);
+        assert.doesNotMatch(await page.locator('.departures').textContent(), /No rail departures|No published timetable|No matching rail timetable stop|synthetic private/);
         assert.equal(await page.locator('.departures button').count(), 0, 'no board retry button');
         if (order[0] === 'a') await page.screenshot({path:`browser-review/departures-partial-${withRows ? 'rows' : 'empty'}-${engine}.png`});
         await page.locator('#details-close').click();
@@ -166,11 +166,59 @@ try {
       await openStation(boardName); await waitBoard();
       assert.equal(boardRequests.length - beforeFailed, 6, 'all-failed result is evicted for a normal reopening');
       assert.match(await page.locator('.departures').textContent(), /No rail departures in the published timetable soon/);
-      boardName = 'No matching timetable'; boardOrder = [];
-      await openStation(boardName); await waitBoard();
-      assert.match(await page.locator('.departures').textContent(), /No published timetable covers this station/);
+      const unmatchedMessage = 'No matching rail timetable stop was found within 400 m.';
+      for (const [label, candidates] of [
+        ['empty', []],
+        ['filtered', [
+          {type:'STOP', name:'Nearby bus', id:'bus', lat:35.7, lon:139.77, modes:['BUS']},
+          {type:'STOP', name:'Distant rail', id:'far', lat:35.71, lon:139.77, modes:['SUBWAY']},
+        ]],
+      ]) {
+        boardName = `No matched stop ${label}`; lookupResponse = candidates;
+        const translated = {id:`fixture-unmatched-${label}`, 'name:en':`${boardName} English`, 'name:ja':`${boardName} 日本語`};
+        const before = boardRequests.length;
+        await openStation(boardName, translated); await waitBoard();
+        assert.ok((await page.locator('.departures').textContent()).includes(unmatchedMessage));
+        assert.doesNotMatch(await page.locator('.departures').textContent(), /No published timetable|No rail departures|could not load/);
+        assert.equal(boardRequests.length - before, 1, 'unmatched lookup never starts a stop board');
+        await page.screenshot({path:`browser-review/departures-unmatched-${label}-${engine}.png`});
+        await page.locator('#details-close').click();
+        lookupResponse = undefined; boardOrder = ['a', 'b']; boardFailed = []; boardTimes = [row];
+        await openStation(boardName, translated); await waitBoard();
+        assert.ok((await page.locator('.departures').textContent()).includes(unmatchedMessage));
+        const language = (await page.locator('#language').inputValue()) === 'ja' ? 'en' : 'ja';
+        await page.locator('#language').selectOption(language);
+        await page.waitForFunction(name => document.querySelector('#detail-content h2')?.textContent === name, translated[`name:${language}`]);
+        await waitBoard();
+        assert.ok((await page.locator('.departures').textContent()).includes(unmatchedMessage));
+        const link = new URL(await page.locator('.departure-links a').first().getAttribute('href'));
+        assert.equal(link.searchParams.get('fromName'), translated[`name:${language}`]);
+        assert.equal(link.searchParams.get('fromPlace'), '35.7,139.77');
+        assert.equal(boardRequests.length - before, 1, 'empty lookup stays cached across reopening and a translated redraw');
+        await page.evaluate(() => {window.__departureFixtureNow += 60_001;});
+        assert.equal(boardRequests.length - before, 1, 'expiry alone never triggers a lookup');
+        await openStation(boardName, translated); await waitBoard();
+        assert.equal(boardRequests.length - before, 4);
+        assert.equal(await page.locator('.departure-list > li').count(), 1);
+        assert.ok(!(await page.locator('.departures').textContent()).includes(unmatchedMessage));
+      }
+      for (const [label, candidates] of [['null', null], ['object', {error:'synthetic private provider response'}], ['string', 'synthetic private provider response']]) {
+        boardName = `Malformed stop lookup ${label}`; lookupResponse = candidates;
+        const before = boardRequests.length;
+        await openStation(boardName); await waitBoard();
+        assert.equal(await page.locator('.departures').textContent(), 'DeparturesDepartures could not load. Try again later.');
+        assert.equal(boardRequests.length - before, 1);
+        if (label === 'object') await page.screenshot({path:`browser-review/departures-malformed-lookup-${engine}.png`});
+        await page.locator('#details-close').click();
+        lookupResponse = [];
+        await openStation(boardName); await waitBoard();
+        assert.ok((await page.locator('.departures').textContent()).includes(unmatchedMessage));
+        assert.equal(boardRequests.length - before, 2, 'malformed lookup is evicted so normal reopening retries once');
+        await openStation(boardName); await waitBoard();
+        assert.equal(boardRequests.length - before, 2, 'successful recovery is cached normally');
+      }
       assert.deepEqual(errors, []);
-      console.log(`${engine}: partial-empty and partial-rows in both source orders, close/reopen, settings redraw, bounded cached requests, expiry recovery, all-failed eviction and unmatched passed; ${boardRequests.length} intercepted board fixture requests.`);
+      console.log(`${engine}: partial-empty and partial-rows in both source orders, close/reopen, translated redraw, expiry, all-failed eviction, empty/filtered no-match cache and malformed lookup recovery passed; ${boardRequests.length} intercepted board fixture requests.`);
       for (const withRows of [false, true]) {
         let release, requested;
         const held = new Promise(resolve => {release = resolve;});
@@ -199,7 +247,7 @@ try {
         assert.equal(await page.locator('#details').isVisible(), true);
         assert.equal(await page.locator('.departure-warning').count(), 1);
         assert.equal(await page.locator('.departure-list > li').count(), Number(withRows));
-        assert.doesNotMatch(await page.locator('.departures').textContent(), /No rail departures|No published timetable|synthetic private/);
+        assert.doesNotMatch(await page.locator('.departures').textContent(), /No rail departures|No published timetable|No matching rail timetable stop|synthetic private/);
         assert.equal(closeRequests.length, 3, 'reopening after a pending Close retains the cached partial result');
       }
       assert.deepEqual(errors, []);

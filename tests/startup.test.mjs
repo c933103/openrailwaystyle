@@ -1087,7 +1087,7 @@ test('station inspection finds nearby interchanges and facility inspection avoid
     assert.equal(nearby.querySelectorAll('li').length,1);
     await new Promise(resolve => setTimeout(resolve, 0));
     const board = window.document.querySelector('#detail-content .departures');
-    assert.match(board.textContent, /No published timetable covers this station/);
+    assert.match(board.textContent, /No matching rail timetable stop was found within 400 m/);
     assert.match(board.querySelector('.departure-links a').href, /^https:\/\/api\.transitous\.org\/\?fromPlace=/);
     assert.equal([...board.querySelectorAll('a')].at(-1).href, 'https://transitous.org/sources/');
     map.rendered=[bus];map.handlers.click({point:{x:500,y:400},lngLat:{lng:0.001,lat:0}});

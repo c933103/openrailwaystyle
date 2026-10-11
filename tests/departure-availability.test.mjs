@@ -13,11 +13,11 @@ const observation = {mode: 'REGIONAL_RAIL', displayName: 'R7', headsign: 'Harbou
   tripId: 'fixture-trip', routeId: 'fixture-route',
   place: {stopId: 'a', departure: '2099-01-01T12:00:00Z', scheduledDeparture: '2099-01-01T12:00:00Z', tz: 'UTC'}};
 const failure = new Error('synthetic private error text must not appear in result or UI');
-function fixture({order = ['a', 'b'], failed = [], times = [], failureKind = 'network'} = {}) {
+function fixture({order = ['a', 'b'], failed = [], times = [], failureKind = 'network', candidates = order.map(stop)} = {}) {
   const calls = [], before = structuredClone(times);
   return {calls, before, fetch: async (url, options) => {
     calls.push({url: new URL(url), options});
-    if (url.includes('/reverse-geocode')) return {ok: true, json: async () => order.map(stop)};
+    if (url.includes('/reverse-geocode')) return {ok: true, json: async () => candidates};
     const id = new URL(url).searchParams.get('stopId');
     if (failed.includes(id)) {
       if (failureKind === 'http') return {ok: false, status: 503};
@@ -104,7 +104,7 @@ for (const times of [[], [observation]]) test(`DOM preserves cached partial ${ti
     view.show(); await view.settle();
     assert.equal(view.panel.querySelector('.departure-warning').textContent, partialMessage);
     assert.equal(view.panel.querySelectorAll('.departure-list > li').length, times.length);
-    assert.doesNotMatch(view.panel.textContent, /No rail departures|No published timetable|synthetic private/);
+    assert.doesNotMatch(view.panel.textContent, /No rail departures|No published timetable|No matching rail timetable stop|synthetic private/);
     assert.equal(view.panel.querySelectorAll('button').length, 0, 'no board retry button added');
     const previous = feed.current;
     feed.current = fixture({times});
@@ -125,11 +125,11 @@ test('DOM keeps all-failed rejection, eviction, and no-matching-stop messages', 
   try {
     view.show(); await view.settle();
     assert.match(view.panel.textContent, /Departures could not load\. Try again later\./);
-    assert.doesNotMatch(view.panel.textContent, /No rail departures|No published timetable|synthetic private/);
+    assert.doesNotMatch(view.panel.textContent, /No rail departures|No published timetable|No matching rail timetable stop|synthetic private/);
     assert.equal(view.departureBoards.size, 0, 'fully failed requests are evicted as before');
     feed.current = fixture({order: []});
     view.show(); await view.settle();
-    assert.match(view.panel.textContent, /No published timetable covers this station/);
+    assert.match(view.panel.textContent, /No matching rail timetable stop was found within 400 m/);
     assert.equal(feed.current.calls.length, 1);
   } finally {view.dom.window.close();}
 });
@@ -269,4 +269,77 @@ test('an unnamed pending failure cannot evict the later named station board', as
     view.show({id: 'node-1', name: 'Central'}); await view.settle();
     assert.equal(feed.current.calls.length, 3, 'named enrichment has its own retained cache entry');
   } finally {release(); view.dom.window.close();}
+});
+
+// A successful lookup can be empty or contain only stops outside the existing
+// rail/distance filters. Neither establishes whether a timetable covers the area.
+const unmatchedLookups = [
+  ['empty', []],
+  ['filtered', [
+    {...stop('bus'), modes: ['BUS']},
+    {...stop('place'), type: 'PLACE'},
+    {...stop('far'), lat: 0.01},
+    {...stop('coordinates'), lon: '0'},
+  ]],
+];
+const unmatchedMessage = 'No matching rail timetable stop was found within 400 m.';
+for (const [label, candidates] of unmatchedLookups) test(`successful ${label} lookup returns no matched stops with one request`, async () => {
+  const feed = fixture({candidates}), before = structuredClone(candidates), signal = new AbortController().signal;
+  assert.deepEqual(await stationDepartures(station, {fetch: feed.fetch, signal}), {stops: [], rows: [], stopResults: []});
+  assert.deepEqual(candidates, before);
+  assert.equal(feed.calls.length, 1);
+  assert.equal(feed.calls[0].options.signal, signal);
+  assert.equal(feed.calls[0].url.pathname, '/api/v1/reverse-geocode');
+});
+
+const malformedLookups = [null, {}, {error: 'synthetic private provider response'}, 'synthetic private response', 0, false];
+for (const candidates of malformedLookups) test(`malformed top-level lookup ${JSON.stringify(candidates)} rejects instead of inventing an empty match`, async () => {
+  const feed = fixture({candidates});
+  await assert.rejects(stationDepartures(station, {fetch: feed.fetch}), /Invalid Transitous stop lookup response/);
+  assert.equal(feed.calls.length, 1, 'a malformed lookup never starts a board request');
+});
+
+for (const [label, candidates] of unmatchedLookups) for (const languages of [['en', 'ja'], ['ja', 'en']])
+test(`DOM preserves cached ${label} no-match status through ${languages.join('→')} redraws until normal expiry`, async () => {
+  const feed = {current: fixture({candidates})}, view = boardDom(feed);
+  const properties = {id: 'node-99', name: 'Central', 'name:en': 'Central', 'name:ja': '中央'};
+  try {
+    view.language(languages[0]); view.show(properties); await view.settle();
+    assert.match(view.panel.textContent, /No matching rail timetable stop was found within 400 m/);
+    assert.doesNotMatch(view.panel.textContent, /No published timetable|No rail departures|could not load/);
+    assert.equal(view.panel.querySelectorAll('.departure-warning, .departure-list').length, 0);
+    const before = feed.current;
+    feed.current = fixture({times: [observation]});
+    view.show(properties); await view.settle();
+    view.advance(60_000); view.language(languages[1]); view.show(properties); await view.settle();
+    assert.ok(view.panel.textContent.includes(unmatchedMessage));
+    assert.equal(before.calls.length, 1); assert.equal(feed.current.calls.length, 0);
+    const link = new URL(view.panel.querySelector('.departure-links a').href);
+    assert.equal(link.searchParams.get('fromPlace'), '0,0');
+    assert.equal(link.searchParams.get('fromName'), properties[`name:${languages[1]}`]);
+    view.advance(1); view.show(properties); await view.settle();
+    assert.equal(feed.current.calls.length, 3);
+    assert.equal(view.panel.querySelectorAll('.departure-list > li').length, 1);
+    assert.ok(!view.panel.textContent.includes(unmatchedMessage));
+  } finally {view.dom.window.close();}
+});
+
+for (const candidates of malformedLookups) test(`DOM shows a generic lookup failure and permits reopening after ${JSON.stringify(candidates)}`, async () => {
+  const feed = {current: fixture({candidates})}, view = boardDom(feed);
+  const properties = {id: 'node-99', name: 'Central', 'name:ja': '中央'};
+  try {
+    view.show(properties); await view.settle();
+    assert.equal(view.panel.textContent, 'DeparturesDepartures could not load. Try again later.');
+    assert.equal(view.departureBoards.size, 0);
+    assert.equal(feed.current.calls.length, 1);
+    view.language('ja'); view.show(properties); await view.settle();
+    assert.equal(view.panel.textContent, 'DeparturesDepartures could not load. Try again later.');
+    assert.equal(feed.current.calls.length, 2, 'normal redraw retries the evicted failure once');
+    feed.current = fixture({candidates: []});
+    view.show(properties); await view.settle();
+    assert.ok(view.panel.textContent.includes(unmatchedMessage));
+    assert.equal(feed.current.calls.length, 1);
+    view.show(properties); await view.settle();
+    assert.equal(feed.current.calls.length, 1, 'a recovered successful lookup is cached normally');
+  } finally {view.dom.window.close();}
 });
